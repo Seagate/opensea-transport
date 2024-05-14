@@ -193,7 +193,7 @@ eReturnValues ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_
         ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
         ataCommandOptions.tfr.CommandStatus = ATA_READ_DMA_RETRY_CMD;//0xC8
     }
-    
+
 
     if (ptrData == NULL)
     {
@@ -264,7 +264,7 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, u
         ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
         ataCommandOptions.tfr.CommandStatus = ATA_READ_MULTIPLE_CMD;//0xC4
     }
-                                             //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
+    //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
     uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
     while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 0)
     {
@@ -737,7 +737,7 @@ eReturnValues ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, 
         ataCommandOptions.tfr.CommandStatus = ATA_WRITE_MULTIPLE_CMD;
     }
 
-                                             //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
+    //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
     uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
     while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 0)
     {
@@ -847,6 +847,7 @@ eReturnValues ata_Legacy_Write_Sectors_CHS(tDevice *device, uint16_t cylinder, u
 
     return ret;
 }
+
 //Lower nibble of command opcode is allowed on really really old drives.
 eReturnValues ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t head, uint8_t sector, uint8_t lowCmdNibble)
 {
@@ -1221,7 +1222,7 @@ eReturnValues ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t
         ataCommandOptions.tfr.LbaHi = M_Byte2(lba);
         ataCommandOptions.tfr.DeviceHead |= M_Nibble6(lba);//set the high 4 bits for the LBA (24:28)
     }
-    else if(subcommand == LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS)
+    else if (subcommand == LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS)
     {
         ataCommandOptions.tfr.ErrorFeature = LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS;
         ataCommandOptions.tfr.SectorCount = 1;//spec says N/A, but this helps with SAT translators and should be ignored by the drive.

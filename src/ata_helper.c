@@ -786,7 +786,7 @@ eReturnValues send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool 
 void byte_Swap_ID_Data_Buffer(uint16_t *idData)
 {
     uint16_t idIter = 0;
-    for(idIter = 0; idIter < 256; ++idIter)
+    for (idIter = 0; idIter < 256; ++idIter)
     {
         byte_Swap_16(&idData[idIter]);
     }
@@ -905,7 +905,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
     {
         retrievedIdentifyData = true;
     }
-    else if(!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)//retry only if this is not already set to true since the above commands would have been sent with 85h already
+    else if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)//retry only if this is not already set to true since the above commands would have been sent with 85h already
     {
         //TODO: Check the sense data to see if it was invalid operation code. If so, then the device does not support the A1h command.
         //If this failed, issue a test unit ready command, followed by switching to 16B sat commands. Most devices tested will support A1h and very few will not if they support SAT at all.
@@ -946,7 +946,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
         {
             device->drive_info.drive_type = ATA_DRIVE;
         }
-        
+
 
         bool lbaModeSupported = false;
         uint16_t cylinder = 0;
@@ -994,7 +994,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
             device->drive_info.T10_vendor_ident[7] = 0;
         }
         device->drive_info.numberOfLUs = 1;
-        
+
         if ((device->drive_info.interface_type != IDE_INTERFACE) && (device->drive_info.interface_type != RAID_INTERFACE))
         {
             fill_ATA_Strings_From_Identify_Data(identifyData, device->drive_info.bridge_info.childDriveMN, device->drive_info.bridge_info.childDriveSN, device->drive_info.bridge_info.childDriveFW);
@@ -1057,7 +1057,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
                     head = identifyData[110];//Word55
                     spt = identifyData[112];//Word56
                 }
-                
+
             }
         }
 
@@ -1342,7 +1342,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
                 device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
             }
         }
-       
+
         if (device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
         {
             //turn off the DMA supported bits so upper layers issue PIO mode commands instead.
@@ -1356,11 +1356,11 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
             device->drive_info.ata_Options.dcoDMASupported = false;
             device->drive_info.ata_Options.hpaSecurityExtDMASupported = false;
         }
-        
+
         //This is to detect realtek USB to NVMe device since it will respond to SAT ATA identify commands with valid strings and NOTHING else.
         //If it has a SATA drive, these will all report DMA mode of some kind and a maxLBA and will never be ATAPI
         //So this should be a reasonably good check to catch this thing for now.
-        if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe && 
+        if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe &&
             (!device->drive_info.ata_Options.dmaSupported && device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 && device->drive_info.drive_type != ATAPI_DRIVE))
         {
             //This means it's an emulated NVMe device where only the MN/SN/FW were reported.
@@ -1394,11 +1394,11 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
     {
 #ifdef _DEBUG
         printf("Quiting device discovery early for %s per DO_NOT_WAKE_DRIVE\n", device->drive_info.serialNumber);
-        printf("Drive type: %d\n",device->drive_info.drive_type);
-        printf("Interface type: %d\n",device->drive_info.interface_type);
-        printf("Media type: %d\n",device->drive_info.media_type);
-        printf("SN: %s\n",device->drive_info.serialNumber);
-        printf("%s <--\n",__FUNCTION__);
+        printf("Drive type: %d\n", device->drive_info.drive_type);
+        printf("Interface type: %d\n", device->drive_info.interface_type);
+        printf("Media type: %d\n", device->drive_info.media_type);
+        printf("SN: %s\n", device->drive_info.serialNumber);
+        printf("%s <--\n", __FUNCTION__);
 #endif
         return ret;
     }
@@ -1634,11 +1634,11 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
         }
     }
 #ifdef _DEBUG
-    printf("Drive type: %d\n",device->drive_info.drive_type);
-    printf("Interface type: %d\n",device->drive_info.interface_type);
-    printf("Media type: %d\n",device->drive_info.media_type);
-    printf("SN: %s\n",device->drive_info.serialNumber);
-    printf("%s <--\n",__FUNCTION__);
+    printf("Drive type: %d\n", device->drive_info.drive_type);
+    printf("Interface type: %d\n", device->drive_info.interface_type);
+    printf("Media type: %d\n", device->drive_info.media_type);
+    printf("SN: %s\n", device->drive_info.serialNumber);
+    printf("%s <--\n", __FUNCTION__);
 #endif
     return ret;
 }
@@ -2172,7 +2172,7 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataComm
     {
         printf("\t\tError\n");
     }
-    
+
     printf("\n");
 }
 
@@ -2183,7 +2183,7 @@ uint8_t calculate_ATA_Checksum(uint8_t *ptrData)
     if (!ptrData)
     {
         return BAD_PARAMETER;
-    }  
+    }
     for (counter = 0; counter < 511; ++counter)
     {
         checksum = checksum + ptrData[counter];
@@ -2251,7 +2251,7 @@ bool is_CHS_Mode_Supported(tDevice *device)
     //Check words 1, 3, 6
     if (device->drive_info.IdentifyData.ata.Word001 == 0 ||
         device->drive_info.IdentifyData.ata.Word003 == 0 ||
-        device->drive_info.IdentifyData.ata.Word006 == 0 )
+        device->drive_info.IdentifyData.ata.Word006 == 0)
     {
         chsSupported = false;
     }

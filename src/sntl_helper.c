@@ -326,7 +326,7 @@ static void set_Sense_Data_By_Generic_NVMe_Status(tDevice *device, uint8_t nvmeS
     ascq = 0;
 
     bool genericCatchAllSense = false;
-    
+
     //generic translations
     switch (nvmeStatus)
     {
@@ -488,6 +488,7 @@ static void set_Sense_Data_By_Generic_NVMe_Status(tDevice *device, uint8_t nvmeS
     }
     return;
 }
+
 //the completion queue will tell us if the error is specific to a command versus a generic error
 static void set_Sense_Data_By_Command_Specific_NVMe_Status(tDevice *device, uint8_t nvmeStatus, uint8_t *sensePtr, uint32_t senseDataLength)
 {
@@ -692,6 +693,7 @@ static void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice *device, uint8_t 
     }
     return;
 }
+
 //TODO: Handle doing other things like setting progress indication if a test is running while translating sense data or other things like that.
 static void set_Sense_Data_By_NVMe_Status(tDevice *device, uint32_t completionDWord3, uint8_t *sensePtr, uint32_t senseDataLength)
 {
@@ -1323,7 +1325,7 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *
         }
     }
     //else NVMe 1.0 will not support this designator!
-    
+
     //now setup the device identification page
     deviceIdentificationPage = C_CAST(uint8_t*, calloc(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength, sizeof(uint8_t)));
     if (!deviceIdentificationPage)
@@ -1776,7 +1778,7 @@ static eReturnValues sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIo
 #if defined SNTL_EXT
             inquiryData[4] = 92;
 #else //!SNTL_EXT
-            inquiryData[4] = 0x1F; 
+            inquiryData[4] = 0x1F;
 #endif //SNTL_EXT
             //check if protect bit needs to be set from namespace data
             if (device->drive_info.IdentifyData.nvme.ns.dps != 0)
@@ -2160,7 +2162,7 @@ static eReturnValues sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIo
         getTempThresh.dataPtr = logPage;
         getTempThresh.dataLength = 512;
         getTempThresh.featSetGetValue = 0;
-        if(SUCCESS == nvme_Get_Features(device, &getTempThresh))
+        if (SUCCESS == nvme_Get_Features(device, &getTempThresh))
         {
             uint16_t tempThreshK = C_CAST(uint16_t, getTempThresh.featSetGetValue);
             temperatureLog[offset + 0] = 0;
@@ -2917,7 +2919,7 @@ static eReturnValues sntl_Translate_SCSI_Log_Sense_Command(tDevice *device, Scsi
                 {
                 case 0:
                     //This will only be supported on rotating media for start-stop cycle counter and load-unload counts
-                    if(device->drive_info.media_type == MEDIA_HDD)//this check is good enough for now for how SNTL gets used today - TJE
+                    if (device->drive_info.media_type == MEDIA_HDD)//this check is good enough for now for how SNTL gets used today - TJE
                     {
                         ret = sntl_Translate_Start_Stop_Cycle_Log_0x0E(device, scsiIoCtx);
                     }
@@ -2941,31 +2943,31 @@ static eReturnValues sntl_Translate_SCSI_Log_Sense_Command(tDevice *device, Scsi
                 }
                 break;
             case LP_SELF_TEST_RESULTS://self test results
-              switch (subpageCode)
-              {
-              case 0:
-                  if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
-                  {
-                      ret = sntl_Translate_Self_Test_Results_Log_0x10(device, scsiIoCtx);
-                  }
-                  else
-                  {
-                      fieldPointer = 2;
-                      bitPointer = 5;
-                      sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-                      ret = NOT_SUPPORTED;
-                      sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-                  }
-                  break;
-              default:
-                  fieldPointer = 3;
-                  bitPointer = 7;
-                  sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-                  ret = NOT_SUPPORTED;
-                  sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-                  break;
-              }
-              break;
+                switch (subpageCode)
+                {
+                case 0:
+                    if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
+                    {
+                        ret = sntl_Translate_Self_Test_Results_Log_0x10(device, scsiIoCtx);
+                    }
+                    else
+                    {
+                        fieldPointer = 2;
+                        bitPointer = 5;
+                        sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                        ret = NOT_SUPPORTED;
+                        sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    }
+                    break;
+                default:
+                    fieldPointer = 3;
+                    bitPointer = 7;
+                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+                    ret = NOT_SUPPORTED;
+                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                    break;
+                }
+                break;
 #endif
             case 0x11://solid state media
                 switch (subpageCode)
@@ -4079,7 +4081,7 @@ static eReturnValues sntl_Translate_Mode_Select_Caching_08h(tDevice *device, Scs
             sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
         }
     }
-    else if(ptrToBeginningOfModePage[2] & BIT2)
+    else if (ptrToBeginningOfModePage[2] & BIT2)
     {
         //drive doesn't support Volatile write cache, so we need to set an error for invalid field in CDB
         bitPointer = 2;
@@ -5426,6 +5428,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, Sc
     safe_Free(reportLunsData)
     return ret;
 }
+
 //TODO: if any kind of "device fault" occurs, send back a sense code similar to SAT with ATA devices
 static eReturnValues sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
@@ -5472,7 +5475,7 @@ static eReturnValues sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device
         {
             uint16_t sstat = M_BytesTo2ByteValue(logPage[3], logPage[2]);
             uint8_t sanitizeStatus = M_GETBITRANGE(sstat, 2, 0);
-            if(sanitizeStatus == 0x2)//sanitize in progress
+            if (sanitizeStatus == 0x2)//sanitize in progress
             {
                 //set sense data to in progress and set a progress indicator!
                 sntl_Set_Sense_Key_Specific_Descriptor_Progress_Indicator(senseKeySpecificDescriptor, M_BytesTo2ByteValue(logPage[1], logPage[0]));
@@ -5879,112 +5882,112 @@ static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, S
 #endif
     case 0x0E://Firmware image download
 #if defined SNTL_EXT
-            if (((mode == 0x0E && ((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0)) || mode == 0x0D) //mode specific is reserved in this mode (0x0E)
+        if (((mode == 0x0E && ((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0)) || mode == 0x0D) //mode specific is reserved in this mode (0x0E)
 #else
-            if (((mode == 0x0E && ((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0))) //mode specific is reserved in this mode (0x0E)
+        if (((mode == 0x0E && ((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0))) //mode specific is reserved in this mode (0x0E)
 #endif
-                && ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && bufferID == 0)//buffer ID should be zero since we don't support other buffer IDs
-                )
+            && ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && bufferID == 0)//buffer ID should be zero since we don't support other buffer IDs
+            )
+        {
+            //TODO: Check the granularity requirements from fwug in controller identify data so we can check the command properly before issuing it.
+            uint32_t granularity = device->drive_info.IdentifyData.nvme.ctrl.fwug * 4096;//this is in bytes
+            if (device->drive_info.IdentifyData.nvme.ctrl.fwug == UINT8_MAX)
             {
-                //TODO: Check the granularity requirements from fwug in controller identify data so we can check the command properly before issuing it.
-                uint32_t granularity = device->drive_info.IdentifyData.nvme.ctrl.fwug * 4096;//this is in bytes
-                if (device->drive_info.IdentifyData.nvme.ctrl.fwug == UINT8_MAX)
-                {
-                    granularity = 1;//no restriction
-                }
-                else if (device->drive_info.IdentifyData.nvme.ctrl.fwug == 0)
-                {
-                    granularity = 4096;//error on this side for caution!
-                }
-                if ((bufferOffset % granularity) == 0 && (parameterListLength % granularity) == 0)//check length and offset for the same granularity requirements!
-                {
-                    ret = nvme_Firmware_Image_Dl(device, bufferOffset, parameterListLength, scsiIoCtx->pdata, scsiIoCtx->fwdlFirstSegment, scsiIoCtx->fwdlLastSegment, scsiIoCtx->timeout);
-                    if (ret != SUCCESS)
-                    {
-                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                        return ret;
-                    }
-                }
-                else //invalid parameter list length! must be in 200h sizes only!
-                {
-                    fieldPointer = 6;
-                    bitPointer = 7;
-                    sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-                    ret = NOT_SUPPORTED;
-                    sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-                }
+                granularity = 1;//no restriction
             }
-            else //these fields must be zeroed out
+            else if (device->drive_info.IdentifyData.nvme.ctrl.fwug == 0)
             {
-                sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
-                ret = NOT_SUPPORTED;
-                sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+                granularity = 4096;//error on this side for caution!
             }
-        break;
-    case 0x0F://Firmware image commit
-            if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0)
-                && ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && bufferID == 0)
-                && ((fieldPointer = 3) != 0 && (bitPointer = 7) != 0 && bufferOffset == 0)
-                && ((fieldPointer = 6) != 0 && (bitPointer = 7) != 0 && parameterListLength == 0)
-                )
+            if ((bufferOffset % granularity) == 0 && (parameterListLength % granularity) == 0)//check length and offset for the same granularity requirements!
             {
-                //TODO: Store a way of to switch to existing firmware images? This would be better to handle when we're switching between existing images...unlikley with SCSI translation though
-                nvmeFWCommitAction commitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
-                if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
-                {
-                    commitAction = NVME_CA_ACTIVITE_IMMEDIATE;
-                }
-                ret = nvme_Firmware_Commit(device, commitAction, bufferID, scsiIoCtx->timeout);
+                ret = nvme_Firmware_Image_Dl(device, bufferOffset, parameterListLength, scsiIoCtx->pdata, scsiIoCtx->fwdlFirstSegment, scsiIoCtx->fwdlLastSegment, scsiIoCtx->timeout);
                 if (ret != SUCCESS)
                 {
                     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                     return ret;
                 }
-                //need to check if the status of the commit says we need a reset too!
-                int resetType = 0;//0 = no reset, 1 = reset, 2 = susb system reset
-                bool dnr = false, more = false;
-                uint8_t sct = 0, sc = 0;
-                get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &dnr, &more, &sct, &sc);
-                if (sct == NVME_SCT_COMMAND_SPECIFIC_STATUS)
-                {
-                    switch (sc)
-                    {
-                    case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
-                        resetType = 2;
-                        break;
-                    case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
-                    case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
-                        resetType = 1;
-                        break;
-                    default:
-                        resetType = 0;
-                        break;
-                    }
-                }
-                if (commitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || resetType > 0)
-                {
-                    if (resetType == 0)
-                    {
-                        resetType = 1;
-                    }
-                    if (resetType == 1)
-                    {
-                        //reset
-                        nvme_Reset(device);
-                    }
-                    else if (resetType == 2)
-                    {
-                        //subsystem reset
-                        nvme_Subsystem_Reset(device);
-                    }
-                }
             }
-            else
+            else //invalid parameter list length! must be in 200h sizes only!
             {
+                fieldPointer = 6;
+                bitPointer = 7;
                 sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
                 ret = NOT_SUPPORTED;
                 sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             }
+        }
+        else //these fields must be zeroed out
+        {
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            ret = NOT_SUPPORTED;
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        }
+        break;
+    case 0x0F://Firmware image commit
+        if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && modeSpecific == 0)
+            && ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && bufferID == 0)
+            && ((fieldPointer = 3) != 0 && (bitPointer = 7) != 0 && bufferOffset == 0)
+            && ((fieldPointer = 6) != 0 && (bitPointer = 7) != 0 && parameterListLength == 0)
+            )
+        {
+            //TODO: Store a way of to switch to existing firmware images? This would be better to handle when we're switching between existing images...unlikley with SCSI translation though
+            nvmeFWCommitAction commitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+            if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
+            {
+                commitAction = NVME_CA_ACTIVITE_IMMEDIATE;
+            }
+            ret = nvme_Firmware_Commit(device, commitAction, bufferID, scsiIoCtx->timeout);
+            if (ret != SUCCESS)
+            {
+                set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                return ret;
+            }
+            //need to check if the status of the commit says we need a reset too!
+            int resetType = 0;//0 = no reset, 1 = reset, 2 = susb system reset
+            bool dnr = false, more = false;
+            uint8_t sct = 0, sc = 0;
+            get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &dnr, &more, &sct, &sc);
+            if (sct == NVME_SCT_COMMAND_SPECIFIC_STATUS)
+            {
+                switch (sc)
+                {
+                case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                    resetType = 2;
+                    break;
+                case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+                case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                    resetType = 1;
+                    break;
+                default:
+                    resetType = 0;
+                    break;
+                }
+            }
+            if (commitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || resetType > 0)
+            {
+                if (resetType == 0)
+                {
+                    resetType = 1;
+                }
+                if (resetType == 1)
+                {
+                    //reset
+                    nvme_Reset(device);
+                }
+                else if (resetType == 2)
+                {
+                    //subsystem reset
+                    nvme_Subsystem_Reset(device);
+                }
+            }
+        }
+        else
+        {
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
+            ret = NOT_SUPPORTED;
+            sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
+        }
         break;
     case 0x07://Download code and activate on final segment...we cannot support this without some other way of notifying us that it's the final segment. Can reinvestigate it later!
         //TODO: Implement this method since scsiIoCtx now has flags for first and last segments.
@@ -6066,10 +6069,10 @@ static eReturnValues sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice *device
                 }
                 ret = nvme_Set_Features(device, &features);
                 if (ret != SUCCESS)
-                    {
-                        set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                        return ret;
-                    }
+                {
+                    set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
+                    return ret;
+                }
             }
             else
             {
@@ -6385,13 +6388,13 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCt
                     dsmBuffer[nvmeDSMOffset + 13] = M_Byte2(unmapLogicalBlockAddress);
                     dsmBuffer[nvmeDSMOffset + 14] = M_Byte1(unmapLogicalBlockAddress);
                     dsmBuffer[nvmeDSMOffset + 15] = M_Byte0(unmapLogicalBlockAddress);
-                    
+
                     //now increment the nvmeDSMOffset
                     nvmeDSMOffset += 16;
                     //check if the NVMe DSM buffer is full...if it is and there are more or potentially more block descriptors, send the command now
                     if ((nvmeDSMOffset > 4096) && ((unmapBlockDescriptorIter + 16) < minBlockDescriptorLength))
                     {
-                        if(SUCCESS == nvme_Dataset_Management(device, numberOfRanges, true, false, false, dsmBuffer, 4096))
+                        if (SUCCESS == nvme_Dataset_Management(device, numberOfRanges, true, false, false, dsmBuffer, 4096))
                         {
                             //clear the buffer for reuse
                             memset(dsmBuffer, 0, 4096);
@@ -7050,7 +7053,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(tDevice * device, Scs
             || ((fieldPointer = 16) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->pdata[17] != 0)//obsolete (scope specific address)
             || ((fieldPointer = 16) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->pdata[18] != 0)//obsolete (scope specific address)
             || ((fieldPointer = 16) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->pdata[19] != 0)//obsolete (scope specific address)
-            || ((fieldPointer = 20) != 0 && (bitPointer = 3) != 0 && M_GETBITRANGE(scsiIoCtx->pdata[20],7, 4) != 0)
+            || ((fieldPointer = 20) != 0 && (bitPointer = 3) != 0 && M_GETBITRANGE(scsiIoCtx->pdata[20], 7, 4) != 0)
             || ((fieldPointer = 20) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->pdata[20] & BIT3)//SPEC_I_PT bit
             || ((fieldPointer = 20) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->pdata[20] & BIT1)//reserved bit
             || ((fieldPointer = 21) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->pdata[21])//reserved
@@ -7777,7 +7780,6 @@ static eReturnValues sntl_Check_Operation_Code(tDevice *device, uint8_t operatio
         pdata[0][offset + 8] = 0;
         pdata[0][offset + 9] = controlByte;//control byte
         break;
-    
     case LOG_SENSE_CMD:
         cdbLength = 10;
         *dataLength += cdbLength;

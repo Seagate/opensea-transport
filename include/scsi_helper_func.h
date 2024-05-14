@@ -208,7 +208,7 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info );
+    void copy_Inquiry_Data(uint8_t *pbuf, driveInfo *info);
 
     //-----------------------------------------------------------------------------
     //
@@ -223,7 +223,7 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    void copy_Serial_Number( uint8_t *pbuf, char *serialNumber );
+    void copy_Serial_Number(uint8_t *pbuf, char *serialNumber);
 
     //-----------------------------------------------------------------------------
     //
@@ -302,7 +302,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSanitizeExit, bool znr, bool immediate, bool invertBetweenPasses, eScsiSanitizeOverwriteTest test, uint8_t overwritePasses, uint8_t *pattern, uint16_t patternLengthBytes);
-    
+
     //-----------------------------------------------------------------------------
     //
     //  scsi_Sanitize_Exit_Failure_Mode()
@@ -1974,7 +1974,7 @@ extern "C"
     //!   \param[in] cmdSpecificBits1 = bits 7:5 in byte 1 of the CDB. All other bits will be stripped off.
     //!   \param[in] actionSpecific14 = set the action specific bits. (cdb byte 14)
     //!   \param[in] allocationLength = used on data transfer commands. This is how many bytes to transfer. Should be 0 for non-data commands
-    
+
     //!   \param[in] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
     //!
     //  Exit:
@@ -2206,7 +2206,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type,  uint32_t parameterListLength, uint8_t *ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type, uint32_t parameterListLength, uint8_t *ptrData);
 
     //-----------------------------------------------------------------------------
     //

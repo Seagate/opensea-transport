@@ -59,7 +59,7 @@ extern 'C'
     //
     //-----------------------------------------------------------------------------
     eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions);
-    
+
     //-----------------------------------------------------------------------------
     //
     //  get_RTFRs_From_NEC_Legacy()

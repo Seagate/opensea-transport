@@ -171,7 +171,7 @@ static bool create_OS_CISS_Handle_Name(char *input, char *osHandle)
     bool success = false;
     if (input)
     {
-        if (strncmp(input, "sg", 2) == 0 || strncmp(input, "ciss", 4) == 0  || strncmp(input, "smartpqi", 8) == 0)
+        if (strncmp(input, "sg", 2) == 0 || strncmp(input, "ciss", 4) == 0 || strncmp(input, "smartpqi", 8) == 0)
         {
             //linux SG handle /dev/sg? or freeBSD ciss handle: /dev/ciss?
             snprintf(osHandle, OS_CISS_HANDLE_MAX_LENGTH, "/dev/%s", input);
@@ -368,7 +368,7 @@ static eReturnValues ciss_Scsi_Report_Physical_LUNs(tDevice *device, uint8_t ext
     cdb[11] = 0;//control byte
 
     //CDB is created...let's send it!
-    if(ptrData && dataLength > 0)
+    if (ptrData && dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, ptrData, dataLength, XFER_DATA_IN, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
@@ -385,7 +385,7 @@ static eReturnValues get_Physical_Device_Location_Data(tDevice *device, uint8_t 
     eReturnValues ret = UNKNOWN;
     uint32_t dataLength = UINT32_C(8) + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
     uint8_t * physicalDrives = C_CAST(uint8_t*, calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
-    if(physicalDrives)
+    if (physicalDrives)
     {
         ret = ciss_Scsi_Report_Physical_LUNs(device, CISS_REPORT_PHYSICAL_LUNS_NO_EXTENDED_DATA, physicalDrives, dataLength);
         if (ret == SUCCESS)
@@ -432,6 +432,7 @@ typedef enum _eCISSptCmdType
 static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdType)
 {
     eReturnValues ret = BAD_PARAMETER;
+    int ioctlRet = 0;
     if (scsiIoCtx)
     {
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
@@ -440,491 +441,16 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
         }
         if (scsiIoCtx->cdbLength <= 16 && scsiIoCtx->dataLength <= UINT16_MAX)
         {
-            #if defined (__linux__) || defined (__FreeBSD__) //interface is the same on Linux and FreeBSD
-                if (scsiIoCtx->device->os_info.cissDeviceData->smartpqi)
-                {
-                    #if defined (__FreeBSD__)
-                        //if the smartpqi bool is set, use the structures from that driver to issue the command to ensure
-                        //that the packing matches exactly to minimize compatibility problems.
-                        pqi_IOCTL_Command_struct pqiCmd;
-                        seatimer_t commandTimer;
-                        memset(&commandTimer, 0, sizeof(seatimer_t));
-                        memset(&pqiCmd, 0, sizeof(pqi_IOCTL_Command_struct));
-
-                        switch (cmdType)
-                        {
-                        case CISS_CMD_CONTROLLER:
-                            break;
-                        default: //this will work OK for other cases. May need modifications for logical volume commands. -TJE
-                            //set path to device
-                            memcpy(&pqiCmd.LUN_info, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
-                            break;
-                        }
-                        //now setup to send a CDB
-                        pqiCmd.Request.CDBLen = scsiIoCtx->cdbLength;
-                        pqiCmd.Request.Type.Type = TYPE_CMD;//TYPE_MSG also available for BMIC commands, which can be things like resets
-                        pqiCmd.Request.Type.Attribute = ATTR_SIMPLE;//Can be UNTAGGED, SIMPLE, HEADOFQUEUE, ORDERED, ACA
-                        switch (scsiIoCtx->direction)
-                        {
-                        case XFER_DATA_IN:
-                            pqiCmd.Request.Type.Direction = XFER_READ;
-                            pqiCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
-                            pqiCmd.buf = scsiIoCtx->pdata;
-                            break;
-                        case XFER_DATA_OUT:
-                            pqiCmd.Request.Type.Direction = XFER_WRITE;
-                            pqiCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
-                            pqiCmd.buf = scsiIoCtx->pdata;
-                            break;
-                        case XFER_NO_DATA:
-                            pqiCmd.Request.Type.Direction = XFER_NONE;
-                            pqiCmd.buf_size = 0;
-                            pqiCmd.buf = NULL;
-                            break;
-                        default:
-                            return OS_COMMAND_NOT_AVAILABLE;
-                        }
-
-                        if (scsiIoCtx->timeout)
-                        {
-                            if (scsiIoCtx->timeout > UINT16_MAX)
-                            {
-                                pqiCmd.Request.Timeout = UINT16_MAX;
-                            }
-                            else
-                            {
-                                pqiCmd.Request.Timeout = C_CAST(uint16_t, scsiIoCtx->timeout);
-                            }
-                        }
-                        else
-                        {
-                            pqiCmd.Request.Timeout = 15;
-                        }
-                        memcpy(pqiCmd.Request.CDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
-
-                        ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
-
-                        start_Timer(&commandTimer);
-#if defined __clang__
-// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
-// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wsign-conversion"
-#elif defined __GNUC__
-//temporarily disable the warning for sign conversion because ioctl definition 
-// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
-// in others is defined as ioctl(int, int, ...)
-//While debugging there does not seem to be a real conversion issue here.
-//These ioctls still work in either situation, so disabling the warning seems best since there is not
-//another way I have found to determine when to cast or not cast the sign conversion.-TJE
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#endif //__clang__, __GNUC__
-                        ret = ioctl(scsiIoCtx->device->os_info.cissDeviceData->cissHandle, CCISS_PASSTHRU, &pqiCmd);
-#if defined __clang__
-#pragma clang diagnostic pop
-#elif defined __GNUC__
-//reenable the unused function warning
-#pragma GCC diagnostic pop
-#endif //__clang__, __GNUC__
-                        stop_Timer(&commandTimer);
-
-                        //Copy and sense data we received, then need to check for errors
-                        if (scsiIoCtx->psense)
-                        {
-                            memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-                            if (pqiCmd.error_info.SenseLen)
-                            {
-                                memcpy(scsiIoCtx->psense, pqiCmd.error_info.SenseInfo, pqiCmd.error_info.SenseLen);
-                            }
-                        }
-                        //set command time:
-                        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-
-                        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-                    {
-                        switch (pqiCmd.error_info.CommandStatus)
-                        {
-                        case CMD_SUCCESS:
-                            printf("CISS Success\n");
-                            break;
-                        case CMD_TARGET_STATUS:
-                            printf("CISS Target Status: ");
-                            switch(pqiCmd.error_info.ScsiStatus)
-                            {
-                            case SAM_STATUS_GOOD:
-                                printf("Good\n");
-                                break;
-                            case SAM_STATUS_CHECK_CONDITION:
-                                printf("Check Condition\n");
-                                break;
-                            case SAM_STATUS_CONDITION_MET:
-                                printf("Condition Met\n");
-                                break;
-                            case SAM_STATUS_INTERMEDIATE:
-                                printf("Intermediate\n");
-                                break;
-                            case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
-                                printf("Intermediate Condition Met\n");
-                                break;
-                            case SAM_STATUS_COMMAND_TERMINATED:
-                                printf("Command Terminated\n");
-                                break;
-                            case SAM_STATUS_BUSY:
-                                printf("Busy\n");
-                                break;
-                            case SAM_STATUS_RESERVATION_CONFLICT:
-                                printf("Reservation Conflict\n");
-                                break;
-                            case SAM_STATUS_TASK_SET_FULL:
-                                printf("Task Set Full\n");
-                                break;
-                            case SAM_STATUS_ACA_ACTIVE:
-                                printf("ACA Active\n");
-                                break;
-                            case SAM_STATUS_TASK_ABORTED:
-                                printf("Task Aborted\n");
-                                break;
-                            default:
-                                printf("Unknown: %02X\n", pqiCmd.error_info.ScsiStatus);
-                                break;
-                            }
-                            break;
-                        case CMD_DATA_UNDERRUN:
-                            printf("CISS Data Underrun\n");
-                            break;
-                        case CMD_DATA_OVERRUN:
-                            printf("CISS Data Overrun\n");
-                            break;
-                        case CMD_INVALID:
-                            printf("CISS Invalid\n");
-                            //print out additional invalid command info
-                            printf("\toffense_size  = %" PRIu8 "\n", pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_size);
-                            printf("\toffense_num   = %" PRIu8 "\n", pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_num);
-                            printf("\toffense_value = %" PRIu32 "\n", pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_value);
-                            break;
-                        case CMD_TIMEOUT:
-                            printf("CISS Timeout\n");
-                            break;
-                        case CMD_PROTOCOL_ERR:
-                            printf("CISS Protocol Error\n");
-                            break;
-                        case CMD_HARDWARE_ERR:
-                            printf("CISS Hardware Error\n");
-                            break;
-                        case CMD_CONNECTION_LOST:
-                            printf("CISS Connection Lost\n");
-                            break;
-                        case CMD_ABORTED:
-                            printf("CISS Command Aborted\n");
-                            break;
-                        case CMD_ABORT_FAILED:
-                            printf("CISS Abort Failed\n");
-                            break;
-                        case CMD_UNSOLICITED_ABORT:
-                            printf("CISS Unsolicited Abort\n");
-                            break;
-                        case CMD_UNABORTABLE:
-                            printf("CISS Unabortable\n");
-                            break;
-                        default:
-                            printf("CISS unknown error: %u\n", pqiCmd.error_info.CommandStatus);
-                            break;
-                        }
-                    }
-
-                    //check for errors to set ret properly
-                    switch (pqiCmd.error_info.CommandStatus)
-                    {
-                    case CMD_SUCCESS:
-                    case CMD_DATA_UNDERRUN:
-                    case CMD_DATA_OVERRUN:
-                        ret = SUCCESS;
-                        break;
-                    case CMD_TARGET_STATUS:
-                        switch(pqiCmd.error_info.ScsiStatus)
-                        {
-                        case SAM_STATUS_GOOD:
-                        case SAM_STATUS_CHECK_CONDITION:
-                        case SAM_STATUS_CONDITION_MET:
-                        case SAM_STATUS_INTERMEDIATE:
-                        case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
-                        case SAM_STATUS_COMMAND_TERMINATED:
-                            ret = SUCCESS; //let upper layer parse sense data
-                            break;
-                        case SAM_STATUS_BUSY:
-                        case SAM_STATUS_RESERVATION_CONFLICT:
-                        case SAM_STATUS_TASK_SET_FULL:
-                        case SAM_STATUS_ACA_ACTIVE:
-                        case SAM_STATUS_TASK_ABORTED:
-                        default:
-                            ret = OS_PASSTHROUGH_FAILURE;
-                            break;
-                        }
-                        break;
-                    case CMD_INVALID:
-                        ret = OS_COMMAND_BLOCKED;
-                        break;
-                    case CMD_TIMEOUT:
-                        ret = OS_COMMAND_TIMEOUT;
-                        break;
-                    case CMD_PROTOCOL_ERR:
-                    case CMD_HARDWARE_ERR:
-                    case CMD_CONNECTION_LOST:
-                    case CMD_ABORTED:
-                    case CMD_ABORT_FAILED:
-                    case CMD_UNSOLICITED_ABORT:
-                    case CMD_UNABORTABLE:
-                    default:
-                        ret = OS_PASSTHROUGH_FAILURE;
-                        break;
-                    }
-                    #else
-                        ret = BAD_PARAMETER;
-                    #endif
-                }
-                else
-                {
-                    IOCTL_Command_struct cissCmd;
-                    seatimer_t commandTimer;
-                    memset(&commandTimer, 0, sizeof(seatimer_t));
-                    memset(&cissCmd, 0, sizeof(IOCTL_Command_struct));
-
-                    switch (cmdType)
-                    {
-                    case CISS_CMD_CONTROLLER:
-                        break;
-                    default: //this will work OK for other cases. May need modifications for logical volume commands. -TJE
-                        //set path to device
-                        memcpy(&cissCmd.LUN_info, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
-                        break;
-                    }
-                    //now setup to send a CDB
-                    cissCmd.Request.CDBLen = scsiIoCtx->cdbLength;
-                    cissCmd.Request.Type.Type = TYPE_CMD;//TYPE_MSG also available for BMIC commands, which can be things like resets
-                    cissCmd.Request.Type.Attribute = ATTR_SIMPLE;//Can be UNTAGGED, SIMPLE, HEADOFQUEUE, ORDERED, ACA
-                    switch (scsiIoCtx->direction)
-                    {
-                    case XFER_DATA_IN:
-                        cissCmd.Request.Type.Direction = XFER_READ;
-                        cissCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
-                        cissCmd.buf = scsiIoCtx->pdata;
-                        break;
-                    case XFER_DATA_OUT:
-                        cissCmd.Request.Type.Direction = XFER_WRITE;
-                        cissCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
-                        cissCmd.buf = scsiIoCtx->pdata;
-                        break;
-                    case XFER_NO_DATA:
-                        cissCmd.Request.Type.Direction = XFER_NONE;
-                        cissCmd.buf_size = 0;
-                        cissCmd.buf = NULL;
-                        break;
-                    default:
-                        return OS_COMMAND_NOT_AVAILABLE;
-                    }
-
-                    if (scsiIoCtx->timeout)
-                    {
-                        if (scsiIoCtx->timeout > UINT16_MAX)
-                        {
-                            cissCmd.Request.Timeout = UINT16_MAX;
-                        }
-                        else
-                        {
-                            cissCmd.Request.Timeout = C_CAST(uint16_t, scsiIoCtx->timeout);
-                        }
-                    }
-                    else
-                    {
-                        cissCmd.Request.Timeout = 15;
-                    }
-                    memcpy(cissCmd.Request.CDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
-
-                    ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
-
-                    start_Timer(&commandTimer);
-#if defined __clang__
-// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
-// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wsign-conversion"
-#elif defined __GNUC__
-//temporarily disable the warning for sign conversion because ioctl definition 
-// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
-// in others is defined as ioctl(int, int, ...)
-//While debugging there does not seem to be a real conversion issue here.
-//These ioctls still work in either situation, so disabling the warning seems best since there is not
-//another way I have found to determine when to cast or not cast the sign conversion.-TJE
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#endif //__clang__, __GNUC__
-                    ret = ioctl(scsiIoCtx->device->os_info.cissDeviceData->cissHandle, CCISS_PASSTHRU, &cissCmd);
-#if defined __clang__
-#pragma clang diagnostic pop
-#elif defined __GNUC__
-//reenable the unused function warning
-#pragma GCC diagnostic pop
-#endif //__clang__, __GNUC__
-                    stop_Timer(&commandTimer);
-
-                    //Copy and sense data we received, then need to check for errors
-                    if (scsiIoCtx->psense)
-                    {
-                        memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-                        if (cissCmd.error_info.SenseLen)
-                        {
-                            memcpy(scsiIoCtx->psense, cissCmd.error_info.SenseInfo, cissCmd.error_info.SenseLen);
-                        }
-                    }
-                    //set command time:
-                    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-
-                    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-                    {
-                        switch (cissCmd.error_info.CommandStatus)
-                        {
-                        case CMD_SUCCESS:
-                            printf("CISS Success\n");
-                            break;
-                        case CMD_TARGET_STATUS:
-                            printf("CISS Target Status: ");
-                            switch(cissCmd.error_info.ScsiStatus)
-                            {
-                            case SAM_STATUS_GOOD:
-                                printf("Good\n");
-                                break;
-                            case SAM_STATUS_CHECK_CONDITION:
-                                printf("Check Condition\n");
-                                break;
-                            case SAM_STATUS_CONDITION_MET:
-                                printf("Condition Met\n");
-                                break;
-                            case SAM_STATUS_INTERMEDIATE:
-                                printf("Intermediate\n");
-                                break;
-                            case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
-                                printf("Intermediate Condition Met\n");
-                                break;
-                            case SAM_STATUS_COMMAND_TERMINATED:
-                                printf("Command Terminated\n");
-                                break;
-                            case SAM_STATUS_BUSY:
-                                printf("Busy\n");
-                                break;
-                            case SAM_STATUS_RESERVATION_CONFLICT:
-                                printf("Reservation Conflict\n");
-                                break;
-                            case SAM_STATUS_TASK_SET_FULL:
-                                printf("Task Set Full\n");
-                                break;
-                            case SAM_STATUS_ACA_ACTIVE:
-                                printf("ACA Active\n");
-                                break;
-                            case SAM_STATUS_TASK_ABORTED:
-                                printf("Task Aborted\n");
-                                break;
-                            default:
-                                printf("Unknown: %02X\n", cissCmd.error_info.ScsiStatus);
-                                break;
-                            }
-                            break;
-                        case CMD_DATA_UNDERRUN:
-                            printf("CISS Data Underrun\n");
-                            break;
-                        case CMD_DATA_OVERRUN:
-                            printf("CISS Data Overrun\n");
-                            break;
-                        case CMD_INVALID:
-                            printf("CISS Invalid\n");
-                            //print out additional invalid command info
-                            printf("\toffense_size  = %" PRIu8 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_size);
-                            printf("\toffense_num   = %" PRIu8 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_num);
-                            printf("\toffense_value = %" PRIu32 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_value);
-                            break;
-                        case CMD_TIMEOUT:
-                            printf("CISS Timeout\n");
-                            break;
-                        case CMD_PROTOCOL_ERR:
-                            printf("CISS Protocol Error\n");
-                            break;
-                        case CMD_HARDWARE_ERR:
-                            printf("CISS Hardware Error\n");
-                            break;
-                        case CMD_CONNECTION_LOST:
-                            printf("CISS Connection Lost\n");
-                            break;
-                        case CMD_ABORTED:
-                            printf("CISS Command Aborted\n");
-                            break;
-                        case CMD_ABORT_FAILED:
-                            printf("CISS Abort Failed\n");
-                            break;
-                        case CMD_UNSOLICITED_ABORT:
-                            printf("CISS Unsolicited Abort\n");
-                            break;
-                        case CMD_UNABORTABLE:
-                            printf("CISS Unabortable\n");
-                            break;
-                        default:
-                            printf("CISS unknown error: %u\n", cissCmd.error_info.CommandStatus);
-                            break;
-                        }
-                    }
-
-                    //check for errors to set ret properly
-                    switch (cissCmd.error_info.CommandStatus)
-                    {
-                    case CMD_SUCCESS:
-                    case CMD_DATA_UNDERRUN:
-                    case CMD_DATA_OVERRUN:
-                        ret = SUCCESS;
-                        break;
-                    case CMD_TARGET_STATUS:
-                        switch(cissCmd.error_info.ScsiStatus)
-                        {
-                        case SAM_STATUS_GOOD:
-                        case SAM_STATUS_CHECK_CONDITION:
-                        case SAM_STATUS_CONDITION_MET:
-                        case SAM_STATUS_INTERMEDIATE:
-                        case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
-                        case SAM_STATUS_COMMAND_TERMINATED:
-                            ret = SUCCESS; //let upper layer parse sense data
-                            break;
-                        case SAM_STATUS_BUSY:
-                        case SAM_STATUS_RESERVATION_CONFLICT:
-                        case SAM_STATUS_TASK_SET_FULL:
-                        case SAM_STATUS_ACA_ACTIVE:
-                        case SAM_STATUS_TASK_ABORTED:
-                        default:
-                            ret = OS_PASSTHROUGH_FAILURE;
-                            break;
-                        }
-                        break;
-                    case CMD_INVALID:
-                        ret = OS_COMMAND_BLOCKED;
-                        break;
-                    case CMD_TIMEOUT:
-                        ret = OS_COMMAND_TIMEOUT;
-                        break;
-                    case CMD_PROTOCOL_ERR:
-                    case CMD_HARDWARE_ERR:
-                    case CMD_CONNECTION_LOST:
-                    case CMD_ABORTED:
-                    case CMD_ABORT_FAILED:
-                    case CMD_UNSOLICITED_ABORT:
-                    case CMD_UNABORTABLE:
-                    default:
-                        ret = OS_PASSTHROUGH_FAILURE;
-                        break;
-                    }
-                }
-                //TODO: More error handling???
-            #elif defined (__sun)
-                cpqary3_scsi_pass_t cissCmd;
+#if defined (__linux__) || defined (__FreeBSD__) //interface is the same on Linux and FreeBSD
+            if (scsiIoCtx->device->os_info.cissDeviceData->smartpqi)
+            {
+#if defined (__FreeBSD__)
+                //if the smartpqi bool is set, use the structures from that driver to issue the command to ensure
+                //that the packing matches exactly to minimize compatibility problems.
+                pqi_IOCTL_Command_struct pqiCmd;
                 seatimer_t commandTimer;
                 memset(&commandTimer, 0, sizeof(seatimer_t));
-                memset(&cissCmd, 0, sizeof(cpqary3_scsi_pass_t));
+                memset(&pqiCmd, 0, sizeof(pqi_IOCTL_Command_struct));
 
                 switch (cmdType)
                 {
@@ -932,30 +458,29 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                     break;
                 default: //this will work OK for other cases. May need modifications for logical volume commands. -TJE
                     //set path to device
-                    memcpy(&cissCmd.lun_addr, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
+                    memcpy(&pqiCmd.LUN_info, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
                     break;
                 }
-
                 //now setup to send a CDB
-                cissCmd.cdb_len = scsiIoCtx->cdbLength;
-                //NOTE: The .buf is a uint64. Not sure if this should be a pointer value, or overallocated for buffer space
-                //      currently code assumes that it should be the pointer value.
+                pqiCmd.Request.CDBLen = scsiIoCtx->cdbLength;
+                pqiCmd.Request.Type.Type = TYPE_CMD;//TYPE_MSG also available for BMIC commands, which can be things like resets
+                pqiCmd.Request.Type.Attribute = ATTR_SIMPLE;//Can be UNTAGGED, SIMPLE, HEADOFQUEUE, ORDERED, ACA
                 switch (scsiIoCtx->direction)
                 {
                 case XFER_DATA_IN:
-                    cissCmd.io_direction = CPQARY3_SCSI_IN;
-                    cissCmd.buf_len = C_CAST(uint16_t, scsiIoCtx->dataLength);
-                    cissCmd.buf = C_CAST(uintptr_t, scsiIoCtx->pdata);
+                    pqiCmd.Request.Type.Direction = XFER_READ;
+                    pqiCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
+                    pqiCmd.buf = scsiIoCtx->pdata;
                     break;
                 case XFER_DATA_OUT:
-                    cissCmd.io_direction = CPQARY3_SCSI_OUT;
-                    cissCmd.buf_len = C_CAST(uint16_t, scsiIoCtx->dataLength);
-                    cissCmd.buf = C_CAST(uintptr_t, scsiIoCtx->pdata);
+                    pqiCmd.Request.Type.Direction = XFER_WRITE;
+                    pqiCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
+                    pqiCmd.buf = scsiIoCtx->pdata;
                     break;
                 case XFER_NO_DATA:
-                    cissCmd.Request.Type.Direction = CPQARY3_NODATA_XFER;
-                    cissCmd.buf_len = 0;
-                    cissCmd.buf = C_CAST(uintptr_t, NULL);
+                    pqiCmd.Request.Type.Direction = XFER_NONE;
+                    pqiCmd.buf_size = 0;
+                    pqiCmd.buf = NULL;
                     break;
                 default:
                     return OS_COMMAND_NOT_AVAILABLE;
@@ -963,13 +488,20 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
 
                 if (scsiIoCtx->timeout)
                 {
-                    cissCmd.Timeout = scsiIoCtx->timeout;
+                    if (scsiIoCtx->timeout > UINT16_MAX)
+                    {
+                        pqiCmd.Request.Timeout = UINT16_MAX;
+                    }
+                    else
+                    {
+                        pqiCmd.Request.Timeout = C_CAST(uint16_t, scsiIoCtx->timeout);
+                    }
                 }
                 else
                 {
-                    cissCmd.Timeout = 15;
+                    pqiCmd.Request.Timeout = 15;
                 }
-                memcpy(cissCmd.cdb, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+                memcpy(pqiCmd.Request.CDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
                 ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
 
@@ -989,7 +521,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif //__clang__, __GNUC__
-                ret = ioctl(scsiIoCtx->device->os_info.cissDeviceData->cissHandle, CPQARY3_IOCTL_SCSI_PASS, &cissCmd);
+                ioctlRet = ioctl(scsiIoCtx->device->os_info.cissDeviceData->cissHandle, CCISS_PASSTHRU, &pqiCmd);
 #if defined __clang__
 #pragma clang diagnostic pop
 #elif defined __GNUC__
@@ -1002,9 +534,9 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                 if (scsiIoCtx->psense)
                 {
                     memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-                    if (cissCmd.err_info.SenseLen)
+                    if (pqiCmd.error_info.SenseLen)
                     {
-                        memcpy(scsiIoCtx->psense, cissCmd.err_info.SenseInfo, cissCmd.err_info.SenseLen);
+                        memcpy(scsiIoCtx->psense, pqiCmd.error_info.SenseInfo, pqiCmd.error_info.SenseLen);
                     }
                 }
                 //set command time:
@@ -1012,14 +544,14 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
 
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
-                    switch (cissCmd.err_info.CommandStatus)
+                    switch (pqiCmd.error_info.CommandStatus)
                     {
                     case CMD_SUCCESS:
                         printf("CISS Success\n");
                         break;
                     case CMD_TARGET_STATUS:
                         printf("CISS Target Status: ");
-                        switch(cissCmd.err_info.ScsiStatus)
+                        switch (pqiCmd.error_info.ScsiStatus)
                         {
                         case SAM_STATUS_GOOD:
                             printf("Good\n");
@@ -1055,7 +587,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                             printf("Task Aborted\n");
                             break;
                         default:
-                            printf("Unknown: %02X\n", cissCmd.err_info.ScsiStatus);
+                            printf("Unknown: %02X\n", pqiCmd.error_info.ScsiStatus);
                             break;
                         }
                         break;
@@ -1068,9 +600,9 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                     case CMD_INVALID:
                         printf("CISS Invalid\n");
                         //print out additional invalid command info
-                        printf("\toffense_size  = %" PRIu8 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_size);
-                        printf("\toffense_num   = %" PRIu8 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_num);
-                        printf("\toffense_value = %" PRIu32 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_value);
+                        printf("\toffense_size  = %" PRIu8 "\n", pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_size);
+                        printf("\toffense_num   = %" PRIu8 "\n", pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_num);
+                        printf("\toffense_value = %" PRIu32 "\n", pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_value);
                         break;
                     case CMD_TIMEOUT:
                         printf("CISS Timeout\n");
@@ -1097,13 +629,13 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                         printf("CISS Unabortable\n");
                         break;
                     default:
-                        printf("CISS unknown error: %u\n", cissCmd.err_info.CommandStatus);
+                        printf("CISS unknown error: %u\n", pqiCmd.error_info.CommandStatus);
                         break;
                     }
                 }
 
                 //check for errors to set ret properly
-                switch (cissCmd.err_info.CommandStatus)
+                switch (pqiCmd.error_info.CommandStatus)
                 {
                 case CMD_SUCCESS:
                 case CMD_DATA_UNDERRUN:
@@ -1111,7 +643,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                     ret = SUCCESS;
                     break;
                 case CMD_TARGET_STATUS:
-                    switch(cissCmd.err_info.ScsiStatus)
+                    switch (pqiCmd.error_info.ScsiStatus)
                     {
                     case SAM_STATUS_GOOD:
                     case SAM_STATUS_CHECK_CONDITION:
@@ -1148,11 +680,480 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                     ret = OS_PASSTHROUGH_FAILURE;
                     break;
                 }
+#else
+                ret = BAD_PARAMETER;
+#endif
+            }
+            else
+            {
+                IOCTL_Command_struct cissCmd;
+                seatimer_t commandTimer;
+                memset(&commandTimer, 0, sizeof(seatimer_t));
+                memset(&cissCmd, 0, sizeof(IOCTL_Command_struct));
 
-                //TODO: More error handling???
-            #else
-                ret = OS_COMMAND_NOT_AVAILABLE;
-            #endif //checking __linux__, __FreeBSD__, __sun
+                switch (cmdType)
+                {
+                case CISS_CMD_CONTROLLER:
+                    break;
+                default: //this will work OK for other cases. May need modifications for logical volume commands. -TJE
+                    //set path to device
+                    memcpy(&cissCmd.LUN_info, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
+                    break;
+                }
+                //now setup to send a CDB
+                cissCmd.Request.CDBLen = scsiIoCtx->cdbLength;
+                cissCmd.Request.Type.Type = TYPE_CMD;//TYPE_MSG also available for BMIC commands, which can be things like resets
+                cissCmd.Request.Type.Attribute = ATTR_SIMPLE;//Can be UNTAGGED, SIMPLE, HEADOFQUEUE, ORDERED, ACA
+                switch (scsiIoCtx->direction)
+                {
+                case XFER_DATA_IN:
+                    cissCmd.Request.Type.Direction = XFER_READ;
+                    cissCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
+                    cissCmd.buf = scsiIoCtx->pdata;
+                    break;
+                case XFER_DATA_OUT:
+                    cissCmd.Request.Type.Direction = XFER_WRITE;
+                    cissCmd.buf_size = C_CAST(uint16_t, scsiIoCtx->dataLength);
+                    cissCmd.buf = scsiIoCtx->pdata;
+                    break;
+                case XFER_NO_DATA:
+                    cissCmd.Request.Type.Direction = XFER_NONE;
+                    cissCmd.buf_size = 0;
+                    cissCmd.buf = NULL;
+                    break;
+                default:
+                    return OS_COMMAND_NOT_AVAILABLE;
+                }
+
+                if (scsiIoCtx->timeout)
+                {
+                    if (scsiIoCtx->timeout > UINT16_MAX)
+                    {
+                        cissCmd.Request.Timeout = UINT16_MAX;
+                    }
+                    else
+                    {
+                        cissCmd.Request.Timeout = C_CAST(uint16_t, scsiIoCtx->timeout);
+                    }
+                }
+                else
+                {
+                    cissCmd.Request.Timeout = 15;
+                }
+                memcpy(cissCmd.Request.CDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+
+                ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
+
+                start_Timer(&commandTimer);
+#if defined __clang__
+// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
+// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined __GNUC__
+//temporarily disable the warning for sign conversion because ioctl definition 
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+// in others is defined as ioctl(int, int, ...)
+//While debugging there does not seem to be a real conversion issue here.
+//These ioctls still work in either situation, so disabling the warning seems best since there is not
+//another way I have found to determine when to cast or not cast the sign conversion.-TJE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif //__clang__, __GNUC__
+                ioctlRet = ioctl(scsiIoCtx->device->os_info.cissDeviceData->cissHandle, CCISS_PASSTHRU, &cissCmd);
+#if defined __clang__
+#pragma clang diagnostic pop
+#elif defined __GNUC__
+//reenable the unused function warning
+#pragma GCC diagnostic pop
+#endif //__clang__, __GNUC__
+                stop_Timer(&commandTimer);
+
+                //Copy and sense data we received, then need to check for errors
+                if (scsiIoCtx->psense)
+                {
+                    memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+                    if (cissCmd.error_info.SenseLen)
+                    {
+                        memcpy(scsiIoCtx->psense, cissCmd.error_info.SenseInfo, cissCmd.error_info.SenseLen);
+                    }
+                }
+                //set command time:
+                scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+
+                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                {
+                    switch (cissCmd.error_info.CommandStatus)
+                    {
+                    case CMD_SUCCESS:
+                        printf("CISS Success\n");
+                        break;
+                    case CMD_TARGET_STATUS:
+                        printf("CISS Target Status: ");
+                        switch (cissCmd.error_info.ScsiStatus)
+                        {
+                        case SAM_STATUS_GOOD:
+                            printf("Good\n");
+                            break;
+                        case SAM_STATUS_CHECK_CONDITION:
+                            printf("Check Condition\n");
+                            break;
+                        case SAM_STATUS_CONDITION_MET:
+                            printf("Condition Met\n");
+                            break;
+                        case SAM_STATUS_INTERMEDIATE:
+                            printf("Intermediate\n");
+                            break;
+                        case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
+                            printf("Intermediate Condition Met\n");
+                            break;
+                        case SAM_STATUS_COMMAND_TERMINATED:
+                            printf("Command Terminated\n");
+                            break;
+                        case SAM_STATUS_BUSY:
+                            printf("Busy\n");
+                            break;
+                        case SAM_STATUS_RESERVATION_CONFLICT:
+                            printf("Reservation Conflict\n");
+                            break;
+                        case SAM_STATUS_TASK_SET_FULL:
+                            printf("Task Set Full\n");
+                            break;
+                        case SAM_STATUS_ACA_ACTIVE:
+                            printf("ACA Active\n");
+                            break;
+                        case SAM_STATUS_TASK_ABORTED:
+                            printf("Task Aborted\n");
+                            break;
+                        default:
+                            printf("Unknown: %02X\n", cissCmd.error_info.ScsiStatus);
+                            break;
+                        }
+                        break;
+                    case CMD_DATA_UNDERRUN:
+                        printf("CISS Data Underrun\n");
+                        break;
+                    case CMD_DATA_OVERRUN:
+                        printf("CISS Data Overrun\n");
+                        break;
+                    case CMD_INVALID:
+                        printf("CISS Invalid\n");
+                        //print out additional invalid command info
+                        printf("\toffense_size  = %" PRIu8 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_size);
+                        printf("\toffense_num   = %" PRIu8 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_num);
+                        printf("\toffense_value = %" PRIu32 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_value);
+                        break;
+                    case CMD_TIMEOUT:
+                        printf("CISS Timeout\n");
+                        break;
+                    case CMD_PROTOCOL_ERR:
+                        printf("CISS Protocol Error\n");
+                        break;
+                    case CMD_HARDWARE_ERR:
+                        printf("CISS Hardware Error\n");
+                        break;
+                    case CMD_CONNECTION_LOST:
+                        printf("CISS Connection Lost\n");
+                        break;
+                    case CMD_ABORTED:
+                        printf("CISS Command Aborted\n");
+                        break;
+                    case CMD_ABORT_FAILED:
+                        printf("CISS Abort Failed\n");
+                        break;
+                    case CMD_UNSOLICITED_ABORT:
+                        printf("CISS Unsolicited Abort\n");
+                        break;
+                    case CMD_UNABORTABLE:
+                        printf("CISS Unabortable\n");
+                        break;
+                    default:
+                        printf("CISS unknown error: %u\n", cissCmd.error_info.CommandStatus);
+                        break;
+                    }
+                }
+
+                //check for errors to set ret properly
+                switch (cissCmd.error_info.CommandStatus)
+                {
+                case CMD_SUCCESS:
+                case CMD_DATA_UNDERRUN:
+                case CMD_DATA_OVERRUN:
+                    ret = SUCCESS;
+                    break;
+                case CMD_TARGET_STATUS:
+                    switch (cissCmd.error_info.ScsiStatus)
+                    {
+                    case SAM_STATUS_GOOD:
+                    case SAM_STATUS_CHECK_CONDITION:
+                    case SAM_STATUS_CONDITION_MET:
+                    case SAM_STATUS_INTERMEDIATE:
+                    case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
+                    case SAM_STATUS_COMMAND_TERMINATED:
+                        ret = SUCCESS; //let upper layer parse sense data
+                        break;
+                    case SAM_STATUS_BUSY:
+                    case SAM_STATUS_RESERVATION_CONFLICT:
+                    case SAM_STATUS_TASK_SET_FULL:
+                    case SAM_STATUS_ACA_ACTIVE:
+                    case SAM_STATUS_TASK_ABORTED:
+                    default:
+                        ret = OS_PASSTHROUGH_FAILURE;
+                        break;
+                    }
+                    break;
+                case CMD_INVALID:
+                    ret = OS_COMMAND_BLOCKED;
+                    break;
+                case CMD_TIMEOUT:
+                    ret = OS_COMMAND_TIMEOUT;
+                    break;
+                case CMD_PROTOCOL_ERR:
+                case CMD_HARDWARE_ERR:
+                case CMD_CONNECTION_LOST:
+                case CMD_ABORTED:
+                case CMD_ABORT_FAILED:
+                case CMD_UNSOLICITED_ABORT:
+                case CMD_UNABORTABLE:
+                default:
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    break;
+                }
+            }
+            //TODO: More error handling???
+#elif defined (__sun)
+            cpqary3_scsi_pass_t cissCmd;
+            seatimer_t commandTimer;
+            memset(&commandTimer, 0, sizeof(seatimer_t));
+            memset(&cissCmd, 0, sizeof(cpqary3_scsi_pass_t));
+
+            switch (cmdType)
+            {
+            case CISS_CMD_CONTROLLER:
+                break;
+            default: //this will work OK for other cases. May need modifications for logical volume commands. -TJE
+                //set path to device
+                memcpy(&cissCmd.lun_addr, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
+                break;
+            }
+
+            //now setup to send a CDB
+            cissCmd.cdb_len = scsiIoCtx->cdbLength;
+            //NOTE: The .buf is a uint64. Not sure if this should be a pointer value, or overallocated for buffer space
+            //      currently code assumes that it should be the pointer value.
+            switch (scsiIoCtx->direction)
+            {
+            case XFER_DATA_IN:
+                cissCmd.io_direction = CPQARY3_SCSI_IN;
+                cissCmd.buf_len = C_CAST(uint16_t, scsiIoCtx->dataLength);
+                cissCmd.buf = C_CAST(uintptr_t, scsiIoCtx->pdata);
+                break;
+            case XFER_DATA_OUT:
+                cissCmd.io_direction = CPQARY3_SCSI_OUT;
+                cissCmd.buf_len = C_CAST(uint16_t, scsiIoCtx->dataLength);
+                cissCmd.buf = C_CAST(uintptr_t, scsiIoCtx->pdata);
+                break;
+            case XFER_NO_DATA:
+                cissCmd.Request.Type.Direction = CPQARY3_NODATA_XFER;
+                cissCmd.buf_len = 0;
+                cissCmd.buf = C_CAST(uintptr_t, NULL);
+                break;
+            default:
+                return OS_COMMAND_NOT_AVAILABLE;
+            }
+
+            if (scsiIoCtx->timeout)
+            {
+                cissCmd.Timeout = scsiIoCtx->timeout;
+            }
+            else
+            {
+                cissCmd.Timeout = 15;
+            }
+            memcpy(cissCmd.cdb, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+
+            ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
+
+            start_Timer(&commandTimer);
+#if defined __clang__
+// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
+// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#elif defined __GNUC__
+//temporarily disable the warning for sign conversion because ioctl definition 
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+// in others is defined as ioctl(int, int, ...)
+//While debugging there does not seem to be a real conversion issue here.
+//These ioctls still work in either situation, so disabling the warning seems best since there is not
+//another way I have found to determine when to cast or not cast the sign conversion.-TJE
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif //__clang__, __GNUC__
+            ioctlRet = ioctl(scsiIoCtx->device->os_info.cissDeviceData->cissHandle, CPQARY3_IOCTL_SCSI_PASS, &cissCmd);
+#if defined __clang__
+#pragma clang diagnostic pop
+#elif defined __GNUC__
+//reenable the unused function warning
+#pragma GCC diagnostic pop
+#endif //__clang__, __GNUC__
+            stop_Timer(&commandTimer);
+
+            //Copy and sense data we received, then need to check for errors
+            if (scsiIoCtx->psense)
+            {
+                memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+                if (cissCmd.err_info.SenseLen)
+                {
+                    memcpy(scsiIoCtx->psense, cissCmd.err_info.SenseInfo, cissCmd.err_info.SenseLen);
+                }
+            }
+            //set command time:
+            scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+
+            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+            {
+                switch (cissCmd.err_info.CommandStatus)
+                {
+                case CMD_SUCCESS:
+                    printf("CISS Success\n");
+                    break;
+                case CMD_TARGET_STATUS:
+                    printf("CISS Target Status: ");
+                    switch (cissCmd.err_info.ScsiStatus)
+                    {
+                    case SAM_STATUS_GOOD:
+                        printf("Good\n");
+                        break;
+                    case SAM_STATUS_CHECK_CONDITION:
+                        printf("Check Condition\n");
+                        break;
+                    case SAM_STATUS_CONDITION_MET:
+                        printf("Condition Met\n");
+                        break;
+                    case SAM_STATUS_INTERMEDIATE:
+                        printf("Intermediate\n");
+                        break;
+                    case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
+                        printf("Intermediate Condition Met\n");
+                        break;
+                    case SAM_STATUS_COMMAND_TERMINATED:
+                        printf("Command Terminated\n");
+                        break;
+                    case SAM_STATUS_BUSY:
+                        printf("Busy\n");
+                        break;
+                    case SAM_STATUS_RESERVATION_CONFLICT:
+                        printf("Reservation Conflict\n");
+                        break;
+                    case SAM_STATUS_TASK_SET_FULL:
+                        printf("Task Set Full\n");
+                        break;
+                    case SAM_STATUS_ACA_ACTIVE:
+                        printf("ACA Active\n");
+                        break;
+                    case SAM_STATUS_TASK_ABORTED:
+                        printf("Task Aborted\n");
+                        break;
+                    default:
+                        printf("Unknown: %02X\n", cissCmd.err_info.ScsiStatus);
+                        break;
+                    }
+                    break;
+                case CMD_DATA_UNDERRUN:
+                    printf("CISS Data Underrun\n");
+                    break;
+                case CMD_DATA_OVERRUN:
+                    printf("CISS Data Overrun\n");
+                    break;
+                case CMD_INVALID:
+                    printf("CISS Invalid\n");
+                    //print out additional invalid command info
+                    printf("\toffense_size  = %" PRIu8 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_size);
+                    printf("\toffense_num   = %" PRIu8 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_num);
+                    printf("\toffense_value = %" PRIu32 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_value);
+                    break;
+                case CMD_TIMEOUT:
+                    printf("CISS Timeout\n");
+                    break;
+                case CMD_PROTOCOL_ERR:
+                    printf("CISS Protocol Error\n");
+                    break;
+                case CMD_HARDWARE_ERR:
+                    printf("CISS Hardware Error\n");
+                    break;
+                case CMD_CONNECTION_LOST:
+                    printf("CISS Connection Lost\n");
+                    break;
+                case CMD_ABORTED:
+                    printf("CISS Command Aborted\n");
+                    break;
+                case CMD_ABORT_FAILED:
+                    printf("CISS Abort Failed\n");
+                    break;
+                case CMD_UNSOLICITED_ABORT:
+                    printf("CISS Unsolicited Abort\n");
+                    break;
+                case CMD_UNABORTABLE:
+                    printf("CISS Unabortable\n");
+                    break;
+                default:
+                    printf("CISS unknown error: %u\n", cissCmd.err_info.CommandStatus);
+                    break;
+                }
+            }
+
+            //check for errors to set ret properly
+            switch (cissCmd.err_info.CommandStatus)
+            {
+            case CMD_SUCCESS:
+            case CMD_DATA_UNDERRUN:
+            case CMD_DATA_OVERRUN:
+                ret = SUCCESS;
+                break;
+            case CMD_TARGET_STATUS:
+                switch (cissCmd.err_info.ScsiStatus)
+                {
+                case SAM_STATUS_GOOD:
+                case SAM_STATUS_CHECK_CONDITION:
+                case SAM_STATUS_CONDITION_MET:
+                case SAM_STATUS_INTERMEDIATE:
+                case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
+                case SAM_STATUS_COMMAND_TERMINATED:
+                    ret = SUCCESS; //let upper layer parse sense data
+                    break;
+                case SAM_STATUS_BUSY:
+                case SAM_STATUS_RESERVATION_CONFLICT:
+                case SAM_STATUS_TASK_SET_FULL:
+                case SAM_STATUS_ACA_ACTIVE:
+                case SAM_STATUS_TASK_ABORTED:
+                default:
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    break;
+                }
+                break;
+            case CMD_INVALID:
+                ret = OS_COMMAND_BLOCKED;
+                break;
+            case CMD_TIMEOUT:
+                ret = OS_COMMAND_TIMEOUT;
+                break;
+            case CMD_PROTOCOL_ERR:
+            case CMD_HARDWARE_ERR:
+            case CMD_CONNECTION_LOST:
+            case CMD_ABORTED:
+            case CMD_ABORT_FAILED:
+            case CMD_UNSOLICITED_ABORT:
+            case CMD_UNABORTABLE:
+            default:
+                ret = OS_PASSTHROUGH_FAILURE;
+                break;
+            }
+
+            //TODO: More error handling???
+#else
+            ret = OS_COMMAND_NOT_AVAILABLE;
+#endif //checking __linux__, __FreeBSD__, __sun
         }
         else
         {
@@ -1194,7 +1195,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType 
                 memcpy(&cissCmd.LUN_info, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
                 break;
             }
-                                                                                                          //now setup to send a CDB
+            //now setup to send a CDB
             cissCmd.Request.CDBLen = scsiIoCtx->cdbLength;
             cissCmd.Request.Type.Type = TYPE_CMD;//TYPE_MSG also available for BMIC commands, which can be things like resets
             cissCmd.Request.Type.Attribute = ATTR_SIMPLE;//Can be UNTAGGED, SIMPLE, HEADOFQUEUE, ORDERED, ACA
@@ -1286,7 +1287,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType 
                     break;
                 case CMD_TARGET_STATUS:
                     printf("CISS Target Status: ");
-                    switch(cissCmd.error_info.ScsiStatus)
+                    switch (cissCmd.error_info.ScsiStatus)
                     {
                     case SAM_STATUS_GOOD:
                         printf("Good\n");
@@ -1378,7 +1379,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType 
                 ret = SUCCESS;
                 break;
             case CMD_TARGET_STATUS:
-                switch(cissCmd.error_info.ScsiStatus)
+                switch (cissCmd.error_info.ScsiStatus)
                 {
                 case SAM_STATUS_GOOD:
                 case SAM_STATUS_CHECK_CONDITION:
@@ -1435,14 +1436,14 @@ eReturnValues issue_io_ciss_Dev(ScsiIoCtx * scsiIoCtx)
 {
     if (scsiIoCtx->device->os_info.cissDeviceData)
     {
-    #if defined (CCISS_BIG_PASSTHRU)
+#if defined (CCISS_BIG_PASSTHRU)
         //use big passthrough only when making a large enough data transfer to matter - TJE
         if (scsiIoCtx->dataLength > UINT16_MAX && scsiIoCtx->device->os_info.cissDeviceData->bigPassthroughAvailable)
         {
             return ciss_Big_Passthrough(scsiIoCtx, CISS_CMD_PHYSICAL_LUN);
         }
         else
-    #endif //#if defined (CCISS_BIG_PASSTHRU)
+#endif //#if defined (CCISS_BIG_PASSTHRU)
         {
             return ciss_Passthrough(scsiIoCtx, CISS_CMD_PHYSICAL_LUN);
         }
@@ -1549,7 +1550,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
     //It creates a psuedo tDevice to issue a scsiIoCtx structure to passthrough and read this.
     //This keeps the rest of the code simpler for now
     eReturnValues ret = SUCCESS;
-    if(count)
+    if (count)
     {
         tDevice pseudoDev;
         ScsiIoCtx physicalLunCMD;
@@ -1579,7 +1580,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
             cdb[11] = 0;//control byte
 
             //setup the scsiIoCtx
-            memset(&physicalLunCMD, 0, sizeof(ScsiIoCtx));        
+            memset(&physicalLunCMD, 0, sizeof(ScsiIoCtx));
             physicalLunCMD.device = &pseudoDev;
             physicalLunCMD.direction = XFER_DATA_IN;
             physicalLunCMD.pdata = data;
@@ -1817,7 +1818,7 @@ eReturnValues get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                 memset(d, 0, sizeof(tDevice));
                                 d->sanity.size = ver.size;
                                 d->sanity.version = ver.version;
-                                d->dFlags =  flags;
+                                d->dFlags = flags;
                                 eReturnValues ret = get_CISS_RAID_Device(handle, d);
                                 if (ret != SUCCESS)
                                 {

@@ -21,7 +21,7 @@
 extern "C"
 {
 #endif
-    
+
     //-----------------------------------------------------------------------------
     //
     //  get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode)
@@ -38,7 +38,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode);
-    
+
     //-----------------------------------------------------------------------------
     //
     //  get_RTFRs_From_Descriptor_Format_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataSize, ataReturnTFRs *rtfr)

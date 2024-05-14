@@ -49,7 +49,7 @@ static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData, char nvmMN[NV
 eReturnValues fill_In_NVMe_Device_Info(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
-    
+
     //set some pointers to where we want to fill in information...we're doing this so that on USB, we can store some info about the child drive, without disrupting the standard drive_info that has already been filled in by the fill_SCSI_Info function
     uint64_t *fillWWN = &device->drive_info.worldWideName;
     uint32_t *fillLogicalSectorSize = &device->drive_info.deviceBlockSize;
@@ -73,13 +73,13 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice *device)
     nvmeIDNameSpaces * nsData = &device->drive_info.IdentifyData.nvme.ns; //Name Space Data structure 
 
 #ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
+    printf("-->%s\n", __FUNCTION__);
 #endif
 
     ret = nvme_Identify(device, C_CAST(uint8_t *, ctrlData), 0, NVME_IDENTIFY_CTRL);
 
 #ifdef _DEBUG
-printf("fill NVMe info ret = %d\n", ret);
+    printf("fill NVMe info ret = %d\n", ret);
 #endif
 
     if (ret == SUCCESS)
@@ -114,7 +114,7 @@ printf("fill NVMe info ret = %d\n", ret);
 
         ret = nvme_Identify(device, C_CAST(uint8_t *, nsData), device->drive_info.namespaceID, NVME_IDENTIFY_NS);
 
-        if (ret == SUCCESS) 
+        if (ret == SUCCESS)
         {
 
             *fillLogicalSectorSize = C_CAST(uint32_t, power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS)); //removed math.h pow() function - TJE
@@ -122,7 +122,7 @@ printf("fill NVMe info ret = %d\n", ret);
             *fillSectorAlignment = 0;
 
             *fillMaxLba = nsData->nsze - 1;//spec says this is from 0 to (n-1)!
-            
+
             enduranceGroup = nsData->endgid;
             if (ctrlData->lpa & BIT5 && ctrlData->ctratt & BIT4 && enduranceGroup > 0)
             {
@@ -153,7 +153,7 @@ printf("fill NVMe info ret = %d\n", ret);
         }
     }
 #ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
 
     return ret;
@@ -261,7 +261,7 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord, bool *doNotRetr
     if (doNotRetry && more && statusCodeType && statusCode)
     {
         *doNotRetry = nvmeStatusDWord & BIT31;
-        *more  = nvmeStatusDWord & BIT30;
+        *more = nvmeStatusDWord & BIT30;
         *statusCodeType = M_GETBITRANGE(nvmeStatusDWord, 27, 25);
         *statusCode = M_GETBITRANGE(nvmeStatusDWord, 24, 17);
     }
@@ -950,7 +950,7 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
             case NVME_PATH_SC_COMMAND_ABORTED_BY_HOST:
                 snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Command Aborted By Host");
                 break;
-            default: 
+            default:
                 snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
                 break;
             }
@@ -1031,14 +1031,14 @@ eReturnValues nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * 
     nvmeGetLogPageCmdOpts cmdOpts;
     nvmeSmartLog * smartLog; // in case we need to align memory
 #ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
+    printf("-->%s\n", __FUNCTION__);
 #endif
-    if ( (pData == NULL) || (dataLen < NVME_SMART_HEALTH_LOG_LEN) )
+    if ((pData == NULL) || (dataLen < NVME_SMART_HEALTH_LOG_LEN))
     {
         return ret;
     }
 
-    memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
+    memset(&cmdOpts, 0, sizeof(nvmeGetLogPageCmdOpts));
     smartLog = C_CAST(nvmeSmartLog *, pData);
 
     cmdOpts.nsid = nsid;
@@ -1049,7 +1049,7 @@ eReturnValues nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * 
 
     ret = nvme_Get_Log_Page(device, &cmdOpts);
 #ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
     return ret;
 }
@@ -1059,22 +1059,22 @@ eReturnValues nvme_Get_ERROR_Log_Page(tDevice *device, uint8_t * pData, uint32_t
     eReturnValues ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
 #ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
+    printf("-->%s\n", __FUNCTION__);
 #endif
     //Should be able to pull at least one entry. 
-    if ( (pData == NULL) || (dataLen < sizeof(nvmeErrLogEntry)) )
+    if ((pData == NULL) || (dataLen < sizeof(nvmeErrLogEntry)))
     {
         return ret;
     }
-   
-    memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
+
+    memset(&cmdOpts, 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_ERROR_ID;
 
     ret = nvme_Get_Log_Page(device, &cmdOpts);
 #ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
     return ret;
 }
@@ -1084,22 +1084,22 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(tDevice *device, uint8_t * pData, uint32
     eReturnValues ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
 #ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
+    printf("-->%s\n", __FUNCTION__);
 #endif
     //Should be able to pull at least one entry. 
-    if ( (pData == NULL) || (dataLen < sizeof(nvmeFirmwareSlotInfo)) )
+    if ((pData == NULL) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }
-   
-    memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
+
+    memset(&cmdOpts, 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_FW_SLOT_ID;
-    
+
     ret = nvme_Get_Log_Page(device, &cmdOpts);
 #ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
     return ret;
 }
@@ -1109,22 +1109,22 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice *device, uint8_t * pData, uin
     eReturnValues ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
 #ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
+    printf("-->%s\n", __FUNCTION__);
 #endif
     //Should be able to pull at least one entry. 
-    if ( (pData == NULL) || (dataLen < sizeof(nvmeFirmwareSlotInfo)) )
+    if ((pData == NULL) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }
-   
-    memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
+
+    memset(&cmdOpts, 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_CMD_SPT_EFET_ID;
-    
+
     ret = nvme_Get_Log_Page(device, &cmdOpts);
 #ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
     return ret;
 }
@@ -1134,25 +1134,26 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, ui
     eReturnValues ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
 #ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
+    printf("-->%s\n", __FUNCTION__);
 #endif
     //Should be able to pull at least one entry. 
-    if ( (pData == NULL) || (dataLen < sizeof(nvmeFirmwareSlotInfo)) )
+    if ((pData == NULL) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }
-   
-    memset(&cmdOpts,0,sizeof(nvmeGetLogPageCmdOpts));
+
+    memset(&cmdOpts, 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_DEV_SELF_TEST_ID;
-    
+
     ret = nvme_Get_Log_Page(device, &cmdOpts);
 #ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
     return ret;
 }
+
 //Seagate unique?
 eReturnValues nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *ExtdSMARTInfo)
 {

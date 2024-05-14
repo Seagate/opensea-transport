@@ -70,12 +70,12 @@ eReturnValues nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     else if (cmdCtx->commandType == NVM_CMD)
     {
         opcode = cmdCtx->cmd.nvmCmd.opcode;
-        #if defined (_DEBUG)
+#if defined (_DEBUG)
         if (cmdCtx->cmd.nvmCmd.nsid != device->drive_info.namespaceID)
         {
             printf("WARNING: NVM Cmd NSID does not match expected value in tDevice\n");
         }
-        #endif //_DEBUG
+#endif //_DEBUG
     }
     switch (M_GETBITRANGE(opcode, 1, 0))
     {
@@ -111,14 +111,14 @@ eReturnValues nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
     }
     if (device->drive_info.passThroughHacks.passthroughType == NVME_PASSTHROUGH_SYSTEM)
     {
-    #if defined (_DEBUG)
+#if defined (_DEBUG)
         //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
         //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
         if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL)
-    #else
+#else
         //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
         if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL && cmdCtx->commandDirection == XFER_DATA_OUT)
-    #endif
+#endif
         {
             printf("\t  Data Buffer being sent:\n");
             print_Data_Buffer(cmdCtx->ptrData, cmdCtx->dataSize, true);
@@ -174,14 +174,14 @@ eReturnValues nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
         {
             print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
         }
-    #if defined (_DEBUG)
+#if defined (_DEBUG)
         //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
         //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
         if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL)
-    #else
+#else
         //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
         if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL && cmdCtx->commandDirection == XFER_DATA_IN)
-    #endif
+#endif
         {
             printf("\t  Data Buffer being returned:\n");
             print_Data_Buffer(cmdCtx->ptrData, cmdCtx->dataSize, true);
@@ -232,22 +232,22 @@ eReturnValues nvme_Asynchronous_Event_Request(tDevice *device, uint8_t *logPageI
     ret = nvme_Cmd(device, &adminCommand);
     //Command specific return codes:
     // 5h = The number of concurrently outstanding Asynchronous Event Request commands has been exceeded.
-    
+
     if (logPageIdentifier)
     {
         *logPageIdentifier = M_GETBITRANGE(adminCommand.commandCompletionData.dw0, 23, 16);
     }
-    
+
     if (asynchronousEventInformation)
     {
         *asynchronousEventInformation = M_GETBITRANGE(adminCommand.commandCompletionData.dw0, 15, 8);
     }
-    
+
     if (asynchronousEventType)
     {
         *asynchronousEventType = M_GETBITRANGE(adminCommand.commandCompletionData.dw0, 2, 0);
     }
-    
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Asynchronous Event Request", ret);
@@ -604,7 +604,6 @@ eReturnValues nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numbe
     return ret;
 }
 
-
 eReturnValues nvme_Firmware_Image_Dl(tDevice *device, uint32_t bufferOffset, uint32_t numberOfBytes, uint8_t *ptrData, bool firstSegment, bool lastSegment, uint32_t timeoutSeconds)
 {
     eReturnValues ret = SUCCESS;
@@ -703,7 +702,7 @@ eReturnValues nvme_Identify(tDevice *device, uint8_t *ptrData, uint32_t nvmeName
 
 eReturnValues nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
 {
-    eReturnValues ret = UNKNOWN; 
+    eReturnValues ret = UNKNOWN;
     nvmeCmdCtx getFeatures;
     uint32_t dWord10 = 0;
     memset(&getFeatures, 0, sizeof(getFeatures));
@@ -737,7 +736,7 @@ eReturnValues nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpt
                         getFeatures.cmd.adminCmd.cdw10,getFeatures.cmd.adminCmd.cdw11, getFeatures.result);
     }*/
 
-    if (ret == SUCCESS) 
+    if (ret == SUCCESS)
     {
         featCmdOpts->featSetGetValue = getFeatures.commandCompletionData.commandSpecific;
     }
@@ -750,14 +749,14 @@ eReturnValues nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpt
 
 eReturnValues nvme_Set_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpts)
 {
-    eReturnValues ret = UNKNOWN; 
+    eReturnValues ret = UNKNOWN;
     nvmeCmdCtx setFeatures;
     uint32_t dWord10 = 0;
     memset(&setFeatures, 0, sizeof(setFeatures));
     setFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SET_FEATURES;
     setFeatures.commandType = NVM_ADMIN_CMD;
     setFeatures.commandDirection = XFER_DATA_OUT;
-    setFeatures.cmd.adminCmd.addr = C_CAST(uintptr_t, featCmdOpts->dataPtr); 
+    setFeatures.cmd.adminCmd.addr = C_CAST(uintptr_t, featCmdOpts->dataPtr);
     setFeatures.ptrData = featCmdOpts->dataPtr;
     setFeatures.dataSize = featCmdOpts->dataLength;
 
@@ -795,7 +794,7 @@ eReturnValues nvme_Sanitize(tDevice *device, bool noDeallocateAfterSanitize, boo
 
     //set the overwrite pass count first
     nvmCommand.cmd.adminCmd.cdw10 = C_CAST(uint32_t, overWritePassCount << 4);
-    
+
     if (noDeallocateAfterSanitize)
     {
         nvmCommand.cmd.adminCmd.cdw10 |= BIT9;
@@ -828,7 +827,7 @@ eReturnValues nvme_Sanitize(tDevice *device, bool noDeallocateAfterSanitize, boo
 
 eReturnValues nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogPageCmdOpts)
 {
-    eReturnValues ret = UNKNOWN; 
+    eReturnValues ret = UNKNOWN;
     nvmeCmdCtx getLogPage;
     uint32_t dWord10 = 0;
     uint32_t numDwords = 0;
@@ -836,17 +835,17 @@ eReturnValues nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogP
     getLogPage.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_LOG_PAGE;
     getLogPage.commandType = NVM_ADMIN_CMD;
     getLogPage.commandDirection = XFER_DATA_IN;
-    #if defined(VMK_CROSS_COMP)
+#if defined(VMK_CROSS_COMP)
     getLogPage.cmd.adminCmd.addr = C_CAST(uint32_t, getLogPageCmdOpts->addr);
-    #else
+#else
     getLogPage.cmd.adminCmd.addr = C_CAST(uintptr_t, getLogPageCmdOpts->addr);
-    #endif
+#endif
     getLogPage.dataSize = getLogPageCmdOpts->dataLen;
     getLogPage.ptrData = getLogPageCmdOpts->addr;
     getLogPage.cmd.adminCmd.nsid = getLogPageCmdOpts->nsid;
 
     numDwords = (getLogPageCmdOpts->dataLen / NVME_DWORD_SIZE) - 1;//zero based DWORD value
-    
+
     dWord10 |= getLogPageCmdOpts->lid;
     dWord10 |= (getLogPageCmdOpts->lsp & 0x0F) << 8;
     dWord10 |= (getLogPageCmdOpts->rae & 0x01) << 15;
@@ -877,18 +876,17 @@ eReturnValues nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogP
     return ret;
 }
 
-
 eReturnValues nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
 {
-    eReturnValues ret = UNKNOWN; 
+    eReturnValues ret = UNKNOWN;
     nvmeCmdCtx formatCmd;
     uint32_t dWord10 = 0;
     //Setting this check so we are not corrupting dWord10 
     // Revise if they change the spec is revised. 
-    if (   (formatCmdOpts->pi > 7) 
+    if ((formatCmdOpts->pi > 7)
         || (formatCmdOpts->ses > 7)
         || (formatCmdOpts->lbaf > 0xF)
-           ) 
+        )
     {
         return BAD_PARAMETER;
     }
@@ -901,12 +899,12 @@ eReturnValues nvme_Format(tDevice *device, nvmeFormatCmdOpts * formatCmdOpts)
 
     //Construct the correct 
     dWord10 = C_CAST(uint32_t, M_GETBITRANGE(formatCmdOpts->ses, 2, 0) << 9); 
-    if (formatCmdOpts->pil) 
+    if (formatCmdOpts->pil)
     {
         dWord10 |= BIT8;
     }
-    dWord10 |= M_GETBITRANGE(formatCmdOpts->pi, 2, 0) << 5; 
-    if (formatCmdOpts->ms) 
+    dWord10 |= M_GETBITRANGE(formatCmdOpts->pi, 2, 0) << 5;
+    if (formatCmdOpts->ms)
     {
         dWord10 |= BIT4;
     }

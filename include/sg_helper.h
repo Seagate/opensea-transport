@@ -171,101 +171,101 @@ extern "C"
 // \fn send_sg_io(scsiIoCtx * scsiIoCtx)
 // \brief Function to send a SG_IO ioctl
 // \param scsiIoCtx
-    eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx );
+    eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx);
 
-// \fn send_IO(scsiIoCtx * scsiIoCtx)
-// \brief Function to send IO to the device.
-// \param scsiIoCtx
-    eReturnValues send_IO( ScsiIoCtx *scsiIoCtx );
+    // \fn send_IO(scsiIoCtx * scsiIoCtx)
+    // \brief Function to send IO to the device.
+    // \param scsiIoCtx
+    eReturnValues send_IO(ScsiIoCtx *scsiIoCtx);
 
-//-----------------------------------------------------------------------------
-//
-//  os_Device_Reset(tDevice *device)
-//
-//! \brief   Description:  Attempts a device reset through OS functions available. NOTE: This won't work on every device
-//
-//  Entry:
-//!   \param[in]  device = pointer to device context!   
-//! 
-//!
-//  Exit:
-//!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
-//
-//-----------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Device_Reset(tDevice *device)
+    //
+    //! \brief   Description:  Attempts a device reset through OS functions available. NOTE: This won't work on every device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API eReturnValues os_Device_Reset(tDevice *device);
 
-//-----------------------------------------------------------------------------
-//
-//  os_Bus_Reset(tDevice *device)
-//
-//! \brief   Description:  Attempts a bus reset through OS functions available. NOTE: This won't work on every device
-//
-//  Entry:
-//!   \param[in]  device = pointer to device context!   
-//! 
-//!
-//  Exit:
-//!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
-//
-//-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API eReturnValues os_Bus_Reset(tDevice *device);
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Bus_Reset(tDevice *device)
+    //
+    //! \brief   Description:  Attempts a bus reset through OS functions available. NOTE: This won't work on every device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API eReturnValues os_Bus_Reset(tDevice *device);
 
-//-----------------------------------------------------------------------------
-//
-//  os_Controller_Reset(tDevice *device)
-//
-//! \brief   Description:  Attempts a controller reset through OS functions available. NOTE: This won't work on every device
-//
-//  Entry:
-//!   \param[in]  device = pointer to device context!   
-//! 
-//!
-//  Exit:
-//!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
-//
-//-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API eReturnValues os_Controller_Reset(tDevice *device);
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Controller_Reset(tDevice *device)
+    //
+    //! \brief   Description:  Attempts a controller reset through OS functions available. NOTE: This won't work on every device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API eReturnValues os_Controller_Reset(tDevice *device);
 
 
-//-----------------------------------------------------------------------------
-//
-//  pci_Read_Bar_Reg()
-//
-//! \brief   Description:  Function to Read PCI Bar register
-//
-//  Entry:
-//!   \param[in]  device = pointer to device context!   
-//!   \param[out] pData =  pointer to data that need to be filled.
-//!                        this needs to be at least the size of a page
-//!                        e.g. getPageSize() in Linux
-//!   \param[out] dataSize =  size of the data
-//! 
-//!
-//  Exit:
-//!   \return SUCCESS = pass, !SUCCESS = something when wrong
-//
-//-----------------------------------------------------------------------------
-eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize );
+    //-----------------------------------------------------------------------------
+    //
+    //  pci_Read_Bar_Reg()
+    //
+    //! \brief   Description:  Function to Read PCI Bar register
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!   
+    //!   \param[out] pData =  pointer to data that need to be filled.
+    //!                        this needs to be at least the size of a page
+    //!                        e.g. getPageSize() in Linux
+    //!   \param[out] dataSize =  size of the data
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    eReturnValues pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize);
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
+    eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
-//to be used with a deep scan???
-//eReturnValues nvme_Namespace_Rescan(int fd);//rescans a controller for namespaces. This must be a file descriptor without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
+    //to be used with a deep scan???
+    //eReturnValues nvme_Namespace_Rescan(int fd);//rescans a controller for namespaces. This must be a file descriptor without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
 
-OPENSEA_TRANSPORT_API eReturnValues os_nvme_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_nvme_Reset(tDevice *device);
 
-OPENSEA_TRANSPORT_API eReturnValues os_nvme_Subsystem_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_nvme_Subsystem_Reset(tDevice *device);
 
 
 #endif
 
-eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle);
+    eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle);
 
-eReturnValues device_Reset(int fd);
+    eReturnValues device_Reset(int fd);
 
-eReturnValues bus_Reset(int fd);
+    eReturnValues bus_Reset(int fd);
 
-eReturnValues host_Reset(int fd);
+    eReturnValues host_Reset(int fd);
 
     //-----------------------------------------------------------------------------
     //
@@ -280,7 +280,7 @@ eReturnValues host_Reset(int fd);
     //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-OPENSEA_TRANSPORT_API eReturnValues os_Lock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Lock_Device(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -303,6 +303,6 @@ OPENSEA_TRANSPORT_API eReturnValues os_Lock_Device(tDevice *device);
 
     OPENSEA_TRANSPORT_API eReturnValues os_Erase_Boot_Sectors(tDevice* device);
 
-    #if defined (__cplusplus)
+#if defined (__cplusplus)
 }
-    #endif
+#endif

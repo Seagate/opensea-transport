@@ -48,7 +48,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues send_uscsi_io( ScsiIoCtx *scsiIoCtx );
+    eReturnValues send_uscsi_io(ScsiIoCtx *scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -64,7 +64,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues send_IO( ScsiIoCtx *scsiIoCtx );
+    eReturnValues send_IO(ScsiIoCtx *scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //

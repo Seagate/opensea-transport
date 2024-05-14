@@ -4952,7 +4952,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                             memset(d, 0, sizeof(tDevice));
                                                             d->sanity.size = ver.size;
                                                             d->sanity.version = ver.version;
-                                                            d->dFlags =  flags;
+                                                            d->dFlags = flags;
 #if defined (CSMI_DEBUG)
                                                             printf("GDL: Calling get_CSMI_RAID_Device\n");
 #endif //CSMI_DEBUG
@@ -5008,7 +5008,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                             memset(d, 0, sizeof(tDevice));
                                             d->sanity.size = ver.size;
                                             d->sanity.version = ver.version;
-                                            d->dFlags =  flags;
+                                            d->dFlags = flags;
                                             d->deviceVerbosity = 4;
 #if defined (CSMI_DEBUG)
                                             printf("GDL: Calling get_CSMI_RAID_Device\n");
