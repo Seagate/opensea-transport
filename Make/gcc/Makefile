@@ -95,6 +95,10 @@ else
 		
 		CFLAGS += -Wvla -Wfloat-equal -Wjump-misses-init -Wlogical-op -Wdouble-promotion -Wformat-security \
 			-Wold-style-definition -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
+	else
+		CFLAGS += -std=gnu99
+		CFLAGS += -Wvla -Wfloat-equal -Wjump-misses-init -Wlogical-op -Wdouble-promotion -Wformat-security \
+				-Wold-style-definition -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
 	endif
 endif
 UNAME := $(shell uname -s)
