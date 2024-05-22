@@ -337,7 +337,6 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
@@ -355,7 +354,6 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
@@ -373,7 +371,6 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
@@ -391,7 +388,6 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -410,7 +406,6 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -429,7 +424,6 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -448,7 +442,6 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
@@ -466,7 +459,6 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -487,7 +479,6 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
@@ -509,7 +500,6 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
@@ -531,7 +521,6 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
@@ -553,7 +542,6 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -576,7 +564,6 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -599,7 +586,6 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -622,7 +608,6 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4214;4201;4668;4820;4710;4255;5045;4711;4324;4221;4204</DisableSpecificWarnings>
@@ -644,7 +629,6 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\..\..\..\include;..\..\..\..\..\opensea-common\include;..\..\..\..\include\vendor</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>EXPORT_OPENSEA_TRANSPORT;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;ENABLE_CSMI;ENABLE_INTEL_RST;ENABLE_OFNVME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
