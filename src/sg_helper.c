@@ -344,6 +344,91 @@ typedef struct _sysFSLowLevelDeviceInfo
     uint16_t queueDepth;//if 0, then this was unable to be read and populated
 }sysFSLowLevelDeviceInfo;
 
+M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driververstr, uint32_t *versionlist, uint8_t versionlistlen, uint8_t *versionCount)
+{
+    //There are a few formats that I have seen for this data:
+    //major.minor
+    //major.minor.rev
+    //major.minor.rev[build]-string
+    //There may be more.
+    if (driververstr && versionlist && versionlistlen == 4 && versionCount)//require 4 spaces for the current parsing based off of what is commented above
+    {
+        char* end = NULL;
+        char *str = C_CAST(char*, driververstr);
+        unsigned long value = strtoul(str, &end, 10);
+        *versionCount = 0;
+        //major
+        if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end) || end[0] != '.')
+        {
+            return false;
+        }
+        versionlist[0] = C_CAST(uint32_t, value);
+        *versionCount += 1;
+        str = end + 1;//update to past the first dot.
+        //minor
+        value = strtoul(str, &end, 10);
+        if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+        {
+            return false;
+        }
+        versionlist[1] = C_CAST(uint32_t, value);
+        *versionCount += 1;
+        if (end[0] == '\0')
+        {
+            return true;
+        }
+        else if (end[0] == '.' && strlen(end) > 1)
+        {
+            //rev is available
+            str = end + 1;
+            value = strtoul(str, &end, 10);
+            if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+            {
+                return false;
+            }
+            versionlist[2] = C_CAST(uint32_t, value);
+            *versionCount += 1;
+            if (end[0] == '\0')
+            {
+                return true;
+            }
+            else if (end[0] == '[' && strlen(end) > 1)
+            {
+                //build is available
+                str = end + 1;
+                value = strtoul(str, &end, 10);
+                if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+                {
+                    return false;
+                }
+                versionlist[3] = C_CAST(uint32_t, value);
+                *versionCount += 1;
+                if (end[0] == '\0' || end[0] == ']')
+                {
+                    //considering this complete for now
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+}
+
 static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDeviceInfo *sysFsInfo)
 {
     //driverPath now has the full path with the name of the driver.
@@ -353,6 +438,7 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
     if (driverVersionFilePath)
     {
         snprintf(driverVersionFilePath, OPENSEA_PATH_MAX, "%s/module/version", driverPath);
+        printf("driver version file path = %s\n", driverVersionFilePath);
         //convert relative path to a full path. Basically replace ../'s with /sys/ since this will always be ../../bus and we need /sys/buf
         char* busPtr = strstr(driverVersionFilePath, "/bus");
         size_t busPtrLen = strlen(busPtr);
@@ -381,50 +467,55 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
                     {
                         if (C_CAST(size_t, versionFileSize) == fread(versionFileData, sizeof(char), C_CAST(size_t, versionFileSize), versionFile) && !ferror(versionFile))
                         {
+                            printf("versionFileData = %s\n", versionFileData);
                             snprintf(sysFsInfo->driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%s", versionFileData);
-                            //There are a few formats that I have seen for this data:
-                            //major.minor
-                            //major.minor.rev
-                            //major.minor.rev[build]-string
-                            //There may be more. Will attempt to write a method of parsing this that makes some sense
-                            //The most common are the first 2, so those will be checked first.
-                            char extraVerInfo[21] = { 0 };
-                            int scanfres = sscanf(versionFileData, "%" SCNu32 ".%" SCNu32 ".%" SCNu32 "%20s", &sysFsInfo->driver_info.driverMajorVersion, &sysFsInfo->driver_info.driverMinorVersion, &sysFsInfo->driver_info.driverRevision, extraVerInfo);
-                            switch (scanfres)
+                            uint32_t versionList[4] = { 0 };
+                            uint8_t versionCount = 0;
+                            if (get_Driver_Version_Info_From_String(versionFileData, versionList, 4, &versionCount))
                             {
-                            case 4:
-                                //try figuring out what is in the extraVerInfo string
-                                sysFsInfo->driver_info.majorVerValid = true;
-                                sysFsInfo->driver_info.minorVerValid = true;
-                                sysFsInfo->driver_info.revisionVerValid = true;
-                                scanfres = sscanf(extraVerInfo, "[%" SCNu32 "]", &sysFsInfo->driver_info.driverBuildNumber);
-                                if (scanfres > 0)
+                                switch (versionCount)
                                 {
+                                case 4:
+                                    //try figuring out what is in the extraVerInfo string
+                                    sysFsInfo->driver_info.majorVerValid = true;
+                                    sysFsInfo->driver_info.minorVerValid = true;
+                                    sysFsInfo->driver_info.revisionVerValid = true;
                                     sysFsInfo->driver_info.buildVerValid = true;
-                                }
-                                else
-                                {
-                                    //need a different scan of the remaining data to parse out other relevant info.-TJE
+                                    sysFsInfo->driver_info.driverMajorVersion = versionList[0];
+                                    sysFsInfo->driver_info.driverMinorVersion = versionList[1];
+                                    sysFsInfo->driver_info.driverRevision = versionList[2];
+                                    sysFsInfo->driver_info.driverBuildNumber = versionList[3];
+                                    break;
+                                case 3:
+                                    sysFsInfo->driver_info.majorVerValid = true;
+                                    sysFsInfo->driver_info.minorVerValid = true;
+                                    sysFsInfo->driver_info.revisionVerValid = true;
+                                    sysFsInfo->driver_info.driverMajorVersion = versionList[0];
+                                    sysFsInfo->driver_info.driverMinorVersion = versionList[1];
+                                    sysFsInfo->driver_info.driverRevision = versionList[2];
+                                    break;
+                                case 2:
+                                    sysFsInfo->driver_info.majorVerValid = true;
+                                    sysFsInfo->driver_info.minorVerValid = true;
+                                    sysFsInfo->driver_info.driverMajorVersion = versionList[0];
+                                    sysFsInfo->driver_info.driverMinorVersion = versionList[1];
+                                    break;
+                                default:
+                                    //error reading the string! consider the whole scanf a failure!
+                                    //Will need to add other format parsing here if there is something else to read instead.-TJE
+                                    sysFsInfo->driver_info.driverMajorVersion = 0;
+                                    sysFsInfo->driver_info.driverMinorVersion = 0;
+                                    sysFsInfo->driver_info.driverRevision = 0;
                                     sysFsInfo->driver_info.driverBuildNumber = 0;
+                                    break;
                                 }
-                                break;
-                            case 3:
-                                sysFsInfo->driver_info.majorVerValid = true;
-                                sysFsInfo->driver_info.minorVerValid = true;
-                                sysFsInfo->driver_info.revisionVerValid = true;
-                                break;
-                            case 2:
-                                sysFsInfo->driver_info.majorVerValid = true;
-                                sysFsInfo->driver_info.minorVerValid = true;
-                                break;
-                            default:
-                                //error reading the string! consider the whole scanf a failure!
-                                //Will need to add other format parsing here if there is something else to read instead.-TJE
+                            }
+                            else
+                            {
                                 sysFsInfo->driver_info.driverMajorVersion = 0;
                                 sysFsInfo->driver_info.driverMinorVersion = 0;
                                 sysFsInfo->driver_info.driverRevision = 0;
                                 sysFsInfo->driver_info.driverBuildNumber = 0;
-                                break;
                             }
                         }
                         safe_Free(versionFileData)
@@ -775,28 +866,30 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
     char *scsiAddress = basename(dirname(dirname(handle)));//SCSI address should be 2nd from the end of the link
     if (scsiAddress)
     {
-       char *token = strtok(scsiAddress, ":");
+       char *saveptr = NULL;
+       rsize_t addrlen = strlen(scsiAddress);
+       char *token = common_String_Token(scsiAddress, &addrlen, ":", &saveptr);
        uint8_t counter = 0;
        while (token)
        {
            switch (counter)
            {
            case 0://host
-               sysFsInfo->scsiAddress.host = C_CAST(uint8_t, atoi(token));
+               sysFsInfo->scsiAddress.host = C_CAST(uint8_t, strtoul(token, NULL, 10));
                break;
            case 1://bus
-               sysFsInfo->scsiAddress.channel = C_CAST(uint8_t, atoi(token));
+               sysFsInfo->scsiAddress.channel = C_CAST(uint8_t, strtoul(token, NULL, 10));
                break;
            case 2://target
-               sysFsInfo->scsiAddress.target = C_CAST(uint8_t, atoi(token));
+               sysFsInfo->scsiAddress.target = C_CAST(uint8_t, strtoul(token, NULL, 10));
                break;
            case 3://lun
-               sysFsInfo->scsiAddress.lun = C_CAST(uint8_t, atoi(token));
+               sysFsInfo->scsiAddress.lun = C_CAST(uint8_t, strtoul(token, NULL, 10));
                break;
            default:
                break;
            }
-           token = strtok(NULL, ":");
+           token = common_String_Token(NULL, &addrlen, ":", &saveptr);
            ++counter;
        }
     }
@@ -2733,36 +2826,59 @@ static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
     int handleToReset = device->os_info.fd;
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(commandTimer));
-    uint16_t controllerNumber = 0;
-    uint32_t namespaceID = 0;
     int ioRes = 0;
     bool openedControllerHandle = false;//used so we can close the handle at the end.
     //Need to make sure the handle we use to issue the reset is a controller handle and not a namespace handle.
-    int sscanfRes = sscanf(device->os_info.name, "/dev/nvme%" SCNu16 "n%" SCNu32 , &controllerNumber, &namespaceID);
-    if (sscanfRes == 2)
+    char *endptr = NULL;
+    char *handle = strstr(&device->os_info.name[0], "/dev/nvme");
+    if (handle)
     {
-        //found a namespace. Need to open a controller handle instead and use it.
-        char controllerHandle[40] = { 0 };
-        snprintf(controllerHandle, 40, "/dev/nvme%" PRIu16, controllerNumber);
-        if ((handleToReset = open(controllerHandle, O_RDWR | O_NONBLOCK)) < 0)
-        {
-            device->os_info.last_error = C_CAST(unsigned int, errno);
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
-            {
-                printf("Error opening controller handle for nvme reset: ");
-                print_Errno_To_Screen(errno);
-            }
-            if (errno == EACCES) 
-            {
-                return PERMISSION_DENIED;
-            }
-            else
-            {
-                return OS_PASSTHROUGH_FAILURE;
-            }
-        }
-        openedControllerHandle = true;
+        handle += strlen("/dev/nvme");
     }
+    else
+    {
+        return FAILURE;
+    }
+    unsigned long controller = 0, namespaceID = 0;
+    controller = strtoul(handle, &endptr, 10);
+    if ((controller == ULONG_MAX && errno == ERANGE) || (handle == endptr && controller == 0))
+    {
+        return FAILURE;
+    }
+    if (endptr && strlen(endptr) > 1 && endptr[0] == 'n')
+    {
+        handle += 1;
+        namespaceID = strtoul(handle, &endptr, 10);
+        if ((namespaceID == ULONG_MAX && errno == ERANGE) || (handle == endptr && namespaceID == 0))
+        {
+            return FAILURE;
+        }
+    }
+    else
+    {
+        return FAILURE;
+    }
+    //found a namespace. Need to open a controller handle instead and use it.
+    char controllerHandle[40] = { 0 };
+    snprintf(controllerHandle, 40, "/dev/nvme%lu", controller);
+    if ((handleToReset = open(controllerHandle, O_RDWR | O_NONBLOCK)) < 0)
+    {
+        device->os_info.last_error = C_CAST(unsigned int, errno);
+        if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+        {
+            printf("Error opening controller handle for nvme reset: ");
+            print_Errno_To_Screen(errno);
+        }
+        if (errno == EACCES) 
+        {
+            return PERMISSION_DENIED;
+        }
+        else
+        {
+            return OS_PASSTHROUGH_FAILURE;
+        }
+    }
+    openedControllerHandle = true;
     device->os_info.last_error = 0;
     if (subsystemReset)
     {
