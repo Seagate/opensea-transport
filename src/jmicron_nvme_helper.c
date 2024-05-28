@@ -36,7 +36,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirectio
 
     //CDB bytes 3, 4, & 5 are the parameter list length
     //These bytes will be set depending on the size of the transfer for the protocol
-    
+
     switch (jmProtocol)
     {
     case JM_PROTOCOL_SET_PAYLOAD:
@@ -370,7 +370,6 @@ static eReturnValues jm_NVMe_MCU_Reset(tDevice *device)
     }
     return ret;
 }
-
 
 eReturnValues jm_nvme_Reset(tDevice *device)
 {

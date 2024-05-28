@@ -86,7 +86,7 @@ typedef struct _spartitionInfo
 {
     char fsName[PART_INFO_NAME_LENGTH];
     char mntPath[PART_INFO_PATH_LENGTH];
-}spartitionInfo, * ptrsPartitionInfo;
+}spartitionInfo, *ptrsPartitionInfo;
 //partitionInfoList is a pointer to the beginning of the list
 //listCount is the number of these structures, which should be returned by get_Partition_Count
 static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
@@ -131,7 +131,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
     int partitionCount = 0;
-    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = {0};
+    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = { 0 };
     snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
     set_Device_Name(device->os_info.name, &blockHandle[strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - strlen("/dev/"));
     //note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the information in the mount tab file.
@@ -226,7 +226,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         }
         //fill in the device info
         ret = fill_Drive_Info_Data(device);
-        
+
         //set the drive type now
         switch (device->drive_info.interface_type)
         {
@@ -323,7 +323,7 @@ eReturnValues send_IO (ScsiIoCtx *scsiIoCtx)
         ret = send_uscsi_io(scsiIoCtx);
         break;
     default:
-        if(VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
         }
@@ -348,7 +348,7 @@ eReturnValues send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     eReturnValues ret = SUCCESS;
 
     memset(&uscsi_io, 0, sizeof(uscsi_io));
-    if(VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
+    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("Sending command with send_IO\n");
     }
@@ -394,9 +394,9 @@ eReturnValues send_uscsi_io(ScsiIoCtx *scsiIoCtx)
         uscsi_io.uscsi_flags |= USCSI_WRITE;
         break;
     default:
-        if(VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("%s Didn't understand direction\n",__FUNCTION__);
+            printf("%s Didn't understand direction\n", __FUNCTION__);
         }
         return BAD_PARAMETER;
     }
@@ -417,7 +417,7 @@ eReturnValues send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     if(ioctlResult < 0)
     {
         ret = FAILURE;
-        if(VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
+        if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
         {
             perror("send_IO");
         }
@@ -426,17 +426,17 @@ eReturnValues send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-static int uscsi_filter( const struct dirent *entry )
+static int uscsi_filter(const struct dirent *entry)
 {
     //in this folder everything will start with a c.
-    int uscsiHandle = strncmp("c",entry->d_name,1);
-    if(uscsiHandle != 0)
+    int uscsiHandle = strncmp("c", entry->d_name, 1);
+    if (uscsiHandle != 0)
     {
         return !uscsiHandle;
     }
     //now, we need to filter out the device names that have "p"s for the partitions and "s"s for the slices
     char *partitionOrSlice = strpbrk(entry->d_name, "pPsS");
-    if(partitionOrSlice != NULL)
+    if (partitionOrSlice != NULL)
     {
         return 0;
     }
@@ -449,7 +449,7 @@ static int uscsi_filter( const struct dirent *entry )
 eReturnValues close_Device(tDevice *device)
 {
     int retValue = 0;
-    if(device)
+    if (device)
     {
         retValue = close(device->os_info.fd);
         device->os_info.last_error = C_CAST(unsigned int, errno);
@@ -538,7 +538,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     char name[80] = { 0 }; //Because get device needs char
     int fd;
     tDevice * d = NULL;
-    
+
     struct dirent **namelist;
     int scandirres = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     if (scandirres > 0)
@@ -706,7 +706,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
 {
     eReturnValues ret = SUCCESS;
     int partitionCount = 0;
-    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = {0};
+    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = { 0 };
     snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
     set_Device_Name(device->os_info.name, &blockHandle[strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - strlen("/dev/"));
     //note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the information in the mount tab file.

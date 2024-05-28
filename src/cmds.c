@@ -95,7 +95,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMod
         //      Because of this, this bit will be set when it is discovered as supported whenever possible -TJE
         ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F, ataPattern, znr, device->drive_info.ata_Options.sanitizeOverwriteDefinitiveEndingPattern);
     }
-        break;
+    break;
     case NVME_DRIVE:
     {
         uint32_t nvmPattern = 0;
@@ -107,7 +107,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMod
         //      If NVMe's zoned device command set adds a separate ZNR argument, we will need to create a different function/API to handle both bits-TJE
         ret = nvme_Sanitize(device, znr, invertBetweenPasses, overwritePasses, exitFailureMode, SANITIZE_NVM_OVERWRITE, nvmPattern);
     }
-        break;
+    break;
     case SCSI_DRIVE:
         //overwrite passes set to 0 on scsi is reserved. This is being changed to the maximum for SCSI to mean 16 passes
         if ((overwritePasses & 0x0F) == 0)
@@ -241,11 +241,11 @@ eReturnValues spin_down_drive(tDevice *device, bool sleepState)
 eReturnValues fill_Drive_Info_Data(tDevice *device)
 {
     eReturnValues status = SUCCESS;
-    #ifdef _DEBUG
-    printf("%s: -->\n",__FUNCTION__);
-    #endif
+#ifdef _DEBUG
+    printf("%s: -->\n", __FUNCTION__);
+#endif
     if (device)
-    {       
+    {
         if (device->drive_info.interface_type == UNKNOWN_INTERFACE)
         {
             status = BAD_PARAMETER;
@@ -299,21 +299,21 @@ eReturnValues fill_Drive_Info_Data(tDevice *device)
             //call this instead. It will handle issuing scsi commands and at the end will attempt an ATA Identify if needed
             status = fill_In_Device_Info(device);
             break;
-        }       
+        }
     }
     else
     {
         status = BAD_PARAMETER;
     }
-    #ifdef _DEBUG
+#ifdef _DEBUG
     if (device)
     {
         printf("Drive type: %d\n", device->drive_info.drive_type);
         printf("Interface type: %d\n", device->drive_info.interface_type);
         printf("Media type: %d\n", device->drive_info.media_type);
     }
-    printf("%s: <--\n",__FUNCTION__);
-    #endif
+    printf("%s: <--\n", __FUNCTION__);
+#endif
     return status;
 }
 
@@ -321,7 +321,7 @@ eReturnValues firmware_Download_Command(tDevice *device, eDownloadMode dlMode, u
 {
     eReturnValues ret = UNKNOWN;
 #ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
+    printf("-->%s\n", __FUNCTION__);
 #endif
     switch (device->drive_info.drive_type)
     {
@@ -354,27 +354,61 @@ eReturnValues firmware_Download_Command(tDevice *device, eDownloadMode dlMode, u
         //If the controller or driver don't like issuing DMA mode, this will detect it and retry the command with PIO mode.
         ret = send_ATA_Download_Microcode_Cmd(device, ataDLMode, C_CAST(uint16_t, xferLen / LEGACY_DRIVE_SEC_SIZE), C_CAST(uint16_t, offset / LEGACY_DRIVE_SEC_SIZE), ptrData, xferLen, firstSegment, lastSegment, timeoutSeconds);
     }
-        break;
+    break;
     case NVME_DRIVE:
     {
         switch (dlMode)
         {
         case DL_FW_ACTIVATE:
+        {
+            uint8_t statusCodeType = 0, statusCode = 0;
+            bool doNotRetry = false, more = false;
+            bool issueReset = false, subsystem = false;
+            uint8_t nvmeCommitAction = commitAction;//assume something is passed in for now
+            if (!nvmeForceCA)
             {
-                uint8_t statusCodeType = 0, statusCode = 0;
-                bool doNotRetry = false, more = false;
-                bool issueReset = false, subsystem = false;
-                uint8_t nvmeCommitAction = commitAction;//assume something is passed in for now
-                if (!nvmeForceCA)
+                //user is not forcing a commit action so figure out what to use instead.
+                if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
                 {
-                    //user is not forcing a commit action so figure out what to use instead.
-                    if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
+                    //this activate action can be used for replacing or activating existing images if the controller supports it.
+                    nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
+                }
+                else
+                {
+                    if (existingImage)
                     {
-                        //this activate action can be used for replacing or activating existing images if the controller supports it.
-                        nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
+                        nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
                     }
                     else
                     {
+                        nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+
+                    }
+                }
+            }
+            ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
+            if (ret == SUCCESS && (nvmeCommitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || nvmeCommitAction == NVME_CA_ACTIVITE_ON_RST) && !forceDisableReset)
+            {
+                issueReset = true;
+            }
+            //Issue a reset if we need to!
+            get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
+            if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
+            {
+                switch (statusCode)
+                {
+                case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                    issueReset = true;
+                    subsystem = true;
+                    break;
+                case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+                case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                    issueReset = true;
+                    break;
+                case NVME_CMD_SP_SC_FW_ACT_REQ_MAX_TIME_VIOALTION:
+                    if (!nvmeForceCA) //only retry when not forcing a specific mode
+                    {
+                        //needs to be reissued for an activate on reset instead due to maximum time violation.
                         if (existingImage)
                         {
                             nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
@@ -382,94 +416,60 @@ eReturnValues firmware_Download_Command(tDevice *device, eDownloadMode dlMode, u
                         else
                         {
                             nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
-                            
-                        }
-                    }
-                }
-                ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
-                if (ret == SUCCESS && (nvmeCommitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || nvmeCommitAction == NVME_CA_ACTIVITE_ON_RST) && !forceDisableReset)
-                {
-                    issueReset = true;
-                }
-                //Issue a reset if we need to!
-                get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
-                if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
-                {
-                    switch (statusCode)
-                    {
-                    case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
-                        issueReset = true;
-                        subsystem = true;
-                        break;
-                    case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
-                    case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
-                        issueReset = true;
-                        break;
-                    case NVME_CMD_SP_SC_FW_ACT_REQ_MAX_TIME_VIOALTION:
-                        if (!nvmeForceCA) //only retry when not forcing a specific mode
-                        {
-                            //needs to be reissued for an activate on reset instead due to maximum time violation.
-                            if (existingImage)
-                            {
-                                nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
-                            }
-                            else
-                            {
-                                nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
 
-                            }
-                            ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
-                            get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
-                            if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
+                        }
+                        ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
+                        get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more, &statusCodeType, &statusCode);
+                        if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
+                        {
+                            switch (statusCode)
                             {
-                                switch (statusCode)
+                            case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                                if (!forceDisableReset)
                                 {
-                                case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
-                                    if (!forceDisableReset)
-                                    {
-                                        issueReset = true;
-                                        subsystem = true;
-                                    }
-                                    break;
-                                case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
-                                case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
-                                    if (!forceDisableReset)
-                                    {
-                                        issueReset = true;
-                                    }
-                                    break;
-                                default:
-                                    break;
+                                    issueReset = true;
+                                    subsystem = true;
                                 }
+                                break;
+                            case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+                            case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                                if (!forceDisableReset)
+                                {
+                                    issueReset = true;
+                                }
+                                break;
+                            default:
+                                break;
                             }
                         }
-                        break;
-                    default:
-                        break;
                     }
-                }
-                if (issueReset && !forceDisableReset)//if the reset is being forced to not run, there is a good reason for it! Listen to this flag ALWAYS
-                {
-                    //send an appropriate reset to the device to activate the firmware.
-                    //NOTE: On Windows, this is a stub since their API call will do this for us.
-                    if (subsystem)
-                    {
-                        //subsystem reset
-                        nvme_Subsystem_Reset(device);
-                    }
-                    else
-                    {
-                        //reset
-                        nvme_Reset(device);
-                    }
-                }
-                else if (nvmeCommitAction != NVME_CA_ACTIVITE_IMMEDIATE)
-                {
-                    //Set this return code since the reset was bypassed.
-                    ret = POWER_CYCLE_REQUIRED;
+                    break;
+                default:
+                    break;
                 }
             }
-            break;
+            if (issueReset && !forceDisableReset)//if the reset is being forced to not run, there is a good reason for it! Listen to this flag ALWAYS
+            {
+                //send an appropriate reset to the device to activate the firmware.
+                //NOTE: On Windows, this is a stub since their API call will do this for us.
+                if (subsystem)
+                {
+                    //subsystem reset
+                    nvme_Subsystem_Reset(device);
+                }
+                else
+                {
+                    //reset
+                    nvme_Reset(device);
+                }
+            }
+            else if (nvmeCommitAction != NVME_CA_ACTIVITE_IMMEDIATE)
+            {
+                //Set this return code since the reset was bypassed.
+                ret = POWER_CYCLE_REQUIRED;
+            }
+        }
+        break;
         case DL_FW_DEFERRED:
             ret = nvme_Firmware_Image_Dl(device, offset, xferLen, ptrData, firstSegment, lastSegment, timeoutSeconds);
             break;
@@ -483,7 +483,7 @@ eReturnValues firmware_Download_Command(tDevice *device, eDownloadMode dlMode, u
             break;
         }
     }
-        break;
+    break;
     case SCSI_DRIVE:
     {
         eWriteBufferMode scsiDLMode = SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE;//default
@@ -512,13 +512,13 @@ eReturnValues firmware_Download_Command(tDevice *device, eDownloadMode dlMode, u
         }
         ret = scsi_Write_Buffer(device, scsiDLMode, 0, slotNumber, offset, xferLen, ptrData, firstSegment, lastSegment, timeoutSeconds);
     }
-        break;
+    break;
     default:
         ret = NOT_SUPPORTED;
         break;
     }
 #ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
     return ret;
 }
@@ -531,7 +531,7 @@ eReturnValues firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bo
 eReturnValues security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
 {
     eReturnValues ret = UNKNOWN;
-    switch(device->drive_info.drive_type)
+    switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
     {
@@ -574,9 +574,9 @@ eReturnValues security_Send(tDevice *device, uint8_t securityProtocol, uint16_t 
         //The inc512 bit is not allowed on NVMe drives when sent this command....we may want to remove setting it, but for now we'll leave it here.
         bool inc512 = false;
         if ((dataSize >= LEGACY_DRIVE_SEC_SIZE && (dataSize % LEGACY_DRIVE_SEC_SIZE) == 0)
-            && ((device->drive_info.drive_type != NVME_DRIVE 
-            && strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
-            || device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512)
+            && ((device->drive_info.drive_type != NVME_DRIVE
+                && strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
+                || device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512)
             )
         {
             inc512 = true;
@@ -640,9 +640,9 @@ eReturnValues security_Receive(tDevice *device, uint8_t securityProtocol, uint16
         //The inc512 bit is not allowed on NVMe drives when sent this command....we may want to remove setting it, but for now we'll leave it here.
         bool inc512 = false;
         if ((dataSize >= LEGACY_DRIVE_SEC_SIZE && (dataSize % LEGACY_DRIVE_SEC_SIZE) == 0)
-            && ((device->drive_info.drive_type != NVME_DRIVE 
-            && strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
-            || device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512)
+            && ((device->drive_info.drive_type != NVME_DRIVE
+                && strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0)
+                || device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512)
             )
         {
             inc512 = true;
@@ -686,7 +686,7 @@ eReturnValues write_Same(tDevice *device, uint64_t startingLba, uint64_t numberO
         else if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word080) &&
             (device->drive_info.IdentifyData.ata.Word080 & BIT1 || device->drive_info.IdentifyData.ata.Word080 & BIT2)) && /*check for ATA or ATA-2 support*/
             (!(is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word053) && device->drive_info.IdentifyData.ata.Word053 & BIT1) /* this is a validity bit for field 69 */
-              && (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word069) && (device->drive_info.IdentifyData.ata.Word069 & BIT11))))//Legacy Write same uses same op-code as read buffer DMA, so that command cannot be supported or the drive won't do the right thing
+                && (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word069) && (device->drive_info.IdentifyData.ata.Word069 & BIT11))))//Legacy Write same uses same op-code as read buffer DMA, so that command cannot be supported or the drive won't do the right thing
         {
             bool localPattern = false;
             bool performWriteSame = false;
@@ -800,7 +800,7 @@ bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device)
             }
         }
     }
-        break;
+    break;
     default:
         break;
     }
@@ -884,7 +884,7 @@ bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device)
             }
         }
     }
-        break;
+    break;
     default:
         break;
     }
@@ -944,7 +944,7 @@ eReturnValues ata_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint
         ret = ata_Read_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
     }
     if (SUCCESS == ret)//don't try the read if the read verify fails
-    {   
+    {
         if (device->drive_info.ata_Options.fourtyEightBitAddressFeatureSetSupported)
         {
             //use 48bit commands by default
@@ -1056,7 +1056,7 @@ eReturnValues ata_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint
                                 }
                             }
                         }
-                    }                    
+                    }
                 }
             }
         }
@@ -1280,7 +1280,7 @@ eReturnValues ata_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uin
                     else
                     {
                         //word84 bit6 or word87 bit6
-                        if (forceUnitAccess && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT6) 
+                        if (forceUnitAccess && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT6)
                             || (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT6)))
                         {
                             writeDMAFUA = true;
@@ -1472,7 +1472,7 @@ eReturnValues scsi_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uin
         }
         fua = device->drive_info.dpoFUA;
     }
-    if(SUCCESS == ret)
+    if (SUCCESS == ret)
     {
         if (device->drive_info.passThroughHacks.scsiHacks.readWrite.available)
         {

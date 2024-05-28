@@ -123,7 +123,7 @@ eReturnValues build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthrough
 eReturnValues get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet)
 {
     eReturnValues ret = SUCCESS;
-    if(commandRet == OS_PASSTHROUGH_FAILURE)
+    if (commandRet == OS_PASSTHROUGH_FAILURE)
     {
         return commandRet;
     }

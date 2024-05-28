@@ -130,9 +130,9 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx);
 // \fn print_bus_type (BYTE type)
 // \nbrief Funtion to print in human readable format the BusType of a device
 // \param BYTE which is STORAGE_BUS_TYPE windows enum
-static void print_bus_type( BYTE type );
+static void print_bus_type(BYTE type);
 
-void print_bus_type( BYTE type )
+void print_bus_type(BYTE type)
 {
     switch (type)
     {
@@ -430,7 +430,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
         }
         else if (cmRet == CR_INVALID_FLAG)
 #else 
-        if(cmRet == CR_SUCCESS)
+        if (cmRet == CR_SUCCESS)
 #endif //WINVER > SEA_WIN32_WINNT_VISTA
         {
             //older OS? Try the legacy method which should work for Win2000+
@@ -455,7 +455,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                     else
                     {
                         ret = MEMORY_FAILURE;
-                    }                    
+                    }
                 }
             }
             usbcmRet = CM_Get_Device_ID_List_Size(&usbIdListLen, usbFilter, filterFlags);
@@ -533,7 +533,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                     if (CR_SUCCESS == cmRet && interfaceListSize > 0)
                     {
                         TCHAR *interfaceList = C_CAST(TCHAR*, calloc(interfaceListSize, sizeof(TCHAR)));
-                        if(interfaceList)
+                        if (interfaceList)
                         {
                             cmRet = CM_Get_Device_Interface_List(&classGUID, deviceID, interfaceList, interfaceListSize, CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
                             if (CR_SUCCESS == cmRet)
@@ -572,7 +572,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                     if (CR_SUCCESS == cmRet)
                                                     {
                                                         TCHAR *parentBuffer = C_CAST(TCHAR*, calloc(parentLen, sizeof(TCHAR)));
-                                                        if(parentBuffer)
+                                                        if (parentBuffer)
                                                         {
                                                             cmRet = CM_Get_Device_ID(parentInst, parentBuffer, parentLen, 0);
                                                             if (CR_SUCCESS == cmRet)
@@ -1902,7 +1902,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                                             FILETIME *fileTime = C_CAST(FILETIME*, propertyBuf);
                                                                                             SYSTEMTIME systemTime;
                                                                                             TIME_ZONE_INFORMATION currentTimeZone;
-                                                                                            //DWORD tzret = 
+                                                                                            //DWORD tzret =
                                                                                             GetTimeZoneInformation(&currentTimeZone);//need this to adjust the converted time below. note, return value specifies std vs dst time (1 vs 2). 0 is unknown.
                                                                                             if (FileTimeToSystemTime(fileTime, &systemTime))
                                                                                             {
@@ -2626,7 +2626,7 @@ static bool is_Activate_Command(ScsiIoCtx* scsiIoCtx)
     return isActivate;
 }
 
-static int dummy_Up_SCSI_Sense_FWDL(ScsiIoCtx* scsiIoCtx, ULONG returnCode)
+static eReturnValues dummy_Up_SCSI_Sense_FWDL(ScsiIoCtx* scsiIoCtx, ULONG returnCode)
 {
     eReturnValues ret = SUCCESS;//assume this for anything where we could generate a usable status and a few other cases
     uint8_t senseKey = SENSE_KEY_NO_ERROR, asc = 0, ascq = 0;//no fru since that is vendor unique info that we have no way of dummying up - TJE
@@ -2831,7 +2831,7 @@ static int dummy_Up_SCSI_Sense_FWDL(ScsiIoCtx* scsiIoCtx, ULONG returnCode)
     return ret;
 }
 
-static int win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
+static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = NOT_SUPPORTED;
 #if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
@@ -2869,7 +2869,7 @@ static int win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             else
             {
                 safe_Free(firmwareDownload)
-                    return BAD_PARAMETER;
+                return BAD_PARAMETER;
             }
 
 
@@ -2958,7 +2958,7 @@ static int win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-static int win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
+static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = NOT_SUPPORTED;
     //Only one version of activate structure - TJE
@@ -2971,7 +2971,7 @@ static int win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
         {
             uint32_t returnCode = 0;
             uint32_t fwdlFlags = 0;//start with this, but may need other flags
-            
+
             //Setup input values
             firmwareActivate->Version = STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION;
             firmwareActivate->Size = sizeof(STORAGE_FIRMWARE_ACTIVATE);
@@ -3003,7 +3003,7 @@ static int win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-static int windows_Firmware_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
+static eReturnValues windows_Firmware_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
 {
     if (!scsiIoCtx)
     {
@@ -3020,7 +3020,7 @@ static int windows_Firmware_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
 }
 
 //TODO: This may need adjusting with bus trace help in the future, but for now this is a best guess from what info we have.-TJE
-static int dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG returnCode)
+static eReturnValues dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG returnCode)
 {
     eReturnValues ret = SUCCESS;//assume this for anything where we could generate a usable status and a few other cases
     switch (returnCode)
@@ -3210,7 +3210,7 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
                 //Activate action 0 & 1 say to replace a firmware image in a specified slot (and to or not to activate).
                 fwdlFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
             }
-                
+
             //Issue the minport IOCTL
             ret = send_Win_Firmware_Miniport_Command(nvmeIoCtx->device->os_info.fd, nvmeIoCtx->device->deviceVerbosity, firmwareActivate, firmwareActivateLength, nvmeIoCtx->timeout, FIRMWARE_FUNCTION_ACTIVATE, fwdlFlags, &returnCode, &nvmeIoCtx->device->os_info.last_error, &nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds);
             if (ret == SUCCESS)
@@ -4095,12 +4095,12 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                                                 device->os_info.fileSystemInfo.isSystemDisk = true;
                                             }
                                         }
-                                        #if defined (WIN_DEBUG)
+#if defined (WIN_DEBUG)
                                         else
                                         {
                                             printf("\nWARNING! Asked for system directory, but got a zero length string! Unable to detect if this is a drive with a system folder!\n");
                                         }
-                                        #endif //WIN_DEBUG
+#endif //WIN_DEBUG
                                     }
                                 }
                             }
@@ -4121,7 +4121,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
 
         // Lets get the SCSI address
         win_Get_SCSI_Address(device->os_info.fd, &device->os_info.scsi_addr);
-        
+
 #if defined (WIN_DEBUG)
         printf("WIN: det adapter descriptor\n");
 #endif //WIN_DEBUG
@@ -4157,11 +4157,11 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
             printf("WIN: get device descriptor\n");
 #endif //WIN_DEBUG
             win_ret = win_Get_Device_Descriptor(device->os_info.fd, &device_desc);
-            if(win_ret == SUCCESS)
+            if (win_ret == SUCCESS)
             {
                 bool checkForCSMI = false;
                 bool checkForNVMe = false;
-                int fwdlResult = NOT_SUPPORTED;
+                eReturnValues fwdlResult = NOT_SUPPORTED;
 
                 //save the bus types to the tDevice struct since they may be helpful in certain debug scenarios
                 device->os_info.adapterDescBusType = adapter_desc->BusType;
@@ -4190,11 +4190,11 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                 M_USE_UNUSED(fwdlResult);
                 device->os_info.fwdlIOsupport.fwdlIOSupported = false;//this API is not available before Windows 10
 #endif
-                #if defined (WIN_DEBUG)
+#if defined (WIN_DEBUG)
                 printf("Drive BusType: ");
                 print_bus_type(device_desc->BusType);
                 printf(" \n");
-                #endif //WIN_DEBUG
+#endif //WIN_DEBUG
 
                 if (device_desc->BusType == BusTypeUnknown)//Add other device types that can't be handled with other methods of SCSI or ATA passthrough among other options below.
                 {
@@ -4290,7 +4290,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
 #if defined (ENABLE_OFNVME) || defined (ENABLE_INTEL_RST)
                             //if defined hell since we can flag these interfaces on and off
                             bool foundNVMePassthrough = false;
-    #if defined (ENABLE_OFNVME)
+#if defined (ENABLE_OFNVME)
 #if defined (WIN_DEBUG)
                             printf("WIN: checking for open fabrics NVMe IOCTL\n");
 #endif //WIN_DEBUG
@@ -4323,8 +4323,8 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                                 printf("WIN: open fabrics NVMe supported\n");
 #endif //WIN_DEBUG
                             }
-    #endif //ENABLE_OFNVME
-    #if defined (ENABLE_INTEL_RST)
+#endif //ENABLE_OFNVME
+#if defined (ENABLE_INTEL_RST)
                             //TODO: else if(/*check for Intel RST CSMI support*/)
 #if defined (WIN_DEBUG)
                             printf("WIN: Checking for Intel CSMI + RST NVMe support\n");
@@ -4340,8 +4340,8 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                                 printf("WIN: Intel CSMI + NVMe supported\n");
 #endif //WIN_DEBUG
                             }
-    #endif//ENABLE_INTEL_RST
-                            if(!foundNVMePassthrough)
+#endif//ENABLE_INTEL_RST
+                            if (!foundNVMePassthrough)
 #endif //ENABLE_OFNVME || ENABLE_INTEL_RST
                             {
 #if defined (WIN_DEBUG)
@@ -4610,7 +4610,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
 #if defined (WIN_DEBUG)
                     printf("WIN: Additional CSMI check\n");
 #endif //WIN_DEBUG
-                    if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE  || SUCCESS == open_SCSI_SRB_Handle(device))
+                    if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE || SUCCESS == open_SCSI_SRB_Handle(device))
                     {
 #if defined (WIN_DEBUG)
                         printf("WIN: Looking for CSMI IO support\n");
@@ -4978,7 +4978,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 }
             }
         }
-        
+
 #if defined (ENABLE_CSMI)
         if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))
         {
@@ -4993,7 +4993,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 }
             }
         }
-        else if(VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+        else if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
         {
             printf("CSMI Scan skipped due to flag\n");
         }
@@ -5038,7 +5038,7 @@ typedef struct _scsiPassThroughEXIOStruct
 } scsiPassThroughEXIOStruct, *ptrSCSIPassThroughEXIOStruct;
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-static int convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx, ptrSCSIPassThroughEXIOStruct psptd)
+static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx, ptrSCSIPassThroughEXIOStruct psptd)
 {
     eReturnValues ret = SUCCESS;
     memset(&psptd->scsiPassThroughEX, 0, sizeof(SCSI_PASS_THROUGH_EX));
@@ -5120,9 +5120,9 @@ static int convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx, ptrSCS
 
 static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
 {
-    int           ret = FAILURE;
-    BOOL          success = FALSE;
-    ULONG         returned_data = 0;
+    eReturnValues ret = FAILURE;
+    BOOL success = FALSE;
+    ULONG returned_data = 0;
     ptrSCSIPassThroughEXIOStruct sptdioEx = C_CAST(ptrSCSIPassThroughEXIOStruct, malloc(sizeof(scsiPassThroughEXIOStruct)));
     if (!sptdioEx)
     {
@@ -5245,7 +5245,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-static int convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx, ptrSCSIPassThroughEXIOStruct psptd, uint8_t *alignedPointer)
+static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx, ptrSCSIPassThroughEXIOStruct psptd, uint8_t *alignedPointer)
 {
     eReturnValues ret = SUCCESS;
     memset(&psptd->scsiPassThroughEXDirect, 0, sizeof(SCSI_PASS_THROUGH_DIRECT_EX));
@@ -5327,9 +5327,9 @@ static int convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx,
 
 static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
 {
-    int           ret = FAILURE;
-    BOOL          success = FALSE;
-    ULONG         returned_data = 0;
+    eReturnValues ret = FAILURE;
+    BOOL success = FALSE;
+    ULONG returned_data = 0;
     //size_t scsiPTIoStructSize = sizeof(scsiPassThroughEXIOStruct);
     ptrSCSIPassThroughEXIOStruct sptdio = C_CAST(ptrSCSIPassThroughEXIOStruct, malloc(sizeof(scsiPassThroughEXIOStruct)));//add cdb and data length so that the memory allocated correctly!
     if (!sptdio)
@@ -7583,7 +7583,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     if (!smartIOout)
     {
         safe_Free(smartIOin)
-        //something went really wrong...
+        //something went really wrong
         return MEMORY_FAILURE;
     }
     seatimer_t commandTimer;
@@ -10085,7 +10085,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-static int win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCtx* nvmeIoCtx)
+static eReturnValues win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = SUCCESS;
     //return invalid namespace or format if NSID >= FFFFFFFEh or FFFFFFFFh
@@ -10162,7 +10162,7 @@ static int win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCtx* nvmeIoC
 
 static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
-    int     ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     uint8_t cnsValue = M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);
     if (cnsValue == 2)
     {
@@ -10347,11 +10347,11 @@ typedef union _MSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4 {
 
 static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
-    int32_t returnValue = SUCCESS;
-    BOOL    result;
-    PVOID   buffer = NULL;
-    ULONG   bufferLength = 0;
-    ULONG   returnedLength = 0;
+    eReturnValues returnValue = SUCCESS;
+    BOOL result;
+    PVOID buffer = NULL;
+    ULONG bufferLength = 0;
+    ULONG returnedLength = 0;
 
     PSTORAGE_PROPERTY_QUERY query = NULL;
     PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
@@ -10386,7 +10386,7 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
     protocolData->DataType = NVMeDataTypeLogPage;
     protocolData->ProtocolDataRequestValue = M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw10);//log id
     protocolData->ProtocolDataRequestSubValue = nvmeIoCtx->cmd.adminCmd.cdw12;//offset lower 32 bits
-    
+
 #if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
     //20348 gives suv value 4 for the other bit field values
     protocolData->ProtocolDataRequestSubValue2 = nvmeIoCtx->cmd.adminCmd.cdw13;//offset higher 32 bits
@@ -10458,9 +10458,9 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
         if ((protocolDataDescr->Version != sizeof(STORAGE_PROTOCOL_DATA_DESCRIPTOR)) ||
             (protocolDataDescr->Size != sizeof(STORAGE_PROTOCOL_DATA_DESCRIPTOR)))
         {
-            #if defined (_DEBUG)
+#if defined (_DEBUG)
             printf("%s: Error Log - data descriptor header not valid\n", __FUNCTION__);
-            #endif
+#endif
             returnValue = OS_PASSTHROUGH_FAILURE;
         }
 
@@ -10469,9 +10469,9 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
         if ((protocolData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA)) ||
             (protocolData->ProtocolDataLength < nvmeIoCtx->dataSize))
         {
-            #if defined (_DEBUG)
+#if defined (_DEBUG)
             printf("%s: Error Log - ProtocolData Offset/Length not valid\n", __FUNCTION__);
-            #endif
+#endif
             returnValue = OS_PASSTHROUGH_FAILURE;
         }
         uint8_t* logData = C_CAST(uint8_t*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
@@ -10490,11 +10490,11 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 
 static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
-    int32_t returnValue = SUCCESS;
-    BOOL    result;
-    PVOID   buffer = NULL;
-    ULONG   bufferLength = 0;
-    ULONG   returnedLength = 0;
+    eReturnValues returnValue = SUCCESS;
+    BOOL result;
+    PVOID buffer = NULL;
+    ULONG bufferLength = 0;
+    ULONG returnedLength = 0;
 
     PSTORAGE_PROPERTY_QUERY query = NULL;
     PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
@@ -10622,8 +10622,8 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoC
     }
     downloadActivate.Slot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
 #if defined (_DEBUG)
-    printf("%s: downloadActivate->Version=%ld\n\t->Size=%ld\n\t->Flags=0x%lX\n\t->Slot=%d\n",\
-        __FUNCTION__, downloadActivate.Version,downloadActivate.Size, downloadActivate.Flags, downloadActivate.Slot);
+    printf("%s: downloadActivate->Version=%ld\n\t->Size=%ld\n\t->Flags=0x%lX\n\t->Slot=%d\n", \
+        __FUNCTION__, downloadActivate.Version, downloadActivate.Size, downloadActivate.Flags, downloadActivate.Slot);
 #endif
     DWORD returned_data = 0;
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -10830,10 +10830,10 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *n
     return ret;
 }
 
-static int win10_Translate_Security_Send(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Security_Send(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     //Windows API call does not exist...need to issue a SCSI IO and let the driver translate it for us...how silly
     if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 0) == 0)//check that the nvme specific field isn't set since we can't issue that
     {
@@ -10847,10 +10847,10 @@ static int win10_Translate_Security_Send(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-static int win10_Translate_Security_Receive(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Security_Receive(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     //Windows API call does not exist...need to issue a SCSI IO and let the driver translate it for us...how silly
     if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 0) == 0)//check that the nvme specific field isn't set since we can't issue that
     {
@@ -10864,10 +10864,10 @@ static int win10_Translate_Security_Receive(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-static int win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     bool dulbe = nvmeIoCtx->cmd.adminCmd.cdw11 & BIT16;
     uint16_t nvmTimeLimitedErrorRecovery = M_BytesTo2ByteValue(M_Byte1(nvmeIoCtx->cmd.adminCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.adminCmd.cdw11));
     nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
@@ -10897,10 +10897,10 @@ static int win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-static int win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     bool wce = nvmeIoCtx->cmd.adminCmd.cdw11 & BIT0;
     nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
     if (!(nvmeIoCtx->cmd.adminCmd.cdw11 >> 31))//make sure unsupported fields aren't set!!!
@@ -10938,10 +10938,10 @@ static int win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-static int win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
     uint8_t workloadHint = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 7, 5);
     uint8_t powerState = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 4, 0);
@@ -11515,10 +11515,10 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
 //Also, microsoft updated some online documentation to show this and it clarified that the sanitize CDB issues the sanitize command.
 //It is possible that some earlier version of Windows 10 supported format translation or handled sanitize differently, but that
 //information is not available.
-static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     uint32_t reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
     uint8_t secureEraseSettings = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9);
     bool pil = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
@@ -11637,16 +11637,16 @@ static int win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
 }
 #endif //ENABLE_TRANSLATE_FORMAT
 
-static int win10_Translate_Write_Uncorrectable(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Write_Uncorrectable(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     uint64_t totalCommandTime = 0;
     nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
     uint64_t lba = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
     for (uint16_t iter = 0; iter < (M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1); ++iter)//+1 because nvme uses a zero based range value
     {
-        int individualCommandRet = scsi_Write_Long_16(nvmeIoCtx->device, true, false, false, lba + iter, 0, NULL);
+        eReturnValues individualCommandRet = scsi_Write_Long_16(nvmeIoCtx->device, true, false, false, lba + iter, 0, NULL);
         if (individualCommandRet != SUCCESS)
         {
             //This is making sure we don't have a bad command followed by a good command, then missing a bad status code
@@ -11659,10 +11659,10 @@ static int win10_Translate_Write_Uncorrectable(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-static int win10_Translate_Flush(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Flush(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eReturnValues inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     //TODO: should we do this or should we send a SCSI Synchronize Cache command to be translated?
     //ret = os_Flush(nvmeIoCtx->device);
     nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
@@ -11672,10 +11672,10 @@ static int win10_Translate_Flush(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-static int win10_Translate_Read(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Read(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI read command or a simple os_Read
     //extract fields from NVMe context, then see if we can put them into a compatible SCSI command
     uint64_t startingLBA = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
@@ -11744,10 +11744,10 @@ static int win10_Translate_Read(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-static int win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI write command or a simple os_Write
     //extract fields from NVMe context, then see if we can put them into a compatible SCSI command
     uint64_t startingLBA = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
@@ -11819,10 +11819,10 @@ static int win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
 }
 
 //MSFT documentation does not show this translation as available. Code left here in case someone wants to test it in the future.
-//static int win10_Translate_Compare(nvmeCmdCtx *nvmeIoCtx)
+//static eReturnValues win10_Translate_Compare(nvmeCmdCtx *nvmeIoCtx)
 //{
 //    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
 //    //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI verify command or a simple os_Verify
 //    //extract fields from NVMe context, then see if we can put them into a compatible SCSI command
 //    uint64_t startingLBA = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
@@ -11884,10 +11884,10 @@ static int win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
 //uncomment this to enable returning a not supported value when a context attribute is set
 //#define WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
 
-static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
+static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI unmap command or
     //FSCTL_FILE_LEVEL_TRIM (and maybe also FSCTL_ALLOW_EXTENDED_DASD_IO)
     //NOTE: Using SCSI Unmap command - TJE
@@ -11984,10 +11984,10 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 }
 
 //These commands are not supported VIA SCSI translation. There are however other Windows IOCTLs that may work
-//static int win10_Translate_Reservation_Register(nvmeCmdCtx *nvmeIoCtx)
+//static eReturnValues win10_Translate_Reservation_Register(nvmeCmdCtx *nvmeIoCtx)
 //{
 //    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
 //    //Command inputs
 //    uint8_t cptpl = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 31, 30);
 //    bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
@@ -12065,10 +12065,10 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 //    return ret;
 //}
 //
-//static int win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
+//static eReturnValues win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
 //{
 //    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
 //    bool issueSCSICommand = false;
 //    //command bytes
 //    uint32_t numberOfDwords = nvmeIoCtx->cmd.nvmCmd.cdw10 + 1;
@@ -12084,10 +12084,10 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 //    return ret;
 //}
 //
-//static int win10_Translate_Reservation_Acquire(nvmeCmdCtx *nvmeIoCtx)
+//static eReturnValues win10_Translate_Reservation_Acquire(nvmeCmdCtx *nvmeIoCtx)
 //{
 //    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
 //    //Command inputs
 //    uint8_t rtype = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 15, 8);
 //    bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
@@ -12169,10 +12169,10 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 //    return ret;
 //}
 //
-//static int win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
+//static eReturnValues win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
 //{
 //    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-//    int inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+//    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
 //    //Command inputs
 //    uint8_t rtype = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 15, 8);
 //    bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
@@ -12245,11 +12245,11 @@ static int win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 //Note: Any odd parameters like a change in TFRs from the spec will not work here.
 eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx)
 {
-    int32_t returnValue = SUCCESS;
-    BOOL    result;
-    PVOID   buffer = NULL;
-    ULONG   bufferLength = 0;
-    ULONG   returnedLength = 0;
+    eReturnValues returnValue = SUCCESS;
+    BOOL result;
+    PVOID buffer = NULL;
+    ULONG bufferLength = 0;
+    ULONG returnedLength = 0;
 
     PSTORAGE_PROPERTY_QUERY query = NULL;
     PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
@@ -12352,11 +12352,11 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx)
 
 eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
 {
-    int32_t returnValue = SUCCESS;
-    BOOL    result;
-    PVOID   buffer = NULL;
-    ULONG   bufferLength = 0;
-    ULONG   returnedLength = 0;
+    eReturnValues returnValue = SUCCESS;
+    BOOL result;
+    PVOID buffer = NULL;
+    ULONG bufferLength = 0;
+    ULONG returnedLength = 0;
 
     PSTORAGE_PROPERTY_QUERY query = NULL;
     PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
@@ -12485,8 +12485,8 @@ static eReturnValues send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVME_ADMIN_CMD_GET_LOG_PAGE:
             //Notes about telemetry log:
             /*
-            Supported through IOCTL_SCSI_PASS_THROUGH using command SCSIOP_READ_DATA_BUFF16 with buffer mode as READ_BUFFER_MODE_ERROR_HISTORY. 
-            Also available through StorageAdapterProtocolSpecificProperty/StorageDeviceProtocolSpecificProperty from IOCTL_STORAGE_QUERY_PROPERTY. 
+            Supported through IOCTL_SCSI_PASS_THROUGH using command SCSIOP_READ_DATA_BUFF16 with buffer mode as READ_BUFFER_MODE_ERROR_HISTORY.
+            Also available through StorageAdapterProtocolSpecificProperty/StorageDeviceProtocolSpecificProperty from IOCTL_STORAGE_QUERY_PROPERTY.
             For host telemetry, this is also available through IOCTL_STORAGE_GET_DEVICE_INTERNAL_LOG.
             */
             //TODO: Since the storage query property doesn't allow pulling in segments today, we may want to try SCSI translation using read buffer 16. Will need to figure out buffer ID, but this should be doable.

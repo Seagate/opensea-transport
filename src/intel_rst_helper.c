@@ -513,7 +513,7 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx *scsiIoCtx, bool *isActivate)
             }
         }
     }
-    else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD|| scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
+    else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
     {
         if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
         {
@@ -609,8 +609,8 @@ eReturnValues send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-    //NOTE: This function will handle calling appropriate NVMe firmware update function as well
-    //NOTE2: This will not issue whatever command you want. Only certain commands are supported by the driver. This function will attempt any command given in case driver updates allow other commands in the future.
+//NOTE: This function will handle calling appropriate NVMe firmware update function as well
+//NOTE2: This will not issue whatever command you want. Only certain commands are supported by the driver. This function will attempt any command given in case driver updates allow other commands in the future.
 static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
@@ -787,7 +787,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                 print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
                 print_Intel_SRB_Status(nvmPassthroughCommand->Header.ReturnCode);
             }
-            
+
             //set command time
             nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
             safe_Free_aligned(nvmPassthroughCommand)

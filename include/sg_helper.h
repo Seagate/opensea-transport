@@ -303,6 +303,6 @@ OPENSEA_TRANSPORT_API eReturnValues os_Lock_Device(tDevice *device);
 
     OPENSEA_TRANSPORT_API eReturnValues os_Erase_Boot_Sectors(tDevice* device);
 
-    #if defined (__cplusplus)
+#if defined (__cplusplus)
 }
-    #endif
+#endif

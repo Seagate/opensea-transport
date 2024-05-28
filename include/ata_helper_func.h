@@ -556,7 +556,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    uint16_t ata_Is_Extended_Power_Conditions_Feature_Supported( uint16_t *pIdentify );
+    uint16_t ata_Is_Extended_Power_Conditions_Feature_Supported(uint16_t *pIdentify);
 
     //-----------------------------------------------------------------------------
     //
@@ -571,7 +571,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    uint16_t ata_Is_One_Extended_Power_Conditions_Feature_Supported( uint16_t *pIdentify );
+    uint16_t ata_Is_One_Extended_Power_Conditions_Feature_Supported(uint16_t *pIdentify);
 
     //-----------------------------------------------------------------------------
     //
@@ -2016,7 +2016,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API bool is_Checksum_Valid(uint8_t *ptrData, uint32_t dataSize, uint32_t *firstInvalidSector);
-    
+
     //-----------------------------------------------------------------------------
     //
     //  set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
@@ -2146,6 +2146,6 @@ extern "C"
 
 
 
-    #if defined (__cplusplus)
+#if defined (__cplusplus)
 }
-    #endif
+#endif

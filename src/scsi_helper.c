@@ -1006,7 +1006,7 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey
 {
     eReturnValues ret = UNKNOWN;//if this gets returned from this function, then something is not right...
     ascAscqRetDesc* asc_ascq_result = NULL;
-    ascAscqRetDesc asc_ascq_key = {asc, ascq, 0, 0};
+    ascAscqRetDesc asc_ascq_key = { asc, ascq, 0, 0 };
     //first check the senseKey
     senseKey = senseKey & 0x0F;//strip off bits that are not part of the sense key
     if (senseKey < sizeof(senseKeyRetDesc) / sizeof(senseKeyRetDesc[0]))
@@ -1075,7 +1075,7 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey
         asc_ascq_result = C_CAST(ascAscqRetDesc*, bsearch(
             &asc_ascq_key, ascAscqLookUp,
             sizeof(ascAscqLookUp) / sizeof(ascAscqLookUp[0]), sizeof(ascAscqLookUp[0]),
-            (int (*)(const void*, const void*))cmp_Asc_Ascq
+            (int(*)(const void*, const void*))cmp_Asc_Ascq
         ));
         if (asc_ascq_result)
         {
@@ -1970,7 +1970,7 @@ uint16_t get_Returned_Sense_Data_Length(uint8_t *pbuf)
         return 0;
     }
     uint8_t format = pbuf[0] & 0x7F; //Stripping the last bit so we just get the format
-        
+
     switch (format)
     {
     case SCSI_SENSE_NO_SENSE_DATA:
@@ -1990,7 +1990,7 @@ uint16_t get_Returned_Sense_Data_Length(uint8_t *pbuf)
 
 // \fn copy_Inquiry_Data(unsigned char * pbuf, driveInfo * info)
 // \brief copy in the necessary data to our struct from INQ data.
-void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
+void copy_Inquiry_Data(uint8_t *pbuf, driveInfo *info)
 {
     // \todo: Create a macro to get various stuff out of the inq buffer
     memcpy(info->T10_vendor_ident, &pbuf[8], INQ_DATA_T10_VENDOR_ID_LEN);
@@ -2030,11 +2030,11 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
 }
 
 // \brief copy the serial number off of 0x80 VPD page data.
-void copy_Serial_Number( uint8_t *pbuf, char *serialNumber )
+void copy_Serial_Number(uint8_t *pbuf, char *serialNumber)
 {
     uint16_t snLen = M_BytesTo2ByteValue(pbuf[2], pbuf[3]);
-    memcpy(serialNumber, &pbuf[4], M_Min(snLen,SERIAL_NUM_LEN));
-    serialNumber[M_Min(snLen,SERIAL_NUM_LEN)] = '\0';
+    memcpy(serialNumber, &pbuf[4], M_Min(snLen, SERIAL_NUM_LEN));
+    serialNumber[M_Min(snLen, SERIAL_NUM_LEN)] = '\0';
     for (uint16_t iter = 0; iter < SERIAL_NUM_LEN && iter < snLen; ++iter)
     {
         if (!is_ASCII(serialNumber[iter]) || !isprint(serialNumber[iter]))
@@ -2071,7 +2071,7 @@ void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlock
     }
 }
 
-eReturnValues check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
+eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice *device)
 {
     eReturnValues ret = FAILURE;
     bool issueSATIdentify = true;//default to ALWAYS reading this unless something else says not to. - TJE
@@ -2679,9 +2679,9 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
 eReturnValues fill_In_Device_Info(tDevice *device)
 {
     eReturnValues ret = FAILURE;
-    #ifdef _DEBUG
-    printf("%s: -->\n",__FUNCTION__);
-    #endif
+#ifdef _DEBUG
+    printf("%s: -->\n", __FUNCTION__);
+#endif
 
     bool mediumNotPresent = false;//assume medium is available until we find out otherwise.
     scsiStatus turStatus;
@@ -2867,7 +2867,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             {
                 device->drive_info.interface_type = USB_INTERFACE;
             }
-            
+
             //Only rely on this as a last resort. Try using version descriptors when possible
             //NOTE: This is different from SAS where the ID is in all CAPS, which makes this identification possible.
             //TODO: LaCie? Need to make sure this only catches USB and not something else like thunderbolt
@@ -2959,7 +2959,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
 
         //As per NVM Express SCSI Translation Reference. 
         //NOTE: Setting this type here allows us to skip sending some extra commands. (e.g. SAT compliant)
-        if (memcmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 )
+        if (memcmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0)
         {
             //DO NOT set the drive type to NVMe here. We need to treat it as a SCSI device since we can only issue SCSI translatable commands!!!
             //device->drive_info.drive_type  = NVME_DRIVE;
@@ -3006,12 +3006,12 @@ eReturnValues fill_In_Device_Info(tDevice *device)
 
         //If this is a suspected NVMe device, specifically ASMedia 236X chip, need to do an inquiry with EXACTLY 38bytes to check for a specific signature
         //This will check for some known outputs to know when to do the additional inquiry command for ASMedia detection. This may not catch everything. - TJE
-        if (!knownMemoryStickID && !device->drive_info.passThroughHacks.hacksSetByReportedID  && !(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+        if (!knownMemoryStickID && !device->drive_info.passThroughHacks.hacksSetByReportedID && !(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
             &&
-            (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0 
-            || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME")
-            || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
-            //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
+            (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0
+                || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME")
+                || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
+                //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
             && !hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...on the asmedia chips I have tested, hisup is zero
             && responseFormat >= INQ_RESPONSE_FMT_CURRENT //filter out any weird old drives with bizarre responses
             && inq_buf[4] == 0x47 //SNTL says 1F, but a couple of adapter I have sets 47h...using this for now to help filter the list
@@ -3068,7 +3068,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
 
         //Need to check version descriptors here since they may be useful below, but also because it can be used to help rule-out some USB to NVMe devices.
         bool satVersionDescriptorFound = false;
-        if(strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME") || strstr(device->drive_info.product_identification, "NVMe"))
+        if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME") || strstr(device->drive_info.product_identification, "NVMe"))
         {
             //This means we most likely have some sort of NVMe device, so SAT (ATA passthrough) makes no sense to check for.
             checkForSAT = false;
@@ -3129,7 +3129,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             if (checkForSAT && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON && (satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE || device->drive_info.interface_type == IDE_INTERFACE)
                 &&
                 (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
-               )
+                )
             {
                 ret = fill_In_ATA_Drive_Info(device);
                 if (ret != SUCCESS && checkJMicronNVMe)
@@ -3453,7 +3453,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 }
                 case ATA_INFORMATION: //use this to determine if it's SAT compliant
                 {
-                    if(device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
+                    if (device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
                     {
                         //printf("VPD pages, check SAT info\n");
                         //do not check the checkForSAT bool here. If we get here, then the device most likely reported support for it so it should be readable.
@@ -3584,12 +3584,12 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 }
             }
             safe_Free(supportedVPDPages)
-            if (!satVPDPageRead && !dummyUpVPDSupport)
-            {
-                //This device returned a list of pages already, so we know what it supports.
-                //Since we did not find it in it's list of supported pages, set this to skip trying to read SAT VPD since it is definitely not supported.
-                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
-            }
+                if (!satVPDPageRead && !dummyUpVPDSupport)
+                {
+                    //This device returned a list of pages already, so we know what it supports.
+                    //Since we did not find it in it's list of supported pages, set this to skip trying to read SAT VPD since it is definitely not supported.
+                    device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                }
         }
         else
         {
@@ -3683,12 +3683,12 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 }
             }
             safe_Free_aligned(readCapBuf)
-            if (device->drive_info.devicePhyBlockSize == 0)
-            {
-                //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
-                //This will help with old devices or those that don't support the read capacity 16 command or return other weird invalid data.
-                device->drive_info.devicePhyBlockSize = device->drive_info.deviceBlockSize;
-            }
+                if (device->drive_info.devicePhyBlockSize == 0)
+                {
+                    //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
+                    //This will help with old devices or those that don't support the read capacity 16 command or return other weird invalid data.
+                    device->drive_info.devicePhyBlockSize = device->drive_info.deviceBlockSize;
+                }
         }
 
         //NOTE: You would think that checking if physical and logical block sizes don't match you can filter NVMe (they are supposed to be the same in translation),
@@ -3697,7 +3697,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
         //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
         eReturnValues satCheck = FAILURE;
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
-        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
+        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE)
             && device->drive_info.media_type != MEDIA_UNKNOWN && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
         {
             satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
@@ -3734,7 +3734,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
             }
-            else if(checkJMicronNVMe)
+            else if (checkJMicronNVMe)
             {
                 device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
                 ret = scsiRet;//do not fail here since this should otherwise be treated as a SCSI drive
@@ -3755,13 +3755,13 @@ eReturnValues fill_In_Device_Info(tDevice *device)
     }
     safe_Free_aligned(inq_buf)
 
-    #ifdef _DEBUG
+#ifdef _DEBUG
     printf("\nscsi helper\n");
-    printf("Drive type: %d\n",device->drive_info.drive_type);
-    printf("Interface type: %d\n",device->drive_info.interface_type);
-    printf("Media type: %d\n",device->drive_info.media_type);
-    printf("%s: <--\n",__FUNCTION__);
-    #endif
+    printf("Drive type: %d\n", device->drive_info.drive_type);
+    printf("Interface type: %d\n", device->drive_info.interface_type);
+    printf("Media type: %d\n", device->drive_info.media_type);
+    printf("%s: <--\n", __FUNCTION__);
+#endif
     return ret;
 }
 
@@ -4407,7 +4407,7 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
     versionDescriptorResult = C_CAST(scsiVersionDescriptor*, bsearch(
         &versionDescriptorKey, scsiVersionDescriptorTable,
         sizeof(scsiVersionDescriptorTable) / sizeof(scsiVersionDescriptorTable[0]), sizeof(scsiVersionDescriptorTable[0]),
-        (int (*)(const void*, const void*))cmp_Version_Descriptor
+        (int(*)(const void*, const void*))cmp_Version_Descriptor
     ));
     if (versionDescriptorResult)
     {

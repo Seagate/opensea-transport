@@ -21,7 +21,7 @@
 extern "C"
 {
 #endif
-    
+
     //-----------------------------------------------------------------------------
     //
     //  get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode)

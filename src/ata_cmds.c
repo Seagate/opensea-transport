@@ -66,7 +66,7 @@ eReturnValues ata_Soft_Reset(tDevice *device)
     softReset.commandType = ATA_CMD_TYPE_TASKFILE;
     softReset.commandDirection = XFER_NO_DATA;
     softReset.ptrData = NULL;
-    
+
     ret = ata_Passthrough_Command(device, &softReset);
 
     return ret;
@@ -217,7 +217,7 @@ eReturnValues ata_Sanitize_Command(tDevice *device, eATASanitizeFeature sanitize
             break;
         }
     }
-    
+
     ret = ata_Passthrough_Command(device, &ataSanitizeCmd);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -363,7 +363,7 @@ eReturnValues ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pag
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
     if (!useDMA)
     {
-        ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO; 
+        ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
         ataCommandOptions.tfr.CommandStatus = ATA_READ_LOG_EXT;
     }
     else
@@ -488,7 +488,7 @@ eReturnValues ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pa
     ataCommandOptions.forceCheckConditionBit = forceRTFRs;
     if (!useDMA)
     {
-        ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO; 
+        ataCommandOptions.commadProtocol = ATA_PROTOCOL_PIO;
         ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LOG_EXT_CMD;
     }
     else
@@ -660,7 +660,7 @@ eReturnValues ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo,
     ataCommandOptions.tfr.LbaMid = ATA_SMART_SIG_MID;
     ataCommandOptions.tfr.LbaHi = ATA_SMART_SIG_HI;
 
-    if(ataCommandOptions.commadProtocol == ATA_PROTOCOL_NO_DATA)
+    if (ataCommandOptions.commadProtocol == ATA_PROTOCOL_NO_DATA)
     {
         ataCommandOptions.tfr.SectorCount = countReg;
     }
@@ -762,7 +762,7 @@ eReturnValues ata_SMART_Read_Log(tDevice *device, uint8_t logAddress, uint8_t *p
 }
 eReturnValues ata_SMART_Write_Log(tDevice *device, uint8_t logAddress, uint8_t *ptrData, uint32_t dataSize, bool forceRTFRs)
 {
-    return ata_SMART_Command(device,ATA_SMART_WRITE_LOG, logAddress, ptrData, dataSize, 15, forceRTFRs, 0);
+    return ata_SMART_Command(device, ATA_SMART_WRITE_LOG, logAddress, ptrData, dataSize, 15, forceRTFRs, 0);
 }
 
 eReturnValues ata_SMART_Offline(tDevice *device, uint8_t subcommand, uint32_t timeout)
@@ -830,7 +830,7 @@ eReturnValues ata_SMART_Save_Attributes(tDevice *device)
 
 eReturnValues ata_SMART_Attribute_Autosave(tDevice *device, bool enable)
 {
-    if(enable)
+    if (enable)
     {
         return ata_SMART_Command(device, ATA_SMART_SW_AUTOSAVE, 0, NULL, 0, 15, false, ATA_SMART_ATTRIBUTE_AUTOSAVE_ENABLE_SIG);
     }
@@ -1920,7 +1920,7 @@ eReturnValues ata_Read_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint
     ataCommandOptions.tfr.LbaMid = M_Byte1(LBA);
     ataCommandOptions.tfr.LbaHi = M_Byte2(LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(sectorCount);
-    
+
     if (extendedCmd)
     {
         ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
@@ -2241,7 +2241,7 @@ eReturnValues ata_Read_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID
     }
 
     ataCommandOptions.tfr.Feature48 = commandCCTL;
-    
+
     if (!ptrData)
     {
         return BAD_PARAMETER;
@@ -2370,7 +2370,7 @@ eReturnValues ata_Request_Sense_Data(tDevice *device, uint8_t *senseKey, uint8_t
     {
         return BAD_PARAMETER;
     }
-    
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Request Sense Data\n");
@@ -3492,7 +3492,7 @@ eReturnValues ata_NV_Cache_Feature(tDevice *device, eNVCacheFeatures feature, ui
         switch (feature)
         {
         case NV_SET_NV_CACHE_POWER_MODE:
-            print_Return_Enum("Non-Volatile Cache - Set NV Cache Power Mode",ret);
+            print_Return_Enum("Non-Volatile Cache - Set NV Cache Power Mode", ret);
             break;
         case NV_RETURN_FROM_NV_CACHE_POWER_MODE:
             print_Return_Enum("Non-Volatile Cache - Return from NV Cache Power Mode", ret);
@@ -3541,37 +3541,27 @@ eReturnValues ata_NV_Cache_Add_LBAs_To_Cache(tDevice *device, bool populateImmed
 
 eReturnValues ata_NV_Flush_NV_Cache(tDevice *device, uint32_t minNumberOfLogicalBlocks)
 {
-    eReturnValues ret = UNKNOWN;
-    ret = ata_NV_Cache_Feature(device, NV_FLUSH_NV_CACHE, 0, C_CAST(uint64_t, minNumberOfLogicalBlocks), NULL, 0);
-    return ret;
+    return ata_NV_Cache_Feature(device, NV_FLUSH_NV_CACHE, 0, C_CAST(uint64_t, minNumberOfLogicalBlocks), NULL, 0);
 }
 
 eReturnValues ata_NV_Cache_Disable(tDevice *device)
 {
-    eReturnValues ret = UNKNOWN;
-    ret = ata_NV_Cache_Feature(device, NV_CACHE_DISABLE, 0, 0, NULL, 0);
-    return ret;
+    return ata_NV_Cache_Feature(device, NV_CACHE_DISABLE, 0, 0, NULL, 0);
 }
 
 eReturnValues ata_NV_Cache_Enable(tDevice *device)
 {
-    eReturnValues ret = UNKNOWN;
-    ret = ata_NV_Cache_Feature(device, NV_CACHE_ENABLE, 0, 0, NULL, 0);
-    return ret;
+    return ata_NV_Cache_Feature(device, NV_CACHE_ENABLE, 0, 0, NULL, 0);
 }
 
 eReturnValues ata_NV_Query_Misses(tDevice *device, uint8_t *ptrData)
 {
-    eReturnValues ret = UNKNOWN;
-    ret = ata_NV_Cache_Feature(device, NV_QUERY_NV_CACHE_MISSES, 0x0001, 0, ptrData, 512);
-    return ret;
+    return ata_NV_Cache_Feature(device, NV_QUERY_NV_CACHE_MISSES, 0x0001, 0, ptrData, 512);
 }
 
 eReturnValues ata_NV_Query_Pinned_Set(tDevice *device, uint64_t dataBlockNumber, uint8_t *ptrData, uint32_t dataSize)
 {
-    eReturnValues ret = UNKNOWN;
-    ret = ata_NV_Cache_Feature(device, NV_QUERY_NV_CACHE_PINNED_SET, C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), dataBlockNumber, ptrData, dataSize);
-    return ret;
+    return ata_NV_Cache_Feature(device, NV_QUERY_NV_CACHE_PINNED_SET, C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), dataBlockNumber, ptrData, dataSize);
 }
 
 eReturnValues ata_NV_Remove_LBAs_From_Cache(tDevice *device, bool unpinAll, uint8_t *ptrData, uint32_t dataSize)
@@ -3592,6 +3582,7 @@ eReturnValues ata_NV_Remove_LBAs_From_Cache(tDevice *device, bool unpinAll, uint
 
     return ret;
 }
+
 eReturnValues ata_Set_Features(tDevice *device, uint8_t subcommand, uint8_t subcommandCountField, uint8_t subcommandLBALo, uint8_t subcommandLBAMid, uint16_t subcommandLBAHi)
 {
     eReturnValues ret = UNKNOWN;
@@ -4118,7 +4109,7 @@ eReturnValues ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t 
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
-    
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Zone Management Out", ret);
@@ -4150,7 +4141,6 @@ eReturnValues ata_Finish_Zone_Ext(tDevice *device, bool finishAll, uint64_t zone
         return ata_ZAC_Management_Out(device, ZM_ACTION_FINISH_ZONE, RESERVED, zoneCount, zoneID, 0, NULL, 0);
     }
 }
-
 
 eReturnValues ata_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID, uint16_t zoneCount)
 {
@@ -4422,12 +4412,12 @@ eReturnValues ata_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, ui
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    
+
     if (trim)
     {
         ataCommandOptions.tfr.ErrorFeature |= BIT0;
     }
-    
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Zeros Ext - LBA %" PRIu64 ", count %"PRIu16 " %s\n", lba, numberOfLogicalSectors, (trim ? "(TRIM)" : ""));
@@ -4578,8 +4568,8 @@ eReturnValues ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementI
     ataCommandOptions.tfr.LbaLow48 = M_Byte4(requestedMaxLBA);
     ataCommandOptions.tfr.LbaMid48 = M_Byte5(requestedMaxLBA);
     ataCommandOptions.tfr.LbaHi48 = M_Byte6(requestedMaxLBA);
-    
-    
+
+
     if (device->drive_info.ata_Options.isDevice1)
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
@@ -4770,7 +4760,6 @@ eReturnValues ata_Mutate_Ext(tDevice* device, bool requestMaximumAccessibleCapac
 /////////////////////////////////////////////
 /// Asynchronous Commands below this line ///
 /////////////////////////////////////////////
-
 eReturnValues ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/, uint16_t subCommandSpecificFeature /*bits 11:0*/, uint8_t subCommandSpecificCount, uint8_t ncqTag /*bits 5:0*/, uint64_t lba, uint32_t auxilary)
 {
     eReturnValues ret = UNKNOWN;
@@ -4847,7 +4836,6 @@ eReturnValues ata_NCQ_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors
 }
 
 //ncq zac management out
-
 eReturnValues ata_NCQ_Receive_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, uint16_t sectorCount /*ft*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint64_t lba, uint32_t auxilary, uint8_t *ptrData)
 {
     eReturnValues ret = UNKNOWN;
@@ -4910,7 +4898,6 @@ eReturnValues ata_NCQ_Read_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uint
 }
 
 //ncq ZAC management in
-
 eReturnValues ata_NCQ_Send_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bits 5:0*/, uint16_t sectorCount /*ft*/, uint8_t prio /*bits 1:0*/, uint8_t ncqTag, uint64_t lba, uint32_t auxilary, uint8_t *ptrData)
 {
     eReturnValues ret = UNKNOWN;
@@ -4984,7 +4971,6 @@ eReturnValues ata_NCQ_Write_Log_DMA_Ext(tDevice *device, uint8_t logAddress, uin
 }
 
 //ncq ZAC management out
-
 eReturnValues ata_NCQ_Read_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba, uint8_t *ptrData, uint16_t sectorCount, uint8_t prio, uint8_t ncqTag, uint8_t icc)
 {
     eReturnValues ret = UNKNOWN;

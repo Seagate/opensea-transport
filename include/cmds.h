@@ -534,6 +534,6 @@ extern "C"
 
     OPENSEA_TRANSPORT_API eReturnValues report_Zones(tDevice *device, eZoneReportingOptions reportingOptions, bool partial, uint64_t zoneLocator, uint8_t *ptrData, uint32_t dataSize);
 
-    #if defined (__cplusplus)
+#if defined (__cplusplus)
 }
-    #endif
+#endif

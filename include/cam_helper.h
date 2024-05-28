@@ -177,7 +177,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize);
+    eReturnValues pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -234,8 +234,8 @@ extern "C"
 
     OPENSEA_TRANSPORT_API eReturnValues os_Erase_Boot_Sectors(tDevice* device);
 
-    #if defined (__cplusplus)
+#if defined (__cplusplus)
 }
-    #endif
+#endif
 
 #endif
