@@ -166,7 +166,7 @@ static bool supports_CISS_IOCTLs(int fd)
 
 //creates /dev/sg? or /dev/cciss/c?d? or /dev/ciss/?
 //TODO: What should this look like for solaris/illumos?
-static bool create_OS_CISS_Handle_Name(char *input, char *osHandle)
+static bool create_OS_CISS_Handle_Name(const char *input, char *osHandle)
 {
     bool success = false;
     if (input)
@@ -182,11 +182,61 @@ static bool create_OS_CISS_Handle_Name(char *input, char *osHandle)
             //check for linux cciss handle: /dev/cciss/c?d?
             //in this case, the input should only be c?d?
             uint16_t controller = 0, device = 0;
-            int scanResult = sscanf(input, "c%" SCNu16 "d%" SCNu16, &controller, &device);
-            if (scanResult == 2)
+            //get handle values using strtoul
+            if (input[0] == 'c')
             {
-                snprintf(osHandle, OS_CISS_HANDLE_MAX_LENGTH, "/dev/cciss/%s", input);
-                success = true;
+                char* endptr = NULL;
+                char* str = C_CAST(char*, input) + 1;
+                unsigned long value = strtoul(input, &endptr, 10);
+                if (str == endptr)//this should not happen for this format
+                {
+                    success = false;
+                }
+                else if (value == ULONG_MAX && errno == ERANGE)
+                {
+                    success = false;
+                }
+                else if (value > UINT16_MAX)
+                {
+                    success = false;
+                }
+                else
+                {
+                    controller = C_CAST(uint16_t, value);
+                    if (endptr && endptr[0] == 'd')
+                    {
+                        str = endptr + 1;
+                        value = strtoul(input, &endptr, 10);
+                        if (str == endptr)//this should not happen for this format
+                        {
+                            success = false;
+                        }
+                        else if (value == ULONG_MAX && errno == ERANGE)
+                        {
+                            success = false;
+                        }
+                        else if (value > UINT16_MAX)
+                        {
+                            success = false;
+                        }
+                        else
+                        {
+                            device = C_CAST(uint16_t, value);
+                        }
+                    }
+                    else
+                    {
+                        success = false;
+                    }
+                }
+            }
+            else
+            {
+                success = false;
+            }
+            if (success)
+            {
+                snprintf(osHandle, OS_CISS_HANDLE_MAX_LENGTH, "/dev/cciss/c%" PRIu16 "d%" PRIu16 , controller, device);
             }
         }
 
@@ -207,7 +257,9 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
         {
             //starts with ciss, so now we should check to make sure we found everything else
             uint8_t counter = 0;
-            char *token = strtok(dup, ":");
+            char *saveptr = NULL;
+            rsize_t duplen = strlen(dup);
+            char *token = common_String_Token(dup, &duplen, ":", &saveptr);
             while (token && counter < 3)
             {
                 switch (counter)
@@ -224,15 +276,19 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
                 case 2://physical drive number
                     if (isdigit(token[0]))
                     {
-                        *physicalDriveNumber = C_CAST(uint16_t, atoi(token));
-                        ++parseCount;
+                        unsigned long temp = strtoul(token, NULL, 10);
+                        if (!(temp == ULONG_MAX && errno == ERANGE))
+                        {
+                            *physicalDriveNumber = C_CAST(uint16_t, temp);
+                            ++parseCount;
+                        }
                     }
                     break;
                 default:
                     break;
                 }
                 ++counter;
-                token = strtok(NULL, ":");
+                token = common_String_Token(NULL, &duplen, ":", &saveptr);
             }
         }
         safe_Free(dup);
