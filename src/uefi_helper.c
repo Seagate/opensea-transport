@@ -154,24 +154,428 @@ void close_NVMe_Passthru_Protocol_Ptr(EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL **pPass
     EFI_GUID nvmePtGUID = EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL_GUID;
     return close_Passthru_Protocol_Ptr(nvmePtGUID, C_CAST(void**, pPassthru), controllerID);
 }
-#endif
+#endif //!DISABLE_NVME_PASSTHROUGH
 
 //filename (handle) formats:
-//ata:<controllerID>:<port>:<portMultiplierPort>
-//scsi:<controllerID>:<target>:<lun>
-//scsiEx:<controllerID>:<target>:<lun>
-//nvme:<controllerID>:<namespaceID>
+//ata:<controllerID>:<port>:<portMultiplierPort> //16, 16, 16
+//scsi:<controllerID>:<target>:<lun> //16, 32, 64
+//scsiEx:<controllerID>:<target>:<lun> //16, 128, 64
+//nvme:<controllerID>:<namespaceID> //16, 32
+
+static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, uint16_t *port, uint16_t *pmport)
+{
+    bool success = false;
+    if (filename && controllerID && port && pmport)
+    {
+        char *dup = strdup(filename);//before tokenizing, always duplicate the original string since tokenizing will modify it.
+        if (dup)
+        {
+            #define MAX_ATA_HANDLE_FIELDS UINT8_C(4) //ata:<controllerID>:<port>:<portMultiplierPort>
+            uint8_t count = 0;
+            rsize_t duplen = strlen(dup);
+            char *saveptr = NULL;
+            char *token = common_String_Token(dup, &duplen, ":", &saveptr);
+            char *endptr = NULL;
+            unsigned long temp = 0;
+            success = true;//set to true so we can exit the loop quickly if an error is detected during parsing
+            while (success && token && count < MAX_ATA_HANDLE_FIELDS);
+            {
+                switch (count)
+                {
+                case 0://ata
+                    if (strcmp(token, "ata"))
+                    {
+                        success = false;
+                    }
+                    break;
+                case 1://controller ID
+                    endptr = NULL;
+                    temp = strtoul(token, &endptr, 16);
+                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
+                    {
+                        success = false;
+                    }
+                    else if (temp > UINT16_MAX)
+                    {
+                        success = false;
+                    }
+                    else
+                    {
+                        *controllerID = C_CAST(uint16_t, temp);
+                    }
+                    break;
+                case 2://port
+                    endptr = NULL;
+                    temp = strtoul(token, &endptr, 16);
+                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
+                    {
+                        success = false;
+                    }
+                    else if (temp > UINT16_MAX)
+                    {
+                        success = false;
+                    }
+                    else
+                    {
+                        *port = C_CAST(uint16_t, temp);
+                    }
+                    break;
+                case 3://portMP
+                    endptr = NULL;
+                    temp = strtoul(token, &endptr, 16);
+                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
+                    {
+                        success = false;
+                    }
+                    else if (temp > UINT16_MAX)
+                    {
+                        success = false;
+                    }
+                    else
+                    {
+                        *pmport = C_CAST(uint16_t, temp);
+                    }
+                    break;
+                }
+                ++count;
+                token = common_String_Token(NULL, &duplen ":", &saveptr);
+            }
+        }
+        safe_Free(dup)
+    }
+    return success;
+}
+
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+static bool get_NVMe_Device_Handle(const char* filename, uint16_t *controllerID, uint32_t *nsid)
+{
+    bool success = false;
+    if (filename && controllerID && nsid)
+    {
+        char *dup = strdup(filename);//before tokenizing, always duplicate the original string since tokenizing will modify it.
+        if (dup)
+        {
+            #define MAX_NVME_HANDLE_FIELDS UINT8_C(3) //nvme:<controllerID>:<namespaceID>
+            uint8_t count = 0;
+            char *saveptr = NULL;
+            rsize_t duplen = strlen(dup);
+            char *token = common_String_Token(dup, &duplen, ":", &saveptr);
+            char *endptr = NULL;
+            unsigned long temp = 0;
+            success = true;//set to true so we can exit the loop quickly if an error is detected during parsing
+            while (success && token && count < MAX_NVME_HANDLE_FIELDS);
+            {
+                switch (count)
+                {
+                case 0://nvme
+                    if (strcmp(token, "nvme"))
+                    {
+                        success = false;
+                    }
+                    break;
+                case 1://controller ID
+                    endptr = NULL;
+                    temp = strtoul(token, &endptr, 16);
+                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
+                    {
+                        success = false;
+                    }
+                    else if (temp > UINT16_MAX)
+                    {
+                        success = false;
+                    }
+                    else
+                    {
+                        *controllerID = C_CAST(uint16_t, temp);
+                    }
+                    break;
+                case 2://nsid
+                    endptr = NULL;
+                    temp = strtoul(token, &endptr, 16);
+                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
+                    {
+                        success = false;
+                    }
+                    else if (temp > UINT32_MAX)
+                    {
+                        success = false;
+                    }
+                    else
+                    {
+                        *nsid = C_CAST(uint32_t, temp);
+                    }
+                    break;
+                }
+                ++count;
+                token = common_String_Token(NULL, &duplen, ":", &saveptr);
+            }
+        }
+        safe_Free(dup)
+    }
+    return success;
+}
+#endif //!DISABLE_NVME_PASSTHROUGH
+
+static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID, uint32_t *target, uint64_t *lun)
+{
+    bool success = false;
+    if (filename && controllerID && target && lun)
+    {
+        char *dup = strdup(filename);//before tokenizing, always duplicate the original string since tokenizing will modify it.
+        if (dup)
+        {
+            #define MAX_SCSI_HANDLE_FIELDS UINT8_C(4) //scsi:<controllerID>:<target>:<lun>
+            uint8_t count = 0;
+            char *saveptr = NULL;
+            rsize_t duplen = strlen(dup);
+            char *token = common_String_Token(dup, &duplen, ":", &saveptr);
+            char *endptr = NULL;
+            unsigned long temp = 0;
+            unsigned long long btemp = 0;
+            success = true;//set to true so we can exit the loop quickly if an error is detected during parsing
+            while (success && token && count < MAX_NVME_HANDLE_FIELDS);
+            {
+                switch (count)
+                {
+                case 0://scsi
+                    if (strcmp(token, "scsi"))
+                    {
+                        success = false;
+                    }
+                    break;
+                case 1://controller ID
+                    endptr = NULL;
+                    temp = strtoul(token, &endptr, 16);
+                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
+                    {
+                        success = false;
+                    }
+                    else if (temp > UINT16_MAX)
+                    {
+                        success = false;
+                    }
+                    else
+                    {
+                        *controllerID = C_CAST(uint16_t, temp);
+                    }
+                    break;
+                case 2://target
+                    endptr = NULL;
+                    temp = strtoul(token, &endptr, 16);
+                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
+                    {
+                        success = false;
+                    }
+                    else if (temp > UINT32_MAX)
+                    {
+                        success = false;
+                    }
+                    else
+                    {
+                        *target = C_CAST(uint32_t, temp);
+                    }
+                    break;
+                case 3://lun
+                    endptr = NULL;
+                    btemp = strtoull(token, &endptr, 16);
+                    if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr))
+                    {
+                        success = false;
+                    }
+                    else if (btemp > UINT64_MAX)
+                    {
+                        success = false;
+                    }
+                    else
+                    {
+                        *target = C_CAST(uint64_t, btemp);
+                    }
+                    break;
+                }
+                ++count;
+                token = common_String_Token(NULL, &duplen, ":", &saveptr);
+            }
+        }
+        safe_Free(dup)
+    }
+    return success;
+}
+
+static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerID, uint8_t target[TARGET_MAX_BYTES], uint64_t *lun)
+{
+    bool success = false;
+    if (filename && controllerID && target && lun)
+    {
+        char *dup = strdup(filename);//before tokenizing, always duplicate the original string since tokenizing will modify it.
+        if (dup)
+        {
+            #define MAX_SCSI_HANDLE_FIELDS UINT8_C(4) //scsiEx:<controllerID>:<target>:<lun> //16, 128, 64
+            uint8_t count = 0;
+            char *saveptr = NULL;
+            rsize_t duplen = strlen(dup);
+            char *token = common_String_Token(dup, &duplen, ":", &saveptr);
+            char *endptr = NULL;
+            unsigned long temp = 0;
+            unsigned long long btemp = 0;
+            success = true;//set to true so we can exit the loop quickly if an error is detected during parsing
+            while (success && token && count < MAX_NVME_HANDLE_FIELDS);
+            {
+                switch (count)
+                {
+                case 0://scsi
+                    if (strcmp(token, "scsiEx"))
+                    {
+                        success = false;
+                    }
+                    break;
+                case 1://controller ID
+                    endptr = NULL;
+                    temp = strtoul(token, &endptr, 16);
+                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
+                    {
+                        success = false;
+                    }
+                    else if (temp > UINT16_MAX)
+                    {
+                        success = false;
+                    }
+                    else
+                    {
+                        *controllerID = C_CAST(uint16_t, temp);
+                    }
+                    break;
+                case 2://target //FIXME: Does not handle full 128bit targetID
+                    //first try seeing if the target is less than 128bits and a 64bit conversion will be enough
+                    endptr = NULL;
+                    btemp = strtoull(token, &endptr, 16);
+                    if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr))
+                    {
+                        //Either the target is a much larget value than 64bits can hold, or there was a parsing error.
+                        //First see if we can seperate it into two pieces to parse before deciding this was a failure
+                        char *targetstr = strdup(token);
+                        if (targetstr)
+                        {
+                            char * delimiter = strstr(targetstr, ":");
+                            if (delimiter)
+                            {
+                                //change the next : to a null so it's easier to break the string into two parts
+                                *delimiter = '\0';
+                                size_t halftargetlen = strlen(targetstr) / 2;
+                                if (strlen(targetstr) % 2)
+                                {
+                                    //this is supposed to be evenly divisible by 2 as we require the user to type the full string!
+                                    success = false;
+                                }
+                                else
+                                {
+                                    char *firstHalf = strndup(targetstr, halftargetlen);
+                                    char *secondHalf = strndup(targetstr + halftargetlen, halftargetlen);
+                                    if (firstHalf && secondHalf)
+                                    {
+                                        endptr = NULL;
+                                        btemp = strtoull(firstHalf, &endptr, 16);
+                                        if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && firstHalf == endptr))
+                                        {
+                                            success = false;
+                                        }
+                                        else
+                                        {
+                                            //set it into the buffer
+                                            target[0] = M_Byte7(btemp);
+                                            target[1] = M_Byte6(btemp);
+                                            target[2] = M_Byte5(btemp);
+                                            target[3] = M_Byte4(btemp);
+                                            target[4] = M_Byte3(btemp);
+                                            target[5] = M_Byte2(btemp);
+                                            target[6] = M_Byte1(btemp);
+                                            target[7] = M_Byte0(btemp);
+                                            endptr = NULL;
+                                            btemp = strtoull(secondHalf, &endptr, 16);
+                                            if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && secondHalf == endptr))
+                                            {
+                                                success = false;
+                                            }
+                                            else
+                                            {
+                                                target[8] = M_Byte7(btemp);
+                                                target[9] = M_Byte6(btemp);
+                                                target[10] = M_Byte5(btemp);
+                                                target[11] = M_Byte4(btemp);
+                                                target[12] = M_Byte3(btemp);
+                                                target[13] = M_Byte2(btemp);
+                                                target[14] = M_Byte1(btemp);
+                                                target[15] = M_Byte0(btemp);
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        success = false;
+                                    }
+                                    safe_Free(firstHalf)
+                                    safe_Free(secondHalf)
+                                }
+                            }
+                            else
+                            {
+                                //missing the next delimiter, which is not supposed to happen, so this is a failure
+                                success = false;
+                            }
+                            safe_Free(targetstr);
+                        }
+                        else
+                        {
+                            success = false;
+                        }
+                    }
+                    else
+                    {
+                        //value was less than 128bits and was parsed.
+                        //So set it into the buffer
+                        target[0] = M_Byte7(btemp);
+                        target[1] = M_Byte6(btemp);
+                        target[2] = M_Byte5(btemp);
+                        target[3] = M_Byte4(btemp);
+                        target[4] = M_Byte3(btemp);
+                        target[5] = M_Byte2(btemp);
+                        target[6] = M_Byte1(btemp);
+                        target[7] = M_Byte0(btemp);
+                    }
+                    break;
+                case 3://lun
+                    endptr = NULL;
+                    btemp = strtoull(token, &endptr, 16);
+                    if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr))
+                    {
+                        success = false;
+                    }
+                    else if (btemp > UINT64_MAX)
+                    {
+                        success = false;
+                    }
+                    else
+                    {
+                        *target = C_CAST(uint64_t, btemp);
+                    }
+                    break;
+                }
+                ++count;
+                token = common_String_Token(NULL, &duplen, ":", &saveptr);
+            }
+        }
+        safe_Free(dup)
+    }
+    return success;
+}
 
 eReturnValues get_Device(const char *filename, tDevice *device)
 {
-    char interface[10] = { 0 };
     snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
     snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", filename);
     device->os_info.osType = OS_UEFI;
-    if (strstr(filename, "ata"))
+    if (strstr(filename, "ata") == filename)//this can only be at the beginning of the string
     {
-        int res = sscanf(filename, "%3s:%" SCNx16 ":%" SCNx16 ":%" SCNx16, &interface, &device->os_info.controllerNum, & device->os_info.address.ata.port, &device->os_info.address.ata.portMultiplierPort);
-        if (res >= 4 && res != EOF)
+        if (get_ATA_Device_Handle(filename, &device->os_info.controllerNum, &device->os_info.address.ata.port, &device->os_info.address.ata.portMultiplierPort))
         {
             device->drive_info.interface_type = IDE_INTERFACE;
             device->drive_info.drive_type = ATA_DRIVE;
@@ -217,24 +621,13 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             return FAILURE;
         }
     }
-    else if (strstr(filename, "scsiEx"))
+    else if (strstr(filename, "scsiEx") == filename)
     {
-        char targetAsString[32] = { 0 };
-        int res = sscanf(filename, "%6s:%" SCNx16 ":%32s:%" SCNx64, &interface, &device->os_info.controllerNum, &targetAsString[0], &device->os_info.address.scsiEx.lun);
-        if(res >= 4 && res != EOF)
+        if (get_SCSIEX_Device_Handle(filename,  &device->os_info.controllerNum, device->os_info.address.scsiEx.target, &device->os_info.address.scsiEx.lun))
         {
-            int8_t targetIDIter = 15;
-            uint8_t targetStringIter = 0;
             device->drive_info.interface_type = SCSI_INTERFACE;
             device->drive_info.drive_type = SCSI_DRIVE;
             device->os_info.passthroughType = UEFI_PASSTHROUGH_SCSI_EXT;
-            //TODO: validate convertion of targetAsString to the array we need to save for the targetID
-            for(uint8_t iter = 0; iter < 32 && targetIDIter >= 0; iter += 2, --targetIDIter, ++targetStringIter)
-            {
-                char smallString[4] = { 0 };//need to break the string into two charaters at a time then convert that to a integer to save for target name
-                snprintf(smallString, 4, "%c%c", targetAsString[iter], targetAsString[iter + 1]);
-                device->os_info.address.scsiEx.target[targetStringIter] = strtol(smallString, NULL, 16 /*string is in base 16*/);
-            }
             EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
             if (SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
             {
@@ -259,10 +652,9 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             }
         }
     }
-    else if (strstr(filename,  "scsi"))
+    else if (strstr(filename,  "scsi") == filename)
     {
-        int res = sscanf(filename, "%4s:%" SCNx16 ":%" SCNx32 ":%" SCNx64, &interface, &device->os_info.controllerNum, &device->os_info.address.scsi.target, &device->os_info.address.scsi.lun);
-        if(res >=3 && res != EOF)
+        if (get_SCSI_Device_Handle(filename, &device->os_info.controllerNum, &device->os_info.address.scsi.target, &device->os_info.address.scsi.lun))
         {
             device->drive_info.interface_type = SCSI_INTERFACE;
             device->drive_info.drive_type = SCSI_DRIVE;
@@ -296,10 +688,9 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         }
     }
     #if !defined (DISABLE_NVME_PASSTHROUGH)
-    else if (strstr(filename, "nvme"))
+    else if (strstr(filename, "nvme") == filename)
     {
-        int res = sscanf(filename, "%4s:%" SCNx16 ":%" SCNx32, &interface, &device->os_info.controllerNum, &device->os_info.address.nvme.namespaceID);
-        if(res >=3 && res != EOF)
+        if (get_NVMe_Device_Handle(filename, &device->os_info.controllerNum, &device->os_info.address.nvme.namespaceID))
         {
             device->drive_info.interface_type = NVME_INTERFACE;
             device->drive_info.drive_type = NVME_DRIVE;
