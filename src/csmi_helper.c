@@ -3367,6 +3367,97 @@ eReturnValues close_CSMI_RAID_Device(tDevice *device)
     }
 }
 
+static bool get_CSMI_Handle_Fields_From_Input(const char* filename, bool* isIntelFormat, uint32_t* field1, uint32_t* field2, uint32_t* field3, uint32_t* field4, char** nixbasehandle)
+{
+    if (filename && isIntelFormat && field1 && field2 && field3 && field4)
+    {
+        char* end = NULL;
+        char* str = C_CAST(char*, filename);
+        if (strstr(filename, "csmi:") == str)//must begin with this
+        {
+            str += strlen("csmi:");
+            unsigned long value = strtoul(str, &end, 10);
+            if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+            {
+                return false;
+            }
+            else
+            {
+                *field1 = C_CAST(uint32_t, value);
+                end += 1;//move past next :
+                //now check if end ptr begins with N to detect if intel format or not
+                if (end[0] == 'N' && end[1] == ':')
+                {
+                    *isIntelFormat = true;
+                    end += 2;//move past : after N
+                }
+                else
+                {
+                    *isIntelFormat = false;
+                }
+                str = end;
+                value = strtoul(str, &end, 10);
+                if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+                {
+                    return false;
+                }
+                else
+                {
+                    *field2 = C_CAST(uint32_t, value);
+                    end += 1;//move past next :
+                    str = end;
+                    value = strtoul(str, &end, 10);
+                    if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        *field3 = C_CAST(uint32_t, value);
+                        end += 1;//move past next :
+                        str = end;
+                        value = strtoul(str, &end, 10);
+                        if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            *field4 = C_CAST(uint32_t, value);
+                            if (strcmp(end, "") == 0)
+                            {
+                                return true;
+                            }
+                            else
+                            {
+                                //Linux can have a string at the end.
+                                //If this parameter was provided, duplicate it to pass out
+                                if (nixbasehandle)
+                                {
+                                    *nixbasehandle = strdup(end);
+                                    return true;
+                                }
+                                else
+                                {
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
+}
+
 //TODO: Accept SASAddress and SASLun inputs
 eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
 {
@@ -3382,61 +3473,60 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
     }
     //set the handle name first...since the tokenizing below will break it apart
     memcpy(device->os_info.name, filename, strlen(filename));
-#if defined (_WIN32)
     bool intelNVMe = false;
-    uint32_t *intelPathID = &portID, *intelTargetID = &phyID, *intelLun = &lun;
-    //Check if it's Intel NVMe PTL format
-#if defined (CSMI_DEBUG)
-    printf("GRD: detecting CSMI handle format\n");
-#endif //CSMI_DEBUG
-    int sscanfret = sscanf(filename, "csmi:%" SCNu32 ":N:%" SCNu32 ":%" SCNu32 ":%" SCNu32 "", &controllerNum, intelPathID, intelTargetID, intelLun);
-    if (sscanfret != 0 && sscanfret != EOF && sscanfret == 4)
+    uint32_t* intelPathID = &portID, * intelTargetID = &phyID, * intelLun = &lun;
+    char* baseHandle = NULL;
+    if (!get_CSMI_Handle_Fields_From_Input(filename, &intelNVMe, &controllerNum, &portID, &phyID, &lun, &baseHandle))
     {
 #if defined (CSMI_DEBUG)
-        printf("GRD: Detected Intel NVMe CSMI format\n");
+        printf("GRD: Handle doesn't match std csmi format or Intel NVMe csmi format!\n");
 #endif //CSMI_DEBUG
-        intelNVMe = true;
-        snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,  CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, *intelPathID, *intelTargetID, *intelLun);
+        safe_Free(baseHandle)
+        return BAD_PARAMETER;
+    }
+#if defined (_WIN32)
+    if (baseHandle && strlen(baseHandle) > 0)
+    {
+        safe_Free(baseHandle)
+        return BAD_PARAMETER;
     }
     else
     {
-        sscanfret = sscanf(filename, "csmi:%" SCNu32 ":%" SCNu32 ":%" SCNu32 ":%" SCNu32 "", &controllerNum, &portID, &phyID, &lun);
-        if (sscanfret != 0 && sscanfret != EOF)
+        int snprintfres = 0;
+        if (intelNVMe)
         {
-#if defined (CSMI_DEBUG)
-            printf("GRD: Detected standard CSMI handle format\n");
-#endif //CSMI_DEBUG
-            if (portID == CSMI_SAS_IGNORE_PORT && phyID == CSMI_SAS_USE_PORT_IDENTIFIER)
-            {
-#if defined (CSMI_DEBUG)
-                printf("GRD: ERROR - portID and phyID both set to FFh, which is not allowed!\n");
-#endif //CSMI_DEBUG
-                return BAD_PARAMETER;
-            }
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, portID, phyID, lun);
+            snprintfres = snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, portID, phyID, lun);
         }
         else
         {
-#if defined (CSMI_DEBUG)
-            printf("GRD: Handle doesn't match std csmi format or Intel NVMe csmi format!\n");
-#endif //CSMI_DEBUG
+            snprintfres = snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum, portID, phyID, lun);
+        }
+        if (snprintfres < 1 || snprintfres > OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
+        {
+            safe_Free(baseHandle)
             return BAD_PARAMETER;
         }
     }
 #else //_WIN32
-    //TODO: handle non-Windows OS with CSMI
-    char nixBaseHandleBuf[10] = { 0 };
-    char *nixBaseHandle = &nixBaseHandleBuf[0];
-    int sscanfret = sscanf(filename, "csmi:%" SCNu32 ":%" SCNu32 ":%" SCNu32 " :%s", &controllerNum, &portID, &lun, nixBaseHandle);
-    if (sscanfret != 0 && sscanfret != EOF)
+    M_USE_UNUSED(intelLun);
+    M_USE_UNUSED(intelPathID);
+    M_USE_UNUSED(intelTargetID);
+    if (baseHandle && strlen(baseHandle) > 0 && !intelNVMe)
     {
-        snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portID, lun, nixBaseHandle);
+        int snprintfres = snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portID, phyID, lun, baseHandle);
+        if (snprintfres < 1 || snprintfres > OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
+        {
+            safe_Free(baseHandle)
+            return BAD_PARAMETER;
+        }
     }
     else
     {
+        safe_Free(baseHandle)
         return BAD_PARAMETER;
     }
 #endif //_WIN32
+    safe_Free(baseHandle)
 #if defined (CSMI_DEBUG)
     printf("GRD: Opening low-level device handle\n");
 #endif //CSMI_DEBUG
@@ -3463,7 +3553,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
     //DWORD lastError = GetLastError();
     if (device->os_info.fd != INVALID_HANDLE_VALUE)
 #else //_WIN32
-    if ((device->os_info.fd = open(nixBaseHandle, O_RDWR | O_NONBLOCK)) >= 0)
+    if ((device->os_info.fd = open(baseHandle, O_RDWR | O_NONBLOCK)) >= 0)
 #endif //_WIN32
     {
 #if defined (CSMI_DEBUG)
@@ -4438,12 +4528,31 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                 eCSMISecurityAccess csmiAccess = CSMI_SECURITY_ACCESS_NONE;//only really needed in Windows - TJE
 #if defined (_WIN32)
                 //Get the controller number from the scsi handle since we need it later!
-                int sscanfResult = sscanf(raidList->handle, "\\\\.\\SCSI%d:", &controllerNumber);
-                if (sscanfResult == 0 || sscanfResult == EOF)
+                char *endHandle = NULL;
+                char *scanhandle = raidList->handle;
+                char *scsiPortHandle = strstr(scanhandle, "\\\\.\\SCSI");
+                if (scsiPortHandle)
                 {
-                    printf("WARNING: Unable to scan controller number! raid handle = %s\t ret = %d\n", raidList->handle, sscanfResult);
+                    scanhandle += strlen("\\\\.\\SCSI");
+                    unsigned long ctrlnum = strtoul(scanhandle, &endHandle, 10);
+                    if ((ctrlnum == ULONG_MAX && errno == ERANGE) || (ctrlnum == 0 && scanhandle == endHandle))
+                    {
+                        return FAILURE;
+                    }
+                    if (endHandle && strlen(endHandle) >= 1)
+                    {
+                        if (strcmp(endHandle, ":") != 0)
+                        {
+                            return FAILURE;
+                        }
+                    }
+                    controllerNumber = C_CAST(uint32_t, ctrlnum);
                 }
-
+                else
+                {
+                    printf("WARNING: Unable to scan controller number! raid handle = %s\n", raidList->handle);
+                }
+                
                 _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
                 //lets try to open the controller.
                 fd = CreateFile(deviceName,
