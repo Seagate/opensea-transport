@@ -548,31 +548,33 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                         char *scsiAddress = basename(dirname(dirname(inHandleLink)));//SCSI address should be 2nd from the end of the link
                         if (scsiAddress)
                         {
-                            char *token = strtok(scsiAddress, ":");
+                            char *saveptr = NULL;
+                            rsize_t addrlen = strlen(scsiAddress);
+                            char *token = common_String_Token(scsiAddress, &addrlen, ":", *saveptr);
                             uint8_t counter = 0;
                             while (token)
                             {
                                 switch (counter)
                                 {
                                 case 0://host
-                                    device->os_info.scsiAddress.host = C_CAST(uint8_t, atoi(token));
+                                    sysFsInfo->scsiAddress.host = C_CAST(uint8_t, strtoul(token, NULL, 10));
                                     break;
                                 case 1://bus
-                                    device->os_info.scsiAddress.channel = C_CAST(uint8_t, atoi(token));
+                                    sysFsInfo->scsiAddress.channel = C_CAST(uint8_t, strtoul(token, NULL, 10));
                                     break;
                                 case 2://target
-                                    device->os_info.scsiAddress.target = C_CAST(uint8_t, atoi(token));
+                                    sysFsInfo->scsiAddress.target = C_CAST(uint8_t, strtoul(token, NULL, 10));
                                     break;
                                 case 3://lun
-                                    device->os_info.scsiAddress.lun = C_CAST(uint8_t, atoi(token));
+                                    sysFsInfo->scsiAddress.lun = C_CAST(uint8_t, strtoul(token, NULL, 10));
                                     break;
                                 default:
                                     break;
                                 }
-                                token = strtok(NULL, ":");
+                                token = common_String_Token(NULL, &addrlen, ":", &saveptr);
                                 ++counter;
                             }
-                            if (counter >= 4)
+                            if (counter == 4)
                             {
                                 device->os_info.scsiAddressValid = true;
                             }
