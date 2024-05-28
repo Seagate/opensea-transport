@@ -1933,7 +1933,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         }
 
         uio.length = nvmeIoCtx->dataSize;
-        uio.addr = C_CAST(vmk_uint32, nvmeIoCtx->cmd.adminCmd.addr);
+        uio.addr = C_CAST(vmk_uint64, nvmeIoCtx->cmd.adminCmd.addr);
         uio.namespaceID = nvmeIoCtx->cmd.adminCmd.nsid;
         uio.timeoutUs = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
 

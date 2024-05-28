@@ -926,6 +926,17 @@ int fill_In_ATA_Drive_Info(tDevice *device)
     }
     if (retrievedIdentifyData)
     {
+		bool lbaModeSupported = false;
+        uint16_t cylinder = 0;
+        uint8_t head = 0;
+        uint8_t spt = 0;
+
+		uint64_t *fillWWN;
+        uint32_t *fillLogicalSectorSize;
+        uint32_t *fillPhysicalSectorSize;
+        uint16_t *fillSectorAlignment;
+        uint64_t *fillMaxLba;
+
         if (device->drive_info.interface_type == IDE_INTERFACE && device->drive_info.scsiVersion == SCSI_VERSION_NO_STANDARD)
         {
             device->drive_info.scsiVersion = SCSI_VERSION_SPC_5;//SPC5. This is what software translator will set at the moment. Can make this configurable later, but this should be OK
@@ -947,11 +958,6 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         }
         
 
-        bool lbaModeSupported = false;
-        uint16_t cylinder = 0;
-        uint8_t head = 0;
-        uint8_t spt = 0;
-
         if (is_ATA_Identify_Word_Valid(ident_word[1]) && is_ATA_Identify_Word_Valid(ident_word[3]) && is_ATA_Identify_Word_Valid(ident_word[6]))
         {
             cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
@@ -962,11 +968,11 @@ int fill_In_ATA_Drive_Info(tDevice *device)
         }
 
         //set some pointers to where we want to fill in information...we're doing this so that on USB, we can store some info about the child drive, without disrupting the standard drive_info that has already been filled in by the fill_SCSI_Info function
-        uint64_t *fillWWN = &device->drive_info.worldWideName;
-        uint32_t *fillLogicalSectorSize = &device->drive_info.deviceBlockSize;
-        uint32_t *fillPhysicalSectorSize = &device->drive_info.devicePhyBlockSize;
-        uint16_t *fillSectorAlignment = &device->drive_info.sectorAlignment;
-        uint64_t *fillMaxLba = &device->drive_info.deviceMaxLba;
+        fillWWN = &device->drive_info.worldWideName;
+        fillLogicalSectorSize = &device->drive_info.deviceBlockSize;
+        fillPhysicalSectorSize = &device->drive_info.devicePhyBlockSize;
+        fillSectorAlignment = &device->drive_info.sectorAlignment;
+        fillMaxLba = &device->drive_info.deviceMaxLba;
 
         //IDE interface means we're connected to a native SATA/PATA interface so we leave the default pointer alone and don't touch the drive info that was filled in by the SCSI commands since that is how the OS talks to it for read/write and we don't want to disrupt that
         //Everything else is some sort of SAT interface (UDS, SAS, IEEE1394, etc) so we want to fill in bridge info here
@@ -1522,13 +1528,11 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                     uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
                     if (qword0 & ATA_ID_DATA_QWORD_VALID_BIT && M_Byte2(qword0) == ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES && M_Word0(qword0) >= ATA_ID_DATA_VERSION_1)
                     {
+						uint64_t downloadCapabilities;
+						uint64_t supportedZACCapabilities;
                         uint64_t supportedCapabilitiesQWord = M_BytesTo8ByteValue(logBuffer[15], logBuffer[14], logBuffer[13], logBuffer[12], logBuffer[11], logBuffer[10], logBuffer[9], logBuffer[8]);
                         if (supportedCapabilitiesQWord & ATA_ID_DATA_QWORD_VALID_BIT)
                         {
-                            if (supportedCapabilitiesQWord & BIT51)
-                            {
-                                device->drive_info.ata_Options.sanitizeOverwriteDefinitiveEndingPattern = true;
-                            }
                             if (supportedCapabilitiesQWord & BIT50)
                             {
                                 device->drive_info.softSATFlags.dataSetManagementXLSupported = true;
@@ -1538,12 +1542,12 @@ int fill_In_ATA_Drive_Info(tDevice *device)
                                 device->drive_info.softSATFlags.zeroExtSupported = true;
                             }
                         }
-                        uint64_t downloadCapabilities = M_BytesTo8ByteValue(logBuffer[23], logBuffer[22], logBuffer[21], logBuffer[20], logBuffer[19], logBuffer[18], logBuffer[17], logBuffer[16]);
+                        downloadCapabilities = M_BytesTo8ByteValue(logBuffer[23], logBuffer[22], logBuffer[21], logBuffer[20], logBuffer[19], logBuffer[18], logBuffer[17], logBuffer[16]);
                         if (downloadCapabilities & ATA_ID_DATA_QWORD_VALID_BIT && downloadCapabilities & BIT34)
                         {
                             device->drive_info.softSATFlags.deferredDownloadSupported = true;
                         }
-                        uint64_t supportedZACCapabilities = M_BytesTo8ByteValue(logBuffer[119], logBuffer[118], logBuffer[117], logBuffer[116], logBuffer[115], logBuffer[114], logBuffer[113], logBuffer[112]);
+                        supportedZACCapabilities = M_BytesTo8ByteValue(logBuffer[119], logBuffer[118], logBuffer[117], logBuffer[116], logBuffer[115], logBuffer[114], logBuffer[113], logBuffer[112]);
                         if (supportedZACCapabilities & ATA_ID_DATA_QWORD_VALID_BIT)//qword valid
                         {
                             //check if any of the ZAC commands are supported.
@@ -2192,11 +2196,12 @@ uint8_t calculate_ATA_Checksum(uint8_t *ptrData)
 bool is_Checksum_Valid(uint8_t *ptrData, uint32_t dataSize, uint32_t *firstInvalidSector)
 {
     bool isValid = false;
+	uint32_t checksumCalc;
     if (!ptrData || !firstInvalidSector)
     {
         return false;
     }
-    uint32_t checksumCalc = 0;
+    checksumCalc = 0;
     for (uint32_t blockIter = 0; blockIter < (dataSize / LEGACY_DRIVE_SEC_SIZE); ++blockIter)
     {
         for (uint32_t counter = 0; counter <= 511; ++counter)
@@ -2219,12 +2224,13 @@ bool is_Checksum_Valid(uint8_t *ptrData, uint32_t dataSize, uint32_t *firstInval
 
 int set_ATA_Checksum_Into_Data_Buffer(uint8_t *ptrData, uint32_t dataSize)
 {
+	uint32_t checksum;
     int ret = SUCCESS;
     if (!ptrData)
     {
         return BAD_PARAMETER;
     }
-    uint32_t checksum = 0;
+    checksum = 0;
     for (uint32_t blockIter = 0; blockIter < (dataSize / LEGACY_DRIVE_SEC_SIZE); ++blockIter)
     {
         checksum = calculate_ATA_Checksum(&ptrData[blockIter]);
@@ -2357,13 +2363,14 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
             {
                 if (is_Current_CHS_Info_Valid(device))
                 {
+					uint32_t currentSector;
                     uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;
                     uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word056;
                     *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
                     *head = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
                     *sector = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
                     //check that this isn't above the value of words 58:57
-                    uint32_t currentSector = C_CAST(uint32_t, (*cylinder)) * C_CAST(uint32_t, (*head)) * C_CAST(uint32_t, (*sector));
+                    currentSector = C_CAST(uint32_t, (*cylinder)) * C_CAST(uint32_t, (*head)) * C_CAST(uint32_t, (*sector));
                     if (currentSector > userAddressableCapacityCHS)
                     {
                         //change the return value, but leave the calculated values as they are
@@ -2372,6 +2379,7 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
                 }
                 else
                 {
+					uint32_t currentSector;
                     uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word003;
                     uint32_t sectorsPerTrack = device->drive_info.IdentifyData.ata.Word006;
                     *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
@@ -2379,7 +2387,7 @@ int convert_LBA_To_CHS(tDevice *device, uint32_t lba, uint16_t *cylinder, uint8_
                     *sector = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
                     userAddressableCapacityCHS = C_CAST(uint32_t, device->drive_info.IdentifyData.ata.Word001) * C_CAST(uint32_t, device->drive_info.IdentifyData.ata.Word003) * C_CAST(uint32_t, device->drive_info.IdentifyData.ata.Word006);
                     //check that this isn't above the value of words 58:57
-                    uint32_t currentSector = C_CAST(uint32_t, (*cylinder)) * C_CAST(uint32_t, (*head)) * C_CAST(uint32_t, (*sector));
+                    currentSector = C_CAST(uint32_t, (*cylinder)) * C_CAST(uint32_t, (*head)) * C_CAST(uint32_t, (*sector));
                     if (currentSector > userAddressableCapacityCHS)
                     {
                         //change the return value, but leave the calculated values as they are

@@ -17,6 +17,7 @@ void print_Low_Level_Info(tDevice* device)
 {
     if (device)
     {
+		int adapterIDWidthSpec;
         //Print out things useful for low-level debugging of the tDevice.
         //hacks
         //IOCTL type
@@ -160,7 +161,7 @@ void print_Low_Level_Info(tDevice* device)
             printf("\t\t---Bridge Info---\n");
         }*/
         printf("\t\t---adapter info---\n");
-        int adapterIDWidthSpec = 8;
+        adapterIDWidthSpec = 8;
         switch (device->drive_info.adapter_info.infoType)
         {
         case ADAPTER_INFO_USB:
@@ -1209,6 +1210,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     {
         if (deviceCount > 0)
         {
+			int ret;
             tDevice * deviceList = C_CAST(tDevice*, calloc_aligned(deviceCount, sizeof(tDevice), 8));
             versionBlock version;
             if (!deviceList)
@@ -1234,7 +1236,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                 getDeviceflags |= GET_DEVICE_FUNCS_IGNORE_CSMI;
             }
 #endif
-            int ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
+            ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
             if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
             {
                 bool printToScreen = true;
@@ -1247,6 +1249,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                         //make sure that the file it open to write...
                         if (!outputInfo->outputFilePtr)
                         {
+							char *dup;
                             char fileNameAndPath[OPENSEA_PATH_MAX] = { 0 };
                             if (outputInfo->outputPath && *outputInfo->outputPath && strlen(*outputInfo->outputPath))
                             {
@@ -1278,7 +1281,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                     printf("An error occurred while trying to create scan output\n");
                                 }
                             }
-                            char *dup = strdup(fileNameAndPath);
+                            dup = strdup(fileNameAndPath);
                             if (dup)
                             {
                                 snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s.txt", dup);
@@ -1386,6 +1389,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
 #endif
                     if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
+						char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
 #define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
                         char displayHandle[SCAN_DISPLAY_HANDLE_STRING_LENGTH] = { 0 };
 #if defined(_WIN32)
@@ -1419,7 +1423,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             safe_Free(blockName)
                         }
 #endif
-                        char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
+                        
                         snprintf(printable_sn, SERIAL_NUM_LEN + 1, "%s", deviceList[devIter].drive_info.serialNumber);
                         //if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
@@ -2982,7 +2986,10 @@ bool is_Sector_Size_Emulation_Active(tDevice *device)
 
 int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize)
 {
-    if (
+	uint8_t checksum = 0;
+    uint32_t counter = 0;
+
+	if (
         (blockSize > LEGACY_DRIVE_SEC_SIZE)
         || (blockSize == 0)
         || (pBuf == NULL)
@@ -2993,8 +3000,7 @@ int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize)
 
     printf("%s: blksize %d, pBuf %p\n", __FUNCTION__, blockSize, C_CAST(void*, pBuf));
 
-    uint8_t checksum = 0;
-    uint32_t counter = 0;
+
     for (counter = 0; counter < 511; counter++)
     {
         checksum = checksum + pBuf[counter];

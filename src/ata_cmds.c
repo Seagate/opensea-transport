@@ -1974,6 +1974,7 @@ int ata_Read_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t secto
 int ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t sectorCount, uint32_t dataSize, bool extendedCmd)
 {
     int ret = UNKNOWN;
+	uint16_t multipleLogicalSectors;
     ataPassthroughCommand ataCommandOptions;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
@@ -2012,7 +2013,7 @@ int ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint16_t 
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
     //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
-    uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
+    multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
     while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 1)//multipleLogicalSectors should be greater than 1 so that we get the proper 2^X power value for the SAT command.
     {
         multipleLogicalSectors = multipleLogicalSectors >> 1;//divide by 2
@@ -2964,6 +2965,7 @@ int ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
+	uint16_t multipleLogicalSectors;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
@@ -3017,7 +3019,7 @@ int ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint32_t
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
     //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
-    uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
+    multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
     while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 1)//multipleLogicalSectors should be greater than 1 so that we get the proper 2^X power value for the SAT command.
     {
         multipleLogicalSectors = multipleLogicalSectors >> 1;//divide by 2
@@ -3336,6 +3338,7 @@ int ata_NV_Cache_Feature(tDevice *device, eNVCacheFeatures feature, uint16_t cou
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
+	char* nvCacheFeature = NULL;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = dataSize;
@@ -3352,7 +3355,6 @@ int ata_NV_Cache_Feature(tDevice *device, eNVCacheFeatures feature, uint16_t cou
     ataCommandOptions.tfr.Feature48 = M_Byte1(C_CAST(uint16_t, feature));
     ataCommandOptions.tfr.CommandStatus = ATA_NV_CACHE;
 
-    char* nvCacheFeature = NULL;
     switch (feature)
     {
     case NV_SET_NV_CACHE_POWER_MODE:
@@ -3793,6 +3795,7 @@ int ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeatures dcoFe
 {
     int ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
+	char* dcoFeatureString = NULL;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = dataSize;
@@ -3810,7 +3813,6 @@ int ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeatures dcoFe
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
 
-    char* dcoFeatureString = NULL;
     switch (dcoFeature)
     {
     case DCO_RESTORE:
