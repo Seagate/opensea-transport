@@ -3236,7 +3236,7 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
 //    //char * next_token = NULL;
 //    pdev = strrchr(filename, 'e');
 //    if (pdev != NULL)
-//        drive_num = atoi(pdev + 1);
+//        drive_num = strtol(pdev + 1, NULL, 0);
 //    return drive_num;
 //}
 
@@ -3983,32 +3983,54 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
 
         if (strstr(device->os_info.name, WIN_PHYSICAL_DRIVE))
         {
-            uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, WIN_PHYSICAL_DRIVE "%" SCNu32, &drive);
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "PD%" PRIu32, drive);
+            char* end = NULL;
+            char *drivenum = strstr(device->os_info.name, WIN_PHYSICAL_DRIVE) + strlen(WIN_PHYSICAL_DRIVE);
+            unsigned long drive = strtoul(drivenum, &end, 10);
+            if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
+            {
+                return FAILURE;
+            }
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "PD%lu", drive);
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_CDROM_DRIVE))
         {
-            uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, WIN_CDROM_DRIVE "%" SCNu32, &drive);
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CDROM%" PRIu32, drive);
+            char* end = NULL;
+            char* drivenum = strstr(device->os_info.name, WIN_CDROM_DRIVE) + strlen(WIN_CDROM_DRIVE);
+            unsigned long drive = strtoul(drivenum, &end, 10);
+            if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
+            {
+                return FAILURE;
+            }
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CDROM%lu", drive);
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_TAPE_DRIVE))
         {
-            uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, WIN_TAPE_DRIVE "%" SCNu32, &drive);
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "TAPE%" PRIu32, drive);
+            char* end = NULL;
+            char* drivenum = strstr(device->os_info.name, WIN_TAPE_DRIVE) + strlen(WIN_TAPE_DRIVE);
+            unsigned long drive = strtoul(drivenum, &end, 10);
+            if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
+            {
+                return FAILURE;
+            }
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "TAPE%lu", drive);
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_CHANGER_DEVICE))
         {
-            uint32_t drive = UINT32_MAX;
-            sscanf_s(device->os_info.name, WIN_CHANGER_DEVICE "%" SCNu32, &drive);
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%" PRIu32, drive);
+            char* end = NULL;
+            char* drivenum = strstr(device->os_info.name, WIN_CHANGER_DEVICE) + strlen(WIN_CHANGER_DEVICE);
+            unsigned long drive = strtoul(drivenum, &end, 10);
+            if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
+            {
+                return FAILURE;
+            }
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%lu", drive);
             device->os_info.os_drive_number = drive;
         }
+        //NOTE: No final else returning failure as we want to support some other handles that don't map to these easy names.
+        //      There are very long names for a drive handle we can also support if a caller knows how to pass them in.
 #if defined (WIN_DEBUG)
         printf("WIN: Checking for volumes\n");
 #endif //WIN_DEBUG
