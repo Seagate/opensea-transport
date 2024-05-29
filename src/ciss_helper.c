@@ -585,6 +585,15 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
 #pragma GCC diagnostic pop
 #endif //__clang__, __GNUC__
                 stop_Timer(&commandTimer);
+                if (ioctlRet < 0)
+                {
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    scsiIoCtx->device->os_info.last_error = C_CAST(unsigned int, errno);
+                    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                    {
+                        print_Errno_To_Screen(errno);
+                    }
+                }
 
                 //Copy and sense data we received, then need to check for errors
                 if (scsiIoCtx->psense)
@@ -824,6 +833,15 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
 #pragma GCC diagnostic pop
 #endif //__clang__, __GNUC__
                 stop_Timer(&commandTimer);
+                if (ioctlRet < 0)
+                {
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    scsiIoCtx->device->os_info.last_error = C_CAST(unsigned int, errno);
+                    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                    {
+                        print_Errno_To_Screen(errno);
+                    }
+                }
 
                 //Copy and sense data we received, then need to check for errors
                 if (scsiIoCtx->psense)
@@ -1054,6 +1072,15 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
 #pragma GCC diagnostic pop
 #endif //__clang__, __GNUC__
             stop_Timer(&commandTimer);
+            if (ioctlRet < 0)
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+                scsiIoCtx->device->os_info.last_error = C_CAST(unsigned int, errno);
+                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                {
+                    print_Errno_To_Screen(errno);
+                }
+            }
 
             //Copy and sense data we received, then need to check for errors
             if (scsiIoCtx->psense)
