@@ -1566,8 +1566,8 @@ eReturnValues get_CISS_RAID_Device(const char *filename, tDevice *device)
                     device->issue_io = C_CAST(issue_io_func, issue_io_ciss_Dev);
                     device->drive_info.drive_type = SCSI_DRIVE;
                     device->drive_info.interface_type = RAID_INTERFACE;
-                    strncpy(&device->os_info.name[0], filename, M_Min(strlen(filename), 30));
-                    strncpy(&device->os_info.friendlyName[0], filename, M_Min(strlen(filename), 20));
+                    snprintf(&device->os_info.name[0], OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+                    snprintf(&device->os_info.friendlyName[0], OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", filename);
                     device->os_info.minimumAlignment = sizeof(void*);
                     device->os_info.cissDeviceData->smartpqi = is_SmartPQI_Unique_IOCTLs_Supported(device->os_info.cissDeviceData->cissHandle);
                     device->os_info.fd = device->os_info.cissDeviceData->cissHandle;//set this just to make the upper layers that validate this happy-TJE
