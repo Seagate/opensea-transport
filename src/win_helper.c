@@ -11662,7 +11662,7 @@ static eReturnValues win10_Translate_Write_Uncorrectable(nvmeCmdCtx *nvmeIoCtx)
 static eReturnValues win10_Translate_Flush(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    eReturnValues inVerbosity = nvmeIoCtx->device->deviceVerbosity;
+    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     //TODO: should we do this or should we send a SCSI Synchronize Cache command to be translated?
     //ret = os_Flush(nvmeIoCtx->device);
     nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
