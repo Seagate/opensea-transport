@@ -1629,7 +1629,7 @@ static int nvme_filter(const struct dirent *entry)
 eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
     int  num_devs = 0, num_nvme_devs = 0;
-    eReturnValues rc = SUCCESS;
+    int rc = 0;
     struct nvme_adapter_list nvmeAdptList;
 
     struct dirent **namelist;
@@ -1650,7 +1650,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //add nvme devices to the list
     rc = Nvme_GetAdapterList(&nvmeAdptList);
 
-    if(rc == SUCCESS) 
+    if (rc == 0)
     {
         num_nvme_devs = nvmeAdptList.count;
     }
@@ -1697,7 +1697,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     int fd;
     tDevice * d = NULL;
     struct nvme_adapter_list nvmeAdptList;
-    eReturnValues rc = SUCCESS;
+    int rc = 0;
 #if defined (DEGUG_SCAN_TIME)
     seatimer_t getDeviceTimer;
     seatimer_t getDeviceListTimer;
@@ -1712,7 +1712,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 
     rc = Nvme_GetAdapterList(&nvmeAdptList);
 
-    if (rc == SUCCESS)
+    if (rc == 0)
     {
         num_nvme_devs = nvmeAdptList.count;
     }
