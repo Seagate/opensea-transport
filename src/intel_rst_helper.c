@@ -252,7 +252,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
                 handleToUse = device->os_info.scsiSRBHandle;
                 //use Windows pathId
                 raidFirmwareRequest->Request.PathId = device->os_info.scsi_addr.PathId;
-                //TODO: may need to add in remaining scsi address in the future, but for now these other fields are reserved
+                //may need to add in remaining scsi address in the future, but for now these other fields are reserved
             }
             //setup the firmware request
             raidFirmwareRequest->Request.FwRequestBlock.Version = INTEL_FIRMWARE_REQUEST_BLOCK_STRUCTURE_VERSION;
@@ -330,7 +330,6 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
                         memcpy(ptrDataRequest, C_CAST(uint8_t*, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
                     }
                     break;
-                    //TODO: Some of these we can dummy up a response for ib ATA, SCSI, and NVMe.
                 case INTEL_FIRMWARE_STATUS_ERROR:
                 case INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST:
                 case INTEL_FIRMWARE_STATUS_INVALID_PARAMETER:
@@ -396,7 +395,6 @@ bool supports_Intel_Firmware_Download(tDevice *device)
         if (SUCCESS == intel_RAID_FW_Request(device, firmwareInfo, allocationSize, 15, INTEL_FIRMWARE_FUNCTION_GET_INFO, flags, true, &returnCode))
         {
             supported = firmwareInfo->UpgradeSupport;
-            //TODO: Need to store other things like alignment requirements similar to what is done in Windows 10 API today!
             if (device->os_info.csmiDeviceData)
             {
                 device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported = true;
@@ -552,7 +550,7 @@ eReturnValues send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
         uint32_t returnCode = 0;//will most likely help with debugging, but we should check this to dummy up sense data or rtfrs as necessary.
         uint32_t flags = 0;//flags aren't required
         uint32_t timeout = scsiIoCtx->timeout;
-        uint8_t firmwareSlot = 0;//TODO: Some intel documentation suggests that this should be INTEL_STORAGE_FIRMWARE_INFO_INVALID_SLOT, but we should test before using that
+        uint8_t firmwareSlot = 0;//NOTE: Some intel documentation suggests that this should be INTEL_STORAGE_FIRMWARE_INFO_INVALID_SLOT, but we should test before using that
         //special case, if running in SCSI translation mode for NVMe, we should set the controller flag
         if (strcmp(scsiIoCtx->device->drive_info.T10_vendor_ident, "NVMe") == 0)
         {
@@ -673,7 +671,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                 handleToUse = nvmeIoCtx->device->os_info.scsiSRBHandle;
                 //use Windows pathId
                 nvmPassthroughCommand->PathId = nvmeIoCtx->device->os_info.scsi_addr.PathId;
-                //TODO: may need to add in remaining scsi address in the future, but for now these other fields are reserved
+                //may need to add in remaining scsi address in the future, but for now these other fields are reserved
             }
             //time to start setting up the command!
             nvmPassthroughCommand->Parameters.Command.DWord0 = nvmeIoCtx->cmd.dwords.cdw0;
@@ -776,7 +774,6 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                     nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = nvmPassthroughCommand->Parameters.Completion.completion2;
                     nvmeIoCtx->commandCompletionData.statusAndCID = nvmPassthroughCommand->Parameters.Completion.completion3;
                     break;
-                    //TODO: Handle more error codes? Maybe they will be able to give better or more meaningful status back up to the top layers
                 default:
                     ret = OS_PASSTHROUGH_FAILURE;
                     break;
@@ -811,7 +808,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
 #define DUMMY_NVME_STATUS(sct, sc) \
     C_CAST(uint32_t, (sct << 25) | (sc << 17))
 
-//TODO: This may need adjusting with bus trace help in the future, but for now this is a best guess from what info we have.-TJE
+//This may need adjusting with bus trace help in the future, but for now this is a best guess from what info we have.-TJE
 static void dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, uint32_t returnCode)
 {
     switch (returnCode)

@@ -107,9 +107,6 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API eReturnValues send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx);
 
-    //TODO: Define other Intel RST unique calls here based on what is in intel_rst_defs.h
-
-
 #if defined (__cplusplus)
 }
 #endif

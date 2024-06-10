@@ -18,8 +18,6 @@
 #include "scsi_helper.h"
 #include "nvme_helper.h"
 
-//TODO: UEFI includes
-
 #if defined (__cplusplus)
 extern "C"
 {

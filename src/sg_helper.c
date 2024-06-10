@@ -708,7 +708,6 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
 #endif
     sysFsInfo->interface_type = IEEE_1394_INTERFACE;
     sysFsInfo->drive_type = SCSI_DRIVE;//changed later if detected as ATA
-    //TODO: investigate some way of saving vendor/product like information for firewire.
     char fullFWPath[PATH_MAX] = { 0 };
     snprintf(fullFWPath, PATH_MAX, "%s", inHandleLink);
 
@@ -1144,7 +1143,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 
 //map a block handle (sd) to a generic handle (sg or bsg)
 //incoming handle can be either sd, sg, or bsg type
-//TODO: handle kernels before 2.6 in some other way. This depends on mapping in the file system provided by 2.6 and later.
+//This depends on mapping in the file system provided by 2.6 and later.
 eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle)
 {
     if (handle == NULL)
@@ -1588,7 +1587,6 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
                 //Some of these old pass-through types issue vendor specific op codes that could be misinterpretted on some devices.
 //              if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
 //              {
-//                  //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
 //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
 //              }
 
@@ -2392,7 +2390,6 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         safe_Free(ccisslist)
     }
 
-    //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
         returnValue = BAD_PARAMETER;
@@ -2733,7 +2730,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             memset(passThroughCmd, 0, sizeof(struct nvme_passthru_cmd));
             passThroughCmd->opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
             passThroughCmd->flags = nvmeIoCtx->cmd.nvmCmd.flags;
-            passThroughCmd->rsvd1 = RESERVED; //TODO: Should we put this in here since it's part of this DWORD? nvmeIoCtx->cmd.nvmCmd.commandId;
+            passThroughCmd->rsvd1 = RESERVED;
             passThroughCmd->nsid = nvmeIoCtx->cmd.nvmCmd.nsid;
             passThroughCmd->cdw2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
             passThroughCmd->cdw3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
@@ -2963,7 +2960,6 @@ eReturnValues os_nvme_Subsystem_Reset(tDevice *device)
 
 //to be used with a deep scan???
 //fd must be a controller handle
-//TODO: Should we rework the linux_NVMe_Reset call to handle this too?
 #if defined (_DEBUG)
 //making this a debug flagged call since it is currently an unused function. We should look into how to appropriately support this.-TJE
 static eReturnValues nvme_Namespace_Rescan(int fd)

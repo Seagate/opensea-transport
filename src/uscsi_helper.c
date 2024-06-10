@@ -38,7 +38,7 @@ extern bool validate_Device_Struct(versionBlock);
 //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
 bool os_Is_Infinite_Timeout_Supported(void)
 {
-    return false;//TODO: Documentation does not state if an infinite timeout is supported. If it actually is, need to define the infinite timeout value properly, and set it to the correct value
+    return false;//Documentation does not state if an infinite timeout is supported. If it actually is, need to define the infinite timeout value properly, and set it to the correct value
 }
 
 /*
@@ -267,7 +267,6 @@ static eReturnValues uscsi_Reset(int fd, int resetFlag)
     int ioctlResult = ioctl(fd, USCSICMD, &uscsi_io);
     if (ioctlResult < 0)
     {
-        //TODO: check errno to figure out failure versus not supported???
         ret = OS_COMMAND_NOT_AVAILABLE;
     }
     else
@@ -280,7 +279,7 @@ static eReturnValues uscsi_Reset(int fd, int resetFlag)
 eReturnValues os_Device_Reset(tDevice *device)
 {
     //NOTE: USCSI_RESET is the same thing, but for legacy versions
-    //TODO: is USCSI_RESET_LUN better???
+    //Also USCSI_RESET_LUN is available. Maybe it would be better?
     return uscsi_Reset(device->os_info.fd, USCSI_RESET_TARGET);
 }
     
@@ -558,7 +557,6 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     devs[i] = NULL;
     safe_Free(namelist)
 
-    //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
         returnValue = BAD_PARAMETER;
@@ -693,7 +691,6 @@ eReturnValues os_Unlock_Device(tDevice *device)
 
 eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
-    //TODO: Complete this stub when this is figured out - TJE
     return NOT_SUPPORTED;
 }
 

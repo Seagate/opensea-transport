@@ -1160,20 +1160,6 @@ bool scan_Interface_Type_Filter(tDevice *device, uint32_t scanFlags)
     return showInterface;
 }
 
-void write_JSON_To_File(void *customData, char *message)
-{
-    FILE *jsonFile = C_CAST(FILE*, customData);
-    if (jsonFile)
-    {
-        //fwrite(message, 1, strlen(message), jsonFile);
-        //TODO: Add exit code to this function to detect errors
-        if ((fwrite(message, 1, strlen(message), jsonFile) != strlen(message)) || ferror(jsonFile))
-        {
-            perror("Error writing data to a file!\n");
-        }
-    }
-}
-
 //this is the "generic" scan. It uses the OS defined "get device count" and "get device list" calls to do the scan.
 void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityLevels scanVerbosity)
 {
@@ -1448,7 +1434,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                     printable_sn, \
                                     deviceList[devIter].drive_info.product_revision);
                                 break;
-                            default://TODO: add other output format types
+                            default:
                                 break;
                             }
                         }
@@ -5950,7 +5936,7 @@ static bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice *device)
 static bool set_PCI_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
 {
     bool passthroughHacksSet = false;
-    //TODO: Currently this is setting SCSI/ATA hacks as needed for the devices below.
+    //Currently this is setting SCSI/ATA hacks as needed for the devices below.
     //      This may be ok in general, but may get confusing since this isn't necessarily the target drive having an issue, but the
     //      hardware controller that a drive is attached to having some other functionality.
     //      The hacks list started as specific to USB, but needs to handle some things for PCIe controllers too.
@@ -6026,7 +6012,7 @@ bool setup_Passthrough_Hacks_By_ID(tDevice *device)
     case ADAPTER_INFO_USB:
         success = set_USB_Passthrough_Hacks_By_PID_and_VID(device);
         break;
-    case ADAPTER_INFO_PCI://TODO: PCI device hacks based on known controllers with workarounds or other changes we can make.
+    case ADAPTER_INFO_PCI:
         success = set_PCI_Passthrough_Hacks_By_PID_and_VID(device);
         break;
     case ADAPTER_INFO_IEEE1394:

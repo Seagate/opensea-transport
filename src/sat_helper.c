@@ -34,7 +34,7 @@
 #error Invalid SAT_SPEC_SUPPORTED defined in sat_helper.c. Values 1 - 4 are valid. At least 1 SAT spec version should be specified!
 #endif
 
-//TODO: (1 = on, 0 = off)
+//(1 = on, 0 = off)
 //SAT 4 optional feature flags
 #define SAT_4_ERROR_HISTORY_FEATURE 1
 //SAT 3 optional feature flags
@@ -800,7 +800,6 @@ eReturnValues request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rt
     {
         cdbLen = CDB_LEN_16;
     }
-    //TODO: Not sure if there should be a "force" CDB size for this request or not at this time. With the other hacks, this should just work when a given SATL supports this request...-TJE
     requestRTFRs = C_CAST(uint8_t*, calloc_aligned(cdbLen, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!rtfrBuffer || !rtfr_senseData || !requestRTFRs)
     {
@@ -1316,7 +1315,6 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
                     {
                         driveStatusRet = ABORTED;
                     }
-                    //TODO: Check other error bits to set other error status's
                     else
                     {
                         driveStatusRet = FAILURE;
@@ -1354,7 +1352,6 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
             {
                 //On Windows AHCI controller (IDE Interface), for whatever reason, the controller sometimes caches the bad status and will return it on the very next command we issue
                 //...SO send a "check Power Mode" command to force it to refresh and prevent this issue from happening again..basically a test unit ready command - TJE
-                //TODO: investigate if there is a better way to fix this issue...so far I haven't found one, but this seems to work well for now.
                 uint64_t commandTimeNanoseconds = device->drive_info.lastCommandTimeNanoSeconds;//back this up first since they'll want the time from the command they issued, not the check power mode.
                 uint8_t powerMode = 0;//we don't actually care about this...just holding it for now
                 ata_Check_Power_Mode(device, &powerMode);
@@ -5385,7 +5382,6 @@ static eReturnValues translate_SCSI_Test_Unit_Ready_Command(tDevice *device, Scs
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
-    //TODO: SAT Spec mentions that if a sanitize or DST or format are in progress, to return sense data related to those....we need multithreading before that is possible, but we should add that capability sometime.
 
     //send the check power mode command
     if (SUCCESS != ata_Check_Power_Mode(device, &powerMode))
@@ -6322,9 +6318,6 @@ static eReturnValues translate_SCSI_Write_Long(tDevice *device, ScsiIoCtx *scsiI
     return ret;
 }
 
-//TODO: add better support for the immediate bit 
-//right now I'm still issuing the sanitize command before returning status which doesn't match the spec
-//I'm close to the spec though as I return good status after validating the parameters regarless of the result of the command when the immediate bit is set. - TJE
 static eReturnValues translate_SCSI_Sanitize_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
@@ -7225,15 +7218,6 @@ static eReturnValues translate_SCSI_Report_Luns_Command(tDevice *device, ScsiIoC
     return ret;
 }
 
-//TODO: Add support for Format in progress
-//TODO: Find Better way to do SMART Threshold exceeded
-//TODO: Improve stopped power condition to detect when done by a command
-//TODO: Unit attention condition
-//TODO: Improve stopped idle condition to detect when done by a command
-//TODO: Improve stopped standby condition to detect when done by a command
-//TODO: Add sending sanitize status commands in when we KNOW we are in a sanitize operation (right now, we just check anyways)
-//TODO: Add detecting when background self test is in progress and reporting progress from that
-//TODO: Add detecting when the last command before this one was an ATA-Passthrough command to re-return ATA Passthrough results
 static eReturnValues translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
@@ -7425,7 +7409,6 @@ static eReturnValues translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIo
     {
         downloadMode3Supported = true;
     }
-    //TODO: Min/max download transfer size support. Don't adjust for that today...right now we just say invalid field in CDB.-TJE
     switch (mode)
     {
     case 0x02://Write buffer command
@@ -7662,7 +7645,6 @@ static eReturnValues translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIo
     return ret;
 }
 
-//TODO: Better handling of the immediate bit and better handling of errors when immediate bit is set
 static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
@@ -8359,7 +8341,6 @@ static eReturnValues translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *s
         supportedPages[offset] = LP_GENERAL_STATISTICS_AND_PERFORMANCE;
         offset += increment;
     }
-    //TODO: add logs
 
     //if smart is supported, add informational exceptions log page (2Fh)
     if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) && device->drive_info.IdentifyData.ata.Word082 & BIT0)
@@ -8367,7 +8348,6 @@ static eReturnValues translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *s
         supportedPages[offset] = LP_INFORMATION_EXCEPTIONS;
         offset += increment;
     }
-    //TODO: add logs
 
     //set the page length (Do this last)
     supportedPages[2] = M_Byte1(offset - 4);
@@ -9393,7 +9373,6 @@ static eReturnValues translate_Application_Client_Log_Sense_0x0F(tDevice *device
     uint8_t *applicationClientLog = &scsiIoCtx->pdata[0];
     applicationClientLog[0] = 0x0F;
     applicationClientLog[1] = 0x00;
-    //TODO: set the page length
     uint16_t offset = 4;
     //now we need to go through and save the most recent entries to the log we'll return
     uint16_t parameterCounter = 0;
@@ -10208,7 +10187,7 @@ static eReturnValues translate_SCSI_Log_Select_Command(tDevice *device, ScsiIoCt
             //SPC3 and earlier the pageCode and Subpage code are reserved in the CDB....But that doesn't matter because SAT2 and higher conform to SPC4 and only SAT2+ define this command's translation
             switch (pageCode)
             {
-            //TODO: If we get page 0, this means there are 1 or more pages in the parameter data to go through...we could translate this, but for now it's not necessary since it isn't in SAT spec.
+            //TODO: If we get page 0, this means there are 1 or more pages in the parameter data to go through
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
             case 0x0F://application client
                 switch (subpageCode)
@@ -10445,7 +10424,6 @@ static eReturnValues translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *sc
                     //check if the ATA Trim buffer is full...if it is and there are more or potentially more block descriptors, send the command now
                     if ((ataTrimOffset > (trimBufferSize * LEGACY_DRIVE_SEC_SIZE)) && ((unmapBlockDescriptorIter + 16) < minBlockDescriptorLength))
                     {
-                        //TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
                         if (SUCCESS == ata_Data_Set_Management(device, true, trimBuffer, trimBufferSize * LEGACY_DRIVE_SEC_SIZE, useXL))
                         {
                             //clear the buffer for reuse
@@ -10470,7 +10448,6 @@ static eReturnValues translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *sc
             if (ret == SUCCESS)
             {
                 //send the data set management command with whatever is in the trim buffer at this point (all zeros is safe to send if we do get that)
-                //TODO: do we want to make it smart enough to only send as many 512B blocks as necessary without extras?
                 if (SUCCESS != ata_Data_Set_Management(device, true, trimBuffer, trimBufferSize * LEGACY_DRIVE_SEC_SIZE, useXL))
                 {
                     ret = FAILURE;
@@ -10526,7 +10503,6 @@ static eReturnValues translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx
     controlPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!controlPage)
     {
-        //TODO: set an error in the sense data
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -10651,7 +10627,6 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx *scsiIo
     pataControlPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!pataControlPage)
     {
-        //TODO: set an error in the sense data
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -10817,7 +10792,6 @@ static eReturnValues translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoCtx *s
     controlExtPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!controlExtPage)
     {
-        //TODO: set an error in the sense data
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -10926,7 +10900,6 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(tDevice *device, Sc
     powerConditionPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!powerConditionPage)
     {
-        //TODO: set an error in the sense data
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -11234,7 +11207,7 @@ static eReturnValues translate_Mode_Sense_ATA_Power_Condition_1A_F1(tDevice *dev
     powerConditionPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!powerConditionPage)
     {
-        //TODO: set an error in the sense data
+        
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -11351,7 +11324,7 @@ static eReturnValues translate_Mode_Sense_Read_Write_Error_Recovery_01h(ScsiIoCt
     readWriteErrorRecovery = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!readWriteErrorRecovery)
     {
-        //TODO: set an error in the sense data
+        
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -11440,7 +11413,7 @@ static eReturnValues translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx
     caching = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!caching)
     {
-        //TODO: set an error in the sense data
+        
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -11568,7 +11541,7 @@ static eReturnValues translate_Mode_Sense_Informational_Exceptions_Control_1Ch(S
     informationalExceptions = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!informationalExceptions)
     {
-        //TODO: set an error in the sense data
+        
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -12826,8 +12799,7 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
         bitPointer = 0;
         //uint16_t modeDataLength = scsiIoCtx->pdata[0];
         //uint8_t deviceSpecificParameter = scsiIoCtx->pdata[2];
-        //bool writeProtected = false;//Don't allow write protection. This makes no sense for this software implementation. - TJE
-        //bool dpoFua = false;//TODO: allow this bit to be zero. AKA don't allow DPO or FUA in read/write
+        //TODO: Validate writeProtected and dpoFua bits.
         bool longLBA = false;
         uint16_t blockDescriptorLength = scsiIoCtx->pdata[3];
         if (tenByteCommand)
@@ -12925,7 +12897,6 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
                     uint32_t logicalBlockLength = M_BytesTo4ByteValue(scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 12], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 13], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 14], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 15]);
                     if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
                     {
-                        //TODO: handle when this is all F's? Should we allow this to change the max LBA of the drive?
                         bitPointer = 7;
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 0;
                         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
@@ -12966,7 +12937,6 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
                     uint32_t logicalBlockLength = M_BytesTo4ByteValue(0, scsiIoCtx->pdata[13], scsiIoCtx->pdata[14], scsiIoCtx->pdata[15]);
                     if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
                     {
-                        //TODO: handle when this is all F's? Should we allow this to change the max LBA of the drive?
                         bitPointer = 7;
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 0;
                         set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
@@ -13005,7 +12975,6 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
                 uint32_t logicalBlockLength = M_BytesTo4ByteValue(0, scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 5], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 6], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 7]);
                 if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
                 {
-                    //TODO: handle when this is all F's? Should we allow this to change the max LBA of the drive?
                     bitPointer = 7;
                     fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 0;
                     set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
@@ -13055,7 +13024,6 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
         }
         switch (modePage)
         {
-            //TODO: add more more pages...we could technically add all the pages we have in mode sense, but most of them aren't changeable so I'm not going to bother handling them here - TJE
         case 0x08:
             switch (subpage)
             {
@@ -13566,7 +13534,7 @@ static void set_Command_Timeouts_Descriptor(uint32_t nominalCommandProcessingTim
     //increment the offset
     *offset += 12;
 }
-//TODO: add in support info for immediate bits (requires command support via threading)
+
 static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode, bool rctd, uint8_t **pdata, uint32_t *dataLength)
 {
     eReturnValues ret = SUCCESS;
@@ -13948,7 +13916,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
             return MEMORY_FAILURE;
         }
         pdata[0][offset + 0] = operationCode;
-        pdata[0][offset + 1] = 0;//TODO: add immediate bit support in here....for now returning that it's not supported
+        pdata[0][offset + 1] = 0;
         pdata[0][offset + 2] = RESERVED;
         pdata[0][offset + 3] = 0x0F;//power condition modifier supported
         pdata[0][offset + 4] = 0xF7;//power condition and no_flush and loej and start supported
@@ -13963,7 +13931,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
             return MEMORY_FAILURE;
         }
         pdata[0][offset + 0] = operationCode;
-        pdata[0][offset + 1] = 0;//TODO: add Immediate bit support
+        pdata[0][offset + 1] = 0;
         pdata[0][offset + 2] = 0xFF;
         pdata[0][offset + 3] = 0xFF;
         pdata[0][offset + 4] = 0xFF;
@@ -13982,7 +13950,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
             return MEMORY_FAILURE;
         }
         pdata[0][offset + 0] = operationCode;
-        pdata[0][offset + 1] = 0;//TODO: add Immediate bit support
+        pdata[0][offset + 1] = 0;
         pdata[0][offset + 2] = 0xFF;
         pdata[0][offset + 3] = 0xFF;
         pdata[0][offset + 4] = 0xFF;
@@ -14366,7 +14334,6 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     return ret;
 }
 
-//TODO: add in support info for immediate bits (requires command support via threading)
 static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, uint8_t operationCode, uint16_t serviceAction, bool rctd, uint8_t **pdata, uint32_t *dataLength)
 {
     eReturnValues ret = SUCCESS;
@@ -14538,7 +14505,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
                     return MEMORY_FAILURE;
                 }
                 pdata[0][offset + 0] = operationCode;
-                pdata[0][offset + 1] = C_CAST(uint8_t, (serviceAction & UINT16_C(0x001F)) | BIT5);//TODO: add immediate and znr bit support
+                pdata[0][offset + 1] = C_CAST(uint8_t, (serviceAction & UINT16_C(0x001F)) | BIT5);
                 pdata[0][offset + 2] = RESERVED;
                 pdata[0][offset + 3] = RESERVED;
                 pdata[0][offset + 4] = RESERVED;
@@ -14561,7 +14528,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
                     return MEMORY_FAILURE;
                 }
                 pdata[0][offset + 0] = operationCode;
-                pdata[0][offset + 1] = C_CAST(uint8_t, (serviceAction & UINT16_C(0x001F)) | BIT5);//TODO: add immediate and znr bit support
+                pdata[0][offset + 1] = C_CAST(uint8_t, (serviceAction & UINT16_C(0x001F)) | BIT5);
                 pdata[0][offset + 2] = RESERVED;
                 pdata[0][offset + 3] = RESERVED;
                 pdata[0][offset + 4] = RESERVED;
@@ -14817,7 +14784,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             pdata[0][offset + 9] = controlByte;//control byte
             break;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
-        case 0x1C://TODO: only show this when ISL log is supported...for now this should be ok
+        case 0x1C:
             if (device->drive_info.softSATFlags.currentInternalStatusLogSupported || device->drive_info.softSATFlags.savedInternalStatusLogSupported)
             {
                 cdbLength = 10;

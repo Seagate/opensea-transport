@@ -66,16 +66,14 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirectio
                         //Now setup the remaining command fields.
                         //CDW0 is bytes 11:8
                         dataPtr[8] = nvmCmd->cmd.adminCmd.opcode;
-                        //TODO: bytes 9, 10, 11 hold fused bits, prp vs sgl, and CID. None of these are filled in for now...-TJE
+                        //NOTE: bytes 9, 10, 11 hold fused bits, prp vs sgl, and CID. None of these are filled in for now...-TJE
                         //NSID is 15:12
                         dataPtr[12] = M_Byte0(nvmCmd->cmd.adminCmd.nsid);
                         dataPtr[13] = M_Byte1(nvmCmd->cmd.adminCmd.nsid);
                         dataPtr[14] = M_Byte2(nvmCmd->cmd.adminCmd.nsid);
                         dataPtr[15] = M_Byte3(nvmCmd->cmd.adminCmd.nsid);
                         //metadata ptr is 31:24
-                        //TODO: Set metadata ptr value...not sure this is really needed - TJE
                         //data ptr is 47:32
-                        //TODO: Set something for the data pointer value? not sure if this is needed today
                         //CDW10 is 51:48
                         dataPtr[48] = M_Byte0(nvmCmd->cmd.adminCmd.cdw10);
                         dataPtr[49] = M_Byte1(nvmCmd->cmd.adminCmd.cdw10);
@@ -111,16 +109,14 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirectio
                     {
                         //CDW0 is bytes 11:8
                         cdb[8] = nvmCmd->cmd.nvmCmd.opcode;
-                        //TODO: bytes 9, 10, 11 hold fused bits, prp vs sgl, and CID. None of these are filled in for now...-TJE
+                        //NOTE: bytes 9, 10, 11 hold fused bits, prp vs sgl, and CID. None of these are filled in for now...-TJE
                         //NSID is 15:12
                         dataPtr[12] = M_Byte0(nvmCmd->cmd.nvmCmd.nsid);
                         dataPtr[13] = M_Byte1(nvmCmd->cmd.nvmCmd.nsid);
                         dataPtr[14] = M_Byte2(nvmCmd->cmd.nvmCmd.nsid);
                         dataPtr[15] = M_Byte3(nvmCmd->cmd.nvmCmd.nsid);
                         //metadata ptr is 31:24
-                        //TODO: Set metadata ptr value...not sure this is really needed - TJE
                         //data ptr is 47:32
-                        //TODO: Set something for the data pointer value? not sure if this is needed today
                         //CDW10 is 51:48
                         dataPtr[48] = M_Byte0(nvmCmd->cmd.nvmCmd.cdw10);
                         dataPtr[49] = M_Byte1(nvmCmd->cmd.nvmCmd.cdw10);
@@ -213,7 +209,6 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirectio
     case JM_PROTOCOL_RETURN_RESPONSE_INFO:
         *cdbDataDirection = XFER_DATA_IN;
         parameterListLength = JMICRON_NVME_CMD_PAYLOAD_SIZE;
-        //TODO: Is setting the admin bit necessary here to match previously sent command???
         if (nvmCmd)
         {
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
@@ -296,7 +291,7 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     eReturnValues sendRet = scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize, jmCDBDir, NULL, 0, nvmCmd->timeout);
     //NOTE: do not fail the command or anything else YET.
     //Need to request the response information from the command.
-    //TODO: There may be some sense data outputs where the return response info won't work or isn't necessary, but they don't seem documented today. Most likely only for illegal requests.
+    //There may be some sense data outputs where the return response info won't work or isn't necessary, but they don't seem documented today. Most likely only for illegal requests.
     bool senseDataIsAllWeGot = true;
     if (sendRet != OS_COMMAND_TIMEOUT)
     {
@@ -344,7 +339,6 @@ static eReturnValues jm_NVMe_Normal_Shutdown(tDevice *device)
     if (ret == SUCCESS)
     {
         ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15);
-        //TODO: Do we need to do a XFER NO DATA protocol or is this enough to issue this option???
     }
     else
     {
@@ -362,7 +356,6 @@ static eReturnValues jm_NVMe_MCU_Reset(tDevice *device)
     if (ret == SUCCESS)
     {
         ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15);
-        //TODO: Do we need to do a XFER NO DATA protocol or is this enough to issue this option???
     }
     else
     {

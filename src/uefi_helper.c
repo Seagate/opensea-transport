@@ -23,7 +23,7 @@
 #include <Protocol/AtaPassThru.h>
 #include <Protocol/ScsiPassThru.h>
 #include <Protocol/ScsiPassThruExt.h>
-#include <Protocol/DevicePath.h> //TODO: Add a function that can print out a device path???
+#include <Protocol/DevicePath.h>
 #include <Bus/Ata/AtaAtapiPassThru/AtaAtapiPassThru.h>//part of mdemodulepackage. Being used to help see if ATAPassthrough is from IDE or AHCI driver.
 #if !defined (DISABLE_NVME_PASSTHROUGH)
 #include <Protocol/NvmExpressPassthru.h>
@@ -67,7 +67,6 @@ eReturnValues get_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint3
     }
     //NOTE: This code below assumes that the caller knows the controller they intend to open. Meaning they've already done some sort of system scan.
     uefiStatus = gBS->OpenProtocol(handle[controllerID], &ptGuid, pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
-    //TODO: based on the error code, rather than assuming failure, check for supported/not supported.
     if (EFI_ERROR(uefiStatus))
     {
         ret = FAILURE;
@@ -93,7 +92,6 @@ void close_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t con
     }
     //NOTE: This code below assumes that we only care to change color output on node 0. This seems to work from a quick test, but may not be correct. Not sure what the other 2 nodes are for...serial?
     uefiStatus = gBS->CloseProtocol(handle[controllerID], &ptGuid, gImageHandle, NULL);
-    //TODO: based on the error code, rather than assuming failure, check for supported/not supported.
     if (EFI_ERROR(uefiStatus))
     {
         perror("Failed to close simple text output protocol\n");
@@ -600,7 +598,6 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                     printf("Protocol Mode = %d\n", instance->Mode);//0 means IDE, 1 means AHCI, 2 means RAID, but we shouldn't see RAID here ever.
                     set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
-                    //TODO: save ioalignment so callers above can properly allocate aligned memory.
                 }
                 else
                 {
@@ -990,7 +987,6 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         print_UEFI_SCSI_Target_Status(srp->TargetStatus);
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
-        //TODO: Check host adapter status and target status
         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
         scsiIoCtx->device->os_info.last_error = Status;
 
@@ -1136,7 +1132,7 @@ void print_UEFI_SCSI_Ex_Target_Status(uint8_t targetStatus)
     }
 }
 
-//TODO: This was added later, prevously only SCSI passthrough existed. May need to add #if defiend (some UDK version)
+//TODO: ifdef for EDK/UDK version?
 eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
@@ -1345,7 +1341,6 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
 
         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
         scsiIoCtx->device->os_info.last_error = Status;
-        //TODO: check adapter and target status
 
         if (Status == EFI_SUCCESS)
         {
@@ -1403,7 +1398,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-//TODO: This was added later, prevously only SCSI passthrough existed. May need to add #if defined (some UDK version)
+//TODO: ifdef for EDK/UDK version?
 eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
@@ -1414,6 +1409,10 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     printf("Sending UEFI ATA Passthru command\n");
     set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
+    if (scsiIoCtx->pAtaCmdOpts == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
     if (SUCCESS == get_ATA_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {
         seatimer_t commandTimer;
@@ -1513,19 +1512,16 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             ataPacket->InTransferLength = 0;
             ataPacket->OutTransferLength = 0;
             break;
-        //case XFER_DATA_OUT_IN: //TODO: bidirectional command support...not sure why this ATA interface supports this when there aren't commands to do this, but might as well...
-            //ataPacket->DataDirection = 2;//bidirectional command
         default:
             return BAD_PARAMETER;
         }
         //set status block and command block
-        //TODO: we should probably check that scsiIoCtx->pAtaCmdOpts is available first, but this SHOULD be ok since this is what we do on other systems
         ataCommand->AtaCommand = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
         ataCommand->AtaFeatures = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
         ataCommand->AtaSectorNumber = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow;
         ataCommand->AtaCylinderLow = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid;
         ataCommand->AtaCylinderHigh = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi;
-        ataCommand->AtaDeviceHead = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead;//TODO: If a port multiplier value is present, we need to set the device select bit for compatibility with IDE mode.
+        ataCommand->AtaDeviceHead = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead;
         ataCommand->AtaSectorNumberExp = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow48;
         ataCommand->AtaCylinderLowExp = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid48;
         ataCommand->AtaCylinderHighExp = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi48;
@@ -1598,22 +1594,6 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         //Set the passthrough length data (where it is, bytes, etc) (essentially building an SAT ATA pass-through command)
         ataPacket->Length |= EFI_ATA_PASS_THRU_LENGTH_BYTES;//ALWAYS set this. We will always set the transfer length as a number of bytes to transfer.
         //Setting 512B vs 4096 vs anything else doesn't matter in UEFI since we can set number of bytes for our transferlength anytime.
-
-//      switch (scsiIoCtx->pAtaCmdOpts->ataTransferBlocks)
-//      {
-//      case ATA_PT_512B_BLOCKS:
-//      case ATA_PT_LOGICAL_SECTOR_SIZE:
-//          //TODO: Not sure what, if anything there is to set for these values
-//          break;
-//      case ATA_PT_NUMBER_OF_BYTES:
-//
-//          break;
-//      case ATA_PT_NO_DATA_TRANSFER:
-//          //TODO: not sure if there is anything to set for this value
-//          break;
-//      default:
-//          break;
-//      }
 
         switch (scsiIoCtx->pAtaCmdOpts->ataCommandLengthLocation)
         {
@@ -1953,7 +1933,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVM_ADMIN_CMD:
             nrp->QueueType = NVME_ADMIN_QUEUE;
             nvmCommand->Cdw0.Opcode = nvmeIoCtx->cmd.adminCmd.opcode;
-            nvmCommand->Cdw0.FusedOperation = NORMAL_CMD;//TODO: handle fused Commands
+            nvmCommand->Cdw0.FusedOperation = NORMAL_CMD;
             nvmCommand->Cdw0.Reserved = RESERVED;
             nvmCommand->Nsid = nvmeIoCtx->cmd.adminCmd.nsid;
             if (nvmeIoCtx->cmd.adminCmd.cdw2)
@@ -2000,7 +1980,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         case NVM_CMD:
             nrp->QueueType = NVME_IO_QUEUE;
             nvmCommand->Cdw0.Opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
-            nvmCommand->Cdw0.FusedOperation = NORMAL_CMD;//TODO: handle fused Commands
+            nvmCommand->Cdw0.FusedOperation = NORMAL_CMD;
             nvmCommand->Cdw0.Reserved = RESERVED;
             nvmCommand->Nsid = nvmeIoCtx->cmd.nvmCmd.nsid;
             if (nvmeIoCtx->cmd.nvmCmd.cdw2)
@@ -2080,7 +2060,6 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
         nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-        //TODO: check completion information and pass it back up.
 
         if (Status == EFI_SUCCESS)
         {
@@ -2124,7 +2103,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(nrp->MetadataBuffer)//TODO: Need to figure out a better way to handle the metadata than this...
+        safe_Free_aligned(nrp->MetadataBuffer)
         safe_Free_aligned(nrp)
         safe_Free_aligned(localBuffer)
         safe_Free_aligned(nvmCommand)
@@ -2218,7 +2197,6 @@ uint32_t get_ATA_Device_Count()
 
         if (EFI_ERROR(uefiStatus))
         {
-            //TODO: continue to next handle in loop? Or fail?
             continue;
         }
         uint16_t port = UINT16_MAX;//start here since this will make the api find the first available ata port
@@ -2286,7 +2264,6 @@ eReturnValues get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 
         if (EFI_ERROR(uefiStatus))
         {
-            //TODO: continue to next handle in loop? Or fail?
             continue;
         }
         uint16_t port = UINT16_MAX;//start here since this will make the api find the first available ata port
@@ -2364,7 +2341,6 @@ uint32_t get_SCSI_Device_Count()
         uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
-            //TODO: continue to next handle in loop? Or fail?
             continue;
         }
         uint32_t target = UINT32_MAX;//start here since this will make the api find the first available scsi target
@@ -2421,7 +2397,6 @@ eReturnValues get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
         uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
-            //TODO: continue to next handle in loop? Or fail?
             continue;
         }
         uint32_t target = UINT32_MAX;//start here since this will make the api find the first available scsi target
@@ -2494,7 +2469,6 @@ uint32_t get_SCSIEx_Device_Count()
         uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
-            //TODO: continue to next handle in loop? Or fail?
             continue;
         }
         memset(target, 0xFF, TARGET_MAX_BYTES);
@@ -2556,7 +2530,6 @@ eReturnValues get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeI
         uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
-            //TODO: continue to next handle in loop? Or fail?
             continue;
         }
         memset(target, 0xFF, TARGET_MAX_BYTES);
@@ -2625,7 +2598,6 @@ uint32_t get_NVMe_Device_Count()
         uefiStatus = gBS->OpenProtocol(handle[counter], &nvmePtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
-            //TODO: continue to next handle in loop? Or fail?
             continue;
         }
         uint32_t namespaceID = UINT32_MAX;//start here since this will make the api find the first available nvme namespace
@@ -2685,7 +2657,6 @@ eReturnValues get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
         uefiStatus = gBS->OpenProtocol(handle[counter], &nvmePtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
-            //TODO: continue to next handle in loop? Or fail?
             continue;
         }
         uint32_t namespaceID = UINT32_MAX;//start here since this will make the api find the first available nvme namespace
@@ -2754,7 +2725,6 @@ eReturnValues get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
 //-----------------------------------------------------------------------------
 eReturnValues get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
-    //TODO: handle flags
     *numberOfDevices += get_ATA_Device_Count();
     *numberOfDevices += get_SCSI_Device_Count();
     *numberOfDevices += get_SCSIEx_Device_Count();
@@ -2789,7 +2759,6 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
 eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
 {
     uint32_t index = 0;
-    //TODO: handle flags and validate size of device list and version block
     get_ATA_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
     get_SCSI_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
     get_SCSIEx_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
@@ -2829,7 +2798,6 @@ eReturnValues os_Unlock_Device(M_ATTR_UNUSED tDevice *device)
 
 eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
-    //TODO: Complete this stub when this is figured out - TJE
     return NOT_SUPPORTED;
 }
 

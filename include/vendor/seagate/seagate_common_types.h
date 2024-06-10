@@ -46,8 +46,6 @@ extern "C"
 
     #define SEAGATE_FARM_LOG_SIGNATURE UINT64_C(0x00004641524D4552)
 
-    //TODO: Add any other definitions to this file that are the same drive interface types
-
 #if defined(__cplusplus)
 }
 #endif

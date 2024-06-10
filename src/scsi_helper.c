@@ -1531,7 +1531,6 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
             }
             if (returnedLength > 8)
             {
-                //todo: better handling of if returned length for each field in here...
                 if (returnedLength >= 11)
                 {
                     senseFields->fixedCommandSpecificInformation = M_BytesTo4ByteValue(ptrSenseData[8], ptrSenseData[9], ptrSenseData[10], ptrSenseData[11]);
@@ -2361,7 +2360,6 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             else if (strcmp(productID, "S2 Portable") == 0)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
-                //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
             }
             else
             {
@@ -2390,7 +2388,6 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             if (strcmp(productID, "S2 Portable") == 0)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
-                //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
             }
             if (device->drive_info.interface_type != USB_INTERFACE)
             {
@@ -2659,7 +2656,6 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
                 memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], strlen((*unitSerialNumber)) - 4);
                 memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - 4);
             }
-            //TODO: Add more cases if we observe other strange reporting behavior.
             //NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to add different cases for these older LaCie products.
         }
         else if (is_Seagate_SAS_Vendor_ID(t10VendorIdent))
@@ -2953,7 +2949,6 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             {
                 checkForSAT = false;
             }
-            //TODO: add in additional bits to skip SAT check as we find them useful
         }
         //do we want to check the version descriptors here too? There are a lot of those...I have a table that parses them to human readable, but not setting anything yet...may need to use that later
 
@@ -2988,7 +2983,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 strcmp(device->drive_info.product_identification, "SD/MMC") == 0 ||
                 strcmp(device->drive_info.product_identification, "SD/MemoryStick") == 0 ||
                 strcmp(device->drive_info.product_identification, "SM/xD-Picture") == 0 ||
-                strcmp(device->drive_info.product_identification, "Compact Flash") == 0 //TODO: Keep this here? This can be an ATA device, but that may depend on the interface - TJE
+                strcmp(device->drive_info.product_identification, "Compact Flash") == 0
                 )
             {
                 //TODO: We have "FLASH_DRIVE" as a type, but it won't ba handled well in the rest of the library.
@@ -3022,7 +3017,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             uint8_t asmtInq[38] = { 0 };
             if (SUCCESS == scsi_Inquiry(device, asmtInq, 38, 0, false, false))
             {
-                if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)//todo: add checking length ahead of this for improved backwards compatibility with SCSI 2 devices.
+                if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)
                 {
                     //This is an ASMedia device with the 236X chip which supports USB to NVMe passthrough
                     //will attempt to check for full passthrough support first
@@ -3373,7 +3368,6 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                             ++offset;
                         }
                     }
-                    //TODO: Add more pages to the dummy information as we need to. This may be useful to do in the future in case a device decides not to support a MANDATORY page or another page we care about
 
                 }
                 //set page length (n-3)
@@ -3465,7 +3459,6 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                         {
                             //send test unit ready to get the device responding again (For better performance on some USB devices that don't support this page)
                             scsi_Test_Unit_Ready(device, NULL);
-                            //TODO: Check jmicron here???
                             if (checkJMicronNVMe)
                             {
                                 device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;

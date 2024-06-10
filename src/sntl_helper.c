@@ -415,7 +415,6 @@ static void set_Sense_Data_By_Generic_NVMe_Status(tDevice *device, uint8_t nvmeS
         break;
     case 0x1E://SGL data block granularity invalid
     case 0x1F://command not supported for queue in CMB
-        //TODO: Need something to handle these....
         genericCatchAllSense = true;
         break;
         //80-BFh are I/O command set specific
@@ -618,7 +617,6 @@ static void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice *device, uint8_t 
     asc = 0;
     ascq = 0;
 
-    //TODO: Media Errors translations
     switch (nvmeStatus)
     {
         //admin are 0 - 7Fh
@@ -694,7 +692,6 @@ static void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice *device, uint8_t 
     return;
 }
 
-//TODO: Handle doing other things like setting progress indication if a test is running while translating sense data or other things like that.
 static void set_Sense_Data_By_NVMe_Status(tDevice *device, uint32_t completionDWord3, uint8_t *sensePtr, uint32_t senseDataLength)
 {
     uint8_t statusCodeType = M_GETBITRANGE(completionDWord3, 27, 25);
@@ -715,7 +712,6 @@ static void set_Sense_Data_By_NVMe_Status(tDevice *device, uint32_t completionDW
     default:
         //set some kind of generic sense error!
         //if status code type is 7, set a vendor unique sense data error
-        //TODO: find a way to send the NVMe status back up through here
         if (statusCodeType == 7)
         {
             sntl_Set_Sense_Data_For_Translation(sensePtr, senseDataLength, SENSE_KEY_VENDOR_SPECIFIC, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
@@ -1523,7 +1519,7 @@ static eReturnValues sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice *device, S
 
         //unmap granularity alignment (unspecified....we decide) - leave at zero
     }
-    //TODO: set a maximum for write same length. Currently zero since we aren't supporting the command right now
+    //set a maximum for write same length. Currently zero since we aren't supporting the command right now
     //maximum write same length (unspecified....we decide). We will allow the full drive to be write same'd
     /*blockLimits[36] = M_Byte7(device->drive_info.deviceMaxLba);
     blockLimits[37] = M_Byte6(device->drive_info.deviceMaxLba);
@@ -1634,7 +1630,6 @@ static eReturnValues sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDev
     {
         logicalBlockProvisioning[5] |= BIT7;
     }
-    //TODO: if we extend spec support for unmap and allow setting the unmap bit, then we should enable these next two bits
     //lbpws bit
     /*
     if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
@@ -1654,7 +1649,7 @@ static eReturnValues sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDev
     {
         logicalBlockProvisioning[5] |= BIT2;
     }
-    //anc_sup //TODO: what do we do for this?
+    //anc_sup
     /*if ()
     {
         logicalBlockProvisioning[5] |= BIT1;
@@ -2082,12 +2077,10 @@ static eReturnValues sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoC
     supportedPages[offset] = LP_GENERAL_STATISTICS_AND_PERFORMANCE;
     offset += increment;
 #endif
-    //TODO: add logs
 
     //if smart is supported, add informational exceptions log page (2Fh)
     supportedPages[offset] = LP_INFORMATION_EXCEPTIONS;
     offset += increment;
-    //TODO: add logs
 
     //set the page length (Do this last)
     supportedPages[2] = M_Byte1(offset - 4);
@@ -2288,7 +2281,7 @@ static eReturnValues sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice
     informationalExceptions[5] = 0;
     informationalExceptions[6] = 0x03 | BIT5;//sntl says to set the TSD bit to 1
     informationalExceptions[7] = 0x03;
-    //TODO: if a critical warning bit is set, should we return failure???
+    //if a critical warning bit is set, should we return failure??? The old translation whitepaper does not say to do this...
     //if ()
     //{
     //    //fail status (Only set this when we actually know it was a failure)
@@ -2683,7 +2676,7 @@ static eReturnValues sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, 
     uint8_t nvmDSTLog[564] = { 0 };
     nvmeGetLogPageCmdOpts dstLog;
     memset(&dstLog, 0, sizeof(nvmeGetLogPageCmdOpts));
-    dstLog.nsid = NVME_ALL_NAMESPACES;//TODO: by namespace instead?
+    dstLog.nsid = NVME_ALL_NAMESPACES;
     dstLog.addr = nvmDSTLog;
     dstLog.dataLen = UINT32_C(564);
     dstLog.lid = NVME_LOG_DEV_SELF_TEST_ID;
@@ -2754,7 +2747,7 @@ static eReturnValues sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, 
                 selfTestResults[selfTestOffset + 15] = UINT8_MAX;
             }
             uint8_t senseKey = 0, additionalSenseCode = 0, additionalSenseCodeQualifier = 0;
-            //TODO: translate NVMe Status to a SCSI Sense code as best as possible.
+            //translate NVMe Status to a SCSI Sense code as best as possible.
             //if (nvmDSTLog[nvmDSTOffset + 2] & BIT2 && nvmDSTLog[nvmDSTOffset + 2] & BIT3)
             //{
             //    //convert NVM status to a SCSI sense code
@@ -3108,7 +3101,6 @@ static eReturnValues sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDe
     readWriteErrorRecovery = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!readWriteErrorRecovery)
     {
-        //TODO: set an error in the sense data
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -3244,7 +3236,6 @@ static eReturnValues sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, Scsi
     caching = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!caching)
     {
-        //TODO: set an error in the sense data
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -3303,7 +3294,6 @@ static eReturnValues sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, Scsi
             }
             else
             {
-                //TODO: set an error...even though this shouldn't happen
                 set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 safe_Free(caching)
                 return ret;
@@ -3395,7 +3385,6 @@ static eReturnValues sntl_Translate_Mode_Sense_Control_0Ah(ScsiIoCtx *scsiIoCtx,
     controlPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!controlPage)
     {
-        //TODO: set an error in the sense data
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -3425,7 +3414,6 @@ static eReturnValues sntl_Translate_Mode_Sense_Control_0Ah(ScsiIoCtx *scsiIoCtx,
         controlPage[offset + 9] = 0xFF;//busy timeout period
 #if defined (SNTL_EXT)
         uint16_t smartSelfTestTime = 0;
-        //TODO: If the drive supports DST, set the DST timeout here
         controlPage[offset + 10] = M_Byte1(smartSelfTestTime);
         controlPage[offset + 11] = M_Byte0(smartSelfTestTime);
 #else
@@ -3497,7 +3485,6 @@ static eReturnValues sntl_Translate_Mode_Sense_Power_Condition_1A(ScsiIoCtx *scs
     powerConditionPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!powerConditionPage)
     {
-        //TODO: set an error in the sense data
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -3574,7 +3561,6 @@ static eReturnValues sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoC
     controlExtPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!controlExtPage)
     {
-        //TODO: set an error in the sense data
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -3682,7 +3668,6 @@ static eReturnValues sntl_Translate_Mode_Sense_Informational_Exceptions_Control_
     informationalExceptions = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
     if (!informationalExceptions)
     {
-        //TODO: set an error in the sense data
         return MEMORY_FAILURE;
     }
     //copy header into place
@@ -3698,7 +3683,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Informational_Exceptions_Control_
     if (pageControl != 0x1)
     {
         informationalExceptions[offset + 2] = 0;//perf = 0, reserved = 0, ebf = 0 (no background functions), EWAsc = 0 (doesn't report warnings), DExcpt = 0 (device does not disable reporting failure predictions), test = 0, ebackerr = 0, logerr = 0
-        informationalExceptions[offset + 3] = 0;//MRIE = 0h //TODO: should this be different? We won't ever set a trip, but it isn't disabled either...should be either 0 or 6. 0 meaning will not trip. 6 meaning will check on request sense
+        informationalExceptions[offset + 3] = 0;//MRIE = 0h//following SNTL which does not report errors.
         informationalExceptions[offset + 4] = 0;//interval timer = 0 (not used/vendor specific)
         informationalExceptions[offset + 5] = 0;//interval timer = 0 (not used/vendor specific)
         informationalExceptions[offset + 6] = 0;//interval timer = 0 (not used/vendor specific)
@@ -4067,8 +4052,7 @@ static eReturnValues sntl_Translate_Mode_Select_Caching_08h(tDevice *device, Scs
         setWCE.fid = 0x06;
         setWCE.sv = 0;
         wceRet = nvme_Set_Features(device, &setWCE);
-        //TODO: remove this if and pass along the DWORD returned with status for translation instead.
-        if (wceRet)
+        if (wceRet != SUCCESS)
         {
             set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             ret = FAILURE;
@@ -4201,8 +4185,6 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, Sc
         bitPointer = 0;
         //uint16_t modeDataLength = scsiIoCtx->pdata[0];
         //uint8_t deviceSpecificParameter = scsiIoCtx->pdata[2];
-        //bool writeProtected = false;//Don't allow write protection. This makes no sense for this software implementation. - TJE
-        //bool dpoFua = false;//TODO: allow this bit to be zero. AKA don't allow DPO or FUA in read/write
         bool longLBA = false;
         uint16_t blockDescriptorLength = scsiIoCtx->pdata[3];
         if (tenByteCommand)
@@ -4300,7 +4282,6 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, Sc
                     uint32_t logicalBlockLength = M_BytesTo4ByteValue(scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 12], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 13], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 14], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 15]);
                     if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
                     {
-                        //TODO: handle when this is all F's? Should we allow this to change the max LBA of the drive?
                         bitPointer = 7;
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 0;
                         sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
@@ -4341,7 +4322,6 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, Sc
                     uint32_t logicalBlockLength = M_BytesTo4ByteValue(0, scsiIoCtx->pdata[13], scsiIoCtx->pdata[14], scsiIoCtx->pdata[15]);
                     if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
                     {
-                        //TODO: handle when this is all F's? Should we allow this to change the max LBA of the drive?
                         bitPointer = 7;
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 0;
                         sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
@@ -4380,7 +4360,6 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, Sc
                 uint32_t logicalBlockLength = M_BytesTo4ByteValue(0, scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 5], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 6], scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 7]);
                 if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
                 {
-                    //TODO: handle when this is all F's? Should we allow this to change the max LBA of the drive?
                     bitPointer = 7;
                     fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 0;
                     sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer, fieldPointer);
@@ -4430,7 +4409,6 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice *device, Sc
         }
         switch (modePage)
         {
-            //TODO: add more more pages...we could technically add all the pages we have in mode sense, but most of them aren't changeable so I'm not going to bother handling them here - TJE
         case 0x08:
             switch (subpage)
             {
@@ -4551,7 +4529,6 @@ static eReturnValues sntl_Translate_SCSI_Synchronize_Cache_Command(tDevice *devi
     return ret;
 }
 
-//TODO: DPO bit
 static eReturnValues sntl_Translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     uint64_t lba = 0;
@@ -4726,7 +4703,6 @@ static eReturnValues sntl_Translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx
         sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return SUCCESS;
     }
-    //TODO: we may need to add additional work to make this happen...not sure.
     if (device->drive_info.IdentifyData.nvme.ns.dps > 0 && scsiIoCtx->cdb[OPERATION_CODE] != 0x08)
     {
         switch (rdprotect)
@@ -4756,7 +4732,6 @@ static eReturnValues sntl_Translate_SCSI_Read_Command(tDevice *device, ScsiIoCtx
     return ret;
 }
 
-//TODO: DPO bit
 static eReturnValues sntl_Translate_SCSI_Write_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     bool fua = false;
@@ -4931,7 +4906,6 @@ static eReturnValues sntl_Translate_SCSI_Write_Command(tDevice *device, ScsiIoCt
         sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return SUCCESS;
     }
-    //TODO: we may need to add additional work to make this happen...not sure.
     if (device->drive_info.IdentifyData.nvme.ns.dps > 0 && scsiIoCtx->cdb[OPERATION_CODE] != 0x0A)
     {
         switch (wrprotect)
@@ -5099,8 +5073,7 @@ static eReturnValues sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoC
     switch (byteCheck)
     {
     case 0:
-        //no logical block data..what do we send as the compare buffer? Or just do a read instead with FUA bit set???? or read followed by compare?
-        //TODO: figure out what we actually need to do in this case
+        //TODO: If NVMe verify is supported, issue that, otherwise error
         fieldPointer = 1;
         bitPointer = 2;
         sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
@@ -5150,7 +5123,6 @@ static eReturnValues sntl_Translate_SCSI_Verify_Command(tDevice *device, ScsiIoC
         sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return NOT_SUPPORTED;
     case 3://compare a single logical block of data to each LBA in the range...SNTL does not specify this mode...but we can probably implement it ourselves as an extension
-        //TODO: do a loop of compare commands for the range of LBAs to compare each one, one logical block at a time
         fieldPointer = 1;
         bitPointer = 2;
         sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer, fieldPointer);
@@ -5429,7 +5401,6 @@ static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, Sc
     return ret;
 }
 
-//TODO: if any kind of "device fault" occurs, send back a sense code similar to SAT with ATA devices
 static eReturnValues sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
@@ -5814,7 +5785,7 @@ static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, S
             {
                 commitAction = NVME_CA_ACTIVITE_IMMEDIATE;
             }
-            ret = nvme_Firmware_Commit(device, commitAction, bufferID, scsiIoCtx->timeout);//todo: need to catch any errors
+            ret = nvme_Firmware_Commit(device, commitAction, bufferID, scsiIoCtx->timeout);
             if (ret != SUCCESS)
             {
                 set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
@@ -5889,7 +5860,7 @@ static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, S
             && ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 && bufferID == 0)//buffer ID should be zero since we don't support other buffer IDs
             )
         {
-            //TODO: Check the granularity requirements from fwug in controller identify data so we can check the command properly before issuing it.
+            //Check the granularity requirements from fwug in controller identify data so we can check the command properly before issuing it.
             uint32_t granularity = device->drive_info.IdentifyData.nvme.ctrl.fwug * 4096;//this is in bytes
             if (device->drive_info.IdentifyData.nvme.ctrl.fwug == UINT8_MAX)
             {
@@ -5990,7 +5961,6 @@ static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, S
         }
         break;
     case 0x07://Download code and activate on final segment...we cannot support this without some other way of notifying us that it's the final segment. Can reinvestigate it later!
-        //TODO: Implement this method since scsiIoCtx now has flags for first and last segments.
     default://unknown or unsupported mode
         fieldPointer = 1;
         bitPointer = 4;
@@ -6431,10 +6401,6 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCt
     return ret;
 }
 
-//TODO: Add support for Format in progress
-//Add support sanitize commands with our extensions
-//Add detecting when background self test is in progress and reporting progress from that
-//TODO: Figure out other ways to improve what happens in here to pass back out that would be useful. SNTL spec doesn't really say much about what to do here.
 static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
@@ -6539,7 +6505,6 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, 
     powerState.fid = 0x02;
     if (SUCCESS != nvme_Get_Features(device, &powerState))
     {
-        //TODO: set error based on status code translation
         set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
         return ret;
     }
@@ -7730,7 +7695,6 @@ static void sntl_Set_Command_Timeouts_Descriptor(uint32_t nominalCommandProcessi
     *offset += 12;
 }
 
-//TODO: add in support info for immediate bits (requires command support via threading)
 static eReturnValues sntl_Check_Operation_Code(tDevice *device, uint8_t operationCode, bool rctd, uint8_t **pdata, uint32_t *dataLength)
 {
     eReturnValues ret = SUCCESS;
@@ -8037,7 +8001,7 @@ static eReturnValues sntl_Check_Operation_Code(tDevice *device, uint8_t operatio
             return MEMORY_FAILURE;
         }
         pdata[0][offset + 0] = operationCode;
-        pdata[0][offset + 1] = 0;//TODO: add immediate bit support in here....for now returning that it's not supported
+        pdata[0][offset + 1] = 0;
         pdata[0][offset + 2] = RESERVED;
         pdata[0][offset + 3] = 0x0F;//power condition modifier supported
         pdata[0][offset + 4] = 0xF7;//power condition and no_flush and loej and start supported
@@ -8052,7 +8016,7 @@ static eReturnValues sntl_Check_Operation_Code(tDevice *device, uint8_t operatio
             return MEMORY_FAILURE;
         }
         pdata[0][offset + 0] = operationCode;
-        pdata[0][offset + 1] = 0;//TODO: add Immediate bit support
+        pdata[0][offset + 1] = 0;
         pdata[0][offset + 2] = 0xFF;
         pdata[0][offset + 3] = 0xFF;
         pdata[0][offset + 4] = 0xFF;
@@ -8421,7 +8385,6 @@ static eReturnValues sntl_Check_Operation_Code(tDevice *device, uint8_t operatio
     return ret;
 }
 
-//TODO: add in support info for immediate bits (requires command support via threading)
 static eReturnValues sntl_Check_Operation_Code_and_Service_Action(tDevice *device, uint8_t operationCode, uint16_t serviceAction, bool rctd, uint8_t **pdata, uint32_t *dataLength)
 {
     eReturnValues ret = SUCCESS;
@@ -8516,7 +8479,7 @@ static eReturnValues sntl_Check_Operation_Code_and_Service_Action(tDevice *devic
                         return MEMORY_FAILURE;
                     }
                     pdata[0][offset + 0] = operationCode;
-                    pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT5;//TODO: add immediate bit support
+                    pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT5;
                     pdata[0][offset + 2] = RESERVED;
                     pdata[0][offset + 3] = RESERVED;
                     pdata[0][offset + 4] = RESERVED;
@@ -8554,7 +8517,7 @@ static eReturnValues sntl_Check_Operation_Code_and_Service_Action(tDevice *devic
                     return MEMORY_FAILURE;
                 }
                 pdata[0][offset + 0] = operationCode;
-                pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT5;//TODO: add immediate bit support
+                pdata[0][offset + 1] = (serviceAction & 0x001F) | BIT5;
                 pdata[0][offset + 2] = RESERVED;
                 pdata[0][offset + 3] = RESERVED;
                 pdata[0][offset + 4] = RESERVED;

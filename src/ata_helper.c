@@ -1150,7 +1150,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
         if (is_ATA_Identify_Word_Valid_SATA(ident_word[76]))
         {
             device->drive_info.ata_Options.isParallelTransport = false;
-            device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits = true;//TODO: May need to retry and test this just in case! Can use identify to validate. May be necessary for old controllers or drivers or weird controller modes
+            device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits = true;
             //check for native command queuing support
             if (ident_word[76] & BIT8)
             {
@@ -1978,7 +1978,7 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataComm
         //bit6 means either uncorrectable data or write protected (removable medium)
         if (ataCommandOptions->rtfr.error & BIT5)
         {
-            if (is_Removable_Media(device))//todo: does this need checking if this was a write command???
+            if (is_Removable_Media(device))
             {
                 printf("\t\tWrite Protected\n");
             }
@@ -2155,7 +2155,7 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand *ataComm
             printf("\t\tUnknown Status bit 2 (CORR or ALIGNMENT?)\n");
         }
     }
-    //TODO: Bit 1 is either index (flips with rev) or sense data available. Sense data reporting must at least be supported for this one to be useful
+    //Bit 1 is either index (flips with rev) or sense data available. Sense data reporting must at least be supported for this one to be useful
     if (ataCommandOptions->rtfr.status & BIT1)
     {
         if (device->drive_info.ata_Options.senseDataReportingEnabled)

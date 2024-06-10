@@ -468,7 +468,7 @@ static eKnownCSMIDriver get_Known_CSMI_Driver_Type(PCSMI_SAS_DRIVER_INFO driverI
         {
             csmiDriverType = CSMI_DRIVER_HPSAMD;
         }
-        //TODO: As more driver names found, check them here.
+        //As more driver names found, check them here.
     }
 #if defined (_DEBUG)
     printf("Known driver = %d\n", csmiDriverType);
@@ -2312,7 +2312,8 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
         ret = csmi_Return_To_OpenSea_Result(sspPassthrough->IoctlHeader.ReturnCode);
         //if (sspPassthrough->IoctlHeader.ReturnCode == CSMI_SAS_STATUS_SUCCESS)
 
-        if (sspPassthrough->Parameters.uFlags & CSMI_SAS_SSP_READ)
+        //check if response data is present in the status before trying to go any further copying it back
+        if (sspPassthrough->Parameters.uFlags & CSMI_SAS_SSP_READ && sspPassthrough->Status.bDataPresent & CSMI_SAS_SSP_RESPONSE_DATA_PRESENT)
         {
             //clear read data ptr first
             memset(sspInputs->ptrData, 0, sspInputs->dataLength);
@@ -2322,8 +2323,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
                 memcpy(sspInputs->ptrData, sspPassthrough->bDataBuffer, M_Min(sspInputs->dataLength, sspPassthrough->Status.uDataBytes));
             }
         }
-        //TODO: Response data versus sense data. Sense data is obvious, but what does it mean by response data???
-        if(/*sspPassthrough->Status.bDataPresent == CSMI_SAS_SSP_RESPONSE_DATA_PRESENT ||*/ sspPassthrough->Status.bDataPresent == CSMI_SAS_SSP_SENSE_DATA_PRESENT)
+        if(sspPassthrough->Status.bDataPresent & CSMI_SAS_SSP_SENSE_DATA_PRESENT)
         {
             //copy back sense data
             if (sspOutputs->senseDataPtr)
@@ -2361,7 +2361,6 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
     return ret;
 }
 
-//TODO: STP Passthrough function (retry and switch to SSP if error is SCSI EMULATION...may need to try SAT and legacy E0h CDB methods)
 typedef struct _csmiSTPIn
 {
     uint8_t phyIdentifier;//can set CSMI_SAS_USE_PORT_IDENTIFIER
@@ -2580,7 +2579,6 @@ static void print_CSMI_Get_SCSI_Address(PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAd
     return;
 }
 
-//TODO: input/output structures for this instead???
 eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddressBuffer, uint8_t sasAddress[8], uint8_t lun[8], eVerbosityLevels verbosity)
 {
     eReturnValues ret = SUCCESS;
@@ -2648,7 +2646,6 @@ static void print_CSMI_Device_Address(PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER addres
     return;
 }
 
-//TODO: input/output structures for this instead???
 eReturnValues csmi_Get_Device_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER deviceAddressBuffer, uint8_t hostIndex, uint8_t path, uint8_t target, uint8_t lun, eVerbosityLevels verbosity)
 {
     eReturnValues ret = SUCCESS;
@@ -2934,8 +2931,7 @@ bool device_Supports_CSMI_With_RST(tDevice *device)
     bool csmiWithRSTSupported = false;
     if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
     {
-        //check for FWDL IOCTL support. If this works, then the Intel Additions are supported. (TODO: try NVMe passthrough???)
-        //TODO: Based on driver name, only check this for known intel drivers???
+        //check for FWDL IOCTL support. If this works, then the Intel Additions are supported.
 #if defined (ENABLE_INTEL_RST)
         if (supports_Intel_Firmware_Download(device))
         {
@@ -3562,7 +3558,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
         device->os_info.minimumAlignment = sizeof(void *);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
         device->issue_io = C_CAST(issue_io_func, send_CSMI_IO);
         device->drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
-        device->drive_info.interface_type = RAID_INTERFACE;//TODO: Only set RAID interface for one that needs a function pointer and is in a RAID!!!
+        device->drive_info.interface_type = RAID_INTERFACE;
         device->os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
         if (!device->os_info.csmiDeviceData)
         {
@@ -3593,7 +3589,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined (CSMI_DEBUG)
             printf("GRD: CSMI get device failure due to driver info failure\n");
 #endif //CSMI_DEBUG
-            ret = FAILURE;//TODO: should this fail here??? This IOCTL is required...
+            ret = FAILURE;
         }
         CSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfig;
 #if defined (CSMI_DEBUG)
@@ -3608,7 +3604,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined (CSMI_DEBUG)
             printf("GRD: CSMI get device failure due to controller config failure\n");
 #endif //CSMI_DEBUG
-            ret = FAILURE;//TODO: should this fail here??? This IOCTL is required...
+            ret = FAILURE;
         }
 
 #if defined (_WIN32) && defined (ENABLE_INTEL_RST)
@@ -3761,14 +3757,12 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
                 }
             }
 
-            if ((device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA) == 0 && !device->os_info.csmiDeviceData->scsiAddressValid)//TODO: Need to test this. May just want to always try it
+            if ((device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA) == 0 && !device->os_info.csmiDeviceData->scsiAddressValid)
             {
                 //get scsi address
 #if defined (CSMI_DEBUG)
                 printf("GRD: Calling get SCSI address since it is not valid\n");
 #endif //CSMI_DEBUG
-                //TODO: Need to figure out how we get the LUN...it's part of RAID config drive information, but it is not part of other reported information...only need this under RAID most likely...-TJE
-                //TODO: Check to see if SMP requests can somehow figure out the 8 byte SAS Lun values. Will only need it on non-SATA devices. SATA has only a singe LUN, but SAS may have multiple LUNs
                 CSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress;
                 if (SUCCESS == csmi_Get_SCSI_Address(device->os_info.csmiDeviceData->csmiDevHandle, device->os_info.csmiDeviceData->controllerNumber, &scsiAddress, device->os_info.csmiDeviceData->sasAddress, device->os_info.csmiDeviceData->sasLUN, device->deviceVerbosity))
                 {
@@ -3859,7 +3853,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
 {
     eCSMISecurityAccess access = CSMI_SECURITY_ACCESS_NONE;
 #if defined (_WIN32)
-    if (strstr(driverName, "iaStor"))//TODO: Expand this list as other drives not using these registry keys are found-TJE
+    if (strstr(driverName, "iaStor"))//Expand this list as other drives not using these registry keys are found-TJE
     {
         //Intel's driver does not use these registry keys
         access = CSMI_SECURITY_ACCESS_FULL;
@@ -3950,7 +3944,6 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                                             //interpret the value and set proper level
                                             //Possible values are "None, Restricted, Limited, Full"
                                             //Note: Case sensitive match for now. Switch to _tcsnicmp if needing to eliminate case sensitivity-TJE
-                                            //TODO: spec shows terminating with a semi-colon...is this necessary to check for this terminating character?
                                             if (0 == _tcsncmp(csmiConfig, TEXT("CSMI=None"), 9))
                                             {
                                                 access = CSMI_SECURITY_ACCESS_NONE;
@@ -3987,10 +3980,6 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                                 access = CSMI_SECURITY_ACCESS_LIMITED;
                             }
                             RegCloseKey(keyHandle);
-                        }
-                        else //ERROR_FILE_NOT_FOUND
-                        {
-                            //TODO: Handle looping through adapters. Should always start and find adapter zero \\Device0. If this doesn't exist, then the driver isn't enumerating this way at all and we can exit-TJE
                         }
                     }
                 }
@@ -4142,7 +4131,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
                             printf("GDC: Getting RAID info\n");
 #endif //CSMI_DEBUG
                             //Get RAID info
-                            //TODO: Adaptec's API doesn't seem to like this. May need to pull phy info instead if this fails. -TJE
+                            //NOTE Adaptec's API doesn't seem to like this. May need to pull phy info instead if this fails. -TJE
                             CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
                             csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, csmiCountVerbosity);
                             //Get RAID config
@@ -4267,7 +4256,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
                                         tempDevice.os_info.minimumAlignment = sizeof(void*);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
                                         tempDevice.issue_io = C_CAST(issue_io_func, send_CSMI_IO);
                                         tempDevice.drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
-                                        tempDevice.drive_info.interface_type = RAID_INTERFACE;//TODO: Only set RAID interface for one that needs a function pointer and is in a RAID!!!
+                                        tempDevice.drive_info.interface_type = RAID_INTERFACE;
                                         tempDevice.os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
                                         if (!tempDevice.os_info.csmiDeviceData)
                                         {
@@ -4359,7 +4348,6 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
 #endif //CSMI_DEBUG
                                             if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
                                             {
-                                                //TODO: If this is a multi-LUN device, this won't currently work and it may not be possible to make this work if we got to this case in the first place. HOPEFULLY the other CSMI translation IOCTLs just work and this is unnecessary. - TJE
 #if defined (CSMI_DEBUG)
                                                 printf("GDC: Inquiry Successful\n");
 #endif //CSMI_DEBUG
@@ -4492,7 +4480,6 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
         return SUCCESS;
     }
 
-    //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
 #if defined (CSMI_DEBUG)
@@ -4725,7 +4712,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                             lun = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[0];
                                                             target = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[1];
                                                             path = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[2];
-                                                            //TODO: don't know which bytes hold target and lun...leaving as zero since they are TECHNICALLY reserved in the documentation
+                                                            // don't know which bytes hold target and lun...leaving as zero since they are TECHNICALLY reserved in the documentation
                                                             //\\.\SCSI?: number is needed in windows, this is the controllerNumber in Windows.
                                                             snprintf(handle, RAID_HANDLE_STRING_MAX_LEN, "csmi:%" CPRIu8 ":N:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, path, target, lun);
                                                             foundDevice = true;
@@ -4840,7 +4827,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                         tempDevice.os_info.minimumAlignment = sizeof(void *);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
                                                                         tempDevice.issue_io = C_CAST(issue_io_func, send_CSMI_IO);
                                                                         tempDevice.drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
-                                                                        tempDevice.drive_info.interface_type = RAID_INTERFACE;//TODO: Only set RAID interface for one that needs a function pointer and is in a RAID!!!
+                                                                        tempDevice.drive_info.interface_type = RAID_INTERFACE;
                                                                         tempDevice.os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
                                                                         if (!tempDevice.os_info.csmiDeviceData)
                                                                         {
@@ -5025,7 +5012,6 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
     #if defined (CSMI_DEBUG)
                                                                                                 printf("GDL: End device handle found and set as %s\n", handle);
     #endif //CSMI_DEBUG
-                                                                                                //TODO: To help prevent multiport or multi-lun issues, we should REALLY check the device identification VPD page, but that can be a future enhancement
                                                                                             }
                                                                                             safe_Free(serialNumber)
                                                                                         }
@@ -5367,8 +5353,8 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
     {
         //check the status FIS, and set up the proper response
         //This FIS should be either D2H or possibly PIO Setup
-        ptrSataD2HFis d2h = (ptrSataD2HFis)&statusFIS[0];
-        ptrSataPIOSetupFis pioSet = (ptrSataPIOSetupFis)&statusFIS[0];
+        ptrSataD2HFis d2h = C_CAST(ptrSataD2HFis, &statusFIS[0]);
+        ptrSataPIOSetupFis pioSet = C_CAST(ptrSataPIOSetupFis, &statusFIS[0]);
         ataReturnTFRs rtfrs;//create this temporarily to save fis output results, then we'll pack it into sense data
         memset(&rtfrs, 0, sizeof(ataReturnTFRs));
         switch (statusFIS[0])
@@ -5387,7 +5373,7 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
             rtfrs.secCntExt = d2h->sectorCountExt;
             break;
         case FIS_TYPE_PIO_SETUP:
-            rtfrs.status = pioSet->eStatus;//TODO: This should be good, but there is a possibility of something not going right here if the data didn't make it properly. can we add more intelligence to select status vs estatus?
+            rtfrs.status = pioSet->eStatus;
             rtfrs.error = pioSet->error;
             rtfrs.device = pioSet->device;
             rtfrs.lbaLow = pioSet->lbaLow;

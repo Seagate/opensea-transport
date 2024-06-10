@@ -412,7 +412,6 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             printf("FireWire interface!\n");
 #endif
                             device->drive_info.interface_type = IEEE_1394_INTERFACE;
-                            //TODO: investigate some way of saving vendor/product like information for firewire.
                             char fullFWPath[PATH_MAX] = { 0 };
                             snprintf(fullFWPath, PATH_MAX, "%s", inHandleLink);
 
@@ -643,7 +642,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 
 //map a block handle (sd) to a generic handle (sg or bsg)
 //incoming handle can be either sd, sg, or bsg type
-//TODO: handle kernels before 2.6 in some other way. This depends on mapping in the file system provided by 2.6 and later.
+//requires kernel 2.6 or later
 eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle)
 {
     if (handle == NULL)
@@ -994,7 +993,6 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             //Some of these old pass-through types issue vendor specific op codes that could be misinterpretted on some devices.
 //              if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
 //              {
-//                  //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
 //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
 //              }
 
@@ -1102,7 +1100,6 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                 //Some of these old pass-through types issue vendor specific op codes that could be misinterpretted on some devices.
     //              if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
     //              {
-    //                  //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
     //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
     //              }
 
@@ -1741,7 +1738,6 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
 
 
-    //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
         returnValue = BAD_PARAMETER;
@@ -2178,7 +2174,6 @@ eReturnValues os_Unlock_Device(tDevice *device)
 eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
     //note: linux code for blkrrprt might work
-    //TODO: Complete this stub when this is figured out - TJE
     return NOT_SUPPORTED;
 }
 

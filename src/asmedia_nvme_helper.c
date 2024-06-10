@@ -66,7 +66,6 @@ static eReturnValues build_Basic_Passthrough_CDB(nvmeCmdCtx *nvmCmd, uint8_t* cd
             return OS_COMMAND_NOT_AVAILABLE;
         }
         //Need to make sure no reserved or other newer fields are set such as CNTID, NVMSETID, or UUID Index since those cannot be sent.
-        //TODO: validate NSID in some way? Not sure this is necessary right now - TJE
         if (nvmCmd->cmd.adminCmd.cdw11 > 0 || nvmCmd->cmd.adminCmd.cdw12 > 0 || nvmCmd->cmd.adminCmd.cdw13 > 0 || nvmCmd->cmd.adminCmd.cdw14 > 0 || nvmCmd->cmd.adminCmd.cdw15 > 0
             || nvmCmd->cmd.adminCmd.cdw2 > 0 || nvmCmd->cmd.adminCmd.cdw3 > 0 || nvmCmd->cmd.adminCmd.cdw10 > UINT8_MAX)
         {
@@ -247,7 +246,7 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransfe
             {
                 //CDW0
                 dataPtr[0] = nvmCmd->cmd.adminCmd.opcode;
-                //TODO: bytes 1, 2, 3 hold fused bits, prp vs sgl, and CID. None of these are filled in for now...-TJE
+                //NOTE: bytes 1, 2, 3 hold fused bits, prp vs sgl, and CID. None of these are filled in for now...-TJE
                 //NSID 
                 dataPtr[4] = M_Byte0(nvmCmd->cmd.adminCmd.nsid);
                 dataPtr[5] = M_Byte1(nvmCmd->cmd.adminCmd.nsid);
@@ -300,7 +299,7 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransfe
             {
                 //CDW0
                 dataPtr[0] = nvmCmd->cmd.nvmCmd.opcode;
-                //TODO: bytes 1, 2, 3 hold fused bits, prp vs sgl, and CID. None of these are filled in for now...-TJE
+                //NOTE: bytes 1, 2, 3 hold fused bits, prp vs sgl, and CID. None of these are filled in for now...-TJE
                 //NSID 
                 dataPtr[4] = M_Byte0(nvmCmd->cmd.nvmCmd.nsid);
                 dataPtr[5] = M_Byte1(nvmCmd->cmd.nvmCmd.nsid);
@@ -401,7 +400,7 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransfe
             return OS_COMMAND_NOT_AVAILABLE;
         }
 
-        //TODO: Need to figure out transfers not 512B aligned...while likely uncommon, may need to add a workaround and allocate a local memory buffer or something like that.
+        //Transfers should be 512B aligned
         cdb[10] = M_Byte3(allocationLength);
         cdb[11] = M_Byte2(allocationLength);
         cdb[12] = M_Byte1(allocationLength);

@@ -160,7 +160,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
                     printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
 #endif
                     //check if one of the partitions is /boot and mark the system disk when this is found
-                    //TODO: Should / be treated as a system disk too?
+                    //Should / be treated as a system disk too?
                     if (strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
                     {
                         device->os_info.fileSystemInfo.isSystemDisk = true;
@@ -1296,7 +1296,6 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     safe_Free(adanamelist)
     safe_Free(nvmenamelist)
 
-    //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
         returnValue = BAD_PARAMETER;
@@ -1404,7 +1403,6 @@ eReturnValues os_Device_Reset(tDevice *device)
             {
                 ret = SUCCESS;
             }
-            //TODO: Do we need other errors? It's probably fine to say OS_COMMAND_NOT_AVAILABLE at least for now.
         }
         cam_freeccb(ccb);
     }
@@ -1429,7 +1427,6 @@ eReturnValues os_Bus_Reset(tDevice *device)
             {
                 ret = SUCCESS;
             }
-            //TODO: Do we need other errors? It's probably fine to say OS_COMMAND_NOT_AVAILABLE at least for now.
         }
         cam_freeccb(ccb);
     }

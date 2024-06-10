@@ -54,8 +54,8 @@ extern "C"
     typedef enum _eSeagateSetFeaturesSubcommands
     {
         SEAGATE_SF_LOW_CURRENT_SPINUP = 0x5B,
-        SEAGATE_FEATURE_POWER_BALANCE = 0x5C, //TODO: definitions of enable/disable specific to this feature
-        //TODO: other Seagate unique set features codes.
+        SEAGATE_FEATURE_POWER_BALANCE = 0x5C,
+        //other Seagate unique set features codes go here
     }eSeagateSetFeaturesSubcommands;
 
     #define LOW_CURRENT_SPINUP_LBA_MID_SIG  (0xED)
@@ -104,10 +104,6 @@ extern "C"
         SEAGATE_ST_IDD_SHORT_CAPTIVE   = 0xD0,
         SEAGATE_ST_IDD_LONG_CAPTIVE    = 0xD1,
     }eSeagateSelfTests;
-
-    //TODO: Any other SMART read data fields that are parsed for certain bits
-
-    //TODO: Any Seagate unique identify data bits that are parsed for certain bits
 
 #if defined(__cplusplus)
 }

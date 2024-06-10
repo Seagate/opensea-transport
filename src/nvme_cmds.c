@@ -206,7 +206,6 @@ eReturnValues nvme_Abort_Command(tDevice *device, uint16_t commandIdentifier, ui
         printf("Sending NVMe Abort Command\n");
     }
     ret = nvme_Cmd(device, &adminCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
     //Command specific return codes:
     // 3h = The number of concurrently outstanding Abort commands has exceeded the limit indicated in the Identify Controller data structure
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -273,7 +272,6 @@ eReturnValues nvme_Device_Self_Test(tDevice *device, uint32_t nsid, uint8_t self
     ret = nvme_Cmd(device, &adminCommand);
     //Command specific return codes:
     // 1Dh = The controller or NVM subsystem already has a device self-test operation in process
-    //TODO: we should try putting this at a different level in case this is returned on some other command to inform that something is happening
     if (adminCommand.commandCompletionData.dw3Valid)
     {
         if (M_GETBITRANGE(adminCommand.commandCompletionData.statusAndCID, 27, 25) == NVME_SCT_COMMAND_SPECIFIC_STATUS
@@ -297,7 +295,7 @@ eReturnValues nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint
     adminCommand.commandType = NVM_ADMIN_CMD;
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SECURITY_SEND;
     adminCommand.commandDirection = XFER_DATA_OUT;
-    adminCommand.cmd.adminCmd.addr = C_CAST(uintptr_t, ptrData);//TODO: does this need a cast?
+    adminCommand.cmd.adminCmd.addr = C_CAST(uintptr_t, ptrData);
     adminCommand.ptrData = ptrData;
     adminCommand.dataSize = dataLength;
     adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Word1(securityProtocolSpecific), M_Word0(securityProtocolSpecific), nvmeSecuritySpecificField);
@@ -308,7 +306,7 @@ eReturnValues nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint
         printf("Sending NVMe Security Send Command\n");
     }
     ret = nvme_Cmd(device, &adminCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
+    
     //Command specific return codes:
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -325,7 +323,7 @@ eReturnValues nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, u
     adminCommand.commandType = NVM_ADMIN_CMD;
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SECURITY_RECV;
     adminCommand.commandDirection = XFER_DATA_IN;
-    adminCommand.cmd.adminCmd.addr = C_CAST(uintptr_t, ptrData);//TODO: does this need a cast?
+    adminCommand.cmd.adminCmd.addr = C_CAST(uintptr_t, ptrData);
     adminCommand.ptrData = ptrData;
     adminCommand.dataSize = dataLength;
     adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Word1(securityProtocolSpecific), M_Word0(securityProtocolSpecific), nvmeSecuritySpecificField);
@@ -336,7 +334,7 @@ eReturnValues nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, u
         printf("Sending NVMe Security Receive Command\n");
     }
     ret = nvme_Cmd(device, &adminCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
+    
     //Command specific return codes:
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -400,7 +398,7 @@ eReturnValues nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, ui
         printf("Sending NVMe Write Uncorrectable Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
+    
     //Command specific return codes:
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -441,7 +439,7 @@ eReturnValues nvme_Dataset_Management(tDevice *device, uint8_t numberOfRanges, b
         printf("Sending NVMe Dataset Management Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
+    
     //Command specific return codes:
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -468,7 +466,7 @@ eReturnValues nvme_Flush(tDevice *device)
         printf("Sending NVMe Flush Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
+    
     //Command specific return codes:
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -511,7 +509,7 @@ eReturnValues nvme_Write(tDevice *device, uint64_t startingLBA, uint16_t numberO
         printf("Sending NVMe Write Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
+    
     //Command specific return codes:
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -553,7 +551,7 @@ eReturnValues nvme_Read(tDevice *device, uint64_t startingLBA, uint16_t numberOf
         printf("Sending NVMe Read Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
+    
     //Command specific return codes:
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -595,7 +593,7 @@ eReturnValues nvme_Compare(tDevice *device, uint64_t startingLBA, uint16_t numbe
         printf("Sending NVMe Compare Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
-    //TODO: Need a function to print out some verbose information for any/all commands (if possible)
+    
     //Command specific return codes:
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -712,8 +710,6 @@ eReturnValues nvme_Get_Features(tDevice *device, nvmeFeaturesCmdOpt * featCmdOpt
     getFeatures.cmd.adminCmd.addr = C_CAST(uintptr_t, featCmdOpts->dataPtr);
     getFeatures.ptrData = featCmdOpts->dataPtr;
     getFeatures.dataSize = featCmdOpts->dataLength;
-    //getFeatures.cmd.adminCmd.metadata = featCmdOpts->prp2; 
-    //getFeatures.dataSize = featCmdOpts.dataSize; //TODO: allow this since a get features could return other data
     getFeatures.cmd.adminCmd.nsid = featCmdOpts->nsid;
 
     dWord10 = C_CAST(uint32_t, featCmdOpts->sel) << 8; 

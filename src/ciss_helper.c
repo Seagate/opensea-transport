@@ -36,7 +36,7 @@
 #include <linux/cciss_ioctl.h>
 #elif defined (__FreeBSD__)
 #include "external/ciss/freebsd/cissio.h"
-//TODO: need anything special to handle smartpqi? https://github.com/FreeBSDDesktop/freebsd-base/blob/master/sys/dev/smartpqi/smartpqi_defines.h
+//https://github.com/FreeBSDDesktop/freebsd-base/blob/master/sys/dev/smartpqi/smartpqi_defines.h
 //      looks compatible with ciss, but may need some changes to support.-TJE
 #elif defined (__sun)
 #include "external/ciss/solaris/cpqary3.h"
@@ -165,7 +165,6 @@ static bool supports_CISS_IOCTLs(int fd)
 #define OS_CISS_HANDLE_MAX_LENGTH 20
 
 //creates /dev/sg? or /dev/cciss/c?d? or /dev/ciss/?
-//TODO: What should this look like for solaris/illumos?
 static bool create_OS_CISS_Handle_Name(const char *input, char *osHandle)
 {
     bool success = false;
@@ -994,7 +993,6 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                     break;
                 }
             }
-            //TODO: More error handling???
 #elif defined (__sun)
             cpqary3_scsi_pass_t cissCmd;
             seatimer_t commandTimer;
@@ -1233,7 +1231,6 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                 break;
             }
 
-            //TODO: More error handling???
 #else
             ret = OS_COMMAND_NOT_AVAILABLE;
 #endif //checking __linux__, __FreeBSD__, __sun
@@ -1286,13 +1283,13 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType 
             {
             case XFER_DATA_IN:
                 cissCmd.Request.Type.Direction = XFER_READ;
-                cissCmd.malloc_size = scsiIoCtx->dataLength;//TODO: CHeck if this is correct or a different size should be here.
+                cissCmd.malloc_size = scsiIoCtx->dataLength;
                 cissCmd.buf_size = scsiIoCtx->dataLength;
                 cissCmd.buf = scsiIoCtx->pdata;
                 break;
             case XFER_DATA_OUT:
                 cissCmd.Request.Type.Direction = XFER_WRITE;
-                cissCmd.malloc_size = scsiIoCtx->dataLength;//TODO: CHeck if this is correct or a different size should be here.
+                cissCmd.malloc_size = scsiIoCtx->dataLength;
                 cissCmd.buf_size = scsiIoCtx->dataLength;
                 cissCmd.buf = scsiIoCtx->pdata;
                 break;
@@ -1500,7 +1497,6 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType 
                 break;
             }
 
-            //TODO: More error handling???
         }
         else
         {

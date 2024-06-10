@@ -877,7 +877,6 @@ extern "C"
         NVME_CMD_SP_SC_TOO_MANY_ACTIVE_ZONES                    = 0xBD,
         NVME_CMD_SP_SC_TOO_MANY_OPEN_ZONES                      = 0xBE,
         NVME_CMD_SP_SC_INVALID_ZONE_STATE_TRANSITION            = 0xBF,
-        //TODO: Fabrics Commands
     }eNvmeCmdSpecificStatus;
 
     typedef enum _eNvmeMediaDataErrStatus

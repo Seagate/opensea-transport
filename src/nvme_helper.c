@@ -109,7 +109,8 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice *device)
             device->drive_info.adapter_info.vendorIDValid = true;
         }
         //set the IEEE OUI into the WWN since we use the WWN for detecting if the drive is a Seagate drive.
-        //TODO: currently we set NAA to 5, but we should probably at least follow the SCSI-NVMe translation specification!
+        //This is a shortcut to verify this is a Seagate drive later. There is a SCSI translation whitepaper we can follow, but that will be
+        //more complicated of a change due to the different formatting used.
         *fillWWN = M_BytesTo8ByteValue(0x05, ctrlData->ieee[2], ctrlData->ieee[1], ctrlData->ieee[0], 0, 0, 0, 0) << 4;
 
         ret = nvme_Identify(device, C_CAST(uint8_t *, nsData), device->drive_info.namespaceID, NVME_IDENTIFY_NS);
@@ -267,8 +268,7 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord, bool *doNotRetr
     }
 }
 
-//TODO: this function needs to be expanded as new status codes are added
-//TODO: use doNotRetry and more bits in some useful way?
+//NOTE: this function needs to be expanded as new status codes are added
 eReturnValues check_NVMe_Status(uint32_t nvmeStatusDWord)
 {
     eReturnValues ret = SUCCESS;
@@ -500,7 +500,6 @@ eReturnValues check_NVMe_Status(uint32_t nvmeStatusDWord)
 
 void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
 {
-    //TODO: Print out the result/error information!
     printf("NVM Command Completion:\n");
     printf("\tCommand Specific (DW0): ");
     if (cmdCtx->commandCompletionData.dw0Valid)

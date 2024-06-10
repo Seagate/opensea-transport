@@ -116,7 +116,7 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSe
                 uint64_t lastCommandTime = scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds;
                 uint8_t lastSenseData[SPC3_SENSE_LEN] = { 0 };
                 memcpy(lastSenseData, scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN);
-                //issue test unit ready //TODO: Do this multiple times if the first one doesn't work??? - TJE
+                //issue test unit ready
                 scsi_Test_Unit_Ready(scsiIoCtx->device, NULL);
                 //copy everything back now.
                 scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = lastCommandTime;
@@ -1311,7 +1311,6 @@ eReturnValues scsi_Read_Buffer(tDevice *device, uint8_t mode, uint8_t bufferID, 
     // Set up the CDB.
     cdb[OPERATION_CODE] = READ_BUFFER_CMD;
     //set the mode
-    //TODO: the mentioned reserved bits are now "mode specific" field...will need to add support for this.
     cdb[1] = mode;// &0x1F;//removed this &0x1F in order to get internal status log going. Looks like some reserved bits may be used in a newer spec or something that I don't have yet. - TJE
     //buffer ID
     cdb[2] = bufferID;

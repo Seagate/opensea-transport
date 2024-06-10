@@ -65,7 +65,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
 }
 
 //MinGW may or may not have some of these, so there is a need to define these here to build properly when they are otherwise not available.
-//TODO: as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
+//as mingw changes versions, some of these below may be available. Need to have a way to check mingw preprocessor defines for versions to work around these.
 //NOTE: The device property keys are incomplete in mingw. Need to add similar code using setupapi and some sort of ifdef to switch between for VS and mingw to resolve this better.
 #if defined (__MINGW32__) || defined (__MINGW64__)
     #if !defined (ATA_FLAGS_NO_MULTIPLE)
@@ -122,7 +122,7 @@ extern bool validate_Device_Struct(versionBlock);
 eReturnValues get_Windows_SMART_IO_Support(tDevice *device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 eReturnValues get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType);
-bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx);//TODO: add nvme support...may not need an NVMe version since it's the only way to update code on NVMe
+bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx *scsiIoCtx);
 eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx);
 eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx);
 #endif
@@ -1894,7 +1894,8 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                                             uint64_t wholePart = C_CAST(uint64_t, floor(*date));
                                                                                             double fractionPart = *date - wholePart;
                                                                                             printf("date = %f, whole = %llu, fraction = %0.02f\n", *date, wholePart, fractionPart);
-                                                                                            //TODO: finish writing this conversion...
+                                                                                            //If we need this converted, we can do it but it will take more work.
+                                                                                            //Currently only using this when debugging and raw data above is enough
                                                                                         }
                                                                                         break;
                                                                                         case DEVPROP_TYPE_FILETIME:
@@ -2043,7 +2044,6 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                                     {
                                                                                         printf("Fatal error getting driver version!\n");
                                                                                     }
-                                                                                    //TODO: Handle parsing not getting all version info. This is unlikely to be an issue in Windows since all version numbers are a consistent format enforced by MSFT-TJE
                                                                                     device->drive_info.driver_info.majorVerValid = true;
                                                                                     device->drive_info.driver_info.minorVerValid = true;
                                                                                     device->drive_info.driver_info.revisionVerValid = true;
@@ -2336,7 +2336,6 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                 device->os_info.fwdlIOsupport.fwdlIOSupported = firmwareInfo->UpgradeSupport;
                 device->os_info.fwdlIOsupport.payloadAlignment = firmwareInfo->ImagePayloadAlignment;
                 device->os_info.fwdlIOsupport.maxXferSize = firmwareInfo->ImagePayloadMaxSize;
-                //TODO: store more FWDL information as we need it
 #if defined (_DEBUG)
                 printf("Got Miniport V2 FWDL Info\n");
                 printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
@@ -2384,7 +2383,6 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                 device->os_info.fwdlIOsupport.fwdlIOSupported = firmwareInfo->UpgradeSupport;
                 device->os_info.fwdlIOsupport.payloadAlignment = 4096;//This is not specified in Win8, but assume this!
                 device->os_info.fwdlIOsupport.maxXferSize = device->os_info.adapterMaxTransferSize > 0 ? device->os_info.adapterMaxTransferSize : 65536; //Set 64K in case this is not otherwise set...not great but will likely work since this is the common transfer size limit in Windows - TJE
-                //TODO: store more FWDL information as we need it
 #if defined (_DEBUG)
                 printf("Got Miniport V1 FWDL Info\n");
                 printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
@@ -2442,7 +2440,7 @@ NOTE: Some SAS HBAs will issue a readlogext command before each download command
 
 */
 
-bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)//TODO: add nvme support
+bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
 {
 #if defined (_DEBUG_FWDL_API_COMPATABILITY)
     printf("Checking if FWDL Command is compatible with Win 10 API\n");
@@ -2566,7 +2564,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)/
 #if defined (_DEBUG_FWDL_API_COMPATABILITY)
         printf("Checking SCSI command info for FWDL Support\n");
 #endif
-        //TODO? Should we check that this is a SCSI Drive? Right now we'll just attempt the download and let the drive/SATL handle translation
+        //Should we check that this is a SCSI Drive? Right now we'll just attempt the download and let the drive/SATL handle translation
         //check that it's a write buffer command for a firmware download & it's a deferred download command since that is all that is supported
         if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
         {
@@ -2661,7 +2659,6 @@ static eReturnValues dummy_Up_SCSI_Sense_FWDL(ScsiIoCtx* scsiIoCtx, ULONG return
         case FIRMWARE_STATUS_DEVICE_ERROR:
         case FIRMWARE_STATUS_CONTROLLER_ERROR:
             scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY | ATA_STATUS_BIT_DEVICE_FAULT;
-            //TODO: Error register? Not sure what gets set in a device fault situation - TJE
             break;
         case FIRMWARE_STATUS_ERROR:
         case FIRMWARE_STATUS_INVALID_SLOT:
@@ -2852,7 +2849,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             firmwareDownload->BufferSize = firmwareDownload->ImageSize = scsiIoCtx->dataLength;
 
             //we need to set the offset since MS uses this in the command sent to the device.
-            firmwareDownload->Offset = 0;//TODO: Make sure this works even though the buffer pointer is only the current segment!
+            firmwareDownload->Offset = 0;
             if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts)
             {
                 //get offset from the tfrs
@@ -2920,7 +2917,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
                 firmwareDownload->BufferSize = scsiIoCtx->dataLength;
 
                 //we need to set the offset since MS uses this in the command sent to the device.
-                firmwareDownload->Offset = 0;//TODO: Make sure this works even though the buffer pointer is only the current segment!
+                firmwareDownload->Offset = 0;
                 if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts)
                 {
                     //get offset from the tfrs
@@ -2981,7 +2978,7 @@ static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             {
                 firmwareActivate->SlotToActivate = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
             }
-            if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)//TODO: SCSI interface, but NVMe in 8.1 will likely only be identified by earlier bustype or vendor id
+            if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)//SCSI interface, but NVMe in 8.1 will likely only be identified by earlier bustype or vendor id
             {
                 //if we are on NVMe, but the command comes to here, then someone forced SCSI mode, so let's set this flag correctly
                 fwdlFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER;
@@ -3019,7 +3016,7 @@ static eReturnValues windows_Firmware_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiI
     }
 }
 
-//TODO: This may need adjusting with bus trace help in the future, but for now this is a best guess from what info we have.-TJE
+//This may need adjusting with bus trace help in the future, but for now this is a best guess from what info we have.-TJE
 static eReturnValues dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG returnCode)
 {
     eReturnValues ret = SUCCESS;//assume this for anything where we could generate a usable status and a few other cases
@@ -3118,7 +3115,7 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIo
             firmwareDownload->Offset = C_CAST(ULONGLONG, nvmeIoCtx->cmd.adminCmd.cdw11) << 2;//multiply by 4 to convert words to bytes
             firmwareDownload->BufferSize = C_CAST(ULONGLONG, nvmeIoCtx->cmd.adminCmd.cdw10 + 1) << 2;//add one since this is zeroes based then multiply by 4 to convert words to bytes
             firmwareDownload->ImageSize = C_CAST(ULONG, nvmeIoCtx->cmd.adminCmd.cdw10 + 1) << 2;//add one since this is zeroes based then multiply by 4 to convert words to bytes
-            firmwareDownload->Slot = STORAGE_FIRMWARE_INFO_INVALID_SLOT;//TODO: SHould this be zero? It technically shouldn't be used in this command in the NVMe spec - TJE
+            firmwareDownload->Slot = STORAGE_FIRMWARE_INFO_INVALID_SLOT;//SHould this be zero? It technically shouldn't be used in this command in the NVMe spec - TJE
 
             //copy the image to ImageBuffer
             memcpy(firmwareDownload->ImageBuffer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
@@ -3359,7 +3356,6 @@ static eReturnValues open_SCSI_SRB_Handle(tDevice *device)
 //Best I can find right now is that this IOCTL is available in XP and up. Change the definition below as needed.
 //Many of the IOCTLs are wrapped for the version of Win API that they appeared in but may not be perfect.
 //Using MSFT's documentation on them as best we can find. - TJE
-//TODO: IOCTL_STORAGE_SET_PROPERTY
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP 
 
 //This is a basic way of getting storage properties and cannot account for some which require additional input parameters
@@ -3653,8 +3649,15 @@ static eReturnValues win_Delete_Drive_Layout(HANDLE* deviceHandle)
 eReturnValues os_Erase_Boot_Sectors(tDevice* device)
 {
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP && defined(IOCTL_DISK_UPDATE_PROPERTIES)
-    //TODO: Need to find a way to support other things like RAID or CSMI, etc in the future - TJE
-    return win_Delete_Drive_Layout(device->os_info.fd);
+    if (device->raid_device || device->issue_io || device->issue_nvme_io)
+    {
+        //do not do anything here for RAID devices. This is really only needed for JBOD.
+        return SUCCESS;
+    }
+    else
+    {
+        return win_Delete_Drive_Layout(device->os_info.fd);
+    }
 #else
     //Not supported on this old of an OS - TJE
     M_USE_UNUSED(device);
@@ -4198,7 +4201,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
 
                 if (device_desc->BusType == BusTypeUnknown)//Add other device types that can't be handled with other methods of SCSI or ATA passthrough among other options below.
                 {
-                    //TODO: Need a special case to handle unknown device types!
+                    //special case to handle unknown device types!
                     device->drive_info.drive_type = SCSI_DRIVE;
                     device->drive_info.interface_type = SCSI_INTERFACE;
                     device->os_info.ioType = WIN_IOCTL_BASIC;
@@ -4232,7 +4235,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                     device->drive_info.interface_type = IDE_INTERFACE;
                     device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;//This is GENERALLY true because almost all times the CDB is passed through instead of translated for a passthrough command, so just block it no matter what.
-                    //TODO: These devices use the SCSI MMC command set in packet commands over ATA...other than for a few other commands.
+                    //These devices use the SCSI MMC command set in packet commands over ATA...other than for a few other commands.
                     //If we care to properly support this, we should investigate either how to send a packet command, or we should try issuing only SCSI commands
                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
 #if defined (WIN_DEBUG)
@@ -4301,7 +4304,6 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                                 device->drive_info.drive_type = NVME_DRIVE;
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this.
-                                //TODO: Setup limited passthrough capabilities structure???
                                 foundNVMePassthrough = true;
                                 //This is set because asking for list of pages + subpages returns a list wihtout them, so it is interpretted wrong.
                                 //It returns the data for list of pages WITHOUT subpages, so CDB is not validated correctly.
@@ -4325,13 +4327,11 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                             }
 #endif //ENABLE_OFNVME
 #if defined (ENABLE_INTEL_RST)
-                            //TODO: else if(/*check for Intel RST CSMI support*/)
 #if defined (WIN_DEBUG)
                             printf("WIN: Checking for Intel CSMI + RST NVMe support\n");
 #endif //WIN_DEBUG
                             if (!foundNVMePassthrough && device_Supports_CSMI_With_RST(device))
                             {
-                                //TODO: setup CSMI structure
                                 device->drive_info.drive_type = NVME_DRIVE;
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.intelNVMePassthroughSupported = true;
@@ -4510,8 +4510,10 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                 }
 
                 //For now force direct IO all the time to match previous functionality.
-                //TODO: Investigate how to decide using double buffered vs direct vs mixed.
+                //Investigate how to decide using double buffered vs direct vs mixed.
                 //Note: On a couple systems here, when using double buffered IO with ATA Pass-through, invalid checksums are returned for identify commands, but direct is fine...
+                //Also observed that certain command data is cached in double buffered mode, but not direct mode, which is an issue for our utilities
+                //This is the other reason to force direct, even though the code otherwise supports double buffered IO
                 device->os_info.ioMethod = WIN_IOCTL_FORCE_ALWAYS_DIRECT;
 
                 if (device->dFlags & OPEN_HANDLE_ONLY)//This is this far down because there is a lot of other things that need to be saved in order for windows pass-through to work correctly.
@@ -4554,8 +4556,6 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                 }
 
                 // Lets fill out rest of info
-                //TODO: This doesn't work for ATAPI on Windows right now. Will need to debug it more to figure out what other parts are wrong to get it fully functional.
-                //This won't be easy since ATAPI is a weird SCSI over ATA hybrid-TJE
 #if defined (WIN_DEBUG)
                 printf("WIN: filling device information\n");
 #endif //WIN_DEBUG
@@ -4586,7 +4586,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                         bool idePassThroughSupported = false;
                         //test an identify command with IDE pass-through
                         device->os_info.ioType = WIN_IOCTL_IDE_PASSTHROUGH_ONLY;
-                        //TODO: use check power mode command instead?
+                        //Try an identify command. Should we use check power mode command instead???
                         if (SUCCESS == ata_Identify(device, C_CAST(uint8_t *, &device->drive_info.IdentifyData.ata.Word000), sizeof(tAtaIdentifyData)) || SUCCESS == ata_Identify_Packet_Device(device, C_CAST(uint8_t *, &device->drive_info.IdentifyData.ata.Word000), sizeof(tAtaIdentifyData)))
                         {
                             idePassThroughSupported = true;
@@ -4623,7 +4623,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                             //open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work around other commands.
                             if (SUCCESS == jbod_Setup_CSMI_Info(device->os_info.scsiSRBHandle, device, 0, device->os_info.scsi_addr.PortNumber, device->os_info.scsi_addr.PathId, device->os_info.scsi_addr.TargetId, device->os_info.scsi_addr.Lun))
                             {
-                                //TODO: Set flags, or other info?
+                                //Set flags, or other info?
                             }
                         }
                     }
@@ -4715,7 +4715,6 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
     //ARM requires 10.0.16299.0 API to get cfgmgr32 library!
-    //TODO: add better check for API version and ARM to turn this on and off.
     //try forcing a system rescan before opening the list. This should help with crappy drivers or bad hotplug support - TJE
     eVerbosityLevels winCountVerbosity = VERBOSITY_DEFAULT;
     if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
@@ -4784,7 +4783,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
                         char raidHandle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
                         raidTypeHint raidHint;
                         memset(&raidHint, 0, sizeof(raidTypeHint));
-                        raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
+                        raidHint.unknownRAID = true;//TODO: Look up driver name to set hint instead of unknown to prevent excess IOCTLs being sent from retries.
                         snprintf(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
                         if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
                         {
@@ -4877,7 +4876,6 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         winListVerbosity = VERBOSITY_BUFFERS;
     }
 
-    //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
         returnValue = BAD_PARAMETER;
@@ -4939,7 +4937,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                                 char raidHandle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
                                 raidTypeHint raidHint;
                                 memset(&raidHint, 0, sizeof(raidTypeHint));
-                                raidHint.unknownRAID = true;//TODO: Find a better way to hint at what type of raid we thing this might be. Can look at T10 vendor ID, low-level PCI/PCIe identifiers, etc.
+                                raidHint.unknownRAID = true;//TODO: Look up driver name to set hint instead of unknown to prevent excess IOCTLs being sent from retries.
                                 snprintf(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber);
                                 if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
                                 {
@@ -5352,7 +5350,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
         {
             localAlignedBuffer = true;
             uint32_t totalBufferSize = scsiIoCtx->dataLength + scsiIoCtx->device->os_info.alignmentMask;
-            localBuffer = C_CAST(uint8_t*, calloc(totalBufferSize, sizeof(uint8_t)));//TODO: If we want to remove allocating more memory, we should investigate making the scsiIoCtx->pdata a double pointer so we can reallocate it for the user.
+            localBuffer = C_CAST(uint8_t*, calloc(totalBufferSize, sizeof(uint8_t)));
             if (!localBuffer)
             {
                 perror("error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's pointer.");
@@ -5758,7 +5756,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
         {
             localAlignedBuffer = true;
             uint32_t totalBufferSize = scsiIoCtx->dataLength + C_CAST(uint32_t, scsiIoCtx->device->os_info.alignmentMask);
-            localBuffer = C_CAST(uint8_t*, calloc(totalBufferSize, sizeof(uint8_t)));//TODO: If we want to remove allocating more memory, we should investigate making the scsiIoCtx->pdata a double pointer so we can reallocate it for the user.
+            localBuffer = C_CAST(uint8_t*, calloc(totalBufferSize, sizeof(uint8_t)));
             if (!localBuffer)
             {
                 perror("error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's pointer.");
@@ -6068,7 +6066,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
         {
             localAlignedBuffer = true;
             uint32_t totalBufferSize = scsiIoCtx->dataLength + C_CAST(uint32_t, scsiIoCtx->device->os_info.alignmentMask);
-            localBuffer = C_CAST(uint8_t*, calloc(totalBufferSize, sizeof(uint8_t)));//TODO: If we want to remove allocating more memory, we should investigate making the scsiIoCtx->pdata a double pointer so we can reallocate it for the user.
+            localBuffer = C_CAST(uint8_t*, calloc(totalBufferSize, sizeof(uint8_t)));
             if (!localBuffer)
             {
                 perror("error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's pointer.");
@@ -6597,7 +6595,9 @@ static eReturnValues convert_SCSI_CTX_To_IDE_PT(ScsiIoCtx *p_scsiIoCtx, ptrIDEDo
     case ATA_PROTOCOL_DMA:
     case ATA_PROTOCOL_UDMA:
     case ATA_PROTOCOL_PACKET_DMA:
-        //TODO: Some comments in old old legacy code say DMA is not supported with this IOCTL, so they don't issue the command...should we do this? - TJE
+        //Some comments in old old legacy code say DMA is not supported with this IOCTL, so they don't issue the command.
+        //We are allowing this through for now until we can debug it ourselves to see if it was an implementation issue
+        //or not using aligned memory, etc.
         break;
     case ATA_PROTOCOL_DEV_DIAG:
     case ATA_PROTOCOL_NO_DATA:
@@ -6848,7 +6848,6 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
 //}
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-//TODO: handle more than 1 firmware slot per device.-TJE
 eReturnValues get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busType)
 {
     eReturnValues ret = NOT_SUPPORTED;
@@ -6886,7 +6885,6 @@ eReturnValues get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busT
         device->os_info.fwdlIOsupport.payloadAlignment = fwdlSupportedInfo->ImagePayloadAlignment;
         device->os_info.fwdlIOsupport.maxXferSize = fwdlSupportedInfo->ImagePayloadMaxSize;
 
-        //TODO: store more FWDL information as we need it
 #if defined (_DEBUG)
         printf("Got Win10 FWDL Info\n");
         printf("\tSupported: %d\n", fwdlSupportedInfo->SupportUpgrade);
@@ -7145,7 +7143,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
         downloadIO->Slot = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
     }
     //we need to set the offset since MS uses this in the command sent to the device.
-    downloadIO->Offset = 0;//TODO: Make sure this works even though the buffer pointer is only the current segment!
+    downloadIO->Offset = 0;
     if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts)
     {
         //get offset from the tfrs
@@ -7706,7 +7704,6 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
                 scsiIoCtx->psense[8] = 0x09;//descriptor code
                 scsiIoCtx->psense[9] = 0x0C;//additional descriptor length
                 scsiIoCtx->psense[10] = 0;
-                //TODO: should this be checked somewhere above? or is here good?
                 switch (smartIOout->DriverStatus.bDriverError)
                 {
                 case SMART_NO_ERROR://command issued without error
@@ -7809,7 +7806,6 @@ eReturnValues os_Device_Reset(tDevice *device)
     {
         ret = OS_COMMAND_NOT_AVAILABLE;
     }
-    //TODO: catch not supported versus an error
     return ret;
 }
 
@@ -7841,7 +7837,6 @@ eReturnValues os_Bus_Reset(tDevice *device)
     {
         ret = OS_COMMAND_NOT_AVAILABLE;
     }
-    //TODO: catch not supported versus an error
     return ret;
 }
 
@@ -7997,7 +7992,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                     uint8_t vpdPageLen = 0;
                     //set device type again from descriptor data
                     vpdPage[0] = deviceDesc->DeviceType;
-                    //TODO: check the VPD page to set up that data correctly
+                    //check the VPD page to set up that data correctly
                     //      the vpd pagecodes below are probably the only ones that could be implemented with the 
                     //      limited capabilities we have at this point
                     switch (scsiIoCtx->cdb[2])
@@ -8007,7 +8002,6 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                         vpdPageLen++;
                         vpdPage[4 + vpdPageLen] = UNIT_SERIAL_NUMBER;
                         vpdPageLen++;
-                        //TODO: add more pages here as they are supported
                         vpdPage[3] = vpdPageLen;
                         break;
                     case UNIT_SERIAL_NUMBER:
@@ -8110,7 +8104,6 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                     {
                         //set device type again from descriptor data
                         inquiryData[0] = deviceDesc->DeviceType;
-                        //TODO: Device type modifier
                         if (deviceDesc->RemovableMedia)
                         {
                             inquiryData[1] |= BIT7;
@@ -9697,7 +9690,6 @@ eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
         printf("Sending command with send_IO\n");
     }
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined (IOCTL_SCSI_MINIPORT_FIRMWARE)
-    //TODO: We should figure out a better way to handle when to use the Windows API for these IOs than this...not sure if there should be a function called "is command in Win API" or something like that to check for it or not.-TJE
     if (is_Firmware_Download_Command_Compatible_With_Win_API(scsiIoCtx))
     {
         if (scsiIoCtx->device->os_info.fwdlMiniportSupported)
@@ -9738,7 +9730,6 @@ eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
             {
                 if (scsiIoCtx->device->drive_info.drive_type == ATAPI_DRIVE)//ATAPI drives should just receive the CDB to do what they will with it
                 {
-                    //TODO: Should we check if this is a SAT ATA pass-through command?
                     ret = send_SCSI_Pass_Through_IO(scsiIoCtx);
                 }
                 //else if (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_IDENTIFY)//TODO: make sure all other LBA registers are zero
@@ -9869,7 +9860,6 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     if (nvmeIoCtx->commandDirection == XFER_DATA_IN_OUT || nvmeIoCtx->commandDirection == XFER_DATA_OUT_IN)
     {
         //assuming bidirectional commands have the same amount of data transferring in each direction
-        //TODO: Validate that this assumption is actually correct.
         nvmePassthroughDataSize += nvmeIoCtx->dataSize;
     }
     uint8_t *commandBuffer = C_CAST(uint8_t*, _aligned_malloc(nvmePassthroughDataSize, 8));
@@ -9903,11 +9893,10 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         memcpy(command, &nvmeIoCtx->cmd.nvmCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
     }
 
-    //TODO: Save error info? Seems to be from NVMe error log
+    //Save error info? Seems to be from NVMe error log
     protocolCommand->ErrorInfoLength = NVME_ERROR_ENTRY_LENGTH;
     protocolCommand->ErrorInfoOffset = FIELD_OFFSET(STORAGE_PROTOCOL_COMMAND, Command) + STORAGE_PROTOCOL_COMMAND_LENGTH_NVME;
 
-    //TODO: If we stor the error info (NVMe error log info) in this structure, we will need to adjust the data offsets below
     switch (nvmeIoCtx->commandDirection)
     {
     case XFER_DATA_IN:
@@ -10036,7 +10025,6 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         uint32_t nsid = M_BytesTo4ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 27], commandBuffer[protocolCommand->ErrorInfoOffset + 26], commandBuffer[protocolCommand->ErrorInfoOffset + 25], commandBuffer[protocolCommand->ErrorInfoOffset + 24]);
         uint8_t vendorSpecific = commandBuffer[protocolCommand->ErrorInfoOffset + 28];
         uint64_t commandSpecific = M_BytesTo8ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 39], commandBuffer[protocolCommand->ErrorInfoOffset + 38], commandBuffer[protocolCommand->ErrorInfoOffset + 37], commandBuffer[protocolCommand->ErrorInfoOffset + 36], commandBuffer[protocolCommand->ErrorInfoOffset + 35], commandBuffer[protocolCommand->ErrorInfoOffset + 34], commandBuffer[protocolCommand->ErrorInfoOffset + 33], commandBuffer[protocolCommand->ErrorInfoOffset + 32]);
-        //TODO: This is useful for debugging but may not want it showing otherwise!!!
         if (errorCount > 0)
         {
             printf("Win 10 VU IO Error Info:\n");
@@ -10053,7 +10041,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     }
 #endif
 
-    //TODO: figure out if we need to check this return status or not.
+    //not checking this today since we have the raw drive error response to use instead.
     /*switch (pNVMeWinCtx->storageProtocolCommand.ReturnStatus)
     {
     case STORAGE_PROTOCOL_STATUS_PENDING:
@@ -10072,7 +10060,6 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     nvmeIoCtx->commandCompletionData.dw0Valid = true;
     nvmeIoCtx->commandCompletionData.statusAndCID = protocolCommand->ErrorCode;
     nvmeIoCtx->commandCompletionData.dw3Valid = true;
-    //TODO: do we need this error code, or do we look at the error info offset for the provided length???
     //set last command time
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     //check how long it took to set timeout error if necessary
@@ -10330,7 +10317,6 @@ typedef union _MSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4 {
 //        if ((numberOfDWords << 4) > UINT32_MAX)
 //        {
 //            ret = BAD_PARAMETER;
-//            //TODO: Figure out how to return a meaningful status that the request was too large
 //            //Invalid Field in Command???
 //            //Data Transfer Error???
 //        }
@@ -10677,7 +10663,6 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoC
             printf("Windows Error: ");
             print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
-        //TODO: We need to figure out what error codes Windows will return and how to dummy up the return value to match - TJE
         switch (nvmeIoCtx->device->os_info.last_error)
         {
         case ERROR_IO_DEVICE:
@@ -10742,7 +10727,6 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *n
         downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
     }
 #endif
-    //TODO: add firmware slot number?
     downloadIO->Slot = STORAGE_HW_FIRMWARE_INVALID_SLOT;// M_GETBITRANGE(nvmeIoCtx->cmd, 1, 0);
     //we need to set the offset since MS uses this in the command sent to the device.
     downloadIO->Offset = C_CAST(uint64_t, nvmeIoCtx->cmd.adminCmd.cdw11) << 2;//convert #DWords to bytes for offset
@@ -10815,7 +10799,6 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *n
             printf("Windows Error: ");
             print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
-        //TODO: We need to figure out what error codes Windows will return and how to dummy up the return value to match - TJE
         switch (nvmeIoCtx->device->os_info.last_error)
         {
         case ERROR_IO_DEVICE://aborted command is the best we can do
@@ -10839,7 +10822,6 @@ static eReturnValues win10_Translate_Security_Send(nvmeCmdCtx *nvmeIoCtx)
     {
         //turn verbosity to silent since we don't need to see everything from issueing the scsi io...purpose right now is to make it look like an NVM io and be transparent to the caller.
         nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-        //TODO: Should we add some of our own verbosity output here???
         ret = scsi_SecurityProtocol_Out(nvmeIoCtx->device, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 24), M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 23, 8), false, nvmeIoCtx->cmd.adminCmd.cdw11, nvmeIoCtx->ptrData, 0);
         //command completed, so turn verbosity back to what it was
         nvmeIoCtx->device->deviceVerbosity = inVerbosity;
@@ -10856,7 +10838,6 @@ static eReturnValues win10_Translate_Security_Receive(nvmeCmdCtx *nvmeIoCtx)
     {
         //turn verbosity to silent since we don't need to see everything from issueing the scsi io...purpose right now is to make it look like an NVM io and be transparent to the caller.
         nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-        //TODO: Should we add some of our own verbosity output here???
         ret = scsi_SecurityProtocol_In(nvmeIoCtx->device, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 24), M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 23, 8), false, nvmeIoCtx->cmd.adminCmd.cdw11, nvmeIoCtx->ptrData);
         //command completed, so turn verbosity back to what it was
         nvmeIoCtx->device->deviceVerbosity = inVerbosity;
@@ -10947,11 +10928,6 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
     uint8_t powerState = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 4, 0);
     if (workloadHint == 0 && M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 31, 8) == 0)//cannot send workload hints in the API calls available, also filtering out reserved bits
     {
-        //start-stop unit command? Or maybe IOCTL_STORAGE_DEVICE_POWER_CAP
-        //I will use the IOCTL_STORAGE_DEVICE_POWER_CAP for this...-TJE
-
-        //we also need to return an error if the requested power state is not supported since the call we make may not be able to tell us that, or may round it to something close
-        //power states start at byte 2079 in the controller identify data...
         double maxPowerScalar = 0.01;
         if (nvmeIoCtx->device->drive_info.IdentifyData.nvme.ctrl.psd[powerState].flags & BIT0)
         {
@@ -10981,7 +10957,7 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
                 &powerCap,
                 sizeof(STORAGE_DEVICE_POWER_CAP),
                 &returnedBytes,
-                NULL //TODO: add overlapped structure!
+                NULL //Overlapped support???
             );
             stop_Timer(&commandTimer);
             nvmeIoCtx->device->os_info.last_error = GetLastError();
@@ -10989,7 +10965,6 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
 
             if (success)
             {
-                //TODO: should we validate the returned data to make sure we got what value we requested? - TJE
                 ret = SUCCESS;
             }
             else
@@ -11016,7 +10991,8 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
 
     int32_t temperatureThreshold = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 15, 0);
 
-    //TODO: check reserved fields are zero?
+    //TODO: check reserved fields are zero to return an error since they may communicate a different behavior we are not currently
+    //      supporting/implementing
     STORAGE_TEMPERATURE_THRESHOLD tempThresh;
     //STORAGE_TEMPERATURE_THRESHOLD_FLAG_ADAPTER_REQUEST
     memset(&tempThresh, 0, sizeof(STORAGE_TEMPERATURE_THRESHOLD));
@@ -11024,9 +11000,7 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
     tempThresh.Version = sizeof(STORAGE_TEMPERATURE_THRESHOLD);
     tempThresh.Size = sizeof(STORAGE_TEMPERATURE_THRESHOLD);
 
-    //TODO: When do we set this flag?...for now just setting it all the time!
     tempThresh.Flags |= STORAGE_TEMPERATURE_THRESHOLD_FLAG_ADAPTER_REQUEST;
-
 
     tempThresh.Index = tmpsel;
     tempThresh.Threshold = C_CAST(SHORT, temperatureThreshold - INT32_C(273));//NVMe does every temp in kelvin, but the API expects Celsius - TJE
@@ -11063,7 +11037,6 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
 
     if (success)
     {
-        //TODO: should we validate the returned data to make sure we got what value we requested? - TJE
         ret = SUCCESS;
         nvmeIoCtx->commandCompletionData.commandSpecific = 0;
         nvmeIoCtx->commandCompletionData.dw0Valid = true;
@@ -11088,8 +11061,8 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
 static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    //TODO: If a feature is transferring data, need to take that into account!
-    uint32_t bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_SET, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT) + nvmeIoCtx->dataSize;
+    uint32_t featTransferSize = (nvmeIoCtx->dataSize >= 4096) ? nvmeIoCtx->dataSize : 4096;//get features API requires a 4096 buffer, so allocating space for that in here too, in case this API is also expecting this data buffer size-TJE
+    uint32_t bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_SET, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT) + featTransferSize;
     uint8_t* bufferData = C_CAST(uint8_t*, calloc(bufferLength, sizeof(uint8_t)));
     if (bufferData)
     {
@@ -11124,13 +11097,14 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
             //if this feature has a databuffer, set it up to transmit it.
             protocolSpecificData->ProtocolDataLength = nvmeIoCtx->dataSize;
             protocolSpecificData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT);
-            memcpy_s(C_CAST(uint8_t*, protocolSpecificData) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT), nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);//TODO: Handle error code? we shouldn't ever have one since sizes are the same
+            memcpy_s(C_CAST(uint8_t*, protocolSpecificData) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT), nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         }
         else
         {
             //no additional command data is being shared for this feature.
-            protocolSpecificData->ProtocolDataLength = 0;
-            protocolSpecificData->ProtocolDataOffset = 0;
+            //Due to get features requiring a 4096 sized buffer, we are passing one in here too just to make Windows happy even if the feature does no t use it.
+            protocolSpecificData->ProtocolDataLength = featTransferSize;
+            protocolSpecificData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT);
         }
 
         //
@@ -11214,7 +11188,7 @@ static eReturnValues send_NVMe_Set_Features_Win10(nvmeCmdCtx *nvmeIoCtx, bool *u
 #endif
     if (ret == OS_COMMAND_NOT_AVAILABLE || ret == OS_PASSTHROUGH_FAILURE)
     {
-        //TODO: Depending on the feature, we may need a SCSI translation, a Windows API call, or we won't be able to perform any translation at all.
+        //Depending on the feature, we may need a SCSI translation, a Windows API call, or we won't be able to perform any translation at all.
         //IOCTL_STORAGE_DEVICE_POWER_CAP
         //bool save = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT31;
         uint8_t featureID = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10);
@@ -11663,10 +11637,8 @@ static eReturnValues win10_Translate_Flush(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-    //TODO: should we do this or should we send a SCSI Synchronize Cache command to be translated?
-    //ret = os_Flush(nvmeIoCtx->device);
     nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-    //ret = scsi_Synchronize_Cache_16(nvmeIoCtx->device, false, 0, 0, 0);//NOTE: Switched to synchronize cache 10 due to documentation from MSFT only specifying the 10byte CDB opcode - TJE
+    //NOTE: Switched to synchronize cache 10 due to documentation from MSFT only specifying the 10byte CDB opcode - TJE
     ret = scsi_Synchronize_Cache_10(nvmeIoCtx->device, false, 0, 0, 0);
     nvmeIoCtx->device->deviceVerbosity = inVerbosity;
     return ret;
@@ -11676,7 +11648,6 @@ static eReturnValues win10_Translate_Read(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-    //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI read command or a simple os_Read
     //extract fields from NVMe context, then see if we can put them into a compatible SCSI command
     uint64_t startingLBA = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
     bool limitedRetry = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT31;
@@ -11728,7 +11699,6 @@ static eReturnValues win10_Translate_Read(nvmeCmdCtx *nvmeIoCtx)
     {
         //NOTE: Spec only mentions translations for read 10, 12, 16...but we may also need 32!
         //Even though it isn't in the spec, we'll attempt it anyways when we have certain fields set... - TJE
-        //TODO: we should check if the drive was formatted with protection information to make a better call on what to do...-TJE
         if (expectedLogicalBlockAccessTag != 0 || expectedLogicalBlockApplicationTag != 0 || expectedLogicalBlockTagMask != 0)
         {
             //read 32 command
@@ -11748,7 +11718,6 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-    //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI write command or a simple os_Write
     //extract fields from NVMe context, then see if we can put them into a compatible SCSI command
     uint64_t startingLBA = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
     bool limitedRetry = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT31;
@@ -11802,7 +11771,6 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
     {
         //NOTE: Spec only mentions translations for write 10, 12, 16...but we may also need 32!
         //Even though it isn't in the spec, we'll attempt it anyways when we have certain fields set... - TJE
-        //TODO: we should check if the drive was formatted with protection information to make a better call on what to do...-TJE
         if (initialLogicalBlockAccessTag != 0 || logicalBlockTagMask != 0 || logicalBlockApplicationTag != 0)
         {
             //write 32 command
@@ -11823,7 +11791,6 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
 //{
 //    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //    eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-//    //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI verify command or a simple os_Verify
 //    //extract fields from NVMe context, then see if we can put them into a compatible SCSI command
 //    uint64_t startingLBA = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
 //    bool limitedRetry = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT31;
@@ -11865,7 +11832,6 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx *nvmeIoCtx)
 //    {
 //        //NOTE: Spec only mentions translations for verify 10, 12, 16...but we may also need 32!
 //        //Even though it isn't in the spec, we'll attempt it anyways when we have certain fields set... - TJE
-//        //TODO: we should check if the drive was formatted with protection information to make a better call on what to do...-TJE
 //        if (expectedLogicalBlockAccessTag != 0 || expectedLogicalBlockApplicationTag != 0 || expectedLogicalBlockTagMask != 0)
 //        {
 //            //verify 32 command
@@ -11888,9 +11854,6 @@ static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
-    //TODO: We need to validate other fields to make sure we make the right call...may need a SCSI unmap command or
-    //FSCTL_FILE_LEVEL_TRIM (and maybe also FSCTL_ALLOW_EXTENDED_DASD_IO)
-    //NOTE: Using SCSI Unmap command - TJE
     uint16_t numberOfRanges = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10) + UINT16_C(1);//this is zero based in NVMe!
     bool deallocate = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT2;//This MUST be set to 1
     bool integralDatasetForWrite = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT1;//cannot be supported
@@ -12073,7 +12036,6 @@ static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
 //    //command bytes
 //    uint32_t numberOfDwords = nvmeIoCtx->cmd.nvmCmd.cdw10 + 1;
 //    bool eds = nvmeIoCtx->cmd.nvmCmd.cdw11 & BIT0;
-//    //TODO: need it issue possibly multiple scsi persistent reserve in commands to get the data we want...
 //    if (issueSCSICommand)
 //    {
 //        //if none of the above checks caught the command, then it cannot be translated
@@ -12415,7 +12377,6 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
     stop_Timer(&commandTimer);
     scsiIoCtx->device->os_info.last_error = GetLastError();
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    //TODO: we dummy up RTFRs
     if (!result || (returnedLength == 0))
     {
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -12475,7 +12436,6 @@ static eReturnValues send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
     {
 #if WINVER >= SEA_WIN32_WINNT_WIN10 //This should wrap around anything going through the Windows API...Win 10 is required for NVMe IOs
-        //TODO: If different versions of Windows 10 API support different commands, then check WIN_API_TARGET_VERSION to see which version of the API is in use to filter this list better. - TJE
         bool useNVMPassthrough = false;//this is only true when attempting the command with the generic storage protocol command IOCTL which is supposed to be used for VU commands only. - TJE
         switch (nvmeIoCtx->cmd.adminCmd.opcode)
         {
@@ -12488,8 +12448,8 @@ static eReturnValues send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             Supported through IOCTL_SCSI_PASS_THROUGH using command SCSIOP_READ_DATA_BUFF16 with buffer mode as READ_BUFFER_MODE_ERROR_HISTORY.
             Also available through StorageAdapterProtocolSpecificProperty/StorageDeviceProtocolSpecificProperty from IOCTL_STORAGE_QUERY_PROPERTY.
             For host telemetry, this is also available through IOCTL_STORAGE_GET_DEVICE_INTERNAL_LOG.
+            Older versions of Win10 do not allow pulling in segments with storage query property. May need to check Windows 10 version to change between APIs to get this data.-TJE
             */
-            //TODO: Since the storage query property doesn't allow pulling in segments today, we may want to try SCSI translation using read buffer 16. Will need to figure out buffer ID, but this should be doable.
             ret = send_Win_NVMe_Get_Log_Page_Cmd(nvmeIoCtx);
             break;
         case NVME_ADMIN_CMD_GET_FEATURES:
@@ -12583,7 +12543,6 @@ static eReturnValues send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     else if (nvmeIoCtx->commandType == NVM_CMD)
     {
 #if WINVER >= SEA_WIN32_WINNT_WIN10 //This should wrap around anything going through the Windows API...Win 10 is required for NVMe IOs
-        //TODO: If different versions of Windows 10 API support different commands, then check WIN_API_TARGET_VERSION to see which version of the API is in use to filter this list better. - TJE
         bool useNVMPassthrough = false;//this is only true when attempting the command with the generic storage protocol command IOCTL which is supposed to be used for VU commands only. - TJE
         switch (nvmeIoCtx->cmd.adminCmd.opcode)
         {
@@ -12861,7 +12820,6 @@ static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, D
             senseKey = SENSE_KEY_DATA_PROTECT;
             asc = 0x27;
             ascq = 0x00;
-            //TODO: Not sure what to do about ATA here...there is not a direct translation
             break;
         case ERROR_WRITE_FAULT:
         case ERROR_READ_FAULT:
@@ -12999,7 +12957,6 @@ eReturnValues os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8
     if (forceUnitAccess && openFUA != SUCCESS)
     {
         //could not get a FUA handle...so emulate with a verify command before the read - TJE
-        //TODO: Should this bail out if it fails? Or continue to the read command???
         os_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
     }
     retStatus = ReadFile(handleToUse, ptrData, dataSize, &bytesReturned, &overlappedStruct);

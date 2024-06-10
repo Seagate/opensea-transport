@@ -32,7 +32,7 @@ extern "C"
 
 #define WIN_OFNVME_DISPLAY "NVME" //display to user and read from user as NVME? where ? is a handle number
 
-    //TODO: If there are other structures or necessary definitions, add them here
+    //If there are other structures or necessary definitions, add them here
 
 #if defined (__cplusplus)
 }

@@ -55,7 +55,7 @@ extern "C"
         #define CSMI_INVALID_HANDLE -1
     #endif
 
-    //TODO: This may need expanding if specific versions of each driver need tracking uniquely due to significant differences in reporting or behavior.
+    //NOTE: This may need expanding if specific versions of each driver need tracking uniquely due to significant differences in reporting or behavior.
     typedef enum _eKnownCSMIDriver
     {
         CSMI_DRIVER_UNKNOWN = 0,

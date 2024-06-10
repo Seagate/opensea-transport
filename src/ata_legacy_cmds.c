@@ -20,7 +20,8 @@
 /// Obsolete ATA Commands. These commands are from specs prior to ATA-ATAPI 7 ///
 /////////////////////////////////////////////////////////////////////////////////
 
-//TODO: commands that do not include retries. Currently only retries versions are implemented.
+//This file only contains commands that include retries today, but many old commands have a no-retries version.
+//These are not implemented as we want the retries. Can add these definitions if needed in the future.
 
 eReturnValues ata_Legacy_Format_Track(tDevice *device, uint8_t feature, uint8_t sectorCount, uint8_t sectorNumber, uint8_t cylinderLow, uint8_t cylinderHigh, uint8_t *ptrData, uint32_t dataSize, eAtaProtocol protocol, bool lbaMode)
 {

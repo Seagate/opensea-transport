@@ -231,7 +231,6 @@ eReturnValues send_OFNVME_Reset(tDevice * device)
             printf("OFNVME Error: ");
             print_Ofnvme_SRB_Status(ofnvmeReset.ReturnCode);
         }
-        //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
         switch (ofnvmeReset.ReturnCode)
         {
         case NVME_IOCTL_SUCCESS:
@@ -295,7 +294,6 @@ eReturnValues send_OFNVME_Add_Namespace(tDevice * device)
             printf("OFNVME Error: ");
             print_Ofnvme_SRB_Status(ofnvmeReset.ReturnCode);
         }
-        //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
         switch (ofnvmeReset.ReturnCode)
         {
         case NVME_IOCTL_SUCCESS:
@@ -359,7 +357,6 @@ eReturnValues send_OFNVME_Remove_Namespace(tDevice * device)
             printf("OFNVME Error: ");
             print_Ofnvme_SRB_Status(ofnvmeReset.ReturnCode);
         }
-        //TODO: Check the SRB_IO_CONTROL return code and check if it was successful or not. For now, if it reports success, we'll call it done. - TJE
         switch (ofnvmeReset.ReturnCode)
         {
         case NVME_IOCTL_SUCCESS:
@@ -382,7 +379,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
 #if defined (OFNVME_DEBUG)
     printf("ofnvme: NVM passthrough request\n");
 #endif //OFNVME_DEBUG
-    uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + nvmeIoCtx->dataSize;//TODO: add metadata. This will be returned first in the data buffer if there is any
+    uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + nvmeIoCtx->dataSize;//NOTE: No metadata. Don't think Windows supports a separate metadata buffer
     uint8_t *passthroughBuffer = C_CAST(uint8_t*, calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
     if (passthroughBuffer)
     {
@@ -408,7 +405,6 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             ioctl->NVMeCmd[2] = nvmeIoCtx->cmd.adminCmd.cdw2;
             ioctl->NVMeCmd[3] = nvmeIoCtx->cmd.adminCmd.cdw3;
             //data pointers are in next DWORDs not sure if these should be set here since they will be virtual addresses
-            //TODO: fill in metadata and prp addresses
             ioctl->NVMeCmd[10] = nvmeIoCtx->cmd.adminCmd.cdw10;
             ioctl->NVMeCmd[11] = nvmeIoCtx->cmd.adminCmd.cdw11;
             ioctl->NVMeCmd[12] = nvmeIoCtx->cmd.adminCmd.cdw12;
@@ -417,13 +413,12 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             ioctl->NVMeCmd[15] = nvmeIoCtx->cmd.adminCmd.cdw15;
             break;
         case NVM_CMD:
-            ioctl->QueueId = 1;//TODO: should this always be set to 1? or something else depending on capabitlies?
+            ioctl->QueueId = 1;//should this always be set to 1? or something else depending on capabitlies?
             ioctl->NVMeCmd[0] = nvmeIoCtx->cmd.nvmCmd.opcode;//This doesn't currently take into account fused or PRP vs SGL transfers
             ioctl->NVMeCmd[1] = nvmeIoCtx->cmd.nvmCmd.nsid;
             ioctl->NVMeCmd[2] = nvmeIoCtx->cmd.nvmCmd.cdw2;
             ioctl->NVMeCmd[3] = nvmeIoCtx->cmd.nvmCmd.cdw3;
             //data pointers are in next DWORDs not sure if these should be set here since they will be virtual addresses
-            //TODO: fill in metadata and prp addresses
             ioctl->NVMeCmd[10] = nvmeIoCtx->cmd.nvmCmd.cdw10;
             ioctl->NVMeCmd[11] = nvmeIoCtx->cmd.nvmCmd.cdw11;
             ioctl->NVMeCmd[12] = nvmeIoCtx->cmd.nvmCmd.cdw12;
@@ -438,8 +433,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             return BAD_PARAMETER;
         }
 
-        //TODO: Handle setting vendor unique qualifiers for vendor unique commands. Not sure what those should be right now or how they are used by the driver code.
-        //Setting to zero like the sample file does.
+        //Setting to zero like the sample file does. No idea what these are used for.
         ioctl->VendorSpecific[0] = 0;
         ioctl->VendorSpecific[1] = 0;
 
@@ -535,7 +529,6 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             else
             {
                 ret = OS_PASSTHROUGH_FAILURE;
-                //TODO: translate driver return code to something printable in verbose output.
             }
         }
         else
