@@ -437,7 +437,7 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
     if (driverVersionFilePath)
     {
         snprintf(driverVersionFilePath, OPENSEA_PATH_MAX, "%s/module/version", driverPath);
-        printf("driver version file path = %s\n", driverVersionFilePath);
+        //printf("driver version file path = %s\n", driverVersionFilePath);
         //convert relative path to a full path. Basically replace ../'s with /sys/ since this will always be ../../bus and we need /sys/buf
         char* busPtr = strstr(driverVersionFilePath, "/bus");
         size_t busPtrLen = strlen(busPtr);
