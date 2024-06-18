@@ -2246,7 +2246,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     scandirresult = scandir("/dev", &nvmenamelist, nvme_filter,sortFunc);
     if (scandirresult >= 0)
     {
-        num_nvme_devs = C_CAST(uint32_t, num_nvme_devs);
+        num_nvme_devs = C_CAST(uint32_t, scandirresult);
     }
     //free the nvmenamelist to not leak memory
     for(uint32_t iter = 0; iter < num_nvme_devs; ++iter)
