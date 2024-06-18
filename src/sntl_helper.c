@@ -1492,17 +1492,20 @@ static eReturnValues sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice *device, S
     blockLimits[10] = M_Byte1(maxTransferLength);
     blockLimits[11] = M_Byte0(maxTransferLength);
     //optimal transfer length (unspecified....we decide)
-    blockLimits[12] = M_Byte3(65536 / device->drive_info.deviceBlockSize);
-    blockLimits[13] = M_Byte2(65536 / device->drive_info.deviceBlockSize);
-    blockLimits[14] = M_Byte1(65536 / device->drive_info.deviceBlockSize);
-    blockLimits[15] = M_Byte0(65536 / device->drive_info.deviceBlockSize);
+    if (device->drive_info.deviceBlockSize > 0)
+    {
+        blockLimits[12] = M_Byte3(65536 / device->drive_info.deviceBlockSize);
+        blockLimits[13] = M_Byte2(65536 / device->drive_info.deviceBlockSize);
+        blockLimits[14] = M_Byte1(65536 / device->drive_info.deviceBlockSize);
+        blockLimits[15] = M_Byte0(65536 / device->drive_info.deviceBlockSize);
+    }
     //maximum prefetch length (unspecified....we decide) - leave at zero since we don't support the prefetch command
 
     //unmap stuff
     if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
     {
         uint32_t unmapLBACount = UINT32_MAX;
-        uint32_t unmapMaxBlockDescriptors = 256;
+        uint32_t unmapMaxBlockDescriptors = UINT32_C(256);
         //maximum unmap LBA count (unspecified....we decide)
         blockLimits[20] = M_Byte3(unmapLBACount);
         blockLimits[21] = M_Byte2(unmapLBACount);
