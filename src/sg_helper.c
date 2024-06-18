@@ -1475,8 +1475,7 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
         safe_Free(deviceHandle)
         return ret;
     }
-    //\\TODO: Add support for other flags. 
-
+    //Add support for other flags. 
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         if (is_NVMe_Handle(deviceHandle))
@@ -1491,7 +1490,7 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
                  perror("nvme_ioctl_id");
                  return FAILURE;
             }
-            device->drive_info.namespaceID = C_CAST(uint32_t, ret);
+            device->drive_info.namespaceID = C_CAST(uint32_t, ioctlResult);
             device->os_info.osType = OS_LINUX;
             device->drive_info.media_type = MEDIA_NVM;
 
@@ -1523,6 +1522,7 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
 #endif
             struct sg_scsi_id hctlInfo;
             memset(&hctlInfo, 0, sizeof(struct sg_scsi_id));
+            errno = 0;//clear before calling this ioctl
             int getHctl = ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo);
             if (getHctl == 0 && errno == 0)//when this succeeds, both of these will be zeros
             {
