@@ -1448,7 +1448,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     return OS_COMMAND_NOT_AVAILABLE;
 #else //DISABLE_NVME_PASSTHROUGH
     eReturnValues ret = SUCCESS;
-    int32_t ioctlResult = 0;
+    int ioctlResult = 0;
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(commandTimer));
     struct nvme_get_nsid gnsid;

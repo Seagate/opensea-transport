@@ -2588,7 +2588,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     struct nvme_user_io nvmCmd;// it's possible that this is not defined in some funky early nvme kernel, but we don't see that today. This seems to be defined everywhere. -TJE
     struct nvme_passthru_cmd *passThroughCmd = (struct nvme_passthru_cmd*)&adminCmd;//setting a pointer since these are defined to be the same. No point in allocating yet another structure. - TJE
 
-    int32_t ioctlResult = 0;
+    int ioctlResult = 0;
 
     if (!nvmeIoCtx)
     {
