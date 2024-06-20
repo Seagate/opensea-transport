@@ -53,7 +53,12 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wtrampolines', #GCC only at this time
   '-Werror=implicit',
   '-Werror=incompatible-pointer-types',
-  '-Werror=int-conversion'
+  '-Werror=int-conversion',
+  '-Woverlength-strings',
+  '-Wnewline-eof',
+  '-Wno-c23-extensions',
+  '-Wparentheses',
+  '-Wextra-semi'
   ]
 
   if c.get_id().contains('gcc') and target_machine.system() == 'windows'

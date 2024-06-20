@@ -572,5 +572,5 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
     return ret;
 }
 #else
-;
+
 #endif //ENABLE_OFNVME
