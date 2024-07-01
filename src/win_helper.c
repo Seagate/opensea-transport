@@ -11414,6 +11414,22 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
             memset(&commandTimer, 0, sizeof(seatimer_t));
             start_Timer(&commandTimer);
             DWORD returnedLength = 0;
+            if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("Sending IOCTL_STORAGE_REINITIALIZE_MEDIA for Sanitize ");
+                switch (reinitMedia.SanitizeOption.SanitizeMethod)
+                {
+                case StorageSanitizeMethodDefault:
+                    printf("Default method\n");
+                    break;
+                case StorageSanitizeMethodBlockErase:
+                    printf("Block Erase method\n");
+                    break;
+                case StorageSanitizeMethodCryptoErase:
+                    printf("Crypto Erase method\n");
+                    break;
+                }
+            }
             BOOL result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
                 IOCTL_STORAGE_REINITIALIZE_MEDIA,
                 &reinitMedia,
@@ -11453,6 +11469,10 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
                 memset(&commandTimer, 0, sizeof(seatimer_t));
                 start_Timer(&commandTimer);
                 DWORD returnedLength = 0;
+                if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                {
+                    printf("Sending IOCTL_STORAGE_REINITIALIZE_MEDIA for Format/Sanitize Crypto\n");
+                }
                 BOOL result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
                     IOCTL_STORAGE_REINITIALIZE_MEDIA,
                     NULL,
@@ -11943,6 +11963,58 @@ static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         }
     }
     nvmeIoCtx->device->deviceVerbosity = inVerbosity;
+    return ret;
+}
+
+//Sanitize in Windows is tricky.
+//For the longest time it was only available in Windows PE.
+//In the Win 10, 1607 update, the IOCTL for Storage Reinitialize Media was added, which supported crypto erase.
+//While this WAS working, it does not appear to work properly in the latest Windows 10 build and returns "Incorrect Function" meaning it
+//is not a supported API.
+//I did ask Microsoft a question about SCSI translation and they updated the docs to show the SCSI Sanitize CDB as supported for
+//Block and Crypto erase.
+//Since this IOCTL is not working in Win 10 22H2 for some unknown reason, this code will issue the SCSI CDB instead.
+//If we need to we can update this code to calling that IOCTL again, but the SSCI CDB's work the same without random errors. -TJE
+static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
+{
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
+    if (is_Windows_10_Version_1607_Or_Higher()) //this is for IOCTL reinitialize media. Not 100% sure when SCSI Sanitize CDB translation was supported. Update this if we ever find out.-TJE
+    {
+        //This was the original code for the reinitialize IOCTL.
+        //Since we ran into a weird compatibility issue, it is commented out.
+        //Will need to add some conditions for when to call it, but it will build and issue the IOCTL correctly-TJE
+        //#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+        //    ret = nvme_Ioctl_Storage_Reinitialize_Media(nvmeIoCtx);
+        //#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+        uint8_t action = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+        //First check for fields that are not supported
+        if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 10) > 0
+            || nvmeIoCtx->cmd.adminCmd.cdw10 & BIT9
+            || nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8
+            || M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 4) > 0
+            || action == 0 || action == 1 || action == 3 || action >= 5
+            || nvmeIoCtx->cmd.adminCmd.cdw11 != 0)
+        {
+            //Command not supported for translation
+            ret = OS_COMMAND_NOT_AVAILABLE;
+        }
+        else
+        {
+            //NOTE: immediate bit must be set to false for MSFT translation to work.
+            bool ause = M_ToBool(nvmeIoCtx->cmd.adminCmd.cdw10 & BIT3);
+            eVerbosityLevels temp = nvmeIoCtx->device->deviceVerbosity;
+            nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
+            if (action == 4) //crypto
+            {
+                ret = scsi_Sanitize_Cryptographic_Erase(nvmeIoCtx->device, ause, false, false);
+            }
+            else if (action == 2) //block
+            {
+                ret = scsi_Sanitize_Block_Erase(nvmeIoCtx->device, ause, false, false);
+            }
+            nvmeIoCtx->device->deviceVerbosity = temp;
+        }
+    }
     return ret;
 }
 
@@ -12514,9 +12586,7 @@ static eReturnValues send_Win_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             }
             else
             {
-#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
-                ret = nvme_Ioctl_Storage_Reinitialize_Media(nvmeIoCtx);
-#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+                ret = win10_Translate_Sanitize(nvmeIoCtx);
             }
             break;
         case NVME_ADMIN_CMD_DEVICE_SELF_TEST:
@@ -12770,7 +12840,7 @@ static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, D
             device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_UNREC_READ_ERROR_);
             break;
         case ERROR_SEEK://cannot find area or track on disk?
-            M_FALLTHROUGH //Fallthrough for now unless we can figure out a better, more specific error when this happens - TJE
+            M_FALLTHROUGH; //Fallthrough for now unless we can figure out a better, more specific error when this happens - TJE
         case ERROR_SECTOR_NOT_FOUND://ID not found (beyond max LBA type error)
             //lba out of range
             device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_LBA_RANGE_);
@@ -12842,7 +12912,7 @@ static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, D
             }
             break;
         case ERROR_SEEK://cannot find area or track on disk?
-            M_FALLTHROUGH //Fallthrough for now unless we can figure out a better, more specific error when this happens - TJE
+            M_FALLTHROUGH; //Fallthrough for now unless we can figure out a better, more specific error when this happens - TJE
         case ERROR_SECTOR_NOT_FOUND://ID not found (beyond max LBA type error)
             senseKey = SENSE_KEY_ILLEGAL_REQUEST;
             asc = 0x21;
