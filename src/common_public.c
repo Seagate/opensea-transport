@@ -1180,15 +1180,15 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
     case VERBOSITY_BUFFERS:
         getCountFlags |= GET_DEVICE_FUNCS_VERBOSE_BUFFERS;
         getDeviceflags |= GET_DEVICE_FUNCS_VERBOSE_BUFFERS;
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case VERBOSITY_COMMAND_VERBOSE:
         getCountFlags |= GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE;
         getDeviceflags |= GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE;
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case VERBOSITY_COMMAND_NAMES:
         getCountFlags |= GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES;
         getDeviceflags |= GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES;
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     default:
         break;
     }
@@ -2048,8 +2048,8 @@ bool is_Samsung_HDD(tDevice *device, bool USBchildDrive)
         isSamsung = true;
         break;
     case IEEE_SAMSUNG_SSD:
-        isSSD = true;//fall through
-        M_FALLTHROUGH
+        isSSD = true;
+        M_FALLTHROUGH;
     default:
         if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive && !isSSD)
         {

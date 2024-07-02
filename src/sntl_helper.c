@@ -5306,7 +5306,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, Sc
             emptyData = true;
             break;
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case 0x00:
     case 0x02:
         //read the identify active namespace list
@@ -5852,7 +5852,7 @@ static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, S
             sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             break;
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
 #endif
     case 0x0E://Firmware image download
 #if defined SNTL_EXT
@@ -8503,14 +8503,14 @@ static eReturnValues sntl_Check_Operation_Code_and_Service_Action(tDevice *devic
                     commandSupported = false;
                     break;
                 }
-                M_FALLTHROUGH
+                M_FALLTHROUGH;
             case 3://cryptographic erase
                 if (!(device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0))
                 {
                     commandSupported = false;
                     break;
                 }
-                M_FALLTHROUGH
+                M_FALLTHROUGH;
             case 0x1F://exit failure mode
                 cdbLength = 10;
                 *dataLength += cdbLength;

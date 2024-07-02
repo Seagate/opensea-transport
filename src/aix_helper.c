@@ -330,7 +330,7 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
             printf(" - iSCSI adapter\n");
             break;
         // case DS_LVZ:	/* New logical volume type */
-        //     M_FALLTHROUGH
+        //     M_FALLTHROUGH;
         case DS_LV0:	/* New logical volume type */
             printf(" - New logical volume type\n");
             break;

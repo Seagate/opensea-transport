@@ -706,7 +706,7 @@ eReturnValues set_Registers(uint8_t *satCDB, ataPassthroughCommand *ataCommandOp
             satCDB[7] = ataCommandOptions->tfr.LbaLow48;
             satCDB[9] = ataCommandOptions->tfr.LbaMid48;
             satCDB[11] = ataCommandOptions->tfr.LbaHi48;
-            M_FALLTHROUGH
+            M_FALLTHROUGH;
         case ATA_CMD_TYPE_TASKFILE:
             satCDB[4] = ataCommandOptions->tfr.ErrorFeature;
             satCDB[6] = ataCommandOptions->tfr.SectorCount;
@@ -754,7 +754,7 @@ eReturnValues set_Registers(uint8_t *satCDB, ataPassthroughCommand *ataCommandOp
             satCDB[29] = ataCommandOptions->tfr.aux3;
             satCDB[30] = ataCommandOptions->tfr.aux2;
             satCDB[31] = ataCommandOptions->tfr.aux1;
-            M_FALLTHROUGH
+            M_FALLTHROUGH;
         case ATA_CMD_TYPE_EXTENDED_TASKFILE:
             //first set the extend bit
             satCDB[10] |= BIT0;
@@ -764,7 +764,7 @@ eReturnValues set_Registers(uint8_t *satCDB, ataPassthroughCommand *ataCommandOp
             satCDB[16] = ataCommandOptions->tfr.LbaLow48;
             satCDB[15] = ataCommandOptions->tfr.LbaMid48;
             satCDB[14] = ataCommandOptions->tfr.LbaHi48;
-            M_FALLTHROUGH
+            M_FALLTHROUGH;
         case ATA_CMD_TYPE_TASKFILE:
             satCDB[21] = ataCommandOptions->tfr.ErrorFeature;
             satCDB[23] = ataCommandOptions->tfr.SectorCount;
@@ -7537,7 +7537,7 @@ static eReturnValues translate_SCSI_Write_Buffer_Command(tDevice *device, ScsiIo
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
             break;
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case 0x0E://ATA Deferred Download
         if ((downloadCommandSupported || device->drive_info.ata_Options.downloadMicrocodeDMASupported) && device->drive_info.softSATFlags.deferredDownloadSupported)
         {
@@ -7825,7 +7825,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice *device, Scs
             break;
         case 0x0A://Force Idle (check power condition modifier for specific idle state)
             enable = true;
-            M_FALLTHROUGH
+            M_FALLTHROUGH;
         case 0x02://Idle (check power condition modifier for specific idle state)
             //first read the power conditions log....yes, do this first as that's what the SAT spec says. We could probably cache this data, but we aren't doing that today
             if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_POWER_CONDITIONS, 0, powerConditionsLog, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
@@ -7900,7 +7900,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice *device, Scs
             break;
         case 0x0B://Force Standby (check power condition modifier for specific idle state)
             enable = true;
-            M_FALLTHROUGH
+            M_FALLTHROUGH;
         case 0x03://standby (check power condition modifier for specific idle state)
             //first read the power conditions log....yes, do this first as that's what the SAT spec says. We could probably cache this data, but we aren't doing that today
             if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_POWER_CONDITIONS, 1, powerConditionsLog, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
@@ -11748,7 +11748,7 @@ static eReturnValues translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCt
                 ret = translate_Mode_Sense_PATA_Control_0Ah_F1h(scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader, modeParameterHeader, allocationLength);
                 break;
             }
-            M_FALLTHROUGH
+            M_FALLTHROUGH;
         default:
             ret = NOT_SUPPORTED;
             fieldPointer = 2;
@@ -14516,9 +14516,9 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
                 pdata[0][offset + 9] = controlByte;//control byte
                 break;
             case 2://block erase
-                M_FALLTHROUGH
+                M_FALLTHROUGH;
             case 3://cryptographic erase
-                M_FALLTHROUGH
+                M_FALLTHROUGH;
             case 0x1F://exit failure mode
                 cdbLength = 10;
                 *dataLength += cdbLength;

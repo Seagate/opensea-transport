@@ -1514,7 +1514,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
             break;
         case SCSI_SENSE_DEFER_ERR_FIXED:
             senseFields->deferredError = true;
-            M_FALLTHROUGH
+            M_FALLTHROUGH;
         case SCSI_SENSE_CUR_INFO_FIXED:
             senseFields->fixedFormat = true;
             senseFields->validStructure = true;
@@ -1591,7 +1591,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
             break;
         case SCSI_SENSE_DEFER_ERR_DESC:
             senseFields->deferredError = true;
-            M_FALLTHROUGH
+            M_FALLTHROUGH;
         case SCSI_SENSE_CUR_INFO_DESC:
             senseFields->fixedFormat = false;
             senseFields->validStructure = true;

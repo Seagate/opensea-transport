@@ -567,13 +567,13 @@ eReturnValues ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo,
         {
             printf("Read Log - Log %02" PRIX8 "h, Count %" PRIu32 "\n", lbaLo, (dataSize / LEGACY_DRIVE_SEC_SIZE));
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case ATA_SMART_RDATTR_THRESH:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_RDATTR_THRESH)
         {
             printf("Read Thresholds\n");
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case ATA_SMART_READ_DATA:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_READ_DATA)
         {
@@ -599,37 +599,37 @@ eReturnValues ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo,
         {
             printf("Attribute Autosave\n");
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case ATA_SMART_SAVE_ATTRVALUE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_SAVE_ATTRVALUE)
         {
             printf("Save Attributes\n");
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case ATA_SMART_ENABLE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_ENABLE)
         {
             printf("Enable Operations\n");
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case ATA_SMART_EXEC_OFFLINE_IMM:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_EXEC_OFFLINE_IMM)
         {
             printf("Offline Immediate - test %02" PRIX8 "h\n", lbaLo);
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case ATA_SMART_RTSMART:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_RTSMART)
         {
             printf("Return Status\n");
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     case ATA_SMART_DISABLE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_DISABLE)
         {
             printf("Disable Operations\n");
         }
-        M_FALLTHROUGH
+        M_FALLTHROUGH;
     default:
         ataCommandOptions.commandDirection = XFER_NO_DATA;
         ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
