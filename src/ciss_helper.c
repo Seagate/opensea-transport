@@ -290,7 +290,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
                 token = common_String_Token(NULL, &duplen, ":", &saveptr);
             }
         }
-        safe_Free(dup);
+        safe_Free(C_CAST(void**, &dup));
     }
     return parseCount;
 }
@@ -465,7 +465,7 @@ static eReturnValues get_Physical_Device_Location_Data(tDevice *device, uint8_t 
                 ret = NOT_SUPPORTED;
             }
         }
-        safe_Free_aligned(physicalDrives);
+        safe_Free_aligned(C_CAST(void**, &physicalDrives));
     }
     else
     {
@@ -1580,14 +1580,14 @@ eReturnValues get_CISS_RAID_Device(const char *filename, tDevice *device)
                         //something went wrong, so clean up.
                         close(device->os_info.cissDeviceData->cissHandle);
                         device->os_info.fd = 0;
-                        safe_Free(device->os_info.cissDeviceData);
+                        safe_Free(C_CAST(void**, &device->os_info.cissDeviceData));
                     }
                 }
                 else
                 {
                     ret = NOT_SUPPORTED;
                     close(device->os_info.cissDeviceData->cissHandle);
-                    safe_Free(device->os_info.cissDeviceData);
+                    safe_Free(C_CAST(void**, &device->os_info.cissDeviceData));
                 }
             }
             else
@@ -1614,7 +1614,7 @@ eReturnValues close_CISS_RAID_Device(tDevice *device)
             device->os_info.last_error = 0;
         }
         device->os_info.fd = -1;
-        safe_Free(device->os_info.cissDeviceData);
+        safe_Free(C_CAST(void**, &device->os_info.cissDeviceData));
         return SUCCESS;
     }
     else
@@ -1679,7 +1679,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
             ret = ciss_Passthrough(&physicalLunCMD, CISS_CMD_CONTROLLER);
 
             //done with this memory now, so clean it up
-            safe_Free(pseudoDev.os_info.cissDeviceData);
+            safe_Free(C_CAST(void**, &pseudoDev.os_info.cissDeviceData));
 
             //print_Data_Buffer(data, dataLength, false);
 
@@ -1697,7 +1697,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
                 }
             }
 
-            safe_Free_aligned(data);
+            safe_Free_aligned(C_CAST(void**, &data));
         }
         else
         {

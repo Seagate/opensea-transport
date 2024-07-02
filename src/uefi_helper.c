@@ -239,7 +239,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
                 token = common_String_Token(NULL, &duplen ":", &saveptr);
             }
         }
-        safe_Free(dup)
+        safe_Free(C_CAST(void**, &dup));
     }
     return success;
 }
@@ -308,7 +308,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t *controllerID,
                 token = common_String_Token(NULL, &duplen, ":", &saveptr);
             }
         }
-        safe_Free(dup)
+        safe_Free(C_CAST(void**, &dup));
     }
     return success;
 }
@@ -394,7 +394,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
                 token = common_String_Token(NULL, &duplen, ":", &saveptr);
             }
         }
-        safe_Free(dup)
+        safe_Free(C_CAST(void**, &dup));
     }
     return success;
 }
@@ -510,8 +510,8 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                                     {
                                         success = false;
                                     }
-                                    safe_Free(firstHalf)
-                                    safe_Free(secondHalf)
+                                    safe_Free(C_CAST(void**, &firstHalf));
+                                    safe_Free(C_CAST(void**, &secondHalf));
                                 }
                             }
                             else
@@ -519,7 +519,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                                 //missing the next delimiter, which is not supposed to happen, so this is a failure
                                 success = false;
                             }
-                            safe_Free(targetstr);
+                            safe_Free(C_CAST(void**, &targetstr));
                         }
                         else
                         {
@@ -561,7 +561,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                 token = common_String_Token(NULL, &duplen, ":", &saveptr);
             }
         }
-        safe_Free(dup)
+        safe_Free(C_CAST(void**, &dup));
     }
     return success;
 }
@@ -604,7 +604,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(devicePath)
+                safe_Free(C_CAST(void**, &devicePath));
                 //close the protocol
                 close_ATA_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
             }
@@ -640,7 +640,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(devicePath)
+                safe_Free(C_CAST(void**, &devicePath));
                 close_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
             }
             else
@@ -671,7 +671,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(devicePath)
+                safe_Free(C_CAST(void**, &devicePath));
                 close_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
             }
             else
@@ -707,7 +707,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(devicePath)
+                safe_Free(C_CAST(void**, &devicePath));
                 close_NVMe_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
                 device->drive_info.namespaceID = device->os_info.address.nvme.namespaceID;
             }
@@ -1028,10 +1028,10 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(localBuffer)
-        safe_Free_aligned(localCDB)
-        safe_Free_aligned(localSensePtr)
-        safe_Free_aligned(srp)
+        safe_Free_aligned(C_CAST(void**, &localBuffer));
+        safe_Free_aligned(C_CAST(void**, &localCDB));
+        safe_Free_aligned(C_CAST(void**, &localSensePtr));
+        safe_Free_aligned(C_CAST(void**, &srp));
         close_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -1380,10 +1380,10 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(localBuffer)
-        safe_Free_aligned(localCDB)
-        safe_Free_aligned(localSensePtr)
-        safe_Free_aligned(srp)
+        safe_Free_aligned(C_CAST(void**, &localBuffer));
+        safe_Free_aligned(C_CAST(void**, &localCDB));
+        safe_Free_aligned(C_CAST(void**, &localSensePtr));
+        safe_Free_aligned(C_CAST(void**, &srp));
         close_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -1714,10 +1714,10 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(ataPacket)
-        safe_Free_aligned(localBuffer)
-        safe_Free_aligned(ataStatus)
-        safe_Free_aligned(ataCommand)
+        safe_Free_aligned(C_CAST(void**, &ataPacket));
+        safe_Free_aligned(C_CAST(void**, &localBuffer));
+        safe_Free_aligned(C_CAST(void**, &ataStatus));
+        safe_Free_aligned(C_CAST(void**, &ataCommand));
         close_ATA_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -2104,10 +2104,10 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             }
         }
         safe_Free_aligned(nrp->MetadataBuffer)
-        safe_Free_aligned(nrp)
-        safe_Free_aligned(localBuffer)
-        safe_Free_aligned(nvmCommand)
-        safe_Free_aligned(nvmCompletion)
+        safe_Free_aligned(C_CAST(void**, &nrp));
+        safe_Free_aligned(C_CAST(void**, &localBuffer));
+        safe_Free_aligned(C_CAST(void**, &nvmCommand));
+        safe_Free_aligned(C_CAST(void**, &nvmCompletion));
         close_NVMe_Passthru_Protocol_Ptr(&pPassthru, nvmeIoCtx->device->os_info.controllerNum);
     }
     else
@@ -2224,7 +2224,7 @@ uint32_t get_ATA_Device_Count()
                         //EFI_NOT_FOUND means no device at this place.
                         //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                         //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                        safe_Free(devicePath)
+                        safe_Free(C_CAST(void**, &devicePath));
                     }
                 }
             }
@@ -2299,7 +2299,7 @@ eReturnValues get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                         //EFI_NOT_FOUND means no device at this place.
                         //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                         //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                        safe_Free(devicePath)
+                        safe_Free(C_CAST(void**, &devicePath));
                     }
                 }
             }
@@ -2360,7 +2360,7 @@ uint32_t get_SCSI_Device_Count()
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath)
+                safe_Free(C_CAST(void**, &devicePath));
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2425,7 +2425,7 @@ eReturnValues get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath)
+                safe_Free(C_CAST(void**, &devicePath));
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2489,7 +2489,7 @@ uint32_t get_SCSIEx_Device_Count()
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath)
+                safe_Free(C_CAST(void**, &devicePath));
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2558,7 +2558,7 @@ eReturnValues get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeI
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath)
+                safe_Free(C_CAST(void**, &devicePath));
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2617,7 +2617,7 @@ uint32_t get_NVMe_Device_Count()
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath)
+                safe_Free(C_CAST(void**, &devicePath));
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2684,7 +2684,7 @@ eReturnValues get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(devicePath)
+                safe_Free(C_CAST(void**, &devicePath));
             }
         }
         //close the protocol since we're going to open this again in getdevice

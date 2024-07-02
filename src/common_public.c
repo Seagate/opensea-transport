@@ -1245,7 +1245,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                 if (dup)
                                 {
                                     snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s%s", dup, *outputInfo->outputFileName);
-                                    safe_Free(dup)
+                                    safe_Free(C_CAST(void**, &dup));
                                 }
                                 else
                                 {
@@ -1258,7 +1258,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                 if (dup)
                                 {
                                     snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%sscanOutput", dup);
-                                    safe_Free(dup)
+                                    safe_Free(C_CAST(void**, &dup));
                                 }
                                 else
                                 {
@@ -1269,7 +1269,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             if (dup)
                             {
                                 snprintf(fileNameAndPath, OPENSEA_PATH_MAX, "%s.txt", dup);
-                                safe_Free(dup)
+                                safe_Free(C_CAST(void**, &dup));
                             }
                             else
                             {
@@ -1278,7 +1278,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                             outputInfo->outputFilePtr = fopen(fileNameAndPath, "w+");
                             if (!(outputInfo->outputFilePtr))
                             {
-                                safe_Free_aligned(deviceList)
+                                safe_Free_aligned(C_CAST(void**, &deviceList));
                                 perror("could not open file!");
                                 return;
                             }
@@ -1390,8 +1390,8 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                 memset(displayHandle, 0, sizeof(displayHandle));
                                 snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
                             }
-                            safe_Free(genName)
-                            safe_Free(blockName)
+                            safe_Free(C_CAST(void**, &genName));
+                            safe_Free(C_CAST(void**, &blockName));
                         }
                         else if ((flags & SD_HANDLES) > 0)
                         {
@@ -1402,8 +1402,8 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                                 memset(displayHandle, 0, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
                                 snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
                             }
-                            safe_Free(genName)
-                            safe_Free(blockName)
+                            safe_Free(C_CAST(void**, &genName));
+                            safe_Free(C_CAST(void**, &blockName));
                         }
 #endif
                         char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
@@ -1468,7 +1468,7 @@ void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityL
                     close_Device(&deviceList[deviceIter]);
                 }
             }
-            safe_Free_aligned(deviceList)
+            safe_Free_aligned(C_CAST(void**, &deviceList));
         }
         else
         {
@@ -1572,7 +1572,7 @@ bool is_Maxtor_String(char* string)
         {
             isMaxtor = true;
         }
-        safe_Free(localString)
+        safe_Free(C_CAST(void**, &localString));
     }
     return isMaxtor;
 }
@@ -1640,7 +1640,7 @@ bool is_Seagate_VendorID(tDevice *device)
         {
             isSeagate = true;
         }
-        safe_Free(localString)
+        safe_Free(C_CAST(void**, &localString));
     }
     return isSeagate;
 }
@@ -1665,7 +1665,7 @@ bool is_Seagate_MN(char* string)
         {
             isSeagate = true;
         }
-        safe_Free(localString)
+        safe_Free(C_CAST(void**, &localString));
     }
     return isSeagate;
 }
@@ -1770,7 +1770,7 @@ bool is_Conner_VendorID(tDevice *device)
         {
             isConner = true;
         }
-        safe_Free(localString)
+        safe_Free(C_CAST(void**, &localString));
     }
     return isConner;
 }
@@ -1820,7 +1820,7 @@ bool is_CDC_VendorID(tDevice *device)
             {
                 isCDC = true;
             }
-            safe_Free(localString)
+            safe_Free(C_CAST(void**, &localString));
         }
     }
     return isCDC;
@@ -1847,7 +1847,7 @@ bool is_DEC_VendorID(tDevice *device)
             {
                 isDEC = true;
             }
-            safe_Free(localString)
+            safe_Free(C_CAST(void**, &localString));
         }
     }
     return isDEC;
@@ -1872,7 +1872,7 @@ bool is_MiniScribe_VendorID(tDevice *device)
         {
             isMiniscribe = true;
         }
-        safe_Free(localString)
+        safe_Free(C_CAST(void**, &localString));
     }
     return isMiniscribe;
 }
@@ -1898,7 +1898,7 @@ bool is_Quantum_VendorID(tDevice *device)
             {
                 isQuantum = true;
             }
-            safe_Free(localString)
+            safe_Free(C_CAST(void**, &localString));
         }
     }
     return isQuantum;
@@ -1923,7 +1923,7 @@ bool is_Quantum_Model_Number(char* string)
         {
             isQuantum = true;
         }
-        safe_Free(localString)
+        safe_Free(C_CAST(void**, &localString));
     }
     return isQuantum;
 }
@@ -1977,7 +1977,7 @@ bool is_PrarieTek_VendorID(tDevice *device)
             {
                 isPrarieTek = true;
             }
-            safe_Free(localString)
+            safe_Free(C_CAST(void**, &localString));
         }
     }
     return isPrarieTek;
@@ -2004,7 +2004,7 @@ bool is_LaCie(tDevice *device)
         {
             isLaCie = true;
         }
-        safe_Free(vendorID)
+        safe_Free(C_CAST(void**, &vendorID));
     }
     return isLaCie;
 }
@@ -2029,7 +2029,7 @@ bool is_Samsung_String(char* string)
         {
             isSamsung = true;
         }
-        safe_Free(localString)
+        safe_Free(C_CAST(void**, &localString));
     }
     return isSamsung;
 }

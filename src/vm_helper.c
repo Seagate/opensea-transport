@@ -330,7 +330,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     fclose(temp);
                                     temp = NULL;
                                 }
-                                safe_Free(pciPath)
+                                safe_Free(C_CAST(void**, &pciPath));
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
                             }
                         }
@@ -402,7 +402,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     fclose(temp);
                                     temp = NULL;
                                 }
-                                safe_Free(usbPath)
+                                safe_Free(C_CAST(void**, &usbPath));
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
                             }
                         }
@@ -450,7 +450,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     temp = NULL;
                                 }
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
-                                safe_Free(fwPath)
+                                safe_Free(C_CAST(void**, &fwPath));
                             }
 
                         }
@@ -527,7 +527,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                     temp = NULL;
                                 }
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
-                                safe_Free(pciPath)
+                                safe_Free(C_CAST(void**, &pciPath));
                             }
                         }
                         char *baseLink = basename(inHandleLink);
@@ -622,8 +622,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             }
                         }
                         //printf("Finish handle mapping\n");
-                        safe_Free(block)
-                        safe_Free(gen)
+                        safe_Free(C_CAST(void**, &block));
+                        safe_Free(C_CAST(void**, &gen));
                     }
                     else
                     {
@@ -708,7 +708,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     else
                     {
                         //printf ("could not map to generic class");
-                        safe_Free(incomingClassName)
+                        safe_Free(C_CAST(void**, &incomingClassName));
                         return NOT_SUPPORTED;
                     }
                 }
@@ -719,7 +719,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         //printf ("could not map to block class");
-                        safe_Free(incomingClassName)
+                        safe_Free(C_CAST(void**, &incomingClassName));
                         return NOT_SUPPORTED;
                     }
                 }
@@ -791,43 +791,43 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                                         *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr)));
                                         *genericHandle = strdup(basename(C_CAST(char *, handle)));
                                     }
-                                    safe_Free(className)
-                                    safe_Free(incomingClassName)
+                                    safe_Free(C_CAST(void**, &className));
+                                    safe_Free(C_CAST(void**, &incomingClassName));
                                     // start PRH valgrind fixes
                                     // this is causing a mem leak... when we bail the loop, there are a string of classList[] items 
                                     // still allocated. 
                                     for(remains = iter; remains<numberOfItems; remains++)
                                     {
-                                        safe_Free(classList[remains])
+                                        safe_Free(C_CAST(void**, &classList[remains]));
                                     }
-                                    safe_Free(classList)
+                                    safe_Free(C_CAST(void**, &classList));
                                     // end PRH valgrind fixes.
                                     return SUCCESS;
                                     break;//found a match, exit the loop
                                 }
                             }
-                            safe_Free(className)
+                            safe_Free(C_CAST(void**, &className));
                         }
                     }
-                    safe_Free(classList[iter]) // PRH - valgrind
-                    safe_Free(temp)
+                    safe_Free(C_CAST(void**, &classList[iter])) ;// PRH - valgrind
+                    safe_Free(C_CAST(void**, &temp));
                 }
-                safe_Free(classList)
+                safe_Free(C_CAST(void**, &classList));
             }
             else
             {
                 //not a link, or some other error....probably an old kernel
-                safe_Free(incomingClassName)
+                safe_Free(C_CAST(void**, &incomingClassName));
                 return NOT_SUPPORTED;
             }
         }
         else
         {
             //Mapping is not supported...probably an old kernel
-            safe_Free(incomingClassName)
+            safe_Free(C_CAST(void**, &incomingClassName));
             return NOT_SUPPORTED;
         }
-        safe_Free(incomingClassName)
+        safe_Free(C_CAST(void**, &incomingClassName));
     }
     return UNKNOWN;
 }
@@ -888,12 +888,12 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             print_Errno_To_Screen(errno);
             if (device->os_info.fd == EACCES)
             {
-                safe_Free(deviceHandle)
+                safe_Free(C_CAST(void**, &deviceHandle));
                 return PERMISSION_DENIED;
             }
             else
             {
-                safe_Free(deviceHandle)
+                safe_Free(C_CAST(void**, &deviceHandle));
                 return FAILURE;
             }
         }
@@ -909,7 +909,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             device->drive_info.media_type = MEDIA_HDD;
             set_Device_Fields_From_Handle(deviceHandle, device);
             setup_Passthrough_Hacks_By_ID(device);
-            safe_Free(deviceHandle)
+            safe_Free(C_CAST(void**, &deviceHandle));
             return ret;
         }
         //\\TODO: Add support for other flags. 
@@ -1005,7 +1005,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             printf("Media type: %d\n", device->drive_info.media_type);
 #endif
         }
-        safe_Free(deviceHandle)
+        safe_Free(C_CAST(void**, &deviceHandle));
 
     }
     else
@@ -1041,12 +1041,12 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             print_Errno_To_Screen(errno);
             if (device->os_info.nvmeFd == EACCES)
             {
-                safe_Free(deviceHandle)
+                safe_Free(C_CAST(void**, &deviceHandle));
                 return PERMISSION_DENIED;
             }
             else
             {
-                safe_Free(deviceHandle)
+                safe_Free(C_CAST(void**, &deviceHandle));
                 return FAILURE;
             }
         }
@@ -1056,7 +1056,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         //Adding support for different device discovery options. 
         if (device->dFlags == OPEN_HANDLE_ONLY)
         {
-            safe_Free(deviceHandle)
+            safe_Free(C_CAST(void**, &deviceHandle));
             return ret;
         }
         //\\TODO: Add support for other flags. 
@@ -1114,7 +1114,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             printf("Media type: %d\n", device->drive_info.media_type);
 #endif
         }
-        safe_Free(deviceHandle)
+        safe_Free(C_CAST(void**, &deviceHandle));
     }
 
     return ret;
@@ -1294,7 +1294,7 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
         {
             printf("%s Didn't understand direction\n", __FUNCTION__);
         }
-        safe_Free_aligned(localSenseBuffer)
+        safe_Free_aligned(C_CAST(void**, &localSenseBuffer));
         return BAD_PARAMETER;
     }
 
@@ -1577,7 +1577,7 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
 #ifdef _DEBUG
     printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
-    safe_Free_aligned(localSenseBuffer)
+    safe_Free_aligned(C_CAST(void**, &localSenseBuffer));
     return ret;
 }
 
@@ -1636,9 +1636,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_devs; ++iter)
     {
-        safe_Free(namelist[iter])
+        safe_Free(C_CAST(void**, &namelist[iter]));
     }
-    safe_Free(namelist)
+    safe_Free(C_CAST(void**, &namelist));
 
 #ifdef _DEBUG
     printf("get_Device_Count : num_devs %d\n", num_devs);
@@ -1723,9 +1723,9 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t deviceHandleLen = (strlen("/dev/disks/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, malloc(deviceHandleLen));
         snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
-        safe_Free(namelist[i])
+        safe_Free(C_CAST(void**, &namelist[i]));
     }
-    safe_Free(namelist)
+    safe_Free(C_CAST(void**, &namelist));
 
     //add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER;i++, j++)
@@ -1800,7 +1800,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber])
+            safe_Free(C_CAST(void**, &devs[driveNumber]));
         }
 #if defined (DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
@@ -1819,7 +1819,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(devs)
+    safe_Free(C_CAST(void**, &devs));
     return returnValue;
 }
 

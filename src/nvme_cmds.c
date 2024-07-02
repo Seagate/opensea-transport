@@ -1098,7 +1098,7 @@ eReturnValues nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlReg
             memcpy(ctrlRegs,barRegs,sizeof(nvmeBarCtrlRegisters));
         }
         
-        safe_Free_aligned(barRegs)
+        safe_Free_aligned(C_CAST(void**, &barRegs));
     }
     else
     {

@@ -517,13 +517,13 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
                                 sysFsInfo->driver_info.driverBuildNumber = 0;
                             }
                         }
-                        safe_Free(versionFileData)
+                        safe_Free(C_CAST(void**, &versionFileData));
                     }
                     fclose(versionFile);
                 }
             }
         }
-        safe_Free(driverVersionFilePath)
+        safe_Free(C_CAST(void**, &driverVersionFilePath));
     }
     snprintf(sysFsInfo->driver_info.driverName, MAX_DRIVER_NAME, "%s", basename(driverPath));
     return;
@@ -605,8 +605,8 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
-            safe_Free(driverPath)
-            safe_Free(pciPath);
+            safe_Free(C_CAST(void**, &driverPath));
+            safe_Free(C_CAST(void**, &pciPath));
             sysFsInfo->adapter_info.infoType = ADAPTER_INFO_PCI;
         }
     }
@@ -693,8 +693,8 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
-            safe_Free(driverPath)
-            safe_Free(usbPath)
+            safe_Free(C_CAST(void**, &driverPath));
+            safe_Free(C_CAST(void**, &usbPath));
             sysFsInfo->adapter_info.infoType = ADAPTER_INFO_USB;
         }
     }
@@ -757,8 +757,8 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
-            safe_Free(driverPath)
-            safe_Free(fwPath)
+            safe_Free(C_CAST(void**, &driverPath));
+            safe_Free(C_CAST(void**, &fwPath));
         }
     }
     return;
@@ -848,9 +848,9 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
             //printf("\nPath: %s\tname: %s", sysFsInfo->driver_info.driverPath,
-            safe_Free(driverPath)
+            safe_Free(C_CAST(void**, &driverPath));
             sysFsInfo->adapter_info.infoType = ADAPTER_INFO_PCI;
-            safe_Free(pciPath)
+            safe_Free(C_CAST(void**, &pciPath));
         }
     }
     return;
@@ -891,7 +891,7 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
            ++counter;
        }
     }
-    safe_Free(handle)
+    safe_Free(C_CAST(void**, &handle));
     return;
 }
 
@@ -1097,8 +1097,8 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
                             }
                         }
                         //printf("Finish handle mapping\n");
-                        safe_Free(block)
-                        safe_Free(gen)
+                        safe_Free(C_CAST(void**, &block));
+                        safe_Free(C_CAST(void**, &gen));
                     }
                     else
                     {
@@ -1209,7 +1209,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     else
                     {
                         //printf ("could not map to generic class");
-                        safe_Free(incomingClassName)
+                        safe_Free(C_CAST(void**, &incomingClassName));
                         return NOT_SUPPORTED;
                     }
                 }
@@ -1220,7 +1220,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         //printf ("could not map to block class");
-                        safe_Free(incomingClassName)
+                        safe_Free(C_CAST(void**, &incomingClassName));
                         return NOT_SUPPORTED;
                     }
                 }
@@ -1291,44 +1291,44 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                                         *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr)));
                                         *genericHandle = strdup(basename(C_CAST(char *, handle)));
                                     }
-                                    safe_Free(className)
-                                    safe_Free(incomingClassName)
+                                    safe_Free(C_CAST(void**, &className));
+                                    safe_Free(C_CAST(void**, &incomingClassName));
                                     // start PRH valgrind fixes
                                     // this is causing a mem leak... when we bail the loop, there are a string of classList[] items 
                                     // still allocated. 
                                     for(remains = iter; remains<numberOfItems; remains++)
                                     {
-                                        safe_Free(classList[remains])
+                                        safe_Free(C_CAST(void**, &classList[remains]));
                                     }
-                                    safe_Free(classList)
-                                    safe_Free(temp)
+                                    safe_Free(C_CAST(void**, &classList));
+                                    safe_Free(C_CAST(void**, &temp));
                                     // end PRH valgrind fixes.
                                     return SUCCESS;
                                     break;//found a match, exit the loop
                                 }
                             }
-                            safe_Free(className)
+                            safe_Free(C_CAST(void**, &className));
                         }
                     }
-                    safe_Free(classList[iter]) // PRH - valgrind
-                    safe_Free(temp)
+                    safe_Free(C_CAST(void**, &classList[iter])); // PRH - valgrind
+                    safe_Free(C_CAST(void**, &temp));
                 }
-                safe_Free(classList)
+                safe_Free(C_CAST(void**, &classList));
             }
             else
             {
                 //not a link, or some other error....probably an old kernel
-                safe_Free(incomingClassName)
+                safe_Free(C_CAST(void**, &incomingClassName));
                 return NOT_SUPPORTED;
             }
         }
         else
         {
             //Mapping is not supported...probably an old kernel
-            safe_Free(incomingClassName)
+            safe_Free(C_CAST(void**, &incomingClassName));
             return NOT_SUPPORTED;
         }
-        safe_Free(incomingClassName)
+        safe_Free(C_CAST(void**, &incomingClassName));
     }
     return UNKNOWN;
 }
@@ -1375,7 +1375,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
                     }
                 }
             }
-            safe_Free(parts);
+            safe_Free(C_CAST(void**, &parts));
         }
         else
         {
@@ -1430,8 +1430,8 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
         {
             deviceHandle = strdup(filename);
         }
-        safe_Free(genHandle)
-        safe_Free(blockHandle)
+        safe_Free(C_CAST(void**, &genHandle));
+        safe_Free(C_CAST(void**, &blockHandle));
     }
     else
     {
@@ -1450,12 +1450,12 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
         print_Errno_To_Screen(errno);
         if (device->os_info.fd == EACCES)
         {
-            safe_Free(deviceHandle)
+            safe_Free(C_CAST(void**, &deviceHandle));
             return PERMISSION_DENIED;
         }
         else
         {
-            safe_Free(deviceHandle)
+            safe_Free(C_CAST(void**, &deviceHandle));
             return FAILURE;
         }
     }
@@ -1472,7 +1472,7 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
         set_Device_Fields_From_Handle(deviceHandle, device);
         setup_Passthrough_Hacks_By_ID(device);
         set_Device_Partition_Info(device);
-        safe_Free(deviceHandle)
+        safe_Free(C_CAST(void**, &deviceHandle));
         return ret;
     }
     //Add support for other flags. 
@@ -1601,7 +1601,7 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
             }
         }
     }
-    safe_Free(deviceHandle)
+    safe_Free(C_CAST(void**, &deviceHandle));
     return ret;
 }
 
@@ -1796,7 +1796,7 @@ eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             printf("%s Didn't understand direction\n", __FUNCTION__);
         }
-        safe_Free_aligned(localSenseBuffer)
+        safe_Free_aligned(C_CAST(void**, &localSenseBuffer));
         return BAD_PARAMETER;
     }
 
@@ -2100,7 +2100,7 @@ eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx )
 #ifdef _DEBUG
     printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
-    safe_Free_aligned(localSenseBuffer)
+    safe_Free_aligned(C_CAST(void**, &localSenseBuffer));
     return ret;
 }
 
@@ -2196,9 +2196,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
                 beginRaidHandleList = raidHandleList;
             }
             //now free this as we are done with it.
-            safe_Free(ccisslist[cissIter])
+            safe_Free(C_CAST(void**, &ccisslist[cissIter]));
         }
-        safe_Free(ccisslist)
+        safe_Free(C_CAST(void**, &ccisslist));
     }
     for (uint32_t iter = 0; iter < num_devs; ++iter)
     {
@@ -2239,9 +2239,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the list of names to not leak memory
     for (uint32_t iter = 0; iter < num_devs; ++iter)
     {
-        safe_Free(namelist[iter])
+        safe_Free(C_CAST(void**, &namelist[iter]));
     }
-    safe_Free(namelist)
+    safe_Free(C_CAST(void**, &namelist));
     //add nvme devices to the list
     scandirresult = scandir("/dev", &nvmenamelist, nvme_filter,sortFunc);
     if (scandirresult >= 0)
@@ -2249,11 +2249,11 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         num_nvme_devs = C_CAST(uint32_t, scandirresult);
     }
     //free the nvmenamelist to not leak memory
-    for(uint32_t iter = 0; iter < num_nvme_devs; ++iter)
+    for (uint32_t iter = 0; iter < num_nvme_devs; ++iter)
     {
-        safe_Free(nvmenamelist[iter])
+        safe_Free(C_CAST(void**, &nvmenamelist[iter]));
     }
-    safe_Free(nvmenamelist)
+    safe_Free(C_CAST(void**, &nvmenamelist));
 
     *numberOfDevices = num_devs + num_nvme_devs;
 
@@ -2358,7 +2358,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t handleSize = (strlen("/dev/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
-        safe_Free(namelist[i])
+        safe_Free(C_CAST(void**, &namelist[i]));
     }
     //add nvme devices to the list
     for (j = 0; i < totalDevs && j < num_nvme_devs; i++, j++)
@@ -2366,11 +2366,11 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t handleSize = (strlen("/dev/") + strlen(nvmenamelist[j]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", nvmenamelist[j]->d_name);
-        safe_Free(nvmenamelist[j])
+        safe_Free(C_CAST(void**, &nvmenamelist[j]));
     }
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(namelist)
-    safe_Free(nvmenamelist)
+    safe_Free(C_CAST(void**, &namelist));
+    safe_Free(C_CAST(void**, &nvmenamelist));
 
     struct dirent **ccisslist;
     int num_ccissdevs = scandir("/dev", &ccisslist, ciss_filter, sortFunc);
@@ -2385,9 +2385,9 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 beginRaidHandleList = raidHandleList;
             }
             //now free this as we are done with it.
-            safe_Free(ccisslist[cissIter])
+            safe_Free(C_CAST(void**, &ccisslist[cissIter]));
         }
-        safe_Free(ccisslist)
+        safe_Free(C_CAST(void**, &ccisslist));
     }
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -2485,7 +2485,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber])
+            safe_Free(C_CAST(void**, &devs[driveNumber]));
         }
 
 #if defined (ENABLE_CISS)
@@ -2522,7 +2522,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(devs)
+    safe_Free(C_CAST(void**, &devs));
     return returnValue;
 }
 
@@ -3182,7 +3182,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
                     }
                 }
             }
-            safe_Free(parts);
+            safe_Free(C_CAST(void**, &parts));
         }
         else
         {

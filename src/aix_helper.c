@@ -1245,7 +1245,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
         char *friendlyName = strdup(filename);
         snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(friendlyName));
-        safe_Free(friendlyName);
+        safe_Free(C_CAST(void**, &friendlyName));
         struct CuDv cudv;
         struct CuDv * ptrcudv;
         memset(&cudv, 0, sizeof(struct CuDv));
@@ -1426,7 +1426,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         }
         //done with using odm, so terminate it
         (void)odm_terminate();
-        safe_Free(diskFullName);
+        safe_Free(C_CAST(void**, &diskFullName));
     }
     return ret;
 }
@@ -2814,9 +2814,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the list of names to not leak memory
     for(int iter = 0; iter < num_devs; ++iter)
     {
-    	safe_Free(namelist[iter])
+    	safe_Free(C_CAST(void**, &namelist[iter]));
     }
-    safe_Free(namelist)
+    safe_Free(C_CAST(void**, &namelist));
 
     *numberOfDevices = num_devs;
 
@@ -2869,10 +2869,10 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t handleSize = (strlen("/dev/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
-        safe_Free(namelist[i])
+        safe_Free(C_CAST(void**, &namelist[i]));
     }
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(namelist)
+    safe_Free(C_CAST(void**, &namelist));
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
@@ -2943,7 +2943,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber])
+            safe_Free(C_CAST(void**, &devs[driveNumber]));
         }
 	    if (found == failedGetDeviceCount)
 	    {
@@ -2958,7 +2958,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 	        returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
 	    }
     }
-    safe_Free(devs)
+    safe_Free(C_CAST(void**, &devs));
     return returnValue;
 }
 

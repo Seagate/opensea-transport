@@ -99,7 +99,7 @@ eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataR
             }
         }
     }
-    safe_Free_aligned(sense70logBuffer)
+    safe_Free_aligned(C_CAST(void**, &sense70logBuffer));
     return ret;
 }
 
@@ -340,7 +340,7 @@ eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *p
                         ret = WARN_INCOMPLETE_RFTRS;
                     }
                 }
-                safe_Free_aligned(descriptorFormatSenseData)
+                safe_Free_aligned(C_CAST(void**, &descriptorFormatSenseData));
             }
         }
         //Some devices say passthrough info available, but populate nothing...so need to set this error!
@@ -804,9 +804,9 @@ eReturnValues request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rt
     if (!rtfrBuffer || !rtfr_senseData || !requestRTFRs)
     {
         perror("Calloc aligned Failure!\n");
-        safe_Free_aligned(rtfrBuffer)
-        safe_Free_aligned(rtfr_senseData)
-        safe_Free_aligned(requestRTFRs)
+        safe_Free_aligned(C_CAST(void**, &rtfrBuffer));
+        safe_Free_aligned(C_CAST(void**, &rtfr_senseData));
+        safe_Free_aligned(C_CAST(void**, &requestRTFRs));
         return MEMORY_FAILURE;
     }
     //Set the op code up for the size of the CDB
@@ -836,9 +836,9 @@ eReturnValues request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rt
     }
     else
     {
-        safe_Free_aligned(rtfrBuffer)
-        safe_Free_aligned(rtfr_senseData)
-        safe_Free_aligned(requestRTFRs)
+        safe_Free_aligned(C_CAST(void**, &rtfrBuffer));
+        safe_Free_aligned(C_CAST(void**, &rtfr_senseData));
+        safe_Free_aligned(C_CAST(void**, &requestRTFRs));
         return BAD_PARAMETER;
     }
     //set the protocol to Fh (15) to request the return TFRs be returned in that data in buffer.
@@ -887,9 +887,9 @@ eReturnValues request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rt
         }
     }
     //any other return value doesn't matter since this will not affect pass fail of our command. After this we will be dummying up a status anyways
-    safe_Free_aligned(rtfrBuffer)
-    safe_Free_aligned(rtfr_senseData)
-    safe_Free_aligned(requestRTFRs)
+    safe_Free_aligned(C_CAST(void**, &rtfrBuffer));
+    safe_Free_aligned(C_CAST(void**, &rtfr_senseData));
+    safe_Free_aligned(C_CAST(void**, &requestRTFRs));
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("SAT Return Response Information", rtfrRet);
@@ -1368,13 +1368,13 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
             ret = sendIOret;
         }
     }
-    safe_Free_aligned(satCDB)
+    safe_Free_aligned(C_CAST(void**, &satCDB));
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)
     {
         ret = OS_COMMAND_TIMEOUT;
     }
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free_aligned(senseData)
+    safe_Free_aligned(C_CAST(void**, &senseData));
     if (localSenseData)
     {
         ataCommandOptions->ptrSenseData = NULL;
@@ -1992,7 +1992,7 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba
                     }
                 }
             }
-            safe_Free_aligned(compareBuf)
+            safe_Free_aligned(C_CAST(void**, &compareBuf));
             if (errorFound)
             {
                 //set failure
@@ -2072,7 +2072,7 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba
                     }
                 }
             }
-            safe_Free_aligned(compareBuf)
+            safe_Free_aligned(C_CAST(void**, &compareBuf));
             if (errorFound)
             {
                 //set failure
@@ -2426,7 +2426,7 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
         SCSINameStringDesignator = C_CAST(uint8_t*, calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t)));
         if (!SCSINameStringDesignator)
         {
-            safe_Free(naaDesignator)
+            safe_Free(C_CAST(void**, &naaDesignator));
             return MEMORY_FAILURE;
         }
         //now set this into the buffer
@@ -2456,8 +2456,8 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
     deviceIdentificationPage = C_CAST(uint8_t*, calloc((UINT32_C(4) + UINT32_C(72) + C_CAST(uint32_t, naaDesignatorLength) + C_CAST(uint32_t, SCSINameStringDesignatorLength)) * sizeof(uint8_t), sizeof(uint8_t)));
     if (!deviceIdentificationPage)
     {
-        safe_Free(SCSINameStringDesignator)
-        safe_Free(naaDesignator)
+        safe_Free(C_CAST(void**, &SCSINameStringDesignator));
+        safe_Free(C_CAST(void**, &naaDesignator));
         return MEMORY_FAILURE;
     }
     uint8_t peripheralDevice = 0;
@@ -2484,14 +2484,14 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
     //t10 vendor identification last
     memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + SCSINameStringDesignatorLength], t10VendorIdDesignator, UINT32_C(72));
     //now free the memory we no longer need
-    safe_Free(naaDesignator)
-    safe_Free(SCSINameStringDesignator)
+    safe_Free(C_CAST(void**, &naaDesignator));
+    safe_Free(C_CAST(void**, &SCSINameStringDesignator));
     //copy the final data back for the command
     if (scsiIoCtx->pdata)
     {
         memcpy(scsiIoCtx->pdata, deviceIdentificationPage, M_Min(UINT32_C(72) + naaDesignatorLength + SCSINameStringDesignatorLength, scsiIoCtx->dataLength));
     }
-    safe_Free(deviceIdentificationPage)
+    safe_Free(C_CAST(void**, &deviceIdentificationPage));
     return ret;
 }
 
@@ -4470,7 +4470,7 @@ static eReturnValues translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCt
                     memcpy(writePattern, scsiIoCtx->pdata, patternLength);
                 }
                 ret = satl_Sequential_Write_Commands(scsiIoCtx, logicalBlockAddress, numberOflogicalBlocks, writePattern, patternLength);
-                safe_Free_aligned(writePattern)
+                safe_Free_aligned(C_CAST(void**, &writePattern));
             }
             else
             {
@@ -4826,7 +4826,7 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(tDevice *device, Sc
                     }
                 }
             }
-            safe_Free_aligned(compareBuf)
+            safe_Free_aligned(C_CAST(void**, &compareBuf));
             if (errorFound)
             {
                 //set failure
@@ -4916,7 +4916,7 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(tDevice *device, Sc
                     }
                 }
             }
-            safe_Free_aligned(compareBuf)
+            safe_Free_aligned(C_CAST(void**, &compareBuf));
             if (errorFound)
             {
                 //set failure
@@ -5204,7 +5204,7 @@ static eReturnValues translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoC
                                         {
                                             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR, 0x03, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
                                         }
-                                        safe_Free_aligned(ataWritePattern)
+                                        safe_Free_aligned(C_CAST(void**, &ataWritePattern));
                                     }
                                     else
                                     {
@@ -5302,7 +5302,7 @@ static eReturnValues translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoC
                                                         }
                                                     }
                                                 }
-                                                safe_Free_aligned(ataWritePattern)
+                                                safe_Free_aligned(C_CAST(void**, &ataWritePattern));
                                             }
                                             else
                                             {
@@ -5524,7 +5524,7 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(tDevice *device, Scs
             }
         }
     }
-    safe_Free_aligned(writeData)
+    safe_Free_aligned(C_CAST(void**, &writeData));
     return ret;
 }
 
@@ -5867,7 +5867,7 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(tDevice *device
                         memcpy(scsiIoCtx->pdata, tempSecurityMemory, allocationLength);
                     }
                 }
-                safe_Free_aligned(tempSecurityMemory)
+                safe_Free_aligned(C_CAST(void**, &tempSecurityMemory));
             }
         }
     }
@@ -6134,7 +6134,7 @@ static eReturnValues translate_SCSI_Security_Protocol_Out_Command(tDevice *devic
                     ret = FAILURE;
                     set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
-                safe_Free_aligned(tempSecurityMemory)
+                safe_Free_aligned(C_CAST(void**, &tempSecurityMemory));
             }
         }
     }
@@ -10068,7 +10068,7 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice *devic
                     {
                         //break and set an error code
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                        safe_Free_aligned(hostLogData)
+                        safe_Free_aligned(C_CAST(void**, &hostLogData));
                         break;
                     }
                 }
@@ -10078,14 +10078,14 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice *devic
                     {
                         //break and set an error code
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                        safe_Free_aligned(hostLogData)
+                        safe_Free_aligned(C_CAST(void**, &hostLogData));
                         break;
                     }
                 }
                 else
                 {
                     //error...we shouldn't be here!
-                    safe_Free_aligned(hostLogData)
+                    safe_Free_aligned(C_CAST(void**, &hostLogData));
                     break;
                 }
                 //need another for loop to go through the ATA log data we just read so that we can modify the data before we write it.
@@ -10110,7 +10110,7 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice *devic
                     {
                         //break and set an error code
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                        safe_Free_aligned(hostLogData)
+                        safe_Free_aligned(C_CAST(void**, &hostLogData));
                         break;
                     }
                 }
@@ -10120,17 +10120,17 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice *devic
                     {
                         //break and set an error code
                         set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                        safe_Free_aligned(hostLogData)
+                        safe_Free_aligned(C_CAST(void**, &hostLogData));
                         break;
                     }
                 }
                 else
                 {
                     //error...we shouldn't be here!
-                    safe_Free_aligned(hostLogData)
+                    safe_Free_aligned(C_CAST(void**, &hostLogData));
                     break;
                 }
-                safe_Free_aligned(hostLogData)
+                safe_Free_aligned(C_CAST(void**, &hostLogData));
             }
         }
     }
@@ -10454,7 +10454,7 @@ static eReturnValues translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *sc
                     set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
             }
-            safe_Free_aligned(trimBuffer)
+            safe_Free_aligned(C_CAST(void**, &trimBuffer));
         }
     }
     return ret;
@@ -10581,7 +10581,7 @@ static eReturnValues translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx
     {
         memcpy(scsiIoCtx->pdata, controlPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(controlPage)
+    safe_Free(C_CAST(void**, &controlPage));
     return ret;
 }
 
@@ -10746,7 +10746,7 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx *scsiIo
     {
         memcpy(scsiIoCtx->pdata, pataControlPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(pataControlPage)
+    safe_Free(C_CAST(void**, &pataControlPage));
     return ret;
 }
 
@@ -10853,7 +10853,7 @@ static eReturnValues translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoCtx *s
     {
         memcpy(scsiIoCtx->pdata, controlExtPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(controlExtPage)
+    safe_Free(C_CAST(void**, &controlExtPage));
     return ret;
 }
 //mode parameter header must be 4 bytes for short format and 8 bytes for long format (longHeader set to true)
@@ -11160,7 +11160,7 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(tDevice *device, Sc
     {
         memcpy(scsiIoCtx->pdata, powerConditionPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(powerConditionPage)
+    safe_Free(C_CAST(void**, &powerConditionPage));
     return ret;
 }
 //mode parameter header must be 4 bytes for short format and 8 bytes for long format (longHeader set to true)
@@ -11276,7 +11276,7 @@ static eReturnValues translate_Mode_Sense_ATA_Power_Condition_1A_F1(tDevice *dev
     {
         memcpy(scsiIoCtx->pdata, powerConditionPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(powerConditionPage)
+    safe_Free(C_CAST(void**, &powerConditionPage));
     return ret;
 }
 
@@ -11365,7 +11365,7 @@ static eReturnValues translate_Mode_Sense_Read_Write_Error_Recovery_01h(ScsiIoCt
     {
         memcpy(scsiIoCtx->pdata, readWriteErrorRecovery, M_Min(pageLength, allocationLength));
     }
-    safe_Free(readWriteErrorRecovery)
+    safe_Free(C_CAST(void**, &readWriteErrorRecovery));
     return ret;
 }
 
@@ -11493,7 +11493,7 @@ static eReturnValues translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx
     {
         memcpy(scsiIoCtx->pdata, caching, M_Min(pageLength, allocationLength));
     }
-    safe_Free(caching)
+    safe_Free(C_CAST(void**, &caching));
     return ret;
 }
 
@@ -11587,7 +11587,7 @@ static eReturnValues translate_Mode_Sense_Informational_Exceptions_Control_1Ch(S
     {
         memcpy(scsiIoCtx->pdata, informationalExceptions, M_Min(pageLength, allocationLength));
     }
-    safe_Free(informationalExceptions)
+    safe_Free(C_CAST(void**, &informationalExceptions));
     return ret;
 }
 
@@ -13232,7 +13232,7 @@ static eReturnValues translate_SCSI_Zone_Management_In_Command(tDevice *device, 
         //copy the data based on allocation length
         memcpy(scsiIoCtx->pdata, dataBuf, M_Min(scsiIoCtx->dataLength, dataBufLength));
     }
-    safe_Free_aligned(dataBuf)
+    safe_Free_aligned(C_CAST(void**, &dataBuf));
     return ret;
 }
 
@@ -13340,7 +13340,7 @@ static eReturnValues translate_SCSI_Zone_Management_Out_Command(tDevice *device,
     //    //copy the data based on allocation length
     //    memcpy(scsiIoCtx->pdata, dataBuf, M_Min(scsiIoCtx->dataLength, dataBufLength));
     //}
-    //safe_Free_aligned(dataBuf)
+    //safe_Free_aligned(C_CAST(void**, &dataBuf));
     return ret;
 }
 
@@ -16215,7 +16215,7 @@ static eReturnValues translate_SCSI_Report_Supported_Operation_Codes_Command(tDe
         else
         {
             //free this memory since the last function allocated it, but failed, then check if the op/sa combination is supported
-            safe_Free(supportedOpData)
+            safe_Free(C_CAST(void**, &supportedOpData));
             supportedOpDataLength = 0;
             if (check_Operation_Code_and_Service_Action(device, requestedOperationCode, requestedServiceAction, rctd, &supportedOpData, &supportedOpDataLength))
             {
@@ -16239,7 +16239,7 @@ static eReturnValues translate_SCSI_Report_Supported_Operation_Codes_Command(tDe
     {
         memcpy(scsiIoCtx->pdata, supportedOpData, M_Min(supportedOpDataLength, allocationLength));
     }
-    safe_Free(supportedOpData)
+    safe_Free(C_CAST(void**, &supportedOpData));
     return ret;
 }
 

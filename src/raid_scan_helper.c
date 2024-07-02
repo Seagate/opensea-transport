@@ -89,7 +89,7 @@ ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHand
                 //If there was a previous entry, need to update it's next pointer
                 previous->next = returnMe;
             }
-            safe_Free(toRemove)
+            safe_Free(C_CAST(void**, &toRemove));
             return returnMe;
         }
         else
@@ -99,7 +99,7 @@ ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHand
             {
                 previous->next = NULL;
             }
-            safe_Free(toRemove)
+            safe_Free(C_CAST(void**, &toRemove));
             return NULL;
         }
     }
@@ -114,12 +114,12 @@ void delete_RAID_List(ptrRaidHandleToScan listBegin)
         if (listBegin->next)
         {
             ptrRaidHandleToScan nextDelete = listBegin->next;
-            safe_Free(listBegin)
+            safe_Free(C_CAST(void**, &listBegin));
             listBegin = nextDelete;
         }
         else
         {
-            safe_Free(listBegin)
+            safe_Free(C_CAST(void**, &listBegin));
             break;
         }
     }

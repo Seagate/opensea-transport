@@ -381,7 +381,7 @@ eReturnValues send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions fu
         ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_OUT, pattern, C_CAST(uint32_t, patternLength * device->drive_info.deviceBlockSize));
     }
 
-    safe_Free_aligned(writeSameBuffer)
+    safe_Free_aligned(C_CAST(void**, &writeSameBuffer));
     return ret;
 }
 
@@ -397,7 +397,7 @@ eReturnValues send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t func
     //if we are retrieving the current values, then we better have a good pointer...no point in sending the command if we don't
     if ((functionCode == 0x0002 || functionCode == 0x0004) && !currentValue)
     {
-        safe_Free_aligned(errorRecoveryBuffer)
+        safe_Free_aligned(C_CAST(void**, &errorRecoveryBuffer));
         return BAD_PARAMETER;
     }
 
@@ -420,7 +420,7 @@ eReturnValues send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t func
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
-    safe_Free_aligned(errorRecoveryBuffer)
+    safe_Free_aligned(C_CAST(void**, &errorRecoveryBuffer));
     return ret;
 }
 
@@ -436,7 +436,7 @@ eReturnValues send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCod
     //make sure we have valid pointers for state and optionFlags
     if (!state || !optionFlags)
     {
-        safe_Free_aligned(featureControlBuffer)
+        safe_Free_aligned(C_CAST(void**, &featureControlBuffer));
         return BAD_PARAMETER;
     }
     //clear the state and option flags out, unless we are setting something
@@ -476,7 +476,7 @@ eReturnValues send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCod
             *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
         }
     }
-    safe_Free_aligned(featureControlBuffer)
+    safe_Free_aligned(C_CAST(void**, &featureControlBuffer));
     return ret;
 }
 

@@ -148,7 +148,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice *device)
                             device->drive_info.media_type = MEDIA_HDD;
                         }
                     }
-                    safe_Free_aligned(supportedLogs);
+                    safe_Free_aligned(C_CAST(void**, &supportedLogs));
                 }
             }
         }

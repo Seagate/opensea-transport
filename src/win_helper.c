@@ -292,7 +292,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
                         }
                     }
                 }
-                safe_Free(propertyBuf)
+                safe_Free(C_CAST(void**, &propertyBuf));
             }
         }
     }
@@ -387,7 +387,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
                         }
                     }
                 }
-                safe_Free(propertyBuf)
+                safe_Free(C_CAST(void**, &propertyBuf));
             }
         }
     }
@@ -498,8 +498,8 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
             {
                 ret = MEMORY_FAILURE;
             }
-            safe_Free(scsiListBuff)
-            safe_Free(usbListBuff)
+            safe_Free(C_CAST(void**, &scsiListBuff));
+            safe_Free(C_CAST(void**, &usbListBuff));
         }
         else
         {
@@ -906,7 +906,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                                 devproperty = &DEVPKEY_Device_InLocalMachineContainer;
                                                                                 propertyNameLength = strlen("DEVPKEY_Device_InLocalMachineContainer") + 1;
                                                                                 propertyName = C_CAST(char*, calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_InLocalMachineContainer");;
+                                                                                snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_InLocalMachineContainer");
                                                                                 break;
                                                                             case 50:
                                                                                 devproperty = &DEVPKEY_Device_Model;
@@ -1940,13 +1940,13 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                                         }
                                                                                     }
                                                                                 }
-                                                                                safe_Free(propertyBuf)
+                                                                                safe_Free(C_CAST(void**, &propertyBuf));
                                                                             }
                                                                             //else
                                                                             //{
                                                                             //    printf("\tUnable to find requested property\n");
                                                                             //}
-                                                                            safe_Free(propertyName)
+                                                                            safe_Free(C_CAST(void**, &propertyName));
                                                                             ++counter;
                                                                         }
                                                                         ++instanceCounter;
@@ -1986,7 +1986,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                                         printf("Fatal error getting device IDs\n");
                                                                                     }
                                                                                 }
-                                                                                safe_Free(pparentBuffer);
+                                                                                safe_Free(C_CAST(void**, &pparentBuffer));
                                                                             }
                                                                         }
                                                                     }
@@ -2018,7 +2018,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                                 }
                                                                             }
                                                                         }
-                                                                        safe_Free(propertyBuf)
+                                                                        safe_Free(C_CAST(void**, &propertyBuf));
                                                                     }
                                                                 }
                                                                 propertyBufLen = 0;//reset to zero before going into this function to read the string again.-TJE
@@ -2051,11 +2051,11 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                                 }
                                                                             }
                                                                         }
-                                                                        safe_Free(propertyBuf)
+                                                                        safe_Free(C_CAST(void**, &propertyBuf));
                                                                     }
                                                                 }
                                                             }
-                                                            safe_Free(parentBuffer)
+                                                            safe_Free(C_CAST(void**, &parentBuffer));
                                                         }
                                                     }
                                                 }
@@ -2073,7 +2073,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                     }
                                 }
                             }
-                            safe_Free(interfaceList)
+                            safe_Free(C_CAST(void**, &interfaceList));
                         }
                     }
                 }//else node is not available most likely...possibly not attached to the system.
@@ -2083,7 +2083,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                 ret = SUCCESS;
             }
         }
-        safe_Free(listBuffer)
+        safe_Free(C_CAST(void**, &listBuffer));
     }
     return ret;
 }
@@ -2251,7 +2251,7 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVe
     overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (overlappedStruct.hEvent == NULL)
     {
-        safe_Free_aligned(buffer)
+        safe_Free_aligned(C_CAST(void**, &buffer));
         return OS_PASSTHROUGH_FAILURE;
     }
     SetLastError(ERROR_SUCCESS);
@@ -2309,7 +2309,7 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVe
     {
         *lastError = getLastError;
     }
-    safe_Free_aligned(buffer)
+    safe_Free_aligned(C_CAST(void**, &buffer));
     return ret;
 }
 
@@ -2354,7 +2354,7 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                 }
 #endif
             }
-            safe_Free(firmwareInfo)
+            safe_Free(C_CAST(void**, &firmwareInfo));
         }
         else
         {
@@ -2403,7 +2403,7 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                 }
 #endif
             }
-            safe_Free(firmwareInfo)
+            safe_Free(C_CAST(void**, &firmwareInfo));
         }
         else
         {
@@ -2865,7 +2865,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                safe_Free(firmwareDownload)
+                safe_Free(C_CAST(void**, &firmwareDownload));
                 return BAD_PARAMETER;
             }
 
@@ -2893,7 +2893,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             {
                 ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
             }
-            safe_Free(firmwareDownload)
+            safe_Free(C_CAST(void**, &firmwareDownload));
         }
         else
         {
@@ -2932,7 +2932,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
                 }
                 else
                 {
-                    safe_Free(firmwareDownload)
+                    safe_Free(C_CAST(void**, &firmwareDownload));
                     return BAD_PARAMETER;
                 }
 
@@ -2945,7 +2945,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
                 {
                     ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
                 }
-                safe_Free(firmwareDownload)
+                safe_Free(C_CAST(void**, &firmwareDownload));
             }
             else
             {
@@ -2990,7 +2990,7 @@ static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             {
                 ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
             }
-            safe_Free(firmwareActivate)
+            safe_Free(C_CAST(void**, &firmwareActivate));
         }
         else
         {
@@ -3140,7 +3140,7 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIo
             {
                 ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
-            safe_Free(firmwareDownload)
+            safe_Free(C_CAST(void**, &firmwareDownload));
         }
         else
         {
@@ -3173,7 +3173,7 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIo
             {
                 ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
-            safe_Free(firmwareDownload)
+            safe_Free(C_CAST(void**, &firmwareDownload));
     }
         else
         {
@@ -3214,7 +3214,7 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
             {
                 ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
-            safe_Free(firmwareActivate)
+            safe_Free(C_CAST(void**, &firmwareActivate));
         }
         else
         {
@@ -3286,7 +3286,7 @@ eReturnValues close_Device(tDevice *dev)
 #endif
         {
             close_SCSI_SRB_Handle(dev);//\\.\SCSIx: could be opened for different reasons...so we need to close it here.
-            safe_Free(dev->os_info.csmiDeviceData)//CSMI may have been used, so free this memory if it was before we close out.
+            safe_Free(C_CAST(void**, &dev->os_info.csmiDeviceData));//CSMI may have been used, so free this memory if it was before we close out.
             CloseHandle(dev->os_info.forceUnitAccessRWfd);//if FUA handle was opened, this will close it out.
             retValue = CloseHandle(dev->os_info.fd);
             dev->os_info.last_error = GetLastError();
@@ -3683,7 +3683,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
             }
             else
             {
-                safe_Free(*geom)
+                safe_Free(C_CAST(void**, geom));
             }
         }
         else
@@ -3746,7 +3746,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
 //            }
 //            else
 //            {
-//                safe_Free(*numbers)
+//                safe_Free(C_CAST(void**, numbers));
 //            }
 //        }
 //        else
@@ -3775,7 +3775,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
     if (SUCCESS == win_Get_Drive_Geometry_Ex(device->os_info.fd, &diskGeom, &partInfo, &diskDetect))
     {
         //Do stuff with diskGeom, partInfo, & diskDetect
-        safe_Free(diskGeom)
+        safe_Free(C_CAST(void**, &diskGeom));
     }
 */
 static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_EX *geom, PDISK_PARTITION_INFO *partInfo, PDISK_DETECTION_INFO *detectInfo)
@@ -3827,7 +3827,7 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
             }
             else
             {
-                safe_Free(*geom)
+                safe_Free(C_CAST(void**, geom));
             }
         }
         else
@@ -3859,7 +3859,7 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
 //            }
 //            else
 //            {
-//                safe_Free(*length)
+//                safe_Free(C_CAST(length)
 //            }
 //        }
 //        else
@@ -4109,7 +4109,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                             }
                         }
                         //DWORD lastError = GetLastError();
-                        safe_Free(diskExtents)
+                        safe_Free(C_CAST(void**, &diskExtents));
                     }
                 }
                 CloseHandle(letterHandle);
@@ -4664,9 +4664,9 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                     //do nothing since we assume everything else was set correctly earlier
                     break;
                 }
-                safe_Free(device_desc)
+                safe_Free(C_CAST(void**, &device_desc));
             }
-            safe_Free(adapter_desc)
+            safe_Free(C_CAST(void**, &adapter_desc));
         }
     }
     // Just in case we bailed out in any way.
@@ -4797,7 +4797,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
                     }
                 }
             }
-            safe_Free(adapterData)
+            safe_Free(C_CAST(void**, &adapterData));
             CloseHandle(fd);
         }
     }
@@ -4951,7 +4951,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                             }
                         }
                     }
-                    safe_Free(adapterData)
+                    safe_Free(C_CAST(void**, &adapterData));
                 }
                 found++;
                 d++;
@@ -5238,7 +5238,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_Free(sptdioEx)
+    safe_Free(C_CAST(void**, &sptdioEx));
     return ret;
 }
 
@@ -5458,9 +5458,9 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
             }
         }
     }
-    safe_Free(sptdio)
+    safe_Free(C_CAST(void**, &sptdio));
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_Free(localBuffer)
+    safe_Free(C_CAST(void**, &localBuffer));
     return ret;
 }
 #endif //#if defined INCLUDED_SCSI_DOT_H
@@ -5644,7 +5644,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
         overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
         if (overlappedStruct.hEvent == NULL)
         {
-            safe_Free(sptdioDB)
+            safe_Free(C_CAST(void**, &sptdioDB));
             return OS_PASSTHROUGH_FAILURE;
         }
         start_Timer(&commandTimer);
@@ -5729,7 +5729,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
             }
         }
     }
-    safe_Free(sptdioDB)
+    safe_Free(C_CAST(void**, &sptdioDB));
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     return ret;
 }
@@ -5863,7 +5863,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_Free(localBuffer)
+    safe_Free(C_CAST(void**, &localBuffer));
     return ret;
 }
 
@@ -6233,7 +6233,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_Free(localBuffer)//This will check if NULL before freeing it, so we shouldn't have any issues.
+    safe_Free(C_CAST(void**, &localBuffer));//This will check if NULL before freeing it, so we shouldn't have any issues.
     return ret;
 }
 
@@ -6540,7 +6540,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_Free(doubleBufferedIO)
+    safe_Free(C_CAST(void**, &doubleBufferedIO));
     return ret;
 }
 
@@ -6803,7 +6803,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_Free(doubleBufferedIO)
+    safe_Free(C_CAST(void**, &doubleBufferedIO));
     return ret;
 }
 
@@ -6909,7 +6909,7 @@ eReturnValues get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busT
         //DWORD lastError = GetLastError();
         ret = FAILURE;
     }
-    safe_Free(outputData)
+    safe_Free(C_CAST(void**, &outputData));
     return ret;
 }
 
@@ -7156,7 +7156,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     }
     else
     {
-        safe_Free(downloadIO)
+        safe_Free(C_CAST(void**, &downloadIO));
         return BAD_PARAMETER;
     }
     //set the size of the buffer
@@ -7580,7 +7580,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     PSENDCMDOUTPARAMS smartIOout = C_CAST(PSENDCMDOUTPARAMS, calloc(1, sizeof(SENDCMDOUTPARAMS) - 1 + dataOutLength + magicPadding));
     if (!smartIOout)
     {
-        safe_Free(smartIOin)
+        safe_Free(C_CAST(void**, &smartIOin));
         //something went really wrong
         return MEMORY_FAILURE;
     }
@@ -7774,8 +7774,8 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_Free(smartIOin)
-    safe_Free(smartIOout)
+    safe_Free(C_CAST(void**, &smartIOin));
+    safe_Free(C_CAST(void**, &smartIOout));
     return ret;
 }
 
@@ -8075,7 +8075,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                     {
                         memcpy(scsiIoCtx->pdata, vpdPage, M_Min(96U, M_Min(vpdPageLen + 4U, scsiIoCtx->dataLength)));
                     }
-                    safe_Free(deviceDesc)
+                    safe_Free(C_CAST(void**, &deviceDesc));
                 }
                 else
                 {
@@ -8207,7 +8207,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                             inquiryData[34] = 'K';
                             inquiryData[35] = 'E';
                         }
-                        safe_Free(deviceDesc)
+                        safe_Free(C_CAST(void**, &deviceDesc));
                     }
                     else
                     {
@@ -8290,7 +8290,7 @@ static eReturnValues wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
                 readCapacityData[5] = M_Byte2(geometryEx->Geometry.BytesPerSector);
                 readCapacityData[6] = M_Byte1(geometryEx->Geometry.BytesPerSector);
                 readCapacityData[7] = M_Byte0(geometryEx->Geometry.BytesPerSector);
-                safe_Free(geometryEx)
+                safe_Free(C_CAST(void**, &geometryEx));
             }
             else
 #endif //WINVER >= SEA_WIN32_WINNT_WIN2K
@@ -8318,7 +8318,7 @@ static eReturnValues wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
                     readCapacityData[5] = M_Byte2(geometry->BytesPerSector);
                     readCapacityData[6] = M_Byte1(geometry->BytesPerSector);
                     readCapacityData[7] = M_Byte0(geometry->BytesPerSector);
-                    safe_Free(geometry)
+                    safe_Free(C_CAST(void**, &geometry));
                 }
                 else
                 {
@@ -8390,7 +8390,7 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
                     readCapacityData[10] = M_Byte1(geometryEx->Geometry.BytesPerSector);
                     readCapacityData[11] = M_Byte0(geometryEx->Geometry.BytesPerSector);
                     //don't set any other fields unless we can get the access alignment descriptor
-                    safe_Free(geometryEx)
+                    safe_Free(C_CAST(void**, &geometryEx));
                 }
                 else
 #endif //WINVER >= SEA_WIN32_WINNT_WIN2K
@@ -8411,7 +8411,7 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
                         readCapacityData[9] = M_Byte2(geometry->BytesPerSector);
                         readCapacityData[10] = M_Byte1(geometry->BytesPerSector);
                         readCapacityData[11] = M_Byte0(geometry->BytesPerSector);
-                        safe_Free(geometry)
+                        safe_Free(C_CAST(void**, &geometry));
                     }
                     else
                     {
@@ -8455,7 +8455,7 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
                         readCapacityData[14] = M_Byte1(lowestAlignedLBA) & 0x3F;//shouldn't cause a problem as alignment shouldn't be higher than this
                         readCapacityData[15] = M_Byte0(lowestAlignedLBA);
                     }
-                    safe_Free(accessAlignment)
+                    safe_Free(C_CAST(void**, &accessAlignment));
                 }
 #endif //WINVER >= SEA_WIN32_WINNT_VISTA
                 if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
@@ -9550,7 +9550,7 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
                                             ascq = 0x00;
                                             setSenseData = true;
                                         }
-                                        safe_Free_aligned(writePattern)
+                                        safe_Free_aligned(C_CAST(void**, &writePattern));
                                     }
                                     else
                                     {
@@ -9937,7 +9937,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
 
     if (nvmeIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
-        safe_Free_aligned(commandBuffer)
+        safe_Free_aligned(C_CAST(void**, &commandBuffer));
         return OS_TIMEOUT_TOO_LARGE;
     }
 
@@ -10125,7 +10125,7 @@ static eReturnValues win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCt
             {
                 ret = OS_PASSTHROUGH_FAILURE;
             }
-            safe_Free_aligned(reportLunsData)
+            safe_Free_aligned(C_CAST(void**, &reportLunsData));
         }
         else
         {
@@ -10199,7 +10199,7 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
         if ((nvmeIoCtx->cmd.adminCmd.cdw10 >> 8) != 0)
         {
             //these bytes are reserved in NVMe 1.2 which is the highest MS supports right now. - TJE
-            safe_Free(buffer)
+            safe_Free(C_CAST(void**, &buffer));
                 return OS_COMMAND_NOT_AVAILABLE;
         }
 
@@ -10217,7 +10217,7 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
             query->PropertyId = StorageAdapterProtocolSpecificProperty;
             protocolData->ProtocolDataRequestValue = NVME_IDENTIFY_CNS_ACTIVE_NAMESPACES;
             //NOTE: This command is documented in MSDN, but it doesn't actually work, so we are returning an error instead! - TJE
-            safe_Free(buffer)
+            safe_Free(C_CAST(void**, &buffer));
                 return OS_COMMAND_NOT_AVAILABLE;
             //All values below here are added in NVMe 1.3, which MS doesn't support yet! - TJE
         case 3://list of namespace identification descriptor structures
@@ -10229,7 +10229,7 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
         case 0x14://primary controller capabilities
         case 0x15://secondary controller list
         default:
-            safe_Free(buffer)
+            safe_Free(C_CAST(void**, &buffer));
                 return OS_COMMAND_NOT_AVAILABLE;
         }
 
@@ -10279,7 +10279,7 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
             memcpy(nvmeIoCtx->ptrData, identifyControllerData, nvmeIoCtx->dataSize);
         }
 
-        safe_Free(buffer)
+        safe_Free(C_CAST(void**, &buffer));
     }
     return ret;
 }
@@ -10582,7 +10582,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
         nvmeIoCtx->commandCompletionData.dw0Valid = true;
     }
 
-    safe_Free(buffer)
+    safe_Free(C_CAST(void**, &buffer));
 
     return returnValue;
 }
@@ -10867,7 +10867,7 @@ static eReturnValues win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx *n
                 //send it back to the drive
                 ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, true, false, false, errorRecoveryMP, MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN);
             }
-            safe_Free_aligned(errorRecoveryMP)
+            safe_Free_aligned(C_CAST(void**, &errorRecoveryMP));
         }
         else
         {
@@ -10908,7 +10908,7 @@ static eReturnValues win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx *nvmeIo
                 //send it back to the drive
                 ret = scsi_Mode_Select_10(nvmeIoCtx->device, MODE_HEADER_LENGTH10 + MP_CACHING_LEN, true, false, false, cachingMP, MODE_HEADER_LENGTH10 + MP_CACHING_LEN);
             }
-            safe_Free_aligned(cachingMP)
+            safe_Free_aligned(C_CAST(void**, &cachingMP));
         }
         else
         {
@@ -11165,7 +11165,7 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
             nvmeIoCtx->commandCompletionData.commandSpecific = protocolSpecificData->FixedProtocolReturnData;//This should only be DWORD 0 on a get features command anyways...
             nvmeIoCtx->commandCompletionData.dw0Valid = true;
         }
-        safe_Free(bufferData)
+        safe_Free(C_CAST(void**, &bufferData));
     }
     else
     {
@@ -11955,7 +11955,7 @@ static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
                 ret = OS_COMMAND_NOT_AVAILABLE;
             }
 #endif //WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
-            safe_Free_aligned(unmapParameterData)
+            safe_Free_aligned(C_CAST(void**, &unmapParameterData));
         }
         else
         {
@@ -12379,7 +12379,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx)
         memcpy(scsiIoCtx->pdata, C_CAST(void*, logData), scsiIoCtx->dataLength);
     }
 
-    safe_Free(buffer)
+    safe_Free(C_CAST(void**, &buffer));
 
     return returnValue;
 }
@@ -12486,7 +12486,7 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
         memcpy(scsiIoCtx->pdata, C_CAST(void*, logData), scsiIoCtx->dataLength);
     }
 
-    safe_Free(buffer)
+    safe_Free(C_CAST(void**, &buffer));
 
     return returnValue;
 }
@@ -13301,7 +13301,7 @@ eReturnValues os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     {
         memset(readData, 0, device->drive_info.deviceBlockSize * range);
         ret = os_Read(device, lba, false, readData, device->drive_info.deviceBlockSize * range);
-        safe_Free(readData)
+        safe_Free(C_CAST(void**, &readData));
     }
     else
     {

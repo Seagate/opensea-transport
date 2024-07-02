@@ -168,7 +168,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
                     }
                 }
             }
-            safe_Free(parts);
+            safe_Free(C_CAST(void**, &parts));
         }
         else
         {
@@ -493,9 +493,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     for (int iter = 0; iter < num_devs; ++iter)
     {
-        safe_Free(namelist[iter])
+        safe_Free(C_CAST(void**, &namelist[iter]));
     }
-    safe_Free(namelist)
+    safe_Free(C_CAST(void**, &namelist));
     if (num_devs >= 0)
     {
         *numberOfDevices = C_CAST(uint32_t, num_devs);
@@ -552,10 +552,10 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t handleSize = (strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
-        safe_Free(namelist[i])
+        safe_Free(C_CAST(void**, &namelist[i]));
     }
     devs[i] = NULL;
-    safe_Free(namelist)
+    safe_Free(C_CAST(void**, &namelist));
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
@@ -606,7 +606,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber])
+            safe_Free(C_CAST(void**, &devs[driveNumber]));
         }
         if (found == failedGetDeviceCount)
         {
@@ -621,7 +621,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(devs)
+    safe_Free(C_CAST(void**, &devs));
     return returnValue;
 }
 
@@ -746,7 +746,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
                     }
                 }
             }
-            safe_Free(parts);
+            safe_Free(C_CAST(void**, &parts));
         }
         else
         {
