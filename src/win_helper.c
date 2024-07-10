@@ -4336,6 +4336,22 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                                 device->drive_info.interface_type = NVME_INTERFACE;
                                 device->os_info.intelNVMePassthroughSupported = true;
                                 foundNVMePassthrough = true;
+                                device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;//NOTE: Always requires a reboot for activation even when error code does not indicate this
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
+                                //supported features: power management, temperature threshold, APST, HCTM (17.2+), vendor specific.
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
+                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//not documented, but found with trial and error.
+                                //NOTE: some of this comes from an intel document and some comes from trial and error.
+                                //      It is extremely likely that the supported commands vary by driver version, but we do not have that level of detail to populate this list at this time-TJE
+                                
 #if defined (WIN_DEBUG)
                                 printf("WIN: Intel CSMI + NVMe supported\n");
 #endif //WIN_DEBUG
@@ -4384,6 +4400,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                             device->drive_info.drive_type = NVME_DRIVE;
                             device->drive_info.interface_type = NVME_INTERFACE;
                             device->os_info.osReadWriteRecommended = true;//setting this so that read/write LBA functions will call Windows functions when possible for this, althrough SCSI Read/write 16 will work too!
+                            device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;
                             device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
@@ -4542,6 +4559,21 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                             printf("WIN: Intel NVMe support found\n");
 #endif //WIN_DEBUG
                             //TODO: This passthrough may be limited in commands allowed to be sent. If this is limited, need to fill in the nvme hacks to show what is or is not supported.
+                            device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit = true;//NOTE: Always requires a reboot for activation even when error code does not indicate this
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload = true;
+                            //supported features: power management, temperature threshold, APST, HCTM (17.2+), vendor specific.
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique = true;
+                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = true;//not documented, but found with trial and error.
+                            //NOTE: some of this comes from an intel document and some comes from trial and error.
+                            //      It is extremely likely that the supported commands vary by driver version, but we do not have that level of detail to populate this list at this time-TJE
                         }
                         else
                         {
