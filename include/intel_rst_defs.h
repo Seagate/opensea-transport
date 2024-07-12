@@ -18,9 +18,8 @@
 #if defined (_WIN32)
 
 #include <windows.h>
-#if !defined(NTDDSCSI_INCLUDED)
+#if !defined(_NTDDSCSIH_)
 #include <ntddscsi.h>
-#define NTDDSCSI_INCLUDED
 #endif
 
 #if defined (__cplusplus)

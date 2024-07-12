@@ -13,6 +13,17 @@
 // \file sata_helper_func.c
 // \brief functions to help with SATA specific things. Printing out FIS, creating FIS, etc.
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include "sata_types.h"
 #include "sata_helper_func.h"
 

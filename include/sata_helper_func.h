@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "common.h"
+#include "common_types.h"
 #include "ata_helper.h"
 
 #if defined (__cplusplus)

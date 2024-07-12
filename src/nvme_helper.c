@@ -11,6 +11,17 @@
 // ******************************************************************************************
 // 
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include "platform_helper.h"
 #include <stdio.h>
 #include "nvme_helper.h"
@@ -18,7 +29,7 @@
 #include "common_public.h"
 
 //pointer to NVMe controller identify data should always be 4096B since all NVMe identify data is this long.
-//All parameters should be the length of what is required in NVMe spec + 1 for a NULL terminating character.
+//All parameters should be the length of what is required in NVMe spec + 1 for a M_NULLPTR terminating character.
 static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData, char nvmMN[NVME_CTRL_IDENTIFY_MN_LEN + 1], char nvmSN[NVME_CTRL_IDENTIFY_SN_LEN + 1], char nvmFW[NVME_CTRL_IDENTIFY_FW_LEN + 1])
 {
     if (ptrCtrlData)
@@ -1032,7 +1043,7 @@ eReturnValues nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * 
 #ifdef _DEBUG
     printf("-->%s\n", __FUNCTION__);
 #endif
-    if ((pData == NULL) || (dataLen < NVME_SMART_HEALTH_LOG_LEN))
+    if ((pData == M_NULLPTR) || (dataLen < NVME_SMART_HEALTH_LOG_LEN))
     {
         return ret;
     }
@@ -1061,7 +1072,7 @@ eReturnValues nvme_Get_ERROR_Log_Page(tDevice *device, uint8_t * pData, uint32_t
     printf("-->%s\n", __FUNCTION__);
 #endif
     //Should be able to pull at least one entry. 
-    if ((pData == NULL) || (dataLen < sizeof(nvmeErrLogEntry)))
+    if ((pData == M_NULLPTR) || (dataLen < sizeof(nvmeErrLogEntry)))
     {
         return ret;
     }
@@ -1086,7 +1097,7 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(tDevice *device, uint8_t * pData, uint32
     printf("-->%s\n", __FUNCTION__);
 #endif
     //Should be able to pull at least one entry. 
-    if ((pData == NULL) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
+    if ((pData == M_NULLPTR) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }
@@ -1111,7 +1122,7 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice *device, uint8_t * pData, uin
     printf("-->%s\n", __FUNCTION__);
 #endif
     //Should be able to pull at least one entry. 
-    if ((pData == NULL) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
+    if ((pData == M_NULLPTR) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }
@@ -1136,7 +1147,7 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, ui
     printf("-->%s\n", __FUNCTION__);
 #endif
     //Should be able to pull at least one entry. 
-    if ((pData == NULL) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
+    if ((pData == M_NULLPTR) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }

@@ -11,7 +11,17 @@
 // ******************************************************************************************
 // 
 #if defined (ENABLE_INTEL_RST)
-#include "common.h"
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include "intel_rst_defs.h"
 #include "intel_rst_helper.h"
 #include "sntl_helper.h"
@@ -276,8 +286,8 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
             DWORD bytesReturned = 0;
             OVERLAPPED overlappedStruct;
             memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-            overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-            if (overlappedStruct.hEvent == NULL)
+            overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
+            if (overlappedStruct.hEvent == M_NULLPTR)
             {
                 safe_Free_aligned(C_CAST(void**, &raidFirmwareRequest));
                 return OS_PASSTHROUGH_FAILURE;
@@ -302,7 +312,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
             }
             stop_Timer(&commandTimer);
             CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent = NULL;
+            overlappedStruct.hEvent = M_NULLPTR;
             if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
             {
                 printf("Windows Error: ");
@@ -615,7 +625,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
     if (nvmeIoCtx)
     {
         seatimer_t commandTimer;
-        NVME_IOCTL_PASS_THROUGH *nvmPassthroughCommand = NULL;
+        NVME_IOCTL_PASS_THROUGH *nvmPassthroughCommand = M_NULLPTR;
         HANDLE handleToUse = nvmeIoCtx->device->os_info.fd;
         size_t allocationSize = sizeof(NVME_IOCTL_PASS_THROUGH) + nvmeIoCtx->dataSize;
         nvmPassthroughCommand = C_CAST(NVME_IOCTL_PASS_THROUGH*, calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
@@ -719,8 +729,8 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             DWORD bytesReturned = 0;
             OVERLAPPED overlappedStruct;
             memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-            overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-            if (overlappedStruct.hEvent == NULL)
+            overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
+            if (overlappedStruct.hEvent == M_NULLPTR)
             {
                 safe_Free_aligned(C_CAST(void**, &nvmPassthroughCommand));
                 return OS_PASSTHROUGH_FAILURE;
@@ -746,7 +756,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             }
             stop_Timer(&commandTimer);
             CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent = NULL;
+            overlappedStruct.hEvent = M_NULLPTR;
             if (!success)
             {
                 ret = OS_PASSTHROUGH_FAILURE;

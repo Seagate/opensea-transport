@@ -17,6 +17,16 @@
 //All code in this file is from a ASMedia USB to NVMe product specification for pass-through NVMe commands.
 //This code should only be used on products that are known to use this pass-through interface.
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "asmedia_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
@@ -136,7 +146,7 @@ eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx *nvmCmd)
     ret = build_Basic_Passthrough_CDB(nvmCmd, cdb);
     if (ret == SUCCESS)
     {
-        ret = scsi_Send_Cdb(nvmCmd->device, cdb, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize, XFER_DATA_IN, NULL, 0, 15);
+        ret = scsi_Send_Cdb(nvmCmd->device, cdb, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize, XFER_DATA_IN, M_NULLPTR, 0, 15);
         nvmCmd->commandCompletionData.dw0Valid = false;
         nvmCmd->commandCompletionData.dw1Valid = false;
         nvmCmd->commandCompletionData.dw2Valid = false;
@@ -472,7 +482,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     eDataTransferDirection asmCDBDir = 0;
     //if the NVMe command is not doing a multiple of 512B data transfer, we need to allocate local memory, rounded up to 512B boundaries before the command.
     //Then we can copy that back to the smaller buffer after command is complete.
-    uint8_t *dataPhasePtr = NULL;
+    uint8_t *dataPhasePtr = M_NULLPTR;
     uint32_t dataPhaseSize = 0;
     bool localMemory = false;
     if (!nvmCmd)
@@ -507,7 +517,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
         }
         return ret;
     }
-    ret = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, asmPayload, ASM_NVMP_DWORDS_DATA_PACKET_SIZE, asmCDBDir, NULL, 0, 15);
+    ret = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, asmPayload, ASM_NVMP_DWORDS_DATA_PACKET_SIZE, asmCDBDir, M_NULLPTR, 0, 15);
     if (SUCCESS != ret)
     {
         if (localMemory)
@@ -527,7 +537,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
         }
         return ret;
     }
-    eReturnValues sendRet = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, dataPhasePtr, dataPhaseSize, asmCDBDir, NULL, 0, 15);
+    eReturnValues sendRet = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, dataPhasePtr, dataPhaseSize, asmCDBDir, M_NULLPTR, 0, 15);
 
     if (localMemory)
     {
@@ -544,8 +554,8 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     {
         //3. get the command completion
         uint8_t completionData[ASM_NVMP_RESPONSE_DATA_SIZE] = { 0 };
-        ret = build_ASMedia_Packet_Command_CDB(asmCDB, &asmCDBDir, ASMEDIA_NVMP_OP_GET_NVM_COMPLETION, 0, nvmCmd, NULL, 0);
-        if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, completionData, ASM_NVMP_RESPONSE_DATA_SIZE, asmCDBDir, NULL, 0, 15))
+        ret = build_ASMedia_Packet_Command_CDB(asmCDB, &asmCDBDir, ASMEDIA_NVMP_OP_GET_NVM_COMPLETION, 0, nvmCmd, M_NULLPTR, 0);
+        if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, completionData, ASM_NVMP_RESPONSE_DATA_SIZE, asmCDBDir, M_NULLPTR, 0, 15))
         {
             //check for invalid entry by looking for 0xFF at bytes 14 and 15 of returned data
             if (completionData[14] == UINT8_MAX && completionData[15] == UINT8_MAX)
@@ -587,11 +597,11 @@ static eReturnValues asm_nvme_Shutdown(tDevice *device, bool withShutdownProcess
 {
     uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
-    eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_POWER_DOWN_NVME, withShutdownProcessing ? 1 : 0, NULL, NULL, 0);
+    eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_POWER_DOWN_NVME, withShutdownProcessing ? 1 : 0, M_NULLPTR, M_NULLPTR, 0);
     if (ret == SUCCESS)
     {
         //send it
-        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, NULL, 0, asmCDBDir, NULL, 0, 15);
+        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, M_NULLPTR, 0, asmCDBDir, M_NULLPTR, 0, 15);
     }
     else
     {
@@ -604,11 +614,11 @@ static eReturnValues asm_nvme_Reset_Bridge(tDevice *device)
 {
     uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
-    eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RESET_BRIDGE, 0, NULL, NULL, 0);
+    eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RESET_BRIDGE, 0, M_NULLPTR, M_NULLPTR, 0);
     if (ret == SUCCESS)
     {
         //send it
-        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, NULL, 0, asmCDBDir, NULL, 0, 15);
+        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, M_NULLPTR, 0, asmCDBDir, M_NULLPTR, 0, 15);
     }
     else
     {
@@ -621,11 +631,11 @@ static eReturnValues asm_nvme_Relink_Bridge(tDevice *device, bool normalShutdown
 {
     uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
-    eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RELINK_USB, normalShutdownBeforeDisconnect ? 1 : 0, NULL, NULL, 0);
+    eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RELINK_USB, normalShutdownBeforeDisconnect ? 1 : 0, M_NULLPTR, M_NULLPTR, 0);
     if (ret == SUCCESS)
     {
         //send it
-        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, NULL, 0, asmCDBDir, NULL, 0, 15);
+        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, M_NULLPTR, 0, asmCDBDir, M_NULLPTR, 0, 15);
     }
     else
     {

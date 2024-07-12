@@ -11,8 +11,16 @@
 // ******************************************************************************************
 //
 
-#include "common.h"
-#include "common_platform.h"
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "uefi_helper.h"
 #include "cmds.h"
 #include "sat_helper_func.h"
@@ -52,7 +60,7 @@ eReturnValues get_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint3
 {
     eReturnValues ret = SUCCESS;
     EFI_STATUS uefiStatus = EFI_SUCCESS;
-    EFI_HANDLE *handle = NULL;
+    EFI_HANDLE *handle = M_NULLPTR;
     UINTN nodeCount = 0;
 
     if (!gBS) //make sure global boot services pointer is valid before accessing it.
@@ -60,13 +68,13 @@ eReturnValues get_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint3
         return MEMORY_FAILURE;
     }
 
-    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &ptGuid, NULL, &nodeCount, &handle);
+    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &ptGuid, M_NULLPTR, &nodeCount, &handle);
     if (EFI_ERROR(uefiStatus))
     {
         return FAILURE;
     }
     //NOTE: This code below assumes that the caller knows the controller they intend to open. Meaning they've already done some sort of system scan.
-    uefiStatus = gBS->OpenProtocol(handle[controllerID], &ptGuid, pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+    uefiStatus = gBS->OpenProtocol(handle[controllerID], &ptGuid, pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
     if (EFI_ERROR(uefiStatus))
     {
         ret = FAILURE;
@@ -77,7 +85,7 @@ eReturnValues get_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint3
 void close_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t controllerID)
 {
     EFI_STATUS uefiStatus = EFI_SUCCESS;
-    EFI_HANDLE *handle = NULL;
+    EFI_HANDLE *handle = M_NULLPTR;
     UINTN nodeCount = 0;
 
     if (!gBS) //make sure global boot services pointer is valid before accessing it.
@@ -85,20 +93,20 @@ void close_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t con
         return;
     }
 
-    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &ptGuid, NULL, &nodeCount, &handle);
+    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &ptGuid, M_NULLPTR, &nodeCount, &handle);
     if (EFI_ERROR(uefiStatus))
     {
         return;
     }
     //NOTE: This code below assumes that we only care to change color output on node 0. This seems to work from a quick test, but may not be correct. Not sure what the other 2 nodes are for...serial?
-    uefiStatus = gBS->CloseProtocol(handle[controllerID], &ptGuid, gImageHandle, NULL);
+    uefiStatus = gBS->CloseProtocol(handle[controllerID], &ptGuid, gImageHandle, M_NULLPTR);
     if (EFI_ERROR(uefiStatus))
     {
         perror("Failed to close simple text output protocol\n");
     }
     else
     {
-        *pPassthru = NULL;//this pointer is no longer valid!
+        *pPassthru = M_NULLPTR;//this pointer is no longer valid!
     }
     return;
 }
@@ -171,9 +179,9 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
             #define MAX_ATA_HANDLE_FIELDS UINT8_C(4) //ata:<controllerID>:<port>:<portMultiplierPort>
             uint8_t count = 0;
             rsize_t duplen = strlen(dup);
-            char *saveptr = NULL;
+            char *saveptr = M_NULLPTR;
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
-            char *endptr = NULL;
+            char *endptr = M_NULLPTR;
             unsigned long temp = 0;
             success = true;//set to true so we can exit the loop quickly if an error is detected during parsing
             while (success && token && count < MAX_ATA_HANDLE_FIELDS);
@@ -187,7 +195,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
                     }
                     break;
                 case 1://controller ID
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -203,7 +211,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
                     }
                     break;
                 case 2://port
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -219,7 +227,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
                     }
                     break;
                 case 3://portMP
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -236,7 +244,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
                     break;
                 }
                 ++count;
-                token = common_String_Token(NULL, &duplen ":", &saveptr);
+                token = common_String_Token(M_NULLPTR, &duplen ":", &saveptr);
             }
         }
         safe_Free(C_CAST(void**, &dup));
@@ -255,10 +263,10 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t *controllerID,
         {
             #define MAX_NVME_HANDLE_FIELDS UINT8_C(3) //nvme:<controllerID>:<namespaceID>
             uint8_t count = 0;
-            char *saveptr = NULL;
+            char *saveptr = M_NULLPTR;
             rsize_t duplen = strlen(dup);
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
-            char *endptr = NULL;
+            char *endptr = M_NULLPTR;
             unsigned long temp = 0;
             success = true;//set to true so we can exit the loop quickly if an error is detected during parsing
             while (success && token && count < MAX_NVME_HANDLE_FIELDS);
@@ -272,7 +280,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t *controllerID,
                     }
                     break;
                 case 1://controller ID
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -288,7 +296,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t *controllerID,
                     }
                     break;
                 case 2://nsid
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -305,7 +313,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t *controllerID,
                     break;
                 }
                 ++count;
-                token = common_String_Token(NULL, &duplen, ":", &saveptr);
+                token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
         safe_Free(C_CAST(void**, &dup));
@@ -324,10 +332,10 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
         {
             #define MAX_SCSI_HANDLE_FIELDS UINT8_C(4) //scsi:<controllerID>:<target>:<lun>
             uint8_t count = 0;
-            char *saveptr = NULL;
+            char *saveptr = M_NULLPTR;
             rsize_t duplen = strlen(dup);
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
-            char *endptr = NULL;
+            char *endptr = M_NULLPTR;
             unsigned long temp = 0;
             unsigned long long btemp = 0;
             success = true;//set to true so we can exit the loop quickly if an error is detected during parsing
@@ -342,7 +350,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
                     }
                     break;
                 case 1://controller ID
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -358,7 +366,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
                     }
                     break;
                 case 2://target
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -374,7 +382,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
                     }
                     break;
                 case 3://lun
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     btemp = strtoull(token, &endptr, 16);
                     if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr))
                     {
@@ -391,7 +399,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
                     break;
                 }
                 ++count;
-                token = common_String_Token(NULL, &duplen, ":", &saveptr);
+                token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
         safe_Free(C_CAST(void**, &dup));
@@ -409,10 +417,10 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
         {
             #define MAX_SCSI_HANDLE_FIELDS UINT8_C(4) //scsiEx:<controllerID>:<target>:<lun> //16, 128, 64
             uint8_t count = 0;
-            char *saveptr = NULL;
+            char *saveptr = M_NULLPTR;
             rsize_t duplen = strlen(dup);
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
-            char *endptr = NULL;
+            char *endptr = M_NULLPTR;
             unsigned long temp = 0;
             unsigned long long btemp = 0;
             success = true;//set to true so we can exit the loop quickly if an error is detected during parsing
@@ -427,7 +435,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                     }
                     break;
                 case 1://controller ID
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -444,7 +452,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                     break;
                 case 2://target //FIXME: Does not handle full 128bit targetID
                     //first try seeing if the target is less than 128bits and a 64bit conversion will be enough
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     btemp = strtoull(token, &endptr, 16);
                     if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr))
                     {
@@ -470,7 +478,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                                     char *secondHalf = strndup(targetstr + halftargetlen, halftargetlen);
                                     if (firstHalf && secondHalf)
                                     {
-                                        endptr = NULL;
+                                        endptr = M_NULLPTR;
                                         btemp = strtoull(firstHalf, &endptr, 16);
                                         if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && firstHalf == endptr))
                                         {
@@ -487,7 +495,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                                             target[5] = M_Byte2(btemp);
                                             target[6] = M_Byte1(btemp);
                                             target[7] = M_Byte0(btemp);
-                                            endptr = NULL;
+                                            endptr = M_NULLPTR;
                                             btemp = strtoull(secondHalf, &endptr, 16);
                                             if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && secondHalf == endptr))
                                             {
@@ -541,7 +549,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                     }
                     break;
                 case 3://lun
-                    endptr = NULL;
+                    endptr = M_NULLPTR;
                     btemp = strtoull(token, &endptr, 16);
                     if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr))
                     {
@@ -558,7 +566,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                     break;
                 }
                 ++count;
-                token = common_String_Token(NULL, &duplen, ":", &saveptr);
+                token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
         safe_Free(C_CAST(void**, &dup));
@@ -841,9 +849,9 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         uint8_t *alignedPointer = scsiIoCtx->pdata;
         uint8_t *alignedCDB = scsiIoCtx->cdb;
         uint8_t *alignedSensePtr = scsiIoCtx->psense;
-        uint8_t *localBuffer = NULL;
-        uint8_t *localCDB = NULL;
-        uint8_t *localSensePtr = NULL;
+        uint8_t *localBuffer = M_NULLPTR;
+        uint8_t *localCDB = M_NULLPTR;
+        uint8_t *localSensePtr = M_NULLPTR;
         bool localAlignedBuffer = false, localSenseBuffer = false;
         EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;//scsi request packet
 
@@ -976,7 +984,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
         start_Timer(&commandTimer);
-        Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsi.target, scsiIoCtx->device->os_info.address.scsi.lun, srp, NULL);
+        Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsi.target, scsiIoCtx->device->os_info.address.scsi.lun, srp, M_NULLPTR);
         stop_Timer(&commandTimer);
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -1149,9 +1157,9 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         uint8_t *alignedPointer = scsiIoCtx->pdata;
         uint8_t *alignedCDB = scsiIoCtx->cdb;
         uint8_t *alignedSensePtr = scsiIoCtx->psense;
-        uint8_t *localBuffer = NULL;
-        uint8_t *localCDB = NULL;
-        uint8_t *localSensePtr = NULL;
+        uint8_t *localBuffer = M_NULLPTR;
+        uint8_t *localCDB = M_NULLPTR;
+        uint8_t *localSensePtr = M_NULLPTR;
         bool localAlignedBuffer = false, localSenseBuffer = false;
         EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;// Extended scsi request packet
 
@@ -1293,19 +1301,19 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         {
         case XFER_DATA_OUT:
             srp->OutDataBuffer = alignedPointer;
-            srp->InDataBuffer = NULL;
+            srp->InDataBuffer = M_NULLPTR;
             srp->OutTransferLength = scsiIoCtx->dataLength;
             srp->DataDirection = 1;
             break;
         case XFER_DATA_IN:
             srp->InDataBuffer = alignedPointer;
-            srp->OutDataBuffer = NULL;
+            srp->OutDataBuffer = M_NULLPTR;
             srp->InTransferLength = scsiIoCtx->dataLength;
             srp->DataDirection = 0;
             break;
         case XFER_NO_DATA:
-            srp->OutDataBuffer = NULL;
-            srp->OutDataBuffer = NULL;
+            srp->OutDataBuffer = M_NULLPTR;
+            srp->OutDataBuffer = M_NULLPTR;
             srp->DataDirection = 0;
             srp->InTransferLength = 0;
             srp->OutTransferLength = 0;
@@ -1327,7 +1335,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
         start_Timer(&commandTimer);
-        Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsiEx.target, scsiIoCtx->device->os_info.address.scsiEx.lun, srp, NULL);
+        Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.scsiEx.target, scsiIoCtx->device->os_info.address.scsiEx.lun, srp, M_NULLPTR);
         stop_Timer(&commandTimer);
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
@@ -1417,9 +1425,9 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     {
         seatimer_t commandTimer;
         uint8_t *alignedPointer = scsiIoCtx->pAtaCmdOpts->ptrData;
-        uint8_t* localBuffer = NULL;
+        uint8_t* localBuffer = M_NULLPTR;
         bool localAlignedBuffer = false;
-        EFI_ATA_PASS_THRU_COMMAND_PACKET	*ataPacket = NULL;// ata command packet
+        EFI_ATA_PASS_THRU_COMMAND_PACKET	*ataPacket = M_NULLPTR;// ata command packet
         EFI_ATA_COMMAND_BLOCK *ataCommand = C_CAST(EFI_ATA_COMMAND_BLOCK*, calloc_aligned(1, sizeof(EFI_ATA_COMMAND_BLOCK), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
         EFI_ATA_STATUS_BLOCK *ataStatus = C_CAST(EFI_ATA_STATUS_BLOCK*, calloc_aligned(1, sizeof(EFI_ATA_STATUS_BLOCK), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
 
@@ -1498,17 +1506,17 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         {
         case XFER_DATA_OUT:
             ataPacket->OutDataBuffer = alignedPointer;
-            ataPacket->InDataBuffer = NULL;
+            ataPacket->InDataBuffer = M_NULLPTR;
             ataPacket->OutTransferLength = scsiIoCtx->pAtaCmdOpts->dataSize;
             break;
         case XFER_DATA_IN:
             ataPacket->InDataBuffer = alignedPointer;
-            ataPacket->OutDataBuffer = NULL;
+            ataPacket->OutDataBuffer = M_NULLPTR;
             ataPacket->InTransferLength = scsiIoCtx->pAtaCmdOpts->dataSize;
             break;
         case XFER_NO_DATA:
-            ataPacket->OutDataBuffer = NULL;
-            ataPacket->OutDataBuffer = NULL;
+            ataPacket->OutDataBuffer = M_NULLPTR;
+            ataPacket->OutDataBuffer = M_NULLPTR;
             ataPacket->InTransferLength = 0;
             ataPacket->OutTransferLength = 0;
             break;
@@ -1619,7 +1627,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
         start_Timer(&commandTimer);
-        Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.ata.port, scsiIoCtx->device->os_info.address.ata.portMultiplierPort, ataPacket, NULL);
+        Status = pPassthru->PassThru(pPassthru, scsiIoCtx->device->os_info.address.ata.port, scsiIoCtx->device->os_info.address.ata.portMultiplierPort, ataPacket, M_NULLPTR);
         stop_Timer(&commandTimer);
         //convert return status from sending the command into a return value for opensea-transport
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -1645,7 +1653,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             scsiIoCtx->returnStatus.senseKey = 0;
             scsiIoCtx->returnStatus.asc = 0x00;//might need to change this later
             scsiIoCtx->returnStatus.ascq = 0x00;//might need to change this later
-            if (scsiIoCtx->psense != NULL)//check that the pointer is valid
+            if (scsiIoCtx->psense != M_NULLPTR)//check that the pointer is valid
             {
                 if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
                 {
@@ -1795,9 +1803,9 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
     {
         seatimer_t commandTimer;
         uint8_t *alignedPointer = nvmeIoCtx->ptrData;
-        uint8_t *localBuffer = NULL;
+        uint8_t *localBuffer = M_NULLPTR;
         bool localAlignedBuffer = false;
-        EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET	*nrp = NULL;
+        EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET	*nrp = M_NULLPTR;
         EFI_NVM_EXPRESS_COMMAND *nvmCommand = C_CAST(EFI_NVM_EXPRESS_COMMAND*, calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMMAND), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
         EFI_NVM_EXPRESS_COMPLETION *nvmCompletion = C_CAST(EFI_NVM_EXPRESS_COMPLETION*, calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMPLETION), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
 
@@ -2042,14 +2050,14 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         {
             //printf("Sending ADMIN with NSID = %" PRIX32 "h\n", nvmeIoCtx->cmd.adminCmd.nsid);
             start_Timer(&commandTimer);
-            nvmeIoCtx->device->os_info.last_error = Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->cmd.adminCmd.nsid, nrp, NULL);
+            nvmeIoCtx->device->os_info.last_error = Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->cmd.adminCmd.nsid, nrp, M_NULLPTR);
             stop_Timer(&commandTimer);
             //printf("\tAdmin command returned %d\n", Status);
         }
         else
         {
             start_Timer(&commandTimer);
-            nvmeIoCtx->device->os_info.last_error = Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->device->os_info.address.nvme.namespaceID, nrp, NULL);
+            nvmeIoCtx->device->os_info.last_error = Status = pPassthru->PassThru(pPassthru, nvmeIoCtx->device->os_info.address.nvme.namespaceID, nrp, M_NULLPTR);
             stop_Timer(&commandTimer);
         }
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -2184,7 +2192,7 @@ uint32_t get_ATA_Device_Count()
     EFI_GUID ataPtGUID = EFI_ATA_PASS_THRU_PROTOCOL_GUID;
 
     UINTN nodeCount = 0;
-    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &ataPtGUID, NULL, &nodeCount, &handle);
+    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &ataPtGUID, M_NULLPTR, &nodeCount, &handle);
     if (EFI_ERROR(uefiStatus))
     {
         return 0;
@@ -2193,7 +2201,7 @@ uint32_t get_ATA_Device_Count()
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &ataPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &ataPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
 
         if (EFI_ERROR(uefiStatus))
         {
@@ -2230,7 +2238,7 @@ uint32_t get_ATA_Device_Count()
             }
         }
         //close the protocol
-        gBS->CloseProtocol(handle[counter], &ataPtGUID, gImageHandle, NULL);
+        gBS->CloseProtocol(handle[counter], &ataPtGUID, gImageHandle, M_NULLPTR);
         ++counter;
     }
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -2251,7 +2259,7 @@ eReturnValues get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     EFI_GUID ataPtGUID = EFI_ATA_PASS_THRU_PROTOCOL_GUID;
 
     UINTN nodeCount = 0;
-    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &ataPtGUID, NULL, &nodeCount, &handle);
+    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &ataPtGUID, M_NULLPTR, &nodeCount, &handle);
     if (EFI_ERROR(uefiStatus))
     {
         return FAILURE;
@@ -2260,7 +2268,7 @@ eReturnValues get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &ataPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &ataPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
 
         if (EFI_ERROR(uefiStatus))
         {
@@ -2305,7 +2313,7 @@ eReturnValues get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             }
         }
         //close the protocol
-        gBS->CloseProtocol(handle[counter], &ataPtGUID, gImageHandle, NULL);
+        gBS->CloseProtocol(handle[counter], &ataPtGUID, gImageHandle, M_NULLPTR);
         ++counter;
     }
     if (uefiStatus == EFI_NOT_FOUND)
@@ -2329,7 +2337,7 @@ uint32_t get_SCSI_Device_Count()
     EFI_GUID scsiPtGUID = EFI_SCSI_PASS_THRU_PROTOCOL_GUID;
 
     UINTN nodeCount = 0;
-    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &scsiPtGUID, NULL, &nodeCount, &handle);
+    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &scsiPtGUID, M_NULLPTR, &nodeCount, &handle);
     if (EFI_ERROR(uefiStatus))
     {
         return 0;
@@ -2338,7 +2346,7 @@ uint32_t get_SCSI_Device_Count()
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2364,7 +2372,7 @@ uint32_t get_SCSI_Device_Count()
             }
         }
         //close the protocol since we're going to open this again in getdevice
-        gBS->CloseProtocol(handle[counter], &scsiPtGUID, gImageHandle, NULL);
+        gBS->CloseProtocol(handle[counter], &scsiPtGUID, gImageHandle, M_NULLPTR);
         ++counter;
     }
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -2385,7 +2393,7 @@ eReturnValues get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
     EFI_GUID scsiPtGUID = EFI_SCSI_PASS_THRU_PROTOCOL_GUID;
 
     UINTN nodeCount = 0;
-    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &scsiPtGUID, NULL, &nodeCount, &handle);
+    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &scsiPtGUID, M_NULLPTR, &nodeCount, &handle);
     if (EFI_ERROR(uefiStatus))
     {
         return FAILURE;
@@ -2394,7 +2402,7 @@ eReturnValues get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2429,7 +2437,7 @@ eReturnValues get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
             }
         }
         //close the protocol since we're going to open this again in getdevice
-        gBS->CloseProtocol(handle[counter], &scsiPtGUID, gImageHandle, NULL);
+        gBS->CloseProtocol(handle[counter], &scsiPtGUID, gImageHandle, M_NULLPTR);
         ++counter;
     }
     if (uefiStatus == EFI_NOT_FOUND)
@@ -2453,7 +2461,7 @@ uint32_t get_SCSIEx_Device_Count()
     EFI_GUID scsiPtGUID = EFI_EXT_SCSI_PASS_THRU_PROTOCOL_GUID;
 
     UINTN nodeCount = 0;
-    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &scsiPtGUID, NULL, &nodeCount, &handle);
+    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &scsiPtGUID, M_NULLPTR, &nodeCount, &handle);
     if (EFI_ERROR(uefiStatus))
     {
         return 0;
@@ -2466,7 +2474,7 @@ uint32_t get_SCSIEx_Device_Count()
         uint8_t target[TARGET_MAX_BYTES];
         uint8_t *targetPtr = &target[0];
         uint64_t lun = UINT64_MAX;//doesn't specify what we should start with for this.
-        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2493,7 +2501,7 @@ uint32_t get_SCSIEx_Device_Count()
             }
         }
         //close the protocol since we're going to open this again in getdevice
-        gBS->CloseProtocol(handle[counter], &scsiPtGUID, gImageHandle, NULL);
+        gBS->CloseProtocol(handle[counter], &scsiPtGUID, gImageHandle, M_NULLPTR);
         ++counter;
     }
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -2514,7 +2522,7 @@ eReturnValues get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeI
     EFI_GUID scsiPtGUID = EFI_EXT_SCSI_PASS_THRU_PROTOCOL_GUID;
 
     UINTN nodeCount = 0;
-    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &scsiPtGUID, NULL, &nodeCount, &handle);
+    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &scsiPtGUID, M_NULLPTR, &nodeCount, &handle);
     if (EFI_ERROR(uefiStatus))
     {
         return FAILURE;
@@ -2527,7 +2535,7 @@ eReturnValues get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeI
         uint8_t target[TARGET_MAX_BYTES];
         uint8_t *targetPtr = &target[0];
         uint64_t lun = UINT64_MAX;//doesn't specify what we should start with for this.
-        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2562,7 +2570,7 @@ eReturnValues get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeI
             }
         }
         //close the protocol since we're going to open this again in getdevice
-        gBS->CloseProtocol(handle[counter], &scsiPtGUID, gImageHandle, NULL);
+        gBS->CloseProtocol(handle[counter], &scsiPtGUID, gImageHandle, M_NULLPTR);
         ++counter;
     }
     if (uefiStatus == EFI_NOT_FOUND)
@@ -2587,7 +2595,7 @@ uint32_t get_NVMe_Device_Count()
     EFI_GUID nvmePtGUID = EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL_GUID;
 
     UINTN nodeCount = 0;
-    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &nvmePtGUID, NULL, &nodeCount, &handle);
+    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &nvmePtGUID, M_NULLPTR, &nodeCount, &handle);
     if (EFI_ERROR(uefiStatus))
     {
         return 0;
@@ -2595,7 +2603,7 @@ uint32_t get_NVMe_Device_Count()
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &nvmePtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &nvmePtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2621,7 +2629,7 @@ uint32_t get_NVMe_Device_Count()
             }
         }
         //close the protocol since we're going to open this again in getdevice
-        gBS->CloseProtocol(handle[counter], &nvmePtGUID, gImageHandle, NULL);
+        gBS->CloseProtocol(handle[counter], &nvmePtGUID, gImageHandle, M_NULLPTR);
         ++counter;
     }
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
@@ -2646,7 +2654,7 @@ eReturnValues get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
     EFI_GUID nvmePtGUID = EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL_GUID;
 
     UINTN nodeCount = 0;
-    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &nvmePtGUID, NULL, &nodeCount, &handle);
+    uefiStatus = gBS->LocateHandleBuffer(ByProtocol, &nvmePtGUID, M_NULLPTR, &nodeCount, &handle);
     if (EFI_ERROR(uefiStatus))
     {
         return FAILURE;
@@ -2654,7 +2662,7 @@ eReturnValues get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &nvmePtGUID, (void **)&pPassthru, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &nvmePtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2688,7 +2696,7 @@ eReturnValues get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
             }
         }
         //close the protocol since we're going to open this again in getdevice
-        gBS->CloseProtocol(handle[counter], &nvmePtGUID, gImageHandle, NULL);
+        gBS->CloseProtocol(handle[counter], &nvmePtGUID, gImageHandle, M_NULLPTR);
         ++counter;
     }
     if (uefiStatus == EFI_NOT_FOUND)

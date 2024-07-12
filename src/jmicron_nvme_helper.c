@@ -16,6 +16,16 @@
 //All code in this file is from a JMicron USB to NVMe product specification for pass-through nvme commands.
 //This code should only be used on products that are known to use this pass-through interface.
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "io_utils.h"
+
 #include "jmicron_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
@@ -251,7 +261,7 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     {
         return ret;
     }
-    ret = scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15);
+    ret = scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, M_NULLPTR, 0, 15);
     if (SUCCESS != ret)
     {
         return ret;
@@ -283,12 +293,12 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
         return OS_COMMAND_NOT_AVAILABLE;
     }
     memset(jmCDB, 0, JMICRON_NVME_CDB_SIZE);
-    ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, NULL, nvmCmd->dataSize, transferProtocol, JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD, nvmCmd);
+    ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, M_NULLPTR, nvmCmd->dataSize, transferProtocol, JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD, nvmCmd);
     if (SUCCESS != ret)
     {
         return ret;
     }
-    eReturnValues sendRet = scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize, jmCDBDir, NULL, 0, nvmCmd->timeout);
+    eReturnValues sendRet = scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize, jmCDBDir, M_NULLPTR, 0, nvmCmd->timeout);
     //NOTE: do not fail the command or anything else YET.
     //Need to request the response information from the command.
     //There may be some sense data outputs where the return response info won't work or isn't necessary, but they don't seem documented today. Most likely only for illegal requests.
@@ -300,7 +310,7 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
         memset(jmCDB, 0, JMICRON_NVME_CDB_SIZE);
         memset(jmPayload, 0, JMICRON_NVME_CMD_PAYLOAD_SIZE);
         ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_RETURN_RESPONSE_INFO, JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD, nvmCmd);
-        if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15))
+        if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, M_NULLPTR, 0, 15))
         {
             //first, check for the NVMe signature to make sure the correct response is here.
             if (0 == memcmp(jmPayload, JMICRON_NVME_NAMESTRING, strlen(JMICRON_NVME_NAMESTRING)))
@@ -335,10 +345,10 @@ static eReturnValues jm_NVMe_Normal_Shutdown(tDevice *device)
     uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
     uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
-    eReturnValues ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_NVME_NORMAL_SHUTDOWN, NULL);
+    eReturnValues ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_NVME_NORMAL_SHUTDOWN, M_NULLPTR);
     if (ret == SUCCESS)
     {
-        ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15);
+        ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, M_NULLPTR, 0, 15);
     }
     else
     {
@@ -352,10 +362,10 @@ static eReturnValues jm_NVMe_MCU_Reset(tDevice *device)
     uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
     uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
-    eReturnValues ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_MCU_RESET, NULL);
+    eReturnValues ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_MCU_RESET, M_NULLPTR);
     if (ret == SUCCESS)
     {
-        ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, NULL, 0, 15);
+        ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, M_NULLPTR, 0, 15);
     }
     else
     {

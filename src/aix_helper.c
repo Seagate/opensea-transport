@@ -40,7 +40,14 @@
 #endif
 
 //#include <mntent.h> //for determining mounted file systems
-
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
 #include "aix_helper.h"
 #include "cmds.h"
 
@@ -62,8 +69,8 @@ extern bool validate_Device_Struct(versionBlock);
 // {
 //     int result = 0;
 //     FILE *mount = setmntent(MOUNTED, "r");//MNTTAB or MOUNTED. MOUNTED is virtual file
-//     struct mntent *entry = NULL;
-//     while(NULL != (entry = getmntent(mount)))
+//     struct mntent *entry = M_NULLPTR;
+//     while(M_NULLPTR != (entry = getmntent(mount)))
 //     {
 //         if(strstr(entry->mnt_fsname, blockDeviceName))
 //         {
@@ -91,8 +98,8 @@ extern bool validate_Device_Struct(versionBlock);
 //     if(listCount > 0)
 //     {
 //         FILE *mount = setmntent(MOUNTED, "r");//MNTTAB or MOUNTED. MOUNTED is virtual file
-//         struct mntent *entry = NULL;
-//         while(NULL != (entry = getmntent(mount)))
+//         struct mntent *entry = M_NULLPTR;
+//         while(M_NULLPTR != (entry = getmntent(mount)))
 //         {
 //             if(strstr(entry->mnt_fsname, blockDeviceName))
 //             {
@@ -968,7 +975,7 @@ static void print_ODM_Error(int odmError)
 
 static void print_CuDv_Struct (struct CuDv *cudv)
 {
-    //making copies to ensure NULL termination -TJE
+    //making copies to ensure M_NULLPTR termination -TJE
     char cudvName[17] = { 0 };
     char cudvddins[17] = { 0 };
     char cudvlocation[17] = { 0 };
@@ -1130,7 +1137,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, char *name)
                 //Set a char pointer to the last / + 1
                 const char *ids = strrchr(ptrcudv->PdDvLn_Lvalue, '/') + 1;
                 //now convert this out to a uint32, then byte swap it, then separate into VID and PID
-                uint32_t idCombo = strtoul(ids, NULL, 16);
+                uint32_t idCombo = strtoul(ids, M_NULLPTR, 16);
                 #if defined (__BIG_ENDIAN__) || defined (__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
                 //wrapping this as if there was little endian AIX, I doubt it would exhibit the same issue
                 byte_Swap_32(&idCombo);
@@ -2751,7 +2758,7 @@ eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
         break;
 #endif //DISABLE_NVME_PASSTHROUGH
     case RAID_INTERFACE:
-        if (scsiIoCtx->device->issue_io != NULL)
+        if (scsiIoCtx->device->issue_io != M_NULLPTR)
         {
             ret = scsiIoCtx->device->issue_io(scsiIoCtx);
         }
@@ -2854,7 +2861,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80] = { 0 }; //Because get device needs char
     int fd;
-    tDevice * d = NULL;
+    tDevice * d = M_NULLPTR;
 
     int  num_devs = 0;
     struct dirent **namelist;
@@ -2871,7 +2878,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
         safe_Free(C_CAST(void**, &namelist[i]));
     }
-    devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
+    devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
     safe_Free(C_CAST(void**, &namelist));
 
     if (!(ptrToDeviceList) || (!sizeInBytes))

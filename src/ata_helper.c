@@ -11,7 +11,17 @@
 // ******************************************************************************************
 // 
 
-#include "common.h"
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include "common_public.h"
 #include "ata_helper.h"
 #include "ata_helper_func.h"
@@ -416,7 +426,7 @@ eReturnValues send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t func
 
     ret = send_ATA_SCT_Command(device, errorRecoveryBuffer, LEGACY_DRIVE_SEC_SIZE, true);
 
-    if ((functionCode == 0x0002 || functionCode == 0x0004) && currentValue != NULL)
+    if ((functionCode == 0x0002 || functionCode == 0x0004) && currentValue != M_NULLPTR)
     {
         *currentValue = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow, device->drive_info.lastCommandRTFRs.secCnt);
     }
@@ -915,7 +925,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
             //This test unit ready exists to help clear out stuck bad status for other devices (such as USB) where this can help work around limitations. - TJE
             if (device->drive_info.interface_type != IDE_INTERFACE)
             {
-                scsi_Test_Unit_Ready(device, NULL);
+                scsi_Test_Unit_Ready(device, M_NULLPTR);
             }
             memset(identifyData, 0, 512);
             device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
@@ -1322,8 +1332,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
         //Special case for SSD detection. One of these SSDs didn't set the media_type to SSD
         //but it is an SSD. So this match will catch it when this happens. It should be uncommon to find though -TJE
         if (device->drive_info.media_type != MEDIA_SSD &&
-            strlen(device->drive_info.bridge_info.childDriveMN) > 0 && (strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != NULL) &&
-            strlen(device->drive_info.bridge_info.childDriveFW) > 0 && (strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != NULL))
+            strlen(device->drive_info.bridge_info.childDriveMN) > 0 && (strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != M_NULLPTR) &&
+            strlen(device->drive_info.bridge_info.childDriveFW) > 0 && (strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != M_NULLPTR))
         {
             device->drive_info.media_type = MEDIA_SSD;
         }

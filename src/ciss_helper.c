@@ -13,6 +13,18 @@
 // \brief Defines the constants structures to help with CISS implementation. This attempts to be generic for any unix-like OS. Windows support is through CSMI.
 
 #if defined (ENABLE_CISS)
+
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #if defined (__unix__) //this is only done in case someone sets weird defines for Windows even though this isn't supported
 #include <fcntl.h>
 #include <unistd.h> // for close
@@ -48,7 +60,6 @@
 #include "ciss_helper.h"
 #include "ciss_helper_func.h"
 #include "scsi_helper_func.h"
-#include "common_platform.h"
 
 extern bool validate_Device_Struct(versionBlock);
 
@@ -184,8 +195,8 @@ static bool create_OS_CISS_Handle_Name(const char *input, char *osHandle)
             //get handle values using strtoul
             if (input[0] == 'c')
             {
-                char* endptr = NULL;
-                char* str = C_CAST(char*, input) + 1;
+                char* endptr = M_NULLPTR;
+                char* str = M_CONST_CAST(char*, input) + 1;//need to update str pointer as we parse the handle, but not changing any data
                 unsigned long value = strtoul(input, &endptr, 10);
                 if (str == endptr)//this should not happen for this format
                 {
@@ -256,7 +267,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
         {
             //starts with ciss, so now we should check to make sure we found everything else
             uint8_t counter = 0;
-            char *saveptr = NULL;
+            char *saveptr = M_NULLPTR;
             rsize_t duplen = strlen(dup);
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
             while (token && counter < 3)
@@ -275,7 +286,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
                 case 2://physical drive number
                     if (isdigit(token[0]))
                     {
-                        unsigned long temp = strtoul(token, NULL, 10);
+                        unsigned long temp = strtoul(token, M_NULLPTR, 10);
                         if (!(temp == ULONG_MAX && errno == ERANGE))
                         {
                             *physicalDriveNumber = C_CAST(uint16_t, temp);
@@ -287,7 +298,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
                     break;
                 }
                 ++counter;
-                token = common_String_Token(NULL, &duplen, ":", &saveptr);
+                token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
         safe_Free(C_CAST(void**, &dup));
@@ -388,7 +399,7 @@ static eReturnValues ciss_Scsi_Report_Logical_LUNs(tDevice *device, uint8_t exte
     }
     else
     {
-        ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     return ret;
 }
@@ -429,7 +440,7 @@ static eReturnValues ciss_Scsi_Report_Physical_LUNs(tDevice *device, uint8_t ext
     }
     else
     {
-        ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, NULL, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+        ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     return ret;
 }
@@ -535,7 +546,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                 case XFER_NO_DATA:
                     pqiCmd.Request.Type.Direction = XFER_NONE;
                     pqiCmd.buf_size = 0;
-                    pqiCmd.buf = NULL;
+                    pqiCmd.buf = M_NULLPTR;
                     break;
                 default:
                     return OS_COMMAND_NOT_AVAILABLE;
@@ -783,7 +794,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                 case XFER_NO_DATA:
                     cissCmd.Request.Type.Direction = XFER_NONE;
                     cissCmd.buf_size = 0;
-                    cissCmd.buf = NULL;
+                    cissCmd.buf = M_NULLPTR;
                     break;
                 default:
                     return OS_COMMAND_NOT_AVAILABLE;
@@ -1028,7 +1039,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
             case XFER_NO_DATA:
                 cissCmd.Request.Type.Direction = CPQARY3_NODATA_XFER;
                 cissCmd.buf_len = 0;
-                cissCmd.buf = C_CAST(uintptr_t, NULL);
+                cissCmd.buf = C_CAST(uintptr_t, M_NULLPTR);
                 break;
             default:
                 return OS_COMMAND_NOT_AVAILABLE;
@@ -1296,7 +1307,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType 
             case XFER_NO_DATA:
                 cissCmd.Request.Type.Direction = XFER_NONE;
                 cissCmd.buf_size = 0;
-                cissCmd.buf = NULL;
+                cissCmd.buf = M_NULLPTR;
                 break;
             default:
                 return OS_COMMAND_NOT_AVAILABLE;
@@ -1732,8 +1743,8 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
 eReturnValues get_CISS_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags, ptrRaidHandleToScan *beginningOfList)
 {
     int fd = -1;
-    ptrRaidHandleToScan raidList = NULL;
-    ptrRaidHandleToScan previousRaidListEntry = NULL;
+    ptrRaidHandleToScan raidList = M_NULLPTR;
+    ptrRaidHandleToScan previousRaidListEntry = M_NULLPTR;
     uint32_t found = 0;
     char deviceName[CISS_HANDLE_MAX_LENGTH] = { 0 };
 
@@ -1857,7 +1868,7 @@ eReturnValues get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
     {
         tDevice * d = ptrToDeviceList;
         ptrRaidHandleToScan raidList = *beginningOfList;
-        ptrRaidHandleToScan previousRaidListEntry = NULL;
+        ptrRaidHandleToScan previousRaidListEntry = M_NULLPTR;
         int fd = -1;
         uint32_t numberOfDevices = sizeInBytes / sizeof(tDevice);
         uint32_t found = 0, failedGetDeviceCount = 0;

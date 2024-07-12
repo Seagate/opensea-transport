@@ -15,8 +15,9 @@
 
 #pragma once
 
-#include "common.h"
-#include "common_platform.h"
+#include "common_types.h"
+#include "bit_manip.h"
+
 #include "version.h"
 #if defined (VMK_CROSS_COMP)
 #include "vm_nvme_lib.h"
@@ -30,6 +31,11 @@
 //Not including this here even though I thought I might need to because it causes compilation errors all over...not really sure why, but this worked...-TJE
 //#include <camlib.h> //for cam structure held in tDevice
 #endif
+
+#if defined (_WIN32) && !defined(_NTDDSCSIH_)
+#include <ntddscsi.h>
+#endif//_WIN32 & !_NTDDSCSIH_
+
 
 #include "csmi_helper.h" //because the device structure holds some csmi support structure for when we can issue csmi passthrough commands.
 #include "ciss_helper.h" //because this holds a structure to help with issuing CCISS commands
@@ -1691,7 +1697,6 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
 
-
     //-----------------------------------------------------------------------------
     //
     //  close_Device()
@@ -1717,13 +1722,12 @@ extern "C"
     //
     //  Entry:
     //!   \param[in] flags = Flags for future use to control the scan
-    //!   \param[in] outputInfo = pointer to an outputInfo struct to control how to output the scan information. If this is NULL, standard screen output is assumed
     //!   \param[in] scanVerbosity = the verbosity to run the scan at
     //!
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityLevels scanVerbosity);
+    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity);
 
     //-----------------------------------------------------------------------------
     //

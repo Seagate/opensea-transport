@@ -12,6 +12,16 @@
 // 
 // \file nec_legacy_helper.c   Implementation for NEC Legacy USB Pass-through CDBs
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "nec_legacy_helper.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
@@ -124,7 +134,7 @@ eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroug
 {
     eReturnValues ret = UNKNOWN;
     uint8_t necCDB[CDB_LEN_16] = { 0 };
-    uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
+    uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
@@ -182,7 +192,7 @@ eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroug
     safe_Free_aligned(C_CAST(void**, &senseData));
     if (localSenseData)
     {
-        ataCommandOptions->ptrSenseData = NULL;
+        ataCommandOptions->ptrSenseData = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)

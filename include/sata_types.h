@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "common.h"
+#include "common_types.h"
 
 #if defined (__cplusplus)
 extern "C"

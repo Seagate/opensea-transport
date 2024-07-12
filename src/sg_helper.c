@@ -23,6 +23,18 @@
 #endif //_DEBUG
 #endif //!defined (_GNU_SOURCE)
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+#include "sleep.h"
+
 #include <stdio.h>
 #include <dirent.h>
 #include <ctype.h>
@@ -99,10 +111,6 @@
 #include "ciss_helper_func.h"
 #endif //ENABLE_CISS
 
-#if defined(DEGUG_SCAN_TIME)
-#include "common_platform.h"
-#endif
-
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
 bool os_Is_Infinite_Timeout_Supported(void)
 {
@@ -118,7 +126,7 @@ static void print_io_hdr(sg_io_hdr_t *pIo)
     time_t time_now;
     char timeFormat[TIME_STRING_LENGTH];
     memset(timeFormat, 0, TIME_STRING_LENGTH);//clear this again before reusing it
-    time_now = time(NULL);
+    time_now = time(M_NULLPTR);
     printf("\n%s: %s---------------------------------\n", __FUNCTION__, get_Current_Time_String(&time_now, timeFormat, TIME_STRING_LENGTH));
     printf("type int interface_id %d\n", pIo->interface_id);           /* [i] 'S' (required) */
     printf("type int  dxfer_direction %d\n", pIo->dxfer_direction);        /* [i] */
@@ -160,7 +168,7 @@ static int sd_filter(const struct dirent *entry)
         return !sdHandle;
     }
     char* partition = strpbrk(entry->d_name, "0123456789");
-    if (partition != NULL)
+    if (partition != M_NULLPTR)
     {
         return sdHandle;
     }
@@ -177,7 +185,7 @@ static int sd_filter(const struct dirent *entry)
 //    //kernel version 2.6 and higher is required to map the handles between sg and sd/sr/st/scd
 //    OSVersionNumber linuxVersion;
 //    memset(&linuxVersion, 0, sizeof(OSVersionNumber));
-//    if(SUCCESS == get_Operating_System_Version_And_Name(&linuxVersion, NULL))
+//    if(SUCCESS == get_Operating_System_Version_And_Name(&linuxVersion, M_NULLPTR))
 //    {
 //        if (linuxVersion.versionType.linuxVersion.kernelVersion >= 2 && linuxVersion.versionType.linuxVersion.majorVersion >= 6)
 //        {
@@ -246,13 +254,13 @@ static int get_Partition_Count(const char * blockDeviceName)
     FILE *mount = setmntent("/etc/mtab", "r");//we only need to know about mounted partitions. Mounted partitions need to be known so that they can be unmounted when necessary. - TJE
     if (mount)
     {
-        struct mntent* entry = NULL;
+        struct mntent* entry = M_NULLPTR;
 #if defined (_BSD_SOURCE) || defined(_SVID_SOURCE) //getmntent_r lists these feature test macros to look for - TJE
         struct mntent entBuf;
         char lineBuf[GETMNTENT_R_LINE_BUF_SIZE] = { 0 };
-        while (NULL != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
+        while (M_NULLPTR != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
 #else //use the not thread safe version since that is all that is available
-        while (NULL != (entry = getmntent(mount)))
+        while (M_NULLPTR != (entry = getmntent(mount)))
 #endif
         {
             if (strstr(entry->mnt_fsname, blockDeviceName))
@@ -288,14 +296,14 @@ static eReturnValues get_Partition_List(const char * blockDeviceName, ptrsPartit
         FILE *mount = setmntent("/etc/mtab", "r");//we only need to know about mounted partitions. Mounted partitions need to be known so that they can be unmounted when necessary. - TJE
         if (mount)
         {
-            struct mntent* entry = NULL;
+            struct mntent* entry = M_NULLPTR;
 #if defined(_BSD_SOURCE) || defined (_SVID_SOURCE) || !defined (NO_GETMNTENT_R) //feature test macros we're defining _BSD_SOURCE or _SVID_SOURCE in my testing, but we want the reentrant version whenever possible. This can be defined if this function is not identified. - TJE
             struct mntent entBuf;
             char lineBuf[GETMNTENT_R_LINE_BUF_SIZE] = { 0 };
-            while (NULL != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
+            while (M_NULLPTR != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
 #else //use the not thread safe version since that is all that is available
 #pragma message "Not using getmntent_r. Partition detection is not thread safe"
-            while (NULL != (entry = getmntent(mount)))
+            while (M_NULLPTR != (entry = getmntent(mount)))
 #endif
             {
                 if (strstr(entry->mnt_fsname, blockDeviceName))
@@ -352,8 +360,8 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
     //There may be more.
     if (driververstr && versionlist && versionlistlen == 4 && versionCount)//require 4 spaces for the current parsing based off of what is commented above
     {
-        char* end = NULL;
-        char *str = C_CAST(char*, driververstr);
+        char* end = M_NULLPTR;
+        char *str = M_CONST_CAST(char*, driververstr);
         unsigned long value = strtoul(str, &end, 10);
         *versionCount = 0;
         //major
@@ -555,7 +563,7 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
         {
             snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
             //printf("shortened Path = %s\n", dirname(pciPath));
-            FILE *temp = NULL;
+            FILE *temp = M_NULLPTR;
             temp = fopen(pciPath, "r");
             if (temp)
             {
@@ -565,7 +573,7 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
                     //printf("Got vendor as %" PRIX16 "h\n", sysFsInfo->adapter_info.vendorID);
                 }
                 fclose(temp);
-                temp = NULL;
+                temp = M_NULLPTR;
             }
             pciPath = dirname(pciPath);//remove vendor from the end
             common_String_Concat(pciPath, PATH_MAX, "/device");
@@ -578,7 +586,7 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
                     //printf("Got product as %" PRIX16 "h\n", sysFsInfo->adapter_info.productID);
                 }
                 fclose(temp);
-                temp = NULL;
+                temp = M_NULLPTR;
             }
             //Store revision data. This seems to be in the bcdDevice file.
             pciPath = dirname(pciPath);//remove device from the end
@@ -594,7 +602,7 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
                     //printf("Got revision as %" PRIX16 "h\n", sysFsInfo->adapter_info.revision);
                 }
                 fclose(temp);
-                temp = NULL;
+                temp = M_NULLPTR;
             }
             //Get Driver Information.
             pciPath = dirname(pciPath);//remove driver from the end
@@ -643,7 +651,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             //now that the path is correct, we need to read the files idVendor and idProduct
             common_String_Concat(usbPath, PATH_MAX, "/idVendor");
             //printf("idVendor USB Path = %s\n", usbPath);
-            FILE *temp = NULL;
+            FILE *temp = M_NULLPTR;
             temp = fopen(usbPath, "r");
             if (temp)
             {
@@ -653,7 +661,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
                     //printf("Got vendor ID as %" PRIX16 "h\n", sysFsInfo->adapter_info.vendorID);
                 }
                 fclose(temp);
-                temp = NULL;
+                temp = M_NULLPTR;
             }
             usbPath = dirname(usbPath);//remove idVendor from the end
             //printf("full USB Path = %s\n", usbPath);
@@ -668,7 +676,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
                     //printf("Got product ID as %" PRIX16 "h\n", sysFsInfo->adapter_info.productID);
                 }
                 fclose(temp);
-                temp = NULL;
+                temp = M_NULLPTR;
             }
             //Store revision data. This seems to be in the bcdDevice file.
             usbPath = dirname(usbPath);//remove idProduct from the end
@@ -682,7 +690,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
                     //printf("Got revision as %" PRIX16 "h\n", sysFsInfo->adapter_info.revision);
                 }
                 fclose(temp);
-                temp = NULL;
+                temp = M_NULLPTR;
             }
             //Get Driver Information.
             usbPath = dirname(usbPath);//remove idProduct from the end
@@ -728,7 +736,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             snprintf(fwPath, PATH_MAX, "%.*s/modalias", C_CAST(int, newStrLen), fullFWPath);
             //printf("full FW Path = %s\n", dirname(fwPath));
             //printf("modalias FW Path = %s\n", fwPath);
-            FILE *temp = NULL;
+            FILE *temp = M_NULLPTR;
             temp = fopen(fwPath, "r");
             if (temp)
             {
@@ -745,7 +753,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
                     //printf("Got revision ID as %" PRIX16 "h\n", sysFsInfo->adapter_info.revision);
                 }
                 fclose(temp);
-                temp = NULL;
+                temp = M_NULLPTR;
             }
             sysFsInfo->adapter_info.infoType = ADAPTER_INFO_IEEE1394;
             //Get Driver Information.
@@ -798,7 +806,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
         {
             snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
             //printf("Shortened PCI Path: %s\n", dirname(pciPath));
-            FILE *temp = NULL;
+            FILE *temp = M_NULLPTR;
             temp = fopen(pciPath, "r");
             if (temp)
             {
@@ -808,7 +816,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
                     //printf("Got vendor as %" PRIX16 "h\n", sysFsInfo->adapter_info.vendorID);
                 }
                 fclose(temp);
-                temp = NULL;
+                temp = M_NULLPTR;
             }
             pciPath = dirname(pciPath);//remove vendor from the end
             common_String_Concat(pciPath, PATH_MAX, "/device");
@@ -821,7 +829,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
                     //printf("Got product as %" PRIX16 "h\n", sysFsInfo->adapter_info.productID);
                 }
                 fclose(temp);
-                temp = NULL;
+                temp = M_NULLPTR;
             }
             //Store revision data. This seems to be in the bcdDevice file.
             pciPath = dirname(pciPath);//remove device from the end
@@ -837,7 +845,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
                     //printf("Got revision as %" PRIX16 "h\n", sysFsInfo->adapter_info.revision);
                 }
                 fclose(temp);
-                temp = NULL;
+                temp = M_NULLPTR;
             }
             //Store Driver Information
             pciPath = dirname(pciPath);
@@ -864,7 +872,7 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
     char *scsiAddress = basename(dirname(dirname(handle)));//SCSI address should be 2nd from the end of the link
     if (scsiAddress)
     {
-       char *saveptr = NULL;
+       char *saveptr = M_NULLPTR;
        rsize_t addrlen = strlen(scsiAddress);
        char *token = common_String_Token(scsiAddress, &addrlen, ":", &saveptr);
        uint8_t counter = 0;
@@ -873,21 +881,21 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
            switch (counter)
            {
            case 0://host
-               sysFsInfo->scsiAddress.host = C_CAST(uint8_t, strtoul(token, NULL, 10));
+               sysFsInfo->scsiAddress.host = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
                break;
            case 1://bus
-               sysFsInfo->scsiAddress.channel = C_CAST(uint8_t, strtoul(token, NULL, 10));
+               sysFsInfo->scsiAddress.channel = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
                break;
            case 2://target
-               sysFsInfo->scsiAddress.target = C_CAST(uint8_t, strtoul(token, NULL, 10));
+               sysFsInfo->scsiAddress.target = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
                break;
            case 3://lun
-               sysFsInfo->scsiAddress.lun = C_CAST(uint8_t, strtoul(token, NULL, 10));
+               sysFsInfo->scsiAddress.lun = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
                break;
            default:
                break;
            }
-           token = common_String_Token(NULL, &addrlen, ":", &saveptr);
+           token = common_String_Token(M_NULLPTR, &addrlen, ":", &saveptr);
            ++counter;
        }
     }
@@ -916,7 +924,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo * sys
             sysFsInfo->scsiDevType = scsiDevType;
         }
         fclose(temp);
-        temp = NULL;
+        temp = M_NULLPTR;
     }
     else
     {
@@ -932,7 +940,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo * sys
                 sysFsInfo->scsiDevType = M_GETBITRANGE(peripheralType, 4, 0);
             }
             fclose(temp);
-            temp = NULL;
+            temp = M_NULLPTR;
         }
     }
     fullPath = dirname(fullPath);
@@ -945,7 +953,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo * sys
             sysFsInfo->queueDepth = 0;
         }
         fclose(temp);
-        temp = NULL;
+        temp = M_NULLPTR;
     }
 }
 
@@ -963,7 +971,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
     //check if it's a block handle, bsg, or scsi_generic handle, then setup the path we need to read.
     if (handle && sysFsInfo)
     {
-        if (strstr(handle, "nvme") != NULL)
+        if (strstr(handle, "nvme") != M_NULLPTR)
         {
             size_t nvmHandleLen = strlen(handle) + 1;
             char *nvmHandle = C_CAST(char*, calloc(nvmHandleLen, sizeof(char)));
@@ -977,7 +985,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
             bool incomingBlock = false;//only set for SD!
             bool bsg = false;
             char incomingHandleClassPath[PATH_MAX] = { 0 };
-            //char *incomingClassName = NULL;
+            //char *incomingClassName = M_NULLPTR;
             common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
             if (is_Block_Device_Handle(handle))
             {
@@ -1009,9 +1017,15 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
             memset(&inHandleStat, 0, sizeof(struct stat));
             if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
             {
+                char* duphandle = strdup(handle);
+                if (duphandle == M_NULLPTR)
+                {
+                    return;
+                }
+                const char *basehandle = basename(duphandle);
                 struct stat link;
                 memset(&link, 0, sizeof(struct stat));
-                common_String_Concat(incomingHandleClassPath, PATH_MAX, basename(C_CAST(char*, handle)));
+                common_String_Concat(incomingHandleClassPath, PATH_MAX, basehandle);
                 //now read the link with the handle appended on the end
                 if (lstat(incomingHandleClassPath, &link) == 0 && S_ISLNK(link.st_mode))
                 {
@@ -1057,8 +1071,8 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
                         get_SYS_FS_SCSI_Address(inHandleLink, sysFsInfo);
                         //printf("attempting to map the handle\n");
                         //Lastly, call the mapping function to get the matching block handle and check what we got to set ATAPI, TAPE or leave as-is. Setting these is necessary to prevent talking to ATAPI as HDD due to overlapping A1h opcode
-                        char *block = NULL;
-                        char *gen = NULL;
+                        char *block = M_NULLPTR;
+                        char *gen = M_NULLPTR;
                         if (SUCCESS == map_Block_To_Generic_Handle(handle, &gen, &block))
                         {
                             //printf("successfully mapped the handle. gen = %s\tblock=%s\n", gen, block);
@@ -1109,6 +1123,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
                 {
                     //Not a link...nothing further to do
                 }
+                safe_Free(C_CAST(void**, &duphandle));
             }
         }
     }
@@ -1146,12 +1161,12 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 //This depends on mapping in the file system provided by 2.6 and later.
 eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle)
 {
-    if (handle == NULL)
+    if (handle == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
     //if the handle passed in contains "nvme" then we know it's a device on the nvme interface
-    if (strstr(handle, "nvme") != NULL)
+    if (strstr(handle, "nvme") != M_NULLPTR)
     {
         return NOT_SUPPORTED;
     }
@@ -1159,7 +1174,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
     {
         bool incomingBlock = false;//only set for SD!
         char incomingHandleClassPath[PATH_MAX] = { 0 };
-        char *incomingClassName = NULL;
+        char *incomingClassName = M_NULLPTR;
         common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
         if (is_Block_Device_Handle(handle))
         {
@@ -1181,7 +1196,13 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
         struct stat inHandleStat;
         if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
         {
-            common_String_Concat(incomingHandleClassPath, PATH_MAX, basename(C_CAST(char*, handle)));
+            char* dupHandle = strdup(handle);
+            if (!dupHandle)
+            {
+                return MEMORY_FAILURE;
+            }
+            const char* basehandle = basename(dupHandle);
+            common_String_Concat(incomingHandleClassPath, PATH_MAX, basehandle);
             //now read the link with the handle appended on the end
             char inHandleLink[PATH_MAX] = { 0 };
             if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
@@ -1210,6 +1231,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     {
                         //printf ("could not map to generic class");
                         safe_Free(C_CAST(void**, &incomingClassName));
+                        safe_Free(C_CAST(void**, &dupHandle));
                         return NOT_SUPPORTED;
                     }
                 }
@@ -1221,13 +1243,14 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     {
                         //printf ("could not map to block class");
                         safe_Free(C_CAST(void**, &incomingClassName));
+                        safe_Free(C_CAST(void**, &dupHandle));
                         return NOT_SUPPORTED;
                     }
                 }
                 //now we need to loop through each think in the class folder, read the link, and check if we match.
                 struct dirent **classList;
                 int remains = 0;
-                int numberOfItems = scandir(classPath, &classList, NULL /*not filtering anything. Just go through each item*/, alphasort);
+                int numberOfItems = scandir(classPath, &classList, M_NULLPTR /*not filtering anything. Just go through each item*/, alphasort);
                 for (int iter = 0; iter < numberOfItems; ++iter)
                 {
                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
@@ -1241,7 +1264,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                         char mapLink[PATH_MAX] = { 0 };
                         if (readlink(temp, mapLink, PATH_MAX) > 0)
                         {
-                            char *className = NULL;
+                            char *className = M_NULLPTR;
                             size_t classNameLength = 0;
                             //printf("read link as: %s\n", mapLink);
                             //now, we need to check the links and see if they match.
@@ -1279,17 +1302,17 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             {
                                 char *classPtr = strstr(mapLink, className);
                                 //need to match up to the classname
-                                if (NULL != classPtr && strncmp(mapLink, inHandleLink, C_CAST(size_t, (classPtr - mapLink))) == 0)
+                                if (M_NULLPTR != classPtr && strncmp(mapLink, inHandleLink, C_CAST(size_t, (classPtr - mapLink))) == 0)
                                 {
                                     if (incomingBlock)
                                     {
-                                        *blockHandle = strndup(basename(C_CAST(char*, handle)), strlen(basename(C_CAST(char*, handle))));
+                                        *blockHandle = strndup(basehandle, strlen(basehandle));
                                         *genericHandle = strdup(basename(classPtr));
                                     }
                                     else
                                     {
                                         *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr)));
-                                        *genericHandle = strdup(basename(C_CAST(char *, handle)));
+                                        *genericHandle = strdup(basehandle);
                                     }
                                     safe_Free(C_CAST(void**, &className));
                                     safe_Free(C_CAST(void**, &incomingClassName));
@@ -1302,7 +1325,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                                     }
                                     safe_Free(C_CAST(void**, &classList));
                                     safe_Free(C_CAST(void**, &temp));
-                                    // end PRH valgrind fixes.
+                                    safe_Free(C_CAST(void**, &dupHandle));
                                     return SUCCESS;
                                     break;//found a match, exit the loop
                                 }
@@ -1319,8 +1342,10 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
             {
                 //not a link, or some other error....probably an old kernel
                 safe_Free(C_CAST(void**, &incomingClassName));
+                safe_Free(C_CAST(void**, &dupHandle));
                 return NOT_SUPPORTED;
             }
+            safe_Free(C_CAST(void**, &dupHandle));
         }
         else
         {
@@ -1394,7 +1419,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
 #define LIN_MAX_HANDLE_LENGTH 16
 static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
 {
-    char *deviceHandle = NULL;
+    char *deviceHandle = M_NULLPTR;
     eReturnValues ret = SUCCESS;
     int k = 0;
 #if defined (_DEBUG)
@@ -1404,13 +1429,13 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
     if (is_Block_Device_Handle(filename))
     {
         //printf("\tBlock handle found, mapping...\n");
-        char *genHandle = NULL;
-        char *blockHandle = NULL;
+        char *genHandle = M_NULLPTR;
+        char *blockHandle = M_NULLPTR;
         eReturnValues mapResult = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle);
 #if defined (_DEBUG)
         printf("sg = %s\tsd = %s\n", genHandle, blockHandle);
 #endif
-        if (mapResult == SUCCESS && genHandle != NULL)
+        if (mapResult == SUCCESS && genHandle != M_NULLPTR)
         {
             deviceHandle = C_CAST(char*, calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
             //printf("Changing filename to SG device....\n");
@@ -1689,7 +1714,7 @@ eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
         ret = send_sg_io(scsiIoCtx);
         break;
     case RAID_INTERFACE:
-        if (scsiIoCtx->device->issue_io != NULL)
+        if (scsiIoCtx->device->issue_io != M_NULLPTR)
         {
             ret = scsiIoCtx->device->issue_io(scsiIoCtx);
         }
@@ -1728,7 +1753,7 @@ eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
 eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx )
 {
     sg_io_hdr_t io_hdr;
-    uint8_t     *localSenseBuffer = NULL;
+    uint8_t     *localSenseBuffer = M_NULLPTR;
     eReturnValues         ret          = SUCCESS;
     seatimer_t  commandTimer;
 #ifdef _DEBUG
@@ -1749,7 +1774,7 @@ eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx )
     io_hdr.interface_id = 'S';
     io_hdr.cmd_len = scsiIoCtx->cdbLength;
     // Use user's sense or local?
-    if ((scsiIoCtx->senseDataSize) && (scsiIoCtx->psense != NULL))
+    if ((scsiIoCtx->senseDataSize) && (scsiIoCtx->psense != M_NULLPTR))
     {
         if (scsiIoCtx->senseDataSize > UINT8_MAX)
         {
@@ -2114,7 +2139,7 @@ static int nvme_filter(const struct dirent *entry)
     if (strlen(entry->d_name) > 5)
     {
         char* partition = strpbrk(entry->d_name, "p");
-        if (partition != NULL)
+        if (partition != M_NULLPTR)
         {
             return nvmeHandle;
         }
@@ -2173,7 +2198,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     }
 #if defined (ENABLE_CISS)
     //build a list of devices to scan for physical drives behind a RAID
-    ptrRaidHandleToScan raidHandleList = NULL;
+    ptrRaidHandleToScan raidHandleList = M_NULLPTR;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     raidTypeHint raidHint;
     memset(&raidHint, 0, sizeof(raidTypeHint));
@@ -2304,14 +2329,14 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80] = { 0 }; //Because get device needs char
     int fd;
-    tDevice * d = NULL;
+    tDevice * d = M_NULLPTR;
 #if defined (DEGUG_SCAN_TIME)
     seatimer_t getDeviceTimer;
     seatimer_t getDeviceListTimer;
     memset(&getDeviceTimer, 0, sizeof(seatimer_t));
     memset(&getDeviceListTimer, 0, sizeof(seatimer_t));
 #endif
-    ptrRaidHandleToScan raidHandleList = NULL;
+    ptrRaidHandleToScan raidHandleList = M_NULLPTR;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     raidTypeHint raidHint;
     memset(&raidHint, 0, sizeof(raidTypeHint));
@@ -2368,7 +2393,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         snprintf(devs[i], handleSize, "/dev/%s", nvmenamelist[j]->d_name);
         safe_Free(C_CAST(void**, &nvmenamelist[j]));
     }
-    devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
+    devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
     safe_Free(C_CAST(void**, &namelist));
     safe_Free(C_CAST(void**, &nvmenamelist));
 
@@ -2824,7 +2849,7 @@ static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
     int ioRes = 0;
     bool openedControllerHandle = false;//used so we can close the handle at the end.
     //Need to make sure the handle we use to issue the reset is a controller handle and not a namespace handle.
-    char *endptr = NULL;
+    char *endptr = M_NULLPTR;
     char *handle = strstr(&device->os_info.name[0], "/dev/nvme");
     if (handle)
     {
@@ -2992,7 +3017,7 @@ eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t data
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = UNKNOWN;
     int fd=0;
-    void * barRegs = NULL;
+    void * barRegs = M_NULLPTR;
     char sysfsPath[PATH_MAX];
     snprintf(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
     fd = open(sysfsPath, O_RDONLY);

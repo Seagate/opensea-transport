@@ -14,7 +14,7 @@
 
 #include "scsi_helper.h"
 #include "sat_helper.h"
-#include "common.h"
+#include "common_types.h"
 #include "nvme_helper.h"
 
 #if defined (__cplusplus)

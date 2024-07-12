@@ -13,6 +13,17 @@
 // \file nvme_cmds.c   Implementation for NVM Express command functions
 //                     The intention of the file is to be generic & not OS specific
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include "platform_helper.h"
 
 #include "nvme_helper.h"
@@ -114,10 +125,10 @@ eReturnValues nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
 #if defined (_DEBUG)
         //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
         //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL)
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != M_NULLPTR)
 #else
         //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL && cmdCtx->commandDirection == XFER_DATA_OUT)
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != M_NULLPTR && cmdCtx->commandDirection == XFER_DATA_OUT)
 #endif
         {
             printf("\t  Data Buffer being sent:\n");
@@ -177,10 +188,10 @@ eReturnValues nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
 #if defined (_DEBUG)
         //This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a command.
         //This was very important for debugging windows issues, which is why I have this ifdef in place for debug builds. - TJE
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL)
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != M_NULLPTR)
 #else
         //Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != NULL && cmdCtx->commandDirection == XFER_DATA_IN)
+        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != M_NULLPTR && cmdCtx->commandDirection == XFER_DATA_IN)
 #endif
         {
             printf("\t  Data Buffer being returned:\n");
@@ -352,7 +363,7 @@ eReturnValues nvme_Verify(tDevice* device, uint64_t startingLBA, bool limitedRet
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_VERIFY;
     nvmCommand.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
     nvmCommand.commandDirection = XFER_NO_DATA;
-    nvmCommand.ptrData = NULL;
+    nvmCommand.ptrData = M_NULLPTR;
     nvmCommand.dataSize = 0;
     nvmCommand.cmd.nvmCmd.cdw10 = M_DoubleWord0(startingLBA);//lba
     nvmCommand.cmd.nvmCmd.cdw11 = M_DoubleWord1(startingLBA);//lba
@@ -387,7 +398,7 @@ eReturnValues nvme_Write_Uncorrectable(tDevice *device, uint64_t startingLBA, ui
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_WRITE_UNCOR;
     nvmCommand.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
     nvmCommand.commandDirection = XFER_NO_DATA;
-    nvmCommand.ptrData = NULL;
+    nvmCommand.ptrData = M_NULLPTR;
     nvmCommand.dataSize = 0;
     nvmCommand.cmd.nvmCmd.cdw10 = M_DoubleWord0(startingLBA);//lba
     nvmCommand.cmd.nvmCmd.cdw11 = M_DoubleWord1(startingLBA);//lba
@@ -457,7 +468,7 @@ eReturnValues nvme_Flush(tDevice *device)
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_FLUSH;
     nvmCommand.cmd.nvmCmd.nsid = device->drive_info.namespaceID;
     nvmCommand.commandDirection = XFER_NO_DATA;
-    nvmCommand.ptrData = NULL;
+    nvmCommand.ptrData = M_NULLPTR;
     nvmCommand.dataSize = 0;
     nvmCommand.device = device;
     nvmCommand.timeout = 15;

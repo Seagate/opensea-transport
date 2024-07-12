@@ -17,7 +17,7 @@
 
 #if defined (ENABLE_CISS)
 
-#include "common.h"
+#include "common_types.h"
 #include <stdint.h>
 #include "scsi_helper.h"
 #include "ciss_helper.h"

@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "common.h"
+#include "common_types.h"
 #include "scsi_helper.h"
 #include "sat_helper.h"
 #include "nvme_helper.h"

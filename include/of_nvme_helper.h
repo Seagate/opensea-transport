@@ -16,7 +16,7 @@
 
 #if defined (ENABLE_OFNVME)
 
-#include "common.h"
+#include "common_types.h"
 #include "common_public.h"
 #include "nvme_helper.h"
 #include <stdint.h>

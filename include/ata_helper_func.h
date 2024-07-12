@@ -1042,9 +1042,9 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
-    //!   \param senseKey - pointer to a variable that will hold the sense key on successful command completion. Must be non-NULL
-    //!   \param additionalSenseCode - pointer to a variable that will hold the additional sense code on successful command completion. Must be non-NULL
-    //!   \param additionalSenseCodeQualifier - pointer to a variable that will hold the additional sense code qualifier on successful command completion. Must be non-NULL
+    //!   \param senseKey - pointer to a variable that will hold the sense key on successful command completion. Must be non-M_NULLPTR
+    //!   \param additionalSenseCode - pointer to a variable that will hold the additional sense code on successful command completion. Must be non-M_NULLPTR
+    //!   \param additionalSenseCodeQualifier - pointer to a variable that will hold the additional sense code qualifier on successful command completion. Must be non-M_NULLPTR
     //
     //  Exit:
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
@@ -1159,7 +1159,7 @@ extern "C"
     //!   \param useDMA - set to true to use Trusted Receive DMA
     //!   \param securityProtocol - set to the security protocol to use
     //!   \param securityProtocolSpecific - See ATA Spec for details
-    //!   \param ptrData - pointer to the data buffer to fill upon command completion. Must be Non-NULL
+    //!   \param ptrData - pointer to the data buffer to fill upon command completion. Must be Non-M_NULLPTR
     //!   \param dataSize - size of the data buffer. This will also be used to determine the transfer length.
     //
     //  Exit:
@@ -1179,7 +1179,7 @@ extern "C"
     //!   \param useDMA - set to true to use Trusted Send DMA
     //!   \param securityProtocol - set to the security protocol to use
     //!   \param securityProtocolSpecific - See ATA Spec for details
-    //!   \param ptrData - pointer to the data buffer to send to the device. Must be Non-NULL
+    //!   \param ptrData - pointer to the data buffer to send to the device. Must be Non-M_NULLPTR
     //!   \param dataSize - size of the data buffer. This will also be used to determine the transfer length.
     //
     //  Exit:
@@ -1196,7 +1196,7 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
-    //!   \param ptrData - pointer to the data buffer to send to the device. Must be Non-NULL
+    //!   \param ptrData - pointer to the data buffer to send to the device. Must be Non-M_NULLPTR
     //!   \param useDMA - set to true to use Trusted Send DMA
     //
     //  Exit:
@@ -1214,7 +1214,7 @@ extern "C"
     //  Entry:
     //!   \param device - device handle
     //!   \param LBA - the starting LBA to write
-    //!   \param ptrData - pointer to the data buffer to send to the device. Must be Non-NULL 
+    //!   \param ptrData - pointer to the data buffer to send to the device. Must be Non-M_NULLPTR 
     //!   \param dataSize - the Size of your buffer. This will be used to determine the sector count for how many sectors to write
     //!   \param extendedCmd - set to true to issue the write DMA EXT command (48bit) instead of the normal command (28bit)
     //!   \param fua - send the write ext fua command. Only valid if extendedCmd is also set (since it is a extended command). This command forces writing to disk regardless of write caching enabled or disabled.
@@ -1334,7 +1334,7 @@ extern "C"
     //!   \param feature - See ATA spec. The feature register of the command.
     //!   \param count - See ATA spec. The sector count register of the command.
     //!   \param LBA - the LBA registers to set.
-    //!   \param ptrData - pointer to the data buffer to use. This can be NULL on Non-data commands
+    //!   \param ptrData - pointer to the data buffer to use. This can be M_NULLPTR on Non-data commands
     //!   \param dataSize - the size of the data buffer being used. Set to zero for Non-Data commands.
     //
     //  Exit:
@@ -1450,7 +1450,7 @@ extern "C"
     //  Entry:
     //!   \param device - device handle
     //!   \param unpinAll - set to true to unpin all LBAs
-    //!   \param ptrData - pointer to the data buffer to use. This can be NULL if unpinAll is true
+    //!   \param ptrData - pointer to the data buffer to use. This can be M_NULLPTR if unpinAll is true
     //!   \param dataSize - the size of the data buffer being used. Set to zero if unpinAll is true
     //
     //  Exit:
@@ -1685,7 +1685,7 @@ extern "C"
     //!   \param[in] returnPageCount = used on data transfer commands. This is a count of 512B sectors to be transfered. Should be set to zero for non-data commands
     //!   \param[in] actionSpecificLBA = set the action specific LBA registers.
     //!   \param[in] actionSpecificAUX = set the action specific AUX registers. NOTE: May not be possible to issue this command if these are set! Not all OS's or controllers support 32B passthrough CDBs!
-    //!   \param[out] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
+    //!   \param[out] ptrData = pointer to the data buffer to use. Can be M_NULLPTR for non-data actions
     //!   \param[in] dataSize = size of the data buffer used for a data transfer. Should be zero for non-data actions
     //!
     //  Exit:
@@ -1707,7 +1707,7 @@ extern "C"
     //!   \param[in] pagesToSend_ActionSpecific = used on data transfer commands. This is a count of 512B sectors to be transfered. Should be set to zero for non-data commands
     //!   \param[in] actionSpecificLBA = set the action specific LBA registers.
     //!   \param[in] actionSpecificAUX = set the action specific AUX registers. NOTE: May not be possible to issue this command if these are set! Not all OS's or controllers support 32B passthrough CDBs!
-    //!   \param[in] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
+    //!   \param[in] ptrData = pointer to the data buffer to use. Can be M_NULLPTR for non-data actions
     //!   \param[in] dataSize = size of the data buffer used for a data transfer. Should be zero for non-data actions
     //!
     //  Exit:
@@ -1782,7 +1782,7 @@ extern "C"
     //!   \param[in] partial = set the partial bit
     //!   \param[in] returnPageCount = This is a count of 512B sectors to be transfered.
     //!   \param[in] zoneLocator = zone locater field. Set the an LBA value for the lowest reported zone (0 for all zones)
-    //!   \param[out] ptrData = pointer to the data buffer to use. Must be non-NULL
+    //!   \param[out] ptrData = pointer to the data buffer to use. Must be non-M_NULLPTR
     //!   \param[in] dataSize = size of the data buffer used for a data transfer.
     //!
     //  Exit:
@@ -2009,7 +2009,7 @@ extern "C"
     //  Entry:
     //!   \param[in] ptrData = pointer to data buffer to use
     //!   \param[in] dataSize = set this to a multiple of 512 (LEGACY_DRIVE_SEC_SIZE) bytes. Each 511 * nth byte will have a check sum calculated and verified to be zero
-    //!   \param[out] firstInvalidSector = must be non-NULL. will contain the sector number of the first invalid checksum (if any)
+    //!   \param[out] firstInvalidSector = must be non-M_NULLPTR. will contain the sector number of the first invalid checksum (if any)
     //!
     //  Exit:
     //!   \return true = checksum(s) valid, false = invalid checksum found. Check firstInvalidSector for which sector has an error

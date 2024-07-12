@@ -23,17 +23,28 @@
 #include <windows.h>
 #include <tchar.h>
 #include "intel_rst_helper.h"
+#include "windows_version_detect.h" //for WinPE check
 #else
 #include <sys/ioctl.h>
 #include <unistd.h>
 #endif
+
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include "csmi_helper.h"
 #include "csmi_helper_func.h"
 #include "cmds.h"
 #include "sat_helper_func.h"
 #include "ata_helper_func.h"
 #include "scsi_helper_func.h"
-#include "common_platform.h"
 #include "sata_types.h"
 #include "sata_helper_func.h"
 
@@ -250,7 +261,7 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
 {
     eReturnValues ret = SUCCESS;
     int localIoctlReturn = 0;//This is OK in Windows because BOOL is a typedef for int
-    seatimer_t *timer = NULL; 
+    seatimer_t *timer = M_NULLPTR; 
     bool localTimer = false;
 #if defined (_WIN32)
     OVERLAPPED overlappedStruct;
@@ -288,7 +299,7 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
     memcpy(ioctlHeader->Signature, csmiIoInParams->ioctlSignature, 8);
     //overlapped support
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     if (!overlappedStruct.hEvent)
     {
         if (localTimer)
@@ -310,7 +321,7 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
     }
     stop_Timer(timer);
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    overlappedStruct.hEvent = M_NULLPTR;
     lastError = GetLastError();
     if (csmiIoOutParams->lastError)
     {
@@ -2225,7 +2236,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
     eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
-    PCSMI_SAS_SSP_PASSTHRU_BUFFER sspPassthrough = NULL;
+    PCSMI_SAS_SSP_PASSTHRU_BUFFER sspPassthrough = M_NULLPTR;
     uint32_t sspPassthroughBufferLength = 0;
     memset(&ioIn, 0, sizeof(csmiIOin));
     memset(&ioOut, 0, sizeof(csmiIOout));
@@ -2388,7 +2399,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
     eReturnValues ret = SUCCESS;
     csmiIOin ioIn;
     csmiIOout ioOut;
-    PCSMI_SAS_STP_PASSTHRU_BUFFER stpPassthrough = NULL;
+    PCSMI_SAS_STP_PASSTHRU_BUFFER stpPassthrough = M_NULLPTR;
     uint32_t stpPassthroughBufferLength = 0;
     memset(&ioIn, 0, sizeof(csmiIOin));
     memset(&ioOut, 0, sizeof(csmiIOout));
@@ -3367,8 +3378,8 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename, bool* isInte
 {
     if (filename && isIntelFormat && field1 && field2 && field3 && field4)
     {
-        char* end = NULL;
-        char* str = C_CAST(char*, filename);
+        char* end = M_NULLPTR;
+        char* str = M_CONST_CAST(char*, filename);//need to update str pointer as we scan the string, but not actually modifying data
         if (strstr(filename, "csmi:") == str)//must begin with this
         {
             str += strlen("csmi:");
@@ -3471,7 +3482,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
     memcpy(device->os_info.name, filename, strlen(filename));
     bool intelNVMe = false;
     uint32_t* intelPathID = &portID, * intelTargetID = &phyID, * intelLun = &lun;
-    char* baseHandle = NULL;
+    char* baseHandle = M_NULLPTR;
     if (!get_CSMI_Handle_Fields_From_Input(filename, &intelNVMe, &controllerNum, &portID, &phyID, &lun, &baseHandle))
     {
 #if defined (CSMI_DEBUG)
@@ -3538,14 +3549,14 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
     device->os_info.fd = CreateFile(ptrDeviceName,
         GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
         FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
+        M_NULLPTR,
         OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
         FILE_FLAG_OVERLAPPED,
 #else //!WINDOWS_DISABLE_OVERLAPPED
         0,
 #endif //WINDOWS_DISABLE_OVERLAPPED
-        NULL);
+        M_NULLPTR);
     //DWORD lastError = GetLastError();
     if (device->os_info.fd != INVALID_HANDLE_VALUE)
 #else //_WIN32
@@ -3885,7 +3896,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                 BYTE storportregData[4] = { 0 };
                 TCHAR* storportvalueName = TEXT("CSMI");
                 DWORD storportvalueType = REG_DWORD;
-                LSTATUS regQueryStatus = RegQueryValueEx(keyHandle, storportvalueName, NULL, &storportvalueType, storportregData, &storportdataLen);
+                LSTATUS regQueryStatus = RegQueryValueEx(keyHandle, storportvalueName, M_NULLPTR, &storportvalueType, storportregData, &storportdataLen);
                 if (ERROR_SUCCESS == regQueryStatus)
                 {
                     int32_t dwordVal = C_CAST(int32_t, M_BytesTo4ByteValue(storportregData[3], storportregData[2], storportregData[1], storportregData[0]));
@@ -3923,17 +3934,17 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                         if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, registryKey, 0, KEY_READ, &keyHandle))
                         {
                             DWORD dataLen = 0;
-                            BYTE* regData = NULL;//will be allocated to correct length
+                            BYTE* regData = M_NULLPTR;//will be allocated to correct length
                             TCHAR* valueName = TEXT("DriverParameter");
                             DWORD valueType = REG_SZ;
-                            regQueryStatus = RegQueryValueEx(keyHandle, valueName, NULL, &valueType, regData, &dataLen);
+                            regQueryStatus = RegQueryValueEx(keyHandle, valueName, M_NULLPTR, &valueType, regData, &dataLen);
                             if (regQueryStatus == ERROR_SUCCESS)//since we had no memory allocated, this returned success rather than ERROR_MORE_DATA so we can go and allocate then read it.-TJE
                             {
                                 //found, now allocate memory
                                 regData = calloc(dataLen, sizeof(BYTE));
                                 if (regData)
                                 {
-                                    regQueryStatus = RegQueryValueEx(keyHandle, valueName, NULL, &valueType, regData, &dataLen);
+                                    regQueryStatus = RegQueryValueEx(keyHandle, valueName, M_NULLPTR, &valueType, regData, &dataLen);
                                     if (regQueryStatus == ERROR_SUCCESS)
                                     {
                                         //now interpret the regData as a string
@@ -4035,8 +4046,8 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
     char deviceName[CSMI_NIX_MAX_DEVICE_NAME_LENGTH] = { 0 };
 #endif //_WIN32
     eVerbosityLevels csmiCountVerbosity = VERBOSITY_DEFAULT;//change this if debugging
-    ptrRaidHandleToScan raidList = NULL;
-    ptrRaidHandleToScan previousRaidListEntry = NULL;
+    ptrRaidHandleToScan raidList = M_NULLPTR;
+    ptrRaidHandleToScan previousRaidListEntry = M_NULLPTR;
     uint32_t controllerNumber = 0;
     uint32_t found = 0, raidConfigDrivesFound = 0, phyInfoDrivesFound = 0;
 
@@ -4083,14 +4094,14 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
             fd = CreateFile(deviceName,
                 GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
-                NULL,
+                M_NULLPTR,
                 OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
                 FILE_FLAG_OVERLAPPED,
 #else
                 0,
 #endif
-                NULL);
+                M_NULLPTR);
             if (fd != INVALID_HANDLE_VALUE)
 #else
             snprintf(deviceName, (sizeof(deviceName) / sizeof(*deviceName)), "%s", raidList->handle);
@@ -4496,9 +4507,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
     }
     else
     {
-        tDevice * d = NULL;
+        tDevice * d = M_NULLPTR;
         ptrRaidHandleToScan raidList = *beginningOfList;
-        ptrRaidHandleToScan previousRaidListEntry = NULL;
+        ptrRaidHandleToScan previousRaidListEntry = M_NULLPTR;
         uint32_t controllerNumber = 0, found = 0, failedGetDeviceCount = 0;
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
@@ -4515,7 +4526,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                 eCSMISecurityAccess csmiAccess = CSMI_SECURITY_ACCESS_NONE;//only really needed in Windows - TJE
 #if defined (_WIN32)
                 //Get the controller number from the scsi handle since we need it later!
-                char *endHandle = NULL;
+                char *endHandle = M_NULLPTR;
                 char *scanhandle = raidList->handle;
                 char *scsiPortHandle = strstr(scanhandle, "\\\\.\\SCSI");
                 if (scsiPortHandle)
@@ -4545,14 +4556,14 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                 fd = CreateFile(deviceName,
                     GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
                     FILE_SHARE_READ | FILE_SHARE_WRITE,
-                    NULL,
+                    M_NULLPTR,
                     OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
                     FILE_FLAG_OVERLAPPED,
 #else //WINDOWS_DISABLE_OVERLAPPED
                     0,
 #endif //WINDOWS_DISABLE_OVERLAPPED
-                    NULL);
+                    M_NULLPTR);
                 if (fd != INVALID_HANDLE_VALUE)
 #else //_WIN32
                 snprintf(deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH, "%s", raidList->handle);

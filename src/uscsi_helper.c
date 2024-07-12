@@ -10,6 +10,18 @@
 //
 // ******************************************************************************************
 // 
+
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include <stdio.h>
 #include <dirent.h>
 #include <ctype.h>
@@ -29,9 +41,6 @@
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 #include "usb_hacks.h"
-
-
-
 
 extern bool validate_Device_Struct(versionBlock);
 
@@ -305,7 +314,7 @@ eReturnValues send_IO (ScsiIoCtx *scsiIoCtx)
         ret = send_uscsi_io(scsiIoCtx);
         break;
     case RAID_INTERFACE:
-        if (scsiIoCtx->device->issue_io != NULL)
+        if (scsiIoCtx->device->issue_io != M_NULLPTR)
         {
             ret = scsiIoCtx->device->issue_io(scsiIoCtx);
         }
@@ -435,7 +444,7 @@ static int uscsi_filter(const struct dirent *entry)
     }
     //now, we need to filter out the device names that have "p"s for the partitions and "s"s for the slices
     char *partitionOrSlice = strpbrk(entry->d_name, "pPsS");
-    if (partitionOrSlice != NULL)
+    if (partitionOrSlice != M_NULLPTR)
     {
         return 0;
     }
@@ -536,7 +545,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80] = { 0 }; //Because get device needs char
     int fd;
-    tDevice * d = NULL;
+    tDevice * d = M_NULLPTR;
 
     struct dirent **namelist;
     int scandirres = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
@@ -554,7 +563,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
         safe_Free(C_CAST(void**, &namelist[i]));
     }
-    devs[i] = NULL;
+    devs[i] = M_NULLPTR;
     safe_Free(C_CAST(void**, &namelist));
 
     if (!(ptrToDeviceList) || (!sizeInBytes))

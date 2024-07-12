@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "common.h"
+#include "common_types.h"
 #include "common_public.h"
 #include "ata_helper.h"
 

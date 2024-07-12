@@ -10,6 +10,18 @@
 //
 // ******************************************************************************************
 // 
+
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include <stdio.h>
 #include <dirent.h>
 #include "cam_helper.h"
@@ -27,7 +39,7 @@
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #include <dev/nvme/nvme.h>
 #endif //DISABLE_NVME_PASSTHROUGH
-#include "common.h"
+
 
 extern bool validate_Device_Struct(versionBlock);
 
@@ -62,7 +74,7 @@ static bool is_NVMe_Handle(char *handle)
 static int get_Partition_Count(const char* blockDeviceName)
 {
     int result = 0;
-    struct statfs* mountedFS = NULL;
+    struct statfs* mountedFS = M_NULLPTR;
     int totalMounts = getmntinfo(&mountedFS, MNT_WAIT);//Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
     if (totalMounts > 0 && mountedFS)
     {
@@ -103,7 +115,7 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
         //but slightly different. I only had a VM to test with so my results showed the same between the APIs,
         //but the description of getmntinfo was more along the lines of what has been implemented for
         //other OS's we support. - TJE
-        struct statfs* mountedFS = NULL;
+        struct statfs* mountedFS = M_NULLPTR;
         int totalMounts = getmntinfo(&mountedFS, MNT_WAIT);//Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
         if (totalMounts > 0 && mountedFS)
         {
@@ -190,14 +202,14 @@ eReturnValues get_Device(const char *filename, tDevice *device)
 {
     struct ccb_getdev cgd;
     struct ccb_pathinq cpi;
-    union ccb         *ccb = NULL;
+    union ccb         *ccb = M_NULLPTR;
     eReturnValues ret = SUCCESS;
     int this_drive_type = 0;
     char devName[20] = { 0 };
     int devUnit = 0;
-    char *deviceHandle = NULL;
+    char *deviceHandle = M_NULLPTR;
     deviceHandle = strdup(filename);
-    device->os_info.cam_dev = NULL;//initialize this to NULL (which it already should be) just to make sure everything else functions as expected
+    device->os_info.cam_dev = M_NULLPTR;//initialize this to M_NULLPTR (which it already should be) just to make sure everything else functions as expected
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     struct nvme_get_nsid gnsid;
 
@@ -260,8 +272,8 @@ eReturnValues get_Device(const char *filename, tDevice *device)
     else
     {
         //printf("%s fd %d name %s\n",__FUNCTION__, device->os_info.fd, device->os_info.name);
-        device->os_info.cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, NULL); //O_NONBLOCK is not allowed
-        if (device->os_info.cam_dev != NULL)
+        device->os_info.cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, M_NULLPTR); //O_NONBLOCK is not allowed
+        if (device->os_info.cam_dev != M_NULLPTR)
         {
             //Set name and friendly name
             //name
@@ -282,7 +294,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
 
             //printf("%s Successfully opened\n",__FUNCTION__);
             ccb = cam_getccb(device->os_info.cam_dev);
-            if (ccb != NULL)
+            if (ccb != M_NULLPTR)
             {
                 CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
                 ccb->ccb_h.func_code = XPT_GDEV_TYPE;
@@ -438,7 +450,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         }
     }
 
-    if (ccb != NULL)
+    if (ccb != M_NULLPTR)
     {
         cam_freeccb(ccb);
     }
@@ -472,7 +484,7 @@ eReturnValues send_IO(ScsiIoCtx *scsiIoCtx)
     }
     else if (scsiIoCtx->device->drive_info.interface_type == RAID_INTERFACE)
     {
-        if (scsiIoCtx->device->issue_io != NULL)
+        if (scsiIoCtx->device->issue_io != M_NULLPTR)
         {
             ret = scsiIoCtx->device->issue_io(scsiIoCtx);
         }
@@ -508,13 +520,13 @@ eReturnValues send_IO(ScsiIoCtx *scsiIoCtx)
 eReturnValues send_Ata_Cam_IO(ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    union ccb *ccb = NULL;
-    struct ccb_ataio *ataio = NULL;
+    union ccb *ccb = M_NULLPTR;
+    struct ccb_ataio *ataio = M_NULLPTR;
     u_int32_t direction = 0;
 
     ccb = cam_getccb(scsiIoCtx->device->os_info.cam_dev);
 
-    if (ccb != NULL)
+    if (ccb != M_NULLPTR)
     {
         ataio = &ccb->ataio;
 
@@ -575,7 +587,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx *scsiIoCtx)
 
         cam_fill_ataio(&ccb->ataio,
                        0, /* retry_count */
-                       NULL,
+                       M_NULLPTR,
                        direction, /*flags*/
                        MSG_SIMPLE_Q_TAG,
                        C_CAST(u_int8_t *, scsiIoCtx->pdata), /*data_ptr*/
@@ -585,7 +597,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx *scsiIoCtx)
         /* Disable freezing the device queue */
         ccb->ccb_h.flags |= CAM_DEV_QFRZDIS;
 
-        if (scsiIoCtx->pAtaCmdOpts != NULL)
+        if (scsiIoCtx->pAtaCmdOpts != M_NULLPTR)
         {
             bzero(&ataio->cmd, sizeof(ataio->cmd));
             if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_TASKFILE)
@@ -763,7 +775,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx *scsiIoCtx)
                     ret = SUCCESS;
 
                     //get the rtfrs and put them into a "sense buffer". In other words, fill in the sense buffer with the rtfrs in descriptor format
-                    if (scsiIoCtx->psense != NULL)//check that the pointer is valid
+                    if (scsiIoCtx->psense != M_NULLPTR)//check that the pointer is valid
                     {
                         if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
                         {
@@ -837,12 +849,12 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx *scsiIoCtx)
 #endif
     eReturnValues ret = SUCCESS;
     //device * device = scsiIoCtx->device;
-    struct ccb_scsiio *csio = NULL;
-    union ccb *ccb = NULL;
+    struct ccb_scsiio *csio = M_NULLPTR;
+    union ccb *ccb = M_NULLPTR;
 
-    if (scsiIoCtx->device->os_info.cam_dev == NULL)
+    if (scsiIoCtx->device->os_info.cam_dev == M_NULLPTR)
     {
-        printf("%s dev is NULL\n", __FUNCTION__);
+        printf("%s dev is M_NULLPTR\n", __FUNCTION__);
         return FAILURE;
     }
     else if (scsiIoCtx->cdbLength > IOCDBLEN)
@@ -853,7 +865,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx *scsiIoCtx)
 
     ccb = cam_getccb(scsiIoCtx->device->os_info.cam_dev);
 
-    if (ccb != NULL)
+    if (ccb != M_NULLPTR)
     {
         // Following is copy/paste from different funtions in camcontrol.c
         /* cam_getccb cleans up the header, caller has to zero the payload */
@@ -864,7 +876,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx *scsiIoCtx)
 
         csio->ccb_h.func_code = XPT_SCSI_IO;
         csio->ccb_h.retry_count = 0; // should we change it to 1?
-        csio->ccb_h.cbfcnp = NULL;
+        csio->ccb_h.cbfcnp = M_NULLPTR;
         uint32_t camTimeout = scsiIoCtx->timeout;
         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
         {
@@ -1089,7 +1101,7 @@ static int nvme_filter(const struct dirent *entry)
         return !nvmeHandle;
     }
     char* partition = strpbrk(entry->d_name, "pPsS");
-    if (partition != NULL)
+    if (partition != M_NULLPTR)
     {
         return 0;
     }
@@ -1108,7 +1120,7 @@ static int da_filter(const struct dirent *entry)
         return !daHandle;
     }
     char* partition = strpbrk(entry->d_name, "pPsS");
-    if (partition != NULL)
+    if (partition != M_NULLPTR)
     {
         return 0;
     }
@@ -1126,7 +1138,7 @@ static int ada_filter(const struct dirent *entry)
         return !adaHandle;
     }
     char* partition = strpbrk(entry->d_name, "pPsS");
-    if (partition != NULL)
+    if (partition != M_NULLPTR)
     {
         return 0;
     }
@@ -1141,7 +1153,7 @@ eReturnValues close_Device(tDevice *dev)
     if (dev->os_info.cam_dev)
     {
         cam_close_device(dev->os_info.cam_dev);
-        dev->os_info.cam_dev = NULL;
+        dev->os_info.cam_dev = M_NULLPTR;
     }
     return SUCCESS;
 }
@@ -1241,7 +1253,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[80]; //Because get device needs char
     int fd = 0;
-    tDevice * d = NULL;
+    tDevice * d = M_NULLPTR;
     int scandirres = 0;
     uint32_t num_da_devs = 0, num_ada_devs = 0, num_nvme_devs = 0;
 
@@ -1291,7 +1303,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         safe_Free(C_CAST(void**, &nvmenamelist[k]));
     }
 
-    devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
+    devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
     safe_Free(C_CAST(void**, &danamelist));
     safe_Free(C_CAST(void**, &adanamelist));
     safe_Free(C_CAST(void**, &nvmenamelist));
@@ -1325,7 +1337,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 /*if (d->os_info.cam_dev)
                 {
                     cam_close_device(d->os_info.cam_dev);
-                    d->os_info.cam_dev = NULL;
+                    d->os_info.cam_dev = M_NULLPTR;
                 }*/
                 eVerbosityLevels temp = d->deviceVerbosity;
                 memset(d, 0, sizeof(tDevice));

@@ -12,11 +12,20 @@
 // 
 #if defined (ENABLE_OFNVME)
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
-#include "common.h"
 #include "of_nvme_helper.h"
 #include "of_nvme_helper_func.h"
 #include "cmds.h"
@@ -144,7 +153,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         DWORD last_error = ERROR_SUCCESS;
         OVERLAPPED overlappedStruct;
         memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         DWORD returned_data = 0;
         start_Timer(&commandTimer);
         success = DeviceIoControl(deviceHandle,
@@ -169,7 +178,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         if (overlappedStruct.hEvent)
         {
             CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent = NULL;
+            overlappedStruct.hEvent = M_NULLPTR;
         }
         if (success)
         {
@@ -199,7 +208,7 @@ eReturnValues send_OFNVME_Reset(tDevice * device)
     device->os_info.last_error = 0;
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data = 0;
     BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
         IOCTL_SCSI_MINIPORT,
@@ -222,7 +231,7 @@ eReturnValues send_OFNVME_Reset(tDevice * device)
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
     }
     if (success)
     {
@@ -262,7 +271,7 @@ eReturnValues send_OFNVME_Add_Namespace(tDevice * device)
     device->os_info.last_error = 0;
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data = 0;
     BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
         IOCTL_SCSI_MINIPORT,
@@ -285,7 +294,7 @@ eReturnValues send_OFNVME_Add_Namespace(tDevice * device)
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
     }
     if (success)
     {
@@ -325,7 +334,7 @@ eReturnValues send_OFNVME_Remove_Namespace(tDevice * device)
     device->os_info.last_error = 0;
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data = 0;
     BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
         IOCTL_SCSI_MINIPORT,
@@ -348,7 +357,7 @@ eReturnValues send_OFNVME_Remove_Namespace(tDevice * device)
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
     }
     if (success)
     {
@@ -474,7 +483,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         nvmeIoCtx->device->os_info.last_error = 0;
         OVERLAPPED overlappedStruct;
         memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         DWORD returned_data = 0;
         start_Timer(&commandTimer);
         success = DeviceIoControl(nvmeIoCtx->device->os_info.scsiSRBHandle,
@@ -499,7 +508,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         if (overlappedStruct.hEvent)
         {
             CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent = NULL;
+            overlappedStruct.hEvent = M_NULLPTR;
         }
         if (success)
         {

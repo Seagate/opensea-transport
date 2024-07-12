@@ -12,6 +12,16 @@
 // 
 // \file ti_legacy_helper.c   Implementation for TI Legacy USB Pass-through CDBs
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "ti_legacy_helper.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
@@ -64,7 +74,7 @@ eReturnValues build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCom
 eReturnValues send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
-    uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
+    uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     uint8_t tiCDB[CDB_LEN_16] = { 0 };
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
@@ -127,7 +137,7 @@ eReturnValues send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthrough
     safe_Free_aligned(C_CAST(void**, &senseData));
     if (localSenseData)
     {
-        ataCommandOptions->ptrSenseData = NULL;
+        ataCommandOptions->ptrSenseData = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)

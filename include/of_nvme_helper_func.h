@@ -17,7 +17,7 @@
 
 #if defined (ENABLE_OFNVME)
 
-#include "common.h"
+#include "common_types.h"
 #include <stdint.h>
 #include "of_nvmeIoctl.h"
 #include "of_nvme_helper.h"

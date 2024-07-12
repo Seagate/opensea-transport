@@ -13,7 +13,15 @@
 // \file csmi_legacy_pt_cdb_helper.c
 // \brief Defines the constants, structures, & functions to help with legacy CSMI ATA passthrough CDB implementation
 
-
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
 
 #include "csmi_legacy_pt_cdb_helper.h"
 #include "scsi_helper.h"
@@ -160,7 +168,7 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(tDevice *device, ataPassthroughCo
 {
     eReturnValues ret = UNKNOWN;
     uint8_t csmiCDB[CSMI_PASSTHROUGH_CDB_LENGTH] = { 0 };
-    uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
+    uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
@@ -219,7 +227,7 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(tDevice *device, ataPassthroughCo
     safe_Free_aligned(C_CAST(void**, &senseData));
     if (localSenseData)
     {
-        ataCommandOptions->ptrSenseData = NULL;
+        ataCommandOptions->ptrSenseData = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)

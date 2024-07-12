@@ -58,7 +58,8 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wnewline-eof',
   '-Wno-c23-extensions',
   '-Wparentheses',
-  '-Wextra-semi'
+  '-Wextra-semi',
+  '-Wcast-qual'
   ]
 
   if c.get_id().contains('gcc') and target_machine.system() == 'windows'

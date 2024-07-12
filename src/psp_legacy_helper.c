@@ -12,6 +12,16 @@
 // 
 // \file psp_legacy_helper.c   Implementation for PSP Legacy USB Pass-through CDBs
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "psp_legacy_helper.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
@@ -43,7 +53,7 @@ eReturnValues enable_Disable_ATA_Passthrough(tDevice *device, bool enable)
     {
         cdb[1] |= PSP_FUNC_DISABLE_ATA_PASSTHROUGH;
     }
-    ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, NULL, 0, XFER_NO_DATA, senseData, SPC3_SENSE_LEN, 0);
+    ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA, senseData, SPC3_SENSE_LEN, 0);
     return ret;
 }
 
@@ -161,7 +171,7 @@ eReturnValues send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroug
     eReturnValues ret = UNKNOWN;
     uint8_t cdbLen = PSP_EXT_COMMAND_CDB_LEN;
     uint8_t pspCDB[PSP_EXT_COMMAND_CDB_LEN] = { 0 };
-    uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
+    uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
@@ -219,7 +229,7 @@ eReturnValues send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroug
     safe_Free_aligned(C_CAST(void**, &senseData));
     if (localSenseData)
     {
-        ataCommandOptions->ptrSenseData = NULL;
+        ataCommandOptions->ptrSenseData = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)

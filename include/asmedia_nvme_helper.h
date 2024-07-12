@@ -20,7 +20,7 @@
 
 #pragma once
 #include <inttypes.h>
-#include "common.h"
+#include "common_types.h"
 #include "nvme_helper.h"
 #include "scsi_helper.h"
 

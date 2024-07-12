@@ -13,12 +13,21 @@
 // \file cmds.c   Implementation for generic ATA/SCSI functions
 //                     The intention of the file is to be generic & not OS specific
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "cmds.h"
 #include "ata_helper_func.h"
 #include "scsi_helper_func.h"
 #include "nvme_helper_func.h"
 #include "common_public.h"
-#include <inttypes.h>
 #include "platform_helper.h"
 #include "usb_hacks.h"
 
@@ -519,7 +528,7 @@ eReturnValues firmware_Download_Command(tDevice *device, eDownloadMode dlMode, u
 
 eReturnValues firmware_Download_Activate(tDevice *device, uint8_t slotNumber, bool existingImage, uint32_t timeoutSeconds, bool nvmeForceCA, uint8_t commitAction, bool forceDisableReset)
 {
-    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, NULL, slotNumber, existingImage, false, false, timeoutSeconds, nvmeForceCA, commitAction, forceDisableReset);
+    return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, M_NULLPTR, slotNumber, existingImage, false, false, timeoutSeconds, nvmeForceCA, commitAction, forceDisableReset);
 }
 
 eReturnValues security_Send(tDevice *device, uint8_t securityProtocol, uint16_t securityProtocolSpecific, uint8_t *ptrData, uint32_t dataSize)
@@ -539,7 +548,7 @@ eReturnValues security_Send(tDevice *device, uint8_t securityProtocol, uint16_t 
                 //round up to nearest 512byte sector
                 size_t newBufferSize = (((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE) * LEGACY_DRIVE_SEC_SIZE;
                 tcgBufPtr = C_CAST(uint8_t*, calloc_aligned(newBufferSize, sizeof(uint8_t), device->os_info.minimumAlignment));
-                if (tcgBufPtr == NULL)
+                if (tcgBufPtr == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
                 }
@@ -835,11 +844,11 @@ eReturnValues write_Psuedo_Uncorrectable_Error(tDevice *device, uint64_t corrupt
     case SCSI_DRIVE:
         if (device->drive_info.deviceMaxLba > UINT32_MAX)
         {
-            ret = scsi_Write_Long_16(device, false, true, multipleLogicalPerPhysical, corruptLBA, 0, NULL);
+            ret = scsi_Write_Long_16(device, false, true, multipleLogicalPerPhysical, corruptLBA, 0, M_NULLPTR);
         }
         else
         {
-            ret = scsi_Write_Long_10(device, false, true, multipleLogicalPerPhysical, C_CAST(uint32_t, corruptLBA), 0, NULL);
+            ret = scsi_Write_Long_10(device, false, true, multipleLogicalPerPhysical, C_CAST(uint32_t, corruptLBA), 0, M_NULLPTR);
         }
         break;
     default:
@@ -908,11 +917,11 @@ eReturnValues write_Flagged_Uncorrectable_Error(tDevice *device, uint64_t corrup
     case SCSI_DRIVE:
         if (device->drive_info.deviceMaxLba > UINT32_MAX)
         {
-            ret = scsi_Write_Long_16(device, true, true, false, corruptLBA, 0, NULL);
+            ret = scsi_Write_Long_16(device, true, true, false, corruptLBA, 0, M_NULLPTR);
         }
         else
         {
-            ret = scsi_Write_Long_10(device, true, true, false, C_CAST(uint32_t, corruptLBA), 0, NULL);
+            ret = scsi_Write_Long_10(device, true, true, false, C_CAST(uint32_t, corruptLBA), 0, M_NULLPTR);
         }
         break;
     default:
@@ -1806,12 +1815,12 @@ eReturnValues scsi_Verify(tDevice *device, uint64_t lba, uint32_t range)
     if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && range <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
     {
         //use verify 10
-        ret = scsi_Verify_10(device, 0, false, 00, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, range), NULL, 0);
+        ret = scsi_Verify_10(device, 0, false, 00, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, range), M_NULLPTR, 0);
     }
     else
     {
         //use verify 16 (SPC3-SBC2 brought this command in)
-        ret = scsi_Verify_16(device, 0, false, 00, lba, 0, range, NULL, 0);
+        ret = scsi_Verify_16(device, 0, false, 00, lba, 0, range, M_NULLPTR, 0);
     }
     return ret;
 }

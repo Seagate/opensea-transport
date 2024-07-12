@@ -69,8 +69,8 @@ extern "C"
     //!   \param[in] exitFailureMode = set the failure mode bit to 1. See ACS3 or SBC4 for details on what this does
     //!   \param[in] invertBetweenPasses = set the bit to invert the pattern between passes
     //!   \param[in] overwritePasses = this is the number of passes to run. a value of 0 means 16 passes (which is the max for sanitize). (For SCSI, we adjust this to set 16 since a value of 0 is reserved)
-    //!   \param[in] pattern = pointer to a buffer containing a pattern. (Set to NULL to use zeros)
-    //!   \param[in] patternLength = the length of the patter. Max length on SCSI is 1 logical sector. On ATA, the length MUST BE 4! Only required if pattern is non-NULL.
+    //!   \param[in] pattern = pointer to a buffer containing a pattern. (Set to M_NULLPTR to use zeros)
+    //!   \param[in] patternLength = the length of the patter. Max length on SCSI is 1 logical sector. On ATA, the length MUST BE 4! Only required if pattern is non-M_NULLPTR.
     //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!
     //  Exit:
@@ -253,13 +253,13 @@ extern "C"
     //  write_Same()
     //
     //! \brief   Description:  This function will send a write same command to a drive. For scsi drives, writesame16 is used, on ata drives, SCT write same is used. 
-    //!          If pattern is NULL, a zero pattern is used (SCSI sets the nodataout bit, which may not be supported on the drive, so sending a buffer is recommended).
+    //!          If pattern is M_NULLPTR, a zero pattern is used (SCSI sets the nodataout bit, which may not be supported on the drive, so sending a buffer is recommended).
     //!          If pattern is non-null, the buffer it points to MUST be 1 logical sector in size.
     //  Entry:
     //!   \param device - pointer to the device structure
     //!   \param startingLba - lba to start the write same at
     //!   \param numberOfLogicalBlocks - The number of logical blocks to write to from the startingLba (range). SCSI Has a max range of a UINT32, ATA has max of UINT64
-    //!   \param pattern - pointer to a buffer that is 1 logical sector in size and contains a pattern to write. If this is NULL, a zero pattern will be used in place.
+    //!   \param pattern - pointer to a buffer that is 1 logical sector in size and contains a pattern to write. If this is M_NULLPTR, a zero pattern will be used in place.
     //!   
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong

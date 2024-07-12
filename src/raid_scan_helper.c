@@ -12,6 +12,15 @@
 // \file raid_scan_helper.c
 // \brief Defines the structures, types, and function to assist with scanning for devices in different RAID configurations.
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "io_utils.h"
 
 #include "raid_scan_helper.h"
 
@@ -26,7 +35,7 @@ ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr, char *handle
         currentPtr->next = C_CAST(ptrRaidHandleToScan, calloc(1, sizeof(raidHandleToScan)));
         if (!currentPtr->next)
         {
-            return NULL;
+            return M_NULLPTR;
         }
         //data allocated, so update to that pointer to fill in the other data
         currentPtr = currentPtr->next;
@@ -39,13 +48,13 @@ ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr, char *handle
     //make sure valid before filling in fields
     if (currentPtr)
     {
-        currentPtr->next = NULL;
+        currentPtr->next = M_NULLPTR;
         snprintf(currentPtr->handle, RAID_HANDLE_STRING_MAX_LEN, "%s", handleToScan);
         currentPtr->raidHint = raidHint;
     }
     else
     {
-        return NULL;
+        return M_NULLPTR;
     }
     return currentPtr;
 }
@@ -70,12 +79,12 @@ ptrRaidHandleToScan add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan listBegin
     {
         return add_RAID_Handle(currentPtr, handleToScan, raidHint);
     }
-    return NULL;
+    return M_NULLPTR;
 }
 
 //Make it easier to remove an item. Useful when scanning multiple RAID libs because the first RAID lib can remove handles that did in fact work so that they are not scanned again by another RAID library.
-//returns a pointer to the entry after "toRemove", which can be NULL
-//If previous is NULL, then this is the beginning of the list. This is allowed.
+//returns a pointer to the entry after "toRemove", which can be M_NULLPTR
+//If previous is M_NULLPTR, then this is the beginning of the list. This is allowed.
 //Previous is used to update the previous entry's next pointer to make sure the list is still functional
 ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHandleToScan previous)
 {
@@ -94,16 +103,16 @@ ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHand
         }
         else
         {
-            //no next available. change previous->next to NULL
+            //no next available. change previous->next to M_NULLPTR
             if (previous)
             {
-                previous->next = NULL;
+                previous->next = M_NULLPTR;
             }
             safe_Free(C_CAST(void**, &toRemove));
-            return NULL;
+            return M_NULLPTR;
         }
     }
-    return NULL;
+    return M_NULLPTR;
 }
 
 //Deletes everything in the list from pointer to the beginning of the list.

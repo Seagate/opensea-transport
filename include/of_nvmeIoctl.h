@@ -49,9 +49,8 @@
 #ifndef __NVME_IOCTL_H__
 #define __NVME_IOCTL_H__
 
-#if !defined (NTDDSCSI_INCLUDED)
+#if !defined (_NTDDSCSIH_)
 #include <ntddscsi.h>
-#define NTDDSCSI_INCLUDED
 #endif
 
 #define NVME_STORPORT_DRIVER 0xE000

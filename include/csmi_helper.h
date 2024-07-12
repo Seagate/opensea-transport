@@ -16,8 +16,11 @@
 
 #if defined (ENABLE_CSMI)
 
-#include "common.h"
+#include "common_types.h"
 #include <stdint.h>
+#if defined (_WIN32) && !defined(_NTDDSCSIH_)
+    #include <ntddscsi.h>
+#endif
 #include "external/csmi/csmisas.h"
 #include "sata_types.h"
 

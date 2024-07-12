@@ -36,12 +36,12 @@ extern "C"
     //
     //  Entry:
     //!   \param device - pointer to the device structure containing a valid device handle
-    //!   \param cdb - pointer to the array holding a CDB. MUST BE NON-NULL
+    //!   \param cdb - pointer to the array holding a CDB. MUST BE NON-M_NULLPTR
     //!   \param cdbLen - value indicating a CDB len. Must be of eCDBLen type to be valid
-    //!   \param pdata - pointer to the data buffer. Can be NULL. If set to NULL, dataLen must be set to 0
+    //!   \param pdata - pointer to the data buffer. Can be M_NULLPTR. If set to M_NULLPTR, dataLen must be set to 0
     //!   \param dataLen - length of the data buffer to use with the specified command
     //!   \param dataDirection - the data transfer direction. Must be of type eDataTransferDirection to be valid
-    //!   \param senseData - pointer to the sense data buffer to be used. This can be NULL. If set to NULL, the last command sense data in the device structure will be used.
+    //!   \param senseData - pointer to the sense data buffer to be used. This can be M_NULLPTR. If set to M_NULLPTR, the last command sense data in the device structure will be used.
     //!   \param senseDataLen - length of the sense data buffer. If set to 0, the last command sense data in the device structure will be used.
     //!   \param timeoutSeconds - number of seconds to set for the command timeout to the OS. If this is 0, 15 seconds will be set.
     //!
@@ -272,7 +272,7 @@ extern "C"
     //!   \param[in] znr - zone no reset bit. This is used on host managed and host aware drives to not reset the zone pointers during a sanitize.
     //!   \param[in] ause - set to true to set the allow unrestricted sanitize exit bit
     //!   \param[in] parameterListLength - this should be 0 for all features that are not an overwrite
-    //!   \param[in] ptrData - should be NULL for all features that are not an overwrite
+    //!   \param[in] ptrData - should be M_NULLPTR for all features that are not an overwrite
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
@@ -294,7 +294,7 @@ extern "C"
     //!   \param[in] invertBetweenPasses = set to true to set the invert between passes in the transferred buffer
     //!   \param[in] test = enum value specifying the test bits. Should be SANITIZE_OVERWRITE_NO_CHANGES unless you know what a vendor is expecting
     //!   \param[in] overwritePasses = set to the number of overwrite passes to perform. A value of zero is reserved
-    //!   \param[in] pattern = pointer to an array containing your pattern seperated in bytes. This will be copied for you to the transferred data buffer. may be NULL if patternLengthBytes is set to 0
+    //!   \param[in] pattern = pointer to an array containing your pattern seperated in bytes. This will be copied for you to the transferred data buffer. may be M_NULLPTR if patternLengthBytes is set to 0
     //!   \param[in] patternLengthBytes = set to the length of your pattern in bytes. This length must be less than the logical block length of the device as required by SBC4
     //!
     //  Exit:
@@ -429,7 +429,7 @@ extern "C"
     //!   \param pageCode - the logpage you wish to read
     //!   \param subpageCode - the subpage you wish to read
     //!   \param parameterListLength - the parameter list length
-    //!   \param ptrData - pointer to the data buffer to transfer. Must be Non-NULL
+    //!   \param ptrData - pointer to the data buffer to transfer. Must be Non-M_NULLPTR
     //!   \param dataSize - size of the data buffer
     //!
     //  Exit:
@@ -1483,7 +1483,7 @@ extern "C"
     //!   \param logicalBlockAddress - LBA
     //!   \param groupNumber - the group number. Only bits 4:0 are valid
     //!   \param verificationLength - 
-    //!   \param ptrData - pointer to the data buffer to transfer to the device. may be NULL when byteCheck is set to 0
+    //!   \param ptrData - pointer to the data buffer to transfer to the device. may be M_NULLPTR when byteCheck is set to 0
     //!   \param dataSize - size of the data Buffer. May be zero when byteCheck is set to 0
     //!
     //  Exit:
@@ -1506,7 +1506,7 @@ extern "C"
     //!   \param logicalBlockAddress - LBA
     //!   \param groupNumber - the group number. Only bits 4:0 are valid
     //!   \param verificationLength - 
-    //!   \param ptrData - pointer to the data buffer to transfer to the device. may be NULL when byteCheck is set to 0
+    //!   \param ptrData - pointer to the data buffer to transfer to the device. may be M_NULLPTR when byteCheck is set to 0
     //!   \param dataSize - size of the data Buffer. May be zero when byteCheck is set to 0
     //!
     //  Exit:
@@ -1529,7 +1529,7 @@ extern "C"
     //!   \param logicalBlockAddress - LBA
     //!   \param groupNumber - the group number. Only bits 4:0 are valid
     //!   \param verificationLength - 
-    //!   \param ptrData - pointer to the data buffer to transfer to the device. may be NULL when byteCheck is set to 0
+    //!   \param ptrData - pointer to the data buffer to transfer to the device. may be M_NULLPTR when byteCheck is set to 0
     //!   \param dataSize - size of the data Buffer. May be zero when byteCheck is set to 0
     //!
     //  Exit:
@@ -1552,7 +1552,7 @@ extern "C"
     //!   \param logicalBlockAddress - LBA
     //!   \param groupNumber - the group number. Only bits 4:0 are valid
     //!   \param verificationLength - 
-    //!   \param ptrData - pointer to the data buffer to transfer to the device. may be NULL when byteCheck is set to 0
+    //!   \param ptrData - pointer to the data buffer to transfer to the device. may be M_NULLPTR when byteCheck is set to 0
     //!   \param dataSize - size of the data Buffer. May be zero when byteCheck is set to 0
     //!   \param expectedInitialLogicalBlockRefTag - 
     //!   \param expectedLogicalBlockAppTag - 
@@ -1574,7 +1574,7 @@ extern "C"
     //!   \param device - pointer to the device structure
     //!   \param logicalBlockAddress - LBA to read (21 bits)
     //!   \param transferLengthBlocks - number of blocks to read. zero means 256.
-    //!   \param ptrData - pointer to the data buffer to transfer to the device. may be NULL when byteCheck is set to 0
+    //!   \param ptrData - pointer to the data buffer to transfer to the device. may be M_NULLPTR when byteCheck is set to 0
     //!   \param transferLengthBytes - size of the data Buffer in bytes
     //!
     //  Exit:
@@ -1903,7 +1903,7 @@ extern "C"
     //!   \param logicalBlockAddress - LBA
     //!   \param groupNumber - the groupNumber field. only bits 4:0 are valid
     //!   \param transferLength - the length of the data to read/write/transfer. Buffers must be this big
-    //!   \param ptrData - pointer to the data out buffer. Must be non-NULL
+    //!   \param ptrData - pointer to the data out buffer. Must be non-M_NULLPTR
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
@@ -1925,7 +1925,7 @@ extern "C"
     //!   \param logicalBlockAddress - LBA
     //!   \param groupNumber - the groupNumber field. only bits 4:0 are valid
     //!   \param transferLength - the length of the data to read/write/transfer. Buffers must be this big
-    //!   \param ptrData - pointer to the data out buffer. Must be non-NULL
+    //!   \param ptrData - pointer to the data out buffer. Must be non-M_NULLPTR
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
@@ -1947,7 +1947,7 @@ extern "C"
     //!   \param[in] partial = partial bit for report zones. Reserved otherwise
     //!   \param[in] reportingOptions = reporting options. Specific to the type of report being requested.
     //!   \param[in] allocationLength = used on data transfer commands. This is how many bytes to transfer. Should be 0 for non-data commands
-    //!   \param[out] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
+    //!   \param[out] ptrData = pointer to the data buffer to use. Can be M_NULLPTR for non-data actions
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
@@ -1975,7 +1975,7 @@ extern "C"
     //!   \param[in] actionSpecific14 = set the action specific bits. (cdb byte 14)
     //!   \param[in] allocationLength = used on data transfer commands. This is how many bytes to transfer. Should be 0 for non-data commands
 
-    //!   \param[in] ptrData = pointer to the data buffer to use. Can be NULL for non-data actions
+    //!   \param[in] ptrData = pointer to the data buffer to use. Can be M_NULLPTR for non-data actions
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
@@ -2051,7 +2051,7 @@ extern "C"
     //!   \param[in] partial = set the partial bit to 1
     //!   \param[in] allocationLength = This is a number of bytes to transfer
     //!   \param[in] zoneStartLBA = zone locator field. Set the an LBA value for the lowest reported zone (0 for all zones)
-    //!   \param[out] ptrData = pointer to the data buffer to use. Must be non-NULL
+    //!   \param[out] ptrData = pointer to the data buffer to use. Must be non-M_NULLPTR
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong

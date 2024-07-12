@@ -13,13 +13,23 @@
 // \file usb_hacks.c
 // \brief Set of functions to check or make modifications to commands to work on USB bridges that don't always follow SCSI/SAT specs.
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include "usb_hacks.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 #include "ata_helper.h"
 #include "ata_helper_func.h"
 #include <ctype.h>//for checking for printable characters
-#include "common.h"
 
 
 bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice *device)

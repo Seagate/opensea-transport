@@ -10,7 +10,18 @@
 //
 // ******************************************************************************************
 // 
-#include "common.h"
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+#include "time_utils.h"
+
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 #include "sat_helper.h"
@@ -1005,7 +1016,7 @@ static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
 eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru)
 {
     eReturnValues ret = UNKNOWN;//if this gets returned from this function, then something is not right...
-    ascAscqRetDesc* asc_ascq_result = NULL;
+    ascAscqRetDesc* asc_ascq_result = M_NULLPTR;
     ascAscqRetDesc asc_ascq_key = { asc, ascq, 0, 0 };
     //first check the senseKey
     senseKey = senseKey & 0x0F;//strip off bits that are not part of the sense key
@@ -1126,7 +1137,7 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey
     }
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
-        print_Field_Replacable_Unit_Code(device, NULL, fru);
+        print_Field_Replacable_Unit_Code(device, M_NULLPTR, fru);
     }
     return ret;
 }
@@ -1948,8 +1959,8 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 if (senseFields->microCodeActivation.microcodeActivationTimeSeconds > 0)
                 {
                     uint8_t hours = 0, minutes = 0, seconds = 0;
-                    convert_Seconds_To_Displayable_Time(senseFields->microCodeActivation.microcodeActivationTimeSeconds, NULL, NULL, &hours, &minutes, &seconds);
-                    print_Time_To_Screen(NULL, NULL, &hours, &minutes, &seconds);
+                    convert_Seconds_To_Displayable_Time(senseFields->microCodeActivation.microcodeActivationTimeSeconds, M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
+                    print_Time_To_Screen(M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
                     printf("\n");
                 }
                 else
@@ -3072,7 +3083,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
         {
             if (foundSATStandardDescriptor || foundATAStandardDescriptor)
             {
-                if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == NULL || strstr(device->drive_info.product_identification, "NVMe") == NULL)
+                if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == M_NULLPTR || strstr(device->drive_info.product_identification, "NVMe") == M_NULLPTR)
                 {
                     satVersionDescriptorFound = true;
                     checkForSAT = true; //Setting it as true, since some Marvell controller set SYNC bit, which is preventing our auto-discovery as ATA drive and sending SAT commands.
@@ -3458,7 +3469,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                         else
                         {
                             //send test unit ready to get the device responding again (For better performance on some USB devices that don't support this page)
-                            scsi_Test_Unit_Ready(device, NULL);
+                            scsi_Test_Unit_Ready(device, M_NULLPTR);
                             if (checkJMicronNVMe)
                             {
                                 device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
@@ -3655,7 +3666,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             {
                 //try read capacity 16, if that fails we are done trying
                 uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
-                if (temp == NULL)
+                if (temp == M_NULLPTR)
                 {
                     safe_Free_aligned(C_CAST(void**, &readCapBuf));
                     safe_Free_aligned(C_CAST(void**, &inq_buf));
@@ -4394,8 +4405,8 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
 {
     //use binary search to find it from the massive list above
     //If that fails, fall into the switch below as a fall-back
-    scsiVersionDescriptor* versionDescriptorResult = NULL;
-    scsiVersionDescriptor versionDescriptorKey = { versionDescriptor, NULL };
+    scsiVersionDescriptor* versionDescriptorResult = M_NULLPTR;
+    scsiVersionDescriptor versionDescriptorKey = { versionDescriptor, M_NULLPTR };
 
     versionDescriptorResult = C_CAST(scsiVersionDescriptor*, bsearch(
         &versionDescriptorKey, scsiVersionDescriptorTable,

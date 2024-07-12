@@ -12,6 +12,16 @@
 // 
 // \file prolific_legacy_helper.c   Implementation for Prolific Legacy USB Pass-through CDBs
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "prolific_legacy_helper.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
@@ -117,7 +127,7 @@ eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPasst
     uint8_t prolificLowCDB[CDB_LEN_16] = { 0 };
     uint8_t prolificHighCDB[CDB_LEN_16] = { 0 };
     bool highCDBValid = false;
-    uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
+    uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
@@ -180,7 +190,7 @@ eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPasst
     safe_Free_aligned(C_CAST(void**, &senseData));
     if (localSenseData)
     {
-        ataCommandOptions->ptrSenseData = NULL;
+        ataCommandOptions->ptrSenseData = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)

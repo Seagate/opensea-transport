@@ -13,6 +13,16 @@
 // \file ata_legacy_cmds.c   Implementation for ATA Spec command functions that are old/obsolete from ATA specs prior to ATA-ATAPI7. Also contains CHS versions of some other commands.
 //                     The intention of the file is to be generic & not OS specific
 
+#include "common_types.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+#include "memory_safety.h"
+
 #include "ata_helper.h"
 #include "ata_helper_func.h"
 
@@ -91,7 +101,7 @@ eReturnValues ata_Legacy_Recalibrate(tDevice *device, uint8_t lowCmdNibble, bool
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
-    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
@@ -196,7 +206,7 @@ eReturnValues ata_Legacy_Read_DMA_CHS(tDevice *device, uint16_t cylinder, uint8_
     }
 
 
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -273,7 +283,7 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, u
         ataCommandOptions.multipleCount++;
     }
 
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -314,7 +324,7 @@ eReturnValues ata_Legacy_Set_Max_Address_CHS(tDevice *device, uint16_t newMaxCyl
     memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.dataSize = 0;
-    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_MAX;
     ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, HPA_SET_MAX_ADDRESS);
     ataCommandOptions.commandDirection = XFER_NO_DATA;
@@ -359,7 +369,7 @@ eReturnValues ata_Legacy_Set_Max_Address_Ext_CHS(tDevice *device, uint16_t newMa
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
     ataCommandOptions.dataSize = 0; //non-data command
-    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_MAX_EXT;
     ataCommandOptions.tfr.SectorNumber = newMaxSector;
     ataCommandOptions.tfr.CylinderLow = M_Byte0(newMaxCylinder);
@@ -427,7 +437,7 @@ eReturnValues ata_Legacy_Read_Sectors_CHS(tDevice *device, uint16_t cylinder, ui
         ataCommandOptions.tfr.CommandStatus = ATA_READ_SECT;//0x20
     }
 
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -469,7 +479,7 @@ eReturnValues ata_Legacy_Read_Verify_Sectors_CHS(tDevice *device, bool extendedC
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
-    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.tfr.SectorNumber = sector;
@@ -534,7 +544,7 @@ eReturnValues ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(tDevice *device, uint1
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
-    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.tfr.SectorNumber = sector;
@@ -573,7 +583,7 @@ eReturnValues ata_Read_Verify_Sectors_No_Retry(tDevice *device, uint16_t numberO
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
-    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.tfr.LbaLow = M_Byte0(LBA);
@@ -858,7 +868,7 @@ eReturnValues ata_Legacy_Seek_CHS(tDevice *device, uint16_t cylinder, uint8_t he
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
-    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
@@ -897,7 +907,7 @@ eReturnValues ata_Legacy_Seek(tDevice *device, uint32_t lba, uint8_t lowCmdNibbl
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
-    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
@@ -961,7 +971,7 @@ eReturnValues ata_Legacy_Read_Long_CHS(tDevice *device, bool retires, uint16_t c
         ataCommandOptions.tfr.CommandStatus = ATA_READ_LONG_NORETRY;//0x23
     }
 
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -1013,7 +1023,7 @@ eReturnValues ata_Legacy_Read_Long(tDevice *device, bool retires, uint32_t lba, 
         ataCommandOptions.tfr.CommandStatus = ATA_READ_LONG_NORETRY;//0x23
     }
 
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -1064,7 +1074,7 @@ eReturnValues ata_Legacy_Write_Long_CHS(tDevice *device, bool retires, uint16_t 
         ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LONG_NORETRY;//0x33
     }
 
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -1116,7 +1126,7 @@ eReturnValues ata_Legacy_Write_Long(tDevice *device, bool retires, uint32_t lba,
         ataCommandOptions.tfr.CommandStatus = ATA_WRITE_LONG_NORETRY;//0x33
     }
 
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -1176,7 +1186,7 @@ eReturnValues ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uin
     }
     ataCommandOptions.tfr.CommandStatus = ATA_LEGACY_WRITE_SAME;//0xE9
 
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -1237,7 +1247,7 @@ eReturnValues ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;//LBA mode bit
     ataCommandOptions.tfr.CommandStatus = ATA_LEGACY_WRITE_SAME;//0xE9
 
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -1280,7 +1290,7 @@ eReturnValues ata_Legacy_Write_Verify_CHS(tDevice *device, uint16_t cylinder, ui
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -1324,7 +1334,7 @@ eReturnValues ata_Legacy_Write_Verify(tDevice *device, uint32_t lba, uint8_t *pt
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (ptrData == NULL)
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -1430,7 +1440,7 @@ eReturnValues ata_Legacy_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.dataSize = 0; //non-data command
-    ataCommandOptions.ptrData = NULL;
+    ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.tfr.CommandStatus = ATA_LEGACY_ALT_CHECK_POWER_MODE;
     ataCommandOptions.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
     if (device->drive_info.ata_Options.isDevice1)
@@ -1438,7 +1448,7 @@ eReturnValues ata_Legacy_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-    if (powerMode == NULL)
+    if (powerMode == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }

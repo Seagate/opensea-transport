@@ -10,6 +10,20 @@
 //
 // ******************************************************************************************
 //
+
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "windows_version_detect.h"
+#include "sleep.h"
+#include "io_utils.h"
+
 #include <stdio.h>
 #include <stdlib.h> // for mbstowcs_s
 #include <stddef.h> // offsetof
@@ -29,7 +43,7 @@
 #include <devpropdef.h>
 #include <devpkey.h>
 #include <winbase.h>
-#include "common.h"
+
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 #include "win_helper.h"
@@ -220,7 +234,7 @@ void print_bus_type(BYTE type)
 //static void convert_String_Spaces_To_Underscores(char *stringToChange)
 //{
 //    size_t stringLen = 0, iter = 0;
-//    if (stringToChange == NULL)
+//    if (stringToChange == M_NULLPTR)
 //    {
 //        return;
 //    }
@@ -265,7 +279,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
         device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
         //unfortunately, this device ID doesn't have a revision in it for USB.
         //We can do this other property request to read it, but it's wide characters only. No TCHARs allowed.
-        cmRet = CM_Get_DevNode_PropertyW(instance, &DEVPKEY_Device_HardwareIds, &propertyType, NULL, &propertyBufLen, 0);
+        cmRet = CM_Get_DevNode_PropertyW(instance, &DEVPKEY_Device_HardwareIds, &propertyType, M_NULLPTR, &propertyBufLen, 0);
         if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
         {
             PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
@@ -330,11 +344,11 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
         DEVPROPTYPE propertyType = 0;
         const DEVPROPKEY* propertyKey = &DEVPKEY_Device_CompatibleIds;
         //scan buffer to get vendor
-        TCHAR* nextToken = NULL;
+        TCHAR* nextToken = M_NULLPTR;
         TCHAR* token = _tcstok_s(buffer, TEXT("\\"), &nextToken);
         while (token && nextToken && _tcsclen(nextToken) > 0)
         {
-            token = _tcstok_s(NULL, TEXT("\\"), &nextToken);
+            token = _tcstok_s(M_NULLPTR, TEXT("\\"), &nextToken);
         }
         if (token)
         {
@@ -357,7 +371,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
         }
 
         device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
-        cmRet = CM_Get_DevNode_PropertyW(instance, propertyKey, &propertyType, NULL, &propertyBufLen, 0);
+        cmRet = CM_Get_DevNode_PropertyW(instance, propertyKey, &propertyType, M_NULLPTR, &propertyBufLen, 0);
         if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
         {
             PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
@@ -406,7 +420,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
     if (deviceDescriptor && deviceDescriptorLength > sizeof(STORAGE_DEVICE_DESCRIPTOR))//make sure we have a device descriptor bigger than the header so we can access the raw data
     {
         //First, get the list of disk device IDs, then locate a matching one...then find the parent and parse the IDs out.
-        TCHAR *listBuffer = NULL;
+        TCHAR *listBuffer = M_NULLPTR;
         ULONG deviceIdListLen = 0;
         CONFIGRET cmRet = CR_SUCCESS;
 #if WINVER > SEA_WIN32_WINNT_VISTA
@@ -439,7 +453,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
             TCHAR *scsiFilter = TEXT("SCSI"), *usbFilter = TEXT("USBSTOR");//Need to use USBSTOR in order to find a match. Using USB returns a list of VID/PID but we don't have a way to match that.
             ULONG scsiIdListLen = 0, usbIdListLen = 0;
             ULONG filterFlags = CM_GETIDLIST_FILTER_ENUMERATOR;
-            TCHAR *scsiListBuff = NULL, *usbListBuff = NULL;
+            TCHAR *scsiListBuff = M_NULLPTR, *usbListBuff = M_NULLPTR;
             CONFIGRET scsicmRet = CR_SUCCESS, usbcmRet = CR_SUCCESS;
             //First get the SCSI list, then the USB list/ TODO: add more things to the list as we need them.
             scsicmRet = CM_Get_Device_ID_List_Size(&scsiIdListLen, scsiFilter, filterFlags);
@@ -546,17 +560,17 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                     deviceHandle = CreateFile(currentDeviceID,
                                         GENERIC_WRITE | GENERIC_READ,
                                         FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                        NULL,
+                                        M_NULLPTR,
                                         OPEN_EXISTING,
                                         0,
-                                        NULL);
+                                        M_NULLPTR);
                                     if (deviceHandle && deviceHandle != INVALID_HANDLE_VALUE)
                                     {
                                         //If the storage device number matches, get the parent device instance, then the parent device ID. This will contain the USB VID/PID and PCI Vendor, product, and revision numbers.
                                         STORAGE_DEVICE_NUMBER deviceNumber;
                                         memset(&deviceNumber, 0, sizeof(STORAGE_DEVICE_NUMBER));
                                         DWORD returnedDataSize = 0;
-                                        if (DeviceIoControl(deviceHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &deviceNumber, sizeof(STORAGE_DEVICE_NUMBER), &returnedDataSize, NULL))
+                                        if (DeviceIoControl(deviceHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, M_NULLPTR, 0, &deviceNumber, sizeof(STORAGE_DEVICE_NUMBER), &returnedDataSize, M_NULLPTR))
                                         {
                                             if (deviceNumber.DeviceNumber == device->os_info.os_drive_number)
                                             {
@@ -585,7 +599,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                     DEVINST propInst = deviceInstance;
                                                                     const DEVPROPKEY *devproperty = &DEVPKEY_NAME;
                                                                     uint16_t counter = 0, instanceCounter = 0;
-                                                                    char *propertyName = NULL;
+                                                                    char *propertyName = M_NULLPTR;
                                                                     size_t propertyNameLength = 0;
                                                                     //device instance first!
                                                                     while (instanceCounter < 2)
@@ -1755,11 +1769,11 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DevQuery_ObjectType");
                                                                                 break;
                                                                             default:
-                                                                                devproperty = NULL;
+                                                                                devproperty = M_NULLPTR;
                                                                                 break;
                                                                             }
                                                                             propertyBufLen = 0;
-                                                                            cmRet = CM_Get_DevNode_PropertyW(propInst, devproperty, &propertyType, NULL, &propertyBufLen, 0);
+                                                                            cmRet = CM_Get_DevNode_PropertyW(propInst, devproperty, &propertyType, M_NULLPTR, &propertyBufLen, 0);
                                                                             if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
                                                                             {
                                                                                 PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
@@ -1998,7 +2012,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                 //Both return strings that we can parse as needed. DEVPKEY_Device_DriverDesc gives the driver's "displayable" name, which is not always helpful since it's usually marketting crap
                                                                 ULONG propertyBufLen = 0;
                                                                 DEVPROPTYPE propertyType = 0;
-                                                                cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_Service, &propertyType, NULL, &propertyBufLen, 0);
+                                                                cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_Service, &propertyType, M_NULLPTR, &propertyBufLen, 0);
                                                                 if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
                                                                 {
                                                                     PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
@@ -2022,7 +2036,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                     }
                                                                 }
                                                                 propertyBufLen = 0;//reset to zero before going into this function to read the string again.-TJE
-                                                                cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_DriverVersion, &propertyType, NULL, &propertyBufLen, 0);
+                                                                cmRet = CM_Get_DevNode_PropertyW(parentInst, &DEVPKEY_Device_DriverVersion, &propertyType, M_NULLPTR, &propertyBufLen, 0);
                                                                 if (CR_SUCCESS == cmRet || CR_INVALID_POINTER == cmRet || CR_BUFFER_SMALL == cmRet)//We'll probably get an invalid pointer or small buffer, but this will return the size of the buffer we need, so allow it through - TJE
                                                                 {
                                                                     PBYTE propertyBuf = C_CAST(PBYTE, calloc(propertyBufLen + 1, sizeof(BYTE)));
@@ -2096,7 +2110,7 @@ static eReturnValues win_Get_SCSI_Address(HANDLE deviceHandle, PSCSI_ADDRESS scs
         DWORD returnedBytes = 0;
         BOOL result = FALSE;
         memset(scsiAddress, 0, sizeof(SCSI_ADDRESS));
-        result = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_ADDRESS, NULL, 0, scsiAddress, sizeof(SCSI_ADDRESS), &returnedBytes, NULL);
+        result = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_ADDRESS, M_NULLPTR, 0, scsiAddress, sizeof(SCSI_ADDRESS), &returnedBytes, M_NULLPTR);
         if (!result)
         {
             scsiAddress->PortNumber = UINT8_MAX;
@@ -2192,9 +2206,9 @@ static void print_Firmware_Miniport_SRB_Status(ULONG returnCode)
 static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVerbosityLevels verboseLevel, void* ptrDataRequest, uint32_t dataRequestLength, uint32_t timeoutSeconds, uint32_t firmwareFunction, uint32_t firmwareFlags, uint32_t* returnCode, unsigned int* lastError, uint64_t *timeNanoseconds)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
-    PSRB_IO_CONTROL         srbControl = NULL;
-    PFIRMWARE_REQUEST_BLOCK firmwareRequest = NULL;
-    PUCHAR                  buffer = NULL;
+    PSRB_IO_CONTROL         srbControl = M_NULLPTR;
+    PFIRMWARE_REQUEST_BLOCK firmwareRequest = M_NULLPTR;
+    PUCHAR                  buffer = M_NULLPTR;
     ULONG                   bufferSize = sizeof(SRB_IO_CONTROL) + sizeof(FIRMWARE_REQUEST_BLOCK);// ((sizeof(SRB_IO_CONTROL) + sizeof(FIRMWARE_REQUEST_BLOCK) - 1) / sizeof(PVOID) + 1) * sizeof(PVOID);//Right from MSFT example toi align the data buffer on pointer alignment - TJE
     ULONG                   firmwareRequestDataOffset = bufferSize;//This must be before we add any additional length to buffersize since this is where data will be copied to for the request - TJE
 
@@ -2248,8 +2262,8 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVe
     ULONG returnedLength = 0;
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-    if (overlappedStruct.hEvent == NULL)
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
+    if (overlappedStruct.hEvent == M_NULLPTR)
     {
         safe_Free_aligned(C_CAST(void**, &buffer));
         return OS_PASSTHROUGH_FAILURE;
@@ -2268,7 +2282,7 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE deviceHandle, eVe
     }
     stop_Timer(&commandTimer);
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    overlappedStruct.hEvent = M_NULLPTR;
 
     if (timeNanoseconds)
     {
@@ -2329,7 +2343,7 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
             firmwareInfo->Version = STORAGE_FIRMWARE_INFO_STRUCTURE_VERSION_V2;
             firmwareInfo->Size = sizeof(STORAGE_FIRMWARE_INFO_V2);
             //Issue the minport IOCTL
-            ret = send_Win_Firmware_Miniport_Command(device->os_info.fd, device->deviceVerbosity, firmwareInfo, firmwareInfoLength, 15, FIRMWARE_FUNCTION_GET_INFO, controllerRequest ? FIRMWARE_REQUEST_FLAG_CONTROLLER : 0, &returnCode, &device->os_info.last_error, NULL);
+            ret = send_Win_Firmware_Miniport_Command(device->os_info.fd, device->deviceVerbosity, firmwareInfo, firmwareInfoLength, 15, FIRMWARE_FUNCTION_GET_INFO, controllerRequest ? FIRMWARE_REQUEST_FLAG_CONTROLLER : 0, &returnCode, &device->os_info.last_error, M_NULLPTR);
             if (ret == SUCCESS)
             {
                 device->os_info.fwdlMiniportSupported = true;
@@ -2375,7 +2389,7 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
             firmwareInfo->Version = STORAGE_FIRMWARE_INFO_STRUCTURE_VERSION;
             firmwareInfo->Size = sizeof(STORAGE_FIRMWARE_INFO);
             //Issue the minport IOCTL
-            ret = send_Win_Firmware_Miniport_Command(device->os_info.fd, device->deviceVerbosity, firmwareInfo, firmwareInfoLength, 15, FIRMWARE_FUNCTION_GET_INFO, controllerRequest ? FIRMWARE_REQUEST_FLAG_CONTROLLER : 0, &returnCode, &device->os_info.last_error, NULL);
+            ret = send_Win_Firmware_Miniport_Command(device->os_info.fd, device->deviceVerbosity, firmwareInfo, firmwareInfoLength, 15, FIRMWARE_FUNCTION_GET_INFO, controllerRequest ? FIRMWARE_REQUEST_FLAG_CONTROLLER : 0, &returnCode, &device->os_info.last_error, M_NULLPTR);
             
             if (ret == SUCCESS)
             {
@@ -3229,11 +3243,11 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
 //static eReturnValues get_os_drive_number( char *filename )
 //{
 //    int  drive_num = -1;
-//    char *pdev     = NULL;
-//    //char * next_token = NULL;
+//    char *pdev     = M_NULLPTR;
+//    //char * next_token = M_NULLPTR;
 //    pdev = strrchr(filename, 'e');
-//    if (pdev != NULL)
-//        drive_num = strtol(pdev + 1, NULL, 0);
+//    if (pdev != M_NULLPTR)
+//        drive_num = strtol(pdev + 1, M_NULLPTR, 0);
 //    return drive_num;
 //}
 
@@ -3325,14 +3339,14 @@ static eReturnValues open_SCSI_SRB_Handle(tDevice *device)
                please write to developers  -MA */
             GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
             FILE_SHARE_READ | FILE_SHARE_WRITE,
-            NULL,
+            M_NULLPTR,
             OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
             FILE_FLAG_OVERLAPPED,
 #else
             0,
 #endif
-            NULL);
+            M_NULLPTR);
 
         device->os_info.last_error = GetLastError();
 
@@ -3371,7 +3385,7 @@ static eReturnValues win_Get_Property_Data(HANDLE deviceHandle, STORAGE_PROPERTY
         memset(&query, 0, sizeof(STORAGE_PROPERTY_QUERY));
         query.PropertyId = propertyID;
         query.QueryType = PropertyStandardQuery;
-        success = DeviceIoControl(deviceHandle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(STORAGE_PROPERTY_QUERY), outputData, outputDataLength, &returnedData, NULL);
+        success = DeviceIoControl(deviceHandle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(STORAGE_PROPERTY_QUERY), outputData, outputDataLength, &returnedData, M_NULLPTR);
         if (!success)
         {
             ret = NOT_SUPPORTED;
@@ -3610,7 +3624,7 @@ static eReturnValues win_Update_Disk_Properties(HANDLE* deviceHandle)
 {
     eReturnValues ret = NOT_SUPPORTED;
     DWORD bytesReturned = 0;
-    if (DeviceIoControl(deviceHandle, IOCTL_DISK_UPDATE_PROPERTIES, NULL, 0, NULL, 0, &bytesReturned, NULL))
+    if (DeviceIoControl(deviceHandle, IOCTL_DISK_UPDATE_PROPERTIES, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned, M_NULLPTR))
     {
         ret = SUCCESS;
     }
@@ -3637,7 +3651,7 @@ static eReturnValues win_Delete_Drive_Layout(HANDLE* deviceHandle)
 {
     eReturnValues ret = NOT_SUPPORTED;
     DWORD bytesReturned = 0;
-    if (DeviceIoControl(deviceHandle, IOCTL_DISK_DELETE_DRIVE_LAYOUT, NULL, 0, NULL, 0, &bytesReturned, NULL))
+    if (DeviceIoControl(deviceHandle, IOCTL_DISK_DELETE_DRIVE_LAYOUT, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned, M_NULLPTR))
     {
         ret = SUCCESS;
     }
@@ -3677,7 +3691,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
         if (*geom)
         {
             memset(*geom, 0, diskGeomSize);
-            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, *geom, diskGeomSize, &bytesReturned, NULL))
+            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, M_NULLPTR, 0, *geom, diskGeomSize, &bytesReturned, M_NULLPTR))
             {
                 ret = SUCCESS;
             }
@@ -3706,7 +3720,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
 //    {
 //        return BAD_PARAMETER;
 //    }
-//    if (DeviceIoControl(devHandle, IOCTL_DISK_IS_WRITABLE, NULL, 0, NULL, 0, &bytesReturned, NULL))
+//    if (DeviceIoControl(devHandle, IOCTL_DISK_IS_WRITABLE, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned, M_NULLPTR))
 //    {
 //        *writable = true;
 //    }
@@ -3740,7 +3754,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
 //        if (*numbers)
 //        {
 //            memset(*numbers, 0, controllerNumberSize);
-//            if (DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, NULL, 0, *numbers, controllerNumberSize, &bytesReturned, NULL))
+//            if (DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, M_NULLPTR, 0, *numbers, controllerNumberSize, &bytesReturned, M_NULLPTR))
 //            {
 //                ret = SUCCESS;
 //            }
@@ -3768,9 +3782,9 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
 //geom should be free'd when done with it since it is allocated on the heap.
 //If partinfo or detectinfo are null on completion, then these we not returned in this IOCTL
 /* Example Use:
-    PDISK_GEOMETRY_EX diskGeom = NULL;
-    PDISK_PARTITION_INFO partInfo = NULL;
-    PDISK_DETECTION_INFO diskDetect = NULL;
+    PDISK_GEOMETRY_EX diskGeom = M_NULLPTR;
+    PDISK_PARTITION_INFO partInfo = M_NULLPTR;
+    PDISK_DETECTION_INFO diskDetect = M_NULLPTR;
 
     if (SUCCESS == win_Get_Drive_Geometry_Ex(device->os_info.fd, &diskGeom, &partInfo, &diskDetect))
     {
@@ -3791,12 +3805,12 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
             memset(*geom, 0, diskGeomSize);
             if (DeviceIoControl(devHandle,
                 IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
-                NULL,
+                M_NULLPTR,
                 0,
                 *geom,
                 diskGeomSize,
                 &bytesReturned,
-                NULL
+                M_NULLPTR
             ))
             {
                 ret = SUCCESS;
@@ -3811,16 +3825,16 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
                             *detectInfo = C_CAST(PDISK_DETECTION_INFO, &(*geom)->Data[(*partInfo)->SizeOfPartitionInfo]);
                             if (!(*detectInfo)->SizeOfDetectInfo)
                             {
-                                *detectInfo = NULL;
+                                *detectInfo = M_NULLPTR;
                             }
                         }
                     }
                     else
                     {
-                        *partInfo = NULL;
+                        *partInfo = M_NULLPTR;
                         if (detectInfo)
                         {
-                            *detectInfo = NULL;
+                            *detectInfo = M_NULLPTR;
                         }
                     }
                 }
@@ -3853,7 +3867,7 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
 //        if (*length)
 //        {
 //            memset(*length, 0, lengthInfoSize);
-//            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, NULL, 0, *length, lengthInfoSize, &bytesReturned, NULL))
+//            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, M_NULLPTR, 0, *length, lengthInfoSize, &bytesReturned, M_NULLPTR))
 //            {
 //                ret = SUCCESS;
 //            }
@@ -3891,7 +3905,7 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
 //        while (!success)
 //        {
 //            //try this ioctl and reallocate memory if not enough space error is returned until it can be read!
-//            success = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_INQUIRY_DATA, NULL, 0, scsiBusInfo, busDataLength, &returnedBytes, NULL);
+//            success = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_INQUIRY_DATA, M_NULLPTR, 0, scsiBusInfo, busDataLength, &returnedBytes, M_NULLPTR);
 //            if (!success)
 //            {
 //                DWORD error = GetLastError();
@@ -3899,7 +3913,7 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
 //                if (error == ERROR_INSUFFICIENT_BUFFER)
 //                {
 //                    //MSFT recommends doubling the buffer size until this passes.
-//                    void *tempBuf = NULL;
+//                    void *tempBuf = M_NULLPTR;
 //                    busDataLength *= 2;
 //                    tempBuf = realloc_aligned(scsiBusInfo, busDataLength / 2, busDataLength, 8);
 //                    if (tempBuf)
@@ -3933,8 +3947,8 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
 {
     eReturnValues ret     = FAILURE;
     eReturnValues win_ret = SUCCESS;
-    PSTORAGE_DEVICE_DESCRIPTOR  device_desc   = NULL;
-    PSTORAGE_ADAPTER_DESCRIPTOR adapter_desc  = NULL;
+    PSTORAGE_DEVICE_DESCRIPTOR  device_desc   = M_NULLPTR;
+    PSTORAGE_ADAPTER_DESCRIPTOR adapter_desc  = M_NULLPTR;
 
     TCHAR device_name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     TCHAR *ptrDeviceName = &device_name[0];
@@ -3953,14 +3967,14 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                                        please write to developers  -MA */
                                     GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                    NULL,
+                                    M_NULLPTR,
                                     OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
                                     FILE_FLAG_OVERLAPPED,
 #else
                                     0,
 #endif
-                                    NULL);
+                                    M_NULLPTR);
 
     device->os_info.last_error = GetLastError();
 
@@ -3986,7 +4000,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
 
         if (strstr(device->os_info.name, WIN_PHYSICAL_DRIVE))
         {
-            char* end = NULL;
+            char* end = M_NULLPTR;
             char *drivenum = strstr(device->os_info.name, WIN_PHYSICAL_DRIVE) + strlen(WIN_PHYSICAL_DRIVE);
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
@@ -3998,7 +4012,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         }
         else if (strstr(device->os_info.name, WIN_CDROM_DRIVE))
         {
-            char* end = NULL;
+            char* end = M_NULLPTR;
             char* drivenum = strstr(device->os_info.name, WIN_CDROM_DRIVE) + strlen(WIN_CDROM_DRIVE);
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
@@ -4010,7 +4024,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         }
         else if (strstr(device->os_info.name, WIN_TAPE_DRIVE))
         {
-            char* end = NULL;
+            char* end = M_NULLPTR;
             char* drivenum = strstr(device->os_info.name, WIN_TAPE_DRIVE) + strlen(WIN_TAPE_DRIVE);
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
@@ -4022,7 +4036,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         }
         else if (strstr(device->os_info.name, WIN_CHANGER_DEVICE))
         {
-            char* end = NULL;
+            char* end = M_NULLPTR;
             char* drivenum = strstr(device->os_info.name, WIN_CHANGER_DEVICE) + strlen(WIN_CHANGER_DEVICE);
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
@@ -4055,25 +4069,25 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                 HANDLE letterHandle = CreateFile(ptrLetterName,
                     GENERIC_WRITE | GENERIC_READ,
                     FILE_SHARE_READ | FILE_SHARE_WRITE,
-                    NULL,
+                    M_NULLPTR,
                     OPEN_EXISTING,
 //#if !defined(WINDOWS_DISABLE_OVERLAPPED)
 //                    FILE_FLAG_OVERLAPPED,
 //#else
                     0,
 //#endif
-                    NULL);
+                    M_NULLPTR);
                 if (letterHandle != INVALID_HANDLE_VALUE)
                 {
                     DWORD returnedBytes = 0;
                     DWORD maxExtents = MAX_DISK_EXTENTS;//https://technet.microsoft.com/en-us/library/cc772180(v=ws.11).aspx
-                    PVOLUME_DISK_EXTENTS diskExtents = NULL;
+                    PVOLUME_DISK_EXTENTS diskExtents = M_NULLPTR;
                     DWORD diskExtentsSizeBytes = C_CAST(DWORD, sizeof(VOLUME_DISK_EXTENTS) + (sizeof(DISK_EXTENT) * maxExtents));
                     diskExtents = C_CAST(PVOLUME_DISK_EXTENTS, malloc(diskExtentsSizeBytes));
                     if (diskExtents)
                     {
                         memset(diskExtents, 0, diskExtentsSizeBytes);
-                        if (DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, diskExtents, diskExtentsSizeBytes, &returnedBytes, NULL))
+                        if (DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, M_NULLPTR, 0, diskExtents, diskExtentsSizeBytes, &returnedBytes, M_NULLPTR))
                         {
                             for (DWORD counter = 0; counter < diskExtents->NumberOfDiskExtents; ++counter)
                             {
@@ -4741,9 +4755,9 @@ eReturnValues get_Device(const char *filename, tDevice *device)
 //-----------------------------------------------------------------------------
 eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
-    HANDLE fd = NULL;
+    HANDLE fd = M_NULLPTR;
     TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
-    ptrRaidHandleToScan raidHandleList = NULL;
+    ptrRaidHandleToScan raidHandleList = M_NULLPTR;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     //Configuration manager library is not available on ARM for Windows. Library didn't exist when I went looking for it - TJE
     //ARM requires 10.0.16299.0 API to get cfgmgr32 library!
@@ -4765,7 +4779,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     if (flags & BUS_RESCAN_ALLOWED)
     {
         DEVINST deviceInstance;
-        DEVINSTID tree = NULL;//set to null for root of device tree
+        DEVINSTID tree = M_NULLPTR;//set to null for root of device tree
         ULONG locateNodeFlags = 0;//add flags here if we end up needing them
         if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
         {
@@ -4786,19 +4800,19 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         fd = CreateFile(deviceName,
                         GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                         FILE_SHARE_READ | FILE_SHARE_WRITE,
-                        NULL,
+                        M_NULLPTR,
                         OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
                         FILE_FLAG_OVERLAPPED,
 #else
                         0,
 #endif
-                        NULL);
+                        M_NULLPTR);
         if (fd != INVALID_HANDLE_VALUE)
         {
             ++found;
             //Check if the interface is reported as RAID from adapter data because an additional scan for RAID devices will be needed.
-            PSTORAGE_ADAPTER_DESCRIPTOR adapterData = NULL;
+            PSTORAGE_ADAPTER_DESCRIPTOR adapterData = M_NULLPTR;
             if (SUCCESS == win_Get_Adapter_Descriptor(fd, &adapterData))
             {
                 if (adapterData->BusType == BusTypeRAID)
@@ -4891,8 +4905,8 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     TCHAR deviceName[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
     char    name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 }; //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
-    tDevice * d = NULL;
-    ptrRaidHandleToScan raidHandleList = NULL;
+    tDevice * d = M_NULLPTR;
+    ptrRaidHandleToScan raidHandleList = M_NULLPTR;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     eVerbosityLevels winListVerbosity = VERBOSITY_DEFAULT;
     if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
@@ -4927,14 +4941,14 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             fd = CreateFile(deviceName,
                 GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
-                NULL,
+                M_NULLPTR,
                 OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
                 FILE_FLAG_OVERLAPPED,
 #else
                 0,
 #endif
-                NULL);
+                M_NULLPTR);
             if (fd != INVALID_HANDLE_VALUE)
             {
                 CloseHandle(fd);
@@ -4952,7 +4966,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 }
                 else
                 {
-                    PSTORAGE_ADAPTER_DESCRIPTOR adapterData = NULL;
+                    PSTORAGE_ADAPTER_DESCRIPTOR adapterData = M_NULLPTR;
                     if (SUCCESS == win_Get_Adapter_Descriptor(d->os_info.fd, &adapterData))
                     {
                         if (adapterData->BusType == BusTypeRAID)
@@ -5185,7 +5199,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
         }
         OVERLAPPED overlappedStruct;
         memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
             IOCTL_SCSI_PASS_THROUGH_EX,
@@ -5207,7 +5221,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
         }
         stop_Timer(&commandTimer);
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
         scsiIoCtx->returnStatus.senseKey = sptdioEx->scsiPassThroughEX.ScsiStatus;
 
         if (success)
@@ -5243,12 +5257,12 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx *scsiIoCtx)
         }
 
         // Any sense data?
-        if (scsiIoCtx->psense != NULL && scsiIoCtx->senseDataSize > 0)
+        if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0)
         {
             memcpy(scsiIoCtx->psense, &sptdioEx->senseBuffer[0], M_Min(sptdioEx->scsiPassThroughEX.SenseInfoLength, scsiIoCtx->senseDataSize));
         }
 
-        if (scsiIoCtx->psense != NULL)
+        if (scsiIoCtx->psense != M_NULLPTR)
         {
             //use the format, sensekey, acq, acsq from the sense data buffer we passed in rather than what windows reports...because windows doesn't always match what is in your sense buffer
             scsiIoCtx->returnStatus.format = scsiIoCtx->psense[0];
@@ -5303,13 +5317,13 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *
         psptd->scsiPassThroughEXDirect.DataDirection = SCSI_IOCTL_DATA_OUT;
         psptd->scsiPassThroughEXDirect.DataOutTransferLength = scsiIoCtx->dataLength;
         psptd->scsiPassThroughEXDirect.DataOutBuffer = alignedPointer;
-        psptd->scsiPassThroughEXDirect.DataInBuffer = NULL;
+        psptd->scsiPassThroughEXDirect.DataInBuffer = M_NULLPTR;
         break;
     case XFER_DATA_IN:
         psptd->scsiPassThroughEXDirect.DataDirection = SCSI_IOCTL_DATA_IN;
         psptd->scsiPassThroughEXDirect.DataInTransferLength = scsiIoCtx->dataLength;
         psptd->scsiPassThroughEXDirect.DataInBuffer = alignedPointer;
-        psptd->scsiPassThroughEXDirect.DataOutBuffer = NULL;
+        psptd->scsiPassThroughEXDirect.DataOutBuffer = M_NULLPTR;
         break;
     case XFER_NO_DATA:
         psptd->scsiPassThroughEXDirect.DataDirection = SCSI_IOCTL_DATA_UNSPECIFIED;
@@ -5371,7 +5385,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
     memset(&commandTimer, 0, sizeof(seatimer_t));
     bool localAlignedBuffer = false;
     uint8_t *alignedPointer = scsiIoCtx->pdata;
-    uint8_t *localBuffer = NULL;//we need to save this to free up the memory properly later.
+    uint8_t *localBuffer = M_NULLPTR;//we need to save this to free up the memory properly later.
     //Check the alignment...if we need to use a local buffer, we'll use one, then copy the data back
     if (scsiIoCtx->pdata && scsiIoCtx->device->os_info.alignmentMask != 0)
     {
@@ -5406,7 +5420,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
         DWORD sptBufLen = sizeof(scsiPassThroughEXIOStruct);
         OVERLAPPED overlappedStruct;
         memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
             IOCTL_SCSI_PASS_THROUGH_DIRECT_EX,
@@ -5428,7 +5442,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
         }
         stop_Timer(&commandTimer);
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
         scsiIoCtx->returnStatus.senseKey = sptdio->scsiPassThroughEXDirect.ScsiStatus;
 
         if (success)
@@ -5464,12 +5478,12 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx *scsiIoCtx)
         }
 
         // Any sense data?
-        if (scsiIoCtx->psense != NULL && scsiIoCtx->senseDataSize > 0)
+        if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0)
         {
             memcpy(scsiIoCtx->psense, &sptdio->senseBuffer[0], M_Min(sptdio->scsiPassThroughEXDirect.SenseInfoLength, scsiIoCtx->senseDataSize));
         }
 
-        if (scsiIoCtx->psense != NULL)
+        if (scsiIoCtx->psense != M_NULLPTR)
         {
             //use the format, sensekey, acq, acsq from the sense data buffer we passed in rather than what windows reports...because windows doesn't always match what is in your sense buffer
             scsiIoCtx->returnStatus.format = scsiIoCtx->psense[0];
@@ -5536,7 +5550,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx *scs
     case XFER_NO_DATA:
         psptd->scsiPassthroughDirect.DataIn = SCSI_IOCTL_DATA_UNSPECIFIED;
         psptd->scsiPassthroughDirect.DataTransferLength = 0;
-        psptd->scsiPassthroughDirect.DataBuffer = NULL;// psptd->SenseBuffer;
+        psptd->scsiPassthroughDirect.DataBuffer = M_NULLPTR;// psptd->SenseBuffer;
         break;
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
@@ -5599,7 +5613,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiI
     case XFER_NO_DATA:
         psptd->scsiPassthrough.DataIn = SCSI_IOCTL_DATA_UNSPECIFIED;
         psptd->scsiPassthrough.DataTransferLength = 0;
-        psptd->scsiPassthrough.DataBufferOffset = offsetof(scsiPassThroughIOStruct, dataBuffer);//this may also be better off as NULL...IDK - TJE
+        psptd->scsiPassthrough.DataBufferOffset = offsetof(scsiPassThroughIOStruct, dataBuffer);//this may also be better off as M_NULLPTR...IDK - TJE
         break;
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
@@ -5673,8 +5687,8 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
         }
         OVERLAPPED overlappedStruct;
         memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-        if (overlappedStruct.hEvent == NULL)
+        overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
+        if (overlappedStruct.hEvent == M_NULLPTR)
         {
             safe_Free(C_CAST(void**, &sptdioDB));
             return OS_PASSTHROUGH_FAILURE;
@@ -5700,7 +5714,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
         }
         stop_Timer(&commandTimer);
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
         if (success)
         {
             // If the operation completes successfully, the return value is nonzero.
@@ -5735,12 +5749,12 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->returnStatus.senseKey = sptdioDB->scsiPassthrough.ScsiStatus;
 
         // Any sense data?
-        if (scsiIoCtx->psense != NULL && scsiIoCtx->senseDataSize > 0)
+        if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0)
         {
             memcpy(scsiIoCtx->psense, sptdioDB->senseBuffer, M_Min(sptdioDB->scsiPassthrough.SenseInfoLength, scsiIoCtx->senseDataSize));
         }
 
-        if (scsiIoCtx->psense != NULL)
+        if (scsiIoCtx->psense != M_NULLPTR)
         {
             //use the format, sensekey, acq, acsq from the sense data buffer we passed in rather than what windows reports...because windows doesn't always match what is in your sense buffer
             scsiIoCtx->returnStatus.format = scsiIoCtx->psense[0];
@@ -5777,7 +5791,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
     memset(&commandTimer, 0, sizeof(seatimer_t));
     bool localAlignedBuffer = false;
     uint8_t *alignedPointer = scsiIoCtx->pdata;
-    uint8_t *localBuffer = NULL;//we need to save this to free up the memory properly later.
+    uint8_t *localBuffer = M_NULLPTR;//we need to save this to free up the memory properly later.
     //Check the alignment...if we need to use a local buffer, we'll use one, then copy the data back
     if (scsiIoCtx->pdata && scsiIoCtx->device->os_info.alignmentMask != 0)
     {
@@ -5812,7 +5826,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
         DWORD scsiPassThroughBufLen = sizeof(scsiPassThroughIOStruct);
         OVERLAPPED overlappedStruct;
         memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
             IOCTL_SCSI_PASS_THROUGH_DIRECT,
@@ -5834,7 +5848,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
         }
         stop_Timer(&commandTimer);
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
         if (success)
         {
             // If the operation completes successfully, the return value is nonzero.
@@ -5868,12 +5882,12 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx)
         }
 
         // Any sense data?
-        if (scsiIoCtx->psense != NULL && scsiIoCtx->senseDataSize > 0)
+        if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0)
         {
             memcpy(scsiIoCtx->psense, sptdio.senseBuffer, M_Min(sptdio.scsiPassthroughDirect.SenseInfoLength, scsiIoCtx->senseDataSize));
         }
 
-        if (scsiIoCtx->psense != NULL)
+        if (scsiIoCtx->psense != M_NULLPTR)
         {
             //use the format, sensekey, acq, acsq from the sense data buffer we passed in rather than what windows reports...because windows doesn't always match what is in your sense buffer
             scsiIoCtx->returnStatus.format = scsiIoCtx->psense[0];
@@ -5994,7 +6008,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx *p_scsiIoCtx, P
         break;
     case XFER_NO_DATA:
         ptrATAPassThroughDirect->DataTransferLength = 0;
-        ptrATAPassThroughDirect->DataBuffer = NULL;
+        ptrATAPassThroughDirect->DataBuffer = M_NULLPTR;
         break;
     default:
         if (VERBOSITY_QUIET < p_scsiIoCtx->device->deviceVerbosity)
@@ -6087,7 +6101,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
     memset(&ataPassThroughDirect, 0, sizeof(ATA_PASS_THROUGH_DIRECT));
     bool localAlignedBuffer = false;
     uint8_t *alignedPointer = scsiIoCtx->pdata;
-    uint8_t *localBuffer = NULL;//we need to save this to free up the memory properly later.
+    uint8_t *localBuffer = M_NULLPTR;//we need to save this to free up the memory properly later.
     //Check the alignment...if we need to use a local buffer, we'll use one, then copy the data back
     if (scsiIoCtx->pdata && scsiIoCtx->device->os_info.alignmentMask != 0)
     {
@@ -6123,7 +6137,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
         SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
         memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
             IOCTL_ATA_PASS_THROUGH_DIRECT,
@@ -6165,7 +6179,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
         if (overlappedStruct.hEvent)
         {
             CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent = NULL;
+            overlappedStruct.hEvent = M_NULLPTR;
         }
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
         if (success)
@@ -6196,7 +6210,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->returnStatus.ascq = 0x1D;//might need to change this later
         //get the rtfrs and put them into a "sense buffer". In other words, fill in the sense buffer with the rtfrs in descriptor format
         //current = 28bit, previous = 48bit
-        if (scsiIoCtx->psense != NULL)//check that the pointer is valid
+        if (scsiIoCtx->psense != M_NULLPTR)//check that the pointer is valid
         {
             if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
             {
@@ -6245,7 +6259,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->returnStatus.asc = 0x20;
         scsiIoCtx->returnStatus.ascq = 0x00;
         //dummy up sense data
-        if (scsiIoCtx->psense != NULL)
+        if (scsiIoCtx->psense != M_NULLPTR)
         {
             memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
             //fill in not supported
@@ -6265,7 +6279,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx *scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_Free(C_CAST(void**, &localBuffer));//This will check if NULL before freeing it, so we shouldn't have any issues.
+    safe_Free(C_CAST(void**, &localBuffer));//This will check if M_NULLPTR before freeing it, so we shouldn't have any issues.
     return ret;
 }
 
@@ -6309,7 +6323,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx *p_scsiIoCtx, ptrAT
         break;
     case XFER_NO_DATA:
         p_t_ata_pt->ataPTCommand.DataTransferLength = 0;
-        p_t_ata_pt->ataPTCommand.DataBufferOffset = offsetof(ATADoubleBufferedIO, dataBuffer);//we always allocate at least 1 byte here...so give it something? Or do we set NULL? Seems to work as is... - TJE
+        p_t_ata_pt->ataPTCommand.DataBufferOffset = offsetof(ATADoubleBufferedIO, dataBuffer);//we always allocate at least 1 byte here...so give it something? Or do we set M_NULLPTR? Seems to work as is... - TJE
         break;
     default:
         if (VERBOSITY_QUIET < p_scsiIoCtx->device->deviceVerbosity)
@@ -6431,7 +6445,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
         SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
         memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
             IOCTL_ATA_PASS_THROUGH,
@@ -6463,7 +6477,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
         if (overlappedStruct.hEvent)
         {
             CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent = NULL;
+            overlappedStruct.hEvent = M_NULLPTR;
         }
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
         if (success)
@@ -6503,7 +6517,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->returnStatus.ascq = 0x1D;//might need to change this later
         //get the rtfrs and put them into a "sense buffer". In other words, fill in the sense buffer with the rtfrs in descriptor format
         //current = 28bit, previous = 48bit
-        if (scsiIoCtx->psense != NULL)//check that the pointer is valid
+        if (scsiIoCtx->psense != M_NULLPTR)//check that the pointer is valid
         {
             if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
             {
@@ -6552,7 +6566,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->returnStatus.asc = 0x20;
         scsiIoCtx->returnStatus.ascq = 0x00;
         //dummy up sense data
-        if (scsiIoCtx->psense != NULL)
+        if (scsiIoCtx->psense != M_NULLPTR)
         {
             memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
             //fill in not supported
@@ -6706,7 +6720,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
         SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
         memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
             IOCTL_IDE_PASS_THROUGH,
@@ -6743,7 +6757,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
         if (overlappedStruct.hEvent)
         {
             CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent = NULL;
+            overlappedStruct.hEvent = M_NULLPTR;
         }
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
         if (success)
@@ -6775,7 +6789,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->returnStatus.ascq = 0x1D;//might need to change this later
         //get the rtfrs and put them into a "sense buffer". In other words, fill in the sense buffer with the rtfrs in descriptor format
         //current = 28bit, previous = 48bit
-        if (scsiIoCtx->psense != NULL)//check that the pointer is valid
+        if (scsiIoCtx->psense != M_NULLPTR)//check that the pointer is valid
         {
             if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
             {
@@ -6815,7 +6829,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->returnStatus.asc = 0x20;
         scsiIoCtx->returnStatus.ascq = 0x00;
         //dummy up sense data
-        if (scsiIoCtx->psense != NULL)
+        if (scsiIoCtx->psense != M_NULLPTR)
         {
             memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
             //fill in not supported
@@ -6908,7 +6922,7 @@ eReturnValues get_Windows_FWDL_IO_Support(tDevice *device, STORAGE_BUS_TYPE busT
         outputData,
         outputDataSize,
         &returned_data,
-        NULL);
+        M_NULLPTR);
     //Got the version info, but that doesn't mean we'll be successful with commands...
     if (fwdlRet)
     {
@@ -6977,13 +6991,13 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     memset(&commandTimer, 0, sizeof(seatimer_t));
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(scsiIoCtx->device->os_info.fd,
         IOCTL_STORAGE_FIRMWARE_ACTIVATE,
         &downloadActivate,
         sizeof(STORAGE_HW_FIRMWARE_ACTIVATE),
-        NULL,
+        M_NULLPTR,
         0,
         &returned_data,
         &overlappedStruct
@@ -7002,7 +7016,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
     }
     //dummy up sense data for end result
     if (fwdlIO)
@@ -7202,13 +7216,13 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     memset(&commandTimer, 0, sizeof(seatimer_t));
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(scsiIoCtx->device->os_info.fd,
         IOCTL_STORAGE_FIRMWARE_DOWNLOAD,
         downloadIO,
         downloadStructureSize,
-        NULL,
+        M_NULLPTR,
         0,
         &returned_data,
         &overlappedStruct
@@ -7227,7 +7241,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx *scsiIoCtx)
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
     }
     //dummy up sense data for end result
     if (fwdlIO)
@@ -7377,12 +7391,12 @@ eReturnValues get_Windows_SMART_IO_Support(tDevice *device)
     memset(&smartVersionInfo, 0, sizeof(GETVERSIONINPARAMS));
     int smartRet = DeviceIoControl(device->os_info.fd,
         SMART_GET_VERSION,
-        NULL,
+        M_NULLPTR,
         0,
         &smartVersionInfo,
         sizeof(GETVERSIONINPARAMS),
         &returned_data,
-        NULL);
+        M_NULLPTR);
     //Got the version info, but that doesn't mean we'll be successful with commands...
     if (smartRet)
     {
@@ -7646,7 +7660,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
         SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
         memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-        overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
             io_For_SMART_Cmd(scsiIoCtx),//This function gets the correct IOCTL for us
@@ -7676,7 +7690,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
         }
         stop_Timer(&commandTimer);
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
         if (success)
         {
@@ -7712,7 +7726,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->returnStatus.ascq = 0x1D;//might need to change this later
         //get the rtfrs and put them into a "sense buffer". In other words, fill in the sense buffer with the rtfrs in descriptor format
         //current = 28bit, previous = 48bit
-        if (scsiIoCtx->psense != NULL)//check that the pointer is valid
+        if (scsiIoCtx->psense != M_NULLPTR)//check that the pointer is valid
         {
             if (scsiIoCtx->senseDataSize >= 22)//check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
             {
@@ -7786,7 +7800,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->returnStatus.asc = 0x20;
         scsiIoCtx->returnStatus.ascq = 0x00;
         //dummy up sense data
-        if (scsiIoCtx->psense != NULL)
+        if (scsiIoCtx->psense != M_NULLPTR)
         {
             memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
             //fill in not supported
@@ -7823,11 +7837,11 @@ eReturnValues os_Device_Reset(tDevice *device)
     device->os_info.last_error = NO_ERROR;
     success = DeviceIoControl(device->os_info.fd,
         OBSOLETE_IOCTL_STORAGE_RESET_DEVICE,
-        NULL,
+        M_NULLPTR,
         0,
-        NULL,
+        M_NULLPTR,
         0,
-        NULL,
+        M_NULLPTR,
         FALSE);
     device->os_info.last_error = GetLastError();
     if (success && device->os_info.last_error == NO_ERROR)
@@ -7883,7 +7897,7 @@ eReturnValues os_Lock_Device(tDevice *device)
 {
     eReturnValues ret = SUCCESS;
     DWORD returnedBytes = 0;
-    if (!DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &returnedBytes, NULL))
+    if (!DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &returnedBytes, M_NULLPTR))
     {
         //This can fail is files are open, it's a system disk, or has a pagefile.
         ret = FAILURE;
@@ -7895,7 +7909,7 @@ eReturnValues os_Unlock_Device(tDevice *device)
 {
     eReturnValues ret = SUCCESS;
     DWORD returnedBytes = 0;
-    if (!DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &returnedBytes, NULL))
+    if (!DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &returnedBytes, M_NULLPTR))
     {
         ret = FAILURE;
     }
@@ -7927,11 +7941,11 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
                 DWORD bytesReturned = 0;
                 TCHAR volumeHandleString[MAX_VOL_STR_LEN] = { 0 };
                 _sntprintf_s(volumeHandleString, MAX_VOL_STR_LEN, _TRUNCATE, TEXT("\\\\.\\%c:"), volumeLetter);
-                volumeHandle = CreateFile(volumeHandleString, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+                volumeHandle = CreateFile(volumeHandleString, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, M_NULLPTR, OPEN_EXISTING, 0, M_NULLPTR);
                 if (INVALID_HANDLE_VALUE != volumeHandle)
                 {
                     BOOL ioctlResult = FALSE, lockResult = FALSE;
-                    lockResult = DeviceIoControl(volumeHandle, FSCTL_LOCK_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL);
+                    lockResult = DeviceIoControl(volumeHandle, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned, M_NULLPTR);
                     if (lockResult == FALSE)
                     {
                         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
@@ -7939,7 +7953,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
                             _tprintf(TEXT("WARNING: Unable to lock volume: %s\n"), volumeHandleString);
                         }
                     }
-                    ioctlResult = DeviceIoControl(volumeHandle, FSCTL_DISMOUNT_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL);
+                    ioctlResult = DeviceIoControl(volumeHandle, FSCTL_DISMOUNT_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned, M_NULLPTR);
                     if (ioctlResult == FALSE)
                     {
                         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
@@ -7950,7 +7964,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
                     }
                     if (lockResult == TRUE)
                     {
-                        ioctlResult = DeviceIoControl(volumeHandle, FSCTL_UNLOCK_VOLUME, NULL, 0, NULL, 0, &bytesReturned, NULL);
+                        ioctlResult = DeviceIoControl(volumeHandle, FSCTL_UNLOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned, M_NULLPTR);
                         if (ioctlResult == FALSE)
                         {
                             if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
@@ -8017,7 +8031,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
             {
                 uint8_t vpdPage[96] = { 0 };//this should be more than big enough for the pages supported on this basic device - TJE
                 uint8_t peripheralDevice = 0;
-                PSTORAGE_DEVICE_DESCRIPTOR deviceDesc = NULL;//needed for scsi device type on all VPD pages - TJE
+                PSTORAGE_DEVICE_DESCRIPTOR deviceDesc = M_NULLPTR;//needed for scsi device type on all VPD pages - TJE
                 vpdPage[0] = peripheralDevice;
                 if (SUCCESS == win_Get_Device_Descriptor(scsiIoCtx->device->os_info.fd, &deviceDesc))
                 {
@@ -8123,7 +8137,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                 //standard inquiry data - use device descriptor data
                 uint8_t inquiryData[96] = { 0 };
                 uint8_t peripheralDevice = 0;
-                PSTORAGE_DEVICE_DESCRIPTOR deviceDesc = NULL;
+                PSTORAGE_DEVICE_DESCRIPTOR deviceDesc = M_NULLPTR;
                 if (scsiIoCtx->cdb[2] == 0)
                 {
                     inquiryData[0] = peripheralDevice;
@@ -8298,9 +8312,9 @@ static eReturnValues wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
             //device geometry IOCTLs for remaining data
             uint8_t readCapacityData[READ_CAPACITY_10_LEN] = { 0 };
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
-            PDISK_GEOMETRY_EX geometryEx = NULL;
-            PDISK_PARTITION_INFO partition = NULL;
-            PDISK_DETECTION_INFO detection = NULL;
+            PDISK_GEOMETRY_EX geometryEx = M_NULLPTR;
+            PDISK_PARTITION_INFO partition = M_NULLPTR;
+            PDISK_DETECTION_INFO detection = M_NULLPTR;
             if (SUCCESS == win_Get_Drive_Geometry_Ex(scsiIoCtx->device->os_info.fd, &geometryEx, &partition, &detection))
             {
                 if ((geometryEx->DiskSize.QuadPart / geometryEx->Geometry.BytesPerSector) > UINT32_MAX)
@@ -8327,7 +8341,7 @@ static eReturnValues wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
             else
 #endif //WINVER >= SEA_WIN32_WINNT_WIN2K
             {
-                PDISK_GEOMETRY geometry = NULL;
+                PDISK_GEOMETRY geometry = M_NULLPTR;
                 if (SUCCESS == win_Get_Drive_Geometry(scsiIoCtx->device->os_info.fd, &geometry))
                 {
                     uint64_t maxLBA = C_CAST(uint64_t, geometry->Cylinders.QuadPart) * geometry->TracksPerCylinder * geometry->SectorsPerTrack;
@@ -8400,13 +8414,13 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
                 //device geometry IOCTLs for remaining data
                 //If Win version great enough, use the access alignment descriptor for block sizes and alignment requirements
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_VISTA
-                PSTORAGE_ACCESS_ALIGNMENT_DESCRIPTOR accessAlignment = NULL;
+                PSTORAGE_ACCESS_ALIGNMENT_DESCRIPTOR accessAlignment = M_NULLPTR;
 #endif //WINVER >= SEA_WIN32_WINNT_VISTA
                 uint8_t readCapacityData[READ_CAPACITY_16_LEN] = { 0 };
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
-                PDISK_GEOMETRY_EX geometryEx = NULL;
-                PDISK_PARTITION_INFO partition = NULL;
-                PDISK_DETECTION_INFO detection = NULL;
+                PDISK_GEOMETRY_EX geometryEx = M_NULLPTR;
+                PDISK_PARTITION_INFO partition = M_NULLPTR;
+                PDISK_DETECTION_INFO detection = M_NULLPTR;
                 if (SUCCESS == win_Get_Drive_Geometry_Ex(scsiIoCtx->device->os_info.fd, &geometryEx, &partition, &detection))
                 {
                     readCapacityData[0] = M_Byte7(C_CAST(uint64_t, geometryEx->DiskSize.QuadPart) / C_CAST(uint64_t, geometryEx->Geometry.BytesPerSector));
@@ -8427,7 +8441,7 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
                 else
 #endif //WINVER >= SEA_WIN32_WINNT_WIN2K
                 {
-                    PDISK_GEOMETRY geometry = NULL;
+                    PDISK_GEOMETRY geometry = M_NULLPTR;
                     if (SUCCESS == win_Get_Drive_Geometry(scsiIoCtx->device->os_info.fd, &geometry))
                     {
                         uint64_t maxLBA = C_CAST(uint64_t, geometry->Cylinders.QuadPart) * geometry->TracksPerCylinder * geometry->SectorsPerTrack;
@@ -9477,7 +9491,7 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
                         uint8_t initializationPatternByte0ReservedBits = 0;//so we can make sure no invalid field was set.
                         uint8_t initializationPatternType = 0;
                         uint16_t initializationPatternLength = 0;
-                        uint8_t* initializationPatternPtr = NULL;
+                        uint8_t* initializationPatternPtr = M_NULLPTR;
                         if (initializationPattern)
                         {
                             //Set up the initialization pattern information since we were given one
@@ -9845,7 +9859,7 @@ eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
             }
             break;
         case RAID_INTERFACE:
-            if (scsiIoCtx->device->issue_io != NULL)
+            if (scsiIoCtx->device->issue_io != M_NULLPTR)
             {
                 ret = scsiIoCtx->device->issue_io(scsiIoCtx);
             }
@@ -9994,7 +10008,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     nvmeIoCtx->device->os_info.last_error = 0;
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     seatimer_t commandTimer;
     DWORD returned_data = 0;
     memset(&commandTimer, 0, sizeof(seatimer_t));
@@ -10021,7 +10035,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
     }
     if (success)
     {
@@ -10100,7 +10114,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
         ret = OS_COMMAND_TIMEOUT;
     }
     _aligned_free(commandBuffer);
-    commandBuffer = NULL;
+    commandBuffer = M_NULLPTR;
     return ret;
 }
 
@@ -10196,13 +10210,13 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
     else
     {
         BOOL    result;
-        PVOID   buffer = NULL;
+        PVOID   buffer = M_NULLPTR;
         ULONG   bufferLength = 0;
         ULONG   returnedLength = 0;
 
-        PSTORAGE_PROPERTY_QUERY query = NULL;
-        PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
-        //PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = NULL;
+        PSTORAGE_PROPERTY_QUERY query = M_NULLPTR;
+        PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = M_NULLPTR;
+        //PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = M_NULLPTR;
 
         //
         // Allocate buffer for use.
@@ -10210,7 +10224,7 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
         bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + NVME_IDENTIFY_DATA_LEN;
         buffer = malloc(bufferLength);
 
-        if (buffer == NULL)
+        if (buffer == M_NULLPTR)
         {
 #if defined (_DEBUG)
             printf("%s: allocate buffer failed, exit", __FUNCTION__);
@@ -10290,7 +10304,7 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx *nvmeIoCtx)
             buffer,
             bufferLength,
             &returnedLength,
-            NULL
+            M_NULLPTR
         );
         stop_Timer(&commandTimer);
         nvmeIoCtx->device->os_info.last_error = GetLastError();
@@ -10367,13 +10381,13 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues returnValue = SUCCESS;
     BOOL result;
-    PVOID buffer = NULL;
+    PVOID buffer = M_NULLPTR;
     ULONG bufferLength = 0;
     ULONG returnedLength = 0;
 
-    PSTORAGE_PROPERTY_QUERY query = NULL;
-    PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
-    PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = NULL;
+    PSTORAGE_PROPERTY_QUERY query = M_NULLPTR;
+    PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = M_NULLPTR;
+    PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = M_NULLPTR;
 
     //
     // Allocate buffer for use.
@@ -10381,7 +10395,7 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
     bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + nvmeIoCtx->dataSize;
     buffer = malloc(bufferLength);
 
-    if (buffer == NULL) {
+    if (buffer == M_NULLPTR) {
 #if defined (_DEBUG)
         printf("%s: allocate buffer failed, exit", __FUNCTION__);
 #endif
@@ -10454,7 +10468,7 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx *nvmeIoCtx)
         buffer,
         bufferLength,
         &returnedLength,
-        NULL
+        M_NULLPTR
     );
     stop_Timer(&commandTimer);
     nvmeIoCtx->device->os_info.last_error = GetLastError();
@@ -10510,13 +10524,13 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
 {
     eReturnValues returnValue = SUCCESS;
     BOOL result;
-    PVOID buffer = NULL;
+    PVOID buffer = M_NULLPTR;
     ULONG bufferLength = 0;
     ULONG returnedLength = 0;
 
-    PSTORAGE_PROPERTY_QUERY query = NULL;
-    PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
-    PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = NULL;
+    PSTORAGE_PROPERTY_QUERY query = M_NULLPTR;
+    PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = M_NULLPTR;
+    PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = M_NULLPTR;
 
     //
     // Allocate buffer for use.
@@ -10525,7 +10539,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
     bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + nvmeGetFtMinSize;
     buffer = malloc(bufferLength);
 
-    if (buffer == NULL) {
+    if (buffer == M_NULLPTR) {
 #if defined (_DEBUG)
         printf("%s: allocate buffer failed, exit", __FUNCTION__);
 #endif
@@ -10567,7 +10581,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx *nvmeIoCtx)
         buffer,
         bufferLength,
         &returnedLength,
-        NULL
+        M_NULLPTR
     );
     stop_Timer(&commandTimer);
     nvmeIoCtx->device->os_info.last_error = GetLastError();
@@ -10649,13 +10663,13 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoC
     memset(&commandTimer, 0, sizeof(seatimer_t));
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
         IOCTL_STORAGE_FIRMWARE_ACTIVATE,
         &downloadActivate,
         sizeof(STORAGE_HW_FIRMWARE_ACTIVATE),
-        NULL,
+        M_NULLPTR,
         0,
         &returned_data,
         &overlappedStruct
@@ -10679,7 +10693,7 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx *nvmeIoC
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
     }
     //dummy up sense data for end result
     if (fwdlIO)
@@ -10783,13 +10797,13 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *n
     memset(&commandTimer, 0, sizeof(seatimer_t));
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
         IOCTL_STORAGE_FIRMWARE_DOWNLOAD,
         downloadIO,
         downloadStructureSize,
-        NULL,
+        M_NULLPTR,
         0,
         &returned_data,
         &overlappedStruct
@@ -10813,7 +10827,7 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx *n
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
     }
     //dummy up sense data for end result
     if (fwdlIO)
@@ -10989,7 +11003,7 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx *nvmeIoCtx)
                 &powerCap,
                 sizeof(STORAGE_DEVICE_POWER_CAP),
                 &returnedBytes,
-                NULL //Overlapped support???
+                M_NULLPTR //Overlapped support???
             );
             stop_Timer(&commandTimer);
             nvmeIoCtx->device->os_info.last_error = GetLastError();
@@ -11059,7 +11073,7 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
         IOCTL_STORAGE_SET_TEMPERATURE_THRESHOLD,
         &tempThresh,
         sizeof(STORAGE_TEMPERATURE_THRESHOLD),
-        NULL,
+        M_NULLPTR,
         0,
         &bytesReturned,
         0
@@ -11156,7 +11170,7 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
             bufferData,
             bufferLength,
             &returnedLength,
-            NULL
+            M_NULLPTR
         );
         start_Timer(&commandTimer);
         nvmeIoCtx->device->os_info.last_error = GetLastError();
@@ -11466,10 +11480,10 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
                 IOCTL_STORAGE_REINITIALIZE_MEDIA,
                 &reinitMedia,
                 sizeof(STORAGE_REINITIALIZE_MEDIA),
-                NULL,
+                M_NULLPTR,
                 0,
                 &returnedLength,
-                NULL
+                M_NULLPTR
             );
             stop_Timer(&commandTimer);
             nvmeIoCtx->device->os_info.last_error = GetLastError();
@@ -11507,12 +11521,12 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
                 }
                 BOOL result = DeviceIoControl(nvmeIoCtx->device->os_info.fd,
                     IOCTL_STORAGE_REINITIALIZE_MEDIA,
-                    NULL,
+                    M_NULLPTR,
                     0,
-                    NULL,
+                    M_NULLPTR,
                     0,
                     &returnedLength,
-                    NULL
+                    M_NULLPTR
                 );
                 stop_Timer(&commandTimer);
                 nvmeIoCtx->device->os_info.last_error = GetLastError();
@@ -11628,7 +11642,7 @@ static eReturnValues win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
         //    //if (pi == 0)
         //    //{
         //    //    //send without parameter data
-        //    //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, NULL, 0, 0, 60);
+        //    //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, M_NULLPTR, 0, 0, 60);
         //    //}
         //    //else
         //    //{
@@ -11654,7 +11668,7 @@ static eReturnValues win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
         //    //    return OS_COMMAND_NOT_AVAILABLE;
         //    //}
         //    //formatParameterData[0] = M_GETBITRANGE(piUsage, 2, 0);
-        //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, NULL, 0, 0, 60);
+        //    ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, M_NULLPTR, 0, 0, 60);
         //    //}
         //}
     }
@@ -11672,7 +11686,7 @@ static eReturnValues win10_Translate_Write_Uncorrectable(nvmeCmdCtx *nvmeIoCtx)
     uint64_t lba = M_BytesTo8ByteValue(M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
     for (uint16_t iter = 0; iter < (M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1); ++iter)//+1 because nvme uses a zero based range value
     {
-        eReturnValues individualCommandRet = scsi_Write_Long_16(nvmeIoCtx->device, true, false, false, lba + iter, 0, NULL);
+        eReturnValues individualCommandRet = scsi_Write_Long_16(nvmeIoCtx->device, true, false, false, lba + iter, 0, M_NULLPTR);
         if (individualCommandRet != SUCCESS)
         {
             //This is making sure we don't have a bad command followed by a good command, then missing a bad status code
@@ -12313,13 +12327,13 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues returnValue = SUCCESS;
     BOOL result;
-    PVOID buffer = NULL;
+    PVOID buffer = M_NULLPTR;
     ULONG bufferLength = 0;
     ULONG returnedLength = 0;
 
-    PSTORAGE_PROPERTY_QUERY query = NULL;
-    PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
-    PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = NULL;
+    PSTORAGE_PROPERTY_QUERY query = M_NULLPTR;
+    PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = M_NULLPTR;
+    PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = M_NULLPTR;
 
     //
     // Allocate buffer for use.
@@ -12327,7 +12341,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx)
     bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + scsiIoCtx->dataLength;
     buffer = malloc(bufferLength);
 
-    if (buffer == NULL) {
+    if (buffer == M_NULLPTR) {
 #if defined (_DEBUG)
         printf("%s: allocate buffer failed, exit", __FUNCTION__);
 #endif
@@ -12369,7 +12383,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx *scsiIoCtx)
         buffer,
         bufferLength,
         &returnedLength,
-        NULL
+        M_NULLPTR
     );
     stop_Timer(&commandTimer);
     scsiIoCtx->device->os_info.last_error = GetLastError();
@@ -12420,13 +12434,13 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues returnValue = SUCCESS;
     BOOL result;
-    PVOID buffer = NULL;
+    PVOID buffer = M_NULLPTR;
     ULONG bufferLength = 0;
     ULONG returnedLength = 0;
 
-    PSTORAGE_PROPERTY_QUERY query = NULL;
-    PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = NULL;
-    PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = NULL;
+    PSTORAGE_PROPERTY_QUERY query = M_NULLPTR;
+    PSTORAGE_PROTOCOL_SPECIFIC_DATA protocolData = M_NULLPTR;
+    PSTORAGE_PROTOCOL_DATA_DESCRIPTOR protocolDataDescr = M_NULLPTR;
 
     //
     // Allocate buffer for use.
@@ -12434,7 +12448,7 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
     bufferLength = FIELD_OFFSET(STORAGE_PROPERTY_QUERY, AdditionalParameters) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA) + scsiIoCtx->dataLength + 4096;
     buffer = malloc(bufferLength);
 
-    if (buffer == NULL) {
+    if (buffer == M_NULLPTR) {
 #if defined (_DEBUG)
         printf("%s: allocate buffer failed, exit", __FUNCTION__);
 #endif
@@ -12476,7 +12490,7 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx *scsiIoCtx)
         buffer,
         bufferLength,
         &returnedLength,
-        NULL
+        M_NULLPTR
     );
     stop_Timer(&commandTimer);
     scsiIoCtx->device->os_info.last_error = GetLastError();
@@ -12718,7 +12732,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         }
         break;
     case RAID_INTERFACE:
-        if (nvmeIoCtx->device->issue_nvme_io != NULL)
+        if (nvmeIoCtx->device->issue_nvme_io != M_NULLPTR)
         {
             ret = nvmeIoCtx->device->issue_nvme_io(nvmeIoCtx);
         }
@@ -12802,7 +12816,7 @@ eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uin
 static eReturnValues open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->os_info.forceUnitAccessRWfd == NULL || device->os_info.forceUnitAccessRWfd == INVALID_HANDLE_VALUE)
+    if (device->os_info.forceUnitAccessRWfd == M_NULLPTR || device->os_info.forceUnitAccessRWfd == INVALID_HANDLE_VALUE)
     {
         //handle is not yet opened
         //FILE_FLAG_NO_BUFFERING - this is for the operating system/file system caching. NOT THE DISK!
@@ -12812,12 +12826,12 @@ static eReturnValues open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice*
         TCHAR fuaDevice[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
         TCHAR* ptrFuaDevice = &fuaDevice[0];
         _stprintf_s(fuaDevice, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), device->os_info.name);
-        device->os_info.forceUnitAccessRWfd = CreateFile(ptrFuaDevice, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+        device->os_info.forceUnitAccessRWfd = CreateFile(ptrFuaDevice, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, M_NULLPTR, OPEN_EXISTING,
             FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING |
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
             FILE_FLAG_OVERLAPPED,
 #endif
-            NULL);
+            M_NULLPTR);
         if (device->os_info.forceUnitAccessRWfd == INVALID_HANDLE_VALUE)
         {
             ret = NOT_SUPPORTED;//Or should this be set to failure??? - TJE
@@ -13051,7 +13065,7 @@ eReturnValues os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8
     memset(&commandTimer, 0, sizeof(seatimer_t));
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     overlappedStruct.Offset = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
     overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -13076,7 +13090,7 @@ eReturnValues os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
     }
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
@@ -13092,7 +13106,7 @@ eReturnValues os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
     }
-    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != NULL)
+    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != M_NULLPTR)
     {
         printf("\t  Data Buffer being returned:\n");
         print_Data_Buffer(ptrData, dataSize, true);
@@ -13176,11 +13190,11 @@ eReturnValues os_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint
     memset(&commandTimer, 0, sizeof(seatimer_t));
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     overlappedStruct.Offset = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
     overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
-    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != NULL)
+    if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != M_NULLPTR)
     {
         printf("\t  Data Buffer being sent:\n");
         print_Data_Buffer(ptrData, dataSize, true);
@@ -13205,7 +13219,7 @@ eReturnValues os_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint
     stop_Timer(&commandTimer);
     device->os_info.last_error = GetLastError();
     CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-    overlappedStruct.hEvent = NULL;
+    overlappedStruct.hEvent = M_NULLPTR;
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
     if (!retStatus)//not successful
@@ -13267,7 +13281,7 @@ eReturnValues os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     DWORD returnedBytes = 0;
     OVERLAPPED overlappedStruct;
     memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     overlappedStruct.Offset = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
     overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
@@ -13276,7 +13290,7 @@ eReturnValues os_Verify(tDevice *device, uint64_t lba, uint32_t range)
         IOCTL_DISK_VERIFY,
         &verifyCmd,
         sizeof(VERIFY_INFORMATION),
-        NULL,
+        M_NULLPTR,
         0,
         &returnedBytes,
         &overlappedStruct);
@@ -13302,7 +13316,7 @@ eReturnValues os_Verify(tDevice *device, uint64_t lba, uint32_t range)
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = NULL;
+        overlappedStruct.hEvent = M_NULLPTR;
     }
     ret = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(verifyTimer);

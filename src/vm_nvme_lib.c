@@ -10,6 +10,16 @@
 //
 // ******************************************************************************************
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -20,7 +30,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
-#include "common.h"
+#include "common_types.h"
 
 #include "vm_nvme_lib.h"
 
@@ -42,7 +52,7 @@ struct nvme_adapter_list adapterList;
  *
  * @param [in] name name of the vmhba
  *
- * @return pointer to the device handle if successful; NULL specified vmhba
+ * @return pointer to the device handle if successful; M_NULLPTR specified vmhba
  *         is not a valid NVM Express device.
  */
 struct nvme_handle *
@@ -54,23 +64,23 @@ Nvme_Open(struct nvme_adapter_list *adapters, const char *name)
    int i;
    int rc;
 
-   assert(adapters != NULL);
-   assert(name != NULL);
+   assert(adapters != M_NULLPTR);
+   assert(name != M_NULLPTR);
 
-   adapter = NULL;
+   adapter = M_NULLPTR;
    for (i = 0; i < adapters->count; i++) {
       if (strcmp(name, adapters->adapters[i].name) == 0) {
          adapter = &adapters->adapters[i];
          break;
       }
    }
-   if (adapter == NULL) {
-      return NULL;
+   if (adapter == M_NULLPTR) {
+      return M_NULLPTR;
    }
 
    handle = C_CAST(struct nvme_handle *, malloc(sizeof(*handle)));
    if (!handle) {
-      return NULL;
+      return M_NULLPTR;
    }
 
    snprintf(handle->name, VMK_MISC_NAME_MAX, "%s", name);
@@ -84,7 +94,7 @@ Nvme_Open(struct nvme_adapter_list *adapters, const char *name)
    rc = vmk_MgmtUserInit(&signature, 0LL, &handle->handle);
    if (rc) {
       free(handle);
-      return NULL;
+      return M_NULLPTR;
    }
 
    return handle;
@@ -101,7 +111,7 @@ Nvme_Close(struct nvme_handle *handle)
 {
    assert(handle);
 
-   if (!handle || handle->handle == NULL) {
+   if (!handle || handle->handle == M_NULLPTR) {
       return;
    }
 
@@ -125,7 +135,7 @@ Nvme_GetAdapterList(struct nvme_adapter_list *list)
    vmk_MgmtUserHandle driverHandle;
    int rc;
 
-   assert(list != NULL);
+   assert(list != M_NULLPTR);
 
    rc = vmk_MgmtUserInit(&globalSignature, 0LL, &driverHandle);
    if (rc) {
@@ -364,7 +374,7 @@ int Nvme_FWLoadImage(char *fw_path, void **fw_buf, int *fw_size)
    }
 
    fw_file_size = C_CAST(int, sb.st_size);
-   if ((*fw_buf = malloc(fw_file_size)) == NULL) {//need to free!!!!
+   if ((*fw_buf = malloc(fw_file_size)) == M_NULLPTR) {//need to free!!!!
       fprintf (stderr, "ERROR: Failed to malloc %d bytes.\n", fw_file_size);
       if (close (fd) == -1) {
          fprintf (stderr, "ERROR: Failed to close fd: %d.\n", fd);
@@ -409,7 +419,7 @@ int Nvme_FWDownload(struct nvme_handle *handle, int slot,  unsigned char *rom_bu
    int rc;
    void *chunk;
 
-   if ((chunk = malloc(NVME_MAX_XFER_SIZE)) == NULL) {
+   if ((chunk = malloc(NVME_MAX_XFER_SIZE)) == M_NULLPTR) {
       fprintf(stderr, "ERROR: Failed to malloc %d bytes.\n", NVME_MAX_XFER_SIZE);
       return -ENOMEM;
    }
