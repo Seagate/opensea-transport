@@ -35,14 +35,11 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wundef',
   '-Wformat',
   '-Wformat=2',
-  #'-Wconversion',
   '-Wsign-conversion',
   '-Wint-conversion',#-Warith-conversion
   '-Wenum-conversion',
   '-Wfloat-conversion',
   '-Wimplicit-fallthrough',
-  '-U_FORTIFY_SOURCE',
-  '-D_FORTIFY_SOURCE=3',
   '-D_GLIBCXX_ASSERTIONS',
   '-fstrict-flex-arrays=1', #NOTE: Using level 1 since Windows often uses [1] at the end of it's structures. opensea-*libs has used this in a few places too.
   '-fstack-protector-strong',
@@ -56,7 +53,7 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Werror=int-conversion',
   '-Woverlength-strings',
   '-Wnewline-eof',
-  '-Wno-c23-extensions',
+  '-Wno-c23-extensions', #We do not want this warning since we are already checking for when C23 extensions are available before we use them. If not, we use a compiler specific definition, or make it an empty definition.
   '-Wparentheses',
   '-Wextra-semi',
   '-Wcast-qual'
@@ -88,6 +85,16 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
     '-Wl,-z,relro',
     '-Wl,-z,now'
   ]
+
+  fortifytest = ''' #include <stdio.h>
+                      int main() {
+                          return 0;
+                      }
+                  '''
+  fortifyresult = c.compiles(fortifytest, name : '_FORTIFY_SOURCE override', args : ['-U_FORTIFY_SOURCE', '-D_FORTIFY_SOURCE=5', '-Werror'])
+  if fortifyresult == true
+    warning_flags += ['-U_FORTIFY_SOURCE', '-D_FORTIFY_SOURCE=3']
+  endif
 elif c.get_id().contains('msvc')
   #See here for enabling/disabling msvc warnings:
   #https://learn.microsoft.com/en-us/cpp/build/reference/compiler-option-warning-level?view=msvc-170
