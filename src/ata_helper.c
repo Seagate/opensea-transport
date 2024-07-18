@@ -1251,7 +1251,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
             //word 117 is only valid when word 106 bit 12 is set
             if ((ident_word[106] & BIT12) == BIT12)
             {
-                *fillLogicalSectorSize = M_BytesTo2ByteValue(ident_word[118], ident_word[117]);
+                *fillLogicalSectorSize = M_WordsTo4ByteValue(ident_word[118], ident_word[117]);
                 *fillLogicalSectorSize *= 2; //convert to words to bytes
             }
             else //means that logical sector size is 512bytes
