@@ -3450,7 +3450,7 @@ static int translate_SCSI_Read_Capacity_Command(tDevice *device, bool readCapaci
 {
     int ret = SUCCESS;
     uint64_t maxLBA = 0;
-    uint16_t logicalSectorSize = 0;
+    uint32_t logicalSectorSize = 0;
     uint8_t physicalSectorSizeExponent = 0;
     uint16_t sectorAlignment = 0;
     uint16_t fieldPointer = 0;
@@ -3618,7 +3618,7 @@ static int translate_SCSI_Read_Capacity_Command(tDevice *device, bool readCapaci
             //word 117 is only valid when word 106 bit 12 is set
             if ((ident_word[106] & BIT12) == BIT12)
             {
-                logicalSectorSize = M_BytesTo2ByteValue(ident_word[118], ident_word[117]);
+                logicalSectorSize = M_WordsTo4ByteValue(ident_word[118], ident_word[117]);
                 logicalSectorSize *= 2; //convert to words to bytes
             }
             else //means that logical sector size is 512bytes
