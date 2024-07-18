@@ -309,7 +309,7 @@ eReturnValues nvme_Security_Send(tDevice *device, uint8_t securityProtocol, uint
     adminCommand.cmd.adminCmd.addr = C_CAST(uintptr_t, ptrData);
     adminCommand.ptrData = ptrData;
     adminCommand.dataSize = dataLength;
-    adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Word1(securityProtocolSpecific), M_Word0(securityProtocolSpecific), nvmeSecuritySpecificField);
+    adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Byte1(securityProtocolSpecific), M_Byte0(securityProtocolSpecific), nvmeSecuritySpecificField);
     adminCommand.cmd.adminCmd.cdw11 = dataLength;
     adminCommand.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -337,7 +337,7 @@ eReturnValues nvme_Security_Receive(tDevice *device, uint8_t securityProtocol, u
     adminCommand.cmd.adminCmd.addr = C_CAST(uintptr_t, ptrData);
     adminCommand.ptrData = ptrData;
     adminCommand.dataSize = dataLength;
-    adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Word1(securityProtocolSpecific), M_Word0(securityProtocolSpecific), nvmeSecuritySpecificField);
+    adminCommand.cmd.adminCmd.cdw10 = M_BytesTo4ByteValue(securityProtocol, M_Byte1(securityProtocolSpecific), M_Byte0(securityProtocolSpecific), nvmeSecuritySpecificField);
     adminCommand.cmd.adminCmd.cdw11 = dataLength;
     adminCommand.timeout = 15;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
