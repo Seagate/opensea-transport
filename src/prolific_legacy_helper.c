@@ -96,7 +96,7 @@ eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughComm
     }
     uint8_t cdb[CDB_LEN_6] = { 0 };
     uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
-    uint8_t returnData[16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 16);
     cdb[OPERATION_CODE] = PROLIFIC_GET_REGISTERS_OPCODE;
     cdb[1] = RESERVED;
     cdb[2] = RESERVED;

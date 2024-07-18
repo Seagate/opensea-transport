@@ -106,7 +106,7 @@ eReturnValues get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *
         return commandRet;
     }
     uint8_t cdb[CDB_LEN_16] = { 0 };
-    uint8_t returnData[11] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 11);
     uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
     cdb[OPERATION_CODE] = NEC_READ_OPCODE;
     cdb[1] = NEC_WRAPPER_SIGNATURE;

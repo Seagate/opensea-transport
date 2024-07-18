@@ -1082,9 +1082,9 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
                 uint32_t totalDrives = C_CAST(uint32_t, (configLength - UINT32_C(36)) / sizeof(CSMI_SAS_RAID_DRIVES));//36 bytes prior to drive data
                 for (uint32_t iter = 0; iter < totalDrives && iter < config->bDriveCount; ++iter)
                 {
-                    char model[41] = { 0 };
-                    char firmware[9] = { 0 };
-                    char serialNumber[41] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(char, model, 41);
+                    DECLARE_ZERO_INIT_ARRAY(char, firmware, 9);
+                    DECLARE_ZERO_INIT_ARRAY(char, serialNumber, 41);
                     memcpy(model, config->Drives[iter].bModel, 40);
                     memcpy(firmware, config->Drives[iter].bFirmware, 8);
                     memcpy(serialNumber, config->Drives[iter].bSerialNumber, 40);
@@ -3158,7 +3158,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                             if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SATA || phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_STP)
                             {
                                 //ATA identify
-                                uint8_t identifyData[512] = { 0 };
+                                DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, 512);
                                 ataPassthroughCommand identify;
                                 memset(&identify, 0, sizeof(ataPassthroughCommand));
                                 identify.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
@@ -3201,7 +3201,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                             else if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SSP)
                             {
                                 //SCSI Inquiry and read unit serial number VPD page
-                                uint8_t inqData[96] = { 0 };
+                                DECLARE_ZERO_INIT_ARRAY(uint8_t, inqData, 96);
                                 uint8_t cdb[CDB_LEN_6] = { 0 };
                                 cdb[OPERATION_CODE] = INQUIRY_CMD;
                                 /*if (evpd)
@@ -3224,9 +3224,9 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                                 {
                                     //TODO: If this is a multi-LUN device, this won't currently work and it may not be possible to make this work if we got to this case in the first place. HOPEFULLY the other CSMI translation IOCTLs just work and this is unnecessary. - TJE
                                     //If MN matches, send inquiry to unit SN vpd page to confirm we have a matching SN
-                                    char inqVendor[9] = { 0 };
-                                    char inqProductID[17] = { 0 };
-                                    //char inqProductRev[5] = { 0 };
+                                    DECLARE_ZERO_INIT_ARRAY(char, inqVendor, 9);
+                                    DECLARE_ZERO_INIT_ARRAY(char, inqProductID, 17);
+                                    //DECLARE_ZERO_INIT_ARRAY(char, inqProductRev, 5);
                                     //copy the strings
                                     memcpy(inqVendor, &inqData[8], 8);
                                     memcpy(inqProductID, &inqData[16], 16);
@@ -3897,7 +3897,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
             {
                 //Found the driver's parameters. Now search for CSMI DWORD for port drivers
                 DWORD storportdataLen = 4;
-                BYTE storportregData[4] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(BYTE, storportregData, 4);
                 TCHAR* storportvalueName = TEXT("CSMI");
                 DWORD storportvalueType = REG_DWORD;
                 LSTATUS regQueryStatus = RegQueryValueEx(keyHandle, storportvalueName, M_NULLPTR, &storportvalueType, storportregData, &storportdataLen);
@@ -4301,7 +4301,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
                                         if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SATA || phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_STP)
                                         {
                                             //ATA identify
-                                            uint8_t identifyData[512] = { 0 };
+                                            DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, 512);
                                             ataPassthroughCommand identify;
                                             memset(&identify, 0, sizeof(ataPassthroughCommand));
                                             identify.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
@@ -4342,7 +4342,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
                                         else if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SSP)
                                         {
                                             //SCSI Inquiry and read unit serial number VPD page
-                                            uint8_t inqData[96] = { 0 };
+                                            DECLARE_ZERO_INIT_ARRAY(uint8_t, inqData, 96);
                                             uint8_t cdb[CDB_LEN_6] = { 0 };
                                             cdb[OPERATION_CODE] = INQUIRY_CMD;
                                             /*if (evpd)
@@ -4832,8 +4832,8 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
     #if defined (CSMI_DEBUG)
                                                                         printf("GDL: No SASAddress, so matching with identify command\n");
     #endif //CSMI_DEBUG
-                                                                        char csmiRaidDevModel[41] = { 0 };
-                                                                        char csmiRaidDevSerial[41] = { 0 };
+                                                                        DECLARE_ZERO_INIT_ARRAY(char, csmiRaidDevModel, 41);
+                                                                        DECLARE_ZERO_INIT_ARRAY(char, csmiRaidDevSerial, 41);
                                                                         snprintf(csmiRaidDevModel, 41, "%s", csmiRAIDConfig->Configuration.Drives[iter].bModel);
                                                                         snprintf(csmiRaidDevSerial, 41, "%s", csmiRAIDConfig->Configuration.Drives[iter].bSerialNumber);
                                                                         remove_Leading_And_Trailing_Whitespace(csmiRaidDevModel);
@@ -4873,7 +4873,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                         if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SATA || phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_STP)
                                                                         {
                                                                             //ATA identify
-                                                                            uint8_t identifyData[512] = { 0 };
+                                                                            DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, 512);
                                                                             ataPassthroughCommand identify;
                                                                             memset(&identify, 0, sizeof(ataPassthroughCommand));
                                                                             identify.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
@@ -4950,7 +4950,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                         else if (phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol & CSMI_SAS_PROTOCOL_SSP)
                                                                         {
                                                                             //SCSI Inquiry and read unit serial number VPD page
-                                                                            uint8_t inqData[96] = { 0 };
+                                                                            DECLARE_ZERO_INIT_ARRAY(uint8_t, inqData, 96);
                                                                             uint8_t cdb[CDB_LEN_6] = { 0 };
                                                                             cdb[OPERATION_CODE] = INQUIRY_CMD;
                                                                             /*if (evpd)
@@ -4973,10 +4973,10 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                             {
                                                                                 //TODO: If this is a multi-LUN device, this won't currently work and it may not be possible to make this work if we got to this case in the first place. HOPEFULLY the other CSMI translation IOCTLs just work and this is unnecessary. - TJE
                                                                                 //If MN matches, send inquiry to unit SN vpd page to confirm we have a matching SN
-                                                                                char inqVendor[9] = { 0 };
-                                                                                char inqProductID[17] = { 0 };
-                                                                                char vidCatPid[41] = { 0 };
-                                                                                //char inqProductRev[5] = { 0 };
+                                                                                DECLARE_ZERO_INIT_ARRAY(char, inqVendor, 9);
+                                                                                DECLARE_ZERO_INIT_ARRAY(char, inqProductID, 17);
+                                                                                DECLARE_ZERO_INIT_ARRAY(char, vidCatPid, 41);
+                                                                                //DECLARE_ZERO_INIT_ARRAY(char, inqProductRev, 5);
                                                                                 //copy the strings
                                                                                 memcpy(inqVendor, &inqData[8], 8);
                                                                                 memcpy(inqProductID, &inqData[16], 16);
@@ -5271,7 +5271,7 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
     csmiSTPIn stpInputs;
     csmiSTPOut stpOutputs;
     sataH2DFis h2dFis;
-    uint8_t statusFIS[20] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, statusFIS, 20);
     seatimer_t stpTimer;
     memset(&stpInputs, 0, sizeof(csmiSTPIn));
     memset(&stpOutputs, 0, sizeof(csmiSTPOut));

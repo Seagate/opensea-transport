@@ -1211,7 +1211,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
             versionBlock version;
             if (!deviceList)
             {
-                char errorMessage[50] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(char, errorMessage, 50);
                 snprintf(errorMessage, 50, "calloc failure in scan to get %" PRIu32 " devices!", deviceCount);
                 perror(errorMessage);
                 return;

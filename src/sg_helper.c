@@ -480,7 +480,7 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
                         {
                             printf("versionFileData = %s\n", versionFileData);
                             snprintf(sysFsInfo->driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%s", versionFileData);
-                            uint32_t versionList[4] = { 0 };
+                            DECLARE_ZERO_INIT_ARRAY(uint32_t, versionList, 4);
                             uint8_t versionCount = 0;
                             if (get_Driver_Version_Info_From_String(versionFileData, versionList, 4, &versionCount))
                             {
@@ -2886,7 +2886,7 @@ static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
         return FAILURE;
     }
     //found a namespace. Need to open a controller handle instead and use it.
-    char controllerHandle[40] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, controllerHandle, 40);
     snprintf(controllerHandle, 40, "/dev/nvme%lu", controller);
     if ((handleToReset = open(controllerHandle, O_RDWR | O_NONBLOCK)) < 0)
     {

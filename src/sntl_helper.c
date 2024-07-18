@@ -786,7 +786,7 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *dev
     uint16_t pageLength = 0;
     bool eui64nonZero = false;
     bool nguidnonZero = false;
-    uint8_t zeros[16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, zeros, 16);
     unitSerialNumber[0] = 0;
     unitSerialNumber[1] = UNIT_SERIAL_NUMBER;
     //Check EUI64 and NGUID fields to see if non-zero
@@ -813,7 +813,7 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *dev
             }
             else
             {
-                char shortString[3] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(char, shortString, 3);
                 snprintf(shortString, 3, "%02" PRIX8, device->drive_info.IdentifyData.nvme.ns.eui64[euiOffset]);
                 unitSerialNumber[offset] = C_CAST(uint8_t, shortString[0]);
                 unitSerialNumber[offset + 1] = C_CAST(uint8_t, shortString[1]);
@@ -838,7 +838,7 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *dev
             }
             else
             {
-                char shortString[3] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(char, shortString, 3);
                 snprintf(shortString, 3, "%02" PRIX8, device->drive_info.IdentifyData.nvme.ns.nguid[nguidOffset]);
                 unitSerialNumber[offset] = C_CAST(uint8_t, shortString[0]);
                 unitSerialNumber[offset + 1] = C_CAST(uint8_t, shortString[1]);
@@ -893,7 +893,7 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *dev
 static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t zeros[16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, zeros, 16);
     //naa designator
     uint8_t naaDesignatorLength = 0;//will be set if drive supports the WWN
     uint8_t *naaDesignator = M_NULLPTR;
@@ -1400,7 +1400,7 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *
 static eReturnValues sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t extendedInquiry[64] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, extendedInquiry, 64);
     extendedInquiry[0] = 0;
     extendedInquiry[1] = EXTENDED_INQUIRY_DATA;
     extendedInquiry[2] = 0x00;
@@ -1481,7 +1481,7 @@ static eReturnValues sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice *
 static eReturnValues sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t blockLimits[64] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, blockLimits, 64);
     blockLimits[0] = 0;
     blockLimits[1] = 0xB0;
     blockLimits[2] = 0x00;
@@ -1565,7 +1565,7 @@ static eReturnValues sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice *device, S
 static eReturnValues sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t blockDeviceCharacteriticsPage[64] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, blockDeviceCharacteriticsPage, 64);
     bool setRotationRate = false;
     blockDeviceCharacteriticsPage[0] = 0;
     blockDeviceCharacteriticsPage[1] = BLOCK_DEVICE_CHARACTERISTICS;
@@ -1591,7 +1591,7 @@ static eReturnValues sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(Sc
                 if (rotMediaSup & BIT0)
                 {
                     //rotational media log is supported.
-                    uint8_t rotMediaInfo[512] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(uint8_t, rotMediaInfo, 512);
                     nvmeGetLogPageCmdOpts rotationMediaLog;
                     memset(&rotationMediaLog, 0, sizeof(nvmeGetLogPageCmdOpts));
                     rotationMediaLog.addr = rotMediaInfo;
@@ -1634,7 +1634,7 @@ static eReturnValues sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(Sc
 static eReturnValues sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t logicalBlockProvisioning[8] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logicalBlockProvisioning, 8);
     logicalBlockProvisioning[0] = 0;
     logicalBlockProvisioning[1] = 0xB2;
     logicalBlockProvisioning[2] = 0x00;
@@ -1761,7 +1761,7 @@ static eReturnValues sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIo
         }
         else
         {
-            uint8_t inquiryData[96] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, inquiryData, 96);
             //standard inquiry data
             if (scsiIoCtx->cdb[2] != 0)//if page code is non-zero, we need to return an error
             {
@@ -1950,7 +1950,7 @@ static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(tDevice *device, 
         //set the data in the buffer
         if (readCapacity16)
         {
-            uint8_t readCapacityData[32] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, readCapacityData, 32);
             readCapacityData[0] = M_Byte7(maxLBA);
             readCapacityData[1] = M_Byte6(maxLBA);
             readCapacityData[2] = M_Byte5(maxLBA);
@@ -2111,10 +2111,10 @@ static eReturnValues sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoC
 static eReturnValues sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t temperatureLog[16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, temperatureLog, 16);
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t offset = 4;
-    uint8_t logPage[512] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
     uint8_t senseKeySpecificDescriptor[SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
@@ -2201,10 +2201,10 @@ static eReturnValues sntl_Translate_Temperature_Log_0x0D(tDevice *device, ScsiIo
 static eReturnValues sntl_Translate_Solid_State_Media_Log_0x11(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t solidStateMediaLog[12] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, solidStateMediaLog, 12);
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t offset = 4;
-    uint8_t logPage[512] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
     uint8_t senseKeySpecificDescriptor[SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
@@ -2265,8 +2265,8 @@ static eReturnValues sntl_Translate_Solid_State_Media_Log_0x11(tDevice *device, 
 static eReturnValues sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t informationalExceptions[11] = { 0 };
-    uint8_t logPage[512] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, informationalExceptions, 11);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
     nvmeGetLogPageCmdOpts getSMARTHealthData;
     memset(&getSMARTHealthData, 0, sizeof(nvmeGetLogPageCmdOpts));
     getSMARTHealthData.addr = logPage;
@@ -2323,10 +2323,10 @@ static eReturnValues sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice
 static eReturnValues sntl_Translate_Background_Scan_Results_Log_0x15(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t backgroundResults[20] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, backgroundResults, 20);
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t offset = 4;
-    uint8_t logPage[512] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
     uint8_t senseKeySpecificDescriptor[SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
@@ -2402,10 +2402,10 @@ static eReturnValues sntl_Translate_Background_Scan_Results_Log_0x15(tDevice *de
 static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t generalStatisticsAndPerformance[72] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, generalStatisticsAndPerformance, 72);
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t offset = 4;
-    uint8_t logPage[512] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
     uint8_t senseKeySpecificDescriptor[SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH] = { 0 };
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
@@ -2546,7 +2546,7 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
 static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t startStopLog[20] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, startStopLog, 20);
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t senseKeySpecificDescriptor[SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH] = { 0 };
     uint8_t bitPointer = 0;
@@ -2586,7 +2586,7 @@ static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(tDevice* device, S
                 if (rotMediaSup & BIT0)
                 {
                     //rotational media log is supported.
-                    uint8_t rotMediaInfo[512] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(uint8_t, rotMediaInfo, 512);
                     nvmeGetLogPageCmdOpts rotationMediaLog;
                     memset(&rotationMediaLog, 0, sizeof(nvmeGetLogPageCmdOpts));
                     rotationMediaLog.addr = rotMediaInfo;
@@ -2665,7 +2665,7 @@ static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(tDevice* device, S
 static eReturnValues sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t selfTestResults[404] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, selfTestResults, 404);
     uint16_t parameterCode = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t senseKeySpecificDescriptor[SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH] = { 0 };
     uint8_t bitPointer = 0;
@@ -2689,7 +2689,7 @@ static eReturnValues sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, 
     selfTestResults[2] = 0x01;
     selfTestResults[3] = 0x90;
     //read the nvme log page
-    uint8_t nvmDSTLog[564] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, nvmDSTLog, 564);
     nvmeGetLogPageCmdOpts dstLog;
     memset(&dstLog, 0, sizeof(nvmeGetLogPageCmdOpts));
     dstLog.nsid = NVME_ALL_NAMESPACES;
@@ -3789,7 +3789,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Sense_Command(tDevice *device, Scs
     uint8_t subpageCode = scsiIoCtx->cdb[3];
     uint16_t allocationLength = 0;
     uint8_t dataBlockDescriptor[SNTL_DATA_BLOCK_DESCRIPTOR_MAX_LENGTH] = { 0 };
-    uint8_t modeParameterHeader[8] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, modeParameterHeader, 8);
     bool invalidField = false;
     uint8_t senseKeySpecificDescriptor[SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH] = { 0 };
     uint8_t bitPointer = 0;
@@ -5452,7 +5452,7 @@ static eReturnValues sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice *device
     if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
     {
         //sanitize is supported. Check if sanitize is currently running or not
-        uint8_t logPage[512] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
         nvmeGetLogPageCmdOpts sanitizeLog;
         memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
         sanitizeLog.addr = logPage;
@@ -6456,7 +6456,7 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, 
     if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
     {
         //sanitize is supported. Check if sanitize is currently running or not
-        uint8_t logPage[512] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
         nvmeGetLogPageCmdOpts sanitizeLog;
         memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
         sanitizeLog.addr = logPage;
@@ -6491,7 +6491,7 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(tDevice *device, 
     //NOTE: DST progress should only report like this under request sense. In test unit ready, DST in progress should only happen for foreground mode (i.e. captive) which isn't supported on NVMe
     if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)//DST is supported
     {
-        uint8_t logPage[564] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 564);
         nvmeGetLogPageCmdOpts dstLog;
         memset(&dstLog, 0, sizeof(nvmeGetLogPageCmdOpts));
         dstLog.addr = logPage;
@@ -7000,7 +7000,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(tDevice * device, Scs
         //NOTE: NVMe spec doesn't mention the unreg bit or the relative target port identifier...should it be an error?
         //now translate to the register command with the correct inputs for the NVMe data
         //iekey = 0, rrega = 010 (replace)
-        uint8_t buffer[16] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, buffer, 16);
         uint8_t changeThroughPowerLoss = 0;//no change
         //set the reservation key
         buffer[0] = scsiIoCtx->pdata[7];
@@ -7070,8 +7070,8 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(tDevice * device, Scs
         case 0://register
         case 6://register and ignore existing key
         {
-            uint8_t buffer[16] = { 0 };
-            uint8_t zeros[8] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, buffer, 16);
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, zeros, 8);
             //iekey = 0. (register), iekey = 1 register and ignore existing key
             bool iekey = false;
             uint8_t changeThroughPowerLoss = 2;//10b
@@ -7165,7 +7165,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(tDevice * device, Scs
         case 4://preempt
         case 5://preempt and abort
         {
-            uint8_t buffer[16] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, buffer, 16);
             //translate type field
             uint8_t rtype = 0;
             uint8_t racqa = 0;
@@ -7247,7 +7247,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(tDevice * device, Scs
         {
             //reservation release IEKEY = 0, RRELA = 0 (release)
             //reservation release IEKEY = 0, RRELA = 1 (clear)
-            uint8_t buffer[8] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, buffer, 8);
             uint8_t rrela = 0;
             uint8_t rtype = 0;
             //translate type field
@@ -7446,7 +7446,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(tDevice * device, Scsi
                     else if (!immediate)
                     {
                         //poll until there is no longer a sanitize command in progress
-                        uint8_t logPage[512] = { 0 };
+                        DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
                         uint8_t sanitizeStatus = 0x02;//start as in progress
                         nvmeGetLogPageCmdOpts sanitizeLog;
                         memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
@@ -7510,7 +7510,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(tDevice * device, Scsi
                     else if (!immediate)
                     {
                         //poll until there is no longer a sanitize command in progress
-                        uint8_t logPage[512] = { 0 };
+                        DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
                         uint8_t sanitizeStatus = 0x02;//start as in progress
                         nvmeGetLogPageCmdOpts sanitizeLog;
                         memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
@@ -7574,7 +7574,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(tDevice * device, Scsi
                     else if (!immediate)
                     {
                         //poll until there is no longer a sanitize command in progress
-                        uint8_t logPage[512] = { 0 };
+                        DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
                         uint8_t sanitizeStatus = 0x02;//start as in progress
                         nvmeGetLogPageCmdOpts sanitizeLog;
                         memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));
@@ -7636,7 +7636,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(tDevice * device, Scsi
                 else if (!immediate)
                 {
                     //poll until there is no longer a sanitize command in progress
-                    uint8_t logPage[512] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
                     uint8_t sanitizeStatus = 0x02;//start as in progress
                     nvmeGetLogPageCmdOpts sanitizeLog;
                     memset(&sanitizeLog, 0, sizeof(nvmeGetLogPageCmdOpts));

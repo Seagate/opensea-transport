@@ -676,7 +676,7 @@ eReturnValues write_Same(tDevice *device, uint64_t startingLba, uint64_t numberO
         {
             if (noDataTransfer)
             {
-                uint8_t zeroPattern[4] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(uint8_t, zeroPattern, 4);
                 //ret = ata_SCT_Write_Same(device, useGPL, useDMA, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, startingLba, numberOfLogicalBlocks, zeroPattern, sizeof(zeroPattern) / sizeof(*zeroPattern));
                 ret = send_ATA_SCT_Write_Same(device, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, startingLba, numberOfLogicalBlocks, zeroPattern, sizeof(zeroPattern) / sizeof(*zeroPattern));
             }

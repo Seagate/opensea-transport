@@ -1647,7 +1647,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
     {
         tDevice pseudoDev;
         ScsiIoCtx physicalLunCMD;
-        uint8_t cdb[12] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, 12);
         uint32_t dataLength = (CISS_MAX_PHYSICAL_DRIVES * PHYSICAL_LUN_DESCRIPTOR_LENGTH) + 8;//8 byte header
         uint8_t *data = C_CAST(uint8_t*, calloc_aligned(dataLength, sizeof(uint8_t), sizeof(void*)));
         if (data)

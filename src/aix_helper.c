@@ -976,12 +976,12 @@ static void print_ODM_Error(int odmError)
 static void print_CuDv_Struct (struct CuDv *cudv)
 {
     //making copies to ensure M_NULLPTR termination -TJE
-    char cudvName[17] = { 0 };
-    char cudvddins[17] = { 0 };
-    char cudvlocation[17] = { 0 };
-    char cudvparent[17] = { 0 };
-    char cudvconnwhere[17] = { 0 };
-    char cudvPdDvLnLvalue[49] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, cudvName, 17);
+    DECLARE_ZERO_INIT_ARRAY(char, cudvddins, 17);
+    DECLARE_ZERO_INIT_ARRAY(char, cudvlocation, 17);
+    DECLARE_ZERO_INIT_ARRAY(char, cudvparent, 17);
+    DECLARE_ZERO_INIT_ARRAY(char, cudvconnwhere, 17);
+    DECLARE_ZERO_INIT_ARRAY(char, cudvPdDvLnLvalue, 49);
     snprintf(cudvName, 17, "%s", cudv->name);
     snprintf(cudvddins, 17, "%s", cudv->ddins);
     snprintf(cudvlocation, 17, "%s", cudv->location);
@@ -1001,21 +1001,21 @@ static void print_CuDv_Struct (struct CuDv *cudv)
     printf("\tconnwhere: %s\n", cudvconnwhere);
     if (cudv->PdDvLn)
     {
-        char pddvtype[17] = { 0 };
-        char pddvclass[17] = { 0 };
-        char pddvsubclass[17] = { 0 };
-        char pddvprefix[17] = { 0 };
-        char pddvdevid[17] = { 0 };
-        char pddvcatalog[17] = { 0 };
-        char pddvDvDr[17] = { 0 };
-        char pddvDefine[257] = { 0 };
-        char pddvConfigure[257] = { 0 };
-        char pddvChange[257] = { 0 };
-        char pddvUnconfigure[257] = { 0 };
-        char pddvUndefine[257] = { 0 };
-        char pddvStart[257] = { 0 };
-        char pddvStop[257] = { 0 };
-        char pddvuniquetype[49] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(char, pddvtype, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvclass, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvsubclass, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvprefix, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvdevid, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvcatalog, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvDvDr, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvDefine, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvConfigure, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvChange, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvUnconfigure, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvUndefine, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvStart, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvStop, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvuniquetype, 49);
         //making copies to ensure null termination - TJE
         snprintf(pddvtype, 17, "%s", cudv->PdDvLn->type);
         snprintf(pddvclass, 17, "%s", cudv->PdDvLn->class);

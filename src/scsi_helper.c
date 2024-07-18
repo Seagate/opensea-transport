@@ -3025,7 +3025,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             )
         {
             //This is likely a ASMedia 236X device. Need to do another inquiry command in order to confirm.
-            uint8_t asmtInq[38] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, asmtInq, 38);
             if (SUCCESS == scsi_Inquiry(device, asmtInq, 38, 0, false, false))
             {
                 if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)

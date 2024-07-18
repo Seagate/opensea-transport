@@ -138,7 +138,7 @@ eReturnValues get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *
         return commandRet;
     }
     uint8_t cdb[CDB_LEN_16] = { 0 };
-    uint8_t returnData[14] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 14);
     uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
     cdb[OPERATION_CODE] = PSP_OPCODE;
     cdb[1] |= PSP_FUNC_RETURN_TASK_FILE_REGISTERS;

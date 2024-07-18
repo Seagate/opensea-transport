@@ -354,7 +354,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
         {
             //at this point, the token contains only the part we care about reading
             //We need the first 6 characters to convert into hex for the vendor ID
-            TCHAR vendorIDString[7] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(TCHAR, vendorIDString, 7);
             _tcsncpy_s(vendorIDString, 7, token, 6);
             _tprintf(TEXT("%s\n"), vendorIDString);
 #if defined (_MSC_VER) && _MSC_VER  < SEA_MSC_VER_VS2015
@@ -2409,7 +2409,7 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                 //print out what's in the slots!
                 for (uint8_t iter = 0; iter < firmwareInfo->SlotCount && iter < 7; ++iter)
                 {
-                    char v1Revision[9] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(char, v1Revision, 9);
                     snprintf(v1Revision, 9, "%s", firmwareInfo->Slot[iter].Revision.Info);
                     printf("\t    Firmware Slot %d:\n", firmwareInfo->Slot[iter].SlotNumber);
                     printf("\t\tRead Only: %d\n", firmwareInfo->Slot[iter].ReadOnly);
@@ -4561,7 +4561,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
 
                 if (checkForNVMe)
                 {
-                    uint8_t nvmeIdent[4096] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(uint8_t, nvmeIdent, 4096);
 #if defined (WIN_DEBUG)
                     printf("WIN: Additional check for Intel NVMe\n");
 #endif //WIN_DEBUG
@@ -7993,7 +7993,7 @@ static void wbst_Set_Sense_Data(ScsiIoCtx* scsiIoCtx, bool valid, uint8_t senseK
 {
     if (scsiIoCtx->psense && scsiIoCtx->senseDataSize > 0)
     {
-        uint8_t senseData[18] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, 18);
         if (valid)
         {
             senseData[0] = 0x70;
@@ -8142,7 +8142,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
             else
             {
                 //standard inquiry data - use device descriptor data
-                uint8_t inquiryData[96] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(uint8_t, inquiryData, 96);
                 uint8_t peripheralDevice = 0;
                 PSTORAGE_DEVICE_DESCRIPTOR deviceDesc = M_NULLPTR;
                 if (scsiIoCtx->cdb[2] == 0)
@@ -12084,7 +12084,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //    //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2], nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6], nvmeIoCtx->ptrData[7]);
 //    uint64_t nrkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[8], nvmeIoCtx->ptrData[9], nvmeIoCtx->ptrData[10], nvmeIoCtx->ptrData[11], nvmeIoCtx->ptrData[12], nvmeIoCtx->ptrData[13], nvmeIoCtx->ptrData[14], nvmeIoCtx->ptrData[15]);
 //    //scsi command stuff
-//    uint8_t scsiCommandData[24] = { 0 };
+//    DECLARE_ZERO_INIT_ARRAY(uint8_t, scsiCommandData, 24);
 //    uint8_t scsiServiceAction = 0;
 //    bool issueSCSICommand = false;
 //    //now check that those can convert to SCSI...if they can, then convert it!
@@ -12183,7 +12183,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //    //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2], nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6], nvmeIoCtx->ptrData[7]);
 //    //uint64_t prkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[8], nvmeIoCtx->ptrData[9], nvmeIoCtx->ptrData[10], nvmeIoCtx->ptrData[11], nvmeIoCtx->ptrData[12], nvmeIoCtx->ptrData[13], nvmeIoCtx->ptrData[14], nvmeIoCtx->ptrData[15]);
 //    //scsi command stuff
-//    uint8_t scsiCommandData[24] = { 0 };
+//    DECLARE_ZERO_INIT_ARRAY(uint8_t, scsiCommandData, 24);
 //    uint8_t scsiServiceAction = 0;
 //    uint8_t scsiType = 0xF;
 //    switch (rtype)
@@ -12267,7 +12267,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //    //data structure inputs
 //    //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2], nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6], nvmeIoCtx->ptrData[7]);
 //    //scsi command stuff
-//    uint8_t scsiCommandData[24] = { 0 };
+//    DECLARE_ZERO_INIT_ARRAY(uint8_t, scsiCommandData, 24);
 //    uint8_t scsiServiceAction = 0;
 //    uint8_t scsiType = 0xF;
 //    switch (rtype)

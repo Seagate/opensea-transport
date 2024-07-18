@@ -205,7 +205,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
     union ccb         *ccb = M_NULLPTR;
     eReturnValues ret = SUCCESS;
     int this_drive_type = 0;
-    char devName[20] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, devName, 20);
     int devUnit = 0;
     char *deviceHandle = M_NULLPTR;
     deviceHandle = strdup(filename);
