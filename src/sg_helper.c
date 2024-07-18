@@ -362,6 +362,7 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
     {
         char* end = M_NULLPTR;
         char *str = M_CONST_CAST(char*, driververstr);
+        errno = 0;//clear to zero as stated in ISO C secure coding
         unsigned long value = strtoul(str, &end, 10);
         *versionCount = 0;
         //major
@@ -373,6 +374,7 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
         *versionCount += 1;
         str = end + 1;//update to past the first dot.
         //minor
+        errno = 0;//clear to zero as stated in ISO C secure coding
         value = strtoul(str, &end, 10);
         if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
         {
@@ -388,6 +390,7 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
         {
             //rev is available
             str = end + 1;
+            errno = 0;//clear to zero as stated in ISO C secure coding
             value = strtoul(str, &end, 10);
             if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
             {
@@ -403,6 +406,7 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
             {
                 //build is available
                 str = end + 1;
+                errno = 0;//clear to zero as stated in ISO C secure coding
                 value = strtoul(str, &end, 10);
                 if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
                 {
@@ -878,25 +882,26 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
        uint8_t counter = 0;
        while (token)
        {
-           switch (counter)
-           {
-           case 0://host
-               sysFsInfo->scsiAddress.host = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
-               break;
-           case 1://bus
-               sysFsInfo->scsiAddress.channel = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
-               break;
-           case 2://target
-               sysFsInfo->scsiAddress.target = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
-               break;
-           case 3://lun
-               sysFsInfo->scsiAddress.lun = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
-               break;
-           default:
-               break;
-           }
-           token = common_String_Token(M_NULLPTR, &addrlen, ":", &saveptr);
-           ++counter;
+            errno = 0;//clear to zero as stated in ISO C secure coding
+            switch (counter)
+            {
+            case 0://host
+                sysFsInfo->scsiAddress.host = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
+                break;
+            case 1://bus
+                sysFsInfo->scsiAddress.channel = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
+                break;
+            case 2://target
+                sysFsInfo->scsiAddress.target = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
+                break;
+            case 3://lun
+                sysFsInfo->scsiAddress.lun = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
+                break;
+            default:
+                break;
+            }
+            token = common_String_Token(M_NULLPTR, &addrlen, ":", &saveptr);
+            ++counter;
        }
     }
     safe_Free(C_CAST(void**, &handle));
@@ -2860,6 +2865,7 @@ static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
         return FAILURE;
     }
     unsigned long controller = 0, namespaceID = 0;
+    errno = 0;//clear to zero as stated in ISO C secure coding
     controller = strtoul(handle, &endptr, 10);
     if ((controller == ULONG_MAX && errno == ERANGE) || (handle == endptr && controller == 0))
     {
@@ -2868,6 +2874,7 @@ static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
     if (endptr && strlen(endptr) > 1 && endptr[0] == 'n')
     {
         handle += 1;
+        errno = 0;//clear to zero as stated in ISO C secure coding
         namespaceID = strtoul(handle, &endptr, 10);
         if ((namespaceID == ULONG_MAX && errno == ERANGE) || (handle == endptr && namespaceID == 0))
         {

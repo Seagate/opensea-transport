@@ -197,6 +197,7 @@ static bool create_OS_CISS_Handle_Name(const char *input, char *osHandle)
             {
                 char* endptr = M_NULLPTR;
                 char* str = M_CONST_CAST(char*, input) + 1;//need to update str pointer as we parse the handle, but not changing any data
+                errno = 0;//clear to zero as stated in ISO C secure coding
                 unsigned long value = strtoul(input, &endptr, 10);
                 if (str == endptr)//this should not happen for this format
                 {
@@ -216,6 +217,7 @@ static bool create_OS_CISS_Handle_Name(const char *input, char *osHandle)
                     if (endptr && endptr[0] == 'd')
                     {
                         str = endptr + 1;
+                        errno = 0;//clear to zero as stated in ISO C secure coding
                         value = strtoul(input, &endptr, 10);
                         if (str == endptr)//this should not happen for this format
                         {
@@ -286,6 +288,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
                 case 2://physical drive number
                     if (isdigit(token[0]))
                     {
+                        errno = 0;//clear to zero as stated in ISO C secure coding
                         unsigned long temp = strtoul(token, M_NULLPTR, 10);
                         if (!(temp == ULONG_MAX && errno == ERANGE))
                         {

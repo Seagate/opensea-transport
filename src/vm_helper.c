@@ -561,6 +561,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             uint8_t counter = 0;
                             while (token)
                             {
+                                errno = 0;//clear to zero as stated in ISO C secure coding
                                 switch (counter)
                                 {
                                 case 0://host

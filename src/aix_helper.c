@@ -1102,9 +1102,9 @@ static void print_CuDv_Struct (struct CuDv *cudv)
     return;
 }
 
-static eReturnValues get_Adapter_IDs(tDevice *device, char *name)
+static int get_Adapter_IDs(tDevice *device, char *name)
 {
-    eReturnValues ret = 0;
+    int ret = 0;
     struct CuDv cudv;
     struct CuDv * ptrcudv;
     memset(&cudv, 0, sizeof(struct CuDv));
@@ -1137,18 +1137,28 @@ static eReturnValues get_Adapter_IDs(tDevice *device, char *name)
                 //Set a char pointer to the last / + 1
                 const char *ids = strrchr(ptrcudv->PdDvLn_Lvalue, '/') + 1;
                 //now convert this out to a uint32, then byte swap it, then separate into VID and PID
-                uint32_t idCombo = strtoul(ids, M_NULLPTR, 16);
-                #if defined (__BIG_ENDIAN__) || defined (__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-                //wrapping this as if there was little endian AIX, I doubt it would exhibit the same issue
-                byte_Swap_32(&idCombo);
-                word_Swap_32(&idCombo);//This is done after the byte swap since it will change the order of VID and PID back to expected place
-                #endif //BIG ENDIAN check
-                device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
-                device->drive_info.adapter_info.vendorID = M_Word1(idCombo);
-                device->drive_info.adapter_info.productID = M_Word0(idCombo);
-                device->drive_info.adapter_info.vendorIDValid = true;
-                device->drive_info.adapter_info.productIDValid = true;
-                ret = 1;
+                errno = 0;//clear before calling strtoul
+                char **endptr = M_NULLPTR;
+                unsigned long idCombo = strtoul(ids, &endptr, 16);
+                if ((idCombo == ULONG_MAX && errno == ERANGE) || (ids == *endptr && idCombo == 0))
+                {
+                    //unable to convert the string for some reason
+                    ret = -1;
+                }
+                else 
+                {
+                    #if defined (__BIG_ENDIAN__) || defined (__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+                    //wrapping this as if there was little endian AIX, I doubt it would exhibit the same issue
+                    byte_Swap_32(&idCombo);
+                    word_Swap_32(&idCombo);//This is done after the byte swap since it will change the order of VID and PID back to expected place
+                    #endif //BIG ENDIAN check
+                    device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
+                    device->drive_info.adapter_info.vendorID = M_Word1(idCombo);
+                    device->drive_info.adapter_info.productID = M_Word0(idCombo);
+                    device->drive_info.adapter_info.vendorIDValid = true;
+                    device->drive_info.adapter_info.productIDValid = true;
+                    ret = 1;
+                }
             }
             else
             {

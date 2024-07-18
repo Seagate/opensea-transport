@@ -3383,6 +3383,7 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename, bool* isInte
         if (strstr(filename, "csmi:") == str)//must begin with this
         {
             str += strlen("csmi:");
+            errno = 0;//clear to zero as stated in ISO C secure coding
             unsigned long value = strtoul(str, &end, 10);
             if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
             {
@@ -3403,6 +3404,7 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename, bool* isInte
                     *isIntelFormat = false;
                 }
                 str = end;
+                errno = 0;//clear to zero as stated in ISO C secure coding
                 value = strtoul(str, &end, 10);
                 if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
                 {
@@ -3413,6 +3415,7 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename, bool* isInte
                     *field2 = C_CAST(uint32_t, value);
                     end += 1;//move past next :
                     str = end;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     value = strtoul(str, &end, 10);
                     if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
                     {
@@ -3423,6 +3426,7 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename, bool* isInte
                         *field3 = C_CAST(uint32_t, value);
                         end += 1;//move past next :
                         str = end;
+                        errno = 0;//clear to zero as stated in ISO C secure coding
                         value = strtoul(str, &end, 10);
                         if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
                         {
@@ -4532,6 +4536,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                 if (scsiPortHandle)
                 {
                     scanhandle += strlen("\\\\.\\SCSI");
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     unsigned long ctrlnum = strtoul(scanhandle, &endHandle, 10);
                     if ((ctrlnum == ULONG_MAX && errno == ERANGE) || (ctrlnum == 0 && scanhandle == endHandle))
                     {

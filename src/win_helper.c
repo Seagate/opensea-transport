@@ -3247,7 +3247,10 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
 //    //char * next_token = M_NULLPTR;
 //    pdev = strrchr(filename, 'e');
 //    if (pdev != M_NULLPTR)
+//    {
+//        errno = 0;//ISO secure coding standard recommends this to ensure errno is interpretted correctly after this call
 //        drive_num = strtol(pdev + 1, M_NULLPTR, 0);
+//    }
 //    return drive_num;
 //}
 
@@ -4002,6 +4005,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         {
             char* end = M_NULLPTR;
             char *drivenum = strstr(device->os_info.name, WIN_PHYSICAL_DRIVE) + strlen(WIN_PHYSICAL_DRIVE);
+            errno = 0;//clear to zero as stated in ISO C secure coding
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
             {
@@ -4014,6 +4018,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         {
             char* end = M_NULLPTR;
             char* drivenum = strstr(device->os_info.name, WIN_CDROM_DRIVE) + strlen(WIN_CDROM_DRIVE);
+            errno = 0;//clear to zero as stated in ISO C secure coding
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
             {
@@ -4026,6 +4031,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         {
             char* end = M_NULLPTR;
             char* drivenum = strstr(device->os_info.name, WIN_TAPE_DRIVE) + strlen(WIN_TAPE_DRIVE);
+            errno = 0;//clear to zero as stated in ISO C secure coding
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
             {
@@ -4038,6 +4044,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         {
             char* end = M_NULLPTR;
             char* drivenum = strstr(device->os_info.name, WIN_CHANGER_DEVICE) + strlen(WIN_CHANGER_DEVICE);
+            errno = 0;//clear to zero as stated in ISO C secure coding
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
             {

@@ -196,6 +196,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
                     break;
                 case 1://controller ID
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -212,6 +213,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
                     break;
                 case 2://port
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -228,6 +230,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
                     break;
                 case 3://portMP
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -281,6 +284,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t *controllerID,
                     break;
                 case 1://controller ID
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -297,6 +301,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t *controllerID,
                     break;
                 case 2://nsid
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -351,6 +356,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
                     break;
                 case 1://controller ID
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -367,6 +373,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
                     break;
                 case 2://target
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -383,6 +390,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
                     break;
                 case 3://lun
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     btemp = strtoull(token, &endptr, 16);
                     if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr))
                     {
@@ -436,6 +444,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                     break;
                 case 1://controller ID
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     temp = strtoul(token, &endptr, 16);
                     if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr))
                     {
@@ -453,6 +462,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                 case 2://target //FIXME: Does not handle full 128bit targetID
                     //first try seeing if the target is less than 128bits and a 64bit conversion will be enough
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     btemp = strtoull(token, &endptr, 16);
                     if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr))
                     {
@@ -496,6 +506,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                                             target[6] = M_Byte1(btemp);
                                             target[7] = M_Byte0(btemp);
                                             endptr = M_NULLPTR;
+                                            errno = 0;//clear to zero as stated in ISO C secure coding
                                             btemp = strtoull(secondHalf, &endptr, 16);
                                             if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && secondHalf == endptr))
                                             {
@@ -550,6 +561,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                     break;
                 case 3://lun
                     endptr = M_NULLPTR;
+                    errno = 0;//clear to zero as stated in ISO C secure coding
                     btemp = strtoull(token, &endptr, 16);
                     if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr))
                     {
