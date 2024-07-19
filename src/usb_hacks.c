@@ -43,7 +43,7 @@ bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice *device)
 #endif
         while (device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_UNKNOWN)
         {
-            uint8_t identifyData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, LEGACY_DRIVE_SEC_SIZE);
             if (SUCCESS == ata_Identify(device, identifyData, LEGACY_DRIVE_SEC_SIZE))
             {
                 //command succeeded so this is most likely the correct pass-through type to use for this device

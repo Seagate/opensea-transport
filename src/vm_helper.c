@@ -214,7 +214,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
         if (strstr(handle, "nvme") != M_NULLPTR)
         {
             size_t nvmHandleLen = strlen(handle) + 1;
-            char *nvmHandle = C_CAST(char*, calloc(nvmHandleLen, sizeof(char)));
+            char *nvmHandle = C_CAST(char*, safe_calloc(nvmHandleLen, sizeof(char)));
             snprintf(nvmHandle, nvmHandleLen, "%s", handle);
             device->drive_info.interface_type = NVME_INTERFACE;
             device->drive_info.drive_type = NVME_DRIVE;
@@ -225,7 +225,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
         {
             bool incomingBlock = false;//only set for SD!
             bool bsg = false;
-            char incomingHandleClassPath[PATH_MAX] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
             //char *incomingClassName = M_NULLPTR;
             common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
             if (is_Block_Device_Handle(handle))
@@ -264,7 +264,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                 //now read the link with the handle appended on the end
                 if (lstat(incomingHandleClassPath, &link) == 0 && S_ISLNK(link.st_mode))
                 {
-                    char inHandleLink[PATH_MAX] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(char, inHandleLink, PATH_MAX);
                     if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
                     {
                         //Read the link and set up all the fields we want to setup.
@@ -281,7 +281,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 #endif
                             device->drive_info.interface_type = IDE_INTERFACE;
                             //get vendor and product IDs of the controller attached to this device.
-                            char fullPciPath[PATH_MAX] = { 0 };
+                            DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
                             snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
@@ -289,10 +289,10 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             fullPciPath[2] = 'y';
                             fullPciPath[3] = 's';
                             fullPciPath[4] = '/';
-                            memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+                            safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], strlen(fullPciPath));
 
                             uint64_t newStrLen = strstr(fullPciPath, "/ata") - fullPciPath + 1;
-                            char *pciPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+                            char *pciPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
                             if (pciPath)
                             {
                                 snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen - 1), fullPciPath);
@@ -349,7 +349,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 #endif
                             device->drive_info.interface_type = USB_INTERFACE;
                             //set the USB VID and PID. NOTE: There may be a better way to do this, but this seems to work for now.
-                            char fullPciPath[PATH_MAX] = { 0 };
+                            DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
                             snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
@@ -357,10 +357,10 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             fullPciPath[2] = 'y';
                             fullPciPath[3] = 's';
                             fullPciPath[4] = '/';
-                            memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+                            safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], strlen(fullPciPath));
 
                             uint64_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath + 1;
-                            char *usbPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+                            char *usbPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
                             if (usbPath)
                             {
                                 snprintf(usbPath, PATH_MAX, "%.*s", C_CAST(int, newStrLen - 1), fullPciPath);
@@ -420,7 +420,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             printf("FireWire interface!\n");
 #endif
                             device->drive_info.interface_type = IEEE_1394_INTERFACE;
-                            char fullFWPath[PATH_MAX] = { 0 };
+                            DECLARE_ZERO_INIT_ARRAY(char, fullFWPath, PATH_MAX);
                             snprintf(fullFWPath, PATH_MAX, "%s", inHandleLink);
 
                             fullFWPath[0] = '/';
@@ -428,11 +428,11 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             fullFWPath[2] = 'y';
                             fullFWPath[3] = 's';
                             fullFWPath[4] = '/';
-                            memmove(&fullFWPath[5], &fullFWPath[6], strlen(fullFWPath));
+                            safe_memmove(&fullFWPath[5], PATH_MAX - 5, &fullFWPath[6], strlen(fullFWPath));
 
                             //now we need to go up a few directories to get the modalias file to parse
                             uint64_t newStrLen = strstr(fullFWPath, "/host") - fullFWPath + 1;
-                            char *fwPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+                            char *fwPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
                             if (fwPath)
                             {
                                 snprintf(fwPath, PATH_MAX, "%.*s/modalias", C_CAST(int, newStrLen - 1), fullFWPath);
@@ -471,7 +471,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             device->drive_info.interface_type = SCSI_INTERFACE;
                             //get vendor and product IDs of the controller attached to this device.
 
-                            char fullPciPath[PATH_MAX] = { 0 };
+                            DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
                             snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
@@ -479,7 +479,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             fullPciPath[2] = 'y';
                             fullPciPath[3] = 's';
                             fullPciPath[4] = '/';
-                            memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+                            safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], strlen(fullPciPath));
                             //need to trim the path down now since it can vary by controller:
                             //adaptec: /sys/devices/pci0000:00/0000:00:02.0/0000:02:00.0/host0/target0:1:0/0:1:0:0/scsi_generic/sg2
                             //lsi: /sys/devices/pci0000:00/0000:00:02.0/0000:02:00.0/host0/port-0:16/end_device-0:16/target0:0:16/0:0:16:0/scsi_generic/sg4
@@ -488,7 +488,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             //printf("/host location string: %s\n", strstr(fullPciPath, "/host"));
                             //printf("FULL: %" PRIXPTR "\t/HOST: %" PRIXPTR "\n", C_CAST(uintptr_t, fullPciPath), C_CAST(uintptr_t, strstr(fullPciPath, "/host")));
                             uint64_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath + 1;
-                            char *pciPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+                            char *pciPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
                             if (pciPath)
                             {
                                 snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen - 1), fullPciPath);
@@ -666,7 +666,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
     else
     {
         bool incomingBlock = false;//only set for SD!
-        char incomingHandleClassPath[PATH_MAX] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
         char *incomingClassName = M_NULLPTR;
         common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
         if (is_Block_Device_Handle(handle))
@@ -691,7 +691,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
         {
             common_String_Concat(incomingHandleClassPath, PATH_MAX, basename(C_CAST(char*, handle)));
             //now read the link with the handle appended on the end
-            char inHandleLink[PATH_MAX] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(char, inHandleLink, PATH_MAX);
             if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
             {
                 //printf("full in handleLink = %s\n", inHandleLink);
@@ -700,7 +700,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                 const char* bsgClass = "/sys/class/bsg/";
                 const char* blockClass = "/sys/class/block/";
                 struct stat mapStat;
-                char classPath[PATH_MAX] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(char, classPath, PATH_MAX);
                 bool bsg = false;
                 if (incomingBlock)
                 {
@@ -741,13 +741,13 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     //printf("item = %s: %d of %d\n", classList[iter]->d_name,iter,numberOfItems);
                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
                     size_t tempLen = strlen(classPath) + strlen(classList[iter]->d_name) + 1;
-                    char *temp = C_CAST(char*, calloc(tempLen, sizeof(char)));
+                    char *temp = C_CAST(char*, safe_calloc(tempLen, sizeof(char)));
                     struct stat tempStat;
                     memset(&tempStat, 0, sizeof(struct stat));
                     snprintf(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
                     if (lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode))/*check if this is a link*/
                     {
-                        char mapLink[PATH_MAX] = { 0 };
+                        DECLARE_ZERO_INIT_ARRAY(char, mapLink, PATH_MAX);
                         if (readlink(temp, mapLink, PATH_MAX) > 0)
                         {
                             char *className = M_NULLPTR;
@@ -760,7 +760,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             if (incomingBlock)//block class
                             {
                                 classNameLength = strlen("scsi_generic") + 1;
-                                className = C_CAST(char*, calloc(classNameLength, sizeof(char)));
+                                className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
                                     snprintf(className, classNameLength, "scsi_generic");
@@ -769,7 +769,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             else if (bsg) //bsg class
                             {
                                 classNameLength = strlen("bsg") + 1;
-                                className = C_CAST(char*, calloc(classNameLength, sizeof(char)));
+                                className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
                                     snprintf(className, classNameLength, "bsg");
@@ -778,7 +778,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             else //scsi_generic class
                             {
                                 classNameLength = strlen("block") + 1;
-                                className = C_CAST(char*, calloc(classNameLength, sizeof(char)));
+                                className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
                                     snprintf(className, classNameLength, "block");
@@ -1269,7 +1269,7 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
     }
     else
     {
-        localSenseBuffer = C_CAST(uint8_t *, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+        localSenseBuffer = C_CAST(uint8_t *, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
         if (!localSenseBuffer)
         {
             return MEMORY_FAILURE;
@@ -1724,13 +1724,13 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     }
 
 
-    char **devs = C_CAST(char **, calloc(num_sg_devs + num_nvme_devs + 1, sizeof(char *)));
+    char **devs = C_CAST(char **, safe_calloc(num_sg_devs + num_nvme_devs + 1, sizeof(char *)));
     int i = 0, j = 0;
     //add sg/sd devices to the list
     for (; i < (num_sg_devs); i++)
     {
         size_t deviceHandleLen = (strlen("/dev/disks/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(deviceHandleLen));
+        devs[i] = C_CAST(char *, safe_malloc(deviceHandleLen));
         snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
         safe_Free(C_CAST(void**, &namelist[i]));
     }
@@ -1740,7 +1740,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER;i++, j++)
     {
         size_t nvmeAdptNameLen = strlen(nvmeAdptList.adapters[j].name) + 1;
-        devs[i] = C_CAST(char *, malloc(nvmeAdptNameLen));
+        devs[i] = C_CAST(char *, safe_malloc(nvmeAdptNameLen));
         memset(devs[i], 0, nvmeAdptNameLen);
         snprintf(devs[i], nvmeAdptNameLen, "%s", nvmeAdptList.adapters[j].name);
     }

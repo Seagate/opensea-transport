@@ -142,7 +142,7 @@ static eReturnValues build_Basic_Passthrough_CDB(nvmeCmdCtx *nvmCmd, uint8_t* cd
 eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx *nvmCmd)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t cdb[ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE);
     ret = build_Basic_Passthrough_CDB(nvmCmd, cdb);
     if (ret == SUCCESS)
     {
@@ -477,8 +477,8 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransfe
 eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t asmCDB[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
-    uint8_t asmPayload[ASM_NVMP_DWORDS_DATA_PACKET_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, asmPayload, ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
     eDataTransferDirection asmCDBDir = 0;
     //if the NVMe command is not doing a multiple of 512B data transfer, we need to allocate local memory, rounded up to 512B boundaries before the command.
     //Then we can copy that back to the smaller buffer after command is complete.
@@ -494,7 +494,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     if (nvmCmd->ptrData && nvmCmd->dataSize > 0 && nvmCmd->dataSize % 512)
     {
         dataPhaseSize = ((nvmCmd->dataSize + 511) / 512) * 512;//round up to nearest 512B boundary
-        dataPhasePtr = C_CAST(uint8_t*, calloc_aligned(dataPhaseSize, sizeof(uint8_t), nvmCmd->device->os_info.minimumAlignment));
+        dataPhasePtr = C_CAST(uint8_t*, safe_calloc_aligned(dataPhaseSize, sizeof(uint8_t), nvmCmd->device->os_info.minimumAlignment));
         if (!dataPhasePtr)
         {
             return MEMORY_FAILURE;
@@ -553,7 +553,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     if (sendRet != OS_COMMAND_TIMEOUT)
     {
         //3. get the command completion
-        uint8_t completionData[ASM_NVMP_RESPONSE_DATA_SIZE] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, completionData, ASM_NVMP_RESPONSE_DATA_SIZE);
         ret = build_ASMedia_Packet_Command_CDB(asmCDB, &asmCDBDir, ASMEDIA_NVMP_OP_GET_NVM_COMPLETION, 0, nvmCmd, M_NULLPTR, 0);
         if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, completionData, ASM_NVMP_RESPONSE_DATA_SIZE, asmCDBDir, M_NULLPTR, 0, 15))
         {
@@ -595,7 +595,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
 
 static eReturnValues asm_nvme_Shutdown(tDevice *device, bool withShutdownProcessing)
 {
-    uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
     eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_POWER_DOWN_NVME, withShutdownProcessing ? 1 : 0, M_NULLPTR, M_NULLPTR, 0);
     if (ret == SUCCESS)
@@ -612,7 +612,7 @@ static eReturnValues asm_nvme_Shutdown(tDevice *device, bool withShutdownProcess
 
 static eReturnValues asm_nvme_Reset_Bridge(tDevice *device)
 {
-    uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
     eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RESET_BRIDGE, 0, M_NULLPTR, M_NULLPTR, 0);
     if (ret == SUCCESS)
@@ -629,7 +629,7 @@ static eReturnValues asm_nvme_Reset_Bridge(tDevice *device)
 
 static eReturnValues asm_nvme_Relink_Bridge(tDevice *device, bool normalShutdownBeforeDisconnect)
 {
-    uint8_t cdb[ASMEDIA_NVME_PACKET_CDB_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
     eReturnValues ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RELINK_USB, normalShutdownBeforeDisconnect ? 1 : 0, M_NULLPTR, M_NULLPTR, 0);
     if (ret == SUCCESS)

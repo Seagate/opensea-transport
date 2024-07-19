@@ -158,7 +158,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
         device->os_info.fileSystemInfo.fileSystemInfoValid = true;
         device->os_info.fileSystemInfo.hasActiveFileSystem = false;
         device->os_info.fileSystemInfo.isSystemDisk = false;
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
@@ -1278,19 +1278,19 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     }
     uint32_t totalDevs = num_da_devs + num_ada_devs + num_nvme_devs;
 
-    char **devs = C_CAST(char **, calloc(totalDevs + 1, sizeof(char *)));
+    char **devs = C_CAST(char **, safe_calloc(totalDevs + 1, sizeof(char *)));
     uint32_t i = 0, j = 0, k=0;
     for (i = 0; i < num_da_devs; ++i)
     {
         size_t devNameStringLength = (strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(devNameStringLength));
+        devs[i] = C_CAST(char *, safe_malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", danamelist[i]->d_name);
         safe_Free(C_CAST(void**, &danamelist[i]));
     }
     for (j = 0; i < (num_da_devs + num_ada_devs) && j < num_ada_devs; ++i, j++)
     {
         size_t devNameStringLength = (strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(devNameStringLength));
+        devs[i] = C_CAST(char *, safe_malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", adanamelist[j]->d_name);
         safe_Free(C_CAST(void**, &adanamelist[j]));
     }
@@ -1298,7 +1298,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     for (k = 0; i < (totalDevs) && k < num_nvme_devs; ++i, ++j, ++k)
     {
         size_t devNameStringLength = (strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(devNameStringLength));
+        devs[i] = C_CAST(char *, safe_malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", nvmenamelist[k]->d_name);
         safe_Free(C_CAST(void**, &nvmenamelist[k]));
     }
@@ -1669,7 +1669,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
 #endif
     if (partitionCount > 0)
     {
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))

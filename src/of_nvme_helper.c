@@ -123,7 +123,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
 {
     bool supported = false;
     uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + UINT32_C(4096);
-    uint8_t *passthroughBuffer = C_CAST(uint8_t*, calloc_aligned(bufferSize, sizeof(uint8_t), sizeof(void*)));
+    uint8_t *passthroughBuffer = C_CAST(uint8_t*, safe_calloc_aligned(bufferSize, sizeof(uint8_t), sizeof(void*)));
     if (passthroughBuffer)
     {
         seatimer_t commandTimer;
@@ -389,7 +389,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
     printf("ofnvme: NVM passthrough request\n");
 #endif //OFNVME_DEBUG
     uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + nvmeIoCtx->dataSize;//NOTE: No metadata. Don't think Windows supports a separate metadata buffer
-    uint8_t *passthroughBuffer = C_CAST(uint8_t*, calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
+    uint8_t *passthroughBuffer = C_CAST(uint8_t*, safe_calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
     if (passthroughBuffer)
     {
         seatimer_t commandTimer;

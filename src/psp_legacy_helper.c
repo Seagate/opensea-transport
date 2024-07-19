@@ -30,8 +30,8 @@
 eReturnValues enable_Disable_ATA_Passthrough(tDevice *device, bool enable)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t cdb[CDB_LEN_12] = { 0 };
-    uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     cdb[OPERATION_CODE] = PSP_OPCODE;
     if (enable)
     {
@@ -137,9 +137,9 @@ eReturnValues get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *
     {
         return commandRet;
     }
-    uint8_t cdb[CDB_LEN_16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 14);
-    uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     cdb[OPERATION_CODE] = PSP_OPCODE;
     cdb[1] |= PSP_FUNC_RETURN_TASK_FILE_REGISTERS;
     //Set the device register in offset 7 for selecting device 0 vs device 1...we won't do that at this time - TJE
@@ -170,12 +170,12 @@ eReturnValues send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroug
 {
     eReturnValues ret = UNKNOWN;
     uint8_t cdbLen = PSP_EXT_COMMAND_CDB_LEN;
-    uint8_t pspCDB[PSP_EXT_COMMAND_CDB_LEN] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, pspCDB, PSP_EXT_COMMAND_CDB_LEN);
     uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;

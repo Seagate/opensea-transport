@@ -257,7 +257,7 @@ static int get_Partition_Count(const char * blockDeviceName)
         struct mntent* entry = M_NULLPTR;
 #if defined (_BSD_SOURCE) || defined(_SVID_SOURCE) //getmntent_r lists these feature test macros to look for - TJE
         struct mntent entBuf;
-        char lineBuf[GETMNTENT_R_LINE_BUF_SIZE] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(char, lineBuf, GETMNTENT_R_LINE_BUF_SIZE);
         while (M_NULLPTR != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
 #else //use the not thread safe version since that is all that is available
         while (M_NULLPTR != (entry = getmntent(mount)))
@@ -299,7 +299,7 @@ static eReturnValues get_Partition_List(const char * blockDeviceName, ptrsPartit
             struct mntent* entry = M_NULLPTR;
 #if defined(_BSD_SOURCE) || defined (_SVID_SOURCE) || !defined (NO_GETMNTENT_R) //feature test macros we're defining _BSD_SOURCE or _SVID_SOURCE in my testing, but we want the reentrant version whenever possible. This can be defined if this function is not identified. - TJE
             struct mntent entBuf;
-            char lineBuf[GETMNTENT_R_LINE_BUF_SIZE] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(char, lineBuf, GETMNTENT_R_LINE_BUF_SIZE);
             while (M_NULLPTR != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
 #else //use the not thread safe version since that is all that is available
 #pragma message "Not using getmntent_r. Partition detection is not thread safe"
@@ -445,7 +445,7 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
     //driverPath now has the full path with the name of the driver.
     //the version number can be found in driverPath/module/version if this file exists.
     //Read this file and save the version information
-    char* driverVersionFilePath = C_CAST(char*, calloc(OPENSEA_PATH_MAX, sizeof(char)));
+    char* driverVersionFilePath = C_CAST(char*, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
     if (driverVersionFilePath)
     {
         snprintf(driverVersionFilePath, OPENSEA_PATH_MAX, "%s/module/version", driverPath);
@@ -456,7 +456,7 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
         //magic number 4 is for the length of the string "/sys" which is what is being set in the beginning of the path.
         //This is a bit of a mess, but a simple call to realpath was not working, likely due to the current directory not being exactly what we want to start with to allow
         //that function to correctly figure out the path.
-        memmove(&driverVersionFilePath[4], busPtr, busPtrLen);
+        safe_memmove(&driverVersionFilePath[4], OPENSEA_PATH_MAX - 4, busPtr, busPtrLen);
         memset(&driverVersionFilePath[busPtrLen + 4], 0, OPENSEA_PATH_MAX - (busPtrLen + 4));
         driverVersionFilePath[0] = '/';
         driverVersionFilePath[1] = 's';
@@ -473,7 +473,7 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
                 FILE* versionFile = fopen(driverVersionFilePath, "r");
                 if (versionFile)
                 {
-                    char* versionFileData = C_CAST(char*, calloc(C_CAST(size_t, versionFileSize) + 1, sizeof(char)));
+                    char* versionFileData = C_CAST(char*, safe_calloc(C_CAST(size_t, versionFileSize) + 1, sizeof(char)));
                     if (versionFileData)
                     {
                         if (C_CAST(size_t, versionFileSize) == fread(versionFileData, sizeof(char), C_CAST(size_t, versionFileSize), versionFile) && !ferror(versionFile))
@@ -549,7 +549,7 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
     sysFsInfo->interface_type = IDE_INTERFACE;
     sysFsInfo->drive_type = ATA_DRIVE;//changed to ATAPI later if we detect it
     //get vendor and product IDs of the controller attached to this device.
-    char fullPciPath[PATH_MAX] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
     snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
     fullPciPath[0] = '/';
@@ -557,12 +557,12 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[2] = 'y';
     fullPciPath[3] = 's';
     fullPciPath[4] = '/';
-    memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+    safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], strlen(fullPciPath));
     snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
     intptr_t newStrLen = strstr(fullPciPath, "/ata") - fullPciPath;
     if (newStrLen > 0)
     {
-        char *pciPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+        char *pciPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
         if (pciPath)
         {
             snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
@@ -611,7 +611,7 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
             //Get Driver Information.
             pciPath = dirname(pciPath);//remove driver from the end
             common_String_Concat(pciPath, PATH_MAX, "/driver");
-            char *driverPath = C_CAST(char *, calloc(OPENSEA_PATH_MAX, sizeof(char)));
+            char *driverPath = C_CAST(char *, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             ssize_t len = readlink(pciPath, driverPath, OPENSEA_PATH_MAX);
             if (len != -1)
             {
@@ -633,7 +633,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     sysFsInfo->interface_type = USB_INTERFACE;
     sysFsInfo->drive_type = SCSI_DRIVE;//changed later if detected as ATA or NVMe
     //set the USB VID and PID. NOTE: There may be a better way to do this, but this seems to work for now.
-    char fullPciPath[PATH_MAX] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
     snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
     fullPciPath[0] = '/';
@@ -641,12 +641,12 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[2] = 'y';
     fullPciPath[3] = 's';
     fullPciPath[4] = '/';
-    memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+    safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], strlen(fullPciPath));
     snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
     intptr_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath;
     if (newStrLen > 0)
     {
-        char *usbPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+        char *usbPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
         if (usbPath)
         {
             snprintf(usbPath, PATH_MAX, "%.*s", C_CAST(int, newStrLen), fullPciPath);
@@ -699,7 +699,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             //Get Driver Information.
             usbPath = dirname(usbPath);//remove idProduct from the end
             common_String_Concat(usbPath, PATH_MAX, "/driver");
-            char *driverPath = C_CAST(char *, calloc(OPENSEA_PATH_MAX, sizeof(char)));
+            char *driverPath = C_CAST(char *, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             ssize_t len = readlink(usbPath, driverPath, OPENSEA_PATH_MAX);
             if (len != -1)
             {
@@ -720,7 +720,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
 #endif
     sysFsInfo->interface_type = IEEE_1394_INTERFACE;
     sysFsInfo->drive_type = SCSI_DRIVE;//changed later if detected as ATA
-    char fullFWPath[PATH_MAX] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, fullFWPath, PATH_MAX);
     snprintf(fullFWPath, PATH_MAX, "%s", inHandleLink);
 
     fullFWPath[0] = '/';
@@ -728,13 +728,13 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     fullFWPath[2] = 'y';
     fullFWPath[3] = 's';
     fullFWPath[4] = '/';
-    memmove(&fullFWPath[5], &fullFWPath[6], strlen(fullFWPath));
+    safe_memmove(&fullFWPath[5], PATH_MAX - 5, &fullFWPath[6], strlen(fullFWPath));
     snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullFWPath);
     //now we need to go up a few directories to get the modalias file to parse
     intptr_t newStrLen = strstr(fullFWPath, "/host") - fullFWPath;
     if (newStrLen > 0)
     {
-        char *fwPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+        char *fwPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
         if (fwPath)
         {
             snprintf(fwPath, PATH_MAX, "%.*s/modalias", C_CAST(int, newStrLen), fullFWPath);
@@ -763,7 +763,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             //Get Driver Information.
             fwPath = dirname(fwPath);//remove idProduct from the end
             common_String_Concat(fwPath, PATH_MAX, "/driver");
-            char *driverPath = C_CAST(char *, calloc(OPENSEA_PATH_MAX, sizeof(char)));
+            char *driverPath = C_CAST(char *, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             ssize_t len = readlink(fwPath, driverPath, OPENSEA_PATH_MAX);
             if (len != -1)
             {
@@ -785,7 +785,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     sysFsInfo->drive_type = SCSI_DRIVE;//changed later if detected as ATA or NVMe or anything else
     //get vendor and product IDs of the controller attached to this device.
 
-    char fullPciPath[PATH_MAX] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
     snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
     fullPciPath[0] = '/';
@@ -793,7 +793,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     fullPciPath[2] = 'y';
     fullPciPath[3] = 's';
     fullPciPath[4] = '/';
-    memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+    safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], strlen(fullPciPath));
     snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
     //need to trim the path down now since it can vary by controller:
     //adaptec: /sys/devices/pci0000:00/0000:00:02.0/0000:02:00.0/host0/target0:1:0/0:1:0:0/scsi_generic/sg2
@@ -805,7 +805,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     intptr_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath;
     if (newStrLen > 0)
     {
-        char *pciPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+        char *pciPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
         if (pciPath)
         {
             snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
@@ -854,7 +854,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             //Store Driver Information
             pciPath = dirname(pciPath);
             common_String_Concat(pciPath, PATH_MAX, "/driver");
-            char *driverPath = C_CAST(char *, calloc(OPENSEA_PATH_MAX, sizeof(char)));
+            char *driverPath = C_CAST(char *, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             if (-1 != readlink(pciPath, driverPath, OPENSEA_PATH_MAX))
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
@@ -916,7 +916,7 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
 //NOTE: This counts on "full device path" being set in sysFsInfo already (which it should be)
 static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo * sysFsInfo)
 {
-    char fullPathBuffer[PATH_MAX] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, fullPathBuffer, PATH_MAX);
     char *fullPath = &fullPathBuffer[0];
     snprintf(fullPath, PATH_MAX, "%s", sysFsInfo->fullDevicePath);
     common_String_Concat(fullPath, PATH_MAX, "/device/type");
@@ -979,7 +979,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
         if (strstr(handle, "nvme") != M_NULLPTR)
         {
             size_t nvmHandleLen = strlen(handle) + 1;
-            char *nvmHandle = C_CAST(char*, calloc(nvmHandleLen, sizeof(char)));
+            char *nvmHandle = C_CAST(char*, safe_calloc(nvmHandleLen, sizeof(char)));
             snprintf(nvmHandle, nvmHandleLen, "%s", handle);
             sysFsInfo->interface_type = NVME_INTERFACE;
             sysFsInfo->drive_type = NVME_DRIVE;
@@ -989,7 +989,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
         {
             bool incomingBlock = false;//only set for SD!
             bool bsg = false;
-            char incomingHandleClassPath[PATH_MAX] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
             //char *incomingClassName = M_NULLPTR;
             common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
             if (is_Block_Device_Handle(handle))
@@ -1034,7 +1034,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
                 //now read the link with the handle appended on the end
                 if (lstat(incomingHandleClassPath, &link) == 0 && S_ISLNK(link.st_mode))
                 {
-                    char inHandleLink[PATH_MAX] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(char, inHandleLink, PATH_MAX);
                     if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
                     {
                         //Read the link and set up all the fields we want to setup.
@@ -1178,7 +1178,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
     else
     {
         bool incomingBlock = false;//only set for SD!
-        char incomingHandleClassPath[PATH_MAX] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
         char *incomingClassName = M_NULLPTR;
         common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
         if (is_Block_Device_Handle(handle))
@@ -1209,7 +1209,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
             const char* basehandle = basename(dupHandle);
             common_String_Concat(incomingHandleClassPath, PATH_MAX, basehandle);
             //now read the link with the handle appended on the end
-            char inHandleLink[PATH_MAX] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(char, inHandleLink, PATH_MAX);
             if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
             {
                 //printf("full in handleLink = %s\n", inHandleLink);
@@ -1218,7 +1218,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                 const char* bsgClass = "/sys/class/bsg/";
                 const char* blockClass = "/sys/class/block/";
                 struct stat mapStat;
-                char classPath[PATH_MAX] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(char, classPath, PATH_MAX);
                 bool bsg = false;
                 if (incomingBlock)
                 {
@@ -1260,13 +1260,13 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                 {
                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
                     size_t tempLen = strlen(classPath) + strlen(classList[iter]->d_name) + 1;
-                    char *temp = C_CAST(char*, calloc(tempLen, sizeof(char)));
+                    char *temp = C_CAST(char*, safe_calloc(tempLen, sizeof(char)));
                     struct stat tempStat;
                     memset(&tempStat, 0, sizeof(struct stat));
                     snprintf(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
                     if (lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode))/*check if this is a link*/
                     {
-                        char mapLink[PATH_MAX] = { 0 };
+                        DECLARE_ZERO_INIT_ARRAY(char, mapLink, PATH_MAX);
                         if (readlink(temp, mapLink, PATH_MAX) > 0)
                         {
                             char *className = M_NULLPTR;
@@ -1279,7 +1279,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             if (incomingBlock)//block class
                             {
                                 classNameLength = strlen("scsi_generic") + 1;
-                                className = C_CAST(char*, calloc(classNameLength, sizeof(char)));
+                                className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
                                     snprintf(className, classNameLength, "scsi_generic");
@@ -1288,7 +1288,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             else if (bsg) //bsg class
                             {
                                 classNameLength = strlen("bsg") + 1;
-                                className = C_CAST(char*, calloc(classNameLength, sizeof(char)));
+                                className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
                                     snprintf(className, classNameLength, "bsg");
@@ -1297,7 +1297,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             else //scsi_generic class
                             {
                                 classNameLength = strlen("block") + 1;
-                                className = C_CAST(char*, calloc(classNameLength, sizeof(char)));
+                                className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
                                     snprintf(className, classNameLength, "block");
@@ -1381,7 +1381,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
         device->os_info.fileSystemInfo.fileSystemInfoValid = true;
         device->os_info.fileSystemInfo.hasActiveFileSystem = false;
         device->os_info.fileSystemInfo.isSystemDisk = false;
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(C_CAST(size_t, partitionCount), sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, safe_calloc(C_CAST(size_t, partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
@@ -1442,7 +1442,7 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
 #endif
         if (mapResult == SUCCESS && genHandle != M_NULLPTR)
         {
-            deviceHandle = C_CAST(char*, calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
+            deviceHandle = C_CAST(char*, safe_calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
             //printf("Changing filename to SG device....\n");
             if (is_SCSI_Generic_Handle(genHandle))
             {
@@ -1793,7 +1793,7 @@ eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx )
     }
     else
     {
-        localSenseBuffer = C_CAST(uint8_t *, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+        localSenseBuffer = C_CAST(uint8_t *, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
         if (!localSenseBuffer)
         {
             return MEMORY_FAILURE;
@@ -2379,14 +2379,14 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     }
     uint32_t totalDevs = num_sg_devs + num_sd_devs + num_nvme_devs;
     
-    char **devs = C_CAST(char **, calloc(totalDevs + 1, sizeof(char *)));
+    char **devs = C_CAST(char **, safe_calloc(totalDevs + 1, sizeof(char *)));
     uint32_t i = 0;
     uint32_t j = 0;
     //add sg/sd devices to the list
     for (; i < (num_sg_devs + num_sd_devs); i++)
     {
         size_t handleSize = (strlen("/dev/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(handleSize));
+        devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
         safe_Free(C_CAST(void**, &namelist[i]));
     }
@@ -2394,7 +2394,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     for (j = 0; i < totalDevs && j < num_nvme_devs; i++, j++)
     {
         size_t handleSize = (strlen("/dev/") + strlen(nvmenamelist[j]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(handleSize));
+        devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", nvmenamelist[j]->d_name);
         safe_Free(C_CAST(void**, &nvmenamelist[j]));
     }
@@ -3187,7 +3187,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
     #endif
     if (partitionCount > 0)
     {
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(C_CAST(size_t, partitionCount), sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, safe_calloc(C_CAST(size_t, partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))

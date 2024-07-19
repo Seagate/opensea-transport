@@ -121,7 +121,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMod
         if (!pattern)
         {
             localPattern = true;
-            pattern = C_CAST(uint8_t*, calloc(4, sizeof(uint8_t)));
+            pattern = C_CAST(uint8_t*, safe_calloc(4, sizeof(uint8_t)));
             if (!pattern)
             {
                 return MEMORY_FAILURE;
@@ -547,7 +547,7 @@ eReturnValues security_Send(tDevice *device, uint8_t securityProtocol, uint16_t 
             {
                 //round up to nearest 512byte sector
                 size_t newBufferSize = (((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE) * LEGACY_DRIVE_SEC_SIZE;
-                tcgBufPtr = C_CAST(uint8_t*, calloc_aligned(newBufferSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+                tcgBufPtr = C_CAST(uint8_t*, safe_calloc_aligned(newBufferSize, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (tcgBufPtr == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
@@ -612,7 +612,7 @@ eReturnValues security_Receive(tDevice *device, uint8_t securityProtocol, uint16
             {
                 //round up to nearest 512byte sector
                 tcgDataSize = (((dataSize + LEGACY_DRIVE_SEC_SIZE) - 1) / LEGACY_DRIVE_SEC_SIZE) * LEGACY_DRIVE_SEC_SIZE;
-                tcgBufPtr = C_CAST(uint8_t*, calloc_aligned(tcgDataSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+                tcgBufPtr = C_CAST(uint8_t*, safe_calloc_aligned(tcgDataSize, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!tcgBufPtr)
                 {
                     return MEMORY_FAILURE;
@@ -696,7 +696,7 @@ eReturnValues write_Same(tDevice *device, uint64_t startingLba, uint64_t numberO
             uint8_t feature = LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS;
             if (noDataTransfer)
             {
-                pattern = C_CAST(uint8_t*, calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+                pattern = C_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t), device->os_info.minimumAlignment));
                 localPattern = true;
             }
             //Check range to see which feature to use
@@ -794,7 +794,7 @@ bool is_Write_Psuedo_Uncorrectable_Supported(tDevice *device)
     case SCSI_DRIVE:
     {
         //check for wu_supp in extended inquiry vpd page (SPC4+) since this matches when it was added to SBC3
-        uint8_t extendedInquiryData[VPD_EXTENDED_INQUIRY_LEN] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, extendedInquiryData, VPD_EXTENDED_INQUIRY_LEN);
         if (SUCCESS == scsi_Inquiry(device, extendedInquiryData, VPD_EXTENDED_INQUIRY_LEN, EXTENDED_INQUIRY_DATA, true, false))
         {
             if (extendedInquiryData[6] & BIT3)
@@ -878,7 +878,7 @@ bool is_Write_Flagged_Uncorrectable_Supported(tDevice *device)
     case SCSI_DRIVE:
     {
         //check for wu_supp in extended inquiry vpd page (SPC4+) since this matches when it was added to SBC3
-        uint8_t extendedInquiryData[VPD_EXTENDED_INQUIRY_LEN] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, extendedInquiryData, VPD_EXTENDED_INQUIRY_LEN);
         if (SUCCESS == scsi_Inquiry(device, extendedInquiryData, VPD_EXTENDED_INQUIRY_LEN, EXTENDED_INQUIRY_DATA, true, false))
         {
             if (extendedInquiryData[6] & BIT2)
@@ -1837,7 +1837,7 @@ eReturnValues nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
     {
         //NVME doesn't have a verify command like ATA or SCSI, so we're going to substitute by doing a read with FUA set....should be the same minus doing a data transfer.
         uint32_t dataLength = device->drive_info.deviceBlockSize * range;
-        uint8_t* data = C_CAST(uint8_t*, calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t* data = C_CAST(uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (data)
         {
             ret = nvme_Read(device, lba, C_CAST(uint16_t, range - 1), false, true, 0, data, dataLength);

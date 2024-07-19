@@ -140,7 +140,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
     int partitionCount = 0;
-    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, blockHandle, OS_HANDLE_NAME_MAX_LENGTH);
     snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
     set_Device_Name(device->os_info.name, &blockHandle[strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - strlen("/dev/"));
     //note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the information in the mount tab file.
@@ -153,7 +153,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
         device->os_info.fileSystemInfo.fileSystemInfoValid = true;
         device->os_info.fileSystemInfo.hasActiveFileSystem = false;
         device->os_info.fileSystemInfo.isSystemDisk = false;
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
@@ -554,12 +554,12 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         num_rdsk = C_CAST(uint32_t, scandirres);
     }
     
-    char **devs = C_CAST(char **, calloc(num_rdsk + 1, sizeof(char *)));
+    char **devs = C_CAST(char **, safe_calloc(num_rdsk + 1, sizeof(char *)));
     uint32_t i = 0;
     for(; i < num_rdsk; i++)
     {
         size_t handleSize = (strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(handleSize));
+        devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
         safe_Free(C_CAST(void**, &namelist[i]));
     }
@@ -712,7 +712,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
 {
     eReturnValues ret = SUCCESS;
     int partitionCount = 0;
-    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, blockHandle, OS_HANDLE_NAME_MAX_LENGTH);
     snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
     set_Device_Name(device->os_info.name, &blockHandle[strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - strlen("/dev/"));
     //note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the information in the mount tab file.
@@ -722,7 +722,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
 #endif
     if (partitionCount > 0)
     {
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))

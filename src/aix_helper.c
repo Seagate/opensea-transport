@@ -1065,8 +1065,8 @@ static void print_CuDv_Struct (struct CuDv *cudv)
     if (cudv->PdDvLn_info)
     {
         //making copies to ensure null termination -TJE
-        char listinfoClassname[MAX_ODMI_NAME + 1] = { 0 };
-        char listinfoCrit[MAX_ODMI_CRIT + 1] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(char, listinfoClassname, MAX_ODMI_NAME + 1);
+        DECLARE_ZERO_INIT_ARRAY(char, listinfoCrit, MAX_ODMI_CRIT + 1);
         snprintf(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname);
         snprintf(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit);
         printf("\t\tlistinfo:\n");
@@ -1286,7 +1286,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                 if (strlen(ptrcudv->parent) > 0)
                 {
                     //open the controller handle and get the IOCINFO for it -TJE
-                    char controllerHandle[OS_HANDLE_NAME_MAX_LENGTH] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(char, controllerHandle, OS_HANDLE_NAME_MAX_LENGTH);
                     snprintf(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
 
                     if (device->deviceVerbosity > VERBOSITY_DEFAULT)
@@ -2451,7 +2451,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
         //setup fixed format data for now
         struct ide_atapi_passthru requestSensePT;
         seatimer_t rscommandTimer;
-        uint8_t localSenseData[SPC3_SENSE_LEN] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, localSenseData, SPC3_SENSE_LEN);
         uint8_t senseKey = M_Nibble1(idePassthrough.ata_error);//bits 7:4 contain the sense key
         memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
         scsiIoCtx->psense[0] = 0x70;//fixed format
@@ -2878,13 +2878,13 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 
     num_devs = scandir("/dev", &namelist, rhdisk_filter, alphasort);
 
-    char **devs = C_CAST(char **, calloc(num_devs + 1, sizeof(char *)));
+    char **devs = C_CAST(char **, safe_calloc(num_devs + 1, sizeof(char *)));
     int i = 0;
     //add rhdisk devices to the list
     for (; i < (num_devs); i++)
     {
         size_t handleSize = (strlen("/dev/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(handleSize));
+        devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
         safe_Free(C_CAST(void**, &namelist[i]));
     }

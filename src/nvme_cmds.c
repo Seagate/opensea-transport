@@ -1094,7 +1094,7 @@ eReturnValues nvme_Read_Ctrl_Reg(tDevice *device, nvmeBarCtrlRegisters * ctrlReg
     size_t dataSize = int32_to_sizet(getpagesize());
     if (dataSize > 0 && dataSize <= UINT32_MAX)
     {
-        uint8_t * barRegs = calloc_aligned(dataSize, sizeof(uint8_t), dataSize);
+        uint8_t * barRegs = safe_calloc_aligned(dataSize, sizeof(uint8_t), dataSize);
         if (!barRegs)
         {
             return MEMORY_FAILURE;

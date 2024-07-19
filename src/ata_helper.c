@@ -253,7 +253,7 @@ eReturnValues send_ATA_SCT_Data_Transfer(tDevice *device, eDataTransferDirection
 eReturnValues send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, uint64_t lba, uint8_t *dataBuf, uint32_t dataSize, uint16_t *numberOfECCCRCBytes, uint16_t *numberOfBlocksRequested)
 {
     eReturnValues ret = UNKNOWN;
-    uint8_t readWriteLongCommandSector[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, readWriteLongCommandSector, LEGACY_DRIVE_SEC_SIZE);
 
     //action code
     readWriteLongCommandSector[0] = M_Byte0(SCT_READ_WRITE_LONG);
@@ -319,7 +319,7 @@ eReturnValues send_ATA_SCT_Read_Write_Long(tDevice *device, eSCTRWLMode mode, ui
 eReturnValues send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions functionCode, uint64_t startLBA, uint64_t fillCount, uint8_t *pattern, uint64_t patternLength)
 {
     eReturnValues ret = UNKNOWN;
-    uint8_t *writeSameBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
+    uint8_t *writeSameBuffer = C_CAST(uint8_t*, safe_calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!writeSameBuffer)
     {
         perror("Calloc failure!\n");
@@ -398,7 +398,7 @@ eReturnValues send_ATA_SCT_Write_Same(tDevice *device, eSCTWriteSameFunctions fu
 eReturnValues send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t functionCode, uint16_t selectionCode, uint16_t *currentValue, uint16_t recoveryTimeLimit)
 {
     eReturnValues ret = UNKNOWN;
-    uint8_t *errorRecoveryBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
+    uint8_t *errorRecoveryBuffer = C_CAST(uint8_t*, safe_calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!errorRecoveryBuffer)
     {
         perror("Calloc failure!\n");
@@ -437,7 +437,7 @@ eReturnValues send_ATA_SCT_Error_Recovery_Control(tDevice *device, uint16_t func
 eReturnValues send_ATA_SCT_Feature_Control(tDevice *device, uint16_t functionCode, uint16_t featureCode, uint16_t *state, uint16_t *optionFlags)
 {
     eReturnValues ret = UNKNOWN;
-    uint8_t *featureControlBuffer = C_CAST(uint8_t*, calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
+    uint8_t *featureControlBuffer = C_CAST(uint8_t*, safe_calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!featureControlBuffer)
     {
         perror("Calloc Failure!\n");
@@ -844,7 +844,9 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
             memcpy(ataSN, idData->SerNum, snLimit);
             for (uint8_t iter = 0; iter < snLimit; ++iter)
             {
-                if (!is_ASCII(ataSN[iter]) || !isprint(ataSN[iter]))
+                if (!safe_isascii(
+ataSN[iter]) || !safe_isprint(
+ataSN[iter]))
                 {
                     ataSN[iter] = ' ';//replace with a space
                 }
@@ -861,7 +863,9 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
             memcpy(ataFW, idData->FirmVer, fwLimit);
             for (uint8_t iter = 0; iter < fwLimit; ++iter)
             {
-                if (!is_ASCII(ataFW[iter]) || !isprint(ataFW[iter]))
+                if (!safe_isascii(
+ataFW[iter]) || !safe_isprint(
+ataFW[iter]))
                 {
                     ataFW[iter] = ' ';//replace with a space
                 }
@@ -878,7 +882,9 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
             memcpy(ataMN, idData->ModelNum, mnLimit);
             for (uint8_t iter = 0; iter < mnLimit; ++iter)
             {
-                if (!is_ASCII(ataMN[iter]) || !isprint(ataMN[iter]))
+                if (!safe_isascii(
+ataMN[iter]) || !safe_isprint(
+ataMN[iter]))
                 {
                     ataMN[iter] = ' ';//replace with a space
                 }
@@ -1451,7 +1457,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
     //only bother reading logs if GPL is supported...not going to bother with SMART even though some of the things we are looking for are in SMART - TJE
     if (retrievedIdentifyData && device->drive_info.ata_Options.generalPurposeLoggingSupported)
     {
-        uint8_t logBuffer[ATA_LOG_PAGE_LEN_BYTES] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, logBuffer, ATA_LOG_PAGE_LEN_BYTES);
         if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DIRECTORY, 0, logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
         {
             bool readIDDataLog = false;

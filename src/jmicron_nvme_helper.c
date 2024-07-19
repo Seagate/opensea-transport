@@ -247,8 +247,8 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirectio
 eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t jmCDB[JMICRON_NVME_CDB_SIZE] = { 0 };
-    uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, jmCDB, JMICRON_NVME_CDB_SIZE);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE);
     eDataTransferDirection jmCDBDir = 0;
     if (!nvmCmd)
     {
@@ -342,9 +342,9 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
 
 static eReturnValues jm_NVMe_Normal_Shutdown(tDevice *device)
 {
-    uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JMICRON_NVME_CDB_SIZE);
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
-    uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE);
     eReturnValues ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_NVME_NORMAL_SHUTDOWN, M_NULLPTR);
     if (ret == SUCCESS)
     {
@@ -359,9 +359,9 @@ static eReturnValues jm_NVMe_Normal_Shutdown(tDevice *device)
 
 static eReturnValues jm_NVMe_MCU_Reset(tDevice *device)
 {
-    uint8_t cdb[JMICRON_NVME_CDB_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JMICRON_NVME_CDB_SIZE);
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
-    uint8_t jmPayload[JMICRON_NVME_CMD_PAYLOAD_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE);
     eReturnValues ret = build_JM_NVMe_CDB_And_Payload(cdb, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_SET_PAYLOAD, JM_VENDOR_CTRL_MCU_RESET, M_NULLPTR);
     if (ret == SUCCESS)
     {

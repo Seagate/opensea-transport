@@ -78,7 +78,7 @@ Nvme_Open(struct nvme_adapter_list *adapters, const char *name)
       return M_NULLPTR;
    }
 
-   handle = C_CAST(struct nvme_handle *, malloc(sizeof(*handle)));
+   handle = C_CAST(struct nvme_handle *, safe_malloc(sizeof(*handle)));
    if (!handle) {
       return M_NULLPTR;
    }
@@ -374,7 +374,7 @@ int Nvme_FWLoadImage(char *fw_path, void **fw_buf, int *fw_size)
    }
 
    fw_file_size = C_CAST(int, sb.st_size);
-   if ((*fw_buf = malloc(fw_file_size)) == M_NULLPTR) {//need to free!!!!
+   if ((*fw_buf = safe_malloc(fw_file_size)) == M_NULLPTR) {//need to free!!!!
       fprintf (stderr, "ERROR: Failed to malloc %d bytes.\n", fw_file_size);
       if (close (fd) == -1) {
          fprintf (stderr, "ERROR: Failed to close fd: %d.\n", fd);
@@ -419,7 +419,7 @@ int Nvme_FWDownload(struct nvme_handle *handle, int slot,  unsigned char *rom_bu
    int rc;
    void *chunk;
 
-   if ((chunk = malloc(NVME_MAX_XFER_SIZE)) == M_NULLPTR) {
+   if ((chunk = safe_malloc(NVME_MAX_XFER_SIZE)) == M_NULLPTR) {
       fprintf(stderr, "ERROR: Failed to malloc %d bytes.\n", NVME_MAX_XFER_SIZE);
       return -ENOMEM;
    }

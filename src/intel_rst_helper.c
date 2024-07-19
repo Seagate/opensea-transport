@@ -214,7 +214,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
     if (device)
     {
         size_t allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
-        IOCTL_RAID_FIRMWARE_BUFFER *raidFirmwareRequest = C_CAST(IOCTL_RAID_FIRMWARE_BUFFER*, calloc_aligned(allocationSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+        IOCTL_RAID_FIRMWARE_BUFFER *raidFirmwareRequest = C_CAST(IOCTL_RAID_FIRMWARE_BUFFER*, safe_calloc_aligned(allocationSize, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (raidFirmwareRequest)
         {
             seatimer_t commandTimer;
@@ -386,7 +386,7 @@ bool supports_Intel_Firmware_Download(tDevice *device)
     printf("Intel: Checking FWDL IOCTL support\n");
 #endif //INTRST_DEBUG
     uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2) + (sizeof(INTEL_STORAGE_FIRMWARE_SLOT_INFO_V2) * 7);//max of 7 slots
-    PINTEL_STORAGE_FIRMWARE_INFO_V2 firmwareInfo = C_CAST(PINTEL_STORAGE_FIRMWARE_INFO_V2, calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this is passed to another function where it will be copied as needed
+    PINTEL_STORAGE_FIRMWARE_INFO_V2 firmwareInfo = C_CAST(PINTEL_STORAGE_FIRMWARE_INFO_V2, safe_calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this is passed to another function where it will be copied as needed
     if (firmwareInfo)
     {
         uint32_t flags = 0;
@@ -445,7 +445,7 @@ static eReturnValues internal_Intel_FWDL_Function_Download(tDevice *device, uint
     if (device && imagePtr)
     {
         uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2) + imageDataLength;
-        PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2 download = C_CAST(PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2, calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this will get copied to an aligned location
+        PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2 download = C_CAST(PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2, safe_calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this will get copied to an aligned location
         if (download)
         {
             download->Version = INTEL_STORAGE_FIRMWARE_DOWNLOAD_STRUCTURE_VERSION_V2;
@@ -476,7 +476,7 @@ static eReturnValues internal_Intel_FWDL_Function_Activate(tDevice *device, uint
     if (device)
     {
         uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_ACTIVATE);
-        PINTEL_STORAGE_FIRMWARE_ACTIVATE activate = C_CAST(PINTEL_STORAGE_FIRMWARE_ACTIVATE, calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this will get copied to an aligned location
+        PINTEL_STORAGE_FIRMWARE_ACTIVATE activate = C_CAST(PINTEL_STORAGE_FIRMWARE_ACTIVATE, safe_calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this will get copied to an aligned location
         if (activate)
         {
             activate->Version = INTEL_STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION;
@@ -628,7 +628,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
         NVME_IOCTL_PASS_THROUGH *nvmPassthroughCommand = M_NULLPTR;
         HANDLE handleToUse = nvmeIoCtx->device->os_info.fd;
         size_t allocationSize = sizeof(NVME_IOCTL_PASS_THROUGH) + nvmeIoCtx->dataSize;
-        nvmPassthroughCommand = C_CAST(NVME_IOCTL_PASS_THROUGH*, calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
+        nvmPassthroughCommand = C_CAST(NVME_IOCTL_PASS_THROUGH*, safe_calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
         if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
         {
             printf("\n====Sending Intel RST NVMe Command====\n");

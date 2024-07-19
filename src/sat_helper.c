@@ -65,7 +65,7 @@
 eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode)
 {
     eReturnValues ret = NOT_SUPPORTED;//Many devices don't support this log page.
-    uint8_t *sense70logBuffer = C_CAST(uint8_t*, calloc_aligned(14 + LOG_PAGE_HEADER_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));//allocate a buffer to get the rtfrs in. the size of 12 is ATA Passthrough Descriptor + 4byte log page header
+    uint8_t *sense70logBuffer = C_CAST(uint8_t*, safe_calloc_aligned(14 + LOG_PAGE_HEADER_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));//allocate a buffer to get the rtfrs in. the size of 12 is ATA Passthrough Descriptor + 4byte log page header
     if (!sense70logBuffer)
     {
         perror("Calloc Failure!\n");
@@ -336,7 +336,7 @@ eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *p
             if (ret != SUCCESS && !device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)//rerequest only if the return response info is not supported
             {
                 //request descriptor format data
-                uint8_t *descriptorFormatSenseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t *descriptorFormatSenseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!descriptorFormatSenseData)
                 {
                     return MEMORY_FAILURE;
@@ -801,8 +801,8 @@ eReturnValues request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rt
 {
     //try and issue a request for the RTFRs...we'll see if this actually works
     eReturnValues rtfrRet = NOT_SUPPORTED;//by default, most devices don't actually support this SAT command
-    uint8_t *rtfrBuffer = C_CAST(uint8_t*, calloc_aligned(14, sizeof(uint8_t), device->os_info.minimumAlignment));//this size is the size of the ATA pass through descriptor which is all that should be returned from the SATL with this command
-    uint8_t *rtfr_senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+    uint8_t *rtfrBuffer = C_CAST(uint8_t*, safe_calloc_aligned(14, sizeof(uint8_t), device->os_info.minimumAlignment));//this size is the size of the ATA pass through descriptor which is all that should be returned from the SATL with this command
+    uint8_t *rtfr_senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
     uint8_t *requestRTFRs = M_NULLPTR;
     uint8_t cdbLen = CDB_LEN_12;
     uint8_t protocolOffset = SAT_PROTOCOL_OFFSET;
@@ -811,7 +811,7 @@ eReturnValues request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rt
     {
         cdbLen = CDB_LEN_16;
     }
-    requestRTFRs = C_CAST(uint8_t*, calloc_aligned(cdbLen, sizeof(uint8_t), device->os_info.minimumAlignment));
+    requestRTFRs = C_CAST(uint8_t*, safe_calloc_aligned(cdbLen, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!rtfrBuffer || !rtfr_senseData || !requestRTFRs)
     {
         perror("Calloc aligned Failure!\n");
@@ -936,7 +936,7 @@ eReturnValues build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, 
             }
             else
             {
-                *satCDB = C_CAST(uint8_t*, calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+                *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -955,7 +955,7 @@ eReturnValues build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, 
             }
             else
             {
-                *satCDB = C_CAST(uint8_t*, calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+                *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -966,7 +966,7 @@ eReturnValues build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, 
             }
             break;
         case 32:
-            *satCDB = C_CAST(uint8_t*, calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+            *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (!*satCDB)
             {
                 return MEMORY_FAILURE;
@@ -1003,7 +1003,7 @@ eReturnValues build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, 
             if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
             {
                 //12B CDB
-                *satCDB = C_CAST(uint8_t*, calloc_aligned(CDB_LEN_12, sizeof(uint8_t), device->os_info.minimumAlignment));
+                *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(CDB_LEN_12, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -1015,7 +1015,7 @@ eReturnValues build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, 
             else
             {
                 //16B CDB
-                *satCDB = C_CAST(uint8_t*, calloc_aligned(CDB_LEN_16, sizeof(uint8_t), device->os_info.minimumAlignment));
+                *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(CDB_LEN_16, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -1035,7 +1035,7 @@ eReturnValues build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, 
                 {
                     //No ext registers are set, so we will issue the command with a 12B CDB. This is a major hack, but might help some devices get some more support.
                     //12B CDB
-                    *satCDB = C_CAST(uint8_t*, calloc_aligned(CDB_LEN_12, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(CDB_LEN_12, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!*satCDB)
                     {
                         return MEMORY_FAILURE;
@@ -1048,7 +1048,7 @@ eReturnValues build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, 
             if (!*satCDB) //should fall into here if the above check did not work and allocate the satCDB memory.
             {
                 //16B CDB
-                *satCDB = C_CAST(uint8_t*, calloc_aligned(CDB_LEN_16, sizeof(uint8_t), device->os_info.minimumAlignment));
+                *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(CDB_LEN_16, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -1060,7 +1060,7 @@ eReturnValues build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, 
             break;
         case ATA_CMD_TYPE_COMPLETE_TASKFILE:
             //32B CDB
-            *satCDB = C_CAST(uint8_t*, calloc_aligned(CDB_LEN_32, sizeof(uint8_t), device->os_info.minimumAlignment));
+            *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(CDB_LEN_32, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (!*satCDB)
             {
                 return MEMORY_FAILURE;
@@ -1155,7 +1155,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -1461,7 +1461,7 @@ static void set_Sense_Key_Specific_Descriptor_Progress_Indicator(uint8_t data[8]
 
 static void set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseDataLength, uint8_t senseKey, uint8_t asc, uint8_t ascq, bool descriptorFormat, uint8_t *descriptor, uint8_t descriptorCount /* this will probably only be 1, but up to 2 or 3 max */)
 {
-    uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     uint8_t additionalSenseLength = 0;
     if (descriptorFormat)
     {
@@ -1966,7 +1966,7 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
                 return SUCCESS;
             }
-            compareBuf = C_CAST(uint8_t*, calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+            compareBuf = C_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
             if (!compareBuf)
             {
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
@@ -2046,7 +2046,7 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
                 return SUCCESS;
             }
-            compareBuf = C_CAST(uint8_t*, calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+            compareBuf = C_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
             if (!compareBuf)
             {
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
@@ -2361,7 +2361,7 @@ static eReturnValues translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, 
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, unitSerialNumber, 24);
-    char ataSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, ataSerialNumber, SERIAL_NUM_LEN + 1);
     uint8_t peripheralDevice = 0;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
@@ -2398,8 +2398,8 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
     uint8_t *SCSINameStringDesignator = M_NULLPTR;
     //vars for t10 vendor id designator
     DECLARE_ZERO_INIT_ARRAY(uint8_t, t10VendorIdDesignator, 72);
-    char ataModelNumber[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
-    char ataSerialNumber[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, ataModelNumber, ATA_IDENTIFY_MN_LENGTH + 1);
+    DECLARE_ZERO_INIT_ARRAY(char, ataSerialNumber, ATA_IDENTIFY_SN_LENGTH + 1);
     char *ataVendorId = "ATA     ";
     //will hold the complete data to return
     uint8_t *deviceIdentificationPage = M_NULLPTR;
@@ -2410,10 +2410,10 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
                                            device->drive_info.IdentifyData.ata.Word110,\
                                            device->drive_info.IdentifyData.ata.Word111);
 #define SAT_SCSI_NAME_STRING_LENGTH 21
-        char scsiNameString[SAT_SCSI_NAME_STRING_LENGTH] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(char, scsiNameString, SAT_SCSI_NAME_STRING_LENGTH);
         naaDesignatorLength = 12;
         //WWN Supported
-        naaDesignator = C_CAST(uint8_t*, calloc(naaDesignatorLength * sizeof(uint8_t), sizeof(uint8_t)));
+        naaDesignator = C_CAST(uint8_t*, safe_calloc(naaDesignatorLength * sizeof(uint8_t), sizeof(uint8_t)));
         if (!naaDesignator)
         {
             return MEMORY_FAILURE;
@@ -2434,7 +2434,7 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
         //now set up the scsi name string identifier
         snprintf(&scsiNameString[0], SAT_SCSI_NAME_STRING_LENGTH, "naa.%"PRIX64, wwn);
         SCSINameStringDesignatorLength = 24;
-        SCSINameStringDesignator = C_CAST(uint8_t*, calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t)));
+        SCSINameStringDesignator = C_CAST(uint8_t*, safe_calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t)));
         if (!SCSINameStringDesignator)
         {
             safe_Free(C_CAST(void**, &naaDesignator));
@@ -2464,7 +2464,7 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
     memcpy(&t10VendorIdDesignator[52], ataSerialNumber, ATA_IDENTIFY_SN_LENGTH);
 
     //now setup the device identification page
-    deviceIdentificationPage = C_CAST(uint8_t*, calloc((UINT32_C(4) + UINT32_C(72) + C_CAST(uint32_t, naaDesignatorLength) + C_CAST(uint32_t, SCSINameStringDesignatorLength)) * sizeof(uint8_t), sizeof(uint8_t)));
+    deviceIdentificationPage = C_CAST(uint8_t*, safe_calloc((UINT32_C(4) + UINT32_C(72) + C_CAST(uint32_t, naaDesignatorLength) + C_CAST(uint32_t, SCSINameStringDesignatorLength)) * sizeof(uint8_t), sizeof(uint8_t)));
     if (!deviceIdentificationPage)
     {
         safe_Free(C_CAST(void**, &SCSINameStringDesignator));
@@ -2828,7 +2828,7 @@ static eReturnValues translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIo
 static eReturnValues translate_Mode_Page_Policy_VPD_Page_87h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t modePagePolicy[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, modePagePolicy, LEGACY_DRIVE_SEC_SIZE);
     uint16_t pageOffset = 4;//set to where we'll write the first descriptor
     uint8_t peripheralDevice = 0;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
@@ -2911,7 +2911,7 @@ static eReturnValues translate_Mode_Page_Policy_VPD_Page_87h(tDevice *device, Sc
 static eReturnValues translate_Zoned_Block_Device_Characteristics_VPD_Page_B6h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t zonedDeviceInformation[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, zonedDeviceInformation, LEGACY_DRIVE_SEC_SIZE);
     if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, zonedDeviceInformation, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
     {
         //validate that we got a valid page from the ID Data log (it can return all zeros on this page if it isn't supported, but read successfully)
@@ -3005,7 +3005,7 @@ static eReturnValues translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice *devic
     if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085  & BIT0
         && is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT1)//smart enabled and self test supported
     {
-        uint8_t smartData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, smartData, LEGACY_DRIVE_SEC_SIZE);
         if (SUCCESS == ata_SMART_Read_Data(device, smartData, LEGACY_DRIVE_SEC_SIZE))
         {
             uint16_t extendedSelfTestCompletionTimeMinutes = 0;
@@ -3039,7 +3039,7 @@ static eReturnValues translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice *devic
 static eReturnValues translate_Supported_VPD_Pages_00h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t supportedPages[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, supportedPages, LEGACY_DRIVE_SEC_SIZE);
     uint16_t pageOffset = 4;
     uint8_t peripheralDevice = 0;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
@@ -3300,9 +3300,9 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *
             inquiryData[14] = ' ';
             inquiryData[15] = ' ';
             //Product ID (first 16bytes of the ata model number
-            char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
-            char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
-            char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(char, ataSN, ATA_IDENTIFY_SN_LENGTH + 1);
+            DECLARE_ZERO_INIT_ARRAY(char, ataMN, ATA_IDENTIFY_MN_LENGTH + 1);
+            DECLARE_ZERO_INIT_ARRAY(char, ataFW, ATA_IDENTIFY_FW_LENGTH + 1);
 
             fill_ATA_Strings_From_Identify_Data(C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), ataMN, ataSN, ataFW);
 
@@ -4473,7 +4473,7 @@ static eReturnValues translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCt
             {
                 patternLength = 65535;//64k
             }
-            uint8_t *writePattern = C_CAST(uint8_t*, calloc_aligned(patternLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t *writePattern = C_CAST(uint8_t*, safe_calloc_aligned(patternLength, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (writePattern)
             {
                 if (!ataWritePatternZeros)
@@ -4800,7 +4800,7 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(tDevice *device, Sc
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 return SUCCESS;
             }
-            compareBuf = C_CAST(uint8_t*, calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            compareBuf = C_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (!compareBuf)
             {
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
@@ -4890,7 +4890,7 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(tDevice *device, Sc
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 return SUCCESS;
             }
-            compareBuf = C_CAST(uint8_t*, calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            compareBuf = C_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (!compareBuf)
             {
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
@@ -5198,7 +5198,7 @@ static eReturnValues translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoC
                                     uint32_t writeSectors64K = 65535 / device->drive_info.deviceBlockSize;
                                     //ATA Write commands
                                     uint32_t ataWriteDataLength = writeSectors64K * device->drive_info.deviceBlockSize;
-                                    uint8_t *ataWritePattern = C_CAST(uint8_t*, calloc_aligned(writeSectors64K, sizeof(uint8_t), device->os_info.minimumAlignment));
+                                    uint8_t *ataWritePattern = C_CAST(uint8_t*, safe_calloc_aligned(writeSectors64K, sizeof(uint8_t), device->os_info.minimumAlignment));
                                     if (ataWritePattern)
                                     {
                                         if (initializationPatternLength > 0)
@@ -5262,7 +5262,7 @@ static eReturnValues translate_SCSI_Format_Unit_Command(tDevice *device, ScsiIoC
                                             uint32_t writeSectors64K = 65536 / device->drive_info.deviceBlockSize;
                                             //ATA Write commands
                                             uint32_t ataWriteDataLength = writeSectors64K * device->drive_info.deviceBlockSize;
-                                            uint8_t *ataWritePattern = C_CAST(uint8_t*, calloc_aligned(writeSectors64K, sizeof(uint8_t), device->os_info.minimumAlignment));
+                                            uint8_t *ataWritePattern = C_CAST(uint8_t*, safe_calloc_aligned(writeSectors64K, sizeof(uint8_t), device->os_info.minimumAlignment));
                                             if (ataWritePattern)
                                             {
                                                 if (initializationPatternLength > 0)
@@ -5474,7 +5474,7 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(tDevice *device, Scs
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
-    uint8_t *writeData = C_CAST(uint8_t*, calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+    uint8_t *writeData = C_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!writeData)
     {
         return MEMORY_FAILURE;
@@ -5786,7 +5786,7 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(tDevice *device
             {
                 uint32_t paddedLength = ((allocationLength + 511) / 512) * LEGACY_DRIVE_SEC_SIZE;
                 //allocate memory and pad data....then copy back the amount that was requested
-                uint8_t *tempSecurityMemory = C_CAST(uint8_t*, calloc_aligned(paddedLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t *tempSecurityMemory = C_CAST(uint8_t*, safe_calloc_aligned(paddedLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!tempSecurityMemory)
                 {
                     return MEMORY_FAILURE;
@@ -6134,7 +6134,7 @@ static eReturnValues translate_SCSI_Security_Protocol_Out_Command(tDevice *devic
             {
                 uint32_t paddedLength = ((transferLength + 511) / 512);
                 //allocate memory and pad data....then copy back the amount that was requested
-                uint8_t *tempSecurityMemory = C_CAST(uint8_t*, calloc_aligned(paddedLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t *tempSecurityMemory = C_CAST(uint8_t*, safe_calloc_aligned(paddedLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!tempSecurityMemory)
                 {
                     return MEMORY_FAILURE;
@@ -6630,7 +6630,7 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(tDevice *device, ScsiIoC
         {
             if (bufferOffset == 0)
             {
-                uint8_t readBufferData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(uint8_t, readBufferData, LEGACY_DRIVE_SEC_SIZE);
                 if (SUCCESS != ata_Read_Buffer(device, readBufferData, device->drive_info.ata_Options.readBufferDMASupported))
                 {
                     ret = FAILURE;
@@ -6711,7 +6711,7 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(tDevice *device, ScsiIoC
         {
             if (bufferID <= 3)
             {
-                uint8_t gplDirectory[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(uint8_t, gplDirectory, LEGACY_DRIVE_SEC_SIZE);
                 //establish error history I_T nexus (do nothing in this software implementation)
                 if (bufferID == 1 || bufferID == 3)
                 {
@@ -6740,7 +6740,7 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(tDevice *device, ScsiIoC
                         uint8_t savedAvailable = gplDirectory[382];
                         bool currentID = false;
                         bool savedID = false;
-                        uint8_t errorHistoryData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+                        DECLARE_ZERO_INIT_ARRAY(uint8_t, errorHistoryData, LEGACY_DRIVE_SEC_SIZE);
                         uint16_t offset = 32;
                         //set vendor ID to ATA
                         errorHistoryData[0] = 'A';
@@ -7073,7 +7073,7 @@ static eReturnValues translate_SCSI_Send_Diagnostic_Command(tDevice *device, Scs
             {
                 if (smartEnabled)
                 {
-                    uint8_t smartReadData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(uint8_t, smartReadData, LEGACY_DRIVE_SEC_SIZE);
                     uint16_t timeout = 15;
                     switch (selfTestCode)
                     {
@@ -7233,7 +7233,7 @@ static eReturnValues translate_SCSI_Request_Sense_Command(tDevice *device, ScsiI
 {
     eReturnValues ret = SUCCESS;
     uint8_t powerMode = 0;
-    uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     bool descriptorFormat = false;
     bool checkSMARTStatus = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
@@ -7667,7 +7667,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice *device, Scs
     bool start = false;
     bool flushCacheExt = false;
     bool enable = false;
-    uint8_t powerConditionsLog[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, powerConditionsLog, LEGACY_DRIVE_SEC_SIZE);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
@@ -8401,7 +8401,7 @@ static eReturnValues translate_Informational_Exceptions_Log_Page_2F(tDevice *dev
         //set temperature reading
         if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word206) && device->drive_info.IdentifyData.ata.Word206 & BIT0)
         {
-            uint8_t sctData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, sctData, LEGACY_DRIVE_SEC_SIZE);
             if (SUCCESS == ata_SMART_Read_Log(device, ATA_SCT_COMMAND_STATUS, sctData, LEGACY_DRIVE_SEC_SIZE))
             {
                 if (sctData[200] == UINT8_C(0x80))
@@ -8682,7 +8682,7 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiI
     else
     {
         //smart read log (single sector)
-        uint8_t selfTestLog[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, selfTestLog, LEGACY_DRIVE_SEC_SIZE);
         if (SUCCESS == ata_SMART_Read_Log(device, ATA_LOG_SMART_SELF_TEST_LOG, selfTestLog, LEGACY_DRIVE_SEC_SIZE))
         {
             uint8_t selfTestIndex = selfTestLog[508];
@@ -8867,7 +8867,7 @@ static eReturnValues translate_Read_Error_Counters_Log_0x03(tDevice *device, Scs
     //only parameters 4 and 6 are supported all others will be ommitted
     DECLARE_ZERO_INIT_ARRAY(uint8_t, readErrorCountersLog, 20);
     uint8_t offset = 4;
-    uint8_t logPage[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, LEGACY_DRIVE_SEC_SIZE);
     uint64_t *qwordPtr = (uint64_t*)&logPage[0];
     bool correctiveAlgValid = false;
     bool reportedUncorrectablesValid = false;
@@ -8957,7 +8957,7 @@ static eReturnValues translate_Temperature_Log_0x0D(tDevice *device, ScsiIoCtx *
     DECLARE_ZERO_INIT_ARRAY(uint8_t, temperatureLog, 16);
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t offset = 4;
-    uint8_t logPage[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, LEGACY_DRIVE_SEC_SIZE);
     uint64_t *qwordPtr = C_CAST(uint64_t*, &logPage[0]);
     bool currentValid = false;
     bool referenceValid = false;
@@ -9051,7 +9051,7 @@ static eReturnValues translate_Solid_State_Media_Log_0x11(tDevice *device, ScsiI
     DECLARE_ZERO_INIT_ARRAY(uint8_t, solidStateMediaLog, 12);
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t offset = 4;
-    uint8_t logPage[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, LEGACY_DRIVE_SEC_SIZE);
     uint64_t *qwordPtr = C_CAST(uint64_t*, &logPage[0]);
     bool endurancevalid = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
@@ -9117,7 +9117,7 @@ static eReturnValues translate_Background_Scan_Results_Log_0x15(tDevice *device,
     DECLARE_ZERO_INIT_ARRAY(uint8_t, backgroundResults, 20);
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t offset = 4;
-    uint8_t logPage[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, LEGACY_DRIVE_SEC_SIZE);
     uint64_t *qwordPtr = (uint64_t*)&logPage[0];
     bool pohvalid = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
@@ -9192,7 +9192,7 @@ static eReturnValues translate_General_Statistics_And_Performance_Log_0x19(tDevi
     DECLARE_ZERO_INIT_ARRAY(uint8_t, generalStatisticsAndPerformance, 72);
     uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     uint8_t offset = 4;
-    uint8_t logPage[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, LEGACY_DRIVE_SEC_SIZE);
     uint64_t *qwordPtr = (uint64_t*)&logPage[0];
     bool numReadsValid = false;
     bool numWritesValid = false;
@@ -9974,7 +9974,7 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice *devic
             {
                 uint16_t parameterCode = M_BytesTo2ByteValue(ptrData[parameterDataOffset + 0], ptrData[parameterDataOffset + 1]);
                 parameterLength = ptrData[parameterDataOffset + 3];
-                uint8_t *hostLogData = C_CAST(uint8_t*, calloc_aligned(16 * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t *hostLogData = C_CAST(uint8_t*, safe_calloc_aligned(16 * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!hostLogData)
                 {
                     return MEMORY_FAILURE;
@@ -10311,7 +10311,7 @@ static eReturnValues translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *sc
             {
                 trimBufferSize = device->drive_info.IdentifyData.ata.Word105;
             }
-            uint8_t *trimBuffer = C_CAST(uint8_t*, calloc_aligned(trimBufferSize * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));//allocate the max size the device supports...we'll fill in as much as we need to
+            uint8_t *trimBuffer = C_CAST(uint8_t*, safe_calloc_aligned(trimBufferSize * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));//allocate the max size the device supports...we'll fill in as much as we need to
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
             bool useXL = device->drive_info.softSATFlags.dataSetManagementXLSupported;
             uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
@@ -10511,7 +10511,7 @@ static eReturnValues translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    controlPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
+    controlPage = C_CAST(uint8_t*, safe_calloc(pageLength, sizeof(uint8_t)));
     if (!controlPage)
     {
         return MEMORY_FAILURE;
@@ -10561,7 +10561,7 @@ static eReturnValues translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx
             && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT1)
             && (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0))
         {
-            uint8_t smartData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, smartData, LEGACY_DRIVE_SEC_SIZE);
             if (SUCCESS == ata_SMART_Read_Data(device, smartData, LEGACY_DRIVE_SEC_SIZE))
             {
                 if (smartData[373] != UINT8_MAX)
@@ -10635,7 +10635,7 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx *scsiIo
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    pataControlPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
+    pataControlPage = C_CAST(uint8_t*, safe_calloc(pageLength, sizeof(uint8_t)));
     if (!pataControlPage)
     {
         return MEMORY_FAILURE;
@@ -10800,7 +10800,7 @@ static eReturnValues translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoCtx *s
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    controlExtPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
+    controlExtPage = C_CAST(uint8_t*, safe_calloc(pageLength, sizeof(uint8_t)));
     if (!controlExtPage)
     {
         return MEMORY_FAILURE;
@@ -10908,7 +10908,7 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(tDevice *device, Sc
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    powerConditionPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
+    powerConditionPage = C_CAST(uint8_t*, safe_calloc(pageLength, sizeof(uint8_t)));
     if (!powerConditionPage)
     {
         return MEMORY_FAILURE;
@@ -11215,7 +11215,7 @@ static eReturnValues translate_Mode_Sense_ATA_Power_Condition_1A_F1(tDevice *dev
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    powerConditionPage = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
+    powerConditionPage = C_CAST(uint8_t*, safe_calloc(pageLength, sizeof(uint8_t)));
     if (!powerConditionPage)
     {
         
@@ -11332,7 +11332,7 @@ static eReturnValues translate_Mode_Sense_Read_Write_Error_Recovery_01h(ScsiIoCt
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    readWriteErrorRecovery = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
+    readWriteErrorRecovery = C_CAST(uint8_t*, safe_calloc(pageLength, sizeof(uint8_t)));
     if (!readWriteErrorRecovery)
     {
         
@@ -11421,7 +11421,7 @@ static eReturnValues translate_Mode_Sense_Caching_08h(tDevice *device, ScsiIoCtx
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    caching = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
+    caching = C_CAST(uint8_t*, safe_calloc(pageLength, sizeof(uint8_t)));
     if (!caching)
     {
         
@@ -11549,7 +11549,7 @@ static eReturnValues translate_Mode_Sense_Informational_Exceptions_Control_1Ch(S
         }
     }
     //now that we know how many bytes we need for this, allocate memory
-    informationalExceptions = C_CAST(uint8_t*, calloc(pageLength, sizeof(uint8_t)));
+    informationalExceptions = C_CAST(uint8_t*, safe_calloc(pageLength, sizeof(uint8_t)));
     if (!informationalExceptions)
     {
         
@@ -13170,13 +13170,13 @@ static eReturnValues translate_SCSI_Zone_Management_In_Command(tDevice *device, 
     if ((allocationLength % 512) != 0)
     {
         dataBufLength = (allocationLength + 511) / 512;
-        dataBuf = C_CAST(uint8_t*, calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+        dataBuf = C_CAST(uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
         localMemory = true;
     }
     else if (allocationLength == 0)
     {
         dataBufLength = 512;
-        dataBuf = C_CAST(uint8_t*, calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+        dataBuf = C_CAST(uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!dataBuf)
         {
             return MEMORY_FAILURE;
@@ -13267,13 +13267,13 @@ static eReturnValues translate_SCSI_Zone_Management_Out_Command(tDevice *device,
     //if ((allocationLength % 512) != 0)
     //{
     //    dataBufLength = (allocationLength + 511) / 512;
-    //    dataBuf = C_CAST(uint8_t*, calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+    //    dataBuf = C_CAST(uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
     //    localMemory = true;
     //}
     //else if (allocationLength == 0)
     //{
     //    dataBufLength = 512;
-    //    dataBuf = C_CAST(uint8_t*, calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+    //    dataBuf = C_CAST(uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
     //    localMemory = true;
     //}
     //else
@@ -13410,7 +13410,7 @@ static eReturnValues translate_SCSI_Report_Timestamp_Command(tDevice *device, Sc
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, dataBuf, 12);
-    uint8_t generalStats[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, generalStats, LEGACY_DRIVE_SEC_SIZE);
     uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
@@ -13564,7 +13564,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case INQUIRY_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13579,7 +13579,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case READ_CAPACITY_10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13598,7 +13598,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case ATA_PASS_THROUGH_12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13619,7 +13619,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case ATA_PASS_THROUGH_16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13644,7 +13644,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case LOG_SENSE_CMD:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13664,7 +13664,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case LOG_SELECT_CMD:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13684,7 +13684,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case MODE_SENSE_6_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13699,7 +13699,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case MODE_SENSE10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13718,7 +13718,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case MODE_SELECT_6_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13733,7 +13733,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case MODE_SELECT10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13752,7 +13752,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case READ6:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13768,7 +13768,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case READ10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13787,7 +13787,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case READ12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13808,7 +13808,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case READ16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13833,7 +13833,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case REASSIGN_BLOCKS_6:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13848,7 +13848,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case REPORT_LUNS_CMD:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13869,7 +13869,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case REQUEST_SENSE_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13885,7 +13885,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case SECURITY_PROTOCOL_OUT:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13906,7 +13906,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case SEND_DIAGNOSTIC_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13921,7 +13921,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case START_STOP_UNIT_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13936,7 +13936,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case SYNCHRONIZE_CACHE_10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13955,7 +13955,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case SYNCHRONIZE_CACHE_16_CMD:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13980,7 +13980,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case TEST_UNIT_READY_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -13997,7 +13997,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
         {
             cdbLength = 10;
             *dataLength += cdbLength;
-            *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+            *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -14021,7 +14021,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case VERIFY10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14040,7 +14040,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case VERIFY12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14061,7 +14061,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case VERIFY16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14086,7 +14086,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case WRITE6:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14102,7 +14102,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case WRITE10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14121,7 +14121,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case WRITE12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14142,7 +14142,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case WRITE16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14167,7 +14167,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case WRITE_AND_VERIFY_10:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14186,7 +14186,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case WRITE_AND_VERIFY_12:
         cdbLength = 12;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14207,7 +14207,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case WRITE_AND_VERIFY_16:
         cdbLength = 16;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14232,7 +14232,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case WRITE_LONG_10_CMD:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14252,7 +14252,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case WRITE_BUFFER_CMD:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14271,7 +14271,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case READ_BUFFER_CMD:
         cdbLength = 10;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14291,7 +14291,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     case SCSI_FORMAT_UNIT_CMD:
         cdbLength = 6;
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14313,7 +14313,7 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     {
         //allocate memory
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14367,7 +14367,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
         case 0x1FF0://ATA Pass-through 32
             cdbLength = 32;
             *dataLength += cdbLength;
-            *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+            *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -14417,7 +14417,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
         case 0x10://read capacity 16
             cdbLength = 16;
             *dataLength += cdbLength;
-            *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+            *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -14450,7 +14450,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
         case 0x0C://report supported op codes
             cdbLength = 12;
             *dataLength += cdbLength;
-            *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+            *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -14473,7 +14473,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             {
                 cdbLength = 12;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14510,7 +14510,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             case 1://overwrite
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14533,7 +14533,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             case 0x1F://exit failure mode
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14567,7 +14567,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             {
                 cdbLength = 12;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14618,7 +14618,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
         case 0x02://write data
             cdbLength = 10;
             *dataLength += cdbLength;
-            *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+            *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -14639,7 +14639,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             {
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14665,7 +14665,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             {
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14691,7 +14691,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             {
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14717,7 +14717,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             {
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14743,7 +14743,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             {
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14778,7 +14778,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
         case 0x03://descriptor
             cdbLength = 10;
             *dataLength += cdbLength;
-            *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+            *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -14800,7 +14800,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             {
                 cdbLength = 10;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14834,7 +14834,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
         case 0x11://write long 16
             cdbLength = 16;
             *dataLength += cdbLength;
-            *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+            *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
             if (!*pdata)
             {
                 return MEMORY_FAILURE;
@@ -14869,7 +14869,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             case ZM_ACTION_REPORT_ZONES:
                 cdbLength = 16;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14912,7 +14912,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
             case ZM_ACTION_RESET_WRITE_POINTERS:
                 cdbLength = 16;
                 *dataLength += cdbLength;
-                *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+                *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
                 if (!*pdata)
                 {
                     return MEMORY_FAILURE;
@@ -14952,7 +14952,7 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
     {
         //allocate memory
         *dataLength += cdbLength;
-        *pdata = C_CAST(uint8_t*, calloc(*dataLength, sizeof(uint8_t)));
+        *pdata = C_CAST(uint8_t*, safe_calloc(*dataLength, sizeof(uint8_t)));
         if (!*pdata)
         {
             return MEMORY_FAILURE;
@@ -14989,7 +14989,7 @@ static eReturnValues create_All_Supported_Op_Codes_Buffer(tDevice *device, bool 
     eReturnValues ret = SUCCESS;
     uint32_t reportAllMaxLength = 4 * LEGACY_DRIVE_SEC_SIZE;
     uint32_t offset = 4;
-    *pdata = C_CAST(uint8_t*, calloc(reportAllMaxLength, sizeof(uint8_t)));
+    *pdata = C_CAST(uint8_t*, safe_calloc(reportAllMaxLength, sizeof(uint8_t)));
     if (!*pdata)
     {
         return MEMORY_FAILURE;
@@ -16307,7 +16307,7 @@ eReturnValues translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     //if the ataIdentify data is zero, send an identify at least once so we aren't sending that every time we do a read or write command...inquiry, read capacity will always do one though to get the most recent data
     if (!deviceInfoAvailable)
     {
-        uint8_t zeroData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, zeroData, LEGACY_DRIVE_SEC_SIZE);
         if (memcmp(&device->drive_info.IdentifyData.ata.Word000, zeroData, LEGACY_DRIVE_SEC_SIZE) == 0)
         {
             //call fill ata drive info to set up vars inside the device struct which the other commands will use.

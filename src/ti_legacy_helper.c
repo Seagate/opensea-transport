@@ -76,14 +76,14 @@ eReturnValues send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthrough
     eReturnValues ret = UNKNOWN;
     uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
-    uint8_t tiCDB[CDB_LEN_16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, tiCDB, CDB_LEN_16);
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         return NOT_SUPPORTED;
     }
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;

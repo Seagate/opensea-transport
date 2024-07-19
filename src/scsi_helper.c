@@ -2013,7 +2013,9 @@ void copy_Inquiry_Data(uint8_t *pbuf, driveInfo *info)
     //vendor ID
     for (uint8_t iter = 0; iter < T10_VENDOR_ID_LEN; ++iter)
     {
-        if (!is_ASCII(info->T10_vendor_ident[iter]) || !isprint(info->T10_vendor_ident[iter]))
+        if (!safe_isascii(
+info->T10_vendor_ident[iter]) || !safe_isprint(
+info->T10_vendor_ident[iter]))
         {
             info->T10_vendor_ident[iter] = ' ';
         }
@@ -2021,7 +2023,9 @@ void copy_Inquiry_Data(uint8_t *pbuf, driveInfo *info)
     //product ID
     for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
     {
-        if (!is_ASCII(info->product_identification[iter]) || !isprint(info->product_identification[iter]))
+        if (!safe_isascii(
+info->product_identification[iter]) || !safe_isprint(
+info->product_identification[iter]))
         {
             info->product_identification[iter] = ' ';
         }
@@ -2029,7 +2033,9 @@ void copy_Inquiry_Data(uint8_t *pbuf, driveInfo *info)
     //FWRev
     for (uint8_t iter = 0; iter < FW_REV_LEN && iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
     {
-        if (!is_ASCII(info->product_revision[iter]) || !isprint(info->product_revision[iter]))
+        if (!safe_isascii(
+info->product_revision[iter]) || !safe_isprint(
+info->product_revision[iter]))
         {
             info->product_revision[iter] = ' ';
         }
@@ -2047,7 +2053,9 @@ void copy_Serial_Number(uint8_t *pbuf, char *serialNumber)
     serialNumber[M_Min(snLen, SERIAL_NUM_LEN)] = '\0';
     for (uint16_t iter = 0; iter < SERIAL_NUM_LEN && iter < snLen; ++iter)
     {
-        if (!is_ASCII(serialNumber[iter]) || !isprint(serialNumber[iter]))
+        if (!safe_isascii(
+serialNumber[iter]) || !safe_isprint(
+serialNumber[iter]))
         {
             serialNumber[iter] = ' ';
         }
@@ -2097,7 +2105,7 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice *device)
     }
     if (!device->drive_info.passThroughHacks.scsiHacks.noVPDPages && !device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage)//if this is set, then the device is known to not support VPD pages, so just skip to the SAT identify
     {
-        uint8_t *ataInformation = C_CAST(uint8_t *, calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t *ataInformation = C_CAST(uint8_t *, safe_calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!ataInformation)
         {
             perror("Error allocating memory to read the ATA Information VPD page");
@@ -2253,9 +2261,9 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice *device)
 static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
 {
     bool passthroughTypeSet = false;
-    char vendorID[INQ_DATA_T10_VENDOR_ID_LEN + 1] = { 0 };
-    char productID[INQ_DATA_PRODUCT_ID_LEN + 1] = { 0 };
-    char revision[INQ_DATA_PRODUCT_REV_LEN + 1] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, vendorID, INQ_DATA_T10_VENDOR_ID_LEN + 1);
+    DECLARE_ZERO_INIT_ARRAY(char, productID, INQ_DATA_PRODUCT_ID_LEN + 1);
+    DECLARE_ZERO_INIT_ARRAY(char, revision, INQ_DATA_PRODUCT_REV_LEN + 1);
     uint8_t responseFormat = M_Nibble0(device->drive_info.scsiVpdData.inquiryData[3]);
     if (responseFormat >= INQ_RESPONSE_FMT_CURRENT)
     {
@@ -2264,21 +2272,27 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
         memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
         for (uint8_t iter = 0; iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
         {
-            if (!is_ASCII(vendorID[iter]) || !isprint(vendorID[iter]))
+            if (!safe_isascii(
+vendorID[iter]) || !safe_isprint(
+vendorID[iter]))
             {
                 vendorID[iter] = ' ';
             }
         }
         for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
         {
-            if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+            if (!safe_isascii(
+productID[iter]) || !safe_isprint(
+productID[iter]))
             {
                 productID[iter] = ' ';
             }
         }
         for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
         {
-            if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+            if (!safe_isascii(
+revision[iter]) || !safe_isprint(
+revision[iter]))
             {
                 revision[iter] = ' ';
             }
@@ -2443,7 +2457,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
 
         for (uint8_t iter = 0; iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
         {
-            if (!is_ASCII(vendorID[iter]) || !isprint(vendorID[iter]))
+            if (!safe_isascii(
+vendorID[iter]) || !safe_isprint(
+vendorID[iter]))
             {
                 vendorID[iter] = ' ';
             }
@@ -2455,7 +2471,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             memcpy(internalModel, &device->drive_info.scsiVpdData.inquiryData[54], MODEL_NUM_LEN);
             for (uint8_t iter = 0; iter < MODEL_NUM_LEN; ++iter)
             {
-                if (!is_ASCII(internalModel[iter]) || !isprint(internalModel[iter]))
+                if (!safe_isascii(
+internalModel[iter]) || !safe_isprint(
+internalModel[iter]))
                 {
                     internalModel[iter] = ' ';
                 }
@@ -2466,14 +2484,18 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
-                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                if (!safe_isascii(
+productID[iter]) || !safe_isprint(
+productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
-                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                if (!safe_isascii(
+revision[iter]) || !safe_isprint(
+revision[iter]))
                 {
                     revision[iter] = ' ';
                 }
@@ -2496,14 +2518,18 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[36], INQ_DATA_PRODUCT_REV_LEN);
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
-                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                if (!safe_isascii(
+productID[iter]) || !safe_isprint(
+productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
-                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                if (!safe_isascii(
+revision[iter]) || !safe_isprint(
+revision[iter]))
                 {
                     revision[iter] = ' ';
                 }
@@ -2517,14 +2543,18 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
-                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                if (!safe_isascii(
+productID[iter]) || !safe_isprint(
+productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
-                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                if (!safe_isascii(
+revision[iter]) || !safe_isprint(
+revision[iter]))
                 {
                     revision[iter] = ' ';
                 }
@@ -2623,8 +2653,8 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
             {
                 //zeroes at the end. Write nulls over them
                 //This is not correct, reverse the string as this is a product defect.
-                char currentSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
-                char newSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(char, currentSerialNumber, SERIAL_NUM_LEN + 1);
+                DECLARE_ZERO_INIT_ARRAY(char, newSerialNumber, SERIAL_NUM_LEN + 1);
                 uint8_t serialMaxSize = C_CAST(uint8_t, M_Min(SERIAL_NUM_LEN, unitSNSize));
                 //backup current just in case
                 memcpy(currentSerialNumber, (*unitSerialNumber), M_Min(SERIAL_NUM_LEN, unitSNSize));
@@ -2705,7 +2735,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
         }
     }
 
-    uint8_t *inq_buf = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
+    uint8_t *inq_buf = C_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!inq_buf)
     {
         perror("Error allocating memory for standard inquiry data (scsi)");
@@ -3032,7 +3062,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 {
                     //This is an ASMedia device with the 236X chip which supports USB to NVMe passthrough
                     //will attempt to check for full passthrough support first
-                    uint8_t* nvmeIdentify = C_CAST(uint8_t*, calloc_aligned(NVME_IDENTIFY_DATA_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t* nvmeIdentify = C_CAST(uint8_t*, safe_calloc_aligned(NVME_IDENTIFY_DATA_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
                     bool fullCmdSupport = false;
                     //setup hacks/flags common for both types of passthrough
                     device->drive_info.drive_type = NVME_DRIVE;
@@ -3177,7 +3207,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             {
                 //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
                 uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                uint8_t *unitSerialNumber = C_CAST(uint8_t*, calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t *unitSerialNumber = C_CAST(uint8_t*, safe_calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
@@ -3194,7 +3224,9 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                             device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                             {
-                                if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
+                                if (!safe_isascii(
+device->drive_info.serialNumber[iter]) || !safe_isprint(
+device->drive_info.serialNumber[iter]))
                                 {
                                     device->drive_info.serialNumber[iter] = ' ';
                                 }
@@ -3224,7 +3256,9 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 //make sure the SN is printable if it's coming from here since it's non-standardized
                 for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                 {
-                    if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
+                    if (!safe_isascii(
+device->drive_info.serialNumber[iter]) || !safe_isprint(
+device->drive_info.serialNumber[iter]))
                     {
                         device->drive_info.serialNumber[iter] = ' ';
                     }
@@ -3232,7 +3266,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             }
             if (version >= 3 && !device->drive_info.passThroughHacks.scsiHacks.noVPDPages)//device identification added in SPC
             {
-                uint8_t *deviceIdentification = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t *deviceIdentification = C_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
@@ -3330,7 +3364,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             }
             if (dummyUpVPDSupport == false)
             {
-                uint8_t zeroedMem[INQ_RETURN_DATA_LENGTH] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(uint8_t, zeroedMem, INQ_RETURN_DATA_LENGTH);
                 if (memcmp(inq_buf, zeroedMem, INQ_RETURN_DATA_LENGTH) == 0)
                 {
                     //this case means that the command was successful, but we got nothing but zeros....which happens on some craptastic USB bridges
@@ -3387,7 +3421,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             }
             //first, get the length of the supported pages
             uint16_t supportedVPDPagesLength = M_BytesTo2ByteValue(inq_buf[2], inq_buf[3]);
-            uint8_t *supportedVPDPages = C_CAST(uint8_t*, calloc(supportedVPDPagesLength, sizeof(uint8_t)));
+            uint8_t *supportedVPDPages = C_CAST(uint8_t*, safe_calloc(supportedVPDPagesLength, sizeof(uint8_t)));
             if (!supportedVPDPages)
             {
                 perror("Error allocating memory for supported VPD pages!\n");
@@ -3404,7 +3438,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 case UNIT_SERIAL_NUMBER://Device serial number (only grab 20 characters worth since that's what we need for the device struct)
                 {
                     uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                    uint8_t *unitSerialNumber = C_CAST(uint8_t*, calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t *unitSerialNumber = C_CAST(uint8_t*, safe_calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!unitSerialNumber)
                     {
                         perror("Error allocating memory to read the unit serial number");
@@ -3421,7 +3455,9 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                                 for (size_t iter = 0; iter < SERIAL_NUM_LEN && iter < strlen(device->drive_info.serialNumber); ++iter)
                                 {
-                                    if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
+                                    if (!safe_isascii(
+device->drive_info.serialNumber[iter]) || !safe_isprint(
+device->drive_info.serialNumber[iter]))
                                     {
                                         device->drive_info.serialNumber[iter] = ' ';
                                     }
@@ -3438,7 +3474,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 }
                 case DEVICE_IDENTIFICATION://World wide name
                 {
-                    uint8_t *deviceIdentification = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t *deviceIdentification = C_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!deviceIdentification)
                     {
                         perror("Error allocating memory to read device identification VPD page");
@@ -3505,7 +3541,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 }
                 case BLOCK_DEVICE_CHARACTERISTICS: //use this to determine if it's SSD or HDD and whether it's a HDD or not
                 {
-                    uint8_t *blockDeviceCharacteristics = C_CAST(uint8_t*, calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t *blockDeviceCharacteristics = C_CAST(uint8_t*, safe_calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!blockDeviceCharacteristics)
                     {
                         perror("Error allocating memory to read block device characteistics VPD page");
@@ -3603,7 +3639,9 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             //make sure the SN is printable if it's coming from here since it's non-standardized
             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
             {
-                if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
+                if (!safe_isascii(
+device->drive_info.serialNumber[iter]) || !safe_isprint(
+device->drive_info.serialNumber[iter]))
                 {
                     device->drive_info.serialNumber[iter] = ' ';
                 }
@@ -3616,7 +3654,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             //Anything else can have read capacity 16 command available
 
             //send a read capacity command to get the device's logical block size...read capacity 10 should be enough for this
-            uint8_t *readCapBuf = C_CAST(uint8_t*, calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t *readCapBuf = C_CAST(uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (!readCapBuf)
             {
                 safe_Free_aligned(C_CAST(void**, &inq_buf));
@@ -3628,7 +3666,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 if (version > 3)//SPC2 and higher can reference SBC2 and higher which introduced read capacity 16
                 {
                     //try a read capacity 16 anyways and see if the data from that was valid or not since that will give us a physical sector size whereas readcap10 data will not
-                    uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
+                    uint8_t* temp = C_CAST(uint8_t*, safe_realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                     if (!temp)
                     {
                         safe_Free_aligned(C_CAST(void**, &readCapBuf));
@@ -3665,7 +3703,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             else
             {
                 //try read capacity 16, if that fails we are done trying
-                uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
+                uint8_t* temp = C_CAST(uint8_t*, safe_realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                 if (temp == M_NULLPTR)
                 {
                     safe_Free_aligned(C_CAST(void**, &readCapBuf));

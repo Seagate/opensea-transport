@@ -286,7 +286,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
                     }
                     break;
                 case 2://physical drive number
-                    if (isdigit(token[0]))
+                    if (safe_isdigit(token[0]))
                     {
                         errno = 0;//clear to zero as stated in ISO C secure coding
                         unsigned long temp = strtoul(token, M_NULLPTR, 10);
@@ -313,7 +313,7 @@ bool is_Supported_ciss_Dev(const char * devName)
 {
     bool supported = false;
     uint16_t driveNumber = 0;
-    char osHandle[OS_CISS_HANDLE_MAX_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, osHandle, OS_CISS_HANDLE_MAX_LENGTH);
     char *handlePtr = &osHandle[0];//this is done to prevent warnings
     if (PARSE_COUNT_SUCCESS == parse_CISS_Handle(devName, handlePtr, &driveNumber))
     {
@@ -381,7 +381,7 @@ int smartpqi_filter(const struct dirent *entry)
 static eReturnValues ciss_Scsi_Report_Logical_LUNs(tDevice *device, uint8_t extendedDataType, uint8_t* ptrData, uint32_t dataLength)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t cdb[CDB_LEN_12] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
     cdb[OPERATION_CODE] = CISS_REPORT_LOGICAL_LUNS_OP;
     cdb[1] = extendedDataType;//can set to receive extended information, but we don't care about this right now...
     cdb[2] = RESERVED;
@@ -422,7 +422,7 @@ static eReturnValues ciss_Scsi_Report_Logical_LUNs(tDevice *device, uint8_t exte
 static eReturnValues ciss_Scsi_Report_Physical_LUNs(tDevice *device, uint8_t extendedDataType, uint8_t* ptrData, uint32_t dataLength)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t cdb[CDB_LEN_12] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
     cdb[OPERATION_CODE] = CISS_REPORT_PHYSICAL_LUNS_OP;
     cdb[1] = extendedDataType;//can set to receive extended information, but we don't care about this right now...
     cdb[2] = RESERVED;
@@ -453,7 +453,7 @@ static eReturnValues get_Physical_Device_Location_Data(tDevice *device, uint8_t 
 {
     eReturnValues ret = UNKNOWN;
     uint32_t dataLength = UINT32_C(8) + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
-    uint8_t * physicalDrives = C_CAST(uint8_t*, calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+    uint8_t * physicalDrives = C_CAST(uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (physicalDrives)
     {
         ret = ciss_Scsi_Report_Physical_LUNs(device, CISS_REPORT_PHYSICAL_LUNS_NO_EXTENDED_DATA, physicalDrives, dataLength);
@@ -1551,7 +1551,7 @@ eReturnValues get_CISS_RAID_Device(const char *filename, tDevice *device)
 {
     eReturnValues ret = FAILURE;
     uint16_t driveNumber = 0;
-    char osHandle[OS_CISS_HANDLE_MAX_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, osHandle, OS_CISS_HANDLE_MAX_LENGTH);
     char *handlePtr = &osHandle[0];//this is done to prevent warnings
     //Need to open this handle and setup some information then fill in the device information.
     if (!(validate_Device_Struct(device->sanity)))
@@ -1562,7 +1562,7 @@ eReturnValues get_CISS_RAID_Device(const char *filename, tDevice *device)
     memcpy(device->os_info.name, filename, strlen(filename));
     if (PARSE_COUNT_SUCCESS == parse_CISS_Handle(filename, handlePtr, &driveNumber))
     {
-        device->os_info.cissDeviceData = calloc(1, sizeof(cissDeviceInfo));
+        device->os_info.cissDeviceData = safe_calloc(1, sizeof(cissDeviceInfo));
         if (device->os_info.cissDeviceData)
         {
             if ((device->os_info.cissDeviceData->cissHandle = open(handlePtr, O_RDWR | O_NONBLOCK)) >= 0)
@@ -1649,7 +1649,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
         ScsiIoCtx physicalLunCMD;
         DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, 12);
         uint32_t dataLength = (CISS_MAX_PHYSICAL_DRIVES * PHYSICAL_LUN_DESCRIPTOR_LENGTH) + 8;//8 byte header
-        uint8_t *data = C_CAST(uint8_t*, calloc_aligned(dataLength, sizeof(uint8_t), sizeof(void*)));
+        uint8_t *data = C_CAST(uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), sizeof(void*)));
         if (data)
         {
             //setup the psuedo device
@@ -1685,7 +1685,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
             memcpy(physicalLunCMD.cdb, cdb, 12);
 
             //setup the cissDeviceData struct as it is needed to issue the CMD
-            pseudoDev.os_info.cissDeviceData = calloc(1, sizeof(cissDeviceInfo));
+            pseudoDev.os_info.cissDeviceData = safe_calloc(1, sizeof(cissDeviceInfo));
             pseudoDev.os_info.cissDeviceData->cissHandle = fd;
             pseudoDev.os_info.cissDeviceData->smartpqi = is_SmartPQI_Unique_IOCTLs_Supported(pseudoDev.os_info.cissDeviceData->cissHandle);
 
@@ -1749,7 +1749,7 @@ eReturnValues get_CISS_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUS
     ptrRaidHandleToScan raidList = M_NULLPTR;
     ptrRaidHandleToScan previousRaidListEntry = M_NULLPTR;
     uint32_t found = 0;
-    char deviceName[CISS_HANDLE_MAX_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, deviceName, CISS_HANDLE_MAX_LENGTH);
 
 
     if (!beginningOfList || !*beginningOfList)
@@ -1875,7 +1875,7 @@ eReturnValues get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
         int fd = -1;
         uint32_t numberOfDevices = sizeInBytes / sizeof(tDevice);
         uint32_t found = 0, failedGetDeviceCount = 0;
-        char deviceName[CISS_HANDLE_MAX_LENGTH] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(char, deviceName, CISS_HANDLE_MAX_LENGTH);
         while (raidList && found < numberOfDevices)
         {
             bool handleRemoved = false;
@@ -1904,7 +1904,7 @@ eReturnValues get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                             //from here we need to do get_CISS_Device on each of these available physical LUNs
                             for (uint32_t currentDev = 0; currentDev < countDevsOnThisHandle; ++currentDev)
                             {
-                                char handle[CISS_HANDLE_MAX_LENGTH] = { 0 };
+                                DECLARE_ZERO_INIT_ARRAY(char, handle, CISS_HANDLE_MAX_LENGTH);
                                 //handle is formatted as "ciss:os_handle:driveNumber" NOTE: osHandle is everything after /dev/
                                 snprintf(handle, CISS_HANDLE_MAX_LENGTH, "ciss:%s:%" PRIu32, basename(deviceName), currentDev);
                                 //get the CISS device with a get_CISS_Device function

@@ -128,8 +128,14 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice *device)
 
         if (ret == SUCCESS)
         {
-
-            *fillLogicalSectorSize = C_CAST(uint32_t, power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS)); //removed math.h pow() function - TJE
+            uint8_t flbas = M_GETBITRANGE(3, 0, nsData->flbas);
+            //get the LBAF number. THis field varies depending on other things reported by the drive in NVMe 2.0
+            if (nsData->nlbaf > 16)
+            {
+                //need to append 2 more bits to interpret this correctly since number of formats > 16
+                flbas |= M_GETBITRANGE(6, 5, nsData->flbas) << 4;
+            }
+            *fillLogicalSectorSize = C_CAST(uint32_t, power_Of_Two(nsData->lbaf[flbas].lbaDS));
             *fillPhysicalSectorSize = *fillLogicalSectorSize; //True for NVMe?
             *fillSectorAlignment = 0;
 
@@ -140,7 +146,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice *device)
             {
                 //Check if this is an HDD
                 //First read the supported logs log page, then if the rotating media log is there, read it.
-                uint8_t* supportedLogs = C_CAST(uint8_t*, calloc_aligned(1024, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t* supportedLogs = C_CAST(uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (supportedLogs)
                 {
                     nvmeGetLogPageCmdOpts supLogs;
@@ -567,8 +573,8 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
         }
 #define NVME_STATUS_CODE_TYPE_STRING_LENGTH 32
 #define NVME_STATUS_CODE_STRING_LENGTH 62
-        char statusCodeTypeString[NVME_STATUS_CODE_TYPE_STRING_LENGTH] = { 0 };
-        char statusCodeString[NVME_STATUS_CODE_STRING_LENGTH] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(char, statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH);
+        DECLARE_ZERO_INIT_ARRAY(char, statusCodeString, NVME_STATUS_CODE_STRING_LENGTH);
         //also print out the phase tag, CID. NOTE: These aren't available in Linux!
         switch (statusCodeType)
         {

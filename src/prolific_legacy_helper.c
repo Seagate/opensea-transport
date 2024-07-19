@@ -94,8 +94,8 @@ eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughComm
     {
         return commandRet;
     }
-    uint8_t cdb[CDB_LEN_6] = { 0 };
-    uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 16);
     cdb[OPERATION_CODE] = PROLIFIC_GET_REGISTERS_OPCODE;
     cdb[1] = RESERVED;
@@ -124,14 +124,14 @@ eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughComm
 eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
-    uint8_t prolificLowCDB[CDB_LEN_16] = { 0 };
-    uint8_t prolificHighCDB[CDB_LEN_16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, prolificLowCDB, CDB_LEN_16);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, prolificHighCDB, CDB_LEN_16);
     bool highCDBValid = false;
     uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;

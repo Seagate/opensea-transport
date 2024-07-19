@@ -277,7 +277,7 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
     timer = csmiIoOutParams->ioctlTimer;
     if (!timer)
     {
-        timer = C_CAST(seatimer_t*, calloc(1, sizeof(seatimer_t)));
+        timer = C_CAST(seatimer_t*, safe_calloc(1, sizeof(seatimer_t)));
         localTimer = true;
     }
 
@@ -1052,7 +1052,8 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
         //If an ASCII character is in the bDataType offset, this is Intel's driver
         //at some point, need to switch to using CSMI version information....somehow
         //driverInfo.Information.usCSMIMajorRevision > 0 || driverInfo.Information.usCSMIMinorRevision > 81
-        if (!is_ASCII(config->bDataType))
+        if (!safe_isascii(
+config->bDataType))
         {
             switch (config->bDataType)
             {
@@ -2246,7 +2247,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
         return BAD_PARAMETER;
     }
     sspPassthroughBufferLength = sizeof(CSMI_SAS_SSP_PASSTHRU_BUFFER) + sspInputs->dataLength;
-    sspPassthrough = C_CAST(PCSMI_SAS_SSP_PASSTHRU_BUFFER, calloc_aligned(sizeof(uint8_t), sspPassthroughBufferLength, sizeof(void*)));
+    sspPassthrough = C_CAST(PCSMI_SAS_SSP_PASSTHRU_BUFFER, safe_calloc_aligned(sizeof(uint8_t), sspPassthroughBufferLength, sizeof(void*)));
     if (!sspPassthrough)
     {
         return MEMORY_FAILURE;
@@ -2409,7 +2410,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
         return BAD_PARAMETER;
     }
     stpPassthroughBufferLength = sizeof(CSMI_SAS_STP_PASSTHRU_BUFFER) + stpInputs->dataLength;
-    stpPassthrough = C_CAST(PCSMI_SAS_STP_PASSTHRU_BUFFER, calloc_aligned(sizeof(uint8_t), stpPassthroughBufferLength, sizeof(void*)));
+    stpPassthrough = C_CAST(PCSMI_SAS_STP_PASSTHRU_BUFFER, safe_calloc_aligned(sizeof(uint8_t), stpPassthroughBufferLength, sizeof(void*)));
     if (!stpPassthrough)
     {
         return MEMORY_FAILURE;
@@ -2959,7 +2960,7 @@ bool device_Supports_CSMI_With_RST(tDevice *device)
 eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevice *device, uint8_t controllerNumber, uint8_t hostController, uint8_t pathidBus, uint8_t targetID, uint8_t lun)
 {
     eReturnValues ret = SUCCESS;
-    device->os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
+    device->os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, safe_calloc(1, sizeof(csmiDeviceInfo)));
     if (device->os_info.csmiDeviceData)
     {
 #if defined (_WIN32)
@@ -3034,7 +3035,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                         {
                             //with the RAID info, now we can allocate and read the RAID config
                             uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES)));
-                            PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
+                            PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, safe_calloc(raidConfigLength, sizeof(uint8_t)));
                             if (raidConfig)
                             {
 #if defined (CSMI_DEBUG)
@@ -3179,9 +3180,9 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                                 if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
                                 {
                                     //compare MN and SN...if match, then we have found the drive!
-                                    char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
-                                    char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
-                                    char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+                                    DECLARE_ZERO_INIT_ARRAY(char, ataMN, ATA_IDENTIFY_MN_LENGTH + 1);
+                                    DECLARE_ZERO_INIT_ARRAY(char, ataSN, ATA_IDENTIFY_SN_LENGTH + 1);
+                                    DECLARE_ZERO_INIT_ARRAY(char, ataFW, ATA_IDENTIFY_FW_LENGTH + 1);
                                     fill_ATA_Strings_From_Identify_Data(identifyData, ataMN, ataSN, ataFW);
 
                                     //check for a match
@@ -3202,7 +3203,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                             {
                                 //SCSI Inquiry and read unit serial number VPD page
                                 DECLARE_ZERO_INIT_ARRAY(uint8_t, inqData, 96);
-                                uint8_t cdb[CDB_LEN_6] = { 0 };
+                                DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
                                 cdb[OPERATION_CODE] = INQUIRY_CMD;
                                 /*if (evpd)
                                 {
@@ -3256,7 +3257,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                                         {
                                             //check the SN
                                             uint16_t serialNumberLength = M_Min(M_BytesTo2ByteValue(inqData[2], inqData[3]), 96) + 1;
-                                            char *serialNumber = C_CAST(char*, calloc(serialNumberLength, sizeof(char)));
+                                            char *serialNumber = C_CAST(char*, safe_calloc(serialNumberLength, sizeof(char)));
                                             if (serialNumber)
                                             {
                                                 memcpy(serialNumber, &inqData[4], serialNumberLength - 1);//minus 1 to leave null terminator in tact at the end
@@ -3542,7 +3543,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
     printf("GRD: Opening low-level device handle\n");
 #endif //CSMI_DEBUG
 #if defined(_WIN32)
-    TCHAR device_name[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(TCHAR, device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH);
     CONST TCHAR *ptrDeviceName = &device_name[0];
 #if defined (_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
     _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT("lu") TEXT(":"), controllerNum);
@@ -3574,7 +3575,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
         device->issue_io = C_CAST(issue_io_func, send_CSMI_IO);
         device->drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
         device->drive_info.interface_type = RAID_INTERFACE;
-        device->os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
+        device->os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, safe_calloc(1, sizeof(csmiDeviceInfo)));
         if (!device->os_info.csmiDeviceData)
         {
 #if defined (CSMI_DEBUG)
@@ -3715,7 +3716,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
                     {
                         //need to parse the RAID info to figure out how much memory to allocate and read the 
                         uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES)));
-                        PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
+                        PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, safe_calloc(raidConfigLength, sizeof(uint8_t)));
                         if (!raidConfig)
                         {
                             return MEMORY_FAILURE;
@@ -3880,8 +3881,8 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
         TCHAR* paramRegKeyPath = TEXT("\\Parameters");
         size_t tdriverNameLength = (strlen(driverName) + 1) * sizeof(TCHAR);
         size_t registryKeyStringLength = _tcslen(baseRegKeyPath) + tdriverNameLength + _tcslen(paramRegKeyPath);
-        TCHAR* registryKey = C_CAST(TCHAR*, calloc(registryKeyStringLength, sizeof(TCHAR)));
-        TCHAR* tdriverName = C_CAST(TCHAR*, calloc(tdriverNameLength, sizeof(TCHAR)));
+        TCHAR* registryKey = C_CAST(TCHAR*, safe_calloc(registryKeyStringLength, sizeof(TCHAR)));
+        TCHAR* tdriverName = C_CAST(TCHAR*, safe_calloc(tdriverNameLength, sizeof(TCHAR)));
         if (tdriverName)
         {
             _stprintf_s(tdriverName, tdriverNameLength, TEXT("%hs"), driverName);
@@ -3930,7 +3931,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                     TCHAR* paramDeviceKeyPath = TEXT("\\Device");
                     size_t paramDeviceKeyPathLength = _tcsclen(paramDeviceKeyPath);
                     registryKeyStringLength += paramDeviceKeyPathLength + 3;//Adding 3 for if we need to check for a device number (adapter number)
-                    TCHAR* temp = realloc(registryKey, registryKeyStringLength * sizeof(TCHAR));
+                    TCHAR* temp = safe_realloc(registryKey, registryKeyStringLength * sizeof(TCHAR));
                     if (temp)
                     {
                         registryKey = temp;
@@ -3945,7 +3946,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                             if (regQueryStatus == ERROR_SUCCESS)//since we had no memory allocated, this returned success rather than ERROR_MORE_DATA so we can go and allocate then read it.-TJE
                             {
                                 //found, now allocate memory
-                                regData = calloc(dataLen, sizeof(BYTE));
+                                regData = safe_calloc(dataLen, sizeof(BYTE));
                                 if (regData)
                                 {
                                     regQueryStatus = RegQueryValueEx(keyHandle, valueName, M_NULLPTR, &valueType, regData, &dataLen);
@@ -4045,9 +4046,9 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
 {
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #if defined (_WIN32)
-    TCHAR deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(TCHAR, deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH);
 #else //_WIN32
-    char deviceName[CSMI_NIX_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH);
 #endif //_WIN32
     eVerbosityLevels csmiCountVerbosity = VERBOSITY_DEFAULT;//change this if debugging
     ptrRaidHandleToScan raidList = M_NULLPTR;
@@ -4159,7 +4160,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
                             {
                                 //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
                                 uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));//Intel driver recommends allocating for 8 drives to make sure nothing is missed. Maybe check if maxdriverperset less than this to allcoate for 8???
-                                PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
+                                PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, safe_calloc(raidConfigLength, sizeof(uint8_t)));
                                 if (csmiRAIDConfig)
                                 {
 #if defined (CSMI_DEBUG)
@@ -4272,7 +4273,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
                                         tempDevice.issue_io = C_CAST(issue_io_func, send_CSMI_IO);
                                         tempDevice.drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
                                         tempDevice.drive_info.interface_type = RAID_INTERFACE;
-                                        tempDevice.os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
+                                        tempDevice.os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, safe_calloc(1, sizeof(csmiDeviceInfo)));
                                         if (!tempDevice.os_info.csmiDeviceData)
                                         {
 #if defined (CSMI_DEBUG)
@@ -4343,7 +4344,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
                                         {
                                             //SCSI Inquiry and read unit serial number VPD page
                                             DECLARE_ZERO_INIT_ARRAY(uint8_t, inqData, 96);
-                                            uint8_t cdb[CDB_LEN_6] = { 0 };
+                                            DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
                                             cdb[OPERATION_CODE] = INQUIRY_CMD;
                                             /*if (evpd)
                                             {
@@ -4463,9 +4464,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
     uint32_t numberOfDevices = 0;
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #if defined (_WIN32)
-    TCHAR deviceName[CSMI_WIN_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(TCHAR, deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH);
 #else
-    char deviceName[CSMI_NIX_MAX_DEVICE_NAME_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH);
 #endif
     eVerbosityLevels csmiListVerbosity = VERBOSITY_DEFAULT;//If debugging, change this and down below where this is set per device will also need changing
     
@@ -4663,7 +4664,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                 {
                                     //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
                                     uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
-                                    PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, calloc(raidConfigLength, sizeof(uint8_t)));
+                                    PCSMI_SAS_RAID_CONFIG_BUFFER csmiRAIDConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, safe_calloc(raidConfigLength, sizeof(uint8_t)));
                                     if (csmiRAIDConfig)
                                     {
 #if defined (CSMI_DEBUG)
@@ -4678,7 +4679,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                             for (uint32_t iter = 0; iter < csmiRAIDConfig->Configuration.bDriveCount && iter < csmiRAIDInfo.Information.uMaxDrivesPerSet && found < numberOfDevices; ++iter)
                                             {
                                                 bool foundDevice = false;
-                                                char handle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
+                                                DECLARE_ZERO_INIT_ARRAY(char, handle, RAID_HANDLE_STRING_MAX_LEN);
                                                 bool driveInfoValid = true;//for version 81 and earlier, assume this is true.
 #if defined (CSMI_DEBUG)
                                                 printf("GDL: Checking CSMI Revision: %" CPRIu16 ".%" CPRIu16 "\n", driverInfo.Information.usCSMIMajorRevision, driverInfo.Information.usCSMIMinorRevision);
@@ -4844,7 +4845,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                         tempDevice.issue_io = C_CAST(issue_io_func, send_CSMI_IO);
                                                                         tempDevice.drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
                                                                         tempDevice.drive_info.interface_type = RAID_INTERFACE;
-                                                                        tempDevice.os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, calloc(1, sizeof(csmiDeviceInfo)));
+                                                                        tempDevice.os_info.csmiDeviceData = C_CAST(ptrCsmiDeviceInfo, safe_calloc(1, sizeof(csmiDeviceInfo)));
                                                                         if (!tempDevice.os_info.csmiDeviceData)
                                                                         {
     #if defined (CSMI_DEBUG)
@@ -4894,9 +4895,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                             if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
                                                                             {
                                                                                 //compare MN and SN...if match, then we have found the drive!
-                                                                                char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
-                                                                                char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
-                                                                                char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+                                                                                DECLARE_ZERO_INIT_ARRAY(char, ataMN, ATA_IDENTIFY_MN_LENGTH + 1);
+                                                                                DECLARE_ZERO_INIT_ARRAY(char, ataSN, ATA_IDENTIFY_SN_LENGTH + 1);
+                                                                                DECLARE_ZERO_INIT_ARRAY(char, ataFW, ATA_IDENTIFY_FW_LENGTH + 1);
                                                                                 fill_ATA_Strings_From_Identify_Data(identifyData, ataMN, ataSN, ataFW);
                                                                                 //check for a match
     #if defined (CSMI_DEBUG)
@@ -4923,9 +4924,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                                 if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
                                                                                 {
                                                                                     //compare MN and SN...if match, then we have found the drive!
-                                                                                    char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
-                                                                                    char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
-                                                                                    char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+                                                                                    DECLARE_ZERO_INIT_ARRAY(char, ataMN, ATA_IDENTIFY_MN_LENGTH + 1);
+                                                                                    DECLARE_ZERO_INIT_ARRAY(char, ataSN, ATA_IDENTIFY_SN_LENGTH + 1);
+                                                                                    DECLARE_ZERO_INIT_ARRAY(char, ataFW, ATA_IDENTIFY_FW_LENGTH + 1);
                                                                                     fill_ATA_Strings_From_Identify_Data(identifyData, ataMN, ataSN, ataFW);
                                                                                     //check for a match
     #if defined (CSMI_DEBUG)
@@ -4951,7 +4952,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                         {
                                                                             //SCSI Inquiry and read unit serial number VPD page
                                                                             DECLARE_ZERO_INIT_ARRAY(uint8_t, inqData, 96);
-                                                                            uint8_t cdb[CDB_LEN_6] = { 0 };
+                                                                            DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
                                                                             cdb[OPERATION_CODE] = INQUIRY_CMD;
                                                                             /*if (evpd)
                                                                             {
@@ -5012,7 +5013,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                                     {
                                                                                         //check the SN
                                                                                         uint16_t serialNumberLength = M_Min(M_BytesTo2ByteValue(inqData[2], inqData[3]), 96) + 1;
-                                                                                        char *serialNumber = C_CAST(char*, calloc(serialNumberLength, sizeof(char)));
+                                                                                        char *serialNumber = C_CAST(char*, safe_calloc(serialNumberLength, sizeof(char)));
                                                                                         if (serialNumber)
                                                                                         {
                                                                                             memcpy(serialNumber, &inqData[4], serialNumberLength - 1);//minus 1 to leave null terminator in tact at the end
@@ -5111,7 +5112,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                             printf("Checking phy error list with phy %" PRIu8"\n", phyIter);
 #endif //CSMI_DEBUG
                                             //Each attached device will be considered a "found device" in this case.
-                                            char handle[RAID_HANDLE_STRING_MAX_LEN] = { 0 };
+                                            DECLARE_ZERO_INIT_ARRAY(char, handle, RAID_HANDLE_STRING_MAX_LEN);
                                             snprintf(handle, RAID_HANDLE_STRING_MAX_LEN, "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier, phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, 0);
 #if defined (CSMI_DEBUG)
                                             printf("GDL: Phy Info last resort device handle found and set as %s\n", handle);

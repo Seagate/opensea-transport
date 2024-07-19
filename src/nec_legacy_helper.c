@@ -105,9 +105,9 @@ eReturnValues get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *
     {
         return commandRet;
     }
-    uint8_t cdb[CDB_LEN_16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 11);
-    uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     cdb[OPERATION_CODE] = NEC_READ_OPCODE;
     cdb[1] = NEC_WRAPPER_SIGNATURE;
     //send the command
@@ -133,12 +133,12 @@ eReturnValues get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *
 eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
-    uint8_t necCDB[CDB_LEN_16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, necCDB, CDB_LEN_16);
     uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;

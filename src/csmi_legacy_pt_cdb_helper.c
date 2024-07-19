@@ -167,12 +167,12 @@ eReturnValues get_RTFRs_From_CSMI_Legacy(tDevice *device, ataPassthroughCommand 
 eReturnValues send_CSMI_Legacy_ATA_Passthrough(tDevice *device, ataPassthroughCommand  *ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
-    uint8_t csmiCDB[CSMI_PASSTHROUGH_CDB_LENGTH] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, csmiCDB, CSMI_PASSTHROUGH_CDB_LENGTH);
     uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;
