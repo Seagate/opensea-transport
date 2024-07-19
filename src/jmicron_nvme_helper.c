@@ -61,7 +61,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirectio
             memset(dataPtr, 0, JMICRON_NVME_CMD_PAYLOAD_SIZE);
             parameterListLength = JMICRON_NVME_CMD_PAYLOAD_SIZE;
             //set the signature
-            memcpy(dataPtr, JMICRON_NVME_NAMESTRING, strlen(JMICRON_NVME_NAMESTRING));
+            memcpy(dataPtr, JMICRON_NVME_NAMESTRING, safe_strlen(JMICRON_NVME_NAMESTRING));
             //based on vendor ctrl value, we may setup a cmd, or leave those fields blank to setup some other action
             dataPtr[72] = C_CAST(uint8_t, jmCtrl);
             if (jmCtrl == JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD)
@@ -313,7 +313,7 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
         if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, M_NULLPTR, 0, 15))
         {
             //first, check for the NVMe signature to make sure the correct response is here.
-            if (0 == memcmp(jmPayload, JMICRON_NVME_NAMESTRING, strlen(JMICRON_NVME_NAMESTRING)))
+            if (0 == memcmp(jmPayload, JMICRON_NVME_NAMESTRING, safe_strlen(JMICRON_NVME_NAMESTRING)))
             {
                 senseDataIsAllWeGot = false;
                 nvmCmd->commandCompletionData.dw0Valid = true;

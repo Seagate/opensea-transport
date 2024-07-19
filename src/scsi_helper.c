@@ -2502,7 +2502,7 @@ revision[iter]))
             }
             remove_Leading_And_Trailing_Whitespace(vendorID);
             remove_Leading_And_Trailing_Whitespace(productID);
-            if (strcmp(productID, "External Drive") == 0 && strlen(internalModel))//doing strlen of internal model number to catch others of this type with something set here
+            if (strcmp(productID, "External Drive") == 0 && safe_strlen(internalModel))//doing safe_strlen of internal model number to catch others of this type with something set here
             {
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
@@ -2646,10 +2646,10 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
             if (strncmp(zeroes, *unitSerialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
             {
                 //8 zeroes at the beginning. Strip them off
-                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
-                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], safe_strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
             }
-            else if (strncmp(zeroes, &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
+            else if (strncmp(zeroes, &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], safe_strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
             {
                 //zeroes at the end. Write nulls over them
                 //This is not correct, reverse the string as this is a product defect.
@@ -2675,27 +2675,27 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
                 if (strncmp(zeroes, (*unitSerialNumber), SEAGATE_SERIAL_NUMBER_LEN) == 0)
                 {
                     //zeroes at the beginning. Strip them off
-                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
-                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
                 }
                 else if (strncmp(zeroes, (*unitSerialNumber), 4) == 0)
                 {
                     //zeroes at the beginning. Strip them off
-                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], strlen((*unitSerialNumber)) - 4);
-                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - 4);
+                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], safe_strlen((*unitSerialNumber)) - 4);
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen((*unitSerialNumber)) - 4);
                 }
                 else
                 {
                     //after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the end.
                     memcpy((*unitSerialNumber), currentSerialNumber, M_Min(SERIAL_NUM_LEN, unitSNSize));
-                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
                 }
             }
             else if (strncmp(zeroes, (*unitSerialNumber), 4) == 0)
             {
                 //4 zeroes at the beginning. Strip them off
-                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], strlen((*unitSerialNumber)) - 4);
-                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - 4);
+                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], safe_strlen((*unitSerialNumber)) - 4);
+                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen((*unitSerialNumber)) - 4);
             }
             //NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to add different cases for these older LaCie products.
         }
@@ -2703,7 +2703,7 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
         {
             //SAS Seagate drives have a maximum SN length of 8
             //Other information in here is the PCBA SN
-            memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+            memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
         }
     }
     return;
@@ -3453,7 +3453,7 @@ device->drive_info.serialNumber[iter]))
                             {
                                 memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                                for (size_t iter = 0; iter < SERIAL_NUM_LEN && iter < strlen(device->drive_info.serialNumber); ++iter)
+                                for (size_t iter = 0; iter < SERIAL_NUM_LEN && iter < safe_strlen(device->drive_info.serialNumber); ++iter)
                                 {
                                     if (!safe_isascii(
 device->drive_info.serialNumber[iter]) || !safe_isprint(

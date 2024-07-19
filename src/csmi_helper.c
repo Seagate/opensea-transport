@@ -537,7 +537,7 @@ eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE deviceHandle, uint32_t controller
     ioIn.ioctlCode = CC_CSMI_SAS_GET_DRIVER_INFO;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_ALL_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_ALL_SIGNATURE, strlen(CSMI_ALL_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     if (VERBOSITY_COMMAND_NAMES <= verbosity)
@@ -661,7 +661,7 @@ eReturnValues csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32
     ioIn.ioctlCode = CC_CSMI_SAS_GET_CNTLR_CONFIG;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_ALL_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_ALL_SIGNATURE, strlen(CSMI_ALL_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     if (VERBOSITY_COMMAND_NAMES <= verbosity)
@@ -760,7 +760,7 @@ eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE deviceHandle, uint32_t cont
     ioIn.ioctlCode = CC_CSMI_SAS_GET_CNTLR_STATUS;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_ALL_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_ALL_SIGNATURE, strlen(CSMI_ALL_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     if (VERBOSITY_COMMAND_NAMES <= verbosity)
@@ -811,7 +811,7 @@ eReturnValues csmi_Controller_Firmware_Download(CSMI_HANDLE deviceHandle, uint32
     ioIn.ioctlCode = CC_CSMI_SAS_FIRMWARE_DOWNLOAD;
     ioIn.ioctlDirection = CSMI_SAS_DATA_WRITE;
     ioIn.timeoutInSeconds = timeoutSeconds;
-    memcpy(ioIn.ioctlSignature, CSMI_ALL_SIGNATURE, strlen(CSMI_ALL_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     firmwareBuffer->Information.uDownloadFlags = downloadFlags;
@@ -910,7 +910,7 @@ eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNu
     ioIn.ioctlCode = CC_CSMI_SAS_GET_RAID_INFO;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_RAID_SIGNATURE, strlen(CSMI_RAID_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     if (VERBOSITY_COMMAND_NAMES <= verbosity)
@@ -1318,7 +1318,7 @@ eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controller
     ioIn.ioctlCode = CC_CSMI_SAS_GET_RAID_CONFIG;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_RAID_SIGNATURE, strlen(CSMI_RAID_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     raidConfigBuffer->Configuration.uRaidSetIndex = raidSetIndex;
@@ -2078,7 +2078,7 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     ioIn.ioctlCode = CC_CSMI_SAS_GET_PHY_INFO;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, strlen(CSMI_SAS_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     if (VERBOSITY_COMMAND_NAMES <= verbosity)
@@ -2127,7 +2127,7 @@ eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     ioIn.ioctlCode = CC_CSMI_SAS_SET_PHY_INFO;
     ioIn.ioctlDirection = CSMI_SAS_DATA_WRITE;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, strlen(CSMI_SAS_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     if (VERBOSITY_COMMAND_NAMES <= verbosity)
@@ -2172,7 +2172,7 @@ eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE deviceHandle, uint32_t controller
     ioIn.ioctlCode = CC_CSMI_SAS_GET_LINK_ERRORS;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, strlen(CSMI_SAS_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     linkErrorsBuffer->Information.bPhyIdentifier = phyIdentifier;
@@ -2262,7 +2262,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
     ioIn.ioctlCode = CC_CSMI_SAS_SSP_PASSTHRU;
     //ioIn.ioctlDirection = CSMI_SAS_DATA_READ;//This is set below, however it may only need to be set one way....will only knwo when testing on linux since this is used there.
     ioIn.timeoutInSeconds = sspInputs->timeoutSeconds;
-    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, strlen(CSMI_SAS_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
     ioOut.ioctlTimer = sspOutputs->sspTimer;
 
@@ -2425,7 +2425,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
     ioIn.ioctlCode = CC_CSMI_SAS_STP_PASSTHRU;
     //ioIn.ioctlDirection = CSMI_SAS_DATA_READ;//This is set below, however it may only need to be set one way....will only knwo when testing on linux since this is used there.
     ioIn.timeoutInSeconds = stpInputs->timeoutSeconds;
-    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, strlen(CSMI_SAS_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
     ioOut.ioctlTimer = stpOutputs->stpTimer;
 
@@ -2543,7 +2543,7 @@ eReturnValues csmi_Get_SATA_Signature(CSMI_HANDLE deviceHandle, uint32_t control
     ioIn.ioctlCode = CC_CSMI_SAS_GET_SATA_SIGNATURE;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, strlen(CSMI_SAS_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     sataSignatureBuffer->Signature.bPhyIdentifier = phyIdentifier;
@@ -2609,7 +2609,7 @@ eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controlle
     ioIn.ioctlCode = CC_CSMI_SAS_GET_SCSI_ADDRESS;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, strlen(CSMI_SAS_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     memcpy(scsiAddressBuffer->bSASAddress, sasAddress, 8);
@@ -2676,7 +2676,7 @@ eReturnValues csmi_Get_Device_Address(CSMI_HANDLE deviceHandle, uint32_t control
     ioIn.ioctlCode = CC_CSMI_SAS_GET_DEVICE_ADDRESS;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, strlen(CSMI_SAS_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     deviceAddressBuffer->bHostIndex = hostIndex;
@@ -2857,7 +2857,7 @@ eReturnValues csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t control
     ioIn.ioctlCode = CC_CSMI_SAS_GET_CONNECTOR_INFO;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, strlen(CSMI_SAS_SIGNATURE));
+    memcpy(ioIn.ioctlSignature, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     if (VERBOSITY_COMMAND_NAMES <= verbosity)
@@ -3383,7 +3383,7 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename, bool* isInte
         char* str = M_CONST_CAST(char*, filename);//need to update str pointer as we scan the string, but not actually modifying data
         if (strstr(filename, "csmi:") == str)//must begin with this
         {
-            str += strlen("csmi:");
+            str += safe_strlen("csmi:");
             errno = 0;//clear to zero as stated in ISO C secure coding
             unsigned long value = strtoul(str, &end, 10);
             if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
@@ -3484,7 +3484,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
         return LIBRARY_MISMATCH;
     }
     //set the handle name first...since the tokenizing below will break it apart
-    memcpy(device->os_info.name, filename, strlen(filename));
+    memcpy(device->os_info.name, filename, safe_strlen(filename));
     bool intelNVMe = false;
     uint32_t* intelPathID = &portID, * intelTargetID = &phyID, * intelLun = &lun;
     char* baseHandle = M_NULLPTR;
@@ -3497,7 +3497,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
         return BAD_PARAMETER;
     }
 #if defined (_WIN32)
-    if (baseHandle && strlen(baseHandle) > 0)
+    if (baseHandle && safe_strlen(baseHandle) > 0)
     {
         safe_Free(C_CAST(void**, &baseHandle));
         return BAD_PARAMETER;
@@ -3523,7 +3523,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
     M_USE_UNUSED(intelLun);
     M_USE_UNUSED(intelPathID);
     M_USE_UNUSED(intelTargetID);
-    if (baseHandle && strlen(baseHandle) > 0 && !intelNVMe)
+    if (baseHandle && safe_strlen(baseHandle) > 0 && !intelNVMe)
     {
         int snprintfres = snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portID, phyID, lun, baseHandle);
         if (snprintfres < 1 || snprintfres > OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
@@ -3879,7 +3879,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
         HKEY keyHandle;
         TCHAR* baseRegKeyPath = TEXT("SYSTEM\\CurrentControlSet\\Services\\");
         TCHAR* paramRegKeyPath = TEXT("\\Parameters");
-        size_t tdriverNameLength = (strlen(driverName) + 1) * sizeof(TCHAR);
+        size_t tdriverNameLength = (safe_strlen(driverName) + 1) * sizeof(TCHAR);
         size_t registryKeyStringLength = _tcslen(baseRegKeyPath) + tdriverNameLength + _tcslen(paramRegKeyPath);
         TCHAR* registryKey = C_CAST(TCHAR*, safe_calloc(registryKeyStringLength, sizeof(TCHAR)));
         TCHAR* tdriverName = C_CAST(TCHAR*, safe_calloc(tdriverNameLength, sizeof(TCHAR)));
@@ -4536,14 +4536,14 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                 char *scsiPortHandle = strstr(scanhandle, "\\\\.\\SCSI");
                 if (scsiPortHandle)
                 {
-                    scanhandle += strlen("\\\\.\\SCSI");
+                    scanhandle += safe_strlen("\\\\.\\SCSI");
                     errno = 0;//clear to zero as stated in ISO C secure coding
                     unsigned long ctrlnum = strtoul(scanhandle, &endHandle, 10);
                     if ((ctrlnum == ULONG_MAX && errno == ERANGE) || (ctrlnum == 0 && scanhandle == endHandle))
                     {
                         return FAILURE;
                     }
-                    if (endHandle && strlen(endHandle) >= 1)
+                    if (endHandle && safe_strlen(endHandle) >= 1)
                     {
                         if (strcmp(endHandle, ":") != 0)
                         {

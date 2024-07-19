@@ -178,7 +178,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
         {
             #define MAX_ATA_HANDLE_FIELDS UINT8_C(4) //ata:<controllerID>:<port>:<portMultiplierPort>
             uint8_t count = 0;
-            rsize_t duplen = strlen(dup);
+            rsize_t duplen = safe_strlen(dup);
             char *saveptr = M_NULLPTR;
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
             char *endptr = M_NULLPTR;
@@ -267,7 +267,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t *controllerID,
             #define MAX_NVME_HANDLE_FIELDS UINT8_C(3) //nvme:<controllerID>:<namespaceID>
             uint8_t count = 0;
             char *saveptr = M_NULLPTR;
-            rsize_t duplen = strlen(dup);
+            rsize_t duplen = safe_strlen(dup);
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
             char *endptr = M_NULLPTR;
             unsigned long temp = 0;
@@ -338,7 +338,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
             #define MAX_SCSI_HANDLE_FIELDS UINT8_C(4) //scsi:<controllerID>:<target>:<lun>
             uint8_t count = 0;
             char *saveptr = M_NULLPTR;
-            rsize_t duplen = strlen(dup);
+            rsize_t duplen = safe_strlen(dup);
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
             char *endptr = M_NULLPTR;
             unsigned long temp = 0;
@@ -426,7 +426,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
             #define MAX_SCSI_HANDLE_FIELDS UINT8_C(4) //scsiEx:<controllerID>:<target>:<lun> //16, 128, 64
             uint8_t count = 0;
             char *saveptr = M_NULLPTR;
-            rsize_t duplen = strlen(dup);
+            rsize_t duplen = safe_strlen(dup);
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
             char *endptr = M_NULLPTR;
             unsigned long temp = 0;
@@ -476,8 +476,8 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                             {
                                 //change the next : to a null so it's easier to break the string into two parts
                                 *delimiter = '\0';
-                                size_t halftargetlen = strlen(targetstr) / 2;
-                                if (strlen(targetstr) % 2)
+                                size_t halftargetlen = safe_strlen(targetstr) / 2;
+                                if (safe_strlen(targetstr) % 2)
                                 {
                                     //this is supposed to be evenly divisible by 2 as we require the user to type the full string!
                                     success = false;

@@ -1111,7 +1111,7 @@ static int get_Adapter_IDs(tDevice *device, char *name)
 
     //odm_initialize();
     char odmCriteria[MAX_ODMI_CRIT] = { 0 };//256
-    if (name && strlen(name) > 0)
+    if (name && safe_strlen(name) > 0)
     {
         snprintf(odmCriteria, MAX_ODMI_CRIT, "name='%s'", name);
         ptrcudv = odm_get_obj(CuDv_CLASS, odmCriteria, &cudv, ODM_FIRST);
@@ -1283,7 +1283,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                 {
                     print_CuDv_Struct(ptrcudv);
                 }
-                if (strlen(ptrcudv->parent) > 0)
+                if (safe_strlen(ptrcudv->parent) > 0)
                 {
                     //open the controller handle and get the IOCINFO for it -TJE
                     DECLARE_ZERO_INIT_ARRAY(char, controllerHandle, OS_HANDLE_NAME_MAX_LENGTH);
@@ -2883,7 +2883,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     //add rhdisk devices to the list
     for (; i < (num_devs); i++)
     {
-        size_t handleSize = (strlen("/dev/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
+        size_t handleSize = (safe_strlen("/dev/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
         safe_Free(C_CAST(void**, &namelist[i]));
@@ -2905,7 +2905,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         d = ptrToDeviceList;
         for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
-            if (!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }

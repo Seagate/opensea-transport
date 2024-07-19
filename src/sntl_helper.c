@@ -1819,7 +1819,7 @@ static eReturnValues sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIo
             DECLARE_ZERO_INIT_ARRAY(char, nvmFW, NVME_CTRL_IDENTIFY_FW_LEN + 1);
             memcpy(nvmFW, device->drive_info.IdentifyData.nvme.ctrl.fr, NVME_CTRL_IDENTIFY_FW_LEN);
             remove_Leading_And_Trailing_Whitespace(nvmFW);
-            if (strlen(nvmFW) > INQ_DATA_PRODUCT_REV_LEN)
+            if (safe_strlen(nvmFW) > INQ_DATA_PRODUCT_REV_LEN)
             {
                 memcpy(&inquiryData[32], &nvmFW[4], INQ_DATA_PRODUCT_REV_LEN);
             }
@@ -1834,7 +1834,7 @@ static eReturnValues sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIo
             DECLARE_ZERO_INIT_ARRAY(char, nvmSN, NVME_CTRL_IDENTIFY_SN_LEN + 1);
             memcpy(nvmSN, device->drive_info.IdentifyData.nvme.ctrl.sn, NVME_CTRL_IDENTIFY_SN_LEN);
             remove_Leading_And_Trailing_Whitespace(nvmSN);
-            memcpy(&inquiryData[36], nvmSN, M_Min(strlen(nvmSN), NVME_CTRL_IDENTIFY_SN_LEN));
+            memcpy(&inquiryData[36], nvmSN, M_Min(safe_strlen(nvmSN), NVME_CTRL_IDENTIFY_SN_LEN));
 
             //version descriptors (bytes 58 to 73) (8 max)
             uint16_t versionOffset = 58;

@@ -238,7 +238,7 @@ void print_bus_type(BYTE type)
 //    {
 //        return;
 //    }
-//    stringLen = strlen(stringToChange);
+//    stringLen = safe_strlen(stringToChange);
 //    if (stringLen == 0)
 //    {
 //        return;
@@ -623,1148 +623,1148 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                             {
                                                                             case 0:
                                                                                 devproperty = &DEVPKEY_Device_DeviceDesc;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DeviceDesc") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DeviceDesc") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DeviceDesc");
                                                                                 break;
                                                                             case 1:
                                                                                 devproperty = &DEVPKEY_Device_HardwareIds;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_HardwareIds") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_HardwareIds") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_HardwareIds");
                                                                                 break;
                                                                             case 2:
                                                                                 devproperty = &DEVPKEY_Device_CompatibleIds;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_CompatibleIds") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_CompatibleIds") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_CompatibleIds");
                                                                                 break;
                                                                             case 3:
                                                                                 devproperty = &DEVPKEY_Device_Service;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Service") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Service") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Service");
                                                                                 break;
                                                                             case 4:
                                                                                 devproperty = &DEVPKEY_Device_Class;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Class") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Class") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Class");
                                                                                 break;
                                                                             case 5:
                                                                                 devproperty = &DEVPKEY_Device_ClassGuid;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ClassGuid") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ClassGuid") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ClassGuid");
                                                                                 break;
                                                                             case 6:
                                                                                 devproperty = &DEVPKEY_Device_Driver;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Driver") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Driver") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Driver");
                                                                                 break;
                                                                             case 7:
                                                                                 devproperty = &DEVPKEY_Device_ConfigFlags;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ConfigFlags") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ConfigFlags") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ConfigFlags");
                                                                                 break;
                                                                             case 8:
                                                                                 devproperty = &DEVPKEY_Device_Manufacturer;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Manufacturer") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Manufacturer") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Manufacturer");
                                                                                 break;
                                                                             case 9:
                                                                                 devproperty = &DEVPKEY_Device_FriendlyName;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_FriendlyName") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_FriendlyName") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_FriendlyName");
                                                                                 break;
                                                                             case 10:
                                                                                 devproperty = &DEVPKEY_Device_LocationInfo;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_LocationInfo") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_LocationInfo") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_LocationInfo");
                                                                                 break;
                                                                             case 11:
                                                                                 devproperty = &DEVPKEY_Device_PDOName;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_PDOName") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_PDOName") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_PDOName");
                                                                                 break;
                                                                             case 12:
                                                                                 devproperty = &DEVPKEY_Device_Capabilities;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Capabilities") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Capabilities") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Capabilities");
                                                                                 break;
                                                                             case 13:
                                                                                 devproperty = &DEVPKEY_Device_UINumber;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_UINumber") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_UINumber") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_UINumber");
                                                                                 break;
                                                                             case 14:
                                                                                 devproperty = &DEVPKEY_Device_UpperFilters;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_UpperFilters") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_UpperFilters") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_UpperFilters");
                                                                                 break;
                                                                             case 15:
                                                                                 devproperty = &DEVPKEY_Device_LowerFilters;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_LowerFilters") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_LowerFilters") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_LowerFilters");
                                                                                 break;
                                                                             case 16:
                                                                                 devproperty = &DEVPKEY_Device_BusTypeGuid;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_BusTypeGuid") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_BusTypeGuid") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_BusTypeGuid");
                                                                                 break;
                                                                             case 17:
                                                                                 devproperty = &DEVPKEY_Device_LegacyBusType;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_LegacyBusType") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_LegacyBusType") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_LegacyBusType");
                                                                                 break;
                                                                             case 18:
                                                                                 devproperty = &DEVPKEY_Device_BusNumber;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_BusNumber") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_BusNumber") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_BusNumber");
                                                                                 break;
                                                                             case 19:
                                                                                 devproperty = &DEVPKEY_Device_EnumeratorName;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_EnumeratorName") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_EnumeratorName") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_EnumeratorName");
                                                                                 break;
                                                                             case 20:
                                                                                 devproperty = &DEVPKEY_Device_Security;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Security") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Security") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Security");
                                                                                 break;
                                                                             case 21:
                                                                                 devproperty = &DEVPKEY_Device_SecuritySDS;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_SecuritySDS") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_SecuritySDS") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_SecuritySDS");
                                                                                 break;
                                                                             case 22:
                                                                                 devproperty = &DEVPKEY_Device_DevType;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DevType") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DevType") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DevType");
                                                                                 break;
                                                                             case 23:
                                                                                 devproperty = &DEVPKEY_Device_Exclusive;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Exclusive") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Exclusive") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Exclusive");
                                                                                 break;
                                                                             case 24:
                                                                                 devproperty = &DEVPKEY_Device_Characteristics;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Characteristics") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Characteristics") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Characteristics");
                                                                                 break;
                                                                             case 25:
                                                                                 devproperty = &DEVPKEY_Device_Address;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Address") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Address") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Address");
                                                                                 break;
                                                                             case 26:
                                                                                 devproperty = &DEVPKEY_Device_UINumberDescFormat;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_UINumberDescFormat") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_UINumberDescFormat") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_UINumberDescFormat");
                                                                                 break;
                                                                             case 27:
                                                                                 devproperty = &DEVPKEY_Device_PowerData;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_PowerData") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_PowerData") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_PowerData");
                                                                                 //type = CM_POWER_DATA
                                                                                 break;
                                                                             case 28:
                                                                                 devproperty = &DEVPKEY_Device_RemovalPolicy;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_RemovalPolicy") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_RemovalPolicy") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_RemovalPolicy");
                                                                                 break;
                                                                             case 29:
                                                                                 devproperty = &DEVPKEY_Device_RemovalPolicyDefault;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_RemovalPolicyDefault") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_RemovalPolicyDefault") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_RemovalPolicyDefault");
                                                                                 break;
                                                                             case 30:
                                                                                 devproperty = &DEVPKEY_Device_RemovalPolicyOverride;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_RemovalPolicyOverride") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_RemovalPolicyOverride") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_RemovalPolicyOverride");
                                                                                 break;
                                                                             case 31:
                                                                                 devproperty = &DEVPKEY_Device_InstallState;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_InstallState") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_InstallState") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_InstallState");
                                                                                 break;
                                                                             case 32:
                                                                                 devproperty = &DEVPKEY_Device_LocationPaths;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_LocationPaths") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_LocationPaths") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_LocationPaths");
                                                                                 break;
                                                                             case 33:
                                                                                 devproperty = &DEVPKEY_Device_BaseContainerId;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_BaseContainerId") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_BaseContainerId") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_BaseContainerId");
                                                                                 break;
                                                                             case 34:
                                                                                 devproperty = &DEVPKEY_Device_InstanceId;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_InstanceId") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_InstanceId") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_InstanceId");
                                                                                 break;
                                                                             case 35:
                                                                                 devproperty = &DEVPKEY_Device_DevNodeStatus;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DevNodeStatus") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DevNodeStatus") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DevNodeStatus");
                                                                                 break;
                                                                             case 36:
                                                                                 devproperty = &DEVPKEY_Device_ProblemCode;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ProblemCode") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ProblemCode") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ProblemCode");
                                                                                 break;
                                                                             case 37:
                                                                                 devproperty = &DEVPKEY_Device_EjectionRelations;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_EjectionRelations") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_EjectionRelations") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_EjectionRelations");
                                                                                 break;
                                                                             case 38:
                                                                                 devproperty = &DEVPKEY_Device_RemovalRelations;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_RemovalRelations") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_RemovalRelations") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_RemovalRelations");
                                                                                 break;
                                                                             case 39:
                                                                                 devproperty = &DEVPKEY_Device_PowerRelations;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_PowerRelations") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_PowerRelations") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_PowerRelations");
                                                                                 break;
                                                                             case 40:
                                                                                 devproperty = &DEVPKEY_Device_BusRelations;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_BusRelations") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_BusRelations") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_BusRelations");
                                                                                 break;
                                                                             case 41:
                                                                                 devproperty = &DEVPKEY_Device_Parent;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Parent") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Parent") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Parent");
                                                                                 break;
                                                                             case 42:
                                                                                 devproperty = &DEVPKEY_Device_Children;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Children") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Children") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Children");
                                                                                 break;
                                                                             case 43:
                                                                                 devproperty = &DEVPKEY_Device_Siblings;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Siblings") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Siblings") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Siblings");
                                                                                 break;
                                                                             case 44:
                                                                                 devproperty = &DEVPKEY_Device_TransportRelations;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_TransportRelations") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_TransportRelations") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_TransportRelations");
                                                                                 break;
                                                                             case 45:
                                                                                 devproperty = &DEVPKEY_Device_ProblemStatus;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ProblemStatus") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ProblemStatus") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ProblemStatus");
                                                                                 break;
                                                                             case 46:
                                                                                 devproperty = &DEVPKEY_Device_Reported;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Reported") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Reported") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Reported");
                                                                                 break;
                                                                             case 47:
                                                                                 devproperty = &DEVPKEY_Device_Legacy;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Legacy") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Legacy") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Legacy");
                                                                                 break;
                                                                             case 48:
                                                                                 devproperty = &DEVPKEY_Device_ContainerId;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ContainerId") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ContainerId") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ContainerId");
                                                                                 break;
                                                                             case 49:
                                                                                 devproperty = &DEVPKEY_Device_InLocalMachineContainer;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_InLocalMachineContainer") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_InLocalMachineContainer") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_InLocalMachineContainer");
                                                                                 break;
                                                                             case 50:
                                                                                 devproperty = &DEVPKEY_Device_Model;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Model") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Model") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Model");
                                                                                 break;
                                                                             case 51:
                                                                                 devproperty = &DEVPKEY_Device_ModelId;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ModelId") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ModelId") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ModelId");
                                                                                 break;
                                                                             case 52:
                                                                                 devproperty = &DEVPKEY_Device_FriendlyNameAttributes;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_FriendlyNameAttributes") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_FriendlyNameAttributes") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_FriendlyNameAttributes");
                                                                                 break;
                                                                             case 53:
                                                                                 devproperty = &DEVPKEY_Device_ManufacturerAttributes;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ManufacturerAttributes") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ManufacturerAttributes") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ManufacturerAttributes");
                                                                                 break;
                                                                             case 54:
                                                                                 devproperty = &DEVPKEY_Device_PresenceNotForDevice;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_PresenceNotForDevice") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_PresenceNotForDevice") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_PresenceNotForDevice");
                                                                                 break;
                                                                             case 55:
                                                                                 devproperty = &DEVPKEY_Device_SignalStrength;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_SignalStrength") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_SignalStrength") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_SignalStrength");
                                                                                 break;
                                                                             case 56:
                                                                                 devproperty = &DEVPKEY_Device_IsAssociateableByUserAction;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_IsAssociateableByUserAction") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_IsAssociateableByUserAction") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_IsAssociateableByUserAction");
                                                                                 break;
                                                                             case 57:
                                                                                 devproperty = &DEVPKEY_Device_ShowInUninstallUI;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ShowInUninstallUI") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ShowInUninstallUI") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ShowInUninstallUI");
                                                                                 break;
                                                                             case 58:
                                                                                 devproperty = &DEVPKEY_Device_Numa_Proximity_Domain;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Numa_Proximity_Domain") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Numa_Proximity_Domain") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Numa_Proximity_Domain");
                                                                                 break;
                                                                             case 59:
                                                                                 devproperty = &DEVPKEY_Device_DHP_Rebalance_Policy;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DHP_Rebalance_Policy") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DHP_Rebalance_Policy") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DHP_Rebalance_Policy");
                                                                                 break;
                                                                             case 60:
                                                                                 devproperty = &DEVPKEY_Device_Numa_Node;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Numa_Node") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Numa_Node") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Numa_Node");
                                                                                 break;
                                                                             case 61:
                                                                                 devproperty = &DEVPKEY_Device_BusReportedDeviceDesc;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_BusReportedDeviceDesc") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_BusReportedDeviceDesc") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_BusReportedDeviceDesc");
                                                                                 break;
                                                                             case 62:
                                                                                 devproperty = &DEVPKEY_Device_IsPresent;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_IsPresent") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_IsPresent") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_IsPresent");
                                                                                 break;
                                                                             case 63:
                                                                                 devproperty = &DEVPKEY_Device_HasProblem;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_HasProblem") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_HasProblem") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_HasProblem");
                                                                                 break;
                                                                             case 64:
                                                                                 devproperty = &DEVPKEY_Device_ConfigurationId;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ConfigurationId") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ConfigurationId") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ConfigurationId");
                                                                                 break;
                                                                             case 65:
                                                                                 devproperty = &DEVPKEY_Device_ReportedDeviceIdsHash;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ReportedDeviceIdsHash") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ReportedDeviceIdsHash") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ReportedDeviceIdsHash");
                                                                                 break;
                                                                             case 66:
                                                                                 devproperty = &DEVPKEY_Device_PhysicalDeviceLocation;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_PhysicalDeviceLocation") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_PhysicalDeviceLocation") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_PhysicalDeviceLocation");
                                                                                 break;
                                                                             case 67:
                                                                                 devproperty = &DEVPKEY_Device_BiosDeviceName;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_BiosDeviceName") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_BiosDeviceName") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_BiosDeviceName");
                                                                                 break;
                                                                             case 68:
                                                                                 devproperty = &DEVPKEY_Device_DriverProblemDesc;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverProblemDesc") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverProblemDesc") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverProblemDesc");
                                                                                 break;
                                                                             case 69:
                                                                                 devproperty = &DEVPKEY_Device_DebuggerSafe;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DebuggerSafe") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DebuggerSafe") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DebuggerSafe");
                                                                                 break;
                                                                             case 70:
                                                                                 devproperty = &DEVPKEY_Device_PostInstallInProgress;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_PostInstallInProgress") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_PostInstallInProgress") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_PostInstallInProgress");
                                                                                 break;
                                                                             case 71:
                                                                                 devproperty = &DEVPKEY_Device_Stack;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_Stack") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_Stack") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_Stack");
                                                                                 break;
                                                                             case 72:
                                                                                 devproperty = &DEVPKEY_Device_ExtendedConfigurationIds;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ExtendedConfigurationIds") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ExtendedConfigurationIds") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ExtendedConfigurationIds");
                                                                                 break;
                                                                             case 73:
                                                                                 devproperty = &DEVPKEY_Device_IsRebootRequired;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_IsRebootRequired") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_IsRebootRequired") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_IsRebootRequired");
                                                                                 break;
                                                                             case 74:
                                                                                 devproperty = &DEVPKEY_Device_FirmwareDate;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_FirmwareDate") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_FirmwareDate") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_FirmwareDate");
                                                                                 break;
                                                                             case 75:
                                                                                 devproperty = &DEVPKEY_Device_FirmwareVersion;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_FirmwareVersion") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_FirmwareVersion") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_FirmwareVersion");
                                                                                 break;
                                                                             case 76:
                                                                                 devproperty = &DEVPKEY_Device_FirmwareRevision;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_FirmwareRevision") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_FirmwareRevision") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_FirmwareRevision");
                                                                                 break;
                                                                             case 77:
                                                                                 devproperty = &DEVPKEY_Device_DependencyProviders;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DependencyProviders") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DependencyProviders") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DependencyProviders");
                                                                                 break;
                                                                             case 78:
                                                                                 devproperty = &DEVPKEY_Device_DependencyDependents;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DependencyDependents") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DependencyDependents") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DependencyDependents");
                                                                                 break;
                                                                             case 79:
                                                                                 devproperty = &DEVPKEY_Device_SoftRestartSupported;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_SoftRestartSupported") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_SoftRestartSupported") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_SoftRestartSupported");
                                                                                 break;
                                                                             case 80:
                                                                                 devproperty = &DEVPKEY_Device_ExtendedAddress;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ExtendedAddress") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ExtendedAddress") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ExtendedAddress");
                                                                                 break;
                                                                             case 81:
                                                                                 devproperty = &DEVPKEY_Device_SessionId;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_SessionId") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_SessionId") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_SessionId");
                                                                                 break;
                                                                             case 82:
                                                                                 devproperty = &DEVPKEY_Device_InstallDate;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_InstallDate") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_InstallDate") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_InstallDate");
                                                                                 break;
                                                                             case 83:
                                                                                 devproperty = &DEVPKEY_Device_FirstInstallDate;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_FirstInstallDate") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_FirstInstallDate") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_FirstInstallDate");
                                                                                 break;
                                                                             case 84:
                                                                                 devproperty = &DEVPKEY_Device_LastArrivalDate;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_LastArrivalDate") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_LastArrivalDate") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_LastArrivalDate");
                                                                                 break;
                                                                             case 85:
                                                                                 devproperty = &DEVPKEY_Device_LastRemovalDate;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_LastRemovalDate") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_LastRemovalDate") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_LastRemovalDate");
                                                                                 break;
                                                                             case 86:
                                                                                 devproperty = &DEVPKEY_Device_DriverDate;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverDate") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverDate") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverDate");
                                                                                 break;
                                                                             case 87:
                                                                                 devproperty = &DEVPKEY_Device_DriverVersion;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverVersion") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverVersion") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverVersion");
                                                                                 break;
                                                                             case 88:
                                                                                 devproperty = &DEVPKEY_Device_DriverDesc;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverDesc") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverDesc") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverDesc");
                                                                                 break;
                                                                             case 89:
                                                                                 devproperty = &DEVPKEY_Device_DriverInfPath;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverInfPath") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverInfPath") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverInfPath");
                                                                                 break;
                                                                             case 90:
                                                                                 devproperty = &DEVPKEY_Device_DriverInfSection;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverInfSection") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverInfSection") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverInfSection");
                                                                                 break;
                                                                             case 91:
                                                                                 devproperty = &DEVPKEY_Device_DriverInfSectionExt;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverInfSectionExt") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverInfSectionExt") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverInfSectionExt");
                                                                                 break;
                                                                             case 92:
                                                                                 devproperty = &DEVPKEY_Device_MatchingDeviceId;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_MatchingDeviceId") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_MatchingDeviceId") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_MatchingDeviceId");
                                                                                 break;
                                                                             case 93:
                                                                                 devproperty = &DEVPKEY_Device_DriverProvider;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverProvider") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverProvider") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverProvider");
                                                                                 break;
                                                                             case 94:
                                                                                 devproperty = &DEVPKEY_Device_DriverPropPageProvider;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverPropPageProvider") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverPropPageProvider") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverPropPageProvider");
                                                                                 break;
                                                                             case 95:
                                                                                 devproperty = &DEVPKEY_Device_DriverCoInstallers;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverCoInstallers") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverCoInstallers") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverCoInstallers");
                                                                                 break;
                                                                             case 96:
                                                                                 devproperty = &DEVPKEY_Device_ResourcePickerTags;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ResourcePickerTags") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ResourcePickerTags") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ResourcePickerTags");
                                                                                 break;
                                                                             case 97:
                                                                                 devproperty = &DEVPKEY_Device_ResourcePickerExceptions;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_ResourcePickerExceptions") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_ResourcePickerExceptions") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_ResourcePickerExceptions");
                                                                                 break;
                                                                             case 98:
                                                                                 devproperty = &DEVPKEY_Device_DriverRank;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverRank") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverRank") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverRank");
                                                                                 break;
                                                                             case 99:
                                                                                 devproperty = &DEVPKEY_Device_DriverLogoLevel;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_DriverLogoLevel") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_DriverLogoLevel") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_DriverLogoLevel");
                                                                                 break;
                                                                             case 100:
                                                                                 devproperty = &DEVPKEY_Device_NoConnectSound;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_NoConnectSound") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_NoConnectSound") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_NoConnectSound");
                                                                                 break;
                                                                             case 101:
                                                                                 devproperty = &DEVPKEY_Device_GenericDriverInstalled;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_GenericDriverInstalled") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_GenericDriverInstalled") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_GenericDriverInstalled");
                                                                                 break;
                                                                             case 102:
                                                                                 devproperty = &DEVPKEY_Device_AdditionalSoftwareRequested;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_AdditionalSoftwareRequested") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_AdditionalSoftwareRequested") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_AdditionalSoftwareRequested");
                                                                                 break;
                                                                             case 103:
                                                                                 devproperty = &DEVPKEY_Device_SafeRemovalRequired;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_SafeRemovalRequired") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_SafeRemovalRequired") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_SafeRemovalRequired");
                                                                                 break;
                                                                             case 104:
                                                                                 devproperty = &DEVPKEY_Device_SafeRemovalRequiredOverride;
-                                                                                propertyNameLength = strlen("DEVPKEY_Device_SafeRemovalRequiredOverride") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_Device_SafeRemovalRequiredOverride") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_Device_SafeRemovalRequiredOverride");
                                                                                 break;
                                                                             case 105:
                                                                                 devproperty = &DEVPKEY_DrvPkg_Model;
-                                                                                propertyNameLength = strlen("DEVPKEY_DrvPkg_Model") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DrvPkg_Model") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DrvPkg_Model");
                                                                                 break;
                                                                             case 106:
                                                                                 devproperty = &DEVPKEY_DrvPkg_VendorWebSite;
-                                                                                propertyNameLength = strlen("DEVPKEY_DrvPkg_VendorWebSite") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DrvPkg_VendorWebSite") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DrvPkg_VendorWebSite");
                                                                                 break;
                                                                             case 107:
                                                                                 devproperty = &DEVPKEY_DrvPkg_DetailedDescription;
-                                                                                propertyNameLength = strlen("DEVPKEY_DrvPkg_DetailedDescription") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DrvPkg_DetailedDescription") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DrvPkg_DetailedDescription");
                                                                                 break;
                                                                             case 108:
                                                                                 devproperty = &DEVPKEY_DrvPkg_DocumentationLink;
-                                                                                propertyNameLength = strlen("DEVPKEY_DrvPkg_DocumentationLink") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DrvPkg_DocumentationLink") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DrvPkg_DocumentationLink");
                                                                                 break;
                                                                             case 109:
                                                                                 devproperty = &DEVPKEY_DrvPkg_Icon;
-                                                                                propertyNameLength = strlen("DEVPKEY_DrvPkg_Icon") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DrvPkg_Icon") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DrvPkg_Icon");
                                                                                 break;
                                                                             case 110:
                                                                                 devproperty = &DEVPKEY_DrvPkg_BrandingIcon;
-                                                                                propertyNameLength = strlen("DEVPKEY_DrvPkg_BrandingIcon") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DrvPkg_BrandingIcon") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DrvPkg_BrandingIcon");
                                                                                 break;
                                                                             case 111:
                                                                                 devproperty = &DEVPKEY_DeviceClass_UpperFilters;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_UpperFilters") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_UpperFilters") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_UpperFilters");
                                                                                 break;
                                                                             case 112:
                                                                                 devproperty = &DEVPKEY_DeviceClass_LowerFilters;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_LowerFilters") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_LowerFilters") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_LowerFilters");
                                                                                 break;
                                                                             case 113:
                                                                                 devproperty = &DEVPKEY_DeviceClass_Security;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_Security") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_Security") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_Security");
                                                                                 break;
                                                                             case 114:
                                                                                 devproperty = &DEVPKEY_DeviceClass_SecuritySDS;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_SecuritySDS") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_SecuritySDS") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_SecuritySDS");
                                                                                 break;
                                                                             case 115:
                                                                                 devproperty = &DEVPKEY_DeviceClass_DevType;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_DevType") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_DevType") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_DevType");
                                                                                 break;
                                                                             case 116:
                                                                                 devproperty = &DEVPKEY_DeviceClass_Exclusive;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_Exclusive") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_Exclusive") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_Exclusive");
                                                                                 break;
                                                                             case 117:
                                                                                 devproperty = &DEVPKEY_DeviceClass_Characteristics;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_Characteristics") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_Characteristics") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_Characteristics");
                                                                                 break;
                                                                             case 118:
                                                                                 devproperty = &DEVPKEY_DeviceClass_Name;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_Name") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_Name") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_Name");
                                                                                 break;
                                                                             case 119:
                                                                                 devproperty = &DEVPKEY_DeviceClass_ClassName;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_ClassName") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_ClassName") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_ClassName");
                                                                                 break;
                                                                             case 120:
                                                                                 devproperty = &DEVPKEY_DeviceClass_Icon;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_Icon") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_Icon") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_Icon");
                                                                                 break;
                                                                             case 121:
                                                                                 devproperty = &DEVPKEY_DeviceClass_ClassInstaller;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_ClassInstaller") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_ClassInstaller") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_ClassInstaller");
                                                                                 break;
                                                                             case 122:
                                                                                 devproperty = &DEVPKEY_DeviceClass_PropPageProvider;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_PropPageProvider") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_PropPageProvider") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_PropPageProvider");
                                                                                 break;
                                                                             case 123:
                                                                                 devproperty = &DEVPKEY_DeviceClass_NoInstallClass;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_NoInstallClass") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_NoInstallClass") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_NoInstallClass");
                                                                                 break;
                                                                             case 124:
                                                                                 devproperty = &DEVPKEY_DeviceClass_NoDisplayClass;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_NoDisplayClass") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_NoDisplayClass") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_NoDisplayClass");
                                                                                 break;
                                                                             case 125:
                                                                                 devproperty = &DEVPKEY_DeviceClass_SilentInstall;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_SilentInstall") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_SilentInstall") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_SilentInstall");
                                                                                 break;
                                                                             case 126:
                                                                                 devproperty = &DEVPKEY_DeviceClass_NoUseClass;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_NoUseClass") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_NoUseClass") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_NoUseClass");
                                                                                 break;
                                                                             case 127:
                                                                                 devproperty = &DEVPKEY_DeviceClass_DefaultService;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_DefaultService") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_DefaultService") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_DefaultService");
                                                                                 break;
                                                                             case 128:
                                                                                 devproperty = &DEVPKEY_DeviceClass_IconPath;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_IconPath") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_IconPath") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_IconPath");
                                                                                 break;
                                                                             case 129:
                                                                                 devproperty = &DEVPKEY_DeviceClass_DHPRebalanceOptOut;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_DHPRebalanceOptOut") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_DHPRebalanceOptOut") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_DHPRebalanceOptOut");
                                                                                 break;
                                                                             case 130:
                                                                                 devproperty = &DEVPKEY_DeviceClass_ClassCoInstallers;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceClass_ClassCoInstallers") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceClass_ClassCoInstallers") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceClass_ClassCoInstallers");
                                                                                 break;
                                                                             case 131:
                                                                                 devproperty = &DEVPKEY_DeviceInterface_FriendlyName;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceInterface_FriendlyName") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceInterface_FriendlyName") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceInterface_FriendlyName");
                                                                                 break;
                                                                             case 132:
                                                                                 devproperty = &DEVPKEY_DeviceInterface_Enabled;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceInterface_Enabled") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceInterface_Enabled") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceInterface_Enabled");
                                                                                 break;
                                                                             case 133:
                                                                                 devproperty = &DEVPKEY_DeviceInterface_ClassGuid;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceInterface_ClassGuid") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceInterface_ClassGuid") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceInterface_ClassGuid");
                                                                                 break;
                                                                             case 134:
                                                                                 devproperty = &DEVPKEY_DeviceInterface_ReferenceString;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceInterface_ReferenceString") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceInterface_ReferenceString") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceInterface_ReferenceString");
                                                                                 break;
                                                                             case 135:
                                                                                 devproperty = &DEVPKEY_DeviceInterface_Restricted;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceInterface_Restricted") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceInterface_Restricted") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceInterface_Restricted");
                                                                                 break;
                                                                             case 136:
                                                                                 devproperty = &DEVPKEY_DeviceInterface_UnrestrictedAppCapabilities;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceInterface_UnrestrictedAppCapabilities") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceInterface_UnrestrictedAppCapabilities") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceInterface_UnrestrictedAppCapabilities");
                                                                                 break;
                                                                             case 137:
                                                                                 devproperty = &DEVPKEY_DeviceInterface_SchematicName;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceInterface_SchematicName") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceInterface_SchematicName") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceInterface_SchematicName");
                                                                                 break;
                                                                             case 138:
                                                                                 devproperty = &DEVPKEY_DeviceInterfaceClass_DefaultInterface;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceInterfaceClass_DefaultInterface") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceInterfaceClass_DefaultInterface") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceInterfaceClass_DefaultInterface");
                                                                                 break;
                                                                             case 139:
                                                                                 devproperty = &DEVPKEY_DeviceInterfaceClass_Name;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceInterfaceClass_Name") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceInterfaceClass_Name") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceInterfaceClass_Name");
                                                                                 break;
                                                                             case 140:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_Address;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_Address") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_Address") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_Address");
                                                                                 break;
                                                                             case 141:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_DiscoveryMethod;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_DiscoveryMethod") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_DiscoveryMethod") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_DiscoveryMethod");
                                                                                 break;
                                                                             case 142:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsEncrypted;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsEncrypted") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsEncrypted") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsEncrypted");
                                                                                 break;
                                                                             case 143:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsAuthenticated;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsAuthenticated") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsAuthenticated") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsAuthenticated");
                                                                                 break;
                                                                             case 144:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsConnected;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsConnected") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsConnected") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsConnected");
                                                                                 break;
                                                                             case 145:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsPaired;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsPaired") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsPaired") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsPaired");
                                                                                 break;
                                                                             case 146:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_Icon;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_Icon") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_Icon") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_Icon");
                                                                                 break;
                                                                             case 147:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_Version;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_Version") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_Version") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_Version");
                                                                                 break;
                                                                             case 148:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_Last_Seen;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_Last_Seen") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_Last_Seen") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_Last_Seen");
                                                                                 break;
                                                                             case 149:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_Last_Connected;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_Last_Connected") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_Last_Connected") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_Last_Connected");
                                                                                 break;
                                                                             case 150:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsShowInDisconnectedState;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsShowInDisconnectedState") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsShowInDisconnectedState") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsShowInDisconnectedState");
                                                                                 break;
                                                                             case 151:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsLocalMachine;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsLocalMachine") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsLocalMachine") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsLocalMachine");
                                                                                 break;
                                                                             case 152:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_MetadataPath;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_MetadataPath") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_MetadataPath") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_MetadataPath");
                                                                                 break;
                                                                             case 153:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsMetadataSearchInProgress;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsMetadataSearchInProgress") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsMetadataSearchInProgress") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsMetadataSearchInProgress");
                                                                                 break;
                                                                             case 154:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_MetadataChecksum;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_MetadataChecksum") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_MetadataChecksum") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_MetadataChecksum");
                                                                                 break;
                                                                             case 155:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsNotInterestingForDisplay;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsNotInterestingForDisplay") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsNotInterestingForDisplay") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsNotInterestingForDisplay");
                                                                                 break;
                                                                             case 156:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_LaunchDeviceStageOnDeviceConnect;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_LaunchDeviceStageOnDeviceConnect") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_LaunchDeviceStageOnDeviceConnect") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_LaunchDeviceStageOnDeviceConnect");
                                                                                 break;
                                                                             case 157:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_LaunchDeviceStageFromExplorer;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_LaunchDeviceStageFromExplorer") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_LaunchDeviceStageFromExplorer") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_LaunchDeviceStageFromExplorer");
                                                                                 break;
                                                                             case 158:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_BaselineExperienceId;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_BaselineExperienceId") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_BaselineExperienceId") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_BaselineExperienceId");
                                                                                 break;
                                                                             case 159:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsDeviceUniquelyIdentifiable;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsDeviceUniquelyIdentifiable") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsDeviceUniquelyIdentifiable") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsDeviceUniquelyIdentifiable");
                                                                                 break;
                                                                             case 160:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_AssociationArray;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_AssociationArray") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_AssociationArray") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_AssociationArray");
                                                                                 break;
                                                                             case 161:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_DeviceDescription1;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_DeviceDescription1") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_DeviceDescription1") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_DeviceDescription1");
                                                                                 break;
                                                                             case 162:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_DeviceDescription2;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_DeviceDescription2") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_DeviceDescription2") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_DeviceDescription2");
                                                                                 break;
                                                                             case 163:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_HasProblem;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_HasProblem") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_HasProblem") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_HasProblem");
                                                                                 break;
                                                                             case 164:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsSharedDevice;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsSharedDevice") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsSharedDevice") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsSharedDevice");
                                                                                 break;
                                                                             case 165:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsNetworkDevice;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsNetworkDevice") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsNetworkDevice") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsNetworkDevice");
                                                                                 break;
                                                                             case 166:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsDefaultDevice;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsDefaultDevice") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsDefaultDevice") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsDefaultDevice");
                                                                                 break;
                                                                             case 167:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_MetadataCabinet;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_MetadataCabinet") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_MetadataCabinet") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_MetadataCabinet");
                                                                                 break;
                                                                             case 168:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_RequiresPairingElevation;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_RequiresPairingElevation") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_RequiresPairingElevation") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_RequiresPairingElevation");
                                                                                 break;
                                                                             case 169:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_ExperienceId;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_ExperienceId") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_ExperienceId") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_ExperienceId");
                                                                                 break;
                                                                             case 170:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_Category;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceDEVPKEY_DeviceContainer_Category_HardwareIds") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceDEVPKEY_DeviceContainer_Category_HardwareIds") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_Category");
                                                                                 break;
                                                                             case 171:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_Category_Desc_Singular;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_Category_Desc_Singular") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_Category_Desc_Singular") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_Category_Desc_Singular");
                                                                                 break;
                                                                             case 172:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_Category_Desc_Plural;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_Category_Desc_Plural") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_Category_Desc_Plural") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_Category_Desc_Plural");
                                                                                 break;
                                                                             case 173:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_Category_Icon;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_Category_Icon") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_Category_Icon") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_Category_Icon");
                                                                                 break;
                                                                             case 174:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_CategoryGroup_Desc;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_CategoryGroup_Desc") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_CategoryGroup_Desc") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_CategoryGroup_Desc");
                                                                                 break;
                                                                             case 175:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_CategoryGroup_Icon;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_CategoryGroup_Icon") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_CategoryGroup_Icon") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_CategoryGroup_Icon");
                                                                                 break;
                                                                             case 176:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_PrimaryCategory;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_PrimaryCategory") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_PrimaryCategory") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_PrimaryCategory");
                                                                                 break;
                                                                             case 178:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_UnpairUninstall;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_UnpairUninstall") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_UnpairUninstall") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_UnpairUninstall");
                                                                                 break;
                                                                             case 179:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_RequiresUninstallElevation;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_RequiresUninstallElevation") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_RequiresUninstallElevation") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_RequiresUninstallElevation");
                                                                                 break;
                                                                             case 180:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_DeviceFunctionSubRank;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_DeviceFunctionSubRank") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_DeviceFunctionSubRank") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_DeviceFunctionSubRank");
                                                                                 break;
                                                                             case 181:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected");
                                                                                 break;
                                                                             case 182:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_ConfigFlags;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_ConfigFlags") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_ConfigFlags") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_ConfigFlags");
                                                                                 break;
                                                                             case 183:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_PrivilegedPackageFamilyNames;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_PrivilegedPackageFamilyNames") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_PrivilegedPackageFamilyNames") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_PrivilegedPackageFamilyNames");
                                                                                 break;
                                                                             case 184:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_CustomPrivilegedPackageFamilyNames;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_CustomPrivilegedPackageFamilyNames") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_CustomPrivilegedPackageFamilyNames") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_CustomPrivilegedPackageFamilyNames");
                                                                                 break;
                                                                             case 185:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_IsRebootRequired;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_IsRebootRequired") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_IsRebootRequired") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_IsRebootRequired");
                                                                                 break;
                                                                             case 186:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_FriendlyName;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_FriendlyName") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_FriendlyName") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_FriendlyName");
                                                                                 break;
                                                                             case 187:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_Manufacturer;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_Manufacturer") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_Manufacturer") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_Manufacturer");
                                                                                 break;
                                                                             case 188:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_ModelName;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_ModelName") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_ModelName") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_ModelName");
                                                                                 break;
                                                                             case 189:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_ModelNumber;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_ModelNumber") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_ModelNumber") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_ModelNumber");
                                                                                 break;
                                                                             case 190:
                                                                                 devproperty = &DEVPKEY_DeviceContainer_InstallInProgress;
-                                                                                propertyNameLength = strlen("DEVPKEY_DeviceContainer_InstallInProgress") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DeviceContainer_InstallInProgress") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DeviceContainer_InstallInProgress");
                                                                                 break;
                                                                             case 191:
                                                                                 devproperty = &DEVPKEY_DevQuery_ObjectType;
-                                                                                propertyNameLength = strlen("DEVPKEY_DevQuery_ObjectType") + 1;
+                                                                                propertyNameLength = safe_strlen("DEVPKEY_DevQuery_ObjectType") + 1;
                                                                                 propertyName = C_CAST(char*, safe_calloc(propertyNameLength, sizeof(char)));
                                                                                 snprintf(propertyName, propertyNameLength, "DEVPKEY_DevQuery_ObjectType");
                                                                                 break;
@@ -4004,7 +4004,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         if (strstr(device->os_info.name, WIN_PHYSICAL_DRIVE))
         {
             char* end = M_NULLPTR;
-            char *drivenum = strstr(device->os_info.name, WIN_PHYSICAL_DRIVE) + strlen(WIN_PHYSICAL_DRIVE);
+            char *drivenum = strstr(device->os_info.name, WIN_PHYSICAL_DRIVE) + safe_strlen(WIN_PHYSICAL_DRIVE);
             errno = 0;//clear to zero as stated in ISO C secure coding
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
@@ -4017,7 +4017,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         else if (strstr(device->os_info.name, WIN_CDROM_DRIVE))
         {
             char* end = M_NULLPTR;
-            char* drivenum = strstr(device->os_info.name, WIN_CDROM_DRIVE) + strlen(WIN_CDROM_DRIVE);
+            char* drivenum = strstr(device->os_info.name, WIN_CDROM_DRIVE) + safe_strlen(WIN_CDROM_DRIVE);
             errno = 0;//clear to zero as stated in ISO C secure coding
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
@@ -4030,7 +4030,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         else if (strstr(device->os_info.name, WIN_TAPE_DRIVE))
         {
             char* end = M_NULLPTR;
-            char* drivenum = strstr(device->os_info.name, WIN_TAPE_DRIVE) + strlen(WIN_TAPE_DRIVE);
+            char* drivenum = strstr(device->os_info.name, WIN_TAPE_DRIVE) + safe_strlen(WIN_TAPE_DRIVE);
             errno = 0;//clear to zero as stated in ISO C secure coding
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
@@ -4043,7 +4043,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
         else if (strstr(device->os_info.name, WIN_CHANGER_DEVICE))
         {
             char* end = M_NULLPTR;
-            char* drivenum = strstr(device->os_info.name, WIN_CHANGER_DEVICE) + strlen(WIN_CHANGER_DEVICE);
+            char* drivenum = strstr(device->os_info.name, WIN_CHANGER_DEVICE) + safe_strlen(WIN_CHANGER_DEVICE);
             errno = 0;//clear to zero as stated in ISO C secure coding
             unsigned long drive = strtoul(drivenum, &end, 10);
             if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
@@ -4266,7 +4266,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                 }
                 else if (device_desc->BusType == BusTypeSata)
                 {
-                    if (strncmp(WIN_CDROM_DRIVE, filename, strlen(WIN_CDROM_DRIVE)) == 0)
+                    if (strncmp(WIN_CDROM_DRIVE, filename, safe_strlen(WIN_CDROM_DRIVE)) == 0)
                     {
                         device->drive_info.drive_type = ATAPI_DRIVE;
                     }
@@ -8064,8 +8064,8 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                             char* devSerial = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
                             if (deviceDesc->SerialNumberOffset && deviceDesc->SerialNumberOffset != UINT32_MAX)
                             {
-                                memcpy(&vpdPage[4], devSerial, M_Min(strlen(devSerial), 92));//92 for maximum size of current remaining memory for this page
-                                vpdPageLen = vpdPage[3] = C_CAST(uint8_t, M_Min(strlen(devSerial), 92));
+                                memcpy(&vpdPage[4], devSerial, M_Min(safe_strlen(devSerial), 92));//92 for maximum size of current remaining memory for this page
+                                vpdPageLen = vpdPage[3] = C_CAST(uint8_t, M_Min(safe_strlen(devSerial), 92));
                             }
                             else
                             {
@@ -8170,7 +8170,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                             if (deviceDesc->VendorIdOffset && deviceDesc->VendorIdOffset != UINT32_MAX)
                             {
                                 memset(&inquiryData[8], ' ', 8);//space pad first as spec says ASCII data should be space padded
-                                memcpy(&inquiryData[8], devVendor, M_Min(strlen(devVendor), 8));//maximum of 8 characters in length
+                                memcpy(&inquiryData[8], devVendor, M_Min(safe_strlen(devVendor), 8));//maximum of 8 characters in length
                             }
                             else
                             {
@@ -8187,7 +8187,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                             if (deviceDesc->ProductIdOffset && deviceDesc->ProductIdOffset != UINT32_MAX)
                             {
                                 memset(&inquiryData[16], ' ', 16);//space pad first as spec says ASCII data should be space padded
-                                memcpy(&inquiryData[16], devModel, M_Min(strlen(devModel), 16));
+                                memcpy(&inquiryData[16], devModel, M_Min(safe_strlen(devModel), 16));
                             }
                             else
                             {
@@ -8211,7 +8211,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                             if (deviceDesc->ProductRevisionOffset && deviceDesc->ProductRevisionOffset != UINT32_MAX)
                             {
                                 memset(&inquiryData[32], ' ', 4);//space pad first as spec says ASCII data should be space padded
-                                memcpy(&inquiryData[32], devRev, M_Min(strlen(devRev), 4));
+                                memcpy(&inquiryData[32], devRev, M_Min(safe_strlen(devRev), 4));
                             }
                             else
                             {
@@ -8224,7 +8224,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                             //a fairly common practice overall. - TJE
                             if (deviceDesc->SerialNumberOffset && deviceDesc->SerialNumberOffset != UINT32_MAX)
                             {
-                                memcpy(&inquiryData[36], devSerial, M_Min(strlen(devSerial), 20));
+                                memcpy(&inquiryData[36], devSerial, M_Min(safe_strlen(devSerial), 20));
                             }
                         }
                         else

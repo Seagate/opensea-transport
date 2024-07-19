@@ -997,7 +997,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
             fillMaxLba = &device->drive_info.bridge_info.childDeviceMaxLba;
         }
         //this will catch all IDE interface devices to set a vendor identification IF one is not already set
-        else if (strlen(device->drive_info.T10_vendor_ident) == 0)
+        else if (safe_strlen(device->drive_info.T10_vendor_ident) == 0)
         {
             //vendor ID is not set, so set it to ATA like SAT spec
             device->drive_info.T10_vendor_ident[0] = 'A';
@@ -1338,8 +1338,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
         //Special case for SSD detection. One of these SSDs didn't set the media_type to SSD
         //but it is an SSD. So this match will catch it when this happens. It should be uncommon to find though -TJE
         if (device->drive_info.media_type != MEDIA_SSD &&
-            strlen(device->drive_info.bridge_info.childDriveMN) > 0 && (strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != M_NULLPTR) &&
-            strlen(device->drive_info.bridge_info.childDriveFW) > 0 && (strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != M_NULLPTR))
+            safe_strlen(device->drive_info.bridge_info.childDriveMN) > 0 && (strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != M_NULLPTR) &&
+            safe_strlen(device->drive_info.bridge_info.childDriveFW) > 0 && (strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != M_NULLPTR))
         {
             device->drive_info.media_type = MEDIA_SSD;
         }

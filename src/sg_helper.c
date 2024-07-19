@@ -198,7 +198,7 @@ static int sd_filter(const struct dirent *entry)
 static bool is_Block_Device_Handle(const char *handle)
 {
     bool isBlockDevice = false;
-    if (handle && strlen(handle))
+    if (handle && safe_strlen(handle))
     {
         if (strstr(handle, "sd") || strstr(handle, "st") || strstr(handle, "sr") || strstr(handle, "scd"))
         {
@@ -211,7 +211,7 @@ static bool is_Block_Device_Handle(const char *handle)
 static bool is_SCSI_Generic_Handle(const char *handle)
 {
     bool isGenericDevice = false;
-    if (handle && strlen(handle))
+    if (handle && safe_strlen(handle))
     {
         if (strstr(handle, "sg") && !strstr(handle, "bsg"))
         {
@@ -224,7 +224,7 @@ static bool is_SCSI_Generic_Handle(const char *handle)
 static bool is_Block_SCSI_Generic_Handle(const char *handle)
 {
     bool isBlockGenericDevice = false;
-    if (handle && strlen(handle))
+    if (handle && safe_strlen(handle))
     {
         if (strstr(handle, "bsg"))
         {
@@ -237,7 +237,7 @@ static bool is_Block_SCSI_Generic_Handle(const char *handle)
 static bool is_NVMe_Handle(char *handle)
 {
     bool isNvmeDevice = false;
-    if (handle && strlen(handle))
+    if (handle && safe_strlen(handle))
     {
         if (strstr(handle, "nvme"))
         {
@@ -386,7 +386,7 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
         {
             return true;
         }
-        else if (end[0] == '.' && strlen(end) > 1)
+        else if (end[0] == '.' && safe_strlen(end) > 1)
         {
             //rev is available
             str = end + 1;
@@ -402,7 +402,7 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
             {
                 return true;
             }
-            else if (end[0] == '[' && strlen(end) > 1)
+            else if (end[0] == '[' && safe_strlen(end) > 1)
             {
                 //build is available
                 str = end + 1;
@@ -452,7 +452,7 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
         //printf("driver version file path = %s\n", driverVersionFilePath);
         //convert relative path to a full path. Basically replace ../'s with /sys/ since this will always be ../../bus and we need /sys/buf
         char* busPtr = strstr(driverVersionFilePath, "/bus");
-        size_t busPtrLen = strlen(busPtr);
+        size_t busPtrLen = safe_strlen(busPtr);
         //magic number 4 is for the length of the string "/sys" which is what is being set in the beginning of the path.
         //This is a bit of a mess, but a simple call to realpath was not working, likely due to the current directory not being exactly what we want to start with to allow
         //that function to correctly figure out the path.
@@ -557,7 +557,7 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[2] = 'y';
     fullPciPath[3] = 's';
     fullPciPath[4] = '/';
-    safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], strlen(fullPciPath));
+    safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
     snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
     intptr_t newStrLen = strstr(fullPciPath, "/ata") - fullPciPath;
     if (newStrLen > 0)
@@ -641,7 +641,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[2] = 'y';
     fullPciPath[3] = 's';
     fullPciPath[4] = '/';
-    safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], strlen(fullPciPath));
+    safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
     snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
     intptr_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath;
     if (newStrLen > 0)
@@ -728,7 +728,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     fullFWPath[2] = 'y';
     fullFWPath[3] = 's';
     fullFWPath[4] = '/';
-    safe_memmove(&fullFWPath[5], PATH_MAX - 5, &fullFWPath[6], strlen(fullFWPath));
+    safe_memmove(&fullFWPath[5], PATH_MAX - 5, &fullFWPath[6], safe_strlen(fullFWPath));
     snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullFWPath);
     //now we need to go up a few directories to get the modalias file to parse
     intptr_t newStrLen = strstr(fullFWPath, "/host") - fullFWPath;
@@ -793,7 +793,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     fullPciPath[2] = 'y';
     fullPciPath[3] = 's';
     fullPciPath[4] = '/';
-    safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], strlen(fullPciPath));
+    safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
     snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
     //need to trim the path down now since it can vary by controller:
     //adaptec: /sys/devices/pci0000:00/0000:00:02.0/0000:02:00.0/host0/target0:1:0/0:1:0:0/scsi_generic/sg2
@@ -877,7 +877,7 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
     if (scsiAddress)
     {
        char *saveptr = M_NULLPTR;
-       rsize_t addrlen = strlen(scsiAddress);
+       rsize_t addrlen = safe_strlen(scsiAddress);
        char *token = common_String_Token(scsiAddress, &addrlen, ":", &saveptr);
        uint8_t counter = 0;
        while (token)
@@ -978,7 +978,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
     {
         if (strstr(handle, "nvme") != M_NULLPTR)
         {
-            size_t nvmHandleLen = strlen(handle) + 1;
+            size_t nvmHandleLen = safe_strlen(handle) + 1;
             char *nvmHandle = C_CAST(char*, safe_calloc(nvmHandleLen, sizeof(char)));
             snprintf(nvmHandle, nvmHandleLen, "%s", handle);
             sysFsInfo->interface_type = NVME_INTERFACE;
@@ -1147,12 +1147,12 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
         device->drive_info.interface_type = sysFsInfo.interface_type;
         memcpy(&device->drive_info.adapter_info, &sysFsInfo.adapter_info, sizeof(adapterInfo));
         memcpy(&device->drive_info.driver_info, &sysFsInfo.driver_info, sizeof(driverInfo));
-        if (strlen(sysFsInfo.primaryHandleStr) > 0)
+        if (safe_strlen(sysFsInfo.primaryHandleStr) > 0)
         {
             snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysFsInfo.primaryHandleStr);
             snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(sysFsInfo.primaryHandleStr));
         }
-        if (strlen(sysFsInfo.secondaryHandleStr) > 0)
+        if (safe_strlen(sysFsInfo.secondaryHandleStr) > 0)
         {
             snprintf(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "%s", sysFsInfo.secondaryHandleStr);
             snprintf(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s", basename(sysFsInfo.secondaryHandleStr));
@@ -1259,7 +1259,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                 for (int iter = 0; iter < numberOfItems; ++iter)
                 {
                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
-                    size_t tempLen = strlen(classPath) + strlen(classList[iter]->d_name) + 1;
+                    size_t tempLen = safe_strlen(classPath) + safe_strlen(classList[iter]->d_name) + 1;
                     char *temp = C_CAST(char*, safe_calloc(tempLen, sizeof(char)));
                     struct stat tempStat;
                     memset(&tempStat, 0, sizeof(struct stat));
@@ -1278,7 +1278,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             //We need to match up until the class name (ex: block, bsg, scsi_generic)
                             if (incomingBlock)//block class
                             {
-                                classNameLength = strlen("scsi_generic") + 1;
+                                classNameLength = safe_strlen("scsi_generic") + 1;
                                 className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
@@ -1287,7 +1287,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             }
                             else if (bsg) //bsg class
                             {
-                                classNameLength = strlen("bsg") + 1;
+                                classNameLength = safe_strlen("bsg") + 1;
                                 className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
@@ -1296,7 +1296,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             }
                             else //scsi_generic class
                             {
-                                classNameLength = strlen("block") + 1;
+                                classNameLength = safe_strlen("block") + 1;
                                 className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
@@ -1311,12 +1311,12 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                                 {
                                     if (incomingBlock)
                                     {
-                                        *blockHandle = strndup(basehandle, strlen(basehandle));
+                                        *blockHandle = strndup(basehandle, safe_strlen(basehandle));
                                         *genericHandle = strdup(basename(classPtr));
                                     }
                                     else
                                     {
-                                        *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr)));
+                                        *blockHandle = strndup(basename(classPtr), safe_strlen(basename(classPtr)));
                                         *genericHandle = strdup(basehandle);
                                     }
                                     safe_Free(C_CAST(void**, &className));
@@ -2141,7 +2141,7 @@ static int nvme_filter(const struct dirent *entry)
     {
         return !nvmeHandle;
     }
-    if (strlen(entry->d_name) > 5)
+    if (safe_strlen(entry->d_name) > 5)
     {
         char* partition = strpbrk(entry->d_name, "p");
         if (partition != M_NULLPTR)
@@ -2385,7 +2385,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     //add sg/sd devices to the list
     for (; i < (num_sg_devs + num_sd_devs); i++)
     {
-        size_t handleSize = (strlen("/dev/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
+        size_t handleSize = (safe_strlen("/dev/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
         safe_Free(C_CAST(void**, &namelist[i]));
@@ -2393,7 +2393,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     //add nvme devices to the list
     for (j = 0; i < totalDevs && j < num_nvme_devs; i++, j++)
     {
-        size_t handleSize = (strlen("/dev/") + strlen(nvmenamelist[j]->d_name) + 1) * sizeof(char);
+        size_t handleSize = (safe_strlen("/dev/") + safe_strlen(nvmenamelist[j]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", nvmenamelist[j]->d_name);
         safe_Free(C_CAST(void**, &nvmenamelist[j]));
@@ -2437,7 +2437,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #endif
         for (driveNumber = 0; (driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) && (found < numberOfDevices); ++driveNumber)
         {
-            if (!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
@@ -2858,7 +2858,7 @@ static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
     char *handle = strstr(&device->os_info.name[0], "/dev/nvme");
     if (handle)
     {
-        handle += strlen("/dev/nvme");
+        handle += safe_strlen("/dev/nvme");
     }
     else
     {
@@ -2871,7 +2871,7 @@ static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
     {
         return FAILURE;
     }
-    if (endptr && strlen(endptr) > 1 && endptr[0] == 'n')
+    if (endptr && safe_strlen(endptr) > 1 && endptr[0] == 'n')
     {
         handle += 1;
         errno = 0;//clear to zero as stated in ISO C secure coding

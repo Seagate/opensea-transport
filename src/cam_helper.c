@@ -61,7 +61,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
 static bool is_NVMe_Handle(char *handle)
 {
     bool isNVMeDevice = false;
-    if (handle && strlen(handle))
+    if (handle && safe_strlen(handle))
     {
         if (strstr(handle, "nvme"))
         {
@@ -1282,14 +1282,14 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     uint32_t i = 0, j = 0, k=0;
     for (i = 0; i < num_da_devs; ++i)
     {
-        size_t devNameStringLength = (strlen("/dev/") + strlen(danamelist[i]->d_name) + 1) * sizeof(char);
+        size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(danamelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", danamelist[i]->d_name);
         safe_Free(C_CAST(void**, &danamelist[i]));
     }
     for (j = 0; i < (num_da_devs + num_ada_devs) && j < num_ada_devs; ++i, j++)
     {
-        size_t devNameStringLength = (strlen("/dev/") + strlen(adanamelist[j]->d_name) + 1) * sizeof(char);
+        size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(adanamelist[j]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", adanamelist[j]->d_name);
         safe_Free(C_CAST(void**, &adanamelist[j]));
@@ -1297,7 +1297,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 
     for (k = 0; i < (totalDevs) && k < num_nvme_devs; ++i, ++j, ++k)
     {
-        size_t devNameStringLength = (strlen("/dev/") + strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
+        size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", nvmenamelist[k]->d_name);
         safe_Free(C_CAST(void**, &nvmenamelist[k]));
@@ -1322,7 +1322,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         d = ptrToDeviceList;
         for (driveNumber = 0; ((driveNumber >= 0 && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) && found < numberOfDevices); ++driveNumber)
         {
-            if (!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }

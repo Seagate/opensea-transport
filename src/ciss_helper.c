@@ -270,7 +270,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
             //starts with ciss, so now we should check to make sure we found everything else
             uint8_t counter = 0;
             char *saveptr = M_NULLPTR;
-            rsize_t duplen = strlen(dup);
+            rsize_t duplen = safe_strlen(dup);
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
             while (token && counter < 3)
             {
@@ -1559,7 +1559,7 @@ eReturnValues get_CISS_RAID_Device(const char *filename, tDevice *device)
         return LIBRARY_MISMATCH;
     }
     //set the name that was provided for other display.
-    memcpy(device->os_info.name, filename, strlen(filename));
+    memcpy(device->os_info.name, filename, safe_strlen(filename));
     if (PARSE_COUNT_SUCCESS == parse_CISS_Handle(filename, handlePtr, &driveNumber))
     {
         device->os_info.cissDeviceData = safe_calloc(1, sizeof(cissDeviceInfo));

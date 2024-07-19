@@ -1279,7 +1279,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                                     break;
                                 }
                                 //check if the SN is valid (non-zero length) and then check if it matches anything already seen in the list... - TJE
-                                else if (strlen(deviceList[devIter].drive_info.serialNumber) && strcmp(deviceList[devIter].drive_info.serialNumber, deviceList[dupCheck].drive_info.serialNumber) == 0)
+                                else if (safe_strlen(deviceList[devIter].drive_info.serialNumber) && strcmp(deviceList[devIter].drive_info.serialNumber, deviceList[dupCheck].drive_info.serialNumber) == 0)
                                 {
                                     skipThisDevice = true;
                                     break;
@@ -1436,8 +1436,8 @@ static void set_IEEE_OUI(uint32_t* ieeeOUI, tDevice *device, bool USBchildDrive)
 bool is_Maxtor_String(char* string)
 {
     bool isMaxtor = false;
-    size_t maxtorLen = strlen("MAXTOR");
-    size_t stringLen = strlen(string);
+    size_t maxtorLen = safe_strlen("MAXTOR");
+    size_t stringLen = safe_strlen(string);
     if (stringLen > 0)
     {
         char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1449,7 +1449,7 @@ bool is_Maxtor_String(char* string)
         snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
-        if (strlen(localString) >= maxtorLen && strncmp(localString, "MAXTOR", maxtorLen) == 0)
+        if (safe_strlen(localString) >= maxtorLen && strncmp(localString, "MAXTOR", maxtorLen) == 0)
         {
             isMaxtor = true;
         }
@@ -1504,8 +1504,8 @@ bool is_Maxtor(tDevice *device, bool USBchildDrive)
 bool is_Seagate_VendorID(tDevice *device)
 {
     bool isSeagate = false;
-    size_t seagateLen = strlen("SEAGATE");
-    size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
+    size_t seagateLen = safe_strlen("SEAGATE");
+    size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
         char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1517,7 +1517,7 @@ bool is_Seagate_VendorID(tDevice *device)
         snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
-        if (strlen(localString) >= seagateLen && strncmp(localString, "SEAGATE", seagateLen) == 0)
+        if (safe_strlen(localString) >= seagateLen && strncmp(localString, "SEAGATE", seagateLen) == 0)
         {
             isSeagate = true;
         }
@@ -1529,8 +1529,8 @@ bool is_Seagate_VendorID(tDevice *device)
 bool is_Seagate_MN(char* string)
 {
     bool isSeagate = false;
-    size_t seagateLen = strlen("ST");
-    size_t stringLen = strlen(string);
+    size_t seagateLen = safe_strlen("ST");
+    size_t stringLen = safe_strlen(string);
     if (stringLen > 0)
     {
         char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1542,7 +1542,7 @@ bool is_Seagate_MN(char* string)
         snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         //convert_String_To_Upper_Case(localString);//Removing uppercase converstion, thus making this a case sensitive comparison to fix issues with other non-Seagate products being detected as Seagate.
-        if (strlen(localString) >= seagateLen && strncmp(localString, "ST", seagateLen) == 0)
+        if (safe_strlen(localString) >= seagateLen && strncmp(localString, "ST", seagateLen) == 0)
         {
             isSeagate = true;
         }
@@ -1635,8 +1635,8 @@ bool is_Conner_Model_Number(char *mn)
 bool is_Conner_VendorID(tDevice *device)
 {
     bool isConner = false;
-    size_t connerLen = strlen("CONNER");
-    size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
+    size_t connerLen = safe_strlen("CONNER");
+    size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
         char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1647,7 +1647,7 @@ bool is_Conner_VendorID(tDevice *device)
         }
         snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
-        if (strlen(localString) >= connerLen && strncmp(localString, "CONNER", connerLen) == 0)
+        if (safe_strlen(localString) >= connerLen && strncmp(localString, "CONNER", connerLen) == 0)
         {
             isConner = true;
         }
@@ -1685,8 +1685,8 @@ bool is_CDC_VendorID(tDevice *device)
     bool isCDC = false;
     if (M_GETBITRANGE(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) == 0)
     {
-        size_t cdcLen = strlen("CDC");
-        size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
+        size_t cdcLen = safe_strlen("CDC");
+        size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
             char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1697,7 +1697,7 @@ bool is_CDC_VendorID(tDevice *device)
             }
             snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
-            if (strlen(localString) >= cdcLen && strncmp(localString, "CDC", cdcLen) == 0)
+            if (safe_strlen(localString) >= cdcLen && strncmp(localString, "CDC", cdcLen) == 0)
             {
                 isCDC = true;
             }
@@ -1712,8 +1712,8 @@ bool is_DEC_VendorID(tDevice *device)
     bool isDEC = false;
     if (M_GETBITRANGE(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) == 0)
     {
-        size_t cdcLen = strlen("DEC");
-        size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
+        size_t cdcLen = safe_strlen("DEC");
+        size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
             char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1724,7 +1724,7 @@ bool is_DEC_VendorID(tDevice *device)
             }
             snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
-            if (strlen(localString) >= cdcLen && strncmp(localString, "DEC", cdcLen) == 0)
+            if (safe_strlen(localString) >= cdcLen && strncmp(localString, "DEC", cdcLen) == 0)
             {
                 isDEC = true;
             }
@@ -1737,8 +1737,8 @@ bool is_DEC_VendorID(tDevice *device)
 bool is_MiniScribe_VendorID(tDevice *device)
 {
     bool isMiniscribe = false;
-    size_t miniscribeLen = strlen("MINSCRIB");
-    size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
+    size_t miniscribeLen = safe_strlen("MINSCRIB");
+    size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
         char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1749,7 +1749,7 @@ bool is_MiniScribe_VendorID(tDevice *device)
         }
         snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         localString[stringLen] = '\0';
-        if (strlen(localString) >= miniscribeLen && strncmp(localString, "MINSCRIB", miniscribeLen) == 0)
+        if (safe_strlen(localString) >= miniscribeLen && strncmp(localString, "MINSCRIB", miniscribeLen) == 0)
         {
             isMiniscribe = true;
         }
@@ -1763,8 +1763,8 @@ bool is_Quantum_VendorID(tDevice *device)
     bool isQuantum = false;
     if (M_GETBITRANGE(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) == 0)//must be direct access block device for HDD
     {
-        size_t quantumLen = strlen("QUANTUM");
-        size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
+        size_t quantumLen = safe_strlen("QUANTUM");
+        size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
             char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1775,7 +1775,7 @@ bool is_Quantum_VendorID(tDevice *device)
             }
             snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
-            if (strlen(localString) >= quantumLen && strncmp(localString, "QUANTUM", quantumLen) == 0)
+            if (safe_strlen(localString) >= quantumLen && strncmp(localString, "QUANTUM", quantumLen) == 0)
             {
                 isQuantum = true;
             }
@@ -1788,8 +1788,8 @@ bool is_Quantum_VendorID(tDevice *device)
 bool is_Quantum_Model_Number(char* string)
 {
     bool isQuantum = false;
-    size_t quantumLen = strlen("Quantum");
-    size_t stringLen = strlen(string);
+    size_t quantumLen = safe_strlen("Quantum");
+    size_t stringLen = safe_strlen(string);
     if (stringLen > 0)
     {
         char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1800,7 +1800,7 @@ bool is_Quantum_Model_Number(char* string)
         }
         snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
-        if (strlen(localString) >= quantumLen && (strncmp(localString, "Quantum", quantumLen) == 0 || strncmp(localString, "QUANTUM", quantumLen) == 0))
+        if (safe_strlen(localString) >= quantumLen && (strncmp(localString, "Quantum", quantumLen) == 0 || strncmp(localString, "QUANTUM", quantumLen) == 0))
         {
             isQuantum = true;
         }
@@ -1842,8 +1842,8 @@ bool is_PrarieTek_VendorID(tDevice *device)
     bool isPrarieTek = false;
     if (M_GETBITRANGE(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) == 0)//must be direct access block device for HDD
     {
-        size_t prarieTekLen = strlen("PRAIRIE");
-        size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
+        size_t prarieTekLen = safe_strlen("PRAIRIE");
+        size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
         if (stringLen > 0)
         {
             char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1854,7 +1854,7 @@ bool is_PrarieTek_VendorID(tDevice *device)
             }
             snprintf(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
             localString[stringLen] = '\0';
-            if (strlen(localString) >= prarieTekLen && strncmp(localString, "PRAIRIE", prarieTekLen) == 0)
+            if (safe_strlen(localString) >= prarieTekLen && strncmp(localString, "PRAIRIE", prarieTekLen) == 0)
             {
                 isPrarieTek = true;
             }
@@ -1868,8 +1868,8 @@ bool is_LaCie(tDevice *device)
 {
     bool isLaCie = false;
     //LaCie drives do not have a IEEE OUI, so the only way we know it's LaCie is to check the VendorID field reported by the device
-    size_t lacieLen = strlen("LACIE");
-    size_t stringLen = strlen(device->drive_info.T10_vendor_ident);
+    size_t lacieLen = safe_strlen("LACIE");
+    size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
     if (stringLen > 0)
     {
         char *vendorID = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1881,7 +1881,7 @@ bool is_LaCie(tDevice *device)
         snprintf(vendorID, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
         vendorID[stringLen] = '\0';
         convert_String_To_Upper_Case(vendorID);
-        if (strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
+        if (safe_strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
         {
             isLaCie = true;
         }
@@ -1893,8 +1893,8 @@ bool is_LaCie(tDevice *device)
 bool is_Samsung_String(char* string)
 {
     bool isSamsung = false;
-    size_t samsungLen = strlen("SAMSUNG");
-    size_t stringLen = strlen(string);
+    size_t samsungLen = safe_strlen("SAMSUNG");
+    size_t stringLen = safe_strlen(string);
     if (stringLen > 0)
     {
         char *localString = C_CAST(char *, safe_calloc(stringLen + 1, sizeof(char)));
@@ -1906,7 +1906,7 @@ bool is_Samsung_String(char* string)
         snprintf(localString, stringLen + 1, "%s", string);
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
-        if (strlen(localString) >= samsungLen && strncmp(localString, "SAMSUNG", samsungLen) == 0)
+        if (safe_strlen(localString) >= samsungLen && strncmp(localString, "SAMSUNG", samsungLen) == 0)
         {
             isSamsung = true;
         }
@@ -1974,9 +1974,9 @@ bool is_Seagate_Model_Vendor_A(tDevice *device)
         char* vendorAModel1 = "S650DC";
         char* vendorAModel2 = "S630DC";
         char* vendorAModel3 = "S610DC";
-        if (strncmp(vendorAModel1, device->drive_info.product_identification, strlen(vendorAModel1)) == 0 ||
-            strncmp(vendorAModel2, device->drive_info.product_identification, strlen(vendorAModel2)) == 0 ||
-            strncmp(vendorAModel3, device->drive_info.product_identification, strlen(vendorAModel3)) == 0)
+        if (strncmp(vendorAModel1, device->drive_info.product_identification, safe_strlen(vendorAModel1)) == 0 ||
+            strncmp(vendorAModel2, device->drive_info.product_identification, safe_strlen(vendorAModel2)) == 0 ||
+            strncmp(vendorAModel3, device->drive_info.product_identification, safe_strlen(vendorAModel3)) == 0)
         {
             isSeagateVendorA = true;
         }
@@ -2038,7 +2038,7 @@ eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice * device, bool USBchildDrive)
         modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
     }
 
-    if (strlen(modelNumber))
+    if (safe_strlen(modelNumber))
     {
         if (wildcard_Match("ST*VN*", modelNumber))   //check if Ironwolf HDD
             isIronWolfNASDrive = IRONWOLF_NAS_DRIVE;
@@ -2067,7 +2067,7 @@ bool is_Firecuda_Drive(tDevice * device, bool USBchildDrive)
         modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
     }
 
-    if (strlen(modelNumber))
+    if (safe_strlen(modelNumber))
     {
         if (wildcard_Match("ST*DX*", modelNumber) || wildcard_Match("ST*LX*", modelNumber))   //check if Firecuda HDD
             isFirecudaDrive = true;
@@ -2092,7 +2092,7 @@ eSkyhawk_Drive is_Skyhawk_Drive(tDevice * device, bool USBchildDrive)
         modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
     }
 
-    if (strlen(modelNumber))
+    if (safe_strlen(modelNumber))
     {
         if (wildcard_Match("ST*VX*", modelNumber) || wildcard_Match("ST*HKVS*", modelNumber) || wildcard_Match("ST*VM*", modelNumber))   //check if Skyhawk HDD
             isSkyhawkDrive = SKYHAWK_DRIVE;
@@ -2115,7 +2115,7 @@ bool is_Nytro_Drive(tDevice * device, bool USBchildDrive)
         modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
     }
 
-    if (strlen(modelNumber))
+    if (safe_strlen(modelNumber))
     {
         if (wildcard_Match("XS*SE*", modelNumber))   //Nytro 3332, Nytro 3331, Nytro 2332
             isNytroDrive = true;
@@ -2150,7 +2150,7 @@ bool is_Exos_Drive(tDevice * device, bool USBchildDrive)
         modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
     }
 
-    if (strlen(modelNumber))
+    if (safe_strlen(modelNumber))
     {
         if (wildcard_Match("ST*NM*", modelNumber))   //Exos X-series
             isExosDrive = true;
@@ -2173,7 +2173,7 @@ bool is_Barracuda_Drive(tDevice * device, bool USBchildDrive)
         modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
     }
 
-    if (strlen(modelNumber))
+    if (safe_strlen(modelNumber))
     {
         if (wildcard_Match("ST*LM*", modelNumber))   //Barracuda 2.5 inhces
             isBarracudaDrive = true;
@@ -2388,7 +2388,7 @@ bool is_Seagate_Model_Number_Vendor_SSD_PJ(tDevice *device, bool USBchildDrive)
     {
         mnPtr = &device->drive_info.bridge_info.childDriveMN[0];
     }
-    if (strlen(mnPtr))
+    if (safe_strlen(mnPtr))
     {
         if (/* check P models first */
             strcmp(mnPtr, "ST400KN0001") == 0 ||
@@ -3170,12 +3170,12 @@ eReturnValues remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * 
             ret = SUCCESS;
             sameSlNo = false;
 
-            if ((strlen((deviceList + i)->drive_info.serialNumber) > 0) &&
-                (strlen((deviceList + j)->drive_info.serialNumber) > 0))
+            if ((safe_strlen((deviceList + i)->drive_info.serialNumber) > 0) &&
+                (safe_strlen((deviceList + j)->drive_info.serialNumber) > 0))
             {
                 sameSlNo = (strncmp((deviceList + i)->drive_info.serialNumber,
                     (deviceList + j)->drive_info.serialNumber,
-                    strlen((deviceList + i)->drive_info.serialNumber)) == 0);
+                    safe_strlen((deviceList + i)->drive_info.serialNumber)) == 0);
             }
 
             if (sameSlNo)

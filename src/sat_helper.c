@@ -2221,10 +2221,10 @@ static eReturnValues translate_ATA_Information_VPD_Page_89h(tDevice *device, Scs
 
     snprintf(openseaVersionString, 9, "%d.%d.%d", OPENSEA_TRANSPORT_MAJOR_VERSION, OPENSEA_TRANSPORT_MINOR_VERSION, OPENSEA_TRANSPORT_PATCH_VERSION);
 
-    if (strlen(openseaVersionString) < 8)
+    if (safe_strlen(openseaVersionString) < 8)
     {
         ataInformation[24] = ' ';
-        memcpy(&ataInformation[25], openseaVersionString, strlen(openseaVersionString));
+        memcpy(&ataInformation[25], openseaVersionString, safe_strlen(openseaVersionString));
         //snprintf(C_CAST(char*, &ataInformation[24]), 8, " %-s", openseaVersionString);
     }
     else
@@ -2375,10 +2375,10 @@ static eReturnValues translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, 
     //now byteswap the string
     byte_Swap_String(ataSerialNumber);
     unitSerialNumber[1] = UNIT_SERIAL_NUMBER;
-    unitSerialNumber[2] = M_Byte1(strlen(ataSerialNumber));
-    unitSerialNumber[3] = M_Byte0(strlen(ataSerialNumber));
+    unitSerialNumber[2] = M_Byte1(safe_strlen(ataSerialNumber));
+    unitSerialNumber[3] = M_Byte0(safe_strlen(ataSerialNumber));
     //set the string into the data
-    memcpy(&unitSerialNumber[4], ataSerialNumber, strlen(ataSerialNumber));
+    memcpy(&unitSerialNumber[4], ataSerialNumber, safe_strlen(ataSerialNumber));
     //now copy all the data we set up back to the scsi io ctx
     if (scsiIoCtx->pdata)
     {
@@ -3308,7 +3308,7 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *
 
             memcpy(&inquiryData[16], ataMN, INQ_DATA_PRODUCT_ID_LEN);
             //product revision (truncates to 4 bytes)
-            if (strlen(ataFW) > 4)
+            if (safe_strlen(ataFW) > 4)
             {
                 memcpy(&inquiryData[32], &ataFW[4], INQ_DATA_PRODUCT_REV_LEN);
             }
@@ -3317,7 +3317,7 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *
                 memcpy(&inquiryData[32], &ataFW[0], INQ_DATA_PRODUCT_REV_LEN);
             }
             //Vendor specific...we'll set the SN here
-            memcpy(&inquiryData[36], ataSN, M_Min(strlen(ataSN), ATA_IDENTIFY_SN_LENGTH));
+            memcpy(&inquiryData[36], ataSN, M_Min(safe_strlen(ataSN), ATA_IDENTIFY_SN_LENGTH));
             //version descriptors (bytes 58 to 73) (8 max)
             uint16_t versionOffset = 58;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED < 2
