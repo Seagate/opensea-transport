@@ -115,8 +115,14 @@ printf("fill NVMe info ret = %d\n", ret);
 
         if (ret == SUCCESS) 
         {
-
-            *fillLogicalSectorSize = C_CAST(uint32_t, power_Of_Two(nsData->lbaf[nsData->flbas].lbaDS)); //removed math.h pow() function - TJE
+            uint8_t flbas = M_GETBITRANGE(3, 0, nsData->flbas);
+            //get the LBAF number. THis field varies depending on other things reported by the drive in NVMe 2.0
+            if (nsData->nlbaf > 16)
+            {
+                //need to append 2 more bits to interpret this correctly since number of formats > 16
+                flbas |= M_GETBITRANGE(6, 5, nsData->flbas) << 4;
+            }
+            *fillLogicalSectorSize = C_CAST(uint32_t, power_Of_Two(nsData->lbaf[flbas].lbaDS));
             *fillPhysicalSectorSize = *fillLogicalSectorSize; //True for NVMe?
             *fillSectorAlignment = 0;
 
