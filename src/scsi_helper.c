@@ -2013,9 +2013,7 @@ void copy_Inquiry_Data(uint8_t *pbuf, driveInfo *info)
     //vendor ID
     for (uint8_t iter = 0; iter < T10_VENDOR_ID_LEN; ++iter)
     {
-        if (!safe_isascii(
-info->T10_vendor_ident[iter]) || !safe_isprint(
-info->T10_vendor_ident[iter]))
+        if (!safe_isascii(info->T10_vendor_ident[iter]) || !safe_isprint(info->T10_vendor_ident[iter]))
         {
             info->T10_vendor_ident[iter] = ' ';
         }
@@ -2023,9 +2021,7 @@ info->T10_vendor_ident[iter]))
     //product ID
     for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
     {
-        if (!safe_isascii(
-info->product_identification[iter]) || !safe_isprint(
-info->product_identification[iter]))
+        if (!safe_isascii(info->product_identification[iter]) || !safe_isprint(info->product_identification[iter]))
         {
             info->product_identification[iter] = ' ';
         }
@@ -2033,9 +2029,7 @@ info->product_identification[iter]))
     //FWRev
     for (uint8_t iter = 0; iter < FW_REV_LEN && iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
     {
-        if (!safe_isascii(
-info->product_revision[iter]) || !safe_isprint(
-info->product_revision[iter]))
+        if (!safe_isascii(info->product_revision[iter]) || !safe_isprint(info->product_revision[iter]))
         {
             info->product_revision[iter] = ' ';
         }
@@ -2053,9 +2047,7 @@ void copy_Serial_Number(uint8_t *pbuf, char *serialNumber)
     serialNumber[M_Min(snLen, SERIAL_NUM_LEN)] = '\0';
     for (uint16_t iter = 0; iter < SERIAL_NUM_LEN && iter < snLen; ++iter)
     {
-        if (!safe_isascii(
-serialNumber[iter]) || !safe_isprint(
-serialNumber[iter]))
+        if (!safe_isascii(serialNumber[iter]) || !safe_isprint(serialNumber[iter]))
         {
             serialNumber[iter] = ' ';
         }
@@ -2272,27 +2264,21 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
         memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
         for (uint8_t iter = 0; iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
         {
-            if (!safe_isascii(
-vendorID[iter]) || !safe_isprint(
-vendorID[iter]))
+            if (!safe_isascii(vendorID[iter]) || !safe_isprint(vendorID[iter]))
             {
                 vendorID[iter] = ' ';
             }
         }
         for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
         {
-            if (!safe_isascii(
-productID[iter]) || !safe_isprint(
-productID[iter]))
+            if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
             {
                 productID[iter] = ' ';
             }
         }
         for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
         {
-            if (!safe_isascii(
-revision[iter]) || !safe_isprint(
-revision[iter]))
+            if (!safe_isascii(revision[iter]) || !safe_isprint(revision[iter]))
             {
                 revision[iter] = ' ';
             }
@@ -2435,7 +2421,7 @@ revision[iter]))
         30 30 30 30 00 00 00 00 00 00 00 00 04 00 41 41  0000..........AA
         33 41 30 35 20 20 54 53 31 39 30 32 32 38 41 36  3A05  TS190228A6
         20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
-        20 20 20 20 20 20 20 20 20 20 20 20 20 20 01 80                .�
+        20 20 20 20 20 20 20 20 20 20 20 20 20 20 01 80                ..
         00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
         //Example 2:
         00 00 00 00 1f 00 00 00 53 65 61 67 61 74 65 20  ........Seagate
@@ -2443,23 +2429,21 @@ revision[iter]))
         00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
         00 00 00 00 20 20 54 53 31 33 30 32 32 30 41 32  ....  TS130220A2
         20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
-        20 20 20 20 20 20 20 20 20 20 20 20 20 20 10 80                .�
+        20 20 20 20 20 20 20 20 20 20 20 20 20 20 10 80                ..
         00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
         //Example 3:
         00 00 02 01 1f 00 00 00 53 61 6d 73 75 6e 67 20  ........Samsung
         53 32 20 50 6f 72 74 61 62 6c 65 00 08 12 00 00  S2 Portable.....
-        00 00 00 00 6a 33 33 39 cd cd cd cd cd cd cd cd  ....j339��������
-        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
-        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
-        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
+        00 00 00 00 6a 33 33 39 cd cd cd cd cd cd cd cd  ....j339........
+        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ................
+        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ................
+        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ................
         */
         memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_T10_VENDOR_ID_LEN);
 
         for (uint8_t iter = 0; iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
         {
-            if (!safe_isascii(
-vendorID[iter]) || !safe_isprint(
-vendorID[iter]))
+            if (!safe_isascii(vendorID[iter]) || !safe_isprint(vendorID[iter]))
             {
                 vendorID[iter] = ' ';
             }
@@ -2471,9 +2455,7 @@ vendorID[iter]))
             memcpy(internalModel, &device->drive_info.scsiVpdData.inquiryData[54], MODEL_NUM_LEN);
             for (uint8_t iter = 0; iter < MODEL_NUM_LEN; ++iter)
             {
-                if (!safe_isascii(
-internalModel[iter]) || !safe_isprint(
-internalModel[iter]))
+                if (!safe_isascii(internalModel[iter]) || !safe_isprint(internalModel[iter]))
                 {
                     internalModel[iter] = ' ';
                 }
@@ -2484,18 +2466,14 @@ internalModel[iter]))
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
-                if (!safe_isascii(
-productID[iter]) || !safe_isprint(
-productID[iter]))
+                if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
-                if (!safe_isascii(
-revision[iter]) || !safe_isprint(
-revision[iter]))
+                if (!safe_isascii(revision[iter]) || !safe_isprint(revision[iter]))
                 {
                     revision[iter] = ' ';
                 }
@@ -2518,18 +2496,14 @@ revision[iter]))
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[36], INQ_DATA_PRODUCT_REV_LEN);
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
-                if (!safe_isascii(
-productID[iter]) || !safe_isprint(
-productID[iter]))
+                if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
-                if (!safe_isascii(
-revision[iter]) || !safe_isprint(
-revision[iter]))
+                if (!safe_isascii(revision[iter]) || !safe_isprint(revision[iter]))
                 {
                     revision[iter] = ' ';
                 }
@@ -2543,18 +2517,14 @@ revision[iter]))
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
-                if (!safe_isascii(
-productID[iter]) || !safe_isprint(
-productID[iter]))
+                if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
-                if (!safe_isascii(
-revision[iter]) || !safe_isprint(
-revision[iter]))
+                if (!safe_isascii(revision[iter]) || !safe_isprint(revision[iter]))
                 {
                     revision[iter] = ' ';
                 }
@@ -3224,9 +3194,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                             device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                             {
-                                if (!safe_isascii(
-device->drive_info.serialNumber[iter]) || !safe_isprint(
-device->drive_info.serialNumber[iter]))
+                                if (!safe_isascii(device->drive_info.serialNumber[iter]) || !safe_isprint(device->drive_info.serialNumber[iter]))
                                 {
                                     device->drive_info.serialNumber[iter] = ' ';
                                 }
@@ -3256,9 +3224,7 @@ device->drive_info.serialNumber[iter]))
                 //make sure the SN is printable if it's coming from here since it's non-standardized
                 for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                 {
-                    if (!safe_isascii(
-device->drive_info.serialNumber[iter]) || !safe_isprint(
-device->drive_info.serialNumber[iter]))
+                    if (!safe_isascii(device->drive_info.serialNumber[iter]) || !safe_isprint(device->drive_info.serialNumber[iter]))
                     {
                         device->drive_info.serialNumber[iter] = ' ';
                     }
@@ -3455,9 +3421,7 @@ device->drive_info.serialNumber[iter]))
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                                 for (size_t iter = 0; iter < SERIAL_NUM_LEN && iter < safe_strlen(device->drive_info.serialNumber); ++iter)
                                 {
-                                    if (!safe_isascii(
-device->drive_info.serialNumber[iter]) || !safe_isprint(
-device->drive_info.serialNumber[iter]))
+                                    if (!safe_isascii(device->drive_info.serialNumber[iter]) || !safe_isprint(device->drive_info.serialNumber[iter]))
                                     {
                                         device->drive_info.serialNumber[iter] = ' ';
                                     }
@@ -3639,9 +3603,7 @@ device->drive_info.serialNumber[iter]))
             //make sure the SN is printable if it's coming from here since it's non-standardized
             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
             {
-                if (!safe_isascii(
-device->drive_info.serialNumber[iter]) || !safe_isprint(
-device->drive_info.serialNumber[iter]))
+                if (!safe_isascii(device->drive_info.serialNumber[iter]) || !safe_isprint(device->drive_info.serialNumber[iter]))
                 {
                     device->drive_info.serialNumber[iter] = ' ';
                 }
