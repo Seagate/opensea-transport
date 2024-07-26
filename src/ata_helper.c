@@ -844,17 +844,15 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
             memcpy(ataSN, idData->SerNum, snLimit);
             for (uint8_t iter = 0; iter < snLimit; ++iter)
             {
-                if (!safe_isascii(
-ataSN[iter]) || !safe_isprint(
-ataSN[iter]))
+                if (!safe_isascii(ataSN[iter]) || !safe_isprint(ataSN[iter]))
                 {
                     ataSN[iter] = ' ';//replace with a space
                 }
             }
 #if !defined(__BIG_ENDIAN__)
-            byte_Swap_String(ataSN);
+            byte_Swap_String_Len(ataSN, snLimit);
 #endif
-            remove_Leading_And_Trailing_Whitespace(ataSN);
+            remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
         }
         if (validFW && ataFW)
         {
@@ -863,17 +861,15 @@ ataSN[iter]))
             memcpy(ataFW, idData->FirmVer, fwLimit);
             for (uint8_t iter = 0; iter < fwLimit; ++iter)
             {
-                if (!safe_isascii(
-ataFW[iter]) || !safe_isprint(
-ataFW[iter]))
+                if (!safe_isascii(ataFW[iter]) || !safe_isprint(ataFW[iter]))
                 {
                     ataFW[iter] = ' ';//replace with a space
                 }
             }
 #if !defined(__BIG_ENDIAN__)
-            byte_Swap_String(ataFW);
+            byte_Swap_String_Len(ataFW, fwLimit);
 #endif
-            remove_Leading_And_Trailing_Whitespace(ataFW);
+            remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
         }
         if (validMN && ataMN)
         {
@@ -882,17 +878,15 @@ ataFW[iter]))
             memcpy(ataMN, idData->ModelNum, mnLimit);
             for (uint8_t iter = 0; iter < mnLimit; ++iter)
             {
-                if (!safe_isascii(
-ataMN[iter]) || !safe_isprint(
-ataMN[iter]))
+                if (!safe_isascii(ataMN[iter]) || !safe_isprint(ataMN[iter]))
                 {
                     ataMN[iter] = ' ';//replace with a space
                 }
             }
 #if !defined(__BIG_ENDIAN__)
-            byte_Swap_String(ataMN);
+            byte_Swap_String_Len(ataMN, mnLimit);
 #endif
-            remove_Leading_And_Trailing_Whitespace(ataMN);
+            remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
         }
     }
     return;

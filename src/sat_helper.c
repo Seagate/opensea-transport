@@ -2373,7 +2373,7 @@ static eReturnValues translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, 
     //use the cached information
     memcpy(ataSerialNumber, device->drive_info.IdentifyData.ata.SerNum, SERIAL_NUM_LEN);
     //now byteswap the string
-    byte_Swap_String(ataSerialNumber);
+    byte_Swap_String_Len(ataSerialNumber, SERIAL_NUM_LEN);
     unitSerialNumber[1] = UNIT_SERIAL_NUMBER;
     unitSerialNumber[2] = M_Byte1(safe_strlen(ataSerialNumber));
     unitSerialNumber[3] = M_Byte0(safe_strlen(ataSerialNumber));
@@ -2456,11 +2456,11 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
     memcpy(&t10VendorIdDesignator[4], ataVendorId, 8);
     //now set MN
     memcpy(ataModelNumber, device->drive_info.IdentifyData.ata.ModelNum, ATA_IDENTIFY_MN_LENGTH);
-    byte_Swap_String(ataModelNumber);
+    byte_Swap_String_Len(ataModelNumber, ATA_IDENTIFY_MN_LENGTH);
     memcpy(&t10VendorIdDesignator[12], ataModelNumber, ATA_IDENTIFY_MN_LENGTH);
     //now set SN
     memcpy(ataSerialNumber, device->drive_info.IdentifyData.ata.SerNum, ATA_IDENTIFY_SN_LENGTH);
-    byte_Swap_String(ataSerialNumber);
+    byte_Swap_String_Len(ataSerialNumber, ATA_IDENTIFY_SN_LENGTH);
     memcpy(&t10VendorIdDesignator[52], ataSerialNumber, ATA_IDENTIFY_SN_LENGTH);
 
     //now setup the device identification page
@@ -13510,7 +13510,7 @@ static eReturnValues translate_SCSI_Read_Media_Serial_Number_Command(tDevice *de
     {
         DECLARE_ZERO_INIT_ARRAY(char, ataMediaSN, 61);
         memcpy(ataMediaSN, &device->drive_info.IdentifyData.ata.Word176, 60);
-        byte_Swap_String(ataMediaSN);
+        byte_Swap_String_Len(ataMediaSN, 60);
         mediaSerialNumberPage[0] = 0;
         mediaSerialNumberPage[1] = 0;
         mediaSerialNumberPage[2] = 0;
