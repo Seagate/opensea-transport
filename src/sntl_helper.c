@@ -782,19 +782,18 @@ static eReturnValues sntl_Translate_Supported_VPD_Pages_00h(ScsiIoCtx *scsiIoCtx
 static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t unitSerialNumber[SNTL_UNIT_SERIAL_NUMBER_VPD_MAX_LENGTH] = { 0 };//44 is the max size of this page with the translation spec
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, unitSerialNumber, SNTL_UNIT_SERIAL_NUMBER_VPD_MAX_LENGTH);//44 is the max size of this page with the translation spec
     uint16_t pageLength = 0;
     bool eui64nonZero = false;
     bool nguidnonZero = false;
-    DECLARE_ZERO_INIT_ARRAY(uint8_t, zeros, 16);
     unitSerialNumber[0] = 0;
     unitSerialNumber[1] = UNIT_SERIAL_NUMBER;
     //Check EUI64 and NGUID fields to see if non-zero
-    if (memcmp(device->drive_info.IdentifyData.nvme.ns.nguid, zeros, 16))
+    if (!is_Empty(device->drive_info.IdentifyData.nvme.ns.nguid, 16))
     {
         nguidnonZero = true;
     }
-    if (memcmp(device->drive_info.IdentifyData.nvme.ns.eui64, zeros, 8))
+    if (!is_Empty(device->drive_info.IdentifyData.nvme.ns.eui64, 8))
     {
         eui64nonZero = true;
     }
@@ -893,7 +892,6 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice *dev
 static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    DECLARE_ZERO_INIT_ARRAY(uint8_t, zeros, 16);
     //naa designator
     uint8_t naaDesignatorLength = 0;//will be set if drive supports the WWN
     uint8_t *naaDesignator = M_NULLPTR;
@@ -912,11 +910,11 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *
     bool nguidnonZero = false;
     bool eui64nonZero = false;
     //Check EUI64 and NGUID fields to see if non-zero
-    if (memcmp(device->drive_info.IdentifyData.nvme.ns.nguid, zeros, 16))
+    if (!is_Empty(device->drive_info.IdentifyData.nvme.ns.nguid, 16))
     {
         nguidnonZero = true;
     }
-    if (memcmp(device->drive_info.IdentifyData.nvme.ns.eui64, zeros, 8))
+    if (!is_Empty(device->drive_info.IdentifyData.nvme.ns.eui64, 8))
     {
         eui64nonZero = true;
     }
@@ -2023,7 +2021,7 @@ static eReturnValues sntl_Translate_Supported_Log_Pages(tDevice *device, ScsiIoC
 {
     eReturnValues ret = SUCCESS;
     bool subpageFormat = false;
-    uint8_t supportedPages[LEGACY_DRIVE_SEC_SIZE] = { 0 };//this should be plenty big for now
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, supportedPages, LEGACY_DRIVE_SEC_SIZE);//this should be plenty big for now
     uint16_t offset = 4;
     uint8_t increment = 1;
     if (scsiIoCtx->cdb[3] == 0xFF)
@@ -6592,7 +6590,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_In(tDevice * device, Scsi
     {
     case 0://read keys
     {
-        uint8_t nvmeReportKeys[4096] = { 0 };//I hope this is big enough...may need to redo this!
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, nvmeReportKeys, 4096);//I hope this is big enough...may need to redo this!
         if (SUCCESS != nvme_Reservation_Report(device, false, nvmeReportKeys, 4096))
         {
             //Set error based on the status the controller replied with!!!
@@ -6638,7 +6636,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_In(tDevice * device, Scsi
         break;
     case 1://read reservation
     {
-        uint8_t nvmeReport[4096] = { 0 };//I hope this is big enough...may need to redo this!
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, nvmeReport, 4096);//I hope this is big enough...may need to redo this!
         if (SUCCESS != nvme_Reservation_Report(device, false, nvmeReport, 4096))
         {
             //Set error based on the status the controller replied with!!!
@@ -6803,7 +6801,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_In(tDevice * device, Scsi
         break;
     case 3://read full status
     {
-        uint8_t nvmeReport[4096] = { 0 };//I hope this is big enough...may need to redo this!
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, nvmeReport, 4096);//I hope this is big enough...may need to redo this!
         if (SUCCESS != nvme_Reservation_Report(device, false, nvmeReport, 4096))
         {
             set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
@@ -7076,7 +7074,6 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(tDevice * device, Scs
         case 6://register and ignore existing key
         {
             DECLARE_ZERO_INIT_ARRAY(uint8_t, buffer, 16);
-            DECLARE_ZERO_INIT_ARRAY(uint8_t, zeros, 8);
             //iekey = 0. (register), iekey = 1 register and ignore existing key
             bool iekey = false;
             uint8_t changeThroughPowerLoss = 2;//10b
@@ -7089,7 +7086,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(tDevice * device, Scs
             //rrega is zero OR 1 depending on service action key.
             //if service action key is zero, set rrega to 001 (unregister) and set CRKEY to the reservation key.
             //else reservation key is ignored. CRKEY is as though it is reserved. RREGA set to zero
-            if (memcmp(zeros, &scsiIoCtx->pdata[8], 8) == 0)
+            if (is_Empty(&scsiIoCtx->pdata[8], 8))
             {
                 //service action reservation key is zero
                 //crkey = reservation key

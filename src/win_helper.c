@@ -4910,7 +4910,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     uint32_t numberOfDevices = 0;
     uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     DECLARE_ZERO_INIT_ARRAY(TCHAR, deviceName, WIN_MAX_DEVICE_NAME_LENGTH);
-    char    name[WIN_MAX_DEVICE_NAME_LENGTH] = { 0 }; //Because get device needs char
+    DECLARE_ZERO_INIT_ARRAY(char, name, WIN_MAX_DEVICE_NAME_LENGTH); //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
     tDevice * d = M_NULLPTR;
     ptrRaidHandleToScan raidHandleList = M_NULLPTR;
@@ -8036,7 +8036,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
             //check EVPD bit
             if (scsiIoCtx->cdb[1] & BIT0)
             {
-                uint8_t vpdPage[96] = { 0 };//this should be more than big enough for the pages supported on this basic device - TJE
+                DECLARE_ZERO_INIT_ARRAY(uint8_t, vpdPage, 96);//this should be more than big enough for the pages supported on this basic device - TJE
                 uint8_t peripheralDevice = 0;
                 PSTORAGE_DEVICE_DESCRIPTOR deviceDesc = M_NULLPTR;//needed for scsi device type on all VPD pages - TJE
                 vpdPage[0] = peripheralDevice;
@@ -11654,7 +11654,7 @@ static eReturnValues win10_Translate_Format(nvmeCmdCtx *nvmeIoCtx)
         //    //else
         //    //{
         //    //send with parameter data
-        //    //uint8_t formatParameterData[4] = { 0 };//short header
+        //    //DECLARE_ZERO_INIT_ARRAY(uint8_t, formatParameterData, 4);//short header
         //    //uint8_t fmtpInfo = 0;
         //    //uint8_t piUsage = 0;
         //    //switch (pi)

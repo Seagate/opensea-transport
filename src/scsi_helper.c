@@ -2384,12 +2384,11 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                //TODO: since we may find SATA or NVMe adapters, we cannot set below due to a union being used. May need to remove that or find another solution
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
             }
         }
         else if (strcmp(vendorID, "Samsung") == 0)
@@ -2451,7 +2450,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
         remove_Leading_And_Trailing_Whitespace(vendorID);
         if (strcmp(vendorID, "Seagate") == 0)
         {
-            char internalModel[MODEL_NUM_LEN + 1] = { 0 };//this may or may not be useful...
+            DECLARE_ZERO_INIT_ARRAY(char, internalModel, MODEL_NUM_LEN + 1);
             memcpy(internalModel, &device->drive_info.scsiVpdData.inquiryData[54], MODEL_NUM_LEN);
             for (uint8_t iter = 0; iter < MODEL_NUM_LEN; ++iter)
             {
@@ -2480,7 +2479,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             }
             remove_Leading_And_Trailing_Whitespace(vendorID);
             remove_Leading_And_Trailing_Whitespace(productID);
-            if (strcmp(productID, "External Drive") == 0 && safe_strlen(internalModel))//doing safe_strlen of internal model number to catch others of this type with something set here
+            if (strcmp(productID, "External Drive") == 0 && safe_strnlen(internalModel, MODEL_NUM_LEN + 1))//doing safe_strlen of internal model number to catch others of this type with something set here
             {
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
@@ -2611,7 +2610,7 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
         {
             //sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
             //All of these SNs should be only 8 characters long.
-            char zeroes[SERIAL_NUM_LEN + 1] = { 0 };//making bigger than needed for now.
+            DECLARE_ZERO_INIT_ARRAY(char, zeroes, SERIAL_NUM_LEN + 1);//making bigger than needed for now.
             memset(zeroes, '0', SERIAL_NUM_LEN);
             if (strncmp(zeroes, *unitSerialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
             {
@@ -3289,7 +3288,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
         if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2 && device->drive_info.interface_type != USB_INTERFACE && device->drive_info.interface_type != IEEE_1394_INTERFACE)
         {
             //Issue report LUNs to figure out how many logical units are present.
-            uint8_t reportLuns[REPORT_LUNS_MIN_LENGTH] = { 0 };//only really need first 4 bytes, but this will make sure we get the length, hopefully without error
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, reportLuns, REPORT_LUNS_MIN_LENGTH);//only really need first 4 bytes, but this will make sure we get the length, hopefully without error
             if (SUCCESS == scsi_Report_Luns(device, 0, REPORT_LUNS_MIN_LENGTH, reportLuns))
             {
                 uint32_t lunListLength = M_BytesTo4ByteValue(reportLuns[0], reportLuns[1], reportLuns[2], reportLuns[3]);
@@ -3330,8 +3329,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             }
             if (dummyUpVPDSupport == false)
             {
-                DECLARE_ZERO_INIT_ARRAY(uint8_t, zeroedMem, INQ_RETURN_DATA_LENGTH);
-                if (memcmp(inq_buf, zeroedMem, INQ_RETURN_DATA_LENGTH) == 0)
+                if (is_Empty(inq_buf, INQ_RETURN_DATA_LENGTH))
                 {
                     //this case means that the command was successful, but we got nothing but zeros....which happens on some craptastic USB bridges
                     dummyUpVPDSupport = true;
@@ -3588,12 +3586,12 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 }
             }
             safe_Free(C_CAST(void**, &supportedVPDPages));
-                if (!satVPDPageRead && !dummyUpVPDSupport)
-                {
-                    //This device returned a list of pages already, so we know what it supports.
-                    //Since we did not find it in it's list of supported pages, set this to skip trying to read SAT VPD since it is definitely not supported.
-                    device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
-                }
+            if (!satVPDPageRead && !dummyUpVPDSupport)
+            {
+                //This device returned a list of pages already, so we know what it supports.
+                //Since we did not find it in it's list of supported pages, set this to skip trying to read SAT VPD since it is definitely not supported.
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+            }
         }
         else
         {
@@ -3687,12 +3685,12 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 }
             }
             safe_Free_aligned(C_CAST(void**, &readCapBuf));
-                if (device->drive_info.devicePhyBlockSize == 0)
-                {
-                    //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
-                    //This will help with old devices or those that don't support the read capacity 16 command or return other weird invalid data.
-                    device->drive_info.devicePhyBlockSize = device->drive_info.deviceBlockSize;
-                }
+            if (device->drive_info.devicePhyBlockSize == 0)
+            {
+                //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
+                //This will help with old devices or those that don't support the read capacity 16 command or return other weird invalid data.
+                device->drive_info.devicePhyBlockSize = device->drive_info.deviceBlockSize;
+            }
         }
 
         //NOTE: You would think that checking if physical and logical block sizes don't match you can filter NVMe (they are supposed to be the same in translation),

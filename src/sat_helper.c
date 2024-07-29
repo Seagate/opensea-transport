@@ -2562,7 +2562,7 @@ static eReturnValues translate_Power_Condition_VPD_Page_8Ah(tDevice *device, Scs
 {
     eReturnValues ret = SUCCESS;
     //assuming the drive supports the page since identify bit was checked before getting here.-TJE
-    uint8_t powerConditionsLog[1024] = { 0 };//currently, this log is only two pages long and we want to read both for the data we're filling in-TJE
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, powerConditionsLog, 1024);//currently, this log is only two pages long and we want to read both for the data we're filling in-TJE
     if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_POWER_CONDITIONS, 0, powerConditionsLog, 1024, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
     {
         ataPowerConditionsDescriptor *descriptor = M_NULLPTR;
@@ -4021,7 +4021,7 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(tDevice *device, Scs
     //now we need to dummy up sense data if we are on the IDE_INTERFACE (ATA) and it was unsuccessful or the check condition bit was set, otherwise the SATL (USB or SAS) will do this for us
     if ((ret != SUCCESS || scsiIoCtx->cdb[2] & BIT5) && device->drive_info.interface_type == IDE_INTERFACE)
     {
-        uint8_t ataReturnDescriptor[15] = { 0 };//making this 1 byte larger than it needs to be. This is done so that the log index can be set for fixed format sense data.
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, ataReturnDescriptor, 15);//making this 1 byte larger than it needs to be. This is done so that the log index can be set for fixed format sense data.
         ataReturnDescriptor[0] = 0x09;
         ataReturnDescriptor[1] = 0x0C;
         if (scsiIoCtx->cdb[1] & BIT0)
@@ -4423,7 +4423,7 @@ static eReturnValues translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCt
                 //else if SCT write same, function 01 or 101 (foreground or background...SATL decides)
                 if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word206) && device->drive_info.IdentifyData.ata.Word206 & BIT0 && device->drive_info.IdentifyData.ata.Word206 & BIT2)
                 {
-                    uint8_t pattern[4] = { 0 };//32bits set to zero
+                    DECLARE_ZERO_INIT_ARRAY(uint8_t, pattern, 4);//32bits set to zero
                     uint32_t currentTimeout = device->drive_info.defaultTimeoutSeconds;
                     device->drive_info.defaultTimeoutSeconds = UINT32_MAX;
                     ret = send_ATA_SCT_Write_Same(device, 0x0101, logicalBlockAddress, numberOflogicalBlocks, &pattern[0], 4);
@@ -5956,7 +5956,7 @@ static eReturnValues translate_SCSI_Security_Protocol_Out_Command(tDevice *devic
         }
         else //TODO: Check that ATA security is supported before issuing commands???
         {
-            uint8_t ataSecurityCommandBuffer[LEGACY_DRIVE_SEC_SIZE] = { 0 };//for use in ATA security commands that transfer data
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, ataSecurityCommandBuffer, LEGACY_DRIVE_SEC_SIZE);//for use in ATA security commands that transfer data
             uint16_t *ataSecurityWordPtr = C_CAST(uint16_t*, &ataSecurityCommandBuffer[0]);
             switch (securityProtocolSpecific)
             {
@@ -8285,7 +8285,7 @@ static eReturnValues translate_Supported_Log_Pages(tDevice *device, ScsiIoCtx *s
 {
     eReturnValues ret = SUCCESS;
     bool subpageFormat = false;
-    uint8_t supportedPages[LEGACY_DRIVE_SEC_SIZE] = { 0 };//this should be plenty big for now
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, supportedPages, LEGACY_DRIVE_SEC_SIZE);//this should be plenty big for now
     uint16_t offset = 4;
     uint8_t increment = 1;
     if (scsiIoCtx->cdb[3] == 0xFF)
@@ -8472,7 +8472,7 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiI
     //remaining data comes from the logs...check if GPL is supported since that can get us a larger LBA to return for errors
     if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
     {
-        uint8_t extSelfTestLog[LEGACY_DRIVE_SEC_SIZE] = { 0 };//2 sectors in size in case we need to read 2 pages of the log
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, extSelfTestLog, LEGACY_DRIVE_SEC_SIZE);//2 sectors in size in case we need to read 2 pages of the log
         //read log ext (up to 3449 pages, but we only need to read 2 pages at most, starting with the first page)
         if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_EXTENDED_SMART_SELF_TEST_LOG, 0, extSelfTestLog, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
         {
@@ -9307,7 +9307,7 @@ static eReturnValues translate_General_Statistics_And_Performance_Log_0x19(tDevi
 static eReturnValues translate_ATA_Passthrough_Results_Log_Page_16(tDevice *device, ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
-    uint8_t ataPassthroughResults[274] = { 0 };//15 (number of results) * (14 + 4) (size of pass-through results descriptor and parameter header) + 4 (log header)
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, ataPassthroughResults, 274);//15 (number of results) * (14 + 4) (size of pass-through results descriptor and parameter header) + 4 (log header)
     uint16_t parameterCode = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
     if (parameterCode > 0x000E)
     {
@@ -9389,7 +9389,7 @@ static eReturnValues translate_Application_Client_Log_Sense_0x0F(tDevice *device
     uint16_t parameterCounter = 0;
     while (parameterCode <= 0x01FF && offset < allocationLength && parameterCounter < numberOfParametersToReturn)
     {
-        uint8_t hostLogData[16 * LEGACY_DRIVE_SEC_SIZE] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE);
         //The parameter headers may be written to the host vendor logs if they've been written...but if not, then we'll need to create the header.
         //It's much simpler to take the parameters and write directly to the logs for a SATL, but this may not happen in this software implementation,
         //so we need to handle that.
@@ -9876,7 +9876,7 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice *devic
         uint8_t ataLogPageToWrite = 0x90;//SAT only uses pages 90h - 9Fh. 80h - 8Fh are left alone
         for (uint16_t parameterCode = 0; ataLogPageToWrite <= 0x9F && parameterCode <= 0x01FF; ++ataLogPageToWrite, ++parameterCode)
         {
-            uint8_t hostLogData[16 * LEGACY_DRIVE_SEC_SIZE] = { 0 };//this memory should be all zeros, but doing a memset to be certain
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE);//this memory should be all zeros, but doing a memset to be certain
             memset(hostLogData, 0, 16 * LEGACY_DRIVE_SEC_SIZE);
             //loop through and set the parameter bytes up correctly.
             for (uint16_t perATAPageCounter = 0, offset = 0; perATAPageCounter < 32; ++perATAPageCounter, offset += 256)
@@ -10929,7 +10929,7 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(tDevice *device, Sc
     {
         //EPC supported; perform EPC supported translation here
         //need to read the EPC log
-        uint8_t ataPowerConditionsLog[2 * LEGACY_DRIVE_SEC_SIZE] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, ataPowerConditionsLog, 2 * LEGACY_DRIVE_SEC_SIZE);
         ata_Read_Log_Ext(device, ATA_LOG_POWER_CONDITIONS, 0, ataPowerConditionsLog, 2 * LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0);
         //TODO: handle command error
         switch (pageControl)
@@ -12167,7 +12167,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
         else
         {
             //Read the EPC log so we can check more bit fields before we make changes
-            uint8_t epcLog[LEGACY_DRIVE_SEC_SIZE * 2] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, epcLog, LEGACY_DRIVE_SEC_SIZE * 2);
             if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_POWER_CONDITIONS, 0, epcLog, LEGACY_DRIVE_SEC_SIZE * 2, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
             {
                 bool parameterRounded = false;

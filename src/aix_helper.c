@@ -1110,7 +1110,7 @@ static int get_Adapter_IDs(tDevice *device, char *name)
     memset(&cudv, 0, sizeof(struct CuDv));
 
     //odm_initialize();
-    char odmCriteria[MAX_ODMI_CRIT] = { 0 };//256
+    DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT);//256
     if (name && safe_strlen(name) > 0)
     {
         snprintf(odmCriteria, MAX_ODMI_CRIT, "name='%s'", name);
@@ -1268,7 +1268,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         memset(&cudv, 0, sizeof(struct CuDv));
 
         odm_initialize();
-        char odmCriteria[MAX_ODMI_CRIT] = { 0 };//256
+        DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT);//256
         char *diskFullName = strdup(filename);
         char *diskName = strrchr(diskFullName, 'r');//point to r in /dev/rhdisk#
         if (diskName)
@@ -2869,7 +2869,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     eReturnValues returnValue = SUCCESS;
     int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
-    char name[80] = { 0 }; //Because get device needs char
+    DECLARE_ZERO_INIT_ARRAY(char, name, 80); //Because get device needs char
     int fd;
     tDevice * d = M_NULLPTR;
 

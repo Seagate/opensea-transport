@@ -543,8 +543,8 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     uint32_t numberOfDevices = 0;
     uint32_t num_rdsk = 0;
     uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
-    char name[80] = { 0 }; //Because get device needs char
-    int fd;
+    DECLARE_ZERO_INIT_ARRAY(char, name, 80); //Because get device needs char
+    int fd = -1;
     tDevice * d = M_NULLPTR;
 
     struct dirent **namelist;

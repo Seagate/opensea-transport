@@ -34,6 +34,7 @@
 #include "error_translation.h"
 #include "io_utils.h"
 #include "sleep.h"
+#include "time_utils.h"
 
 #include <stdio.h>
 #include <dirent.h>
@@ -2332,8 +2333,8 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     eReturnValues returnValue = SUCCESS;
     uint32_t numberOfDevices = 0;
     uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
-    char name[80] = { 0 }; //Because get device needs char
-    int fd;
+    DECLARE_ZERO_INIT_ARRAY(char, name, 80); //Because get device needs char
+    int fd = -1;
     tDevice * d = M_NULLPTR;
 #if defined (DEGUG_SCAN_TIME)
     seatimer_t getDeviceTimer;

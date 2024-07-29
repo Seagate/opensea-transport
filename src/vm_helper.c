@@ -1699,8 +1699,8 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     eReturnValues returnValue = SUCCESS;
     int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
-    char name[128] = { 0 }; //Because get device needs char
-    int fd;
+    DECLARE_ZERO_INIT_ARRAY(char, name, 128); //Because get device needs char
+    int fd = -1;
     tDevice * d = M_NULLPTR;
     struct nvme_adapter_list nvmeAdptList;
     int rc = 0;
