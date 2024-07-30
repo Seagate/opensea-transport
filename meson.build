@@ -239,18 +239,34 @@ os_deps = []
 if target_machine.system() == 'linux'
   src_files += ['src/sg_helper.c']
   add_project_arguments('-DENABLE_CISS', '-DENABLE_CSMI', language : 'c')
+  if c.check_header('linux/nvme_ioctl.h')
+	  global_cpp_args += ['-DSEA_NVME_IOCTL_H']
+  elif c.check_header('linux/nvme.h')
+	  global_cpp_args += ['-DSEA_NVME_H']
+  elif c.check_header('uapi/nvme.h')
+	  global_cpp_args += ['-DSEA_UAPI_NVME_H']
+  else
+	  global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+  endif
 elif target_machine.system() == 'freebsd'
   src_files += ['src/cam_helper.c']
   cam_dep = c.find_library('cam')
   os_deps += [cam_dep]
+  if not c.check_header('dev/nvme/nvme.h')
+	  global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+  endif
 elif target_machine.system() == 'sunos'
   src_files += ['src/uscsi_helper.c']
+  global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
 elif target_machine.system() == 'aix'
   src_files += ['src/aix_helper.c']
   odm_dep = c.find_library('odm')
   os_deps += [odm_dep]
   cfg_dep = c.find_library('cfg')
   os_deps += [cfg_dep]
+  if not c.check_header('sys/nvme.h')
+    global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+  endif
 elif target_machine.system() == 'windows'
   src_files += ['src/win_helper.c']
   if c.get_define('__MINGW32__') != ''
@@ -262,6 +278,9 @@ elif target_machine.system() == 'windows'
   add_project_arguments('-DENABLE_INTEL_RST', '-DENABLE_OFNVME', '-DENABLE_CSMI', language : 'c')
   global_cpp_args += ['-D_CRT_NONSTDC_NO_DEPRECATE', '-D_CRT_SECURE_NO_WARNINGS']
   global_cpp_args += ['-DSTATIC_OPENSEA_TRANSPORT', '-D_UNICODE', '-DUNICODE']
+  if c.get_define('__MINGW32__') != ''
+	  global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+  endif
 endif # TODO UEFI and vmware
 
 opensea_common = subproject('opensea-common')
