@@ -5118,7 +5118,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                         if (!matchedPhys[phyIter])//only do this for phys we did not already scan successfully above-TJE
                                         {
 #if defined (CSMI_DEBUG)
-                                            printf("Checking phy error list with phy %" PRIu8"\n", phyIter);
+                                            printf("Checking phy error list with phy %" PRIu8 "\n", phyIter);
 #endif //CSMI_DEBUG
                                             //Each attached device will be considered a "found device" in this case.
                                             DECLARE_ZERO_INIT_ARRAY(char, handle, RAID_HANDLE_STRING_MAX_LEN);

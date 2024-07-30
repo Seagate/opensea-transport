@@ -4431,7 +4431,7 @@ eReturnValues ata_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, ui
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Zeros Ext - LBA %" PRIu64 ", count %"PRIu16 " %s\n", lba, numberOfLogicalSectors, (trim ? "(TRIM)" : ""));
+        printf("Sending ATA Zeros Ext - LBA %" PRIu64 ", count %" PRIu16 " %s\n", lba, numberOfLogicalSectors, (trim ? "(TRIM)" : ""));
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);

@@ -965,13 +965,13 @@ uint16_t calculate_Logical_Block_Guard(uint8_t *buffer, uint32_t userDataLength,
 //this is mean to only be called by check_Sense_Key_asc_And_ascq()
 void print_sense_key(const char* senseKeyToPrint, uint8_t senseKeyValue)
 {
-    printf("Sense Key: %"PRIX8"h = %s\n", senseKeyValue, senseKeyToPrint);
+    printf("Sense Key: %" PRIX8 "h = %s\n", senseKeyValue, senseKeyToPrint);
     fflush(stdout);
 }
 //this is meant to only be called by check_Sense_Key_asc_And_ascq()
 void print_acs_ascq(const char* acsAndascqStringToPrint, uint8_t ascValue, uint8_t ascqValue)
 {
-    printf("ASC & ASCQ: %"PRIX8"h - %"PRIX8"h = %s\n", ascValue, ascqValue, acsAndascqStringToPrint);
+    printf("ASC & ASCQ: %" PRIX8 "h - %" PRIX8 "h = %s\n", ascValue, ascqValue, acsAndascqStringToPrint);
     fflush(stdout);
 }
 
@@ -981,18 +981,18 @@ void print_Field_Replacable_Unit_Code(tDevice *device, const char *fruMessage, u
     //we'll only print out a translatable string for seagate drives since fru is vendor specific
     if (is_Seagate(device, false) == true && fruMessage && device->drive_info.interface_type == SCSI_INTERFACE)
     {
-        printf("FRU: %"PRIX8"h = %s\n", fruCode, fruMessage);
+        printf("FRU: %" PRIX8 "h = %s\n", fruCode, fruMessage);
         fflush(stdout);
     }
     else
     {
         if (fruCode == 0)
         {
-            printf("FRU: %"PRIX8"h = No Additional Information\n", fruCode);
+            printf("FRU: %" PRIX8 "h = No Additional Information\n", fruCode);
         }
         else
         {
-            printf("FRU: %"PRIX8"h = Vendor Specific\n", fruCode);
+            printf("FRU: %" PRIX8 "h = Vendor Specific\n", fruCode);
         }
         fflush(stdout);
     }
@@ -1860,7 +1860,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 {
                     if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
                     {
-                        printf("Invalid field in CDB byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+                        printf("Invalid field in CDB byte %" PRIu16 " bit %" PRIu8 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
                     }
                     else
                     {
@@ -1871,7 +1871,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 {
                     if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
                     {
-                        printf("Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+                        printf("Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
                     }
                     else
                     {
@@ -1890,7 +1890,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 {
                     if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
                     {
-                        printf("Invalid field in Segment Descriptor byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+                        printf("Invalid field in Segment Descriptor byte %" PRIu16 " bit %" PRIu8 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
                     }
                     else
                     {
@@ -1901,7 +1901,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 {
                     if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
                     {
-                        printf("Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+                        printf("Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
                     }
                     else
                     {

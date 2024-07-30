@@ -10141,7 +10141,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx *nvmeIoCtx)
             printf("\tError Count: %" PRIu64 "\n", errorCount);
             printf("\tSQID: %" PRIu16 "\n", submissionQueueID);
             printf("\tCID: %" PRIu16 "\n", commandID);
-            printf("\tStatus: %" PRIu16"\n", statusField);
+            printf("\tStatus: %" PRIu16 "\n", statusField);
             printf("\tParameterErrorLocation: %" PRIu16 "\n", parameterErrorLocation);
             printf("\tLBA: %" PRIu64 "\n", lba);
             printf("\tNSID: %" PRIu32 "\n", nsid);

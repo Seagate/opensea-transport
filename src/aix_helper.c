@@ -2154,7 +2154,7 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             }
             if (aixPassthrough.adap_set_flags & SC_RET_ID)
             {
-                printf("SCSI ID is different than was provided and the adapter has updated it to: %" PRIu64"\n", aixPassthrough.scsi_id);
+                printf("SCSI ID is different than was provided and the adapter has updated it to: %" PRIu64 "\n", aixPassthrough.scsi_id);
             }
             printf("Additional Device Status: %u\n", aixPassthrough.add_device_status);
             print_Adapter_Queue_Status(aixPassthrough.adap_q_status);

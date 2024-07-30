@@ -1193,7 +1193,7 @@ eReturnValues ata_Legacy_Write_Same_CHS(tDevice *device, uint8_t subcommand, uin
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Write Same (CHS), subcommand %" PRIX8"h\n", subcommand);
+        printf("Sending ATA Write Same (CHS), subcommand %" PRIX8 "h\n", subcommand);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1254,7 +1254,7 @@ eReturnValues ata_Legacy_Write_Same(tDevice *device, uint8_t subcommand, uint8_t
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Write Same, subcommand %" PRIX8"h\n", subcommand);
+        printf("Sending ATA Write Same, subcommand %" PRIX8 "h\n", subcommand);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
