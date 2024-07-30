@@ -471,11 +471,11 @@ void print_Low_Level_Info(tDevice* device)
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase)
             {
-                printf("\t\t\t\t\t\tFormat - SES = user erase\n");
+                printf("\t\t\t\t\t\tFormat - SES = crypto erase\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatUserSecureErase)
             {
-                printf("\t\t\t\t\t\tFormat - SES = crypto erase\n");
+                printf("\t\t\t\t\t\tFormat - SES = user erase\n");
             }
         }
         if (device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength > 0)
