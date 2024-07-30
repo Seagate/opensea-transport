@@ -56,7 +56,8 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wno-c23-extensions', #We do not want this warning since we are already checking for when C23 extensions are available before we use them. If not, we use a compiler specific definition, or make it an empty definition.
   '-Wparentheses',
   '-Wextra-semi',
-  '-Wcast-qual'
+  '-Wcast-qual',
+  '-fvisibility=hidden', #to work similarly to Window's DLL import/export
   ]
 
   if c.get_id().contains('gcc') and target_machine.system() == 'windows'

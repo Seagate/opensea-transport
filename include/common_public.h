@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "code_attributes.h"
 #include "common_types.h"
 #include "bit_manip.h"
 
@@ -51,26 +52,25 @@ extern "C"
         #undef(OPENSEA_TRANSPORT_API)
     #endif
 
-    #if defined(_WIN32) /*DLL/LIB....be VERY careful making modifications to this unless you know what you are doing!*/
-        #if defined (EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
-            #error "The preprocessor definitions EXPORT_OPENSEA_TRANSPORT and STATIC_OPENSEA_TRANSPORT cannot be combined!"
-        #elif defined(EXPORT_OPENSEA_TRANSPORT)
-            #if defined (_DEBUG)
-            #pragma message("Compiling opensea-transport as exporting DLL!")
-            #endif
-            #define OPENSEA_TRANSPORT_API __declspec(dllexport)
-        #elif defined(IMPORT_OPENSEA_TRANSPORT)
-            #if defined (_DEBUG)
-            #pragma message("Compiling opensea-transport as importing DLL!")
-            #endif
-            #define OPENSEA_TRANSPORT_API __declspec(dllimport)
-        #else
-            #if defined (_DEBUG)
-            #pragma message("Compiling opensea-transport as a static library!")
-            #endif
-            #define OPENSEA_TRANSPORT_API
+    #if defined (EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
+        #error "The preprocessor definitions EXPORT_OPENSEA_TRANSPORT and STATIC_OPENSEA_TRANSPORT cannot be combined!"
+    #elif defined(EXPORT_OPENSEA_TRANSPORT)
+        #if defined (_DEBUG) && !defined (OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT)
+        #pragma message("Compiling opensea-transport as exporting DLL!")
+        #define OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT
         #endif
-    #else //SO/A....as far as I know, nothing needs to be done here
+        #define OPENSEA_TRANSPORT_API DLL_EXPORT
+    #elif defined(IMPORT_OPENSEA_TRANSPORT)
+        #if defined (_DEBUG) && !defined (OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT)
+        #pragma message("Compiling opensea-transport as importing DLL!")
+        #define OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT
+        #endif
+        #define OPENSEA_TRANSPORT_API DLL_IMPORT
+    #else
+        #if defined (_DEBUG) && !defined (OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT)
+        #pragma message("Compiling opensea-transport as a static library!")
+        #define OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT
+        #endif
         #define OPENSEA_TRANSPORT_API
     #endif
 
