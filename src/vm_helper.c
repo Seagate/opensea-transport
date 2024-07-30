@@ -55,7 +55,7 @@ extern bool validate_Device_Struct(versionBlock);
 static void print_io_hdr(sg_io_hdr_t *pIo)
 {
     time_t time_now;
-    char timeFormat[TIME_STRING_LENGTH];
+    DECLARE_ZERO_INIT_ARRAY(char, timeFormat, TIME_STRING_LENGTH);
     memset(timeFormat, 0, TIME_STRING_LENGTH);//clear this again before reusing it
     time_now = time(M_NULLPTR);
     printf("\n%s: %s---------------------------------\n", __FUNCTION__, get_Current_Time_String(&time_now, timeFormat, TIME_STRING_LENGTH));
@@ -1634,7 +1634,8 @@ static int nvme_filter(const struct dirent *entry)
 //-----------------------------------------------------------------------------
 eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
-    int  num_devs = 0, num_nvme_devs = 0;
+    int  num_devs = 0;
+    int  num_nvme_devs = 0;
     int rc = 0;
     struct nvme_adapter_list nvmeAdptList;
 
@@ -1698,7 +1699,10 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 {
     eReturnValues returnValue = SUCCESS;
     int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
+    int driveNumber = 0;
+    int found = 0;
+    int failedGetDeviceCount = 0;
+    int permissionDeniedCount = 0;
     DECLARE_ZERO_INIT_ARRAY(char, name, 128); //Because get device needs char
     int fd = -1;
     tDevice * d = M_NULLPTR;
@@ -1712,7 +1716,9 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #endif
     struct dirent **namelist;
 
-    int  num_sg_devs = 0, num_nvme_devs = 0;
+    int  num_sg_devs = 0;
+
+    int  num_nvme_devs = 0;
 
     num_sg_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort);
 
@@ -1725,7 +1731,8 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 
 
     char **devs = C_CAST(char **, safe_calloc(num_sg_devs + num_nvme_devs + 1, sizeof(char *)));
-    int i = 0, j = 0;
+    int i = 0;
+    int j = 0;
     //add sg/sd devices to the list
     for (; i < (num_sg_devs); i++)
     {
@@ -2090,7 +2097,7 @@ eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t data
     eReturnValues ret = UNKNOWN;
     int fd=0;
     void * barRegs = M_NULLPTR;
-    char sysfsPath[PATH_MAX];
+    DECLARE_ZERO_INIT_ARRAY(char, sysfsPath, PATH_MAX);
     snprintf(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
     fd = open(sysfsPath, O_RDONLY);
     if (fd >= 0)

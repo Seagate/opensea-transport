@@ -1958,7 +1958,9 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 printf("Microcode Activation Time:");
                 if (senseFields->microCodeActivation.microcodeActivationTimeSeconds > 0)
                 {
-                    uint8_t hours = 0, minutes = 0, seconds = 0;
+                    uint8_t hours = 0;
+                    uint8_t minutes = 0;
+                    uint8_t seconds = 0;
                     convert_Seconds_To_Displayable_Time(senseFields->microCodeActivation.microcodeActivationTimeSeconds, M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
                     print_Time_To_Screen(M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
                     printf("\n");

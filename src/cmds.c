@@ -364,9 +364,12 @@ eReturnValues firmware_Download_Command(tDevice *device, eDownloadMode dlMode, u
         {
         case DL_FW_ACTIVATE:
         {
-            uint8_t statusCodeType = 0, statusCode = 0;
-            bool doNotRetry = false, more = false;
-            bool issueReset = false, subsystem = false;
+            uint8_t statusCodeType = 0;
+            uint8_t statusCode = 0;
+            bool doNotRetry = false;
+            bool more = false;
+            bool issueReset = false;
+            bool subsystem = false;
             uint8_t nvmeCommitAction = commitAction;//assume something is passed in for now
             if (!nvmeForceCA)
             {
@@ -715,7 +718,8 @@ eReturnValues write_Same(tDevice *device, uint64_t startingLba, uint64_t numberO
                 if (device->drive_info.ata_Options.chsModeOnly)
                 {
                     uint16_t cylinder = 0;
-                    uint8_t head = 0, sector = 0;
+                    uint8_t head = 0;
+                    uint8_t sector = 0;
                     if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, startingLba), &cylinder, &head, &sector))
                     {
                         ret = ata_Legacy_Write_Same_CHS(device, feature, C_CAST(uint8_t, numberOfLogicalBlocks), cylinder, head, sector, pattern, device->drive_info.deviceBlockSize);
@@ -1042,7 +1046,10 @@ eReturnValues ata_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint
                         {
                             //check the sense data. Make sure we didn't get told we have an invalid field in the CDB.
                             //If we do, try turning off DMA mode and retrying with PIO mode commands.
-                            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                            uint8_t senseKey = 0;
+                            uint8_t asc = 0;
+                            uint8_t ascq = 0;
+                            uint8_t fru = 0;
                             get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
                             //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
                             if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -1157,7 +1164,10 @@ eReturnValues ata_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint
                         {
                             //check the sense data. Make sure we didn't get told we have an invalid field in the CDB.
                             //If we do, try turning off DMA mode and retrying with PIO mode commands.
-                            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                            uint8_t senseKey = 0;
+                            uint8_t asc = 0;
+                            uint8_t ascq = 0;
+                            uint8_t fru = 0;
                             get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
                             //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
                             if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -1294,7 +1304,10 @@ eReturnValues ata_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uin
                     {
                         //check the sense data. Make sure we didn't get told we have an invalid field in the CDB.
                         //If we do, try turning off DMA mode and retrying with PIO mode commands.
-                        uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                        uint8_t senseKey = 0;
+                        uint8_t asc = 0;
+                        uint8_t ascq = 0;
+                        uint8_t fru = 0;
                         get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
                         //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
                         if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -1409,7 +1422,10 @@ eReturnValues ata_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uin
                     {
                         //check the sense data. Make sure we didn't get told we have an invalid field in the CDB.
                         //If we do, try turning off DMA mode and retrying with PIO mode commands.
-                        uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                        uint8_t senseKey = 0;
+                        uint8_t asc = 0;
+                        uint8_t ascq = 0;
+                        uint8_t fru = 0;
                         get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
                         //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
                         if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)

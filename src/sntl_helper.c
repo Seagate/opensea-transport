@@ -123,7 +123,9 @@ static void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t sens
         if (descriptor)
         {
             //loop through descriptor copying each one to the sense data buffer
-            uint8_t senseDataOffset = 8, descriptorLength = 0, counter = 0;
+            uint8_t senseDataOffset = 8;
+            uint8_t descriptorLength = 0;
+            uint8_t counter = 0;
             uint32_t descriptorOffset = 0;
             while (counter < descriptorCount)
             {
@@ -329,7 +331,9 @@ static void sntl_Set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t sens
 static void set_Sense_Data_By_Generic_NVMe_Status(tDevice *device, uint8_t nvmeStatus, uint8_t *sensePtr, uint32_t senseDataLength, bool doNotRetry)
 {
     //first check if sense data reporting is supported
-    uint8_t senseKey = 0, asc = 0, ascq = 0;
+    uint8_t senseKey = 0;
+    uint8_t asc = 0;
+    uint8_t ascq = 0;
     bool returnSenseKeySpecificInfo = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, informationSenseDescriptor, SNTL_INFORMATION_SENSE_DESCRIPTOR_LENGTH);
 
@@ -505,7 +509,9 @@ static void set_Sense_Data_By_Generic_NVMe_Status(tDevice *device, uint8_t nvmeS
 static void set_Sense_Data_By_Command_Specific_NVMe_Status(tDevice *device, uint8_t nvmeStatus, uint8_t *sensePtr, uint32_t senseDataLength)
 {
     //first check if sense data reporting is supported
-    uint8_t senseKey = 0, asc = 0, ascq = 0;
+    uint8_t senseKey = 0;
+    uint8_t asc = 0;
+    uint8_t ascq = 0;
     bool returnSenseKeySpecificInfo = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, informationSenseDescriptor, SNTL_INFORMATION_SENSE_DESCRIPTOR_LENGTH);
 
@@ -620,7 +626,9 @@ static void set_Sense_Data_By_Command_Specific_NVMe_Status(tDevice *device, uint
 static void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice *device, uint8_t nvmeStatus, uint8_t *sensePtr, uint32_t senseDataLength)
 {
     //first check if sense data reporting is supported
-    uint8_t senseKey = 0, asc = 0, ascq = 0;
+    uint8_t senseKey = 0;
+    uint8_t asc = 0;
+    uint8_t ascq = 0;
     bool returnSenseKeySpecificInfo = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, informationSenseDescriptor, SNTL_INFORMATION_SENSE_DESCRIPTOR_LENGTH);
     bool genericFailureSenseData = false;
@@ -2765,7 +2773,9 @@ static eReturnValues sntl_Translate_Self_Test_Results_Log_0x10(tDevice *device, 
                 selfTestResults[selfTestOffset + 14] = UINT8_MAX;
                 selfTestResults[selfTestOffset + 15] = UINT8_MAX;
             }
-            uint8_t senseKey = 0, additionalSenseCode = 0, additionalSenseCodeQualifier = 0;
+            uint8_t senseKey = 0;
+            uint8_t additionalSenseCode = 0;
+            uint8_t additionalSenseCodeQualifier = 0;
             //translate NVMe Status to a SCSI Sense code as best as possible.
             //if (nvmDSTLog[nvmDSTOffset + 2] & BIT2 && nvmDSTLog[nvmDSTOffset + 2] & BIT3)
             //{
@@ -5812,8 +5822,10 @@ static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, S
             }
             //need to check if the status of the commit says we need a reset too!
             int resetType = 0;//0 = no reset, 1 = reset, 2 = susb system reset
-            bool dnr = false, more = false;
-            uint8_t sct = 0, sc = 0;
+            bool dnr = false;
+            bool more = false;
+            uint8_t sct = 0;
+            uint8_t sc = 0;
             get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &dnr, &more, &sct, &sc);
             if (sct == NVME_SCT_COMMAND_SPECIFIC_STATUS)
             {
@@ -5935,8 +5947,10 @@ static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(tDevice *device, S
             }
             //need to check if the status of the commit says we need a reset too!
             int resetType = 0;//0 = no reset, 1 = reset, 2 = susb system reset
-            bool dnr = false, more = false;
-            uint8_t sct = 0, sc = 0;
+            bool dnr = false;
+            bool more = false;
+            uint8_t sct = 0;
+            uint8_t sc = 0;
             get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &dnr, &more, &sct, &sc);
             if (sct == NVME_SCT_COMMAND_SPECIFIC_STATUS)
             {

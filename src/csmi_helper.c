@@ -3474,7 +3474,10 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename, bool* isInte
 eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
 {
     eReturnValues ret = FAILURE;
-    uint32_t controllerNum = 0, portID = 0, phyID = 0, lun = 0;
+    uint32_t controllerNum = 0;
+    uint32_t portID = 0;
+    uint32_t phyID = 0;
+    uint32_t lun = 0;
     //Need to open this handle and setup some information then fill in the device information.
     if (!(validate_Device_Struct(device->sanity)))
     {
@@ -4054,7 +4057,9 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
     ptrRaidHandleToScan raidList = M_NULLPTR;
     ptrRaidHandleToScan previousRaidListEntry = M_NULLPTR;
     uint32_t controllerNumber = 0;
-    uint32_t found = 0, raidConfigDrivesFound = 0, phyInfoDrivesFound = 0;
+    uint32_t found = 0;
+    uint32_t raidConfigDrivesFound = 0;
+    uint32_t phyInfoDrivesFound = 0;
 
     if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
     {
@@ -4515,7 +4520,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
         tDevice * d = M_NULLPTR;
         ptrRaidHandleToScan raidList = *beginningOfList;
         ptrRaidHandleToScan previousRaidListEntry = M_NULLPTR;
-        uint32_t controllerNumber = 0, found = 0, failedGetDeviceCount = 0;
+        uint32_t controllerNumber = 0;
+        uint32_t found = 0;
+        uint32_t failedGetDeviceCount = 0;
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
 
@@ -4725,7 +4732,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                         {
                                                             //This should only happen on Intel Drivers using SRT
                                                             //The SAS Address holds port-target-lun data in it. NOTE: This is correct for this version of the driver, but this is not necessarily true for previous RST drivers according to documentation received from Intel. -TJE
-                                                            uint8_t path = 0, target = 0, lun = 0;
+                                                            uint8_t path = 0;
+                                                            uint8_t target = 0;
+                                                            uint8_t lun = 0;
                                                             lun = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[0];
                                                             target = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[1];
                                                             path = csmiRAIDConfig->Configuration.Drives[iter].bSASAddress[2];
@@ -5352,7 +5361,10 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
         if (ret == SUCCESS)
         {
             //check the sense data to see if it is an invalid command or not
-            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            uint8_t senseKey = 0;
+            uint8_t asc = 0;
+            uint8_t ascq = 0;
+            uint8_t fru = 0;
             get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &senseKey, &asc, &ascq, &fru);
             if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x20 && ascq == 0x00)//TODO: Check if A1h vs 85h SAT opcodes for retry???
             {

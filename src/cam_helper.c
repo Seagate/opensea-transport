@@ -1177,7 +1177,8 @@ eReturnValues close_Device(tDevice *dev)
 //-----------------------------------------------------------------------------
 eReturnValues get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
-    int  num_da_devs = 0, num_ada_devs = 0;
+    int  num_da_devs = 0;
+    int  num_ada_devs = 0;
     int num_nvme_devs = 0;
 
     struct dirent **danamelist;
@@ -1250,12 +1251,17 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 {
     eReturnValues returnValue = SUCCESS;
     uint32_t numberOfDevices = 0;
-    uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
-    char name[80]; //Because get device needs char
+    uint32_t driveNumber = 0;
+    uint32_t found = 0;
+    uint32_t failedGetDeviceCount = 0;
+    uint32_t permissionDeniedCount = 0;
+    DECLARE_ZERO_INIT_ARRAY(char, name, 80);
     int fd = 0;
     tDevice * d = M_NULLPTR;
     int scandirres = 0;
-    uint32_t num_da_devs = 0, num_ada_devs = 0, num_nvme_devs = 0;
+    uint32_t num_da_devs = 0;
+    uint32_t num_ada_devs = 0;
+    uint32_t num_nvme_devs = 0;
 
     struct dirent **danamelist;
     struct dirent **adanamelist;
@@ -1279,7 +1285,9 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     uint32_t totalDevs = num_da_devs + num_ada_devs + num_nvme_devs;
 
     char **devs = C_CAST(char **, safe_calloc(totalDevs + 1, sizeof(char *)));
-    uint32_t i = 0, j = 0, k=0;
+    uint32_t i = 0;
+    uint32_t j = 0;
+    uint32_t k=0;
     for (i = 0; i < num_da_devs; ++i)
     {
         size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(danamelist[i]->d_name) + 1) * sizeof(char);

@@ -101,7 +101,10 @@ eReturnValues send_ATA_Read_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, uin
             }
             else
             {
-                uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                uint8_t senseKey = 0;
+                uint8_t asc = 0;
+                uint8_t ascq = 0;
+                uint8_t fru = 0;
                 get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
                 //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
                 if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -144,7 +147,10 @@ eReturnValues send_ATA_Write_Log_Ext_Cmd(tDevice *device, uint8_t logAddress, ui
             }
             else
             {
-                uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+                uint8_t senseKey = 0;
+                uint8_t asc = 0;
+                uint8_t ascq = 0;
+                uint8_t fru = 0;
                 get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
                 //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
                 if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -536,7 +542,10 @@ eReturnValues send_ATA_Download_Microcode_Cmd(tDevice *device, eDownloadMicrocod
         }
         else
         {
-            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            uint8_t senseKey = 0;
+            uint8_t asc = 0;
+            uint8_t ascq = 0;
+            uint8_t fru = 0;
             get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
             //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
             if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -575,7 +584,10 @@ eReturnValues send_ATA_Trusted_Send_Cmd(tDevice *device, uint8_t securityProtoco
         }
         else
         {
-            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            uint8_t senseKey = 0;
+            uint8_t asc = 0;
+            uint8_t ascq = 0;
+            uint8_t fru = 0;
             get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
             //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
             if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -614,7 +626,10 @@ eReturnValues send_ATA_Trusted_Receive_Cmd(tDevice *device, uint8_t securityProt
         }
         else
         {
-            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            uint8_t senseKey = 0;
+            uint8_t asc = 0;
+            uint8_t ascq = 0;
+            uint8_t fru = 0;
             get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
             //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
             if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -652,7 +667,10 @@ eReturnValues send_ATA_Read_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
         }
         else
         {
-            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            uint8_t senseKey = 0;
+            uint8_t asc = 0;
+            uint8_t ascq = 0;
+            uint8_t fru = 0;
             get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
             //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
             if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -690,7 +708,10 @@ eReturnValues send_ATA_Write_Buffer_Cmd(tDevice *device, uint8_t *ptrData)
         }
         else
         {
-            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            uint8_t senseKey = 0;
+            uint8_t asc = 0;
+            uint8_t ascq = 0;
+            uint8_t fru = 0;
             get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
             //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
             if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -729,7 +750,10 @@ eReturnValues send_ATA_Read_Stream_Cmd(tDevice *device, uint8_t streamID, bool n
         }
         else
         {
-            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            uint8_t senseKey = 0;
+            uint8_t asc = 0;
+            uint8_t ascq = 0;
+            uint8_t fru = 0;
             get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
             //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
             if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -768,7 +792,10 @@ eReturnValues send_ATA_Write_Stream_Cmd(tDevice *device, uint8_t streamID, bool 
         }
         else
         {
-            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            uint8_t senseKey = 0;
+            uint8_t asc = 0;
+            uint8_t ascq = 0;
+            uint8_t fru = 0;
             get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
             //Checking for illegal request, invalid field in CDB since this is what we've seen reported when DMA commands are not supported.
             if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -806,7 +833,10 @@ void byte_Swap_ID_Data_Buffer(uint16_t *idData)
 static bool is_SAT_Invalid_Operation_Code(tDevice *device)
 {
     bool invalidOP = false;
-    uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+    uint8_t senseKey = 0;
+    uint8_t asc = 0;
+    uint8_t ascq = 0;
+    uint8_t fru = 0;
     get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
     if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x20 && ascq == 0x00)
     {

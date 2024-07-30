@@ -864,7 +864,8 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         uint8_t *localBuffer = M_NULLPTR;
         uint8_t *localCDB = M_NULLPTR;
         uint8_t *localSensePtr = M_NULLPTR;
-        bool localAlignedBuffer = false, localSenseBuffer = false;
+        bool localAlignedBuffer = false;
+        bool localSenseBuffer = false;
         EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;//scsi request packet
 
         srp = C_CAST(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *, safe_calloc_aligned(1, sizeof(EFI_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
@@ -1172,7 +1173,8 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
         uint8_t *localBuffer = M_NULLPTR;
         uint8_t *localCDB = M_NULLPTR;
         uint8_t *localSensePtr = M_NULLPTR;
-        bool localAlignedBuffer = false, localSenseBuffer = false;
+        bool localAlignedBuffer = false;
+        bool localSenseBuffer = false;
         EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET	*srp;// Extended scsi request packet
 
         srp = C_CAST(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET *, safe_calloc_aligned(1, sizeof(EFI_EXT_SCSI_PASS_THRU_SCSI_REQUEST_PACKET), pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
@@ -2482,8 +2484,8 @@ uint32_t get_SCSIEx_Device_Count()
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uint8_t invalidTarget[TARGET_MAX_BYTES];
-        uint8_t target[TARGET_MAX_BYTES];
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, invalidTarget, TARGET_MAX_BYTES);
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, target, TARGET_MAX_BYTES);
         uint8_t *targetPtr = &target[0];
         uint64_t lun = UINT64_MAX;//doesn't specify what we should start with for this.
         uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
@@ -2543,8 +2545,8 @@ eReturnValues get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeI
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uint8_t invalidTarget[TARGET_MAX_BYTES];
-        uint8_t target[TARGET_MAX_BYTES];
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, invalidTarget, TARGET_MAX_BYTES);
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, target, TARGET_MAX_BYTES);
         uint8_t *targetPtr = &target[0];
         uint64_t lun = UINT64_MAX;//doesn't specify what we should start with for this.
         uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);

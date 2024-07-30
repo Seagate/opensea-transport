@@ -451,10 +451,12 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
             //This requires knowing if we are searching for USB vs SCSI device IDs
             //TODO: We may need to add other things for firewire or other attachment types that existed back in Vista or XP if they aren't handled under USB or SCSI
             TCHAR *scsiFilter = TEXT("SCSI"), *usbFilter = TEXT("USBSTOR");//Need to use USBSTOR in order to find a match. Using USB returns a list of VID/PID but we don't have a way to match that.
-            ULONG scsiIdListLen = 0, usbIdListLen = 0;
+            ULONG scsiIdListLen = 0;
+            ULONG usbIdListLen = 0;
             ULONG filterFlags = CM_GETIDLIST_FILTER_ENUMERATOR;
             TCHAR *scsiListBuff = M_NULLPTR, *usbListBuff = M_NULLPTR;
-            CONFIGRET scsicmRet = CR_SUCCESS, usbcmRet = CR_SUCCESS;
+            CONFIGRET scsicmRet = CR_SUCCESS;
+            CONFIGRET usbcmRet = CR_SUCCESS;
             //First get the SCSI list, then the USB list/ TODO: add more things to the list as we need them.
             scsicmRet = CM_Get_Device_ID_List_Size(&scsiIdListLen, scsiFilter, filterFlags);
             if (scsicmRet == CR_SUCCESS)
@@ -598,7 +600,8 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
                                                                     DEVPROPTYPE propertyType = 0;
                                                                     DEVINST propInst = deviceInstance;
                                                                     const DEVPROPKEY *devproperty = &DEVPKEY_NAME;
-                                                                    uint16_t counter = 0, instanceCounter = 0;
+                                                                    uint16_t counter = 0;
+                                                                    uint16_t instanceCounter = 0;
                                                                     char *propertyName = M_NULLPTR;
                                                                     size_t propertyNameLength = 0;
                                                                     //device instance first!
@@ -4799,7 +4802,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
         }
     }
 
-    uint32_t driveNumber = 0, found = 0;
+    uint32_t driveNumber = 0;
+
+    uint32_t found = 0;
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; ++driveNumber)
     {
         _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%u"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
@@ -4908,7 +4913,10 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 {
     eReturnValues returnValue = SUCCESS;
     uint32_t numberOfDevices = 0;
-    uint32_t driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
+    uint32_t driveNumber = 0;
+    uint32_t found = 0;
+    uint32_t failedGetDeviceCount = 0;
+    uint32_t permissionDeniedCount = 0;
     DECLARE_ZERO_INIT_ARRAY(TCHAR, deviceName, WIN_MAX_DEVICE_NAME_LENGTH);
     DECLARE_ZERO_INIT_ARRAY(char, name, WIN_MAX_DEVICE_NAME_LENGTH); //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
@@ -7951,7 +7959,8 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
                 volumeHandle = CreateFile(volumeHandleString, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, M_NULLPTR, OPEN_EXISTING, 0, M_NULLPTR);
                 if (INVALID_HANDLE_VALUE != volumeHandle)
                 {
-                    BOOL ioctlResult = FALSE, lockResult = FALSE;
+                    BOOL ioctlResult = FALSE;
+                    BOOL lockResult = FALSE;
                     lockResult = DeviceIoControl(volumeHandle, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned, M_NULLPTR);
                     if (lockResult == FALSE)
                     {
@@ -8020,7 +8029,9 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         //Check to make sure cmdDT and reserved bits aren't set
         if (scsiIoCtx->cdb[1] & 0xFE)
@@ -8304,7 +8315,9 @@ static eReturnValues wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 10)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0 || scsiIoCtx->cdb[5] != 0 || scsiIoCtx->cdb[6] != 0 || scsiIoCtx->cdb[7] != 0 || scsiIoCtx->cdb[8] != 0)
         {
@@ -8401,7 +8414,9 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength >= 16)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         //first check the service action
         if (M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0) == 0x10)
@@ -8539,7 +8554,9 @@ static eReturnValues wbst_Read(ScsiIoCtx* scsiIoCtx, uint64_t lba, bool fua, uin
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->device && scsiIoCtx->pdata && transferLength > 0 && scsiIoCtx->dataLength > 0 && (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize) == scsiIoCtx->dataLength)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if (fua)
         {
@@ -8571,7 +8588,9 @@ static eReturnValues wbst_Read_6(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
         {
@@ -8605,7 +8624,9 @@ static eReturnValues wbst_Read_10(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 10)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
@@ -8658,7 +8679,9 @@ static eReturnValues wbst_Read_12(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 12)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
@@ -8711,7 +8734,9 @@ static eReturnValues wbst_Read_16(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 16)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
@@ -8767,7 +8792,9 @@ static eReturnValues wbst_Write(ScsiIoCtx* scsiIoCtx, uint64_t lba, bool fua, ui
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->device && scsiIoCtx->pdata && transferLength > 0 && scsiIoCtx->dataLength > 0 && (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize) == scsiIoCtx->dataLength)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         ret = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata, (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize));
         if (fua && ret == SUCCESS)
@@ -8796,7 +8823,9 @@ static eReturnValues wbst_Write_6(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
         {
@@ -8841,7 +8870,9 @@ static eReturnValues wbst_Write_10(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 10)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
@@ -8894,7 +8925,9 @@ static eReturnValues wbst_Write_12(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 12)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
@@ -8947,7 +8980,9 @@ static eReturnValues wbst_Write_16(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 16)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         bool fua = false;
         if (scsiIoCtx->cdb[1] & BIT3)
@@ -9002,7 +9037,9 @@ static eReturnValues wbst_Verify(ScsiIoCtx* scsiIoCtx, uint64_t lba, uint32_t ve
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->device && verificationLength > 0)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         ret = os_Verify(scsiIoCtx->device, lba, verificationLength);
         if (ret != SUCCESS)
@@ -9027,7 +9064,9 @@ static eReturnValues wbst_Verify_10(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 10)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if ((scsiIoCtx->cdb[1] & BIT3)
             || (scsiIoCtx->cdb[1] & BIT0)
@@ -9075,7 +9114,9 @@ static eReturnValues wbst_Verify_12(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 12)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if ((scsiIoCtx->cdb[1] & BIT3)
             || (scsiIoCtx->cdb[1] & BIT0)
@@ -9123,7 +9164,9 @@ static eReturnValues wbst_Verify_16(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 16)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if ((scsiIoCtx->cdb[1] & BIT3)
             || (scsiIoCtx->cdb[1] & BIT0)
@@ -9171,7 +9214,9 @@ static eReturnValues wbst_Synchronize_Cache_10(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 10)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[6] != 0)
         {
@@ -9207,7 +9252,9 @@ static eReturnValues wbst_Synchronize_Cache_16(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 16)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[14] != 0)
         {
@@ -9243,7 +9290,9 @@ static eReturnValues wbst_Test_Unit_Ready(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0)
         {
@@ -9271,7 +9320,9 @@ static eReturnValues wbst_Request_Sense(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0)
         {
@@ -9303,7 +9354,9 @@ static eReturnValues wbst_Send_Diagnostic(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         //only allow self-test bit set to one, and return good status.
         if (scsiIoCtx->cdb[1] & 0xFB //only allow self-test bit to be set to 1. All others are not supported.
@@ -9336,7 +9389,9 @@ static eReturnValues wbst_Report_Luns(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 12)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         //filter out unsupported fields first
         if (scsiIoCtx->cdb[1] != 0
@@ -9407,7 +9462,9 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength == 6)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         bool setSenseData = false;
         //NOTE: There is a format IOCTL not implemented, but it is likely only for floppy drives.
         //      It may be worth implementing if they ever return from beyond the grave...or if we can test and prove it works on HDDs
@@ -11946,7 +12003,8 @@ static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx *nvmeIoCtx)
         if (unmapParameterData)
         {
             //in a loop, set the unmap descriptors
-            uint32_t scsiOffset = 8, nvmOffset = 0;
+            uint32_t scsiOffset = 8;
+            uint32_t nvmOffset = 0;
             for (uint16_t rangeIter = 0; rangeIter < numberOfRanges && scsiOffset < unmapParameterDataLength && nvmOffset < nvmeIoCtx->dataSize; ++rangeIter, scsiOffset += 16, nvmOffset += 16)
             {
                 //get the info we need from the incomming buffer
@@ -12864,7 +12922,9 @@ static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, D
     }
     else
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
         ret = FAILURE;
         //For nvme, set the NVMe status as best we can, then fall through and set SCSI style sense data as well.
         //This switch case will handle many, if not all the same cases as SCSI below, but this seemed like the easier way to solve this problem for now. - TJE
@@ -13052,7 +13112,8 @@ eReturnValues os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8
     SetCommTimeouts(handleToUse, &comTimeout);
     device->os_info.last_error = GetLastError();
     //for use by the setFilePointerEx function
-    LARGE_INTEGER liDistanceToMove = { 0 }, lpNewFilePointer = { 0 };
+    LARGE_INTEGER liDistanceToMove = { 0 };
+    LARGE_INTEGER lpNewFilePointer = { 0 };
     //set the distance to move in bytes
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     //set the offset here
@@ -13177,7 +13238,8 @@ eReturnValues os_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint
     SetCommTimeouts(handleToUse, &comTimeout);
     device->os_info.last_error = GetLastError();
     //for use by the setFilePointerEx function
-    LARGE_INTEGER liDistanceToMove = { 0 }, lpNewFilePointer = { 0 };
+    LARGE_INTEGER liDistanceToMove = { 0 };
+    LARGE_INTEGER lpNewFilePointer = { 0 };
     //set the distance to move in bytes
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     //set the offset here

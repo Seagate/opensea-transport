@@ -2868,9 +2868,12 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 {
     eReturnValues returnValue = SUCCESS;
     int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
+    int driveNumber = 0;
+    int found = 0;
+    int failedGetDeviceCount = 0;
+    int permissionDeniedCount = 0;
     DECLARE_ZERO_INIT_ARRAY(char, name, 80); //Because get device needs char
-    int fd;
+    int fd = -1;
     tDevice * d = M_NULLPTR;
 
     int  num_devs = 0;

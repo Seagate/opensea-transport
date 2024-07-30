@@ -433,7 +433,10 @@ bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ata
         }
         if (!gotRTFRsFromSenseData && ioRet != OS_PASSTHROUGH_FAILURE)
         {
-            uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+            uint8_t senseKey = 0;
+            uint8_t asc = 0;
+            uint8_t ascq = 0;
+            uint8_t fru = 0;
             //check the sense data sense key, asc, ascq to dummy up the rtfrs
             get_Sense_Key_ASC_ASCQ_FRU(ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, &senseKey, &asc, &ascq, &fru);
             switch (senseKey)
@@ -1334,7 +1337,9 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
                 //if we have requestATASenseData set, then we will request sense, and set it into the device struct and check it's meaning to set the return status
                 if (requestATASenseData)
                 {
-                    uint8_t ataSenseKey = 0, ataAdditionalSenseCode = 0, ataAdditionalSenseCodeQualifier = 0;
+                    uint8_t ataSenseKey = 0;
+                    uint8_t ataAdditionalSenseCode = 0;
+                    uint8_t ataAdditionalSenseCodeQualifier = 0;
                     if (SUCCESS == ata_Request_Sense_Data(device, &ataSenseKey, &ataAdditionalSenseCode, &ataAdditionalSenseCodeQualifier))
                     {
                         device->drive_info.ataSenseData.validData = true;
@@ -1393,7 +1398,10 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
     }
     if (senseRet == NOT_SUPPORTED && ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA)
     {
-        uint8_t senseKey = 0, asc = 0, ascq = 0, fru = 0;
+        uint8_t senseKey = 0;
+        uint8_t asc = 0;
+        uint8_t ascq = 0;
+        uint8_t fru = 0;
         get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
         //Checking for illegal request, invalid field in CDB since this is what we've seen reported when UDMA commands are not supported.
         if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
@@ -1475,7 +1483,9 @@ static void set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseData
         if (descriptor)
         {
             //loop through descriptor copying each one to the sense data buffer
-            uint8_t senseDataOffset = 8, descriptorLength = 0, counter = 0;
+            uint8_t senseDataOffset = 8;
+            uint8_t descriptorLength = 0;
+            uint8_t counter = 0;
             uint32_t descriptorOffset = 0;
             while (counter < descriptorCount)
             {
@@ -1681,7 +1691,9 @@ static void set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseData
 static void set_Sense_Data_By_RTFRs(tDevice *device, ataReturnTFRs *rtfrs, uint8_t *sensePtr, uint32_t senseDataLength)
 {
     //first check if sense data reporting is supported
-    uint8_t senseKey = 0, asc = 0, ascq = 0;
+    uint8_t senseKey = 0;
+    uint8_t asc = 0;
+    uint8_t ascq = 0;
     bool returnSenseKeySpecificInfo = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, informationSenseDescriptor, 12);
 

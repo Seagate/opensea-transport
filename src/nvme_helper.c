@@ -548,7 +548,8 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
     printf("\tStatus & CID (DW3): ");
     if (cmdCtx->commandCompletionData.dw3Valid)
     {
-        bool dnr = false, more = false;
+        bool dnr = false;
+        bool more = false;
         uint8_t statusCodeType = 0;
         uint8_t statusCode = 0;
         printf("%" PRIX32 "h\n", cmdCtx->commandCompletionData.statusAndCID);

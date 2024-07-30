@@ -191,7 +191,8 @@ static bool create_OS_CISS_Handle_Name(const char *input, char *osHandle)
         {
             //check for linux cciss handle: /dev/cciss/c?d?
             //in this case, the input should only be c?d?
-            uint16_t controller = 0, device = 0;
+            uint16_t controller = 0;
+            uint16_t device = 0;
             //get handle values using strtoul
             if (input[0] == 'c')
             {
@@ -1874,7 +1875,8 @@ eReturnValues get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
         ptrRaidHandleToScan previousRaidListEntry = M_NULLPTR;
         int fd = -1;
         uint32_t numberOfDevices = sizeInBytes / sizeof(tDevice);
-        uint32_t found = 0, failedGetDeviceCount = 0;
+        uint32_t found = 0;
+        uint32_t failedGetDeviceCount = 0;
         DECLARE_ZERO_INIT_ARRAY(char, deviceName, CISS_HANDLE_MAX_LENGTH);
         while (raidList && found < numberOfDevices)
         {
