@@ -7877,7 +7877,8 @@ eReturnValues os_Bus_Reset(tDevice *device)
     //use the Windows API call - http://msdn.microsoft.com/en-us/library/windows/hardware/ff560600%28v=vs.85%29.aspx
     ULONG returned_data = 0;
     BOOL success = 0;
-    STORAGE_BUS_RESET_REQUEST reset = { 0 };
+    STORAGE_BUS_RESET_REQUEST reset;
+    memset(&reset, 0, sizeof(STORAGE_BUS_RESET_REQUEST));
     reset.PathId = device->os_info.scsi_addr.PathId;
     SetLastError(NO_ERROR);
     device->os_info.last_error = NO_ERROR;
@@ -13112,8 +13113,10 @@ eReturnValues os_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uint8
     SetCommTimeouts(handleToUse, &comTimeout);
     device->os_info.last_error = GetLastError();
     //for use by the setFilePointerEx function
-    LARGE_INTEGER liDistanceToMove = { 0 };
-    LARGE_INTEGER lpNewFilePointer = { 0 };
+    LARGE_INTEGER liDistanceToMove;
+    memset(&liDistanceToMove, 0, sizeof(LARGE_INTEGER));
+    LARGE_INTEGER lpNewFilePointer;
+    memset(&lpNewFilePointer, 0, sizeof(LARGE_INTEGER));
     //set the distance to move in bytes
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     //set the offset here
@@ -13238,8 +13241,10 @@ eReturnValues os_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint
     SetCommTimeouts(handleToUse, &comTimeout);
     device->os_info.last_error = GetLastError();
     //for use by the setFilePointerEx function
-    LARGE_INTEGER liDistanceToMove = { 0 };
-    LARGE_INTEGER lpNewFilePointer = { 0 };
+    LARGE_INTEGER liDistanceToMove;
+    memset(&liDistanceToMove, 0, sizeof(LARGE_INTEGER));
+    LARGE_INTEGER lpNewFilePointer;
+    memset(&lpNewFilePointer, 0, sizeof(LARGE_INTEGER));
     //set the distance to move in bytes
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     //set the offset here
