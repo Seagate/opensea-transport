@@ -2268,7 +2268,7 @@ bool is_Nytro_Drive(tDevice * device, bool USBchildDrive)
     }
 
     if (!USBchildDrive && !isNytroDrive)
-        return is_Firecuda_Drive(device, true);
+        return is_Nytro_Drive(device, true);
 
     return isNytroDrive;
 }
@@ -2291,7 +2291,7 @@ bool is_Exos_Drive(tDevice * device, bool USBchildDrive)
     }
 
     if (!USBchildDrive && !isExosDrive)
-        return is_Firecuda_Drive(device, true);
+        return is_Exos_Drive(device, true);
 
     return isExosDrive;
 }
@@ -2322,7 +2322,7 @@ bool is_Barracuda_Drive(tDevice * device, bool USBchildDrive)
     }
 
     if (!USBchildDrive && !isBarracudaDrive)
-        return is_Firecuda_Drive(device, true);
+        return is_Barracuda_Drive(device, true);
 
     return isBarracudaDrive;
 }
