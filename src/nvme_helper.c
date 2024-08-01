@@ -128,12 +128,12 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice *device)
 
         if (ret == SUCCESS)
         {
-            uint8_t flbas = M_GETBITRANGE(3, 0, nsData->flbas);
+            uint8_t flbas = M_GETBITRANGE(nsData->flbas, 3, 0);
             //get the LBAF number. THis field varies depending on other things reported by the drive in NVMe 2.0
             if (nsData->nlbaf > 16)
             {
                 //need to append 2 more bits to interpret this correctly since number of formats > 16
-                flbas |= M_GETBITRANGE(6, 5, nsData->flbas) << 4;
+                flbas |= M_GETBITRANGE(nsData->flbas, 6, 5) << 4;
             }
             *fillLogicalSectorSize = C_CAST(uint32_t, power_Of_Two(nsData->lbaf[flbas].lbaDS));
             *fillPhysicalSectorSize = *fillLogicalSectorSize; //True for NVMe?
