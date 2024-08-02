@@ -20,6 +20,7 @@
 #include "code_attributes.h"
 #include "math_utils.h"
 #include "error_translation.h"
+#include "sleep.h"
 
 #include "uefi_helper.h"
 #include "cmds.h"
