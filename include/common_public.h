@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -14,7 +15,10 @@
 
 #pragma once
 
-#include "common.h"
+#include "code_attributes.h"
+#include "common_types.h"
+#include "bit_manip.h"
+
 #include "version.h"
 #if defined (VMK_CROSS_COMP)
 #include "vm_nvme_lib.h"
@@ -28,6 +32,11 @@
 //Not including this here even though I thought I might need to because it causes compilation errors all over...not really sure why, but this worked...-TJE
 //#include <camlib.h> //for cam structure held in tDevice
 #endif
+
+#if defined (_WIN32) && !defined(_NTDDSCSIH_)
+#include <ntddscsi.h>
+#endif//_WIN32 & !_NTDDSCSIH_
+
 
 #include "csmi_helper.h" //because the device structure holds some csmi support structure for when we can issue csmi passthrough commands.
 #include "ciss_helper.h" //because this holds a structure to help with issuing CCISS commands
@@ -43,28 +52,25 @@ extern "C"
         #undef(OPENSEA_TRANSPORT_API)
     #endif
 
-    #if defined(_WIN32) //DLL/LIB....be VERY careful making modifications to this unless you know what you are doing!
-        #if defined (EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
-            #error "The preprocessor definitions EXPORT_OPENSEA_TRANSPORT and STATIC_OPENSEA_TRANSPORT cannot be combined!"
-        #elif defined(STATIC_OPENSEA_TRANSPORT)
-            #if defined (_DEBUG)
-            #pragma message("Compiling opensea-transport as a static library!")
-            #endif
-            #define OPENSEA_TRANSPORT_API
-        #elif defined(EXPORT_OPENSEA_TRANSPORT)
-            #if defined (_DEBUG)
-            #pragma message("Compiling opensea-transport as exporting DLL!")
-            #endif
-            #define OPENSEA_TRANSPORT_API __declspec(dllexport)
-        #elif defined(IMPORT_OPENSEA_TRANSPORT)
-            #if defined (_DEBUG)
-            #pragma message("Compiling opensea-transport as importing DLL!")
-            #endif
-            #define OPENSEA_TRANSPORT_API __declspec(dllimport)
-        #else
-            #error "You must specify STATIC_OPENSEA_TRANSPORT or EXPORT_OPENSEA_TRANSPORT or IMPORT_OPENSEA_TRANSPORT in the preprocessor definitions!"
+    #if defined (EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
+        #error "The preprocessor definitions EXPORT_OPENSEA_TRANSPORT and STATIC_OPENSEA_TRANSPORT cannot be combined!"
+    #elif defined(EXPORT_OPENSEA_TRANSPORT)
+        #if defined (_DEBUG) && !defined (OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT)
+        #pragma message("Compiling opensea-transport as exporting DLL!")
+        #define OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT
         #endif
-    #else //SO/A....as far as I know, nothing needs to be done here
+        #define OPENSEA_TRANSPORT_API DLL_EXPORT
+    #elif defined(IMPORT_OPENSEA_TRANSPORT)
+        #if defined (_DEBUG) && !defined (OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT)
+        #pragma message("Compiling opensea-transport as importing DLL!")
+        #define OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT
+        #endif
+        #define OPENSEA_TRANSPORT_API DLL_IMPORT
+    #else
+        #if defined (_DEBUG) && !defined (OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT)
+        #pragma message("Compiling opensea-transport as a static library!")
+        #define OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT
+        #endif
         #define OPENSEA_TRANSPORT_API
     #endif
 
@@ -667,7 +673,7 @@ extern "C"
         bool specifierIDValid;
         eAdapterInfoType infoType;
         //USB and PCI devices use uint16's for vendor product and revision. IEEE1394 uses uint32's since most of these are 24bit numbers
-        //TODO: Annonymous union for different types??? USB  vs PCI vs IEEE1394???
+        //Would an annonymous union for different types be easier??? USB  vs PCI vs IEEE1394???
         uint32_t vendorID;
         uint32_t productID;
         uint32_t revision;
@@ -715,7 +721,7 @@ extern "C"
         NVME_PASSTHROUGH_JMICRON = 100,
         NVME_PASSTHROUGH_ASMEDIA = 101,//ASMedia packet command, which is capable of passing any command
         NVME_PASSTHROUGH_ASMEDIA_BASIC = 102,//ASMedia command that is capable of only select commands. Must be after full passthrough that way when trying one passthrough after another it can properly find full capabilities before basic capabilities.
-        //TODO: Other vendor unique SCSI to NVMe passthrough here
+        //Add other vendor unique SCSI to NVMe passthrough here
         NVME_PASSTHROUGH_UNKNOWN,
         //No passthrough
         PASSTHROUGH_NONE = INT32_MAX
@@ -924,7 +930,7 @@ extern "C"
             NCHK - do not use check condition bit at all
             CHKE - accepts the check condition bit, but returns empty data
             ATANVEMU - ata/nvme emulation (likely only realtek's chip right now). If this is set, the NVMe emulation will set basically only MN, SN, FWrev. DMA not supported, etc. Basically need to treat this as SCSI except for reading this data at this time.-TJE
-            //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
+            //Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
             */
             bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
             //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
@@ -986,13 +992,12 @@ extern "C"
                 bool sanitizeCrypto;//Sanitize crypto erase is supported
                 bool sanitizeBlock;//Sanitize block erase is supported
                 bool sanitizeOverwrite;//Sanitize overwrite erase is supported
-                //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
+                //As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
             }limitedCommandsSupported;
             //uint8_t reserved[1];//padd out above bools to 8 byte boundaries
             uint32_t maxTransferLength;
             uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
         }nvmePTHacks;
-        //TODO: Add more hacks and padd this structure
     }passthroughHacks;
 
     typedef struct _driveInfo {
@@ -1038,7 +1043,6 @@ extern "C"
             uint32_t lastNVMeCommandSpecific;//DW0 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
             uint32_t lastNVMeStatus;//DW3 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
         }lastNVMeResult;
-        //TODO: a union or something so that we don't need to keep adding more bytes for drive types that won't use the ATA stuff or NVMe stuff in this struct.
         bridgeInfo      bridge_info;
         adapterInfo     adapter_info;
         driverInfo		driver_info;
@@ -1074,7 +1078,8 @@ extern "C"
 #endif
 
 #if defined (_WIN32) && !defined(UEFI_C_SOURCE)
-    //TODO: see if we can move these WIndows specific enums out to the windows unique files.
+    //These are here instead of a Windows unique file due to messy includes.
+    //We should be able to find a better way to handle this kind of OS unique stuff in the future.
     typedef enum _eWindowsIOCTLType
     {
         WIN_IOCTL_NOT_SET = 0,//this should only be like this when allocating memory...
@@ -1218,7 +1223,7 @@ extern "C"
         SCSI_ADDRESS        scsi_addr;
         uint32_t            os_drive_number;
         int                 srbtype; //this will be used to filter when a controller supports the new SCSI PassThrough EX IOCTLs
-        int                 alignmentMask;//save the alignment mask. This may be needed on some controllers....not currently used but SHOULD be added later for the SCSI IOCTL DIRECT EX
+        unsigned long       alignmentMask;//save the alignment mask. This may be needed on some controllers....not currently used but SHOULD be added later for the SCSI IOCTL DIRECT EX
         eWindowsIOCTLType   ioType;//This will be set during get_Device so we know how to talk to the drive (Mostly for ATA). Only change this if you know what you're doing.
         eWindowsIOCTLMethod ioMethod;//Use this to force using DIRECT or Double Buffered IOCTLs for each command. By default the library will decide...typically 16KiB or less will use double buffered for compatibility purposes. This is ignored for IDE and SMART IOCTLs since they are only double buffered.
         struct {
@@ -1233,7 +1238,7 @@ extern "C"
             bool allowFlexibleUseOfAPI;//Set this to true to allow using the Win10 API for FWDL for any compatible download commands. If this is false, the Win10 API will only be used on IDE_INTERFACE for an ATA download command and SCSI interface for a supported Write buffer command. If true, it will be used regardless of which command the caller is using. This is useful for pure FW updates versus testing a specific condition.
             uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
             uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
-            //TODO: expand this struct if we need other data when we check for firmware download support on a device.
+            //expand this struct if we need other data when we check for firmware download support on a device.
         }fwdlIOsupport;
         uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
         bool openFabricsNVMePassthroughSupported;//If true, then nvme commands can be issued using the open fabrics NVMe passthrough IOCTL
@@ -1289,25 +1294,22 @@ extern "C"
         uint8_t padd[6];//padd to multiple of 8 bytes
     }OSDriveInfo;
 
-    typedef enum _eDiscoveryOptions
-    {
-        DEFAULT_DISCOVERY,
-        FAST_SCAN, //Gets the basic information for a quick scan like SeaChest displays on the command line.
-        DO_NOT_WAKE_DRIVE, //e.g OK to send commands that do NOT access media
-        NO_DRIVE_CMD,
-        OPEN_HANDLE_ONLY,
-        BUS_RESCAN_ALLOWED = BIT15,//this may wake the drive!
+    #define DEFAULT_DISCOVERY 0
+    #define FAST_SCAN 1 //Gets the basic information for a quick scan like SeaChest displays on the command line.
+    #define DO_NOT_WAKE_DRIVE 2 //e.g OK to send commands that do NOT access media
+    #define NO_DRIVE_CMD 3
+    #define OPEN_HANDLE_ONLY 4
+    #define BUS_RESCAN_ALLOWED BIT15 //this may wake the drive!
         //Flags below are bitfields...so multiple can be set. Flags above should be checked by only checking the first word of this enum.
-        FORCE_ATA_PIO_ONLY = BIT16, //troubleshooting option to only send PIO versions of commands (used in get_Device/fill_Drive_Info).
-        FORCE_ATA_DMA_SAT_MODE = BIT17, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
-        FORCE_ATA_UDMA_SAT_MODE = BIT18, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
-        GET_DEVICE_FUNCS_IGNORE_CSMI = BIT19, //use this bit in get_Device_Count and get_Device_List to ignore CSMI devices.
-        GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES = BIT20, //matches v2
-        GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE = BIT21, //matches v3
-        GET_DEVICE_FUNCS_VERBOSE_BUFFERS = BIT22, //matches v4
-    } eDiscoveryOptions;
+    #define FORCE_ATA_PIO_ONLY BIT16 //troubleshooting option to only send PIO versions of commands (used in get_Device/fill_Drive_Info).
+    #define FORCE_ATA_DMA_SAT_MODE BIT17 //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
+    #define FORCE_ATA_UDMA_SAT_MODE BIT18 //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
+    #define GET_DEVICE_FUNCS_IGNORE_CSMI BIT19 //use this bit in get_Device_Count and get_Device_List to ignore CSMI devices.
+    #define GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES BIT20 //matches v2
+    #define GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE BIT21 //matches v3
+    #define GET_DEVICE_FUNCS_VERBOSE_BUFFERS BIT22 //matches v4
 
-    typedef int (*issue_io_func)( void * );
+    typedef eReturnValues (*issue_io_func)( void * );
 
     #define DEVICE_BLOCK_VERSION    (9)
 
@@ -1327,7 +1329,7 @@ extern "C"
         void                *raid_device;
         issue_io_func       issue_io;//scsi IO function pointer for raid or other driver/custom interface to send commands
         issue_io_func       issue_nvme_io;//nvme IO function pointer for raid or other driver/custom interface to send commands
-        eDiscoveryOptions   dFlags;
+        uint64_t            dFlags;
         eVerbosityLevels    deviceVerbosity;
         uint32_t            delay_io;
     }tDevice;
@@ -1592,7 +1594,7 @@ extern "C"
     #elif defined (__sun)
         #define MAX_CMD_TIMEOUT_SECONDS 65535
     #elif defined (_AIX)
-        #define MAX_CMD_TIMEOUT_SECONDS (UINT32_MAX - 1) //TODO: This may not be correct but the field that sets this is a uint32. Setting to 1 less than infinite's current value -TJE
+        #define MAX_CMD_TIMEOUT_SECONDS (UINT32_MAX - 1) //NOTE: This may not be correct but the field that sets this is a uint32. Setting to 1 less than infinite's current value -TJE
     #else
         #error "Need to set MAX_CMD_TIMEOUT_SECONDS for this OS"
     #endif
@@ -1611,7 +1613,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Opensea_Transport_Version(apiVersionInfo *ver);
+    OPENSEA_TRANSPORT_API eReturnValues get_Opensea_Transport_Version(apiVersionInfo *ver);
 
     //-----------------------------------------------------------------------------
     //
@@ -1626,7 +1628,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Version_Block(versionBlock * ver);
+    OPENSEA_TRANSPORT_API eReturnValues get_Version_Block(versionBlock * ver);
 
     OPENSEA_TRANSPORT_API bool validate_Device_Struct(versionBlock sanity);
 
@@ -1646,7 +1648,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Device(const char *filename, tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues get_Device(const char *filename, tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1665,7 +1667,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
+    OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
 
     //-----------------------------------------------------------------------------
     //
@@ -1691,8 +1693,7 @@ extern "C"
     //!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated. Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
-
+    OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
 
     //-----------------------------------------------------------------------------
     //
@@ -1707,7 +1708,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int close_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1719,13 +1720,12 @@ extern "C"
     //
     //  Entry:
     //!   \param[in] flags = Flags for future use to control the scan
-    //!   \param[in] outputInfo = pointer to an outputInfo struct to control how to output the scan information. If this is NULL, standard screen output is assumed
     //!   \param[in] scanVerbosity = the verbosity to run the scan at
     //!
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityLevels scanVerbosity);
+    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity);
 
     //-----------------------------------------------------------------------------
     //
@@ -1739,10 +1739,10 @@ extern "C"
     //!   \param[in] bufSize = amount of data to be written
     //!
     //  Exit:
-    //!   \return SUCCESS on successful completion, !SUCCESS if problems encountered
+    //!   \return size_t bytes read
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int load_Bin_Buf(char *filename, void *myBuf, size_t bufSize);
+    OPENSEA_TRANSPORT_API size_t load_Bin_Buf(char *filename, void *myBuf, size_t bufSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2130,7 +2130,7 @@ extern "C"
     //!   \return int SUCCESS if passes !SUCCESS if fails for some reason.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize);
+    OPENSEA_TRANSPORT_API eReturnValues calculate_Checksum(uint8_t *pBuf, uint32_t blockSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2210,9 +2210,9 @@ extern "C"
         uint8_t raid;
     }removeDuplicateDriveType;
 
-    OPENSEA_TRANSPORT_API int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
+    OPENSEA_TRANSPORT_API eReturnValues remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
 
-    OPENSEA_TRANSPORT_API int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
+    OPENSEA_TRANSPORT_API eReturnValues remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
 
     OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
     OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice *device);

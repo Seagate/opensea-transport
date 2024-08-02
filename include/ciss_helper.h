@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -16,7 +17,7 @@
 
 #if defined (ENABLE_CISS)
 
-#include "common.h"
+#include "common_types.h"
 #include <stdint.h>
 
 #if defined (__cplusplus)

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -18,7 +19,7 @@
 
 #pragma once
 
-#include "common.h"
+#include "common_types.h"
 #include "common_public.h"
 #include "ata_helper.h"
 
@@ -57,7 +58,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions);
+    eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions);
     
     //-----------------------------------------------------------------------------
     //
@@ -74,7 +75,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet);
+    eReturnValues get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -90,7 +91,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
+    eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
 
 #if defined (__cplusplus)
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -17,8 +18,6 @@
 #include "scsi_helper.h"
 #include "nvme_helper.h"
 
-//TODO: UEFI includes
-
 #if defined (__cplusplus)
 extern "C"
 {
@@ -28,7 +27,7 @@ extern "C"
     // \brief Function to send a ioctl after converting it from the ScsiIoCtx to OS tSPTIoContext
     // \param ScsiIoCtx
     // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    int send_IO(ScsiIoCtx *scsiIoCtx);
+    eReturnValues send_IO(ScsiIoCtx *scsiIoCtx);
 
     //This is the maximum timeout a command can use in UEFI...which is nearly infinite to begin with
     //NOTE: UEFI also supports an infinite timeout, but that is checked in a separate function
@@ -55,7 +54,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize);
+    eReturnValues pci_Read_Bar_Reg(tDevice * device, uint8_t * pData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -70,7 +69,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
+    eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx);
 
 
     //-----------------------------------------------------------------------------
@@ -87,18 +86,18 @@ extern "C"
     //-----------------------------------------------------------------------------
 	long getpagesize(void);
 
-    OPENSEA_TRANSPORT_API int os_nvme_Reset(tDevice *device);
-    OPENSEA_TRANSPORT_API int os_nvme_Subsystem_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_nvme_Reset(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_nvme_Subsystem_Reset(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int os_Lock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Lock_Device(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int os_Unlock_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Unlock_Device(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int os_Update_File_System_Cache(tDevice* device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Update_File_System_Cache(tDevice* device);
 
-    OPENSEA_TRANSPORT_API int os_Unmount_File_Systems_On_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device);
 
-    OPENSEA_TRANSPORT_API int os_Erase_Boot_Sectors(tDevice* device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Erase_Boot_Sectors(tDevice* device);
 
 #if defined (__cplusplus)
 }

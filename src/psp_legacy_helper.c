@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -11,16 +12,26 @@
 // 
 // \file psp_legacy_helper.c   Implementation for PSP Legacy USB Pass-through CDBs
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "psp_legacy_helper.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 
-int enable_Disable_ATA_Passthrough(tDevice *device, bool enable)
+eReturnValues enable_Disable_ATA_Passthrough(tDevice *device, bool enable)
 {
-    int ret = SUCCESS;
-    uint8_t cdb[CDB_LEN_12] = { 0 };
-    uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
+    eReturnValues ret = SUCCESS;
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     cdb[OPERATION_CODE] = PSP_OPCODE;
     if (enable)
     {
@@ -42,13 +53,13 @@ int enable_Disable_ATA_Passthrough(tDevice *device, bool enable)
     {
         cdb[1] |= PSP_FUNC_DISABLE_ATA_PASSTHROUGH;
     }
-    ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, NULL, 0, XFER_NO_DATA, senseData, SPC3_SENSE_LEN, 0);
+    ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA, senseData, SPC3_SENSE_LEN, 0);
     return ret;
 }
 
-int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *ataCommandOptions)
+eReturnValues build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         *cdbLen = PSP_EXT_COMMAND_CDB_LEN;
@@ -119,16 +130,16 @@ int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *a
     return ret;
 }
 
-int get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet)
+eReturnValues get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet)
 {
-    int ret = SUCCESS;
-    if(commandRet == OS_PASSTHROUGH_FAILURE)
+    eReturnValues ret = SUCCESS;
+    if (commandRet == OS_PASSTHROUGH_FAILURE)
     {
         return commandRet;
     }
-    uint8_t cdb[CDB_LEN_16] = { 0 };
-    uint8_t returnData[14] = { 0 };
-    uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 14);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     cdb[OPERATION_CODE] = PSP_OPCODE;
     cdb[1] |= PSP_FUNC_RETURN_TASK_FILE_REGISTERS;
     //Set the device register in offset 7 for selecting device 0 vs device 1...we won't do that at this time - TJE
@@ -155,16 +166,16 @@ int get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommand
     return ret;
 }
 
-int send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
+eReturnValues send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     uint8_t cdbLen = PSP_EXT_COMMAND_CDB_LEN;
-    uint8_t pspCDB[PSP_EXT_COMMAND_CDB_LEN] = { 0 };
-    uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, pspCDB, PSP_EXT_COMMAND_CDB_LEN);
+    uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -215,10 +226,10 @@ int send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);//clear before copying over data
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free_aligned(senseData)
+    safe_Free_aligned(C_CAST(void**, &senseData));
     if (localSenseData)
     {
-        ataCommandOptions->ptrSenseData = NULL;
+        ataCommandOptions->ptrSenseData = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)

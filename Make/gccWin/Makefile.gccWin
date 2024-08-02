@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 #
 # Do NOT modify or remove this copyright and license
 #
@@ -135,7 +136,7 @@ $(LIBS): $(LIB_OBJ_FILES) opensea-libs
 	$(AR) cq $(FILE_OUTPUT_DIR)/$@ $(LIB_OBJ_FILES)
 
 	$(CC) -shared $(LIB_OBJ_FILES) $(LDFLAGS) $(LDLIBS) -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION)
-#	cd $(FILE_OUTPUT_DIR) && ln -s lib$(NAME).so* lib$(NAME).so
+	cd $(FILE_OUTPUT_DIR) && ln -s lib$(NAME).so* lib$(NAME).so
 
 clean:
 	rm -f $(FILE_OUTPUT_DIR)/lib$(NAME).a $(FILE_OUTPUT_DIR)/lib$(NAME).so* *.o $(SRC_DIR)*.o

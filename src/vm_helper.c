@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -9,6 +10,17 @@
 //
 // ******************************************************************************************
 // 
+
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include <stdio.h>
 #include <dirent.h>
 #include <ctype.h>
@@ -29,9 +41,6 @@
 #include "nvme_helper_func.h"
 #include "sntl_helper.h"
 
-#if defined(DEGUG_SCAN_TIME)
-#include "common_platform.h"
-#endif
 
     //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
 bool os_Is_Infinite_Timeout_Supported(void)
@@ -43,12 +52,12 @@ extern bool validate_Device_Struct(versionBlock);
 
 // Local helper functions for debugging
 #if defined (_DEBUG)
-static void print_io_hdr( sg_io_hdr_t *pIo )
+static void print_io_hdr(sg_io_hdr_t *pIo)
 {
     time_t time_now;
-    char timeFormat[TIME_STRING_LENGTH];
+    DECLARE_ZERO_INIT_ARRAY(char, timeFormat, TIME_STRING_LENGTH);
     memset(timeFormat, 0, TIME_STRING_LENGTH);//clear this again before reusing it
-    time_now = time(NULL);
+    time_now = time(M_NULLPTR);
     printf("\n%s: %s---------------------------------\n", __FUNCTION__, get_Current_Time_String(&time_now, timeFormat, TIME_STRING_LENGTH));
     printf("type int interface_id %d\n", pIo->interface_id);           /* [i] 'S' (required) */
     printf("type int  dxfer_direction %d\n", pIo->dxfer_direction);        /* [i] */
@@ -76,16 +85,16 @@ static void print_io_hdr( sg_io_hdr_t *pIo )
 }
 #endif //_DEBUG
 
-static int sg_filter( const struct dirent *entry )
+static int sg_filter(const struct dirent *entry)
 {
     return !strncmp("sg", entry->d_name, 2);
 }
 
-static int drive_filter( const struct dirent *entry )
+static int drive_filter(const struct dirent *entry)
 {
     int driveHandle = strncmp("t10", entry->d_name, 3);
 
-    if(driveHandle != 0) 
+    if (driveHandle != 0)
     {
         /**
          * Its not a SATA or NVMe. 
@@ -94,7 +103,7 @@ static int drive_filter( const struct dirent *entry )
 
         driveHandle = strncmp("naa.", entry->d_name, 4);
 
-        if(driveHandle != 0) 
+        if (driveHandle != 0)
         {
             return !driveHandle;
         }
@@ -102,13 +111,13 @@ static int drive_filter( const struct dirent *entry )
 
     driveHandle = strncmp("t10.NVMe", entry->d_name, 8);
 
-    if(driveHandle == 0) 
+    if (driveHandle == 0)
     {
         return driveHandle;
     }
 
-    char* partition = strpbrk(entry->d_name,":");
-    if(partition != NULL)
+    char* partition = strpbrk(entry->d_name, ":");
+    if (partition != M_NULLPTR)
     {
         return !driveHandle;
     }
@@ -120,15 +129,15 @@ static int drive_filter( const struct dirent *entry )
 }
 
 //get sd devices, but ignore any partition number information since that isn't something we can actually send commands to
-static int sd_filter( const struct dirent *entry )
+static int sd_filter(const struct dirent *entry)
 {
-    int sdHandle = strncmp("sd",entry->d_name,2);
-    if(sdHandle != 0)
+    int sdHandle = strncmp("sd", entry->d_name, 2);
+    if (sdHandle != 0)
     {
-      return !sdHandle;
+        return !sdHandle;
     }
-    char* partition = strpbrk(entry->d_name,"0123456789");
-    if(partition != NULL)
+    char* partition = strpbrk(entry->d_name, "0123456789");
+    if (partition != M_NULLPTR)
     {
         return sdHandle;
     }
@@ -146,7 +155,7 @@ static int sd_filter( const struct dirent *entry )
 //    //kernel version 2.6 and higher is required to map the handles between sg and sd/sr/st/scd
 //    OSVersionNumber linuxVersion;
 //    memset(&linuxVersion, 0, sizeof(OSVersionNumber));
-//    if(SUCCESS == get_Operating_System_Version_And_Name(&linuxVersion, NULL))
+//    if(SUCCESS == get_Operating_System_Version_And_Name(&linuxVersion, M_NULLPTR))
 //    {
 //        if (linuxVersion.versionType.linuxVersion.kernelVersion >= 2 && linuxVersion.versionType.linuxVersion.majorVersion >= 6)
 //        {
@@ -159,9 +168,9 @@ static int sd_filter( const struct dirent *entry )
 static bool is_Block_Device_Handle(const char *handle)
 {
     bool isBlockDevice = false;
-    if (handle && strlen(handle))
+    if (handle && safe_strlen(handle))
     {
-        if(strstr(handle,"sd") || strstr(handle, "st") || strstr(handle, "sr") || strstr(handle, "scd"))
+        if (strstr(handle, "sd") || strstr(handle, "st") || strstr(handle, "sr") || strstr(handle, "scd"))
         {
             isBlockDevice = true;
         }
@@ -172,9 +181,9 @@ static bool is_Block_Device_Handle(const char *handle)
 static bool is_SCSI_Generic_Handle(const char *handle)
 {
     bool isGenericDevice = false;
-    if (handle && strlen(handle))
+    if (handle && safe_strlen(handle))
     {
-        if(strstr(handle,"sg") && !strstr(handle, "bsg"))
+        if (strstr(handle, "sg") && !strstr(handle, "bsg"))
         {
             isGenericDevice = true;
         }
@@ -185,9 +194,9 @@ static bool is_SCSI_Generic_Handle(const char *handle)
 static bool is_Block_SCSI_Generic_Handle(const char *handle)
 {
     bool isBlockGenericDevice = false;
-    if (handle && strlen(handle))
+    if (handle && safe_strlen(handle))
     {
-        if(strstr(handle,"bsg"))
+        if (strstr(handle, "bsg"))
         {
             isBlockGenericDevice = true;
         }
@@ -202,10 +211,10 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
     //check if it's a block handle, bsg, or scsi_generic handle, then setup the path we need to read.
     if (handle && device)
     {
-        if (strstr(handle,"nvme") != NULL)
+        if (strstr(handle, "nvme") != M_NULLPTR)
         {
-            size_t nvmHandleLen = strlen(handle) + 1;
-            char *nvmHandle = C_CAST(char*, calloc(nvmHandleLen, sizeof(char)));
+            size_t nvmHandleLen = safe_strlen(handle) + 1;
+            char *nvmHandle = C_CAST(char*, safe_calloc(nvmHandleLen, sizeof(char)));
             snprintf(nvmHandle, nvmHandleLen, "%s", handle);
             device->drive_info.interface_type = NVME_INTERFACE;
             device->drive_info.drive_type = NVME_DRIVE;
@@ -216,8 +225,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
         {
             bool incomingBlock = false;//only set for SD!
             bool bsg = false;
-            char incomingHandleClassPath[PATH_MAX] = { 0 };
-            //char *incomingClassName = NULL;
+            DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
+            //char *incomingClassName = M_NULLPTR;
             common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
             if (is_Block_Device_Handle(handle))
             {
@@ -253,9 +262,9 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                 memset(&link, 0, sizeof(struct stat));
                 common_String_Concat(incomingHandleClassPath, PATH_MAX, basename(C_CAST(char*, handle)));
                 //now read the link with the handle appended on the end
-                if (lstat(incomingHandleClassPath,&link) == 0 && S_ISLNK(link.st_mode))
+                if (lstat(incomingHandleClassPath, &link) == 0 && S_ISLNK(link.st_mode))
                 {
-                    char inHandleLink[PATH_MAX] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(char, inHandleLink, PATH_MAX);
                     if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
                     {
                         //Read the link and set up all the fields we want to setup.
@@ -265,14 +274,14 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                         //example sas device link: ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_generic/sg3
                         //example firewire device link: ../../devices/pci0000:00/0000:00:1c.5/0000:04:00.0/0000:05:09.0/0000:0b:00.0/0000:0c:02.0/fw1/fw1.0/host13/target13:0:0/13:0:0:0/scsi_generic/sg3
                         //example sata over sas device link: ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:1/end_device-0:1/target0:0:1/0:0:1:0/scsi_generic/sg5
-                        if (strstr(inHandleLink,"ata") != 0)
+                        if (strstr(inHandleLink, "ata") != 0)
                         {
-                            #if defined (_DEBUG)
+#if defined (_DEBUG)
                             printf("ATA interface!\n");
-                            #endif
+#endif
                             device->drive_info.interface_type = IDE_INTERFACE;
                             //get vendor and product IDs of the controller attached to this device.
-                            char fullPciPath[PATH_MAX] = { 0 };
+                            DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
                             snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
@@ -280,38 +289,38 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             fullPciPath[2] = 'y';
                             fullPciPath[3] = 's';
                             fullPciPath[4] = '/';
-                            memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+                            safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
 
                             uint64_t newStrLen = strstr(fullPciPath, "/ata") - fullPciPath + 1;
-                            char *pciPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+                            char *pciPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
                             if (pciPath)
                             {
                                 snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen - 1), fullPciPath);
                                 //printf("shortened Path = %s\n", dirname(pciPath));
-                                FILE *temp = NULL;
+                                FILE *temp = M_NULLPTR;
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "0x%" SCNx32, &device->drive_info.adapter_info.vendorID))
+                                    if (1 == fscanf(temp, "0x%" SCNx32, &device->drive_info.adapter_info.vendorID))
                                     {
                                         device->drive_info.adapter_info.vendorIDValid = true;
                                         //printf("Got vendor as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
                                     }
                                     fclose(temp);
-                                    temp = NULL;
+                                    temp = M_NULLPTR;
                                 }
                                 pciPath = dirname(pciPath);//remove vendor from the end
                                 common_String_Concat(pciPath, PATH_MAX, "/device");
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "0x%" SCNx32, &device->drive_info.adapter_info.productID))
+                                    if (1 == fscanf(temp, "0x%" SCNx32, &device->drive_info.adapter_info.productID))
                                     {
                                         device->drive_info.adapter_info.productIDValid = true;
                                         //printf("Got product as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
                                     }
                                     fclose(temp);
-                                    temp = NULL;
+                                    temp = M_NULLPTR;
                                 }
                                 //Store revision data. This seems to be in the bcdDevice file.
                                 pciPath = dirname(pciPath);//remove device from the end
@@ -327,20 +336,20 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                         //printf("Got revision as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
                                     }
                                     fclose(temp);
-                                    temp = NULL;
+                                    temp = M_NULLPTR;
                                 }
-                                safe_Free(pciPath)
+                                safe_Free(C_CAST(void**, &pciPath));
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
                             }
                         }
-                        else if (strstr(inHandleLink,"usb") != 0)
+                        else if (strstr(inHandleLink, "usb") != 0)
                         {
-                            #if defined (_DEBUG)
+#if defined (_DEBUG)
                             printf("USB interface!\n");
-                            #endif
+#endif
                             device->drive_info.interface_type = USB_INTERFACE;
                             //set the USB VID and PID. NOTE: There may be a better way to do this, but this seems to work for now.
-                            char fullPciPath[PATH_MAX] = { 0 };
+                            DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
                             snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
@@ -348,10 +357,10 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             fullPciPath[2] = 'y';
                             fullPciPath[3] = 's';
                             fullPciPath[4] = '/';
-                            memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+                            safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
 
                             uint64_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath + 1;
-                            char *usbPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+                            char *usbPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
                             if (usbPath)
                             {
                                 snprintf(usbPath, PATH_MAX, "%.*s", C_CAST(int, newStrLen - 1), fullPciPath);
@@ -360,17 +369,17 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 //now that the path is correct, we need to read the files idVendor and idProduct
                                 common_String_Concat(usbPath, PATH_MAX, "/idVendor");
                                 //printf("idVendor USB Path = %s\n", usbPath);
-                                FILE *temp = NULL;
+                                FILE *temp = M_NULLPTR;
                                 temp = fopen(usbPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "%" SCNx32, &device->drive_info.adapter_info.vendorID))
+                                    if (1 == fscanf(temp, "%" SCNx32, &device->drive_info.adapter_info.vendorID))
                                     {
                                         device->drive_info.adapter_info.vendorIDValid = true;
                                         //printf("Got vendor ID as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
                                     }
                                     fclose(temp);
-                                    temp = NULL;
+                                    temp = M_NULLPTR;
                                 }
                                 usbPath = dirname(usbPath);//remove idVendor from the end
                                 //printf("full USB Path = %s\n", usbPath);
@@ -379,13 +388,13 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 temp = fopen(usbPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "%" SCNx32, &device->drive_info.adapter_info.productID))
+                                    if (1 == fscanf(temp, "%" SCNx32, &device->drive_info.adapter_info.productID))
                                     {
                                         device->drive_info.adapter_info.productIDValid = true;
                                         //printf("Got product ID as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
                                     }
                                     fclose(temp);
-                                    temp = NULL;
+                                    temp = M_NULLPTR;
                                 }
                                 //Store revision data. This seems to be in the bcdDevice file.
                                 usbPath = dirname(usbPath);//remove idProduct from the end
@@ -393,26 +402,25 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 temp = fopen(usbPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "%" SCNx32, &device->drive_info.adapter_info.revision))
+                                    if (1 == fscanf(temp, "%" SCNx32, &device->drive_info.adapter_info.revision))
                                     {
                                         device->drive_info.adapter_info.revisionValid = true;
                                         //printf("Got revision as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
                                     }
                                     fclose(temp);
-                                    temp = NULL;
+                                    temp = M_NULLPTR;
                                 }
-                                safe_Free(usbPath)
+                                safe_Free(C_CAST(void**, &usbPath));
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_USB;
                             }
                         }
-                        else if (strstr(inHandleLink,"fw") != 0)
+                        else if (strstr(inHandleLink, "fw") != 0)
                         {
-                            #if defined (_DEBUG)
+#if defined (_DEBUG)
                             printf("FireWire interface!\n");
-                            #endif
+#endif
                             device->drive_info.interface_type = IEEE_1394_INTERFACE;
-                            //TODO: investigate some way of saving vendor/product like information for firewire.
-                            char fullFWPath[PATH_MAX] = { 0 };
+                            DECLARE_ZERO_INIT_ARRAY(char, fullFWPath, PATH_MAX);
                             snprintf(fullFWPath, PATH_MAX, "%s", inHandleLink);
 
                             fullFWPath[0] = '/';
@@ -420,17 +428,17 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             fullFWPath[2] = 'y';
                             fullFWPath[3] = 's';
                             fullFWPath[4] = '/';
-                            memmove(&fullFWPath[5], &fullFWPath[6], strlen(fullFWPath));
+                            safe_memmove(&fullFWPath[5], PATH_MAX - 5, &fullFWPath[6], safe_strlen(fullFWPath));
 
                             //now we need to go up a few directories to get the modalias file to parse
                             uint64_t newStrLen = strstr(fullFWPath, "/host") - fullFWPath + 1;
-                            char *fwPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+                            char *fwPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
                             if (fwPath)
                             {
                                 snprintf(fwPath, PATH_MAX, "%.*s/modalias", C_CAST(int, newStrLen - 1), fullFWPath);
                                 //printf("full FW Path = %s\n", dirname(fwPath));
                                 //printf("modalias FW Path = %s\n", fwPath);
-                                FILE *temp = NULL;
+                                FILE *temp = M_NULLPTR;
                                 temp = fopen(fwPath, "r");
                                 if (temp)
                                 {
@@ -447,23 +455,23 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                         //printf("Got revision ID as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
                                     }
                                     fclose(temp);
-                                    temp = NULL;
+                                    temp = M_NULLPTR;
                                 }
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
-                                safe_Free(fwPath)
+                                safe_Free(C_CAST(void**, &fwPath));
                             }
 
                         }
                         //if the link doesn't conatin ata or usb in it, then we are assuming it's scsi since scsi doesn't have a nice simple string to check
                         else
                         {
-                            #if defined (_DEBUG)
+#if defined (_DEBUG)
                             printf("SCSI interface!\n");
-                            #endif
+#endif
                             device->drive_info.interface_type = SCSI_INTERFACE;
                             //get vendor and product IDs of the controller attached to this device.
 
-                            char fullPciPath[PATH_MAX] = { 0 };
+                            DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
                             snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
                             fullPciPath[0] = '/';
@@ -471,7 +479,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             fullPciPath[2] = 'y';
                             fullPciPath[3] = 's';
                             fullPciPath[4] = '/';
-                            memmove(&fullPciPath[5], &fullPciPath[6], strlen(fullPciPath));
+                            safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
                             //need to trim the path down now since it can vary by controller:
                             //adaptec: /sys/devices/pci0000:00/0000:00:02.0/0000:02:00.0/host0/target0:1:0/0:1:0:0/scsi_generic/sg2
                             //lsi: /sys/devices/pci0000:00/0000:00:02.0/0000:02:00.0/host0/port-0:16/end_device-0:16/target0:0:16/0:0:16:0/scsi_generic/sg4
@@ -480,22 +488,22 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             //printf("/host location string: %s\n", strstr(fullPciPath, "/host"));
                             //printf("FULL: %" PRIXPTR "\t/HOST: %" PRIXPTR "\n", C_CAST(uintptr_t, fullPciPath), C_CAST(uintptr_t, strstr(fullPciPath, "/host")));
                             uint64_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath + 1;
-                            char *pciPath = C_CAST(char*, calloc(PATH_MAX, sizeof(char)));
+                            char *pciPath = C_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
                             if (pciPath)
                             {
                                 snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen - 1), fullPciPath);
                                 //printf("Shortened PCI Path: %s\n", dirname(pciPath));
-                                FILE *temp = NULL;
+                                FILE *temp = M_NULLPTR;
                                 temp = fopen(pciPath, "r");
                                 if (temp)
                                 {
-                                    if(1 == fscanf(temp, "0x%" SCNx32, &device->drive_info.adapter_info.vendorID))
+                                    if (1 == fscanf(temp, "0x%" SCNx32, &device->drive_info.adapter_info.vendorID))
                                     {
                                         device->drive_info.adapter_info.vendorIDValid = true;
                                         //printf("Got vendor as %" PRIX16 "h\n", device->drive_info.adapter_info.vendorID);
                                     }
                                     fclose(temp);
-                                    temp = NULL;
+                                    temp = M_NULLPTR;
                                 }
                                 pciPath = dirname(pciPath);//remove vendor from the end
                                 common_String_Concat(pciPath, PATH_MAX, "/device");
@@ -508,7 +516,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                         //printf("Got product as %" PRIX16 "h\n", device->drive_info.adapter_info.productID);
                                     }
                                     fclose(temp);
-                                    temp = NULL;
+                                    temp = M_NULLPTR;
                                 }
                                 //Store revision data. This seems to be in the bcdDevice file.
                                 pciPath = dirname(pciPath);//remove device from the end
@@ -518,16 +526,16 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                                 {
                                     uint8_t pciRev = 0;
                                     if (1 == fscanf(temp, "0x%" SCNx8, &pciRev))
-                                    {   
+                                    {
                                         device->drive_info.adapter_info.revision = pciRev;
                                         device->drive_info.adapter_info.revisionValid = true;
                                         //printf("Got revision as %" PRIX16 "h\n", device->drive_info.adapter_info.revision);
                                     }
                                     fclose(temp);
-                                    temp = NULL;
+                                    temp = M_NULLPTR;
                                 }
                                 device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
-                                safe_Free(pciPath)
+                                safe_Free(C_CAST(void**, &pciPath));
                             }
                         }
                         char *baseLink = basename(inHandleLink);
@@ -547,39 +555,42 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                         char *scsiAddress = basename(dirname(dirname(inHandleLink)));//SCSI address should be 2nd from the end of the link
                         if (scsiAddress)
                         {
-                            char *token = strtok(scsiAddress, ":");
+                            char *saveptr = M_NULLPTR;
+                            rsize_t addrlen = safe_strlen(scsiAddress);
+                            char *token = common_String_Token(scsiAddress, &addrlen, ":", *saveptr);
                             uint8_t counter = 0;
                             while (token)
                             {
+                                errno = 0;//clear to zero as stated in ISO C secure coding
                                 switch (counter)
                                 {
                                 case 0://host
-                                    device->os_info.scsiAddress.host = C_CAST(uint8_t, atoi(token));
+                                    sysFsInfo->scsiAddress.host = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
                                     break;
                                 case 1://bus
-                                    device->os_info.scsiAddress.channel = C_CAST(uint8_t, atoi(token));
+                                    sysFsInfo->scsiAddress.channel = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
                                     break;
                                 case 2://target
-                                    device->os_info.scsiAddress.target = C_CAST(uint8_t, atoi(token));
+                                    sysFsInfo->scsiAddress.target = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
                                     break;
                                 case 3://lun
-                                    device->os_info.scsiAddress.lun = C_CAST(uint8_t, atoi(token));
+                                    sysFsInfo->scsiAddress.lun = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
                                     break;
                                 default:
                                     break;
                                 }
-                                token = strtok(NULL, ":");
+                                token = common_String_Token(M_NULLPTR, &addrlen, ":", &saveptr);
                                 ++counter;
                             }
-                            if (counter >= 4)
+                            if (counter == 4)
                             {
                                 device->os_info.scsiAddressValid = true;
                             }
                         }
                         //printf("attempting to map the handle\n");
                         //Lastly, call the mapping function to get the matching block handle and check what we got to set ATAPI, TAPE or leave as-is. Setting these is necessary to prevent talking to ATAPI as HDD due to overlapping A1h opcode
-                        char *block = NULL;
-                        char *gen = NULL;
+                        char *block = M_NULLPTR;
+                        char *gen = M_NULLPTR;
                         if (SUCCESS == map_Block_To_Generic_Handle(handle, &gen, &block))
                         {
                             //printf("successfully mapped the handle. gen = %s\tblock=%s\n", gen, block);
@@ -620,8 +631,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
                             }
                         }
                         //printf("Finish handle mapping\n");
-                        safe_Free(block)
-                        safe_Free(gen)
+                        safe_Free(C_CAST(void**, &block));
+                        safe_Free(C_CAST(void**, &gen));
                     }
                     else
                     {
@@ -640,23 +651,23 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 
 //map a block handle (sd) to a generic handle (sg or bsg)
 //incoming handle can be either sd, sg, or bsg type
-//TODO: handle kernels before 2.6 in some other way. This depends on mapping in the file system provided by 2.6 and later.
-int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle)
+//requires kernel 2.6 or later
+eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char **blockHandle)
 {
-    if (handle == NULL)
+    if (handle == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
     //if the handle passed in contains "nvme" then we know it's a device on the nvme interface
-    if (strstr(handle,"nvme") != NULL)
+    if (strstr(handle, "nvme") != M_NULLPTR)
     {
         return NOT_SUPPORTED;
     }
     else
     {
         bool incomingBlock = false;//only set for SD!
-        char incomingHandleClassPath[PATH_MAX] = { 0 };
-        char *incomingClassName = NULL;
+        DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
+        char *incomingClassName = M_NULLPTR;
         common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
         if (is_Block_Device_Handle(handle))
         {
@@ -680,7 +691,7 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
         {
             common_String_Concat(incomingHandleClassPath, PATH_MAX, basename(C_CAST(char*, handle)));
             //now read the link with the handle appended on the end
-            char inHandleLink[PATH_MAX] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(char, inHandleLink, PATH_MAX);
             if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
             {
                 //printf("full in handleLink = %s\n", inHandleLink);
@@ -689,7 +700,7 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                 const char* bsgClass = "/sys/class/bsg/";
                 const char* blockClass = "/sys/class/block/";
                 struct stat mapStat;
-                char classPath[PATH_MAX] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(char, classPath, PATH_MAX);
                 bool bsg = false;
                 if (incomingBlock)
                 {
@@ -706,7 +717,7 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                     else
                     {
                         //printf ("could not map to generic class");
-                        safe_Free(incomingClassName)
+                        safe_Free(C_CAST(void**, &incomingClassName));
                         return NOT_SUPPORTED;
                     }
                 }
@@ -717,29 +728,29 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         //printf ("could not map to block class");
-                        safe_Free(incomingClassName)
+                        safe_Free(C_CAST(void**, &incomingClassName));
                         return NOT_SUPPORTED;
                     }
                 }
                 //now we need to loop through each think in the class folder, read the link, and check if we match.
                 struct dirent **classList;
                 int remains = 0;
-                int numberOfItems = scandir(classPath, &classList, NULL /*not filtering anything. Just go through each item*/, alphasort);
+                int numberOfItems = scandir(classPath, &classList, M_NULLPTR /*not filtering anything. Just go through each item*/, alphasort);
                 for (int iter = 0; iter < numberOfItems; ++iter)
                 {
                     //printf("item = %s: %d of %d\n", classList[iter]->d_name,iter,numberOfItems);
                     //now we need to read the link for classPath/d_name into a buffer...then compare it to the one we read earlier.
-                    size_t tempLen = strlen(classPath) + strlen(classList[iter]->d_name) + 1;
-                    char *temp = C_CAST(char*, calloc(tempLen, sizeof(char)));
+                    size_t tempLen = safe_strlen(classPath) + safe_strlen(classList[iter]->d_name) + 1;
+                    char *temp = C_CAST(char*, safe_calloc(tempLen, sizeof(char)));
                     struct stat tempStat;
                     memset(&tempStat, 0, sizeof(struct stat));
                     snprintf(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
-                    if (lstat(temp,&tempStat) == 0 && S_ISLNK(tempStat.st_mode))/*check if this is a link*/
+                    if (lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode))/*check if this is a link*/
                     {
-                        char mapLink[PATH_MAX] = { 0 };
+                        DECLARE_ZERO_INIT_ARRAY(char, mapLink, PATH_MAX);
                         if (readlink(temp, mapLink, PATH_MAX) > 0)
                         {
-                            char *className = NULL;
+                            char *className = M_NULLPTR;
                             size_t classNameLength = 0;
                             //printf("read link as: %s\n", mapLink);
                             //now, we need to check the links and see if they match.
@@ -748,8 +759,8 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                             //We need to match up until the class name (ex: block, bsg, scsi_generic)
                             if (incomingBlock)//block class
                             {
-                                classNameLength = strlen("scsi_generic") + 1;
-                                className = C_CAST(char*, calloc(classNameLength, sizeof(char)));
+                                classNameLength = safe_strlen("scsi_generic") + 1;
+                                className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
                                     snprintf(className, classNameLength, "scsi_generic");
@@ -757,8 +768,8 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                             }
                             else if (bsg) //bsg class
                             {
-                                classNameLength = strlen("bsg") + 1;
-                                className = C_CAST(char*, calloc(classNameLength, sizeof(char)));
+                                classNameLength = safe_strlen("bsg") + 1;
+                                className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
                                     snprintf(className, classNameLength, "bsg");
@@ -766,8 +777,8 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                             }
                             else //scsi_generic class
                             {
-                                classNameLength = strlen("block") + 1;
-                                className = C_CAST(char*, calloc(classNameLength, sizeof(char)));
+                                classNameLength = safe_strlen("block") + 1;
+                                className = C_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
                                     snprintf(className, classNameLength, "block");
@@ -777,55 +788,55 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
                             {
                                 char *classPtr = strstr(mapLink, className);
                                 //need to match up to the classname
-                                if (NULL != classPtr && strncmp(mapLink, inHandleLink, (classPtr - mapLink)) == 0)
+                                if (M_NULLPTR != classPtr && strncmp(mapLink, inHandleLink, (classPtr - mapLink)) == 0)
                                 {
                                     if (incomingBlock)
                                     {
-                                        *blockHandle = strndup(basename(C_CAST(char*, handle)), strlen(basename(C_CAST(char*, handle))));
+                                        *blockHandle = strndup(basename(C_CAST(char*, handle)), safe_strlen(basename(C_CAST(char*, handle))));
                                         *genericHandle = strdup(basename(classPtr));
                                     }
                                     else
                                     {
-                                        *blockHandle = strndup(basename(classPtr), strlen(basename(classPtr)));
+                                        *blockHandle = strndup(basename(classPtr), safe_strlen(basename(classPtr)));
                                         *genericHandle = strdup(basename(C_CAST(char *, handle)));
                                     }
-                                    safe_Free(className)
-                                    safe_Free(incomingClassName)
+                                    safe_Free(C_CAST(void**, &className));
+                                    safe_Free(C_CAST(void**, &incomingClassName));
                                     // start PRH valgrind fixes
                                     // this is causing a mem leak... when we bail the loop, there are a string of classList[] items 
                                     // still allocated. 
                                     for(remains = iter; remains<numberOfItems; remains++)
                                     {
-                                        safe_Free(classList[remains])
+                                        safe_Free(C_CAST(void**, &classList[remains]));
                                     }
-                                    safe_Free(classList)
+                                    safe_Free(C_CAST(void**, &classList));
                                     // end PRH valgrind fixes.
                                     return SUCCESS;
                                     break;//found a match, exit the loop
                                 }
                             }
-                            safe_Free(className)
+                            safe_Free(C_CAST(void**, &className));
                         }
                     }
-                    safe_Free(classList[iter]) // PRH - valgrind
-                    safe_Free(temp)
+                    safe_Free(C_CAST(void**, &classList[iter])) ;// PRH - valgrind
+                    safe_Free(C_CAST(void**, &temp));
                 }
-                safe_Free(classList)
+                safe_Free(C_CAST(void**, &classList));
             }
             else
             {
                 //not a link, or some other error....probably an old kernel
-                safe_Free(incomingClassName)
+                safe_Free(C_CAST(void**, &incomingClassName));
                 return NOT_SUPPORTED;
             }
         }
         else
         {
             //Mapping is not supported...probably an old kernel
-            safe_Free(incomingClassName)
+            safe_Free(C_CAST(void**, &incomingClassName));
             return NOT_SUPPORTED;
         }
-        safe_Free(incomingClassName)
+        safe_Free(C_CAST(void**, &incomingClassName));
     }
     return UNKNOWN;
 }
@@ -834,7 +845,7 @@ int map_Block_To_Generic_Handle(const char *handle, char **genericHandle, char *
 //This could be useful to put into a function for all nix systems to use since it could be useful for them too.
 long get_Device_Page_Size(void)
 {
-#if defined (_POSIX_VERSION) && _POSIX_VERSION >= 200112L
+#if defined (POSIX_2001)
     //use sysconf: http://man7.org/linux/man-pages/man3/sysconf.3.html
     return sysconf(_SC_PAGESIZE);
 #else
@@ -844,11 +855,12 @@ long get_Device_Page_Size(void)
 }
 
 #define LIN_MAX_HANDLE_LENGTH 16
-int get_Device(const char *filename, tDevice *device)
+eReturnValues get_Device(const char *filename, tDevice *device)
 {
-    char *deviceHandle = NULL;
-    int ret = SUCCESS, k = 0;
-    int rc;
+    char *deviceHandle = M_NULLPTR;
+    eReturnValues ret = SUCCESS;
+    int k = 0;
+    int rc = 0;
     struct nvme_adapter_list nvmeAdptList;
     bool isScsi = false;
     char *nvmeDevName;
@@ -859,7 +871,7 @@ int get_Device(const char *filename, tDevice *device)
      */
 
     nvmeDevName = strstr(filename, "vmhba");
-    isScsi = (nvmeDevName == NULL) ? true : false;
+    isScsi = (nvmeDevName == M_NULLPTR) ? true : false;
 
     //printf("Getting device for %s\n", filename);
 
@@ -869,12 +881,12 @@ int get_Device(const char *filename, tDevice *device)
      */
     deviceHandle = strdup(filename);
 
-    if(isScsi) 
+    if (isScsi)
     {
-        #if defined (_DEBUG)
+#if defined (_DEBUG)
         printf("This is a SCSI drive\n");
         printf("Attempting to open %s\n", deviceHandle);
-        #endif
+#endif
         // Note: We are opening a READ/Write flag
         if ((device->os_info.fd = open(deviceHandle, O_RDWR | O_NONBLOCK)) < 0)
         {
@@ -883,20 +895,20 @@ int get_Device(const char *filename, tDevice *device)
             printf("open failure\n");
             printf("Error: ");
             print_Errno_To_Screen(errno);
-            if (device->os_info.fd == EACCES) 
+            if (device->os_info.fd == EACCES)
             {
-                safe_Free(deviceHandle)
+                safe_Free(C_CAST(void**, &deviceHandle));
                 return PERMISSION_DENIED;
             }
             else
             {
-                safe_Free(deviceHandle)
+                safe_Free(C_CAST(void**, &deviceHandle));
                 return FAILURE;
             }
         }
 
         device->os_info.minimumAlignment = sizeof(void *);
-    
+
         //Adding support for different device discovery options. 
         if (device->dFlags == OPEN_HANDLE_ONLY)
         {
@@ -906,11 +918,11 @@ int get_Device(const char *filename, tDevice *device)
             device->drive_info.media_type = MEDIA_HDD;
             set_Device_Fields_From_Handle(deviceHandle, device);
             setup_Passthrough_Hacks_By_ID(device);
-            safe_Free(deviceHandle)
+            safe_Free(C_CAST(void**, &deviceHandle));
             return ret;
         }
         //\\TODO: Add support for other flags. 
-    
+
         if ((device->os_info.fd >= 0) && (ret == SUCCESS))
         {
             struct sg_scsi_id hctlInfo;
@@ -928,20 +940,20 @@ int get_Device(const char *filename, tDevice *device)
                 //printf("H:C:T:L = %" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8 "\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
             }
 
-            #if defined (_DEBUG)
+#if defined (_DEBUG)
             printf("Getting SG driver version\n");
-            #endif
+#endif
 
             /**
              * SG_GET_VERSION_NUM is currently not supported for VMWare 
              * SG_IO. 
              */
-            #if 0
-            // Check we have a valid device by trying an ioctl
-            // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
+#if 0
+             // Check we have a valid device by trying an ioctl
+             // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
             if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
             {
-                printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, filename,k);
+                printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, filename, k);
                 perror("SG_GET_VERSION_NUM");
                 close(device->os_info.fd);
             }
@@ -951,21 +963,21 @@ int get_Device(const char *filename, tDevice *device)
             device->os_info.sgDriverVersion.majorVersion = C_CAST(uint8_t, k / 10000);
             device->os_info.sgDriverVersion.minorVersion = C_CAST(uint8_t, (k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
             device->os_info.sgDriverVersion.revision = C_CAST(uint8_t, k - (device->os_info.sgDriverVersion.majorVersion * 10000) - (device->os_info.sgDriverVersion.minorVersion * 100));
-            #endif
+#endif
 
             //set the OS Type
             device->os_info.osType = OS_ESX;
 
-            memcpy(device->os_info.name, deviceHandle, strlen(deviceHandle) + 1);
+            memcpy(device->os_info.name, deviceHandle, safe_strlen(deviceHandle) + 1);
 
             //set scsi interface and scsi drive until we know otherwise
             device->drive_info.drive_type = SCSI_DRIVE;
             device->drive_info.interface_type = SCSI_INTERFACE;
             device->drive_info.media_type = MEDIA_HDD;
             //now have the device information fields set
-            #if defined (_DEBUG)
+#if defined (_DEBUG)
             printf("Setting interface, drive type, secondary handles\n");
-            #endif
+#endif
 
             //set_Device_Fields_From_Handle(deviceHandle, device);
             setup_Passthrough_Hacks_By_ID(device);
@@ -973,165 +985,163 @@ int get_Device(const char *filename, tDevice *device)
             device->drive_info.drive_type = UNKNOWN_DRIVE;
             device->drive_info.media_type = MEDIA_UNKNOWN;
 
-            #if defined (_DEBUG)
+#if defined (_DEBUG)
             printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n",
-                   device->os_info.name,
-                   device->os_info.friendlyName,
-                   device->os_info.secondName,
-                   device->os_info.secondFriendlyName
-                   );
+                device->os_info.name,
+                device->os_info.friendlyName,
+                device->os_info.secondName,
+                device->os_info.secondFriendlyName
+            );
             printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
 
             printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion, device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
-            #endif
-            
+#endif
+
             // Fill in all the device info.
             //this code to set up passthrough commands for USB and IEEE1394 has been removed for now to match Windows functionality. Need better intelligence than this.
             //Some of these old pass-through types issue vendor specific op codes that could be misinterpretted on some devices.
 //              if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
 //              {
-//                  //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
 //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
 //              }
 
             ret = fill_Drive_Info_Data(device);
 
-            #if defined (_DEBUG)
+#if defined (_DEBUG)
             printf("\nvm helper\n");
-            printf("Drive type: %d\n",device->drive_info.drive_type);
-            printf("Interface type: %d\n",device->drive_info.interface_type);
-            printf("Media type: %d\n",device->drive_info.media_type);
-            #endif
+            printf("Drive type: %d\n", device->drive_info.drive_type);
+            printf("Interface type: %d\n", device->drive_info.interface_type);
+            printf("Media type: %d\n", device->drive_info.media_type);
+#endif
         }
-        safe_Free(deviceHandle)
+        safe_Free(C_CAST(void**, &deviceHandle));
 
     }
     else
     {
         rc = Nvme_GetAdapterList(&nvmeAdptList);
-    
-        if (rc != SUCCESS) 
+
+        if (rc != 0)
         {
             return FAILURE;
         }
-    
-        #if defined (_DEBUG)
+
+#if defined (_DEBUG)
         printf("This is a NVMe drive\n");
         printf("Attempting to open %s\n", deviceHandle);
-        #endif
+#endif
         // Note: We are opening a READ/Write flag
         /**
-         * Opening up the dev handle for NVMe 
+         * Opening up the dev handle for NVMe
          */
-    
+
         device->os_info.nvmeFd = Nvme_Open(&nvmeAdptList, filename);
-    
+
         /**
          * We should do a HDD/SSD open here
          */
-    
-        if (device->os_info.nvmeFd == NULL)
+
+        if (device->os_info.nvmeFd == M_NULLPTR)
         {
             perror("open");
             device->os_info.nvmeFd = errno;
             printf("open failure\n");
             printf("Error: ");
             print_Errno_To_Screen(errno);
-            if (device->os_info.nvmeFd == EACCES) 
+            if (device->os_info.nvmeFd == EACCES)
             {
-                safe_Free(deviceHandle)
+                safe_Free(C_CAST(void**, &deviceHandle));
                 return PERMISSION_DENIED;
             }
             else
             {
-                safe_Free(deviceHandle)
+                safe_Free(C_CAST(void**, &deviceHandle));
                 return FAILURE;
             }
         }
 
         device->os_info.minimumAlignment = sizeof(void *);
-    
+
         //Adding support for different device discovery options. 
         if (device->dFlags == OPEN_HANDLE_ONLY)
         {
-            safe_Free(deviceHandle)
+            safe_Free(C_CAST(void**, &deviceHandle));
             return ret;
         }
         //\\TODO: Add support for other flags. 
-    
-        if ((device->os_info.nvmeFd != NULL) && (ret == SUCCESS))
+
+        if ((device->os_info.nvmeFd != M_NULLPTR) && (ret == SUCCESS))
         {
-            #if defined (_DEBUG)
+#if defined (_DEBUG)
             printf("Getting SG driver version\n");
-            #endif
-    
+#endif
+
             /**
              * Setting up NVMe drive blindly for now
              */
-    
+
             device->drive_info.interface_type = NVME_INTERFACE;
             device->drive_info.drive_type = NVME_DRIVE;
             device->drive_info.media_type = MEDIA_NVM;
-            memcmp(device->drive_info.T10_vendor_ident, "NVMe",4);
+            memcmp(device->drive_info.T10_vendor_ident, "NVMe", 4);
             device->os_info.osType = OS_ESX;
-            memcpy(&(device->os_info.name), filename, strlen(filename) + 1);
-    
-            #if !defined(DISABLE_NVME_PASSTHROUGH)
-            if (device->drive_info.interface_type == NVME_INTERFACE) 
+            memcpy(&(device->os_info.name), filename, safe_strlen(filename) + 1);
+
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+            if (device->drive_info.interface_type == NVME_INTERFACE)
             {
-                #if 0
+#if 0
                 ret = ioctl(device->os_info.fd, NVME_IOCTL_ID);
                 if (ret < 0)
                 {
-                     perror("nvme_ioctl_id");
-                     return ret;
+                    perror("nvme_ioctl_id");
+                    return ret;
                 }
                 device->drive_info.lunOrNSID = C_CAST(uint32_t, ret);
-                #endif
+#endif
                 ret = fill_In_NVMe_Device_Info(device);
             }
             else
-            #endif
+#endif
             {
                 // Fill in all the device info.
                 //this code to set up passthrough commands for USB and IEEE1394 has been removed for now to match Windows functionality. Need better intelligence than this.
                 //Some of these old pass-through types issue vendor specific op codes that could be misinterpretted on some devices.
     //              if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
     //              {
-    //                  //TODO: Actually get the VID and PID set before calling this...currently it just issues an identify command to test which passthrough to use until it works. - TJE
     //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
     //              }
-    
-                #if 0
+
+#if 0
                 ret = fill_Drive_Info_Data(device);
-                #endif
+#endif
             }
-            #if defined (_DEBUG)
+#if defined (_DEBUG)
             printf("\nvm helper\n");
-            printf("Drive type: %d\n",device->drive_info.drive_type);
-            printf("Interface type: %d\n",device->drive_info.interface_type);
-            printf("Media type: %d\n",device->drive_info.media_type);
-            #endif
+            printf("Drive type: %d\n", device->drive_info.drive_type);
+            printf("Interface type: %d\n", device->drive_info.interface_type);
+            printf("Media type: %d\n", device->drive_info.media_type);
+#endif
         }
-        safe_Free(deviceHandle)
+        safe_Free(C_CAST(void**, &deviceHandle));
     }
 
     return ret;
 }
 //http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
 //sgResetType should be one of the values from the link above...so bus or device...controller will work but that shouldn't be done ever.
-int sg_reset(int fd, int resetType)
+eReturnValues sg_reset(int fd, int resetType)
 {
-    int ret = UNKNOWN;
-    
-    ret = ioctl(fd, SG_SCSI_RESET, &resetType);
+    eReturnValues ret = UNKNOWN;
 
-    if (ret < 0)
+    int ioctlResult = ioctl(fd, SG_SCSI_RESET, &resetType);
+
+    if (ioctlResult < 0)
     {
-        #if defined(_DEBUG)
-        printf("Reset failure! errorcode: %d, errno: %d\n",ret, errno);
+#if defined(_DEBUG)
+        printf("Reset failure! errorcode: %d, errno: %d\n", ret, errno);
         print_Errno_To_Screen(errno);
-        #endif
+#endif
         if (errno == EAFNOSUPPORT)
         {
             ret = OS_COMMAND_NOT_AVAILABLE;
@@ -1144,9 +1154,9 @@ int sg_reset(int fd, int resetType)
     else
     {
         //poll for reset completion
-        #if defined(_DEBUG)
+#if defined(_DEBUG)
         printf("Reset in progress, polling for completion!\n");
-        #endif
+#endif
         resetType = SG_SCSI_RESET_NOTHING;
         while (errno == EBUSY)
         {
@@ -1158,42 +1168,42 @@ int sg_reset(int fd, int resetType)
     return ret;
 }
 
-int os_Device_Reset(tDevice *device)
+eReturnValues os_Device_Reset(tDevice *device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_DEVICE);
 }
 
-int os_Bus_Reset(tDevice *device)
+eReturnValues os_Bus_Reset(tDevice *device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_BUS);
 }
 
-int os_Controller_Reset(tDevice *device)
+eReturnValues os_Controller_Reset(tDevice *device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
 }
 
-int send_IO( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_IO(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = FAILURE;    
+    eReturnValues ret = FAILURE;
 #ifdef _DEBUG
-    printf("-->%s \n",__FUNCTION__);
+    printf("-->%s \n", __FUNCTION__);
 #endif
     switch (scsiIoCtx->device->drive_info.interface_type)
     {
     case NVME_INTERFACE:
-        #if !defined (DISABLE_NVME_PASSTHROUGH)
+#if !defined (DISABLE_NVME_PASSTHROUGH)
         return sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
-        #endif
+#endif
         //USB, ATA, and SCSI interface all use sg, so just issue an SG IO.
     case SCSI_INTERFACE:
     case IDE_INTERFACE:
     case USB_INTERFACE:
     case IEEE_1394_INTERFACE:
-        ret = send_sg_io(scsiIoCtx); 
+        ret = send_sg_io(scsiIoCtx);
         break;
     case RAID_INTERFACE:
-        if (scsiIoCtx->device->issue_io != NULL)
+        if (scsiIoCtx->device->issue_io != M_NULLPTR)
         {
             ret = scsiIoCtx->device->issue_io(scsiIoCtx);
         }
@@ -1208,13 +1218,13 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Target Device does not have a valid interface %d\n",\
-                        scsiIoCtx->device->drive_info.interface_type);
+            printf("Target Device does not have a valid interface %d\n", \
+                scsiIoCtx->device->drive_info.interface_type);
         }
         break;
     }
 #ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
     if (scsiIoCtx->device->delay_io)
     {
@@ -1227,18 +1237,18 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
     return ret;
 }
 
-int send_sg_io( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
 {
     sg_io_hdr_t io_hdr;
-    uint8_t     *localSenseBuffer = NULL;
-    int         ret          = SUCCESS;
+    uint8_t *localSenseBuffer = M_NULLPTR;
+    eReturnValues ret = SUCCESS;
     seatimer_t  commandTimer;
 #ifdef _DEBUG
-    printf("-->%s \n",__FUNCTION__);
+    printf("-->%s \n", __FUNCTION__);
 #endif
 
 
-    memset(&commandTimer,0,sizeof(seatimer_t));
+    memset(&commandTimer, 0, sizeof(seatimer_t));
     //int idx = 0;
     // Start with zapping the io_hdr
     memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
@@ -1252,14 +1262,14 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     io_hdr.interface_id = 'S';
     io_hdr.cmd_len = scsiIoCtx->cdbLength;
     // Use user's sense or local?
-    if ((scsiIoCtx->senseDataSize) && (scsiIoCtx->psense != NULL))
+    if ((scsiIoCtx->senseDataSize) && (scsiIoCtx->psense != M_NULLPTR))
     {
         io_hdr.mx_sb_len = scsiIoCtx->senseDataSize;
         io_hdr.sbp = scsiIoCtx->psense;
     }
     else
     {
-        localSenseBuffer = C_CAST(uint8_t *, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+        localSenseBuffer = C_CAST(uint8_t *, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
         if (!localSenseBuffer)
         {
             return MEMORY_FAILURE;
@@ -1293,7 +1303,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             printf("%s Didn't understand direction\n", __FUNCTION__);
         }
-        safe_Free_aligned(localSenseBuffer)
+        safe_Free_aligned(C_CAST(void**, &localSenseBuffer));
         return BAD_PARAMETER;
     }
 
@@ -1333,7 +1343,7 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
             io_hdr.timeout = 15 * 1000;//default to 15 second timeout
         }
     }
-    
+
     // \revisit: should this be FF or something invalid than 0?
     scsiIoCtx->returnStatus.format = 0xFF;
     scsiIoCtx->returnStatus.senseKey = 0;
@@ -1342,10 +1352,10 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
     //print_io_hdr(&io_hdr);
     //printf("scsiIoCtx->device->os_info.fd = %d\n", scsiIoCtx->device->os_info.fd);
     start_Timer(&commandTimer);
-    ret = ioctl(scsiIoCtx->device->os_info.fd, SG_IO, &io_hdr);
+    int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, SG_IO, &io_hdr);
     stop_Timer(&commandTimer);
     scsiIoCtx->device->os_info.last_error = errno;
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
@@ -1362,13 +1372,13 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
 
     if (io_hdr.sb_len_wr)
     {
-        scsiIoCtx->returnStatus.format  = io_hdr.sbp[0];
+        scsiIoCtx->returnStatus.format = io_hdr.sbp[0];
         get_Sense_Key_ASC_ASCQ_FRU(io_hdr.sbp, io_hdr.mx_sb_len, &scsiIoCtx->returnStatus.senseKey, &scsiIoCtx->returnStatus.asc, &scsiIoCtx->returnStatus.ascq, &scsiIoCtx->returnStatus.fru);
     }
 
     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
     {
-        switch(io_hdr.info & SG_INFO_DIRECT_IO_MASK)
+        switch (io_hdr.info & SG_INFO_DIRECT_IO_MASK)
         {
         case SG_INFO_INDIRECT_IO:
             printf("SG IO Issued as Indirect IO\n");
@@ -1574,23 +1584,23 @@ int send_sg_io( ScsiIoCtx *scsiIoCtx )
 
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 #ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
-    safe_Free_aligned(localSenseBuffer)
+    safe_Free_aligned(C_CAST(void**, &localSenseBuffer));
     return ret;
 }
 
-static int nvme_filter( const struct dirent *entry)
+static int nvme_filter(const struct dirent *entry)
 {
-    int nvmeHandle = strncmp("nvme",entry->d_name,4);
+    int nvmeHandle = strncmp("nvme", entry->d_name, 4);
     if (nvmeHandle != 0)
     {
         return !nvmeHandle;
     }
-    if (strlen(entry->d_name) > 5)
+    if (safe_strlen(entry->d_name) > 5)
     {
-        char* partition = strpbrk(entry->d_name,"p");
-        if(partition != NULL)
+        char* partition = strpbrk(entry->d_name, "p");
+        if (partition != M_NULLPTR)
         {
             return nvmeHandle;
         }
@@ -1622,23 +1632,24 @@ static int nvme_filter( const struct dirent *entry)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
+eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
-    int  num_devs = 0, num_nvme_devs = 0;
-    int rc;
+    int  num_devs = 0;
+    int  num_nvme_devs = 0;
+    int rc = 0;
     struct nvme_adapter_list nvmeAdptList;
 
     struct dirent **namelist;
 
-    num_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort); 
+    num_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort);
 
     //free the list of names to not leak memory
-    for(int iter = 0; iter < num_devs; ++iter)
+    for (int iter = 0; iter < num_devs; ++iter)
     {
-    	safe_Free(namelist[iter])
+        safe_Free(C_CAST(void**, &namelist[iter]));
     }
-    safe_Free(namelist)
-    
+    safe_Free(C_CAST(void**, &namelist));
+
 #ifdef _DEBUG
     printf("get_Device_Count : num_devs %d\n", num_devs);
 #endif
@@ -1646,7 +1657,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //add nvme devices to the list
     rc = Nvme_GetAdapterList(&nvmeAdptList);
 
-    if(rc == SUCCESS) 
+    if (rc == 0)
     {
         num_nvme_devs = nvmeAdptList.count;
     }
@@ -1656,7 +1667,7 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 #endif
 
     *numberOfDevices = num_devs + num_nvme_devs;
-    
+
     return SUCCESS;
 }
 
@@ -1684,16 +1695,19 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
-    int returnValue = SUCCESS;
+    eReturnValues returnValue = SUCCESS;
     int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
-    char name[128] = { 0 }; //Because get device needs char
-    int fd;
-    tDevice * d = NULL;
+    int driveNumber = 0;
+    int found = 0;
+    int failedGetDeviceCount = 0;
+    int permissionDeniedCount = 0;
+    DECLARE_ZERO_INIT_ARRAY(char, name, 128); //Because get device needs char
+    int fd = -1;
+    tDevice * d = M_NULLPTR;
     struct nvme_adapter_list nvmeAdptList;
-    int rc;
+    int rc = 0;
 #if defined (DEGUG_SCAN_TIME)
     seatimer_t getDeviceTimer;
     seatimer_t getDeviceListTimer;
@@ -1702,42 +1716,44 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #endif
     struct dirent **namelist;
 
-    int  num_sg_devs = 0, num_nvme_devs = 0;
+    int  num_sg_devs = 0;
 
-    num_sg_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort); 
+    int  num_nvme_devs = 0;
+
+    num_sg_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort);
 
     rc = Nvme_GetAdapterList(&nvmeAdptList);
 
-    if (rc == SUCCESS) 
+    if (rc == 0)
     {
         num_nvme_devs = nvmeAdptList.count;
     }
 
 
-    char **devs = C_CAST(char **, calloc(num_sg_devs + num_nvme_devs + 1, sizeof(char *)));
-    int i = 0, j = 0;
+    char **devs = C_CAST(char **, safe_calloc(num_sg_devs + num_nvme_devs + 1, sizeof(char *)));
+    int i = 0;
+    int j = 0;
     //add sg/sd devices to the list
     for (; i < (num_sg_devs); i++)
     {
-        size_t deviceHandleLen = (strlen("/dev/disks/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(deviceHandleLen));
+        size_t deviceHandleLen = (safe_strlen("/dev/disks/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
+        devs[i] = C_CAST(char *, safe_malloc(deviceHandleLen));
         snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
-        safe_Free(namelist[i])
+        safe_Free(C_CAST(void**, &namelist[i]));
     }
-    safe_Free(namelist)
+    safe_Free(C_CAST(void**, &namelist));
 
     //add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER;i++, j++)
     {
-        size_t nvmeAdptNameLen = strlen(nvmeAdptList.adapters[j].name) + 1;
-        devs[i] = C_CAST(char *, malloc(nvmeAdptNameLen));
+        size_t nvmeAdptNameLen = safe_strlen(nvmeAdptList.adapters[j].name) + 1;
+        devs[i] = C_CAST(char *, safe_malloc(nvmeAdptNameLen));
         memset(devs[i], 0, nvmeAdptNameLen);
         snprintf(devs[i], nvmeAdptNameLen, "%s", nvmeAdptList.adapters[j].name);
     }
-    devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
+    devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
 
 
-    //TODO: Check if sizeInBytes is a multiple of 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
         returnValue = BAD_PARAMETER;
@@ -1755,7 +1771,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #endif
         for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
-            if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
@@ -1778,7 +1794,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 start_Timer(&getDeviceTimer);
 #endif
                 d->dFlags = flags;
-                int ret = get_Device(name, d);
+                eReturnValues ret = get_Device(name, d);
 #if defined (DEGUG_SCAN_TIME)
                 stop_Timer(&getDeviceTimer);
                 printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
@@ -1800,7 +1816,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber])
+            safe_Free(C_CAST(void**, &devs[driveNumber]));
         }
 #if defined (DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
@@ -1810,16 +1826,16 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         {
             returnValue = FAILURE;
         }
-        else if(permissionDeniedCount == (num_sg_devs + num_nvme_devs))
+        else if (permissionDeniedCount == (num_sg_devs + num_nvme_devs))
         {
             returnValue = PERMISSION_DENIED;
         }
-	    else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
+        else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(devs)
+    safe_Free(C_CAST(void**, &devs));
     return returnValue;
 }
 
@@ -1836,7 +1852,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int close_Device(tDevice *dev)
+eReturnValues close_Device(tDevice *dev)
 {
     int retValue = 0;
     bool isNVMe = false;
@@ -1848,11 +1864,11 @@ int close_Device(tDevice *dev)
      */
 
     nvmeDevName = strstr(dev->os_info.name, "vmhba");
-    isNVMe = (nvmeDevName != NULL) ? true : false;
+    isNVMe = (nvmeDevName != M_NULLPTR) ? true : false;
 
     if (dev)
     {
-        if (isNVMe) 
+        if (isNVMe)
         {
             Nvme_Close(dev->os_info.nvmeFd);
             dev->os_info.last_error = errno;
@@ -1863,8 +1879,8 @@ int close_Device(tDevice *dev)
             retValue = close(dev->os_info.fd);
             dev->os_info.last_error = errno;
         }
-        
-        if ( retValue == 0)
+
+        if (retValue == 0)
         {
             dev->os_info.fd = -1;
             return SUCCESS;
@@ -1880,33 +1896,33 @@ int close_Device(tDevice *dev)
     }
 }
 
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
+eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-    int ret = 0;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
+    eReturnValues ret = 0;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
     struct usr_io uio;
 
 #ifdef _DEBUG
-    printf("-->%s\n",__FILE__);
-    printf("-->%s\n",__FUNCTION__);
+    printf("-->%s\n", __FILE__);
+    printf("-->%s\n", __FUNCTION__);
 #endif
 
     memset(&uio, 0, sizeof(uio));
 
-    if ( nvmeIoCtx == NULL )
+    if (nvmeIoCtx == M_NULLPTR)
     {
 #ifdef _DEBUG
-    printf("-->%s\n",__FUNCTION__);
+        printf("-->%s\n", __FUNCTION__);
 #endif
-        return BAD_PARAMETER; 
+        return BAD_PARAMETER;
     }
 
-    switch (nvmeIoCtx->commandType) 
+    switch (nvmeIoCtx->commandType)
     {
     case NVM_ADMIN_CMD:
         memcpy(&(uio.cmd), &(nvmeIoCtx->cmd.adminCmd), sizeof(nvmeCommands));
-        
-        /*        
+
+        /*
         uio.cmd.header.opCode = nvmeIoCtx->cmd.adminCmd.opcode;
         uio.cmd.header.fusedOp = nvmeIoCtx->cmd.adminCmd.flags;
         uio.cmd.header.namespaceID = nvmeIoCtx->cmd.adminCmd.nsid;
@@ -1922,8 +1938,8 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         uio.cmd.cmd.vendorSpecific.vndrCDW15 = nvmeIoCtx->cmd.adminCmd.cdw15;
         */
 
-        if((nvmeIoCtx->commandDirection == XFER_NO_DATA) ||
-           (nvmeIoCtx->commandDirection == XFER_DATA_IN))
+        if ((nvmeIoCtx->commandDirection == XFER_NO_DATA) ||
+            (nvmeIoCtx->commandDirection == XFER_DATA_IN))
         {
             uio.direction = XFER_FROM_DEV;
         }
@@ -1953,20 +1969,20 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 
         /*
         printf("Printing uio.cmd\n");
-        for(int i = 0; i < sizeof(uio.cmd); i++) 
+        for(int i = 0; i < sizeof(uio.cmd); i++)
         {
-            if(i%8 == 0) 
+            if(i%8 == 0)
             {
                 printf("%d : ", i);
             }
             printf(" %x", C_CAST(unsigned char, *((unsigned char *)&(uio.cmd) + i)));
-            if(i%8 == 7) 
+            if(i%8 == 7)
             {
                 printf("\n");
             }
         }
-        printf("\n"); 
-        */ 
+        printf("\n");
+        */
 
 #endif
 
@@ -2006,7 +2022,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 
         nvmeIoCtx->device->os_info.last_error = ret;
         //Get error? 
-        if (ret < 0) 
+        if (ret < 0)
         {
             if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
             {
@@ -2023,13 +2039,13 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         nvmeIoCtx->commandCompletionData.dw3Valid = true;
         break;
 
-    #if 0
+#if 0
     case NVM_CMD:
-        memset(&nvmCmd,0,sizeof(nvmCmd));
+        memset(&nvmCmd, 0, sizeof(nvmCmd));
         ret = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
         break;
-    #endif
-            
+#endif
+
     default:
         return BAD_PARAMETER;
         break;
@@ -2043,7 +2059,7 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         }
     }
 #ifdef _DEBUG
-    printf("<--%s (%d)\n",__FUNCTION__, ret);
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
 
     if (nvmeIoCtx->device->delay_io)
@@ -2061,13 +2077,13 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int os_nvme_Reset(tDevice *device)
+eReturnValues os_nvme_Reset(tDevice *device)
 {
     //This is a stub. If this is possible, this should perform an nvme reset;
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int os_nvme_Subsystem_Reset(tDevice *device)
+eReturnValues os_nvme_Subsystem_Reset(tDevice *device)
 {
     //This is a stub. If this is possible, this should perform an nvme subsystem reset;
     return OS_COMMAND_NOT_AVAILABLE;
@@ -2075,23 +2091,23 @@ int os_nvme_Subsystem_Reset(tDevice *device)
 
 //Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c 
 
-int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
+eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
 {
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-    int ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
     int fd=0;
-    void * barRegs = NULL;
-    char sysfsPath[PATH_MAX];
-    snprintf(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0",device->os_info.name);
+    void * barRegs = M_NULLPTR;
+    DECLARE_ZERO_INIT_ARRAY(char, sysfsPath, PATH_MAX);
+    snprintf(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
     fd = open(sysfsPath, O_RDONLY);
-    if (fd >= 0) 
+    if (fd >= 0)
     {
         //
-        barRegs = mmap(0,dataSize,PROT_READ, MAP_SHARED, fd, 0);
-        if (barRegs != MAP_FAILED) 
+        barRegs = mmap(0, dataSize, PROT_READ, MAP_SHARED, fd, 0);
+        if (barRegs != MAP_FAILED)
         {
             ret = SUCCESS;
-            memcpy(pData,barRegs,dataSize);
+            memcpy(pData, barRegs, dataSize);
         }
         else
         {
@@ -2113,29 +2129,29 @@ int pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Lock_Device(tDevice *device)
+eReturnValues os_Lock_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->drive_info.drive_type == NVME_DRIVE)
     {
         //Not sure what to do
@@ -2152,9 +2168,9 @@ int os_Lock_Device(tDevice *device)
     return ret;
 }
 
-int os_Unlock_Device(tDevice *device)
+eReturnValues os_Unlock_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->drive_info.drive_type == NVME_DRIVE)
     {
         //Not sure what to do
@@ -2171,19 +2187,18 @@ int os_Unlock_Device(tDevice *device)
     return ret;
 }
 
-int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
     //note: linux code for blkrrprt might work
-    //TODO: Complete this stub when this is figured out - TJE
     return NOT_SUPPORTED;
 }
 
-int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }

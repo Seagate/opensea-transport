@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -11,15 +12,25 @@
 // 
 // \file prolific_legacy_helper.c   Implementation for Prolific Legacy USB Pass-through CDBs
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "prolific_legacy_helper.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 
 
-int build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16], bool *highCDBValid, ataPassthroughCommand *ataCommandOptions)
+eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16], bool *highCDBValid, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         *highCDBValid = true;
@@ -76,16 +87,16 @@ int build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16]
     return ret;
 }
 
-int get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet)
+eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
     {
         return commandRet;
     }
-    uint8_t cdb[CDB_LEN_6] = { 0 };
-    uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
-    uint8_t returnData[16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 16);
     cdb[OPERATION_CODE] = PROLIFIC_GET_REGISTERS_OPCODE;
     cdb[1] = RESERVED;
     cdb[2] = RESERVED;
@@ -110,17 +121,17 @@ int get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughCommand *ataCo
     return ret;
 }
 
-int send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
+eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = UNKNOWN;
-    uint8_t prolificLowCDB[CDB_LEN_16] = { 0 };
-    uint8_t prolificHighCDB[CDB_LEN_16] = { 0 };
+    eReturnValues ret = UNKNOWN;
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, prolificLowCDB, CDB_LEN_16);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, prolificHighCDB, CDB_LEN_16);
     bool highCDBValid = false;
-    uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
+    uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -176,10 +187,10 @@ int send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughComm
     memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);//clear before copying over data
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free_aligned(senseData)
+    safe_Free_aligned(C_CAST(void**, &senseData));
     if (localSenseData)
     {
-        ataCommandOptions->ptrSenseData = NULL;
+        ataCommandOptions->ptrSenseData = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)

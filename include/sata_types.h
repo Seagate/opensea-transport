@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -14,7 +15,7 @@
 
 #pragma once
 
-#include "common.h"
+#include "common_types.h"
 
 #if defined (__cplusplus)
 extern "C"

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -126,9 +127,9 @@ enum {
                                          vmk_uint32 *likelyhood, vmk_uint32 *enableFlag);
    #endif
 #else
-#define kernelCbSmartGet (NULL)
-#define kernelCbIoctl (NULL)
-#define kernelCbErrInject (NULL)
+#define kernelCbSmartGet (M_NULLPTR)
+#define kernelCbIoctl (M_NULLPTR)
+#define kernelCbErrInject (M_NULLPTR)
 #endif
 
 
@@ -188,7 +189,7 @@ enum {
          struct nvmeAdapterInfo *adapterInfo);
    #endif
 #else
-   #define NvmeMgmt_ListAdapters (NULL)
+   #define NvmeMgmt_ListAdapters (M_NULLPTR)
 #endif
 
 /**
@@ -207,7 +208,7 @@ enum {
          vmk_uint32 *debuglevel);
    #endif
 #else
-   #define NvmeMgmt_SetLogLevel (NULL)
+   #define NvmeMgmt_SetLogLevel (M_NULLPTR)
 #endif
 
 /**

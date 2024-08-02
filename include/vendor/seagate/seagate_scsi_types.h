@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -38,13 +39,11 @@ extern "C"
         SEAGATE_VPD_DATE_CODE           = 0xC1,
         SEAGATE_VPD_JUMPER_SETTINGS     = 0xC2,
         SEAGATE_VPD_DEVICE_BEHAVIOR     = 0xC3,
-        //TODO: any other Seagate Unique VPD pages
     }eSeagateVPDPages;
 
     typedef enum _eSeagateModePages
     {
         SEAGATE_MP_UNIT_ATTENTION_PARAMETERS    = 0x00,
-        //TODO: any other Seagate unique mode pages
     }eSeagateModePages;
 
     //Seagate unique protocol specific mode page sub pages
@@ -52,7 +51,6 @@ extern "C"
     {
         SEAGATE_MP_SP_SAS_TRANCEIVER_CONTROL_OUT    = 0xE5, //page 19h
         SEAGATE_MP_SP_SAS_TRANCEIVER_CONTROL_IN     = 0xE6, //page 19h
-        //TODO: other protocol specific mode page subpages
     }eSeagateProtocolMPSP;
 
     typedef enum _eSeagateLogPages //not subpages. Unique subpages should be in a different enum, similar to protocol specific MP above
@@ -60,7 +58,6 @@ extern "C"
         SEAGATE_LP_CACHE_STATISTICS = 0x37,
         SEAGATE_LP_FACTORY_LOG      = 0x3E,
         SEAGATE_LP_FARM             = 0x3D, //must use subpages.
-        //TODO: other Seagate log pages
     }eSeagateLogPages;
 
     typedef enum _eSeagateFARMSP
@@ -79,16 +76,12 @@ extern "C"
     {
         SEAGATE_DIAG_IN_DRIVE_DIAGNOSTICS = 0x98,
         SEAGATE_DIAG_POWER_MEASUREMENT    = 0x99,
-        //TODO: other Seagate diagnostic pages
     }eSeagateDiagnosticPages;
 
     typedef enum _eSeagateErrorHistoryBuffers
     {
         SEAGATE_ERR_HIST_POWER_TELEMETRY    = 0x54,
-        //TODO: other Seagate error history buffer IDs
     }eSeagateErrorHistoryBuffers;
-
-    //TODO: Seagate unique Sense data information
 
 #if defined(__cplusplus)
 }

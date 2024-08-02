@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -20,7 +21,7 @@
 extern "C"
 {
 #endif
-    
+
     //-----------------------------------------------------------------------------
     //
     //  get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode)
@@ -36,7 +37,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode);
+    eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode);
     
     //-----------------------------------------------------------------------------
     //
@@ -53,7 +54,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int get_RTFRs_From_Descriptor_Format_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataSize, ataReturnTFRs *rtfr);
+    eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataSize, ataReturnTFRs *rtfr);
 
     //-----------------------------------------------------------------------------
     //
@@ -71,7 +72,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int get_RTFRs_From_Fixed_Format_Sense_Data(tDevice* device, uint8_t* ptrSenseData, uint32_t senseDataSize, ataPassthroughCommand* ataCmd);
+    eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(tDevice* device, uint8_t* ptrSenseData, uint32_t senseDataSize, ataPassthroughCommand* ataCmd);
 
     //-----------------------------------------------------------------------------
     //
@@ -89,7 +90,7 @@ extern "C"
     //!   \return true = got RTFRs from the sense data, false = rtfrs not available
     //
     //-----------------------------------------------------------------------------
-    bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ataCommandOptions, int ioRet, int senseRet);
+    bool get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues ioRet, eReturnValues senseRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -106,7 +107,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Protocol_Field(uint8_t *satCDB, eAtaProtocol commadProtocol, eDataTransferDirection dataDirection, uint8_t protocolOffset);
+    eReturnValues set_Protocol_Field(uint8_t *satCDB, eAtaProtocol commadProtocol, eDataTransferDirection dataDirection, uint8_t protocolOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -124,7 +125,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Transfer_Bits(uint8_t *satCDB, eATAPassthroughLength tLength, eATAPassthroughTransferBlocks ttype, eDataTransferDirection dataDirection, uint8_t transferBitsOffset);
+    eReturnValues set_Transfer_Bits(uint8_t *satCDB, eATAPassthroughLength tLength, eATAPassthroughTransferBlocks ttype, eDataTransferDirection dataDirection, uint8_t transferBitsOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -140,7 +141,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Multiple_Count(uint8_t *satCDB, uint8_t multipleCount, uint8_t protocolOffset);
+    eReturnValues set_Multiple_Count(uint8_t *satCDB, uint8_t multipleCount, uint8_t protocolOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -156,7 +157,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Offline_Bits(uint8_t *satCDB, uint32_t timeout, uint8_t transferBitsOffset);
+    eReturnValues set_Offline_Bits(uint8_t *satCDB, uint32_t timeout, uint8_t transferBitsOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -171,7 +172,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Check_Condition_Bit(uint8_t *satCDB, uint8_t transferBitsOffset);
+    eReturnValues set_Check_Condition_Bit(uint8_t *satCDB, uint8_t transferBitsOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -187,7 +188,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int set_Registers(uint8_t *satCDB, ataPassthroughCommand *ataCommandOptions);
+    eReturnValues set_Registers(uint8_t *satCDB, ataPassthroughCommand *ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -203,7 +204,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr);
+    eReturnValues request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr);
 
     //-----------------------------------------------------------------------------
     //
@@ -221,7 +222,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthroughCommand *ataCommandOptions);
+    eReturnValues build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthroughCommand *ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -237,7 +238,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandOptions);
+    eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -255,7 +256,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx);
+    eReturnValues translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx);
 
 #if defined (__cplusplus)
 }

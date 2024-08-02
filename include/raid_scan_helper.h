@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -13,7 +14,7 @@
 
 #pragma once
 
-#include "common.h"
+#include "common_types.h"
 #include "common_public.h"
 #include "scsi_helper.h"
 
@@ -73,7 +74,7 @@ extern "C"
     ptrRaidHandleToScan add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan listBegin, ptrRaidHandleToScan currentPtr, char *handleToScan, raidTypeHint raidHint);
 
     //Make it easier to remove an item. Useful when scanning multiple RAID libs because the first RAID lib can remove handles that did in fact work so that they are not scanned again by another RAID library.
-    //returns a pointer to the entry after "toRemove", which can be NULL
+    //returns a pointer to the entry after "toRemove", which can be M_NULLPTR
     ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHandleToScan previous);
 
     //Deletes everything in the list from pointer to the beginning of the list.

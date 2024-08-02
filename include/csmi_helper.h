@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -15,8 +16,11 @@
 
 #if defined (ENABLE_CSMI)
 
-#include "common.h"
+#include "common_types.h"
 #include <stdint.h>
+#if defined (_WIN32) && !defined(_NTDDSCSIH_)
+    #include <ntddscsi.h>
+#endif
 #include "external/csmi/csmisas.h"
 #include "sata_types.h"
 
@@ -54,7 +58,7 @@ extern "C"
         #define CSMI_INVALID_HANDLE -1
     #endif
 
-    //TODO: This may need expanding if specific versions of each driver need tracking uniquely due to significant differences in reporting or behavior.
+    //NOTE: This may need expanding if specific versions of each driver need tracking uniquely due to significant differences in reporting or behavior.
     typedef enum _eKnownCSMIDriver
     {
         CSMI_DRIVER_UNKNOWN = 0,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -11,14 +12,24 @@
 // 
 // \file ti_legacy_helper.c   Implementation for TI Legacy USB Pass-through CDBs
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "ti_legacy_helper.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 
-int build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions, bool olderOpCode, bool forceMode, uint8_t modeValue)
+eReturnValues build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions, bool olderOpCode, bool forceMode, uint8_t modeValue)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (olderOpCode)
     {
         cdb[OPERATION_CODE] = TI_LEGACY_OPCODE_OLD;
@@ -60,19 +71,19 @@ int build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOption
     return ret;
 }
 
-int send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
+eReturnValues send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = UNKNOWN;
-    uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
+    eReturnValues ret = UNKNOWN;
+    uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
-    uint8_t tiCDB[CDB_LEN_16] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, tiCDB, CDB_LEN_16);
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         return NOT_SUPPORTED;
     }
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -123,10 +134,10 @@ int send_TI_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *a
     }
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free_aligned(senseData)
+    safe_Free_aligned(C_CAST(void**, &senseData));
     if (localSenseData)
     {
-        ataCommandOptions->ptrSenseData = NULL;
+        ataCommandOptions->ptrSenseData = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)

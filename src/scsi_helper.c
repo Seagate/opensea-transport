@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -9,7 +10,18 @@
 //
 // ******************************************************************************************
 // 
-#include "common.h"
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+#include "time_utils.h"
+
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 #include "sat_helper.h"
@@ -953,13 +965,13 @@ uint16_t calculate_Logical_Block_Guard(uint8_t *buffer, uint32_t userDataLength,
 //this is mean to only be called by check_Sense_Key_asc_And_ascq()
 void print_sense_key(const char* senseKeyToPrint, uint8_t senseKeyValue)
 {
-    printf("Sense Key: %"PRIX8"h = %s\n", senseKeyValue, senseKeyToPrint);
+    printf("Sense Key: %" PRIX8 "h = %s\n", senseKeyValue, senseKeyToPrint);
     fflush(stdout);
 }
 //this is meant to only be called by check_Sense_Key_asc_And_ascq()
 void print_acs_ascq(const char* acsAndascqStringToPrint, uint8_t ascValue, uint8_t ascqValue)
 {
-    printf("ASC & ASCQ: %"PRIX8"h - %"PRIX8"h = %s\n", ascValue, ascqValue, acsAndascqStringToPrint);
+    printf("ASC & ASCQ: %" PRIX8 "h - %" PRIX8 "h = %s\n", ascValue, ascqValue, acsAndascqStringToPrint);
     fflush(stdout);
 }
 
@@ -969,18 +981,18 @@ void print_Field_Replacable_Unit_Code(tDevice *device, const char *fruMessage, u
     //we'll only print out a translatable string for seagate drives since fru is vendor specific
     if (is_Seagate(device, false) == true && fruMessage && device->drive_info.interface_type == SCSI_INTERFACE)
     {
-        printf("FRU: %"PRIX8"h = %s\n", fruCode, fruMessage);
+        printf("FRU: %" PRIX8 "h = %s\n", fruCode, fruMessage);
         fflush(stdout);
     }
     else
     {
         if (fruCode == 0)
         {
-            printf("FRU: %"PRIX8"h = No Additional Information\n", fruCode);
+            printf("FRU: %" PRIX8 "h = No Additional Information\n", fruCode);
         }
         else
         {
-            printf("FRU: %"PRIX8"h = Vendor Specific\n", fruCode);
+            printf("FRU: %" PRIX8 "h = Vendor Specific\n", fruCode);
         }
         fflush(stdout);
     }
@@ -1001,11 +1013,11 @@ static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
     }
 }
 
-int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru)
+eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru)
 {
-    int ret = UNKNOWN;//if this gets returned from this function, then something is not right...
-    ascAscqRetDesc* asc_ascq_result = NULL;
-    ascAscqRetDesc asc_ascq_key = {asc, ascq, 0, 0};
+    eReturnValues ret = UNKNOWN;//if this gets returned from this function, then something is not right...
+    ascAscqRetDesc* asc_ascq_result = M_NULLPTR;
+    ascAscqRetDesc asc_ascq_key = { asc, ascq, 0, 0 };
     //first check the senseKey
     senseKey = senseKey & 0x0F;//strip off bits that are not part of the sense key
     if (senseKey < sizeof(senseKeyRetDesc) / sizeof(senseKeyRetDesc[0]))
@@ -1074,7 +1086,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
         asc_ascq_result = C_CAST(ascAscqRetDesc*, bsearch(
             &asc_ascq_key, ascAscqLookUp,
             sizeof(ascAscqLookUp) / sizeof(ascAscqLookUp[0]), sizeof(ascAscqLookUp[0]),
-            (int (*)(const void*, const void*))cmp_Asc_Ascq
+            (int(*)(const void*, const void*))cmp_Asc_Ascq
         ));
         if (asc_ascq_result)
         {
@@ -1125,7 +1137,7 @@ int check_Sense_Key_ASC_ASCQ_And_FRU(tDevice *device, uint8_t senseKey, uint8_t 
     }
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
-        print_Field_Replacable_Unit_Code(device, NULL, fru);
+        print_Field_Replacable_Unit_Code(device, M_NULLPTR, fru);
     }
     return ret;
 }
@@ -1513,7 +1525,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
             break;
         case SCSI_SENSE_DEFER_ERR_FIXED:
             senseFields->deferredError = true;
-            M_FALLTHROUGH
+            M_FALLTHROUGH;
         case SCSI_SENSE_CUR_INFO_FIXED:
             senseFields->fixedFormat = true;
             senseFields->validStructure = true;
@@ -1530,7 +1542,6 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
             }
             if (returnedLength > 8)
             {
-                //todo: better handling of if returned length for each field in here...
                 if (returnedLength >= 11)
                 {
                     senseFields->fixedCommandSpecificInformation = M_BytesTo4ByteValue(ptrSenseData[8], ptrSenseData[9], ptrSenseData[10], ptrSenseData[11]);
@@ -1591,7 +1602,7 @@ void get_Sense_Data_Fields(uint8_t *ptrSenseData, uint32_t senseDataLength, ptrS
             break;
         case SCSI_SENSE_DEFER_ERR_DESC:
             senseFields->deferredError = true;
-            M_FALLTHROUGH
+            M_FALLTHROUGH;
         case SCSI_SENSE_CUR_INFO_DESC:
             senseFields->fixedFormat = false;
             senseFields->validStructure = true;
@@ -1849,7 +1860,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 {
                     if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
                     {
-                        printf("Invalid field in CDB byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+                        printf("Invalid field in CDB byte %" PRIu16 " bit %" PRIu8 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
                     }
                     else
                     {
@@ -1860,7 +1871,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 {
                     if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
                     {
-                        printf("Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+                        printf("Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
                     }
                     else
                     {
@@ -1879,7 +1890,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 {
                     if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
                     {
-                        printf("Invalid field in Segment Descriptor byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+                        printf("Invalid field in Segment Descriptor byte %" PRIu16 " bit %" PRIu8 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
                     }
                     else
                     {
@@ -1890,7 +1901,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 {
                     if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
                     {
-                        printf("Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8"\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
+                        printf("Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8 "\n", senseFields->senseKeySpecificInformation.field.fieldPointer, senseFields->senseKeySpecificInformation.field.bitPointer);
                     }
                     else
                     {
@@ -1947,9 +1958,11 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
                 printf("Microcode Activation Time:");
                 if (senseFields->microCodeActivation.microcodeActivationTimeSeconds > 0)
                 {
-                    uint8_t hours = 0, minutes = 0, seconds = 0;
-                    convert_Seconds_To_Displayable_Time(senseFields->microCodeActivation.microcodeActivationTimeSeconds, NULL, NULL, &hours, &minutes, &seconds);
-                    print_Time_To_Screen(NULL, NULL, &hours, &minutes, &seconds);
+                    uint8_t hours = 0;
+                    uint8_t minutes = 0;
+                    uint8_t seconds = 0;
+                    convert_Seconds_To_Displayable_Time(senseFields->microCodeActivation.microcodeActivationTimeSeconds, M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
+                    print_Time_To_Screen(M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
                     printf("\n");
                 }
                 else
@@ -1969,7 +1982,7 @@ uint16_t get_Returned_Sense_Data_Length(uint8_t *pbuf)
         return 0;
     }
     uint8_t format = pbuf[0] & 0x7F; //Stripping the last bit so we just get the format
-        
+
     switch (format)
     {
     case SCSI_SENSE_NO_SENSE_DATA:
@@ -1989,7 +2002,7 @@ uint16_t get_Returned_Sense_Data_Length(uint8_t *pbuf)
 
 // \fn copy_Inquiry_Data(unsigned char * pbuf, driveInfo * info)
 // \brief copy in the necessary data to our struct from INQ data.
-void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
+void copy_Inquiry_Data(uint8_t *pbuf, driveInfo *info)
 {
     // \todo: Create a macro to get various stuff out of the inq buffer
     memcpy(info->T10_vendor_ident, &pbuf[8], INQ_DATA_T10_VENDOR_ID_LEN);
@@ -2002,7 +2015,7 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
     //vendor ID
     for (uint8_t iter = 0; iter < T10_VENDOR_ID_LEN; ++iter)
     {
-        if (!is_ASCII(info->T10_vendor_ident[iter]) || !isprint(info->T10_vendor_ident[iter]))
+        if (!safe_isascii(info->T10_vendor_ident[iter]) || !safe_isprint(info->T10_vendor_ident[iter]))
         {
             info->T10_vendor_ident[iter] = ' ';
         }
@@ -2010,7 +2023,7 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
     //product ID
     for (uint8_t iter = 0; iter < MODEL_NUM_LEN && iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
     {
-        if (!is_ASCII(info->product_identification[iter]) || !isprint(info->product_identification[iter]))
+        if (!safe_isascii(info->product_identification[iter]) || !safe_isprint(info->product_identification[iter]))
         {
             info->product_identification[iter] = ' ';
         }
@@ -2018,7 +2031,7 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
     //FWRev
     for (uint8_t iter = 0; iter < FW_REV_LEN && iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
     {
-        if (!is_ASCII(info->product_revision[iter]) || !isprint(info->product_revision[iter]))
+        if (!safe_isascii(info->product_revision[iter]) || !safe_isprint(info->product_revision[iter]))
         {
             info->product_revision[iter] = ' ';
         }
@@ -2029,14 +2042,14 @@ void copy_Inquiry_Data( uint8_t *pbuf, driveInfo *info )
 }
 
 // \brief copy the serial number off of 0x80 VPD page data.
-void copy_Serial_Number( uint8_t *pbuf, char *serialNumber )
+void copy_Serial_Number(uint8_t *pbuf, char *serialNumber)
 {
     uint16_t snLen = M_BytesTo2ByteValue(pbuf[2], pbuf[3]);
-    memcpy(serialNumber, &pbuf[4], M_Min(snLen,SERIAL_NUM_LEN));
-    serialNumber[M_Min(snLen,SERIAL_NUM_LEN)] = '\0';
+    memcpy(serialNumber, &pbuf[4], M_Min(snLen, SERIAL_NUM_LEN));
+    serialNumber[M_Min(snLen, SERIAL_NUM_LEN)] = '\0';
     for (uint16_t iter = 0; iter < SERIAL_NUM_LEN && iter < snLen; ++iter)
     {
-        if (!is_ASCII(serialNumber[iter]) || !isprint(serialNumber[iter]))
+        if (!safe_isascii(serialNumber[iter]) || !safe_isprint(serialNumber[iter]))
         {
             serialNumber[iter] = ' ';
         }
@@ -2070,9 +2083,9 @@ void copy_Read_Capacity_Info(uint32_t *logicalBlockSize, uint32_t *physicalBlock
     }
 }
 
-int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
+eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice *device)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     bool issueSATIdentify = true;//default to ALWAYS reading this unless something else says not to. - TJE
     if (device->drive_info.interface_type == IDE_INTERFACE || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
     {
@@ -2086,7 +2099,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
     }
     if (!device->drive_info.passThroughHacks.scsiHacks.noVPDPages && !device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage)//if this is set, then the device is known to not support VPD pages, so just skip to the SAT identify
     {
-        uint8_t *ataInformation = C_CAST(uint8_t *, calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t *ataInformation = C_CAST(uint8_t *, safe_calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!ataInformation)
         {
             perror("Error allocating memory to read the ATA Information VPD page");
@@ -2221,7 +2234,7 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
         {
             device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
         }
-        safe_Free_aligned(ataInformation)
+        safe_Free_aligned(C_CAST(void**, &ataInformation));
     }
     if (issueSATIdentify)
     {
@@ -2242,9 +2255,9 @@ int check_SAT_Compliance_And_Set_Drive_Type( tDevice *device )
 static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
 {
     bool passthroughTypeSet = false;
-    char vendorID[INQ_DATA_T10_VENDOR_ID_LEN + 1] = { 0 };
-    char productID[INQ_DATA_PRODUCT_ID_LEN + 1] = { 0 };
-    char revision[INQ_DATA_PRODUCT_REV_LEN + 1] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(char, vendorID, INQ_DATA_T10_VENDOR_ID_LEN + 1);
+    DECLARE_ZERO_INIT_ARRAY(char, productID, INQ_DATA_PRODUCT_ID_LEN + 1);
+    DECLARE_ZERO_INIT_ARRAY(char, revision, INQ_DATA_PRODUCT_REV_LEN + 1);
     uint8_t responseFormat = M_Nibble0(device->drive_info.scsiVpdData.inquiryData[3]);
     if (responseFormat >= INQ_RESPONSE_FMT_CURRENT)
     {
@@ -2253,21 +2266,21 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
         memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
         for (uint8_t iter = 0; iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
         {
-            if (!is_ASCII(vendorID[iter]) || !isprint(vendorID[iter]))
+            if (!safe_isascii(vendorID[iter]) || !safe_isprint(vendorID[iter]))
             {
                 vendorID[iter] = ' ';
             }
         }
         for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
         {
-            if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+            if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
             {
                 productID[iter] = ' ';
             }
         }
         for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
         {
-            if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+            if (!safe_isascii(revision[iter]) || !safe_isprint(revision[iter]))
             {
                 revision[iter] = ' ';
             }
@@ -2360,7 +2373,6 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             else if (strcmp(productID, "S2 Portable") == 0)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
-                //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
             }
             else
             {
@@ -2374,12 +2386,11 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
                 device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                 device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
-                //TODO: since we may find SATA or NVMe adapters, we cannot set below due to a union being used. May need to remove that or find another solution
                 //device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-                //device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
             }
         }
         else if (strcmp(vendorID, "Samsung") == 0)
@@ -2389,7 +2400,6 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             if (strcmp(productID, "S2 Portable") == 0)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
-                //TODO: this device previously had a hack that SMART check isn't supported, so need to migrate that too.
             }
             if (device->drive_info.interface_type != USB_INTERFACE)
             {
@@ -2412,7 +2422,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
         30 30 30 30 00 00 00 00 00 00 00 00 04 00 41 41  0000..........AA
         33 41 30 35 20 20 54 53 31 39 30 32 32 38 41 36  3A05  TS190228A6
         20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
-        20 20 20 20 20 20 20 20 20 20 20 20 20 20 01 80                .�
+        20 20 20 20 20 20 20 20 20 20 20 20 20 20 01 80                ..
         00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
         //Example 2:
         00 00 00 00 1f 00 00 00 53 65 61 67 61 74 65 20  ........Seagate
@@ -2420,21 +2430,21 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
         00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
         00 00 00 00 20 20 54 53 31 33 30 32 32 30 41 32  ....  TS130220A2
         20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
-        20 20 20 20 20 20 20 20 20 20 20 20 20 20 10 80                .�
+        20 20 20 20 20 20 20 20 20 20 20 20 20 20 10 80                ..
         00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
         //Example 3:
         00 00 02 01 1f 00 00 00 53 61 6d 73 75 6e 67 20  ........Samsung
         53 32 20 50 6f 72 74 61 62 6c 65 00 08 12 00 00  S2 Portable.....
-        00 00 00 00 6a 33 33 39 cd cd cd cd cd cd cd cd  ....j339��������
-        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
-        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
-        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ����������������
+        00 00 00 00 6a 33 33 39 cd cd cd cd cd cd cd cd  ....j339........
+        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ................
+        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ................
+        cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ................
         */
         memcpy(vendorID, &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_T10_VENDOR_ID_LEN);
 
         for (uint8_t iter = 0; iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
         {
-            if (!is_ASCII(vendorID[iter]) || !isprint(vendorID[iter]))
+            if (!safe_isascii(vendorID[iter]) || !safe_isprint(vendorID[iter]))
             {
                 vendorID[iter] = ' ';
             }
@@ -2442,11 +2452,11 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
         remove_Leading_And_Trailing_Whitespace(vendorID);
         if (strcmp(vendorID, "Seagate") == 0)
         {
-            char internalModel[MODEL_NUM_LEN + 1] = { 0 };//this may or may not be useful...
+            DECLARE_ZERO_INIT_ARRAY(char, internalModel, MODEL_NUM_LEN + 1);
             memcpy(internalModel, &device->drive_info.scsiVpdData.inquiryData[54], MODEL_NUM_LEN);
             for (uint8_t iter = 0; iter < MODEL_NUM_LEN; ++iter)
             {
-                if (!is_ASCII(internalModel[iter]) || !isprint(internalModel[iter]))
+                if (!safe_isascii(internalModel[iter]) || !safe_isprint(internalModel[iter]))
                 {
                     internalModel[iter] = ' ';
                 }
@@ -2457,21 +2467,21 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
-                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
-                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                if (!safe_isascii(revision[iter]) || !safe_isprint(revision[iter]))
                 {
                     revision[iter] = ' ';
                 }
             }
             remove_Leading_And_Trailing_Whitespace(vendorID);
             remove_Leading_And_Trailing_Whitespace(productID);
-            if (strcmp(productID, "External Drive") == 0 && strlen(internalModel))//doing strlen of internal model number to catch others of this type with something set here
+            if (strcmp(productID, "External Drive") == 0 && safe_strnlen(internalModel, MODEL_NUM_LEN + 1))//doing safe_strlen of internal model number to catch others of this type with something set here
             {
                 passthroughTypeSet = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
@@ -2487,14 +2497,14 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[36], INQ_DATA_PRODUCT_REV_LEN);
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
-                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
-                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                if (!safe_isascii(revision[iter]) || !safe_isprint(revision[iter]))
                 {
                     revision[iter] = ' ';
                 }
@@ -2508,14 +2518,14 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             memcpy(revision, &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN);
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
-                if (!is_ASCII(productID[iter]) || !isprint(productID[iter]))
+                if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
                 {
                     productID[iter] = ' ';
                 }
             }
             for (uint8_t iter = 0; iter < INQ_DATA_PRODUCT_REV_LEN; ++iter)
             {
-                if (!is_ASCII(revision[iter]) || !isprint(revision[iter]))
+                if (!safe_isascii(revision[iter]) || !safe_isprint(revision[iter]))
                 {
                     revision[iter] = ' ';
                 }
@@ -2602,20 +2612,20 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
         {
             //sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
             //All of these SNs should be only 8 characters long.
-            char zeroes[SERIAL_NUM_LEN + 1] = { 0 };//making bigger than needed for now.
+            DECLARE_ZERO_INIT_ARRAY(char, zeroes, SERIAL_NUM_LEN + 1);//making bigger than needed for now.
             memset(zeroes, '0', SERIAL_NUM_LEN);
             if (strncmp(zeroes, *unitSerialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
             {
                 //8 zeroes at the beginning. Strip them off
-                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
-                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], safe_strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
+                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
             }
-            else if (strncmp(zeroes, &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
+            else if (strncmp(zeroes, &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], safe_strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
             {
                 //zeroes at the end. Write nulls over them
                 //This is not correct, reverse the string as this is a product defect.
-                char currentSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
-                char newSerialNumber[SERIAL_NUM_LEN + 1] = { 0 };
+                DECLARE_ZERO_INIT_ARRAY(char, currentSerialNumber, SERIAL_NUM_LEN + 1);
+                DECLARE_ZERO_INIT_ARRAY(char, newSerialNumber, SERIAL_NUM_LEN + 1);
                 uint8_t serialMaxSize = C_CAST(uint8_t, M_Min(SERIAL_NUM_LEN, unitSNSize));
                 //backup current just in case
                 memcpy(currentSerialNumber, (*unitSerialNumber), M_Min(SERIAL_NUM_LEN, unitSNSize));
@@ -2636,36 +2646,35 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
                 if (strncmp(zeroes, (*unitSerialNumber), SEAGATE_SERIAL_NUMBER_LEN) == 0)
                 {
                     //zeroes at the beginning. Strip them off
-                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
-                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
                 }
                 else if (strncmp(zeroes, (*unitSerialNumber), 4) == 0)
                 {
                     //zeroes at the beginning. Strip them off
-                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], strlen((*unitSerialNumber)) - 4);
-                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - 4);
+                    memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], safe_strlen((*unitSerialNumber)) - 4);
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen((*unitSerialNumber)) - 4);
                 }
                 else
                 {
                     //after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the end.
                     memcpy((*unitSerialNumber), currentSerialNumber, M_Min(SERIAL_NUM_LEN, unitSNSize));
-                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+                    memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
                 }
             }
             else if (strncmp(zeroes, (*unitSerialNumber), 4) == 0)
             {
                 //4 zeroes at the beginning. Strip them off
-                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], strlen((*unitSerialNumber)) - 4);
-                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - 4);
+                memmove(&(*unitSerialNumber)[0], &(*unitSerialNumber)[4], safe_strlen((*unitSerialNumber)) - 4);
+                memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen((*unitSerialNumber)) - 4);
             }
-            //TODO: Add more cases if we observe other strange reporting behavior.
             //NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to add different cases for these older LaCie products.
         }
         else if (is_Seagate_SAS_Vendor_ID(t10VendorIdent))
         {
             //SAS Seagate drives have a maximum SN length of 8
             //Other information in here is the PCBA SN
-            memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+            memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], 0, safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
         }
     }
     return;
@@ -2675,12 +2684,12 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
 // \brief Sends a set of INQUIRY commands & fills in the device information
 // \param device device struture
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-int fill_In_Device_Info(tDevice *device)
+eReturnValues fill_In_Device_Info(tDevice *device)
 {
-    int           ret      = FAILURE;
-    #ifdef _DEBUG
-    printf("%s: -->\n",__FUNCTION__);
-    #endif
+    eReturnValues ret = FAILURE;
+#ifdef _DEBUG
+    printf("%s: -->\n", __FUNCTION__);
+#endif
 
     bool mediumNotPresent = false;//assume medium is available until we find out otherwise.
     scsiStatus turStatus;
@@ -2697,7 +2706,7 @@ int fill_In_Device_Info(tDevice *device)
         }
     }
 
-    uint8_t *inq_buf = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
+    uint8_t *inq_buf = C_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!inq_buf)
     {
         perror("Error allocating memory for standard inquiry data (scsi)");
@@ -2866,7 +2875,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 device->drive_info.interface_type = USB_INTERFACE;
             }
-            
+
             //Only rely on this as a last resort. Try using version descriptors when possible
             //NOTE: This is different from SAS where the ID is in all CAPS, which makes this identification possible.
             //TODO: LaCie? Need to make sure this only catches USB and not something else like thunderbolt
@@ -2952,13 +2961,12 @@ int fill_In_Device_Info(tDevice *device)
             {
                 checkForSAT = false;
             }
-            //TODO: add in additional bits to skip SAT check as we find them useful
         }
         //do we want to check the version descriptors here too? There are a lot of those...I have a table that parses them to human readable, but not setting anything yet...may need to use that later
 
         //As per NVM Express SCSI Translation Reference. 
         //NOTE: Setting this type here allows us to skip sending some extra commands. (e.g. SAT compliant)
-        if (memcmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 )
+        if (memcmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0)
         {
             //DO NOT set the drive type to NVMe here. We need to treat it as a SCSI device since we can only issue SCSI translatable commands!!!
             //device->drive_info.drive_type  = NVME_DRIVE;
@@ -2987,7 +2995,7 @@ int fill_In_Device_Info(tDevice *device)
                 strcmp(device->drive_info.product_identification, "SD/MMC") == 0 ||
                 strcmp(device->drive_info.product_identification, "SD/MemoryStick") == 0 ||
                 strcmp(device->drive_info.product_identification, "SM/xD-Picture") == 0 ||
-                strcmp(device->drive_info.product_identification, "Compact Flash") == 0 //TODO: Keep this here? This can be an ATA device, but that may depend on the interface - TJE
+                strcmp(device->drive_info.product_identification, "Compact Flash") == 0
                 )
             {
                 //TODO: We have "FLASH_DRIVE" as a type, but it won't ba handled well in the rest of the library.
@@ -3005,12 +3013,12 @@ int fill_In_Device_Info(tDevice *device)
 
         //If this is a suspected NVMe device, specifically ASMedia 236X chip, need to do an inquiry with EXACTLY 38bytes to check for a specific signature
         //This will check for some known outputs to know when to do the additional inquiry command for ASMedia detection. This may not catch everything. - TJE
-        if (!knownMemoryStickID && !device->drive_info.passThroughHacks.hacksSetByReportedID  && !(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
+        if (!knownMemoryStickID && !device->drive_info.passThroughHacks.hacksSetByReportedID && !(device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
             &&
-            (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0 
-            || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME")
-            || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
-            //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
+            (strncmp(device->drive_info.T10_vendor_ident, "ASMT", 4) == 0 || strncmp(device->drive_info.T10_vendor_ident, "ASMedia", 7) == 0
+                || strstr(device->drive_info.product_identification, "ASM236X") || strstr(device->drive_info.product_identification, "NVME")
+                || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident) || strcmp(device->drive_info.T10_vendor_ident, "LaCie") == 0) //This is a special case to run on Seagate and LaCie USB adapters as they may use the ASmedia NVMe chips
+                //TODO: Check when FWRev is set to 2364? At least one device I have does this, but not sure this is a good thing to add in here or not -TJE
             && !hisup && !rmb //hisup shoiuld be 1 and rmb should be zero...on the asmedia chips I have tested, hisup is zero
             && responseFormat >= INQ_RESPONSE_FMT_CURRENT //filter out any weird old drives with bizarre responses
             && inq_buf[4] == 0x47 //SNTL says 1F, but a couple of adapter I have sets 47h...using this for now to help filter the list
@@ -3018,14 +3026,14 @@ int fill_In_Device_Info(tDevice *device)
             )
         {
             //This is likely a ASMedia 236X device. Need to do another inquiry command in order to confirm.
-            uint8_t asmtInq[38] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, asmtInq, 38);
             if (SUCCESS == scsi_Inquiry(device, asmtInq, 38, 0, false, false))
             {
-                if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)//todo: add checking length ahead of this for improved backwards compatibility with SCSI 2 devices.
+                if (asmtInq[36] == 0x60 && asmtInq[37] == 0x23)
                 {
                     //This is an ASMedia device with the 236X chip which supports USB to NVMe passthrough
                     //will attempt to check for full passthrough support first
-                    uint8_t* nvmeIdentify = C_CAST(uint8_t*, calloc_aligned(NVME_IDENTIFY_DATA_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t* nvmeIdentify = C_CAST(uint8_t*, safe_calloc_aligned(NVME_IDENTIFY_DATA_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
                     bool fullCmdSupport = false;
                     //setup hacks/flags common for both types of passthrough
                     device->drive_info.drive_type = NVME_DRIVE;
@@ -3047,7 +3055,7 @@ int fill_In_Device_Info(tDevice *device)
                         {
                             fullCmdSupport = true;
                         }
-                        safe_Free_aligned(nvmeIdentify);
+                        safe_Free_aligned(C_CAST(void**, &nvmeIdentify));
                     }
                     //This code will setup known hacks for these devices since it wasn't already detected by lower layers based on VID/PID reported over the USB interface
                     checkForSAT = false;
@@ -3067,7 +3075,7 @@ int fill_In_Device_Info(tDevice *device)
 
         //Need to check version descriptors here since they may be useful below, but also because it can be used to help rule-out some USB to NVMe devices.
         bool satVersionDescriptorFound = false;
-        if(strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME") || strstr(device->drive_info.product_identification, "NVMe"))
+        if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) == 0 || strstr(device->drive_info.product_identification, "NVME") || strstr(device->drive_info.product_identification, "NVMe"))
         {
             //This means we most likely have some sort of NVMe device, so SAT (ATA passthrough) makes no sense to check for.
             checkForSAT = false;
@@ -3076,7 +3084,7 @@ int fill_In_Device_Info(tDevice *device)
         {
             if (foundSATStandardDescriptor || foundATAStandardDescriptor)
             {
-                if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == NULL || strstr(device->drive_info.product_identification, "NVMe") == NULL)
+                if (strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0 || strstr(device->drive_info.product_identification, "NVME") == M_NULLPTR || strstr(device->drive_info.product_identification, "NVMe") == M_NULLPTR)
                 {
                     satVersionDescriptorFound = true;
                     checkForSAT = true; //Setting it as true, since some Marvell controller set SYNC bit, which is preventing our auto-discovery as ATA drive and sending SAT commands.
@@ -3128,7 +3136,7 @@ int fill_In_Device_Info(tDevice *device)
             if (checkForSAT && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON && (satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 || device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE || device->drive_info.interface_type == IDE_INTERFACE)
                 &&
                 (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE)
-               )
+                )
             {
                 ret = fill_In_ATA_Drive_Info(device);
                 if (ret != SUCCESS && checkJMicronNVMe)
@@ -3160,7 +3168,7 @@ int fill_In_Device_Info(tDevice *device)
                     }
                 }
             }
-            safe_Free_aligned(inq_buf)
+            safe_Free_aligned(C_CAST(void**, &inq_buf));
             return ret;
         }
 
@@ -3170,7 +3178,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 //I'm reading only the unit serial number page here for a quick scan and the device information page for WWN - TJE
                 uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                uint8_t *unitSerialNumber = C_CAST(uint8_t*, calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t *unitSerialNumber = C_CAST(uint8_t*, safe_calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
@@ -3187,7 +3195,7 @@ int fill_In_Device_Info(tDevice *device)
                             device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                             {
-                                if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
+                                if (!safe_isascii(device->drive_info.serialNumber[iter]) || !safe_isprint(device->drive_info.serialNumber[iter]))
                                 {
                                     device->drive_info.serialNumber[iter] = ' ';
                                 }
@@ -3207,7 +3215,7 @@ int fill_In_Device_Info(tDevice *device)
                         memset(device->drive_info.serialNumber, 0, SERIAL_NUM_LEN);
                     }
                 }
-                safe_Free_aligned(unitSerialNumber)
+                safe_Free_aligned(C_CAST(void**, &unitSerialNumber));
             }
             else
             {
@@ -3217,7 +3225,7 @@ int fill_In_Device_Info(tDevice *device)
                 //make sure the SN is printable if it's coming from here since it's non-standardized
                 for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
                 {
-                    if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
+                    if (!safe_isascii(device->drive_info.serialNumber[iter]) || !safe_isprint(device->drive_info.serialNumber[iter]))
                     {
                         device->drive_info.serialNumber[iter] = ' ';
                     }
@@ -3225,11 +3233,11 @@ int fill_In_Device_Info(tDevice *device)
             }
             if (version >= 3 && !device->drive_info.passThroughHacks.scsiHacks.noVPDPages)//device identification added in SPC
             {
-                uint8_t *deviceIdentification = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t *deviceIdentification = C_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
-                    safe_Free_aligned(inq_buf)
+                    safe_Free_aligned(C_CAST(void**, &inq_buf));
                     return MEMORY_FAILURE;
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
@@ -3241,7 +3249,7 @@ int fill_In_Device_Info(tDevice *device)
                         byte_Swap_64(&device->drive_info.worldWideName);
                     }
                 }
-                safe_Free_aligned(deviceIdentification)
+                safe_Free_aligned(C_CAST(void**, &deviceIdentification));
             }
             //One last thing...Need to do a SAT scan...
             if (checkForSAT)
@@ -3275,14 +3283,14 @@ int fill_In_Device_Info(tDevice *device)
                     }
                 }
             }
-            safe_Free_aligned(inq_buf)
+            safe_Free_aligned(C_CAST(void**, &inq_buf));
             return ret;
         }
 
         if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2 && device->drive_info.interface_type != USB_INTERFACE && device->drive_info.interface_type != IEEE_1394_INTERFACE)
         {
             //Issue report LUNs to figure out how many logical units are present.
-            uint8_t reportLuns[REPORT_LUNS_MIN_LENGTH] = { 0 };//only really need first 4 bytes, but this will make sure we get the length, hopefully without error
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, reportLuns, REPORT_LUNS_MIN_LENGTH);//only really need first 4 bytes, but this will make sure we get the length, hopefully without error
             if (SUCCESS == scsi_Report_Luns(device, 0, REPORT_LUNS_MIN_LENGTH, reportLuns))
             {
                 uint32_t lunListLength = M_BytesTo4ByteValue(reportLuns[0], reportLuns[1], reportLuns[2], reportLuns[3]);
@@ -3323,8 +3331,7 @@ int fill_In_Device_Info(tDevice *device)
             }
             if (dummyUpVPDSupport == false)
             {
-                uint8_t zeroedMem[INQ_RETURN_DATA_LENGTH] = { 0 };
-                if (memcmp(inq_buf, zeroedMem, INQ_RETURN_DATA_LENGTH) == 0)
+                if (is_Empty(inq_buf, INQ_RETURN_DATA_LENGTH))
                 {
                     //this case means that the command was successful, but we got nothing but zeros....which happens on some craptastic USB bridges
                     dummyUpVPDSupport = true;
@@ -3334,7 +3341,7 @@ int fill_In_Device_Info(tDevice *device)
             {
                 uint16_t offset = 4;//start of pages to dummy up
                 //in here we will set up a fake supported VPD pages buffer so that we try to read the unit serial number page, the SAT page, and device identification page
-                inq_buf[0] = peripheralQualifier << 5;
+                inq_buf[0] = C_CAST(uint8_t, peripheralQualifier << 5);
                 inq_buf[0] |= peripheralDeviceType;
                 //set page code
                 inq_buf[1] = 0x00;
@@ -3372,7 +3379,6 @@ int fill_In_Device_Info(tDevice *device)
                             ++offset;
                         }
                     }
-                    //TODO: Add more pages to the dummy information as we need to. This may be useful to do in the future in case a device decides not to support a MANDATORY page or another page we care about
 
                 }
                 //set page length (n-3)
@@ -3381,11 +3387,11 @@ int fill_In_Device_Info(tDevice *device)
             }
             //first, get the length of the supported pages
             uint16_t supportedVPDPagesLength = M_BytesTo2ByteValue(inq_buf[2], inq_buf[3]);
-            uint8_t *supportedVPDPages = C_CAST(uint8_t*, calloc(supportedVPDPagesLength, sizeof(uint8_t)));
+            uint8_t *supportedVPDPages = C_CAST(uint8_t*, safe_calloc(supportedVPDPagesLength, sizeof(uint8_t)));
             if (!supportedVPDPages)
             {
                 perror("Error allocating memory for supported VPD pages!\n");
-                safe_Free_aligned(inq_buf)
+                safe_Free_aligned(C_CAST(void**, &inq_buf));
                 return MEMORY_FAILURE;
             }
             memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
@@ -3398,7 +3404,7 @@ int fill_In_Device_Info(tDevice *device)
                 case UNIT_SERIAL_NUMBER://Device serial number (only grab 20 characters worth since that's what we need for the device struct)
                 {
                     uint8_t unitSerialNumberPageLength = SERIAL_NUM_LEN + 4;//adding 4 bytes extra for the header
-                    uint8_t *unitSerialNumber = C_CAST(uint8_t*, calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t *unitSerialNumber = C_CAST(uint8_t*, safe_calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!unitSerialNumber)
                     {
                         perror("Error allocating memory to read the unit serial number");
@@ -3413,9 +3419,9 @@ int fill_In_Device_Info(tDevice *device)
                             {
                                 memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
-                                for (size_t iter = 0; iter < SERIAL_NUM_LEN && iter < strlen(device->drive_info.serialNumber); ++iter)
+                                for (size_t iter = 0; iter < SERIAL_NUM_LEN && iter < safe_strlen(device->drive_info.serialNumber); ++iter)
                                 {
-                                    if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
+                                    if (!safe_isascii(device->drive_info.serialNumber[iter]) || !safe_isprint(device->drive_info.serialNumber[iter]))
                                     {
                                         device->drive_info.serialNumber[iter] = ' ';
                                     }
@@ -3427,12 +3433,12 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free_aligned(unitSerialNumber)
+                    safe_Free_aligned(C_CAST(void**, &unitSerialNumber));
                     break;
                 }
                 case DEVICE_IDENTIFICATION://World wide name
                 {
-                    uint8_t *deviceIdentification = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t *deviceIdentification = C_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!deviceIdentification)
                     {
                         perror("Error allocating memory to read device identification VPD page");
@@ -3447,12 +3453,12 @@ int fill_In_Device_Info(tDevice *device)
                             byte_Swap_64(&device->drive_info.worldWideName);
                         }
                     }
-                    safe_Free_aligned(deviceIdentification)
+                    safe_Free_aligned(C_CAST(void**, &deviceIdentification));
                     break;
                 }
                 case ATA_INFORMATION: //use this to determine if it's SAT compliant
                 {
-                    if(device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
+                    if (device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
                     {
                         //printf("VPD pages, check SAT info\n");
                         //do not check the checkForSAT bool here. If we get here, then the device most likely reported support for it so it should be readable.
@@ -3463,8 +3469,7 @@ int fill_In_Device_Info(tDevice *device)
                         else
                         {
                             //send test unit ready to get the device responding again (For better performance on some USB devices that don't support this page)
-                            scsi_Test_Unit_Ready(device, NULL);
-                            //TODO: Check jmicron here???
+                            scsi_Test_Unit_Ready(device, M_NULLPTR);
                             if (checkJMicronNVMe)
                             {
                                 device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
@@ -3500,7 +3505,7 @@ int fill_In_Device_Info(tDevice *device)
                 }
                 case BLOCK_DEVICE_CHARACTERISTICS: //use this to determine if it's SSD or HDD and whether it's a HDD or not
                 {
-                    uint8_t *blockDeviceCharacteristics = C_CAST(uint8_t*, calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t *blockDeviceCharacteristics = C_CAST(uint8_t*, safe_calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
                     if (!blockDeviceCharacteristics)
                     {
                         perror("Error allocating memory to read block device characteistics VPD page");
@@ -3574,7 +3579,7 @@ int fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free_aligned(blockDeviceCharacteristics)
+                    safe_Free_aligned(C_CAST(void**, &blockDeviceCharacteristics));
                     break;
                 }
                 default:
@@ -3582,7 +3587,7 @@ int fill_In_Device_Info(tDevice *device)
                     break;
                 }
             }
-            safe_Free(supportedVPDPages)
+            safe_Free(C_CAST(void**, &supportedVPDPages));
             if (!satVPDPageRead && !dummyUpVPDSupport)
             {
                 //This device returned a list of pages already, so we know what it supports.
@@ -3598,7 +3603,7 @@ int fill_In_Device_Info(tDevice *device)
             //make sure the SN is printable if it's coming from here since it's non-standardized
             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
             {
-                if (!is_ASCII(device->drive_info.serialNumber[iter]) || !isprint(device->drive_info.serialNumber[iter]))
+                if (!safe_isascii(device->drive_info.serialNumber[iter]) || !safe_isprint(device->drive_info.serialNumber[iter]))
                 {
                     device->drive_info.serialNumber[iter] = ' ';
                 }
@@ -3611,10 +3616,10 @@ int fill_In_Device_Info(tDevice *device)
             //Anything else can have read capacity 16 command available
 
             //send a read capacity command to get the device's logical block size...read capacity 10 should be enough for this
-            uint8_t *readCapBuf = C_CAST(uint8_t*, calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t *readCapBuf = C_CAST(uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (!readCapBuf)
             {
-                safe_Free_aligned(inq_buf)
+                safe_Free_aligned(C_CAST(void**, &inq_buf));
                 return MEMORY_FAILURE;
             }
             if (SUCCESS == scsi_Read_Capacity_10(device, readCapBuf, READ_CAPACITY_10_LEN))
@@ -3623,11 +3628,11 @@ int fill_In_Device_Info(tDevice *device)
                 if (version > 3)//SPC2 and higher can reference SBC2 and higher which introduced read capacity 16
                 {
                     //try a read capacity 16 anyways and see if the data from that was valid or not since that will give us a physical sector size whereas readcap10 data will not
-                    uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
+                    uint8_t* temp = C_CAST(uint8_t*, safe_realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                     if (!temp)
                     {
-                        safe_Free_aligned(readCapBuf)
-                        safe_Free_aligned(inq_buf)
+                        safe_Free_aligned(C_CAST(void**, &readCapBuf));
+                        safe_Free_aligned(C_CAST(void**, &inq_buf));
                         return MEMORY_FAILURE;
                     }
                     readCapBuf = temp;
@@ -3660,11 +3665,11 @@ int fill_In_Device_Info(tDevice *device)
             else
             {
                 //try read capacity 16, if that fails we are done trying
-                uint8_t* temp = C_CAST(uint8_t*, realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
-                if (temp == NULL)
+                uint8_t* temp = C_CAST(uint8_t*, safe_realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
+                if (temp == M_NULLPTR)
                 {
-                    safe_Free_aligned(readCapBuf)
-                    safe_Free_aligned(inq_buf)
+                    safe_Free_aligned(C_CAST(void**, &readCapBuf));
+                    safe_Free_aligned(C_CAST(void**, &inq_buf));
                     return MEMORY_FAILURE;
                 }
                 readCapBuf = temp;
@@ -3681,7 +3686,7 @@ int fill_In_Device_Info(tDevice *device)
                     }
                 }
             }
-            safe_Free_aligned(readCapBuf)
+            safe_Free_aligned(C_CAST(void**, &readCapBuf));
             if (device->drive_info.devicePhyBlockSize == 0)
             {
                 //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
@@ -3694,9 +3699,9 @@ int fill_In_Device_Info(tDevice *device)
         //      but this DOES NOT WORK. For whatever reason, some report 512B logical, 4k physical....for no apparent reason. - TJE
 
         //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
-        int satCheck = FAILURE;
+        eReturnValues satCheck = FAILURE;
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
-        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
+        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE)
             && device->drive_info.media_type != MEDIA_UNKNOWN && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
         {
             satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
@@ -3708,7 +3713,7 @@ int fill_In_Device_Info(tDevice *device)
             (satCheck != SUCCESS && checkJMicronNVMe)
             )
         {
-            int scsiRet = ret;
+            eReturnValues scsiRet = ret;
             if (checkJMicronNVMe)
             {
                 device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
@@ -3733,7 +3738,7 @@ int fill_In_Device_Info(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
             }
-            else if(checkJMicronNVMe)
+            else if (checkJMicronNVMe)
             {
                 device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
                 ret = scsiRet;//do not fail here since this should otherwise be treated as a SCSI drive
@@ -3752,15 +3757,15 @@ int fill_In_Device_Info(tDevice *device)
         }
         ret = COMMAND_FAILURE;
     }
-    safe_Free_aligned(inq_buf)
+    safe_Free_aligned(C_CAST(void**, &inq_buf));
 
-    #ifdef _DEBUG
+#ifdef _DEBUG
     printf("\nscsi helper\n");
-    printf("Drive type: %d\n",device->drive_info.drive_type);
-    printf("Interface type: %d\n",device->drive_info.interface_type);
-    printf("Media type: %d\n",device->drive_info.media_type);
-    printf("%s: <--\n",__FUNCTION__);
-    #endif
+    printf("Drive type: %d\n", device->drive_info.drive_type);
+    printf("Interface type: %d\n", device->drive_info.interface_type);
+    printf("Media type: %d\n", device->drive_info.media_type);
+    printf("%s: <--\n", __FUNCTION__);
+#endif
     return ret;
 }
 
@@ -4400,13 +4405,13 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
 {
     //use binary search to find it from the massive list above
     //If that fails, fall into the switch below as a fall-back
-    scsiVersionDescriptor* versionDescriptorResult = NULL;
-    scsiVersionDescriptor versionDescriptorKey = { versionDescriptor, NULL };
+    scsiVersionDescriptor* versionDescriptorResult = M_NULLPTR;
+    scsiVersionDescriptor versionDescriptorKey = { versionDescriptor, M_NULLPTR };
 
     versionDescriptorResult = C_CAST(scsiVersionDescriptor*, bsearch(
         &versionDescriptorKey, scsiVersionDescriptorTable,
         sizeof(scsiVersionDescriptorTable) / sizeof(scsiVersionDescriptorTable[0]), sizeof(scsiVersionDescriptorTable[0]),
-        (int (*)(const void*, const void*))cmp_Version_Descriptor
+        (int(*)(const void*, const void*))cmp_Version_Descriptor
     ));
     if (versionDescriptorResult)
     {

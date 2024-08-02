@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
@@ -18,7 +19,7 @@
 
 #pragma once
 
-#include "common.h"
+#include "common_types.h"
 #include "common_public.h"
 #include "ata_helper.h"
 
@@ -43,7 +44,7 @@ extern 'C'
         PSP_FUNC_DISABLE_ATA_PASSTHROUGH    = 15,
     }ePSPATAPTFunctions;
 
-    int enable_Disable_ATA_Passthrough(tDevice *device, bool enable);
+    eReturnValues enable_Disable_ATA_Passthrough(tDevice *device, bool enable);
 
     //-----------------------------------------------------------------------------
     //
@@ -60,7 +61,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *ataCommandOptions);
+    eReturnValues build_PSP_Legacy_CDB(uint8_t *cdb, uint8_t *cdbLen, ataPassthroughCommand *ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -77,7 +78,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet);
+    eReturnValues get_RTFRs_From_PSP_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -93,7 +94,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
+    eReturnValues send_PSP_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
 
 #if defined (__cplusplus)
 }
