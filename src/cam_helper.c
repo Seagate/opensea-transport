@@ -940,7 +940,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx *scsiIoCtx)
             {
                 printf("%s Didn't understand direction\n", __FUNCTION__);
             }
-            return -1;
+            return BAD_PARAMETER;
         }
 
         csio->dxfer_len = scsiIoCtx->dataLength;
