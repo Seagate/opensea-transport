@@ -11100,7 +11100,7 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx *nvmeIoCtx)
     uint8_t thsel = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 21, 20);
     uint8_t tmpsel = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 19, 16);
 
-    int32_t temperatureThreshold = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 15, 0);
+    int32_t temperatureThreshold = C_CAST(int32_t, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 15, 0));
 
     //TODO: check reserved fields are zero to return an error since they may communicate a different behavior we are not currently
     //      supporting/implementing
@@ -11359,6 +11359,8 @@ static eReturnValues send_NVMe_Set_Features_Win10(nvmeCmdCtx *nvmeIoCtx, bool *u
     return ret;
 }
 
+#if defined (USE_IOCTL_REINIT_MEDIA)
+
 #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
 //This IOCTL started in Windows 10, 1607. AKA 14393 API. It only supported NVM format with crypto erase though.
 //When Windows 11 was released, this API added a structure to specify a sanitize command to run, but is limited to block and crypto erase only.
@@ -11614,6 +11616,8 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
     return ret;
 }
 #endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+
+#endif //USE_IOCTL_REINIT_MEDIA
 
 #if defined (ENABLE_TRANSLATE_FORMAT)
 //This code is currently disabled due to the format unit translation not actually working.
