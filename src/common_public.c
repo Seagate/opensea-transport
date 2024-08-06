@@ -1971,9 +1971,9 @@ bool is_Seagate_Model_Vendor_A(tDevice *device)
     bool isSeagateVendorA = false;
     if (device->drive_info.drive_type == SCSI_DRIVE)
     {
-        char* vendorAModel1 = "S650DC";
-        char* vendorAModel2 = "S630DC";
-        char* vendorAModel3 = "S610DC";
+        const char* vendorAModel1 = "S650DC";
+        const char* vendorAModel2 = "S630DC";
+        const char* vendorAModel3 = "S610DC";
         if (strncmp(vendorAModel1, device->drive_info.product_identification, safe_strlen(vendorAModel1)) == 0 ||
             strncmp(vendorAModel2, device->drive_info.product_identification, safe_strlen(vendorAModel2)) == 0 ||
             strncmp(vendorAModel3, device->drive_info.product_identification, safe_strlen(vendorAModel3)) == 0)

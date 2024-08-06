@@ -154,7 +154,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice *device, uint8_t * pData, uint32_t dataLen);
 
-    OPENSEA_TRANSPORT_API char *nvme_cmd_to_string(int admin, uint8_t opcode);
+    OPENSEA_TRANSPORT_API const char *nvme_cmd_to_string(int admin, uint8_t opcode);
 
     //-----------------------------------------------------------------------------
     //

@@ -2412,7 +2412,7 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
     DECLARE_ZERO_INIT_ARRAY(uint8_t, t10VendorIdDesignator, 72);
     DECLARE_ZERO_INIT_ARRAY(char, ataModelNumber, ATA_IDENTIFY_MN_LENGTH + 1);
     DECLARE_ZERO_INIT_ARRAY(char, ataSerialNumber, ATA_IDENTIFY_SN_LENGTH + 1);
-    char *ataVendorId = "ATA     ";
+    const char *ataVendorId = "ATA     ";
     //will hold the complete data to return
     uint8_t *deviceIdentificationPage = M_NULLPTR;
     if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT8) //NAA and SCSI Name String

@@ -3880,8 +3880,8 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
     else
     {
         HKEY keyHandle;
-        TCHAR* baseRegKeyPath = TEXT("SYSTEM\\CurrentControlSet\\Services\\");
-        TCHAR* paramRegKeyPath = TEXT("\\Parameters");
+        const TCHAR* baseRegKeyPath = TEXT("SYSTEM\\CurrentControlSet\\Services\\");
+        const TCHAR* paramRegKeyPath = TEXT("\\Parameters");
         size_t tdriverNameLength = (safe_strlen(driverName) + 1) * sizeof(TCHAR);
         size_t registryKeyStringLength = _tcslen(baseRegKeyPath) + tdriverNameLength + _tcslen(paramRegKeyPath);
         TCHAR* registryKey = C_CAST(TCHAR*, safe_calloc(registryKeyStringLength, sizeof(TCHAR)));
@@ -3902,7 +3902,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                 //Found the driver's parameters. Now search for CSMI DWORD for port drivers
                 DWORD storportdataLen = 4;
                 DECLARE_ZERO_INIT_ARRAY(BYTE, storportregData, 4);
-                TCHAR* storportvalueName = TEXT("CSMI");
+                const TCHAR* storportvalueName = TEXT("CSMI");
                 DWORD storportvalueType = REG_DWORD;
                 LSTATUS regQueryStatus = RegQueryValueEx(keyHandle, storportvalueName, M_NULLPTR, &storportvalueType, storportregData, &storportdataLen);
                 if (ERROR_SUCCESS == regQueryStatus)
@@ -3931,7 +3931,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                     RegCloseKey(keyHandle);
                     //the CSMI key did not exist. Check for miniport/adapter keys
                     //No port driver key found. Check for the miniport driver key in DriverParameter for Device or Device#
-                    TCHAR* paramDeviceKeyPath = TEXT("\\Device");
+                    const TCHAR* paramDeviceKeyPath = TEXT("\\Device");
                     size_t paramDeviceKeyPathLength = _tcsclen(paramDeviceKeyPath);
                     registryKeyStringLength += paramDeviceKeyPathLength + 3;//Adding 3 for if we need to check for a device number (adapter number)
                     TCHAR* temp = safe_realloc(registryKey, registryKeyStringLength * sizeof(TCHAR));
@@ -3943,7 +3943,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                         {
                             DWORD dataLen = 0;
                             BYTE* regData = M_NULLPTR;//will be allocated to correct length
-                            TCHAR* valueName = TEXT("DriverParameter");
+                            const TCHAR* valueName = TEXT("DriverParameter");
                             DWORD valueType = REG_SZ;
                             regQueryStatus = RegQueryValueEx(keyHandle, valueName, M_NULLPTR, &valueType, regData, &dataLen);
                             if (regQueryStatus == ERROR_SUCCESS)//since we had no memory allocated, this returned success rather than ERROR_MORE_DATA so we can go and allocate then read it.-TJE

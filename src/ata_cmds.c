@@ -3364,7 +3364,7 @@ eReturnValues ata_NV_Cache_Feature(tDevice *device, eNVCacheFeatures feature, ui
     ataCommandOptions.tfr.Feature48 = M_Byte1(C_CAST(uint16_t, feature));
     ataCommandOptions.tfr.CommandStatus = ATA_NV_CACHE;
 
-    char* nvCacheFeature = M_NULLPTR;
+    const char* nvCacheFeature = M_NULLPTR;
     switch (feature)
     {
     case NV_SET_NV_CACHE_POWER_MODE:
@@ -3813,7 +3813,7 @@ eReturnValues ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeat
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
 
-    char* dcoFeatureString = M_NULLPTR;
+    const char* dcoFeatureString = M_NULLPTR;
     switch (dcoFeature)
     {
     case DCO_RESTORE:

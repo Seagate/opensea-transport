@@ -424,7 +424,7 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
         ULONG deviceIdListLen = 0;
         CONFIGRET cmRet = CR_SUCCESS;
 #if WINVER > SEA_WIN32_WINNT_VISTA
-        TCHAR *filter = TEXT("{4d36e967-e325-11ce-bfc1-08002be10318}");
+        const TCHAR *filter = TEXT("{4d36e967-e325-11ce-bfc1-08002be10318}");
         ULONG deviceIdListFlags = CM_GETIDLIST_FILTER_PRESENT | CM_GETIDLIST_FILTER_CLASS;//Both of these flags require Windows 7 and later. The else case below will handle older OSs
         cmRet = CM_Get_Device_ID_List_Size(&deviceIdListLen, filter, deviceIdListFlags);
         if (cmRet == CR_SUCCESS)
@@ -450,11 +450,13 @@ static eReturnValues get_Adapter_IDs(tDevice *device, PSTORAGE_DEVICE_DESCRIPTOR
             //older OS? Try the legacy method which should work for Win2000+
             //This requires knowing if we are searching for USB vs SCSI device IDs
             //TODO: We may need to add other things for firewire or other attachment types that existed back in Vista or XP if they aren't handled under USB or SCSI
-            TCHAR *scsiFilter = TEXT("SCSI"), *usbFilter = TEXT("USBSTOR");//Need to use USBSTOR in order to find a match. Using USB returns a list of VID/PID but we don't have a way to match that.
+            const TCHAR *scsiFilter = TEXT("SCSI");
+            const TCHAR *usbFilter = TEXT("USBSTOR");//Need to use USBSTOR in order to find a match. Using USB returns a list of VID/PID but we don't have a way to match that.
             ULONG scsiIdListLen = 0;
             ULONG usbIdListLen = 0;
             ULONG filterFlags = CM_GETIDLIST_FILTER_ENUMERATOR;
-            TCHAR *scsiListBuff = M_NULLPTR, *usbListBuff = M_NULLPTR;
+            TCHAR *scsiListBuff = M_NULLPTR;
+            TCHAR *usbListBuff = M_NULLPTR;
             CONFIGRET scsicmRet = CR_SUCCESS;
             CONFIGRET usbcmRet = CR_SUCCESS;
             //First get the SCSI list, then the USB list/ TODO: add more things to the list as we need them.

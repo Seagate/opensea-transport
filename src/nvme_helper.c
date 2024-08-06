@@ -991,7 +991,7 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx * cmdCtx)
     printf("\n");
 }
 
-char *nvme_cmd_to_string(int admin, uint8_t opcode)
+const char *nvme_cmd_to_string(int admin, uint8_t opcode)
 {
     if (admin) {
         switch (opcode) {

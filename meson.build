@@ -13,20 +13,22 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   #NOTE: 4/4/2024 - adding flags from https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++
   warning_flags = [
   #	'-Wcast-align=strict',
-	'-Wshadow=compatible-local',
-	'-Wvla',
-	'-Wfloat-equal',
-	'-Wnull-dereference',
-	'-Wunused-const-variable',
-	'-Wduplicated-cond',
-	'-Wjump-misses-init',
-	'-Wstringop-overflow',
-	'-Wlogical-op',
+  '-Wshadow=compatible-local',
+  '-Wvla',
+  '-Wfloat-equal',
+  '-Wnull-dereference',
+  '-Wunused-const-variable',
+  '-Wunused-parameter',
+  '-Wunused-value',
+  '-Wduplicated-cond',
+  '-Wjump-misses-init',
+  '-Wstringop-overflow',
+  '-Wlogical-op',
   '-Wshift-overflow',
   '-Wshift-overflow=1',
-	'-Wshift-overflow=2',
-	'-Wdouble-promotion',
-	'-Wformat-security',
+  '-Wshift-overflow=2',
+  '-Wdouble-promotion',
+  '-Wformat-security',
   '-Wold-style-definition',
   '-Wstrict-prototypes',
   '-Wmissing-declarations',
@@ -39,6 +41,7 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wint-conversion',#-Warith-conversion
   '-Wenum-conversion',
   '-Wfloat-conversion',
+  '-Wint-to-pointer-cast',
   '-Wimplicit-fallthrough',
   '-D_GLIBCXX_ASSERTIONS',
   '-fstrict-flex-arrays=1', #NOTE: Using level 1 since Windows often uses [1] at the end of it's structures. opensea-*libs has used this in a few places too.
@@ -50,13 +53,28 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wtrampolines', #GCC only at this time
   '-Werror=implicit',
   '-Werror=incompatible-pointer-types',
+  '-Wincompatible-pointer-types-discards-qualifiers',
   '-Werror=int-conversion',
+  '-Werror=implicit-int',
   '-Woverlength-strings',
   '-Wnewline-eof',
   '-Wno-c23-extensions', #We do not want this warning since we are already checking for when C23 extensions are available before we use them. If not, we use a compiler specific definition, or make it an empty definition.
   '-Wparentheses',
   '-Wextra-semi',
   '-Wcast-qual',
+  '-Werror=sometimes-uninitialized',
+  '-Wuninitialized',
+  '-Wunevaluated-expression',
+  '-Wunsequenced',
+  '-Wvarargs',
+  '-Wwrite-strings',
+  '-Wrestrict',
+  '-Wstringop-truncation',
+  '-Werror=trigraphs',
+  '-Wunreachable-code',
+  '-Wcomment',
+  '-Wsequence-point',
+  '-Wreturn-type',
   '-fvisibility=hidden', #to work similarly to Window's DLL import/export
   ]
 
@@ -241,20 +259,20 @@ if target_machine.system() == 'linux'
   src_files += ['src/sg_helper.c']
   add_project_arguments('-DENABLE_CISS', '-DENABLE_CSMI', language : 'c')
   if c.check_header('linux/nvme_ioctl.h')
-	  global_cpp_args += ['-DSEA_NVME_IOCTL_H']
+    global_cpp_args += ['-DSEA_NVME_IOCTL_H']
   elif c.check_header('linux/nvme.h')
-	  global_cpp_args += ['-DSEA_NVME_H']
+    global_cpp_args += ['-DSEA_NVME_H']
   elif c.check_header('uapi/nvme.h')
-	  global_cpp_args += ['-DSEA_UAPI_NVME_H']
+    global_cpp_args += ['-DSEA_UAPI_NVME_H']
   else
-	  global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+    global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
   endif
 elif target_machine.system() == 'freebsd'
   src_files += ['src/cam_helper.c']
   cam_dep = c.find_library('cam')
   os_deps += [cam_dep]
   if not c.check_header('dev/nvme/nvme.h')
-	  global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+    global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
   endif
 elif target_machine.system() == 'sunos'
   src_files += ['src/uscsi_helper.c']
@@ -271,16 +289,16 @@ elif target_machine.system() == 'aix'
 elif target_machine.system() == 'windows'
   src_files += ['src/win_helper.c']
   if c.get_define('__MINGW32__') != ''
-  	#BR note: -D_WIN32_WINNT=0x0601 fixes unknown Windows version in winioctl.h and errors such as unknown type name ‘PDEVICE_LB_PROVISIONING_DESCRIPTOR’
-	add_project_arguments('-D_WIN32_WINNT=0x0601', language : 'c')
-  	cfgmgr32 = c.find_library('cfgmgr32')
-  	os_deps += [cfgmgr32]
+    #BR note: -D_WIN32_WINNT=0x0601 fixes unknown Windows version in winioctl.h and errors such as unknown type name ‘PDEVICE_LB_PROVISIONING_DESCRIPTOR’
+  add_project_arguments('-D_WIN32_WINNT=0x0601', language : 'c')
+    cfgmgr32 = c.find_library('cfgmgr32')
+    os_deps += [cfgmgr32]
   endif
   add_project_arguments('-DENABLE_INTEL_RST', '-DENABLE_OFNVME', '-DENABLE_CSMI', language : 'c')
   global_cpp_args += ['-D_CRT_NONSTDC_NO_DEPRECATE', '-D_CRT_SECURE_NO_WARNINGS']
   global_cpp_args += ['-DSTATIC_OPENSEA_TRANSPORT', '-D_UNICODE', '-DUNICODE']
   if c.get_define('__MINGW32__') != ''
-	  global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+    global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
   endif
 endif # TODO UEFI and vmware
 
