@@ -12121,6 +12121,8 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
             //NOTE: immediate bit must be set to false for MSFT translation to work.
             bool ause = M_ToBool(nvmeIoCtx->cmd.adminCmd.cdw10 & BIT3);
             eVerbosityLevels temp = nvmeIoCtx->device->deviceVerbosity;
+            uint32_t currentTimeout = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
+            nvmeIoCtx->device->drive_info.defaultTimeoutSeconds = 600;//change to 10 minutes since this does not return immediately in Windows-TJE
             nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
             if (action == 4) //crypto
             {
@@ -12131,6 +12133,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
                 ret = scsi_Sanitize_Block_Erase(nvmeIoCtx->device, ause, false, false);
             }
             nvmeIoCtx->device->deviceVerbosity = temp;
+            nvmeIoCtx->device->drive_info.defaultTimeoutSeconds = currentTimeout;
         }
     }
     return ret;
