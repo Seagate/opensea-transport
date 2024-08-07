@@ -3568,7 +3568,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
     //DWORD lastError = GetLastError();
     if (device->os_info.fd != INVALID_HANDLE_VALUE)
 #else //_WIN32
-    if ((device->os_info.fd = open(baseHandle, O_RDWR | O_NONBLOCK)) >= 0)
+    if (baseHandle != M_NULLPTR && (device->os_info.fd = open(baseHandle, O_RDWR | O_NONBLOCK)) >= 0)
 #endif //_WIN32
     {
 #if defined (CSMI_DEBUG)
