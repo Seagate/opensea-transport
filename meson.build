@@ -223,13 +223,19 @@ if not (target_machine.system() == 'sunos') and c.get_id().contains('gcc')
   if c.version().version_compare('<5.0')
   #4.7.4+ has C11 support, but c89 is the default standard so we need to change it.
     if c.has_argument('-std=gnu11')
-      c_std = 'gnu11'
-    elif c.has_argument('-std=gnu99')
-      #Add this argument to the list since C99 is a minimum required C compiler standard
-      c_std = 'gnu99'
-    else
-      error('C99/GNU99 standard is required but was not able to be set!')
-    endif
+        c_std = 'gnu11'
+        if meson.version().version_compare('<1.0.0')
+          add_project_arguments('-std=gnu11', language : 'c')
+        endif
+      elif c.has_argument('-std=gnu99')
+        #Add this argument to the list since C99 is a minimum required C compiler standard
+        c_std = 'gnu99'
+        if meson.version().version_compare('<1.0.0')
+          add_project_arguments('-std=gnu99', language : 'c')
+        endif
+      else
+        error('C99/GNU99 standard is required but was not able to be set!')
+      endif
   endif
 endif
 
