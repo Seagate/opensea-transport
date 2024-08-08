@@ -2623,7 +2623,9 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     memset(&commandTimer, 0, sizeof(commandTimer));
     struct nvme_admin_cmd adminCmd;
     struct nvme_user_io nvmCmd;// it's possible that this is not defined in some funky early nvme kernel, but we don't see that today. This seems to be defined everywhere. -TJE
+#if defined(NVME_IOCTL_IO_CMD)
     struct nvme_passthru_cmd *passThroughCmd = (struct nvme_passthru_cmd*)&adminCmd;//setting a pointer since these are defined to be the same. No point in allocating yet another structure. - TJE
+#endif //NVME_IOCTL_IO_CMD
 
     int ioctlResult = 0;
 
@@ -2763,6 +2765,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             }
             break;
         default:
+#if defined (NVME_IOCTL_IO_CMD)
             //use the generic passthrough command structure and IO_CMD
             memset(passThroughCmd, 0, sizeof(struct nvme_passthru_cmd));
             passThroughCmd->opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
@@ -2826,6 +2829,9 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
                 nvmeIoCtx->commandCompletionData.dw0Valid = true;
                 nvmeIoCtx->commandCompletionData.statusAndCID = C_CAST(uint32_t, ioctlResult) << 17;//shift into place since we don't get the phase tag or command ID bits and these are the status field
             }
+#else
+            ret = OS_COMMAND_NOT_AVAILABLE;
+#endif //NVME_IOCTL_IO_CMD
             break;
         }
         break;
@@ -2852,7 +2858,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 
 static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
 {
-#if !defined(DISABLE_NVME_PASSTHROUGH)
+#if !defined(DISABLE_NVME_PASSTHROUGH) && defined (NVME_IOCTL_SUBSYS_RESET) && defined (NVME_IOCTL_RESET)
     //Can only do a reset on a controller handle. Need to get the controller handle if this is a namespace handle!!!
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     int handleToReset = device->os_info.fd;
