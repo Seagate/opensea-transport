@@ -20,6 +20,7 @@
 #include "code_attributes.h"
 #include "math_utils.h"
 #include "error_translation.h"
+#include "secure_file.h"
 
 #include "common_public.h"
 #include "platform_helper.h"
@@ -1024,25 +1025,29 @@ void print_Low_Level_Info(tDevice* device)
     }
 }
 
-size_t load_Bin_Buf(char *filename, void *myBuf, size_t bufSize)
+size_t load_Bin_Buf(const char *filename, void *myBuf, size_t bufSize)
 {
-    //eReturnValues ret = UNKNOWN;
-    FILE     *fp;
+    secureFileInfo *fp = secure_Open_File(filename, "rb", M_NULLPTR, M_NULLPTR, M_NULLPTR);
     size_t bytesRead = 0;
 
     //Open file
 
-    if ((fp = fopen(filename, "rb")) == M_NULLPTR)
+    if (fp == M_NULLPTR || fp->error != SEC_FILE_SUCCESS)
     {
-        return FILE_OPEN_ERROR;
+        free_Secure_File_Info(&fp);
+        return 0;
     }
 
-    fseek(fp, 0, SEEK_SET); //should open to start but hey
-
     //Read file contents into buffer
-    bytesRead = fread(myBuf, 1, bufSize, fp);
-    fclose(fp);
-
+    if (SEC_FILE_SUCCESS != secure_Read_File(fp, myBuf, bufSize, sizeof(uint8_t), bufSize, &bytesRead))
+    {
+        printf("Error reading file into memory\n");
+    }
+    if (SEC_FILE_SUCCESS != secure_Close_File(fp))
+    {
+        printf("Error closing file after reading!\n");
+    }
+    free_Secure_File_Info(&fp);
     return bytesRead;
 }
 

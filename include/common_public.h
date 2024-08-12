@@ -1742,7 +1742,7 @@ extern "C"
     //!   \return size_t bytes read
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API size_t load_Bin_Buf(char *filename, void *myBuf, size_t bufSize);
+    OPENSEA_TRANSPORT_API size_t load_Bin_Buf(const char *filename, void *myBuf, size_t bufSize);
 
     //-----------------------------------------------------------------------------
     //
