@@ -348,10 +348,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
@@ -368,10 +365,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
@@ -388,10 +382,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">
     <ClCompile>
@@ -409,10 +400,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM'">
     <ClCompile>
@@ -430,10 +418,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|ARM64'">
     <ClCompile>
@@ -451,10 +436,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -471,10 +453,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Debug|x64'">
     <ClCompile>
@@ -492,10 +471,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -515,10 +491,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
@@ -538,10 +511,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
@@ -561,10 +531,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|Win32'">
     <ClCompile>
@@ -585,10 +552,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM'">
     <ClCompile>
@@ -609,10 +573,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|ARM64'">
     <ClCompile>
@@ -633,10 +594,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -656,10 +614,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">
     <ClCompile>
@@ -680,10 +635,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <Lib>
-      <AdditionalDependencies>Cfgmgr32.lib;opensea-common.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\..\opensea-common\Make\VS.2019\opensea-common\$(Platform)\$(Configuration)</AdditionalLibraryDirectories>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\src\aix_helper.c">
