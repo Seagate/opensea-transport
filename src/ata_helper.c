@@ -995,9 +995,9 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
 
         if (is_ATA_Identify_Word_Valid(ident_word[1]) && is_ATA_Identify_Word_Valid(ident_word[3]) && is_ATA_Identify_Word_Valid(ident_word[6]))
         {
-            cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
-            head = identifyData[6];//Word3
-            spt = identifyData[12];//Word6
+            cylinder = ident_word[1];//word 1
+            head = M_Byte0(ident_word[3]);//Word3 - adapted from ESDI so discard high byte. High byte was number of removable drive heads
+            spt = M_Byte0(ident_word[6]);//Word6
             //According to ATA, word 53, bit 0 set to 1 means the words 54,-58 are valid.
             //if set to zero they MAY be valid....so just check validity on everything
         }
@@ -1089,13 +1089,13 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
             {
                 //only override if these are non-zero. If all are zero, then we cannot determine the current configuration
                 //and should rely on the defaults read earlier.
-                //This is being checked again sincea device may set bit0 of word 53 meaning this is a valid field.
+                //This is being checked again since a device may set bit0 of word 53 meaning this is a valid field.
                 //however if the values are zero, we do not want to use them.
-                if (M_BytesTo2ByteValue(identifyData[109], identifyData[108]) > 0 && identifyData[110] > 0 && identifyData[112] > 0)
+                if (ident_word[54] > 0 && M_Byte0(ident_word[55]) > 0 && M_Byte0(ident_word[56]) > 0)
                 {
-                    cylinder = M_BytesTo2ByteValue(identifyData[109], identifyData[108]);//word 54
-                    head = identifyData[110];//Word55
-                    spt = identifyData[112];//Word56
+                    cylinder = ident_word[54];//word 54
+                    head = M_Byte0(ident_word[55]);//Word55
+                    spt = M_Byte0(ident_word[56]);//Word56
                 }
 
             }
@@ -1118,7 +1118,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
         if (lbaModeSupported || (is_ATA_Identify_Word_Valid(ident_word[60]) || is_ATA_Identify_Word_Valid(ident_word[61])))
         {
             lbaModeSupported = true;//workaround for some USB devices that do support lbamode as can be seen by reading this LBA value
-            *fillMaxLba = M_BytesTo4ByteValue(identifyData[123], identifyData[122], identifyData[121], identifyData[120]);
+            *fillMaxLba = M_WordsTo4ByteValue(ident_word[60], ident_word[61]);
         }
         else
         {
@@ -1265,13 +1265,13 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
             }
         }
 
-        if (lbaModeSupported && *fillMaxLba == MAX_28BIT)
+        if (lbaModeSupported && *fillMaxLba >= MAX_28BIT)
         {
             //max LBA from other words since 28bit max field is maxed out
             //check words 100-103 are valid values
             if (is_ATA_Identify_Word_Valid(ident_word[100]) || is_ATA_Identify_Word_Valid(ident_word[101]) || is_ATA_Identify_Word_Valid(ident_word[102]) || is_ATA_Identify_Word_Valid(ident_word[103]))
             {
-                *fillMaxLba = M_BytesTo8ByteValue(identifyData[207], identifyData[206], identifyData[205], identifyData[204], identifyData[203], identifyData[202], identifyData[201], identifyData[200]);
+                *fillMaxLba = M_WordsTo8ByteValue(ident_word[103], ident_word[102], ident_word[101], ident_word[100]);
             }
         }
 
@@ -1281,7 +1281,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
             //word 117 is only valid when word 106 bit 12 is set
             if ((ident_word[106] & BIT12) == BIT12)
             {
-                *fillLogicalSectorSize = M_WordsTo4ByteValue(ident_word[118], ident_word[117]);
+                *fillLogicalSectorSize = M_WordsTo4ByteValue(ident_word[117], ident_word[118]);
                 *fillLogicalSectorSize *= 2; //convert to words to bytes
             }
             else //means that logical sector size is 512bytes
@@ -1352,7 +1352,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
         //acs4 - word 69 bit3 means extended number of user addressable sectors word supported (words 230 - 233) (Use this to get the max LBA since words 100 - 103 may only contain a value of FFFF_FFFF)
         if (extendedLBAFieldValid)
         {
-            *fillMaxLba = M_BytesTo8ByteValue(identifyData[467], identifyData[466], identifyData[465], identifyData[464], identifyData[463], identifyData[462], identifyData[461], identifyData[460]);
+            *fillMaxLba = M_WordsTo8ByteValue(ident_word[233], ident_word[232], ident_word[231], ident_word[230]);
         }
         if (*fillMaxLba > 0 && !device->drive_info.ata_Options.chsModeOnly)
         {
