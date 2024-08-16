@@ -244,6 +244,7 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, u
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
+	uint16_t multipleLogicalSectors;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
@@ -709,6 +710,7 @@ eReturnValues ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, 
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
+	uint16_t multipleLogicalSectors;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;

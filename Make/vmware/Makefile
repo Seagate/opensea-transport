@@ -169,6 +169,9 @@ IMPORT_DEVKIT = $(shell rpm -q --qf '%{INSTPREFIXES}\n' $(1) | $(GREP) $(BUILD_N
 HEXDK_BASE := $(call IMPORT_DEVKIT,$(HEXDK))
 VMKAPIDDK_BASE := $(call IMPORT_DEVKIT,$(DDK))
 
+ifeq ($(DESC_ESX_VERSION),7.0.0)
+VMKAPI_LOCATION = $(VMKAPIDDK_BASE)/src/bora/vmkernel/include/vmkapi/v2_6_0_0
+else
 ifeq ($(DESC_ESX_VERSION),6.5.0)
 VMKAPI_LOCATION = $(VMKAPIDDK_BASE)/src/bora/vmkernel/include/vmkapi/v2_4_0_0
 else
@@ -176,6 +179,7 @@ ifeq ($(DESC_ESX_VERSION),6.0.0)
 VMKAPI_LOCATION = $(VMKAPIDDK_BASE)/src/bora/vmkernel/include/vmkapi/v2_3_0_0
 else
 VMKAPI_LOCATION = $(VMKAPIDDK_BASE)/src/bora/vmkernel/include/vmkapi/v2_2_0_0
+endif
 endif
 endif
 
@@ -197,11 +201,11 @@ endif
 # time.  This allows for having multiple different versions
 # of the devkit installed and usable simultaneously.
 
-include $(HEXDK_BASE)/samples/common/userworld-tool.inc
+#include $(HEXDK_BASE)/samples/common/userworld-tool.inc
 
-VMW_VERSION := 6.5.0
-VMW_BUILD   := 4598673
-VMW_RELEASE := 0.0.4598673
+VMW_VERSION := 7.0.0
+VMW_BUILD   := 15843807
+VMW_RELEASE := 1.0.15843807
 
 ifeq ($(strip $(DEV_OBJDIR)),)
    # Compress all the internal build types down to the two external types.
@@ -219,29 +223,23 @@ DEV_TARGET_CONTEXT ?= uw
 # This will enable later generalization for supporting both userworld
 # and vmkernel builds with the same make infrastructure.
 
-ifeq ($(strip $(DEV_TARGET_BITNESS)),)
-   ifeq ($(strip $(DEV_TARGET_CONTEXT)),uw)
-      DEV_TARGET_BITNESS = 32
-   else
-      DEV_TARGET_BITNESS = 64
-   endif
-endif
+DEV_TARGET_BITNESS = 64
 
 VMW_TARGET = $(DEV_TARGET_CONTEXT)$(DEV_TARGET_BITNESS)_$(DEV_OBJDIR)
 
 
-CAYMAN_ESX_GDB_DIR = $(shell /bin/rpm -q --qf "%{instprefixes}\n" vmware-esx-cayman_esx_gdb-24f65a7191349603bb2c712d51114d75e92e5065-toolchain)
+CAYMAN_ESX_GDB_DIR = $(shell /bin/rpm -q --qf "%{instprefixes}\n" vmware-esx-cayman_esx_gdb-1af75dbb095cc2348c35c6708c8b326ac1661974-toolchain)
 export GOBUILD_CAYMAN_ESX_GDB_ROOT = $(CAYMAN_ESX_GDB_DIR)
-CAYMAN_ESX_TOOLCHAIN_DIR = $(shell /bin/rpm -q --qf "%{instprefixes}\n" vmware-esx-cayman_esx_toolchain-9307983f3985bde80570de52ee3b8b1e0b7b6c85-toolchain)
-export GOBUILD_CAYMAN_ESX_TOOLCHAIN_ROOT = $(CAYMAN_ESX_TOOLCHAIN_DIR)
-CAYMAN_ESX_NCURSES_DIR = $(shell /bin/rpm -q --qf "%{instprefixes}\n" vmware-esx-cayman_esx_ncurses-a09432d1ad9e9327bda85fa9293f8d2f980dedd6-toolchain)
+CAYMAN_ESX_TOOLCHAIN_GCC6_DIR = $(shell /bin/rpm -q --qf "%{instprefixes}\n" vmware-esx-cayman_esx_toolchain_gcc6-20292133d8d6444deefa46c286c3f74ec52badc8-toolchain)
+export GOBUILD_CAYMAN_ESX_TOOLCHAIN_GCC6_ROOT = $(CAYMAN_ESX_TOOLCHAIN_GCC6_DIR)
+CAYMAN_ESX_NCURSES_DIR = $(shell /bin/rpm -q --qf "%{instprefixes}\n" vmware-esx-cayman_esx_ncurses-9bf45330b538505c6325906c08c4ecf834184b5c-toolchain)
 export GOBUILD_CAYMAN_ESX_NCURSES_ROOT = $(CAYMAN_ESX_NCURSES_DIR)
-CAYMAN_ESX_GLIBC_DIR = $(shell /bin/rpm -q --qf "%{instprefixes}\n" vmware-esx-cayman_esx_glibc-7fc626201c38c3a7e2472179c969a565b101f7ba-toolchain)
-export GOBUILD_CAYMAN_ESX_GLIBC_ROOT = $(CAYMAN_ESX_GLIBC_DIR)
-CAYMAN_PYTHON_DIR = $(shell /bin/rpm -q --qf "%{instprefixes}\n" vmware-esx-cayman_python-bc9711fc81a21c5629bda33c48e1f301ff43cbae-toolchain)
+CAYMAN_ESX_GLIBC_2_17_DIR = $(shell /bin/rpm -q --qf "%{instprefixes}\n" vmware-esx-cayman_esx_glibc_2_17-8da846cdfffa1ce0a450d82e5d60140c753ab937-toolchain)
+export GOBUILD_CAYMAN_ESX_GLIBC_2_17_ROOT = $(CAYMAN_ESX_GLIBC_2_17_DIR)
+CAYMAN_PYTHON_DIR = $(shell /bin/rpm -q --qf "%{instprefixes}\n" vmware-esx-cayman_python-99788ba0a9e40ea80ae7b05efb941377abfb31e4-toolchain)
 export GOBUILD_CAYMAN_PYTHON_ROOT = $(CAYMAN_PYTHON_DIR)
-VMW_COMPONENTS = cayman_esx_gdb cayman_esx_toolchain cayman_esx_ncurses cayman_esx_glibc cayman_python
-VMW_COMPONENT_DIRS = $(CAYMAN_ESX_GDB_DIR) $(CAYMAN_ESX_TOOLCHAIN_DIR) $(CAYMAN_ESX_NCURSES_DIR) $(CAYMAN_ESX_GLIBC_DIR) $(CAYMAN_PYTHON_DIR)
+VMW_COMPONENTS = cayman_esx_gdb cayman_esx_toolchain_gcc6 cayman_esx_ncurses cayman_esx_glibc_2_17 cayman_python
+VMW_COMPONENT_DIRS = $(CAYMAN_ESX_GDB_DIR) $(CAYMAN_ESX_TOOLCHAIN_GCC6_DIR) $(CAYMAN_ESX_NCURSES_DIR) $(CAYMAN_ESX_GLIBC_2_17_DIR) $(CAYMAN_PYTHON_DIR)
 
 AWK = /build/toolchain/lin32/gawk-3.1.6/bin/awk
 CHMOD = /build/toolchain/lin32/coreutils-5.97/bin/chmod
@@ -249,14 +247,20 @@ CP = /build/toolchain/lin32/coreutils-5.97/bin/cp
 ECHO = /build/toolchain/lin32/coreutils-5.97/bin/echo
 GREP = /build/toolchain/lin32/grep-2.5.1a/bin/grep
 GZIP = /build/toolchain/lin32/gzip-1.3.5/bin/gzip
-MAKE = /build/toolchain/lin32/make-3.81/bin/make
+MAKE = /build/toolchain/lin64/make-3.81/bin/make
 MKDIR = /build/toolchain/lin32/coreutils-5.97/bin/mkdir
 MV = /build/toolchain/lin32/coreutils-5.97/bin/mv
 RM = /build/toolchain/lin32/coreutils-5.97/bin/rm
 SED = /build/toolchain/lin32/sed-4.1.5/bin/sed
-TR = /build/toolchain/lin32/coreutils-8.6/bin/tr
+TR = /build/toolchain/lin32/coreutils-5.97/bin/tr
 
 _VMW_RPM_PREFIX	:= vmware-esx
+
+CNS=componentNameSpec
+CVS=componentVersionSpec
+DESC_PAYLOAD_NAME := $(shell echo $(DESC_PAYLOAD_NAME) | $(SED) -e 's/[_-]//g' | $(TR) A-Z a-z | head -c 8)
+
+COMPONENT_BASENAME=VMW-esx-$(DESC_ESX_VERSION)-$(BULL_CNS_NAME)-$(BULL_CVS_VERSION)
 
 # This import capability is generic, so that user code can get a reference
 # onto a companion devkit (say, a management app needs to see the headers
@@ -272,28 +276,28 @@ VMW_IMPORT_DEVKIT = $(shell /bin/rpm -q --qf '%{INSTPREFIXES}\n' $(1)$(2))
 VMW_KMDK_BASE := $(call VMW_IMPORT_DEVKIT,$(_VMW_RPM_PREFIX)-kmdk-devtools-vds-$(VMW_VERSION)-,$(VMW_RELEASE))
 VMW_DRIVER_DEVKIT_BASE := $(call VMW_IMPORT_DEVKIT,$(_VMW_RPM_PREFIX)-nativeddk-devtools-$(VMW_VERSION)-,$(VMW_RELEASE))
 
-#VMW_VIB_BASE := $(shell $(HEXDK_BASE)/tools/find_rpm_install_dir.sh $(_VMW_RPM_PREFIX)-vib-suite)
+VMW_VIB_BASE := $(shell $(HEXDK_BASE)/tools/find_rpm_install_dir.sh $(_VMW_RPM_PREFIX)-vib-suite)
 
-#ifeq ($(strip $(VMW_VIB_BASE)),)
-#   $(error Could not locate vib-suite.)
-#endif
+ifeq ($(strip $(VMW_VIB_BASE)),)
+   $(error Could not locate vib-suite.)
+endif
 
 # This is for backwards compatibility.  The VIBPATH variable is
 # mostly being deprecated.
 
-#VIBPATH := $(VMW_VIB_BASE)
+VIBPATH := $(VMW_VIB_BASE)
 
-VMW_uw32_beta_CCBIN = $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/bin/x86_64-vmk-linux-gnu-gcc
-VMW_uw32_beta_OBJCOPYBIN = $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/bin/x86_64-vmk-linux-gnu-objcopy
-#The above compilation flags is the correct one but it is causing issue dur to -Werror so removing it
-VMW_uw32_beta_COMPILEFLAGS = -pthread -fwrapv -pipe -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -O2 -march=i686 -g -fPIC -fstack-protector -fstack-protector-all -fno-strict-aliasing -Wno-unused-but-set-variable -Wno-unused-value -Wno-enum-compare -Wno-switch --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot -m32 -isystem $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/4.8.4/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -DVMX86_DEBUG -D_FORTIFY_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D_BSD_SOURCE -Dlinux -DVMX86_BETA
-VMW_uw32_beta_LINKFLAGS =  -pthread -Wl,-z,relro -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,defs -Wl,--hash-style=gnu --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot
+VMW_uw64_beta_CCBIN = $(CAYMAN_ESX_TOOLCHAIN_GCC6_DIR)/usr/bin/x86_64-vmk-linux-gnu-gcc
+VMW_uw64_beta_OBJCOPYBIN = $(CAYMAN_ESX_TOOLCHAIN_GCC6_DIR)/usr/bin/x86_64-vmk-linux-gnu-objcopy
+#VMW_uw64_beta_COMPILEFLAGS = -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -Werror -O2 -fno-omit-frame-pointer -pthread -fwrapv -pipe -fno-strict-aliasing -Wno-unused-but-set-variable -g -fPIC -fstack-protector -fstack-protector-all -DUSE_GOBUILD_TOOLS_VERSION -std=gnu90 -Wno-unused-value -Wdeclaration-after-statement -Wno-pointer-sign -Wno-strict-prototypes -Wno-enum-compare --sysroot=$(CAYMAN_ESX_GLIBC_2_17_DIR)/sysroot -m64 -isystem $(CAYMAN_ESX_TOOLCHAIN_GCC6_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/6.4.0/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=600 -D_SVID_SOURCE -DVMX86_DEBUG -D_FORTIFY_SOURCE=2 -D_FILE_OFFSET_BITS=64 -D_GLIBCXX_USE_CXX11_ABI=0 -D_BSD_SOURCE -Dlinux -DVMX86_BETA
+VMW_uw64_beta_COMPILEFLAGS = -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -O2 -fno-omit-frame-pointer -pthread -fwrapv -pipe -fno-strict-aliasing -Wno-unused-but-set-variable -g -fPIC -fstack-protector -fstack-protector-all -DUSE_GOBUILD_TOOLS_VERSION -std=gnu99 -Wno-unused-value -Wno-pointer-sign -Wno-strict-prototypes -Wno-enum-compare --sysroot=$(CAYMAN_ESX_GLIBC_2_17_DIR)/sysroot -m64 -isystem $(CAYMAN_ESX_TOOLCHAIN_GCC6_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/6.4.0/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=600 -D_SVID_SOURCE -DVMX86_DEBUG -D_FORTIFY_SOURCE=2 -D_FILE_OFFSET_BITS=64 -D_GLIBCXX_USE_CXX11_ABI=0 -D_BSD_SOURCE -Dlinux -DVMX86_BETA
+VMW_uw64_beta_LINKFLAGS =  -pthread --sysroot=$(CAYMAN_ESX_GLIBC_2_17_DIR)/sysroot -Wl,-z,relro -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,defs -Wl,--hash-style=gnu
 
-VMW_uw32_release_CCBIN = $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/bin/x86_64-vmk-linux-gnu-gcc
-VMW_uw32_release_OBJCOPYBIN = $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/bin/x86_64-vmk-linux-gnu-objcopy
-#The above compilation flags is the correct one but it is causing issue dur to -Werror so removing it
-VMW_uw32_release_COMPILEFLAGS = -pthread -fwrapv -pipe -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -DNDEBUG -O2 -march=i686 -g -fPIC -fstack-protector -fno-strict-aliasing -Wno-unused-but-set-variable -Wno-unused-value -Wno-enum-compare -Wno-switch --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot -m32 -isystem $(CAYMAN_ESX_TOOLCHAIN_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/4.8.4/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=500 -D_SVID_SOURCE -DVMX86_RELEASE -D_FORTIFY_SOURCE=1 -D_FILE_OFFSET_BITS=64 -D_BSD_SOURCE -Dlinux
-VMW_uw32_release_LINKFLAGS =  -pthread -Wl,-z,relro -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,defs -Wl,--hash-style=gnu --sysroot=$(CAYMAN_ESX_GLIBC_DIR)/sysroot
+VMW_uw64_release_CCBIN = $(CAYMAN_ESX_TOOLCHAIN_GCC6_DIR)/usr/bin/x86_64-vmk-linux-gnu-gcc
+VMW_uw64_release_OBJCOPYBIN = $(CAYMAN_ESX_TOOLCHAIN_GCC6_DIR)/usr/bin/x86_64-vmk-linux-gnu-objcopy
+#VMW_uw64_release_COMPILEFLAGS = -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -Werror -DNDEBUG -O2 -fno-omit-frame-pointer -pthread -fwrapv -pipe -fno-strict-aliasing -Wno-unused-but-set-variable -g -fPIC -fstack-protector -DUSE_GOBUILD_TOOLS_VERSION -std=gnu90 -Wno-unused-value -Wdeclaration-after-statement -Wno-pointer-sign -Wno-strict-prototypes -Wno-enum-compare --sysroot=$(CAYMAN_ESX_GLIBC_2_17_DIR)/sysroot -m64 -isystem $(CAYMAN_ESX_TOOLCHAIN_GCC6_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/6.4.0/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=600 -D_SVID_SOURCE -DVMX86_RELEASE -D_FORTIFY_SOURCE=2 -D_FILE_OFFSET_BITS=64 -D_GLIBCXX_USE_CXX11_ABI=0 -D_BSD_SOURCE -Dlinux
+VMW_uw64_release_COMPILEFLAGS = -fno-working-directory -fno-strict-aliasing -funwind-tables -fasynchronous-unwind-tables -Wall -DNDEBUG -O2 -fno-omit-frame-pointer -pthread -fwrapv -pipe -fno-strict-aliasing -Wno-unused-but-set-variable -g -fPIC -fstack-protector -DUSE_GOBUILD_TOOLS_VERSION -std=gnu99 -Wno-unused-value -Wno-pointer-sign -Wno-strict-prototypes -Wno-enum-compare --sysroot=$(CAYMAN_ESX_GLIBC_2_17_DIR)/sysroot -m64 -isystem $(CAYMAN_ESX_TOOLCHAIN_GCC6_DIR)/usr/lib/gcc/x86_64-vmk-linux-gnu/6.4.0/include -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE=600 -D_SVID_SOURCE -DVMX86_RELEASE -D_FORTIFY_SOURCE=2 -D_FILE_OFFSET_BITS=64 -D_GLIBCXX_USE_CXX11_ABI=0 -D_BSD_SOURCE -Dlinux
+VMW_uw64_release_LINKFLAGS =  -pthread --sysroot=$(CAYMAN_ESX_GLIBC_2_17_DIR)/sysroot -Wl,-z,relro -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,defs -Wl,--hash-style=gnu
 
 # In theory, the compiler already knows what version of the basic libraries
 # it should be using, so we don't need to specify any of them here.  Any
@@ -313,6 +317,7 @@ else
    VMW_LINK_FLAGS += -shared
 endif
 
+VMW_LIB_DIRS = -L $(HEXDK_BASE)/lib64
 # If the user requested that the vdsPublic library be used, and it's
 # available on the system, add the bits the compiler/linker need
 # for finding it.
@@ -320,42 +325,52 @@ endif
 # xxx should rename to DEV_NEED_VDSLIB.
 ifneq ($(strip $(DEV_NEEDVDSLIB)),)
    ifneq ($(strip $(VMW_KMDK_BASE)),)
-      VMW_VDS_LIB := -L $(VMW_KMDK_BASE)/uw-vds/lib/$(DEV_OBJDIR) -lvdsPublic
+      VMW_LIB_DIRS += -L $(VMW_KMDK_BASE)/uw-vds/lib/$(DEV_OBJDIR)
+      VMW_LIBS += -lvdsPublic
       VMW_EXTRA_DEFS += -I$(VMW_KMDK_BASE)/uw-vds/include
    else
       $(error VDS library requested, but kmdk-devtools-vds devkit not found.)
    endif
 endif
 
+VMW_LIB_BITNESS = 64
+
 # Similarly, if we have a request for the VMKernel Management library,
 # find it and update variables accordingly.
 
-ifneq ($(strip $(DEV_NEED_VMKMGMT)),)
+ifneq ($(strip $(DEV_NEED_VMKMGMT)$(DEV_NEED_IMA)),)
    ifneq ($(strip $(VMW_DRIVER_DEVKIT_BASE)),)
-      VMW_MGMT_LIB += \
-         -L $(VMW_DRIVER_DEVKIT_BASE)/lib \
-         -L $(VMW_DRIVER_DEVKIT_BASE)/lib$(DEV_TARGET_BITNESS) \
-         -lvmkmgmt -lstdc++
-      VMW_EXTRA_DEFS += -I$(VMW_DRIVER_DEVKIT_BASE)/src/bora/public \
-         -I$(VMW_DRIVER_DEVKIT_BASE)/src/bora/vmkernel/include/vmkapi/v2_4_0_0
+      VMW_EXTRA_DEFS += \
+         -I$(VMW_DRIVER_DEVKIT_BASE)/src/bora/public \
+         -I$(VMW_DRIVER_DEVKIT_BASE)/src/bora/vmkernel/include/vmkapi/v2_6_0_0
+      VMW_LIB_DIRS += \
+         -L $(VMW_DRIVER_DEVKIT_BASE)/lib$(VMW_LIB_BITNESS) \
+         -L $(HEXDK_BASE)/debug \
+         -L $(CAYMAN_ZLIB_DIR)/lin$(DEV_TARGET_BITNESS)/lib$(VMW_LIB_BITNESS) \
+         -L $(CAYMAN_OPENSSL_DIR)/lin$(DEV_TARGET_BITNESS)/lib$(VMW_LIB_BITNESS)
+      VMW_LIB_DIRS += -L $(CAYMAN_ZLIB_DIR)/lin$(DEV_TARGET_BITNESS)/lib
+
+      ifneq ($(strip $(DEV_NEED_VMKMGMT)),)
+         VMW_LIBS += -lvmkmgmt
+      endif
+      ifneq ($(strip $(DEV_NEED_IMA)),)
+         VMW_LIBS += -lvmkima -lvmkuser -lvmlibs -lcrypto -lssl -lz
+         VMW_EXTRA_DEFS += \
+            -I$(VMW_DRIVER_DEVKIT_BASE)/include -I$(CAYMAN_ZLIB_DIR)/include
+      endif
    else
-      $(error VMKernel Management library requested, but build $(VMW_BUILD) of nativeddk-devtools rpm not found.)
+      $(error VMKernel Management or IMA library requested, but build $(VMW_BUILD) of nativeddk-devtools rpm not found.)
    endif
-else
-   VMW_MGMT_LIB :=
 endif
 
 ifneq ($(strip $(DEV_NEED_NICMGMT)),)
-   VMW_NICMGMT_LIB += -L $(HEXDK_BASE)/lib \
-                      -lnicmgmt -lvmkuserlib
+   VMW_LIBS += -lnicmgmt -lvmkuser
    VMW_EXTRA_DEFS += -I $(HEXDK_BASE)/include
-else
-   VMW_NIC_LIB :=
 endif
 
 VMW_LINK_FLAGS += \
 	$(DEV_$(DEV_OBJDIR)_PRE_LIBS) \
-	$(VMW_VDS_LIB) $(VMW_MGMT_LIB) $(VMW_NICMGMT_LIB)\
+	$(VMW_LIB_DIRS) $(VMW_LIBS) \
 	$(DEV_$(DEV_OBJDIR)_POST_LIBS)
 
 # Usage:

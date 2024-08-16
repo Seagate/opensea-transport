@@ -1180,13 +1180,14 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
     ret = build_SAT_CDB(device, &satCDB, &satCDBLength, ataCommandOptions);
     if (ret == SUCCESS)
     {
+		ScsiIoCtx scsiIoCtx;
+		int sendIOret;
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             //Print out ATA Command Information in appropriate verbose mode.
             print_Verbose_ATA_Command_Information(ataCommandOptions);
         }
         //Now setup the scsiioctx and send the CDB
-        ScsiIoCtx scsiIoCtx;
         memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
         memcpy(scsiIoCtx.cdb, satCDB, C_CAST(size_t, satCDBLength));//should only ever be a known positive integer: 12, 16, or 32
         scsiIoCtx.cdbLength = C_CAST(uint8_t, satCDBLength);
@@ -1342,6 +1343,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
                     uint8_t ataAdditionalSenseCodeQualifier = 0;
                     if (SUCCESS == ata_Request_Sense_Data(device, &ataSenseKey, &ataAdditionalSenseCode, &ataAdditionalSenseCodeQualifier))
                     {
+						int ataSenseRet;
                         device->drive_info.ataSenseData.validData = true;
                         device->drive_info.ataSenseData.senseKey = ataSenseKey;
                         device->drive_info.ataSenseData.additionalSenseCode = ataAdditionalSenseCode;
@@ -1528,11 +1530,12 @@ static void set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseData
                 {
                 case 0://information
                 {
+					uint64_t descriptorInformation;
                     if (descriptor[descriptorOffset + 2] & BIT7)
                     {
                         senseData[0] |= BIT7;//set the valid bit
                     }
-                    uint64_t descriptorInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 4], descriptor[descriptorOffset + 5], descriptor[descriptorOffset + 6], descriptor[descriptorOffset + 7], descriptor[descriptorOffset + 8], descriptor[descriptorOffset + 9], descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11]);
+                    descriptorInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 4], descriptor[descriptorOffset + 5], descriptor[descriptorOffset + 6], descriptor[descriptorOffset + 7], descriptor[descriptorOffset + 8], descriptor[descriptorOffset + 9], descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11]);
                     if (descriptorInformation > UINT32_MAX)
                     {
                         memset(&senseData[3], UINT8_MAX, 4);
@@ -1650,7 +1653,8 @@ static void set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseData
                     {
                         //information
                         uint64_t descriptorInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 8], descriptor[descriptorOffset + 9], descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11], descriptor[descriptorOffset + 12], descriptor[descriptorOffset + 13], descriptor[descriptorOffset + 14], descriptor[descriptorOffset + 15]);
-                        if (descriptorInformation > UINT32_MAX)
+						uint64_t descriptorCmdInformation;
+						if (descriptorInformation > UINT32_MAX)
                         {
                             memset(&senseData[3], UINT8_MAX, 4);
                         }
@@ -1660,7 +1664,7 @@ static void set_Sense_Data_For_Translation(uint8_t *sensePtr, uint32_t senseData
                             memcpy(&senseData[3], &descriptor[descriptorOffset + 12], 4);
                         }
                         //command specific information
-                        uint64_t descriptorCmdInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 16], descriptor[descriptorOffset + 17], descriptor[descriptorOffset + 18], descriptor[descriptorOffset + 19], descriptor[descriptorOffset + 20], descriptor[descriptorOffset + 21], descriptor[descriptorOffset + 22], descriptor[descriptorOffset + 23]);
+                        descriptorCmdInformation = M_BytesTo8ByteValue(descriptor[descriptorOffset + 16], descriptor[descriptorOffset + 17], descriptor[descriptorOffset + 18], descriptor[descriptorOffset + 19], descriptor[descriptorOffset + 20], descriptor[descriptorOffset + 21], descriptor[descriptorOffset + 22], descriptor[descriptorOffset + 23]);
                         if (descriptorCmdInformation > UINT32_MAX)
                         {
                             memset(&senseData[8], UINT8_MAX, 4);
@@ -1831,13 +1835,14 @@ static eReturnValues satl_Read_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint8
     }
     else //28bit command
     {
+		uint16_t scnt;
         if (dataSize > (256 * scsiIoCtx->device->drive_info.deviceBlockSize))
         {
             //return an error
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
             return SUCCESS;
         }
-        uint16_t scnt = C_CAST(uint16_t, dataSize / scsiIoCtx->device->drive_info.deviceBlockSize);
+        scnt = C_CAST(uint16_t, dataSize / scsiIoCtx->device->drive_info.deviceBlockSize);
         if (scnt == 256)
         {
             //ATA Spec says to transfer this may sectors, you must set the sector count to zero (Not that any passthrough driver will actually allow this)
@@ -2483,7 +2488,7 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
         safe_Free(C_CAST(void**, &naaDesignator));
         return MEMORY_FAILURE;
     }
-    uint8_t peripheralDevice = 0;
+    
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
@@ -2740,6 +2745,9 @@ static eReturnValues translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIo
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, blockLimits, 64);
     uint8_t peripheralDevice = 0;
+	//maximum transfer length (unspecified....we decide) - set to 65535 or 255 depending on if we support 48 bit or not
+    uint32_t maxTransferLength = 255;
+
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
@@ -2760,8 +2768,7 @@ static eReturnValues translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIo
         blockLimits[6] = M_Byte1(logicalPerPhysical);
         blockLimits[7] = M_Byte0(logicalPerPhysical);
     }
-    //maximum transfer length (unspecified....we decide) - set to 65535 or 255 depending on if we support 48 bit or not
-    uint32_t maxTransferLength = 255;
+    
     if (device->drive_info.ata_Options.fourtyEightBitAddressFeatureSetSupported)
     {
         maxTransferLength = 65535;
@@ -2781,19 +2788,25 @@ static eReturnValues translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIo
     if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) && device->drive_info.IdentifyData.ata.Word169 & BIT0 && device->drive_info.IdentifyData.ata.Word069 & BIT14)
     {
         uint32_t maxBlocks = 1;
+		uint8_t maxDescriptorsPerBlock;
+		uint64_t maxUnmapRangePerDescriptor;
+		uint64_t maxLBAsPerUnmap;
+		uint32_t unmapLBACount;
+		uint32_t unmapMaxBlockDescriptors;
+		
         if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word105))
         {
             maxBlocks = device->drive_info.IdentifyData.ata.Word105;
         }
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
-        uint8_t maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
-        uint64_t maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
-        uint64_t maxLBAsPerUnmap = C_CAST(uint64_t, maxDescriptorsPerBlock) * C_CAST(uint64_t, maxBlocks) * maxUnmapRangePerDescriptor;
-        uint32_t unmapLBACount = maxLBAsPerUnmap > UINT32_MAX ? UINT32_MAX : C_CAST(uint32_t, maxLBAsPerUnmap);
-        uint32_t unmapMaxBlockDescriptors = maxDescriptorsPerBlock * maxBlocks;
+        maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
+        maxUnmapRangePerDescriptor = device->drive_info.softSATFlags.dataSetManagementXLSupported ? UINT64_MAX : UINT16_MAX;
+        maxLBAsPerUnmap = C_CAST(uint64_t, maxDescriptorsPerBlock) * C_CAST(uint64_t, maxBlocks) * maxUnmapRangePerDescriptor;
+        unmapLBACount = maxLBAsPerUnmap > UINT32_MAX ? UINT32_MAX : C_CAST(uint32_t, maxLBAsPerUnmap);
+        unmapMaxBlockDescriptors = maxDescriptorsPerBlock * maxBlocks;
 #else //SAT_SPEC_SUPPORTED <= 3
-        uint32_t unmapLBACount = 64 * maxBlocks * UINT16_MAX;
-        uint32_t unmapMaxBlockDescriptors = 64 * maxBlocks;
+        unmapLBACount = 64 * maxBlocks * UINT16_MAX;
+        unmapMaxBlockDescriptors = 64 * maxBlocks;
 #endif //SAT_SPEC_SUPPORTED
         //maximum unmap LBA count (unspecified....we decide)
         blockLimits[20] = M_Byte3(unmapLBACount);
@@ -3138,10 +3151,11 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *
     //Check to make sure cmdDT and reserved bits aren't set
     if (scsiIoCtx->cdb[1] & 0xFE)
     {
+		uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+        uint8_t counter = 0;
         fieldPointer = 1;
         //One of the bits we don't support is set, so return invalid field in CDB
-        uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
-        uint8_t counter = 0;
+        
         while (reservedByteVal > 0 && counter < 8)
         {
             reservedByteVal >>= 1;
@@ -3254,6 +3268,12 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *
             //standard inquiry data
             //read identify data
             uint8_t peripheralDevice = 0;
+			//Product ID (first 16bytes of the ata model number
+            char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
+            char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
+            char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+			uint16_t versionOffset = 58;
+
             if (scsiIoCtx->cdb[2] != 0)//if page code is non-zero, we need to return an error
             {
                 fieldPointer = 2;
@@ -3331,7 +3351,7 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *
             //Vendor specific...we'll set the SN here
             memcpy(&inquiryData[36], ataSN, M_Min(safe_strlen(ataSN), ATA_IDENTIFY_SN_LENGTH));
             //version descriptors (bytes 58 to 73) (8 max)
-            uint16_t versionOffset = 58;
+            
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED < 2
             //SAM3
             inquiryData[versionOffset] = 0x00;
@@ -3512,6 +3532,9 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice *device, bool 
     }
     else
     {
+		uint8_t reservedByteVal;
+		uint8_t counter = 0;
+
         //10 byte field filter
         if ((fieldPointer = 1 && scsiIoCtx->cdb[1] != 0)
             || (fieldPointer = 2 && scsiIoCtx->cdb[2] != 0)
@@ -3526,8 +3549,8 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice *device, bool 
             //invalid field in CDB
             ret = NOT_SUPPORTED;
             bitPointer = 7;
-            uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
-            uint8_t counter = 0;
+            reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            
             while (reservedByteVal > 0 && counter < 8)
             {
                 reservedByteVal >>= 1;
@@ -3550,6 +3573,12 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice *device, bool 
         uint16_t cylinder = 0;
         uint8_t head = 0;
         uint8_t spt = 0;
+		bool words64to70Valid = false;
+		bool extendedLBAFieldValid = false;
+
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
+        //get the MaxLBA
+        
         if (is_ATA_Identify_Word_Valid(ident_word[1]) && is_ATA_Identify_Word_Valid(ident_word[3]) && is_ATA_Identify_Word_Valid(ident_word[6]))
         {
             cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]);//word 1
@@ -3558,7 +3587,7 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice *device, bool 
             //According to ATA, word 53, bit 0 set to 1 means the words 54,-58 are valid.
             //if set to zero they MAY be valid....so just check validity on everything
         }
-        bool words64to70Valid = false;
+        
         if (is_ATA_Identify_Word_Valid(ident_word[49]))
         {
             if (ident_word[49] & BIT9)
@@ -3600,7 +3629,7 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice *device, bool 
             maxLBA = M_BytesTo4ByteValue(identifyData[123], identifyData[122], identifyData[121], identifyData[120]);
         }
 
-        bool extendedLBAFieldValid = false;
+        
         if (words64to70Valid && is_ATA_Identify_Word_Valid(ident_word[69]))
         {
             if (ident_word[69] & BIT3)
@@ -3752,10 +3781,12 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(tDevice *device, Scs
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
     ataPassthroughCommand ataCommand;
-    memset(&ataCommand, 0, sizeof(ataPassthroughCommand));
-    uint8_t *protocolByte = &scsiIoCtx->cdb[1];
+	uint8_t *protocolByte = &scsiIoCtx->cdb[1];
     uint8_t *transferInfoByte = &scsiIoCtx->cdb[2];
     bool thirtyTwoByteCommand = false;
+	uint8_t protocol;
+    memset(&ataCommand, 0, sizeof(ataPassthroughCommand));
+    
     if (scsiIoCtx->cdb[OPERATION_CODE] != ATA_PASS_THROUGH_12 && scsiIoCtx->cdb[OPERATION_CODE] != ATA_PASS_THROUGH_16)
     {
         //check if it's the 32byte command
@@ -3830,7 +3861,7 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(tDevice *device, Scs
     }
     scsiIoCtx->pAtaCmdOpts = &ataCommand;
     ataCommand.commandType = ATA_CMD_TYPE_TASKFILE;
-    uint8_t protocol = M_Nibble0(*protocolByte >> 1);
+    protocol = M_Nibble0(*protocolByte >> 1);
     //check bytes 1 and 2 of the CDB for the different BITs to make sure everything get's set up correctly for a lower layer
     ataCommand.dataSize = scsiIoCtx->dataLength;
     ataCommand.ptrData = scsiIoCtx->pdata;
@@ -4480,6 +4511,7 @@ static eReturnValues translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCt
         }
         if (useATAWriteCommands)
         {
+			uint8_t *writePattern;
             uint32_t patternLength = scsiIoCtx->dataLength;
             if (ataWritePatternZeros)
             {
@@ -5462,6 +5494,7 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(tDevice *device, Scs
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
+	uint8_t *writeData;
     //filter out invalid fields
     if (((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 2) != 0)
         || ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0)
@@ -5750,6 +5783,8 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(tDevice *device
                     }
                     else if (securityProtocol == 0 && securityProtocolSpecific == 2 && scsiIoCtx->pdata)
                     {
+						uint16_t reservedBytes;
+						uint32_t descriptorLength = 0;//will be changed within the loop
                         //need to byte swap the length of compliance descriptors, then any compliance descriptors that the drive reports.
                         uint32_t lengthOfComplianceDescriptors = M_BytesTo4ByteValue(scsiIoCtx->pdata[3], scsiIoCtx->pdata[2], scsiIoCtx->pdata[1], scsiIoCtx->pdata[0]);//ATA reports this as little endian - TJE
                         scsiIoCtx->pdata[0] = M_Byte3(lengthOfComplianceDescriptors);
@@ -5757,13 +5792,13 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(tDevice *device
                         scsiIoCtx->pdata[2] = M_Byte1(lengthOfComplianceDescriptors);
                         scsiIoCtx->pdata[3] = M_Byte0(lengthOfComplianceDescriptors);
                         //now go through the compliance descriptors
-                        uint32_t descriptorLength = 0;//will be changed within the loop
+                        
                         for (uint32_t offset = 4; offset < (lengthOfComplianceDescriptors + 4) && offset < scsiIoCtx->dataLength; offset += descriptorLength + 8)
                         {
                             uint16_t descriptorType = M_BytesTo2ByteValue(scsiIoCtx->pdata[offset + 1], scsiIoCtx->pdata[offset + 0]);
                             scsiIoCtx->pdata[offset + 1] = M_Byte0(descriptorType);
                             scsiIoCtx->pdata[offset + 0] = M_Byte1(descriptorType);
-                            uint16_t reservedBytes = M_BytesTo2ByteValue(scsiIoCtx->pdata[offset + 3], scsiIoCtx->pdata[offset + 2]);//one table shows this as a word, another as bytes - TJE
+                            reservedBytes = M_BytesTo2ByteValue(scsiIoCtx->pdata[offset + 3], scsiIoCtx->pdata[offset + 2]);//one table shows this as a word, another as bytes - TJE
                             scsiIoCtx->pdata[offset + 3] = M_Byte0(reservedBytes);
                             scsiIoCtx->pdata[offset + 2] = M_Byte1(reservedBytes);
                             descriptorLength = M_BytesTo4ByteValue(scsiIoCtx->pdata[offset + 4], scsiIoCtx->pdata[offset + 5], scsiIoCtx->pdata[offset + 6], scsiIoCtx->pdata[offset + 7]);
@@ -5843,6 +5878,7 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(tDevice *device
                     }
                     else if (securityProtocol == 0 && securityProtocolSpecific == 2)
                     {
+						uint32_t descriptorLength = 0;//will be changed within the loop
                         //need to byte swap the length of compliance descriptors, then any compliance descriptors that the drive reports.
                         uint32_t lengthOfComplianceDescriptors = M_BytesTo4ByteValue(tempSecurityMemory[3], tempSecurityMemory[2], tempSecurityMemory[1], tempSecurityMemory[0]);//ATA reports this as little endian - TJE
                         tempSecurityMemory[0] = M_Byte3(lengthOfComplianceDescriptors);
@@ -5850,13 +5886,14 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(tDevice *device
                         tempSecurityMemory[2] = M_Byte1(lengthOfComplianceDescriptors);
                         tempSecurityMemory[3] = M_Byte0(lengthOfComplianceDescriptors);
                         //now go through the compliance descriptors
-                        uint32_t descriptorLength = 0;//will be changed within the loop
+                        
                         for (uint32_t offset = 4; offset < (lengthOfComplianceDescriptors + 4) && offset < paddedLength; offset += descriptorLength + 8)
                         {
+							uint16_t reservedBytes;
                             uint16_t descriptorType = M_BytesTo2ByteValue(tempSecurityMemory[offset + 1], tempSecurityMemory[offset + 0]);
                             tempSecurityMemory[offset + 1] = M_Byte0(descriptorType);
                             tempSecurityMemory[offset + 0] = M_Byte1(descriptorType);
-                            uint16_t reservedBytes = M_BytesTo2ByteValue(tempSecurityMemory[offset + 3], tempSecurityMemory[offset + 2]);//one table shows this as a word, another as bytes - TJE
+                            reservedBytes = M_BytesTo2ByteValue(tempSecurityMemory[offset + 3], tempSecurityMemory[offset + 2]);//one table shows this as a word, another as bytes - TJE
                             tempSecurityMemory[offset + 3] = M_Byte0(reservedBytes);
                             tempSecurityMemory[offset + 2] = M_Byte1(reservedBytes);
                             descriptorLength = M_BytesTo4ByteValue(tempSecurityMemory[offset + 4], tempSecurityMemory[offset + 5], tempSecurityMemory[offset + 6], tempSecurityMemory[offset + 7]);
@@ -6880,25 +6917,29 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(tDevice *device, ScsiIoC
                         }
                         else if (bufferOffset == 0)
                         {
+							uint32_t IEEEOUIField;
+							uint16_t dataArea1;
+							uint16_t dataArea2;
+							uint16_t dataArea3;
                             //We need to byte swap a few fields in the very first data sector because of ATA vs SCSI endianness.
                             //Bytes 0 - 3 are reserved on SCSI, so memset them to zero
                             memset(&scsiIoCtx->pdata[0], 0, 4);
                             //Bytes 4 - 7 are the IEEE OUI, but this shows as a DWORD in ACS, so it needs swapping to SCSI endianness.
-                            uint32_t IEEEOUIField = M_BytesTo4ByteValue(scsiIoCtx->pdata[7], scsiIoCtx->pdata[6], scsiIoCtx->pdata[5], scsiIoCtx->pdata[4]);
+                            IEEEOUIField = M_BytesTo4ByteValue(scsiIoCtx->pdata[7], scsiIoCtx->pdata[6], scsiIoCtx->pdata[5], scsiIoCtx->pdata[4]);
                             scsiIoCtx->pdata[4] = M_Byte3(IEEEOUIField);
                             scsiIoCtx->pdata[5] = M_Byte2(IEEEOUIField);
                             scsiIoCtx->pdata[6] = M_Byte1(IEEEOUIField);
                             scsiIoCtx->pdata[7] = M_Byte0(IEEEOUIField);
                             //Bytes 8 - 9 are data area 1 and are a WORD in ACS, so swap it.
-                            uint16_t dataArea1 = M_BytesTo2ByteValue(scsiIoCtx->pdata[9], scsiIoCtx->pdata[8]);
+                            dataArea1 = M_BytesTo2ByteValue(scsiIoCtx->pdata[9], scsiIoCtx->pdata[8]);
                             scsiIoCtx->pdata[8] = M_Byte1(dataArea1);
                             scsiIoCtx->pdata[9] = M_Byte0(dataArea1);
                             //Bytes 10 - 11 are data area 2 and are a WORD in ACS, so swap it.
-                            uint16_t dataArea2 = M_BytesTo2ByteValue(scsiIoCtx->pdata[11], scsiIoCtx->pdata[10]);
+                            dataArea2 = M_BytesTo2ByteValue(scsiIoCtx->pdata[11], scsiIoCtx->pdata[10]);
                             scsiIoCtx->pdata[10] = M_Byte1(dataArea2);
                             scsiIoCtx->pdata[11] = M_Byte0(dataArea2);
                             //Bytes 12 - 13 are data area 3 and are a WORD in ACS, so swap it.
-                            uint16_t dataArea3 = M_BytesTo2ByteValue(scsiIoCtx->pdata[13], scsiIoCtx->pdata[12]);
+                            dataArea3 = M_BytesTo2ByteValue(scsiIoCtx->pdata[13], scsiIoCtx->pdata[12]);
                             scsiIoCtx->pdata[12] = M_Byte1(dataArea3);
                             scsiIoCtx->pdata[13] = M_Byte0(dataArea3);
                             //Bytes 14 - 17 are mentioned only in SPC5, so we will memset them to zero to prevent issues with future devices.
@@ -6914,25 +6955,29 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(tDevice *device, ScsiIoC
                         }
                         else if (bufferOffset == 0)
                         {
+							uint32_t IEEEOUIField;
+							uint16_t dataArea1;
+							uint16_t dataArea2;
+							uint16_t dataArea3;
                             //We need to byte swap a few fields in the very first data sector because of ATA vs SCSI endianness.
                             //Bytes 0 - 3 are reserved on SCSI, so memset them to zero
                             memset(&scsiIoCtx->pdata[0], 0, 4);
                             //Bytes 4 - 7 are the IEEE OUI, but this shows as a DWORD in ACS, so it needs swapping to SCSI endianness.
-                            uint32_t IEEEOUIField = M_BytesTo4ByteValue(scsiIoCtx->pdata[7], scsiIoCtx->pdata[6], scsiIoCtx->pdata[5], scsiIoCtx->pdata[4]);
+                            IEEEOUIField = M_BytesTo4ByteValue(scsiIoCtx->pdata[7], scsiIoCtx->pdata[6], scsiIoCtx->pdata[5], scsiIoCtx->pdata[4]);
                             scsiIoCtx->pdata[4] = M_Byte3(IEEEOUIField);
                             scsiIoCtx->pdata[5] = M_Byte2(IEEEOUIField);
                             scsiIoCtx->pdata[6] = M_Byte1(IEEEOUIField);
                             scsiIoCtx->pdata[7] = M_Byte0(IEEEOUIField);
                             //Bytes 8 - 9 are data area 1 and are a WORD in ACS, so swap it.
-                            uint16_t dataArea1 = M_BytesTo2ByteValue(scsiIoCtx->pdata[9], scsiIoCtx->pdata[8]);
+                            dataArea1 = M_BytesTo2ByteValue(scsiIoCtx->pdata[9], scsiIoCtx->pdata[8]);
                             scsiIoCtx->pdata[8] = M_Byte1(dataArea1);
                             scsiIoCtx->pdata[9] = M_Byte0(dataArea1);
                             //Bytes 10 - 11 are data area 2 and are a WORD in ACS, so swap it.
-                            uint16_t dataArea2 = M_BytesTo2ByteValue(scsiIoCtx->pdata[11], scsiIoCtx->pdata[10]);
+                            dataArea2 = M_BytesTo2ByteValue(scsiIoCtx->pdata[11], scsiIoCtx->pdata[10]);
                             scsiIoCtx->pdata[10] = M_Byte1(dataArea2);
                             scsiIoCtx->pdata[11] = M_Byte0(dataArea2);
                             //Bytes 12 - 13 are data area 3 and are a WORD in ACS, so swap it.
-                            uint16_t dataArea3 = M_BytesTo2ByteValue(scsiIoCtx->pdata[13], scsiIoCtx->pdata[12]);
+                            dataArea3 = M_BytesTo2ByteValue(scsiIoCtx->pdata[13], scsiIoCtx->pdata[12]);
                             scsiIoCtx->pdata[12] = M_Byte1(dataArea3);
                             scsiIoCtx->pdata[13] = M_Byte0(dataArea3);
                             //Bytes 14 - 17 are mentioned only in SPC5, so we will memset them to zero to prevent issues with future devices.
@@ -8505,6 +8550,7 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiI
                     uint8_t senseKey = 0;
                     uint8_t additionalSenseCode = 0;
                     uint8_t additionalSenseCodeQualifier = 0;
+					int16_t ataDescriptorNumber;
                     selfTestResults[iter] = M_Byte1(parameterCode);
                     selfTestResults[iter + 1] = M_Byte0(parameterCode);
                     selfTestResults[iter + 2] = 0x03;//format and linking = 11b
@@ -8514,6 +8560,7 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiI
                     int16_t ataDescriptorNumber = C_CAST(int16_t, selfTestIndex - parameterCode + INT16_C(1));
                     if (ataDescriptorNumber > 0)
                     {
+						uint16_t pageNumber;
                         //set the buffer offset from the descriptor number we got above - we may need to read a different page of the log if it's a multipage log
                         ataLogOffset = ((C_CAST(uint32_t, ataDescriptorNumber) * 26) - 26) + 4;
                         uint16_t pageNumber = C_CAST(uint16_t, ataLogOffset / LEGACY_DRIVE_SEC_SIZE);
@@ -8888,6 +8935,9 @@ static eReturnValues translate_Read_Error_Counters_Log_0x03(tDevice *device, Scs
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
+    readErrorCountersLog[0] = 0x03;
+    readErrorCountersLog[1] = 0x00;
+    
     if (parameterPointer <= 0x0004 && device->drive_info.softSATFlags.deviceStatsPages.rotatingMediaStatisticsPageSupported)
     {
         if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_ROTATING_MEDIA, logPage, LEGACY_DRIVE_SEC_SIZE, device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
@@ -9321,6 +9371,7 @@ static eReturnValues translate_ATA_Passthrough_Results_Log_Page_16(tDevice *devi
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, ataPassthroughResults, 274);//15 (number of results) * (14 + 4) (size of pass-through results descriptor and parameter header) + 4 (log header)
     uint16_t parameterCode = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+	uint16_t offset = 4;
     if (parameterCode > 0x000E)
     {
         ret = NOT_SUPPORTED;
@@ -9331,7 +9382,6 @@ static eReturnValues translate_ATA_Passthrough_Results_Log_Page_16(tDevice *devi
     ataPassthroughResults[0] = 0x16;
     ataPassthroughResults[1] = 0;
 
-    uint16_t offset = 4;
     //now we need to go through and save the most recent entries to the log we'll return
     for (; parameterCode <= 0x000E && offset < 274; offset += 18, ++parameterCode)
     {
@@ -9380,6 +9430,11 @@ static eReturnValues translate_Application_Client_Log_Sense_0x0F(tDevice *device
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
+	uint16_t numberOfParametersToReturn;
+	uint8_t *applicationClientLog;
+	uint16_t offset;
+	uint16_t parameterCounter;
+
     //support parameters 0 - 1FFh
     if (parameterCode > 0x01FF)
     {
@@ -9393,7 +9448,7 @@ static eReturnValues translate_Application_Client_Log_Sense_0x0F(tDevice *device
     //calculate how many parameters we'll be returning.
     uint16_t numberOfParametersToReturn = C_CAST(uint16_t, (allocationLength - 4) / (4 + 0xFC));//(4 + 0xFC) is the size of a parameter for the application client. allocation length - 4 takes into account the header of the log
     //set the header
-    uint8_t *applicationClientLog = &scsiIoCtx->pdata[0];
+    applicationClientLog = &scsiIoCtx->pdata[0];
     applicationClientLog[0] = 0x0F;
     applicationClientLog[1] = 0x00;
     uint16_t offset = 4;
@@ -9985,6 +10040,10 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice *devic
             while (parameterDataOffset < parameterListLength && parameterDataOffset < totalParameterListLength)
             {
                 uint16_t parameterCode = M_BytesTo2ByteValue(ptrData[parameterDataOffset + 0], ptrData[parameterDataOffset + 1]);
+				uint8_t *hostLogData;
+				uint16_t offsetOnATAPage = 0;
+                uint8_t ataLogPageToRead = 0;
+
                 parameterLength = ptrData[parameterDataOffset + 3];
                 uint8_t *hostLogData = C_CAST(uint8_t*, safe_calloc_aligned(16 * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
                 if (!hostLogData)
@@ -9994,8 +10053,7 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice *devic
                 //The parameter headers may be written to the host vendor logs if they've been written...but if not, then we'll need to create the header.
                 //It's much simpler to take the parameters and write directly to the logs for a SATL, but this may not happen in this software implementation,
                 //so we need to handle that.
-                uint16_t offsetOnATAPage = 0;
-                uint8_t ataLogPageToRead = 0;
+                
                 if (/*parameterCode >= 0x00 &&*/ parameterCode <= 0x001F)
                 {
                     //ata log 0x90
@@ -10341,6 +10399,13 @@ static eReturnValues translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCtx *sc
             uint64_t numberOfLBAsToTRIM = 0;//this will be checked later to make sure it isn't greater than what we reported on the VPD pages
             uint16_t numberOfBlockDescriptors = 0;//this will be checked later to make sure it isn't greater than what we reported on the VPD pages
             uint16_t ataTrimOffset = 0;
+
+			if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word105))
+			{
+				trimBufferSize = device->drive_info.IdentifyData.ata.Word105;
+			}
+			trimBuffer = C_CAST(uint8_t*, calloc_aligned(trimBufferSize * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));//allocate the max size the device supports...we'll fill in as much as we need to
+
             if (!trimBuffer)
             {
                 //lets just set this error for now...-TJE
@@ -10545,6 +10610,7 @@ static eReturnValues translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx
     }
     else
     {
+		uint16_t smartSelfTestTime = 0;
         if (pageControl == 0 || pageControl == 0x3)//current or saved page
         {
             if (device->drive_info.softSATFlags.senseDataDescriptorFormat)
@@ -10568,7 +10634,7 @@ static eReturnValues translate_Mode_Sense_Control_0Ah(tDevice *device, ScsiIoCtx
         controlPage[offset + 7] = OBSOLETE;
         controlPage[offset + 8] = 0xFF;//busy timeout period
         controlPage[offset + 9] = 0xFF;//busy timeout period
-        uint16_t smartSelfTestTime = 0;
+        
         if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) && device->drive_info.IdentifyData.ata.Word084 & BIT1)
             && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) && device->drive_info.IdentifyData.ata.Word087 & BIT1)
             && (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) && device->drive_info.IdentifyData.ata.Word085 & BIT0))
@@ -10682,8 +10748,8 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx *scsiIo
         if (word88Valid && is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word088) && scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0x7F00)
         {
             //UDMA mode is set
-            currentMode = 11;
             uint8_t udmaMode = C_CAST(uint8_t, (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0x7F00) >> 8);
+            currentMode = 11;
             while (udmaMode != 1)
             {
                 udmaMode = udmaMode >> 1;
@@ -10692,9 +10758,9 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx *scsiIo
         }
         else if (is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word063) && scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & 0x0700)
         {
+			uint8_t mwdmaMode = C_CAST(uint8_t, (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & 0x0700) >> 8);
             //MWDMA mode is set
             currentMode = 8;
-            uint8_t mwdmaMode = C_CAST(uint8_t, (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & 0x0700) >> 8);
             while (mwdmaMode != 1)
             {
                 mwdmaMode = mwdmaMode >> 1;
@@ -10703,9 +10769,9 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx *scsiIo
         }
         else if (is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word062) && scsiIoCtx->device->drive_info.IdentifyData.ata.Word062 & 0x0700)
         {
+            uint8_t swdmaMode = C_CAST(uint8_t, (scsiIoCtx->device->drive_info.IdentifyData.ata.Word062 & 0x0700) >> 8);
             //SWDMA mode is set (so obsolete this shouldn't ever happen)
             currentMode = 7;
-            uint8_t swdmaMode = C_CAST(uint8_t, (scsiIoCtx->device->drive_info.IdentifyData.ata.Word062 & 0x0700) >> 8);
             while (swdmaMode != 1)
             {
                 swdmaMode = swdmaMode >> 1;
@@ -11700,11 +11766,12 @@ static eReturnValues translate_SCSI_Mode_Sense_Command(tDevice *device, ScsiIoCt
         if (bitPointer == 0)
         {
             uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+            uint8_t counter = 0;
             if (fieldPointer == 1)
             {
                 reservedByteVal = byte1;
             }
-            uint8_t counter = 0;
+
             while (reservedByteVal > 0 && counter < 8)
             {
                 reservedByteVal >>= 1;
@@ -11886,6 +11953,8 @@ static eReturnValues translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCt
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
+    int wceRet = SUCCESS;
+    int draRet = SUCCESS;
     //start checking everything to make sure it looks right before we issue commands
     if (pageLength != 0x12)
     {
@@ -11897,9 +11966,10 @@ static eReturnValues translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCt
     }
     if (ptrToBeginningOfModePage[2] & 0xFB)//all but WCE bit
     {
-        fieldPointer = dataOffset + 2;
         uint8_t reservedByteVal = ptrToBeginningOfModePage[2] & 0xFB;
         uint8_t counter = 0;
+        fieldPointer = dataOffset + 2;
+
         while (reservedByteVal > 0 && counter < 8)
         {
             reservedByteVal >>= 1;
@@ -11936,9 +12006,10 @@ static eReturnValues translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCt
     }
     if (ptrToBeginningOfModePage[12] & 0xDF)//all but DRA bit
     {
-        fieldPointer = dataOffset + 12;
         uint8_t reservedByteVal = ptrToBeginningOfModePage[12] & 0xDF;
         uint8_t counter = 0;
+        fieldPointer = dataOffset + 12;
+
         while (reservedByteVal > 0 && counter < 8)
         {
             reservedByteVal >>= 1;
@@ -12028,9 +12099,9 @@ static eReturnValues translate_Mode_Select_Control_0Ah(tDevice *device, ScsiIoCt
     }
     if (ptrToBeginningOfModePage[2] & 0xFB)//all but d_sense bit
     {
-        fieldPointer = 2;
         uint8_t reservedByteVal = ptrToBeginningOfModePage[2] & 0xFB;
         uint8_t counter = 0;
+        fieldPointer = 2;
         while (reservedByteVal > 0 && counter < 8)
         {
             reservedByteVal >>= 1;
@@ -12299,7 +12370,9 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
                     //first check if we need to round to a min or max for the drive...
                     uint32_t ata_Idle_a_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
                     uint32_t ata_Idle_a_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
-                    if (idle_a_timer < ata_Idle_a_min)
+                    uint16_t ata_idle_a = 0;
+                    bool timerUnits = false;
+					if (idle_a_timer < ata_Idle_a_min)
                     {
                         parameterRounded = true;
                         idle_a_timer = ata_Idle_a_min;
@@ -12310,8 +12383,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
                         idle_a_timer = ata_Idle_a_max;
                     }
                     //convert 32bit timer to 16bit ATA timer.
-                    uint16_t ata_idle_a = 0;
-                    bool timerUnits = false;
+
                     if (idle_a_timer == 0)
                     {
                         ata_idle_a = UINT16_C(1);
@@ -12342,11 +12414,14 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
                 }
                 if (change_idle_b)
                 {
-                    timerOffset = 64;
+
                     //first check if we need to round to a min or max for the drive...
                     uint32_t ata_Idle_b_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
                     uint32_t ata_Idle_b_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
-                    if (idle_b_timer < ata_Idle_b_min)
+                    uint16_t ata_idle_b = 0;
+                    bool timerUnits = false;
+					timerOffset = 64;
+					if (idle_b_timer < ata_Idle_b_min)
                     {
                         parameterRounded = true;
                         idle_b_timer = ata_Idle_b_min;
@@ -12357,8 +12432,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
                         idle_b_timer = ata_Idle_b_max;
                     }
                     //convert 32bit timer to 16bit ATA timer.
-                    uint16_t ata_idle_b = 0;
-                    bool timerUnits = false;
+
                     if (idle_b_timer == UINT32_C(0))
                     {
                         ata_idle_b = UINT16_C(1);
@@ -12389,11 +12463,13 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
                 }
                 if (change_idle_c)
                 {
-                    timerOffset = 128;
                     //first check if we need to round to a min or max for the drive...
                     uint32_t ata_Idle_c_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
                     uint32_t ata_Idle_c_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
-                    if (idle_c_timer < ata_Idle_c_min)
+                    uint16_t ata_idle_c = 0;
+                    bool timerUnits = false;
+					timerOffset = 128;
+					if (idle_c_timer < ata_Idle_c_min)
                     {
                         parameterRounded = true;
                         idle_c_timer = ata_Idle_c_min;
@@ -12404,8 +12480,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
                         idle_c_timer = ata_Idle_c_max;
                     }
                     //convert 32bit timer to 16bit ATA timer.
-                    uint16_t ata_idle_c = 0;
-                    bool timerUnits = false;
+
                     if (idle_c_timer == UINT32_C(0))
                     {
                         ata_idle_c = UINT16_C(1);
@@ -12436,11 +12511,13 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
                 }
                 if (change_standby_y)
                 {
-                    timerOffset = 384 + LEGACY_DRIVE_SEC_SIZE;
                     //first check if we need to round to a min or max for the drive...
                     uint32_t ata_Standby_y_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
                     uint32_t ata_Standby_y_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
-                    if (standby_y_timer < ata_Standby_y_min)
+                    uint16_t ata_standby_y = 0;
+                    bool timerUnits = false;
+					timerOffset = 384 + LEGACY_DRIVE_SEC_SIZE;
+					if (standby_y_timer < ata_Standby_y_min)
                     {
                         parameterRounded = true;
                         standby_y_timer = ata_Standby_y_min;
@@ -12451,8 +12528,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
                         standby_y_timer = ata_Standby_y_max;
                     }
                     //convert 32bit timer to 16bit ATA timer.
-                    uint16_t ata_standby_y = 0;
-                    bool timerUnits = false;
+
                     if (standby_y_timer == UINT32_C(0))
                     {
                         ata_standby_y = UINT16_C(1);
@@ -12483,11 +12559,13 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
                 }
                 if (change_standby_z)
                 {
-                    timerOffset = 448 + LEGACY_DRIVE_SEC_SIZE;
                     //first check if we need to round to a min or max for the drive...
                     uint32_t ata_Standby_z_min = M_BytesTo4ByteValue(epcLog[timerOffset + 23], epcLog[timerOffset + 22], epcLog[timerOffset + 21], epcLog[timerOffset + 20]);
                     uint32_t ata_Standby_z_max = M_BytesTo4ByteValue(epcLog[timerOffset + 24], epcLog[timerOffset + 25], epcLog[timerOffset + 26], epcLog[timerOffset + 27]);
-                    if (standby_z_timer < ata_Standby_z_min)
+                    uint16_t ata_standby_z = 0;
+                    bool timerUnits = false;
+					timerOffset = 448 + LEGACY_DRIVE_SEC_SIZE;
+					if (standby_z_timer < ata_Standby_z_min)
                     {
                         parameterRounded = true;
                         standby_z_timer = ata_Standby_z_min;
@@ -12498,8 +12576,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice *device, 
                         standby_z_timer = ata_Standby_z_max;
                     }
                     //convert 32bit timer to 16bit ATA timer.
-                    uint16_t ata_standby_z = 0;
-                    bool timerUnits = false;
+
                     if (standby_z_timer == UINT32_C(0))
                     {
                         ata_standby_z = UINT16_C(1);
@@ -12748,11 +12825,12 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
                 if (bitPointer == 0)
                 {
                     uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+                    uint8_t counter = 0;
                     if (fieldPointer == 1)
                     {
                         reservedByteVal = byte1;
                     }
-                    uint8_t counter = 0;
+
                     while (reservedByteVal > 0 && counter < 8)
                     {
                         reservedByteVal >>= 1;
@@ -12769,9 +12847,10 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
         }
         else if (scsiIoCtx->cdb[OPERATION_CODE] == 0x55)//mode select 10
         {
+            uint8_t byte1 = scsiIoCtx->cdb[1] & 0x11;//removing PF and SP bits since we can handle those, but not any other bits
             tenByteCommand = true;
             parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-            uint8_t byte1 = scsiIoCtx->cdb[1] & 0x11;//removing PF and SP bits since we can handle those, but not any other bits
+
             if (((fieldPointer = 1) != 0 && byte1 != 0)
                 || ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[2] != 0)
                 || ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[3] != 0)
@@ -12783,11 +12862,12 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
                 if (bitPointer == 0)
                 {
                     uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
+                    uint8_t counter = 0;
                     if (fieldPointer == 1)
                     {
                         reservedByteVal = byte1;
                     }
-                    uint8_t counter = 0;
+
                     while (reservedByteVal > 0 && counter < 8)
                     {
                         reservedByteVal >>= 1;
@@ -12814,6 +12894,15 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
     }
     if (pageFormat)
     {
+        bool longLBA = false;
+        uint16_t blockDescriptorLength = scsiIoCtx->pdata[3];
+		uint8_t headerLength;
+        uint8_t modePage;
+        bool subPageFormat;
+        //bool parametersSaveble = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & BIT7;
+        uint8_t subpage;
+        uint16_t pageLength;
+
         if (parameterListLength == 0)
         {
             //Spec says this is not to be considered an error. Since we didn't get any data, there is nothing to do but return good status - TJE
@@ -12968,9 +13057,10 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
                     }
                     if (scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 4] != 0)//short header + 4 bytes
                     {
-                        fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 4;
+
                         uint8_t reservedByteVal = scsiIoCtx->pdata[fieldPointer];
                         uint8_t counter = 0;
+                        fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 4;
                         while (reservedByteVal > 0 && counter < 8)
                         {
                             reservedByteVal >>= 1;
@@ -13006,9 +13096,10 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
                 }
                 if (scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 4] != 0)//short header + 4 bytes
                 {
-                    fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 4;
                     uint8_t reservedByteVal = scsiIoCtx->pdata[fieldPointer];
                     uint8_t counter = 0;
+                    fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 4;
+
                     while (reservedByteVal > 0 && counter < 8)
                     {
                         reservedByteVal >>= 1;
@@ -13029,17 +13120,17 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
                 }
             }
         }
-        uint8_t headerLength = MODE_PARAMETER_HEADER_6_LEN;
+        headerLength = MODE_PARAMETER_HEADER_6_LEN;
         if (tenByteCommand)
         {
             headerLength = MODE_PARAMETER_HEADER_10_LEN;
         }
         //time to call the function that handles the changes for the mode page requested...save all this info and pass it in for convenience in that function
-        uint8_t modePage = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & 0x3F;
-        bool subPageFormat = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & BIT6;
+        modePage = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & 0x3F;
+        subPageFormat = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & BIT6;
         //bool parametersSaveble = scsiIoCtx->pdata[headerLength + blockDescriptorLength] & BIT7;
-        uint8_t subpage = 0;
-        uint16_t pageLength = scsiIoCtx->pdata[headerLength + blockDescriptorLength + 1];
+        subpage = 0;
+        pageLength = scsiIoCtx->pdata[headerLength + blockDescriptorLength + 1];
         if (subPageFormat)
         {
             subpage = scsiIoCtx->pdata[headerLength + blockDescriptorLength + 1];
@@ -13403,8 +13494,9 @@ static eReturnValues translate_SCSI_Set_Timestamp_Command(tDevice *device, ScsiI
     }
     if (parameterListLength > 0 && scsiIoCtx->pdata)
     {
-        memcpy(dataBuf, scsiIoCtx->pdata, M_Min(12, parameterListLength));
         uint64_t timeStamp = M_BytesTo8ByteValue(0, 0, dataBuf[4], dataBuf[5], dataBuf[6], dataBuf[7], dataBuf[8], dataBuf[9]);
+        memcpy(dataBuf, scsiIoCtx->pdata, M_Min(12, parameterListLength));
+
         if (SUCCESS != ata_Set_Date_And_Time(device, timeStamp))
         {
             set_Sense_Data_By_RTFRs(device, &device->drive_info.lastCommandRTFRs, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
@@ -13566,6 +13658,8 @@ static eReturnValues check_Operation_Code(tDevice *device, uint8_t operationCode
     uint16_t cdbLength = 1;//set to 1 for the default case
     uint8_t controlByte = 0;
     bool commandSupported = true;
+    *dataLength = 4;//add onto this for each of the different commands below, then allocate memory accordingly
+
     if (rctd)
     {
         //add 12 bytes for room for the command timeouts descriptor to be setup
@@ -14365,6 +14459,8 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice *device, ui
     uint16_t cdbLength = 1;//set to 1 for the default case
     uint8_t controlByte = 0;
     bool commandSupported = true;
+    *dataLength = 4;//add onto this for each of the different commands below, then allocate memory accordingly
+
     if (rctd)
     {
         //add 12 bytes for room for the command timeouts descriptor to be setup
@@ -16275,6 +16371,7 @@ eReturnValues translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     bool invalidOperationCode = false;
     uint16_t fieldPointer = 0;
     uint8_t bitPointer = 0;
+	uint8_t controlByteOffset;
     /*
     static bool satConfigInitialized = false;//this is static because we only want to initialize the struct once!
     if (!satConfigInitialized)
@@ -16291,7 +16388,7 @@ eReturnValues translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
         scsiIoCtx->senseDataSize = SPC3_SENSE_LEN;
     }
     memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
-    uint8_t controlByteOffset = scsiIoCtx->cdbLength - 1;
+    controlByteOffset = scsiIoCtx->cdbLength - 1;
     if (scsiIoCtx->cdb[OPERATION_CODE] == 0x7E || scsiIoCtx->cdb[OPERATION_CODE] == 0x7F)
     {
         //variable length and 32byte CDBs have the control byte at offset 1

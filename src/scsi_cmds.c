@@ -149,8 +149,9 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cd
 {
     eReturnValues ret = UNKNOWN;
     ScsiIoCtx scsiIoCtx;
-    memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
     uint8_t *senseBuffer = senseData;
+    memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
+
     //if we were not given a sense buffer, assume we want to use the last command sense data that is part of the device struct
     if (!senseBuffer || senseDataLen == 0)
     {
@@ -1111,12 +1112,13 @@ eReturnValues scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength,
         ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), pdata, dataLength, XFER_DATA_IN, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
         if (ret == SUCCESS && !evpd && !cmdDt && pageCode == 0)
         {
+			uint8_t version;
             if (pdata != device->drive_info.scsiVpdData.inquiryData)
             {
                 //this should only be copying std inquiry data to thislocation in the device struct to keep it up to date each time an inquiry is sent to the drive.
                 memcpy(device->drive_info.scsiVpdData.inquiryData, pdata, M_Min(dataLength, 96));
             }
-            uint8_t version = pdata[2];
+            version = pdata[2];
             switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
             {
             case 0x81:
@@ -4654,7 +4656,7 @@ eReturnValues scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startin
     {
         printf("Sending SCSI Get Physical Element Status\n");
     }
-    eDataTransferDirection dataDir = XFER_DATA_IN;
+
     //send the command
     if (allocationLength == 0)
     {

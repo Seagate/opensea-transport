@@ -2501,7 +2501,11 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
         }
         //number of logical blocks received
         {
-            double nvmeWritesInLBAs = (convert_128bit_to_double(&logPage[48]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+            double nvmeWritesInLBAs = 0;
+			if (device->drive_info.deviceBlockSize != 0) 
+			{
+				nvmeWritesInLBAs = (convert_128bit_to_double(&logPage[48]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+			}
             uint64_t numLogBlocksWritten = 0;
             if (nvmeWritesInLBAs >= C_CAST(double, UINT64_MAX))
             {
@@ -2522,7 +2526,12 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
         }
         //number of logical blocks transmitted
         {
-            double nvmeReadsInLBAs = (convert_128bit_to_double(&logPage[32]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+            double nvmeReadsInLBAs = 0;
+
+			if (device->drive_info.deviceBlockSize != 0) 
+			{
+				nvmeReadsInLBAs = (convert_128bit_to_double(&logPage[32]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+			}
             uint64_t numLogBlocksRead = 0;
             if (nvmeReadsInLBAs >= C_CAST(double, UINT64_MAX))
             {
@@ -9836,6 +9845,11 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     bool invalidOperationCode = false;
     uint16_t fieldPointer = 0;
     uint8_t bitPointer = 0;
+
+#ifdef _DEBUG
+    printf("-->%s \n",__FUNCTION__);
+#endif
+
     //if we weren't given a sense data pointer, use the sense data in the device structure
     if (!scsiIoCtx->psense)
     {
