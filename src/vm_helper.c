@@ -225,158 +225,22 @@ typedef struct _sysVMLowLevelDeviceInfo
 //handle looking up nvme controller handle from a namespace handle???
 //handle /dev/disk/by-<> lookups. These are links to /dev/sd or /dev/nvme, etc. We can convert these first, then convert again to sd/sg/nvme as needed
 
-static void set_Device_Fields_From_Handle(const char* handle, sysVMLowLevelDeviceInfo * sysVmInfo)
+static void get_VMV_SYS_FS_Info(const char* handle, sysVMLowLevelDeviceInfo * sysVmInfo)
 {
     //check if it's a block handle, bsg, or scsi_generic handle, then setup the path we need to read.
     if (handle && sysVmInfo)
     {
-        if (strstr(handle,"nvme") != NULL)
+        if (strstr(handle,"t10.ATA") != NULL)
         {
-            size_t nvmHandleLen = strlen(handle) + 1;
-            char *nvmHandle = C_CAST(char*, calloc(nvmHandleLen, sizeof(char)));
-            snprintf(nvmHandle, nvmHandleLen, "%s", handle);
-            sysVmInfo->interface_type = NVME_INTERFACE;
-            sysVmInfo->drive_type = NVME_DRIVE;
-            snprintf(sysVmInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "%s", nvmHandle);
+            //set scsi interface and scsi drive until we know otherwise
+            sysVmInfo->drive_type = ATA_DRIVE;
+            sysVmInfo->interface_type = IDE_INTERFACE;
         }
-        else //not NVMe, so we need to do some investigation of the handle. NOTE: this requires 2.6 and later kernel since it reads a link in the /sys/class/ filesystem
-        {
-            bool incomingBlock = false;//only set for SD!
-            bool bsg = false;
-            char incomingHandleClassPath[PATH_MAX] = { 0 };
-            //char *incomingClassName = NULL;
-            common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
-            if (is_Block_Device_Handle(handle))
-            {
-                common_String_Concat(incomingHandleClassPath, PATH_MAX, "block/");
-                incomingBlock = true;
-                //incomingClassName = strdup("block");
-            }
-            else if (is_Block_SCSI_Generic_Handle(handle))
-            {
-                bsg = true;
-                common_String_Concat(incomingHandleClassPath, PATH_MAX, "bsg/");
-                //incomingClassName = strdup("bsg");
-            }
-            else if (is_SCSI_Generic_Handle(handle))
-            {
-                common_String_Concat(incomingHandleClassPath, PATH_MAX, "scsi_generic/");
-                //incomingClassName = strdup("scsi_generic");
-            }
-            else
-            {
-                //unknown. Time to exit gracefully
-                sysVmInfo->interface_type = SCSI_INTERFACE;
-                sysVmInfo->drive_type = UNKNOWN_DRIVE;
-                return;
-            }
-            //first make sure this directory exists
-            struct stat inHandleStat;
-            memset(&inHandleStat, 0, sizeof(struct stat));
-            if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
-            {
-                struct stat link;
-                memset(&link, 0, sizeof(struct stat));
-                common_String_Concat(incomingHandleClassPath, PATH_MAX, basename(C_CAST(char*, handle)));
-                //now read the link with the handle appended on the end
-                if (lstat(incomingHandleClassPath,&link) == 0 && S_ISLNK(link.st_mode))
-                {
-                    char inHandleLink[PATH_MAX] = { 0 };
-                    if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
-                    {
-                        //Read the link and set up all the fields we want to setup.
-                        //Start with setting the device interface
-                        //example ata device link: ../../devices/pci0000:00/0000:00:1f.2/ata8/host8/target8:0:0/8:0:0:0/scsi_generic/sg2
-                        //example usb device link: ../../devices/pci0000:00/0000:00:1c.1/0000:03:00.0/usb4/4-1/4-1:1.0/host21/target21:0:0/21:0:0:0/scsi_generic/sg4
-                        //example sas device link: ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_generic/sg3
-                        //example firewire device link: ../../devices/pci0000:00/0000:00:1c.5/0000:04:00.0/0000:05:09.0/0000:0b:00.0/0000:0c:02.0/fw1/fw1.0/host13/target13:0:0/13:0:0:0/scsi_generic/sg3
-                        //example sata over sas device link: ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:1/end_device-0:1/target0:0:1/0:0:1:0/scsi_generic/sg5
-                        if (strstr(inHandleLink,"ata") != 0)
-                        {
-                            get_SYS_FS_ATA_Info(inHandleLink, sysVmInfo);
-                        }
-                        else if (strstr(inHandleLink,"usb") != 0)
-                        {
-                            get_SYS_FS_USB_Info(inHandleLink, sysVmInfo);
-                        }
-                        else if (strstr(inHandleLink,"fw") != 0)
-                        {
-                            get_SYS_FS_1394_Info(inHandleLink, sysVmInfo);
-                        }
-                        //if the link doesn't conatin ata or usb in it, then we are assuming it's scsi since scsi doesn't have a nice simple string to check
-                        else
-                        {
-                            get_SYS_FS_SCSI_Info(inHandleLink, sysVmInfo);
-                        }
-                        get_Linux_SYS_FS_SCSI_Device_File_Info(sysVmInfo);
-
-                        char *baseLink = basename(inHandleLink);
-                        if (bsg)
-                        {
-                            snprintf(sysVmInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "/dev/bsg/%s", baseLink);
-                        }
-                        else
-                        {
-                            snprintf(sysVmInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
-                        }
-
-                        get_SYS_FS_SCSI_Address(inHandleLink, sysVmInfo);
-                        //printf("attempting to map the handle\n");
-                        //Lastly, call the mapping function to get the matching block handle and check what we got to set ATAPI, TAPE or leave as-is. Setting these is necessary to prevent talking to ATAPI as HDD due to overlapping A1h opcode
-                        char *block = NULL;
-                        char *gen = NULL;
-                        if (SUCCESS == map_Block_To_Generic_Handle(handle, &gen, &block))
-                        {
-                            //printf("successfully mapped the handle. gen = %s\tblock=%s\n", gen, block);
-                            //Our incoming handle SHOULD always be sg/bsg, but just in case, we need to check before we setup the second handle (mapped handle) information
-                            if (incomingBlock)
-                            {
-                                //block device handle was sent into here (and we made it this far...unlikely)
-                                //Secondary handle will be a generic handle
-                                if (is_Block_SCSI_Generic_Handle(gen))
-                                {
-                                    snprintf(sysVmInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/bsg/%s", gen);
-                                }
-                                else
-                                {
-                                    snprintf(sysVmInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/%s", gen);
-                                }
-                            }
-                            else
-                            {
-                                //generic handle was sent in
-                                //secondary handle will be a block handle
-                                snprintf(sysVmInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/%s", block);
-                            }
-
-                            if (strstr(block, "sr") || strstr(block, "scd"))
-                            {
-                                sysVmInfo->drive_type = ATAPI_DRIVE;
-                            }
-                            else if (strstr(block, "st"))
-                            {
-                                sysVmInfo->drive_type = LEGACY_TAPE_DRIVE;
-                            }
-                            else if (strstr(block, "ses"))
-                            {
-                                //scsi enclosure services
-                            }
-                        }
-                        //printf("Finish handle mapping\n");
-                        safe_Free(block)
-                        safe_Free(gen)
-                    }
-                    else
-                    {
-                        //couldn't read the link...for who knows what reason...
-                    }
-                }
-                else
-                {
-                    //Not a link...nothing further to do
-                }
-            }
-        }
+		if (strstr(handle,"naa.") != NULL) 
+		{
+			sysVmInfo->drive_type = SCSI_DRIVE;
+			sysVmInfo->interface_type = SCSI_INTERFACE;
+		}
     }
     return;
 }
@@ -384,6 +248,15 @@ static void set_Device_Fields_From_Handle(const char* handle, sysVMLowLevelDevic
 static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 {
     sysVMLowLevelDeviceInfo sysVmInfo;
+	/**
+	 * Setting up difaults
+	 */
+	//sysVmInfo.drive_type = SCSI_DRIVE;
+	//device->drive_info.drive_type = ATA_DRIVE;
+	//sysVmInfo.interface_type = SCSI_INTERFACE;
+	//device->drive_info.interface_type = IDE_INTERFACE;
+	//sysVmInfo.media_type = MEDIA_HDD;
+
     memset(&sysVmInfo, 0, sizeof(sysVMLowLevelDeviceInfo));
     get_VMV_SYS_FS_Info(handle, &sysVmInfo);
     //now copy the saved data to tDevice. -DB
@@ -1461,7 +1334,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     int numberOfDevices = 0;
     int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
     char name[128] = { 0 }; //Because get device needs char
+	char *nvmeDevName;
     int fd;
+	bool isScsi = false;
     tDevice * d = NULL;
     struct nvme_adapter_list nvmeAdptList;
     int rc;
@@ -1498,12 +1373,15 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     safe_Free(namelist)
 
     //add nvme devices to the list
-    for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER;i++, j++)
+    for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER; i++, j++)
     {
         size_t nvmeAdptNameLen = strlen(nvmeAdptList.adapters[j].name) + 1;
         devs[i] = C_CAST(char *, malloc(nvmeAdptNameLen));
         memset(devs[i], 0, nvmeAdptNameLen);
         snprintf(devs[i], nvmeAdptNameLen, "%s", nvmeAdptList.adapters[j].name);
+#ifdef _DEBUG
+		printf("Discovered NVMe Device index - %d Name - %s \n", j, nvmeAdptList.adapters[j].name);
+#endif
     }
     devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
 
@@ -1524,7 +1402,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 #if defined (DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
 #endif
-        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_nvme_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_nvme_devs)) && (found < numberOfDevices)); driveNumber++)
         {
             if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
             {
@@ -1532,44 +1410,55 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             }
             memset(name, 0, sizeof(name));//clear name before reusing it
             snprintf(name, sizeof(name), "%s", devs[driveNumber]);
-            fd = -1;
-            //lets try to open the device.      
-            fd = open(name, O_RDWR | O_NONBLOCK);
-            if (fd >= 0)
-            {
-                close(fd);
-                eVerbosityLevels temp = d->deviceVerbosity;
-                memset(d, 0, sizeof(tDevice));
-                d->deviceVerbosity = temp;
-                d->sanity.size = ver.size;
-                d->sanity.version = ver.version;
-#if defined (DEGUG_SCAN_TIME)
-                seatimer_t getDeviceTimer;
-                memset(&getDeviceTimer, 0, sizeof(seatimer_t));
-                start_Timer(&getDeviceTimer);
-#endif
-                d->dFlags = flags;
-                int ret = get_Device(name, d);
-#if defined (DEGUG_SCAN_TIME)
-                stop_Timer(&getDeviceTimer);
-                printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
-#endif
-                if (ret != SUCCESS)
-                {
-                    failedGetDeviceCount++;
-                }
-                found++;
-                d++;
-            }
-            else if (errno == EACCES) //quick fix for opening drives without sudo
-            {
-                ++permissionDeniedCount;
-                failedGetDeviceCount++;
-            }
-            else
-            {
-                failedGetDeviceCount++;
-            }
+
+			nvmeDevName = strstr(name, "vmhba");
+			isScsi = (nvmeDevName == NULL) ? true : false;
+
+			if (isScsi) 
+			{
+				fd = -1;
+				//lets try to open the device.      
+				fd = open(name, O_RDWR | O_NONBLOCK);
+				if (fd >= 0)
+				{
+					close(fd);
+					eVerbosityLevels temp = d->deviceVerbosity;
+					memset(d, 0, sizeof(tDevice));
+					d->deviceVerbosity = temp;
+					d->sanity.size = ver.size;
+					d->sanity.version = ver.version;
+	#if defined (DEGUG_SCAN_TIME)
+					seatimer_t getDeviceTimer;
+					memset(&getDeviceTimer, 0, sizeof(seatimer_t));
+					start_Timer(&getDeviceTimer);
+	#endif
+					d->dFlags = flags;
+					int ret = get_Device(name, d);
+	#if defined (DEGUG_SCAN_TIME)
+					stop_Timer(&getDeviceTimer);
+					printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
+	#endif
+					if (ret != SUCCESS)
+					{
+						failedGetDeviceCount++;
+					}
+					found++;
+					d++;
+				}
+				else if (errno == EACCES) //quick fix for opening drives without sudo
+				{
+					++permissionDeniedCount;
+					failedGetDeviceCount++;
+				}
+				else
+				{
+					failedGetDeviceCount++;
+				}
+			}
+			else
+			{
+				int ret = get_Device(name, d);
+			}
             //free the dev[deviceNumber] since we are done with it now.
             safe_Free(devs[driveNumber])
         }

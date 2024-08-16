@@ -1493,10 +1493,13 @@ static int sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice *device, ScsiIoCtx *
     blockLimits[10] = M_Byte1(maxTransferLength);
     blockLimits[11] = M_Byte0(maxTransferLength);
     //optimal transfer length (unspecified....we decide)
-    blockLimits[12] = M_Byte3(65536 / device->drive_info.deviceBlockSize);
-    blockLimits[13] = M_Byte2(65536 / device->drive_info.deviceBlockSize);
-    blockLimits[14] = M_Byte1(65536 / device->drive_info.deviceBlockSize);
-    blockLimits[15] = M_Byte0(65536 / device->drive_info.deviceBlockSize);
+	if (device->drive_info.deviceBlockSize != 0) 
+	{
+		blockLimits[12] = M_Byte3(65536 / device->drive_info.deviceBlockSize);
+		blockLimits[13] = M_Byte2(65536 / device->drive_info.deviceBlockSize);
+		blockLimits[14] = M_Byte1(65536 / device->drive_info.deviceBlockSize);
+		blockLimits[15] = M_Byte0(65536 / device->drive_info.deviceBlockSize);
+	}
     //maximum prefetch length (unspecified....we decide) - leave at zero since we don't support the prefetch command
 
     //unmap stuff
@@ -1686,6 +1689,11 @@ static int sntl_Translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *scsiI
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
     uint8_t senseKeySpecificDescriptor[SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH] = { 0 };
+
+#ifdef _DEBUG
+    printf("-->%s \n",__FUNCTION__);
+#endif
+
     //Check to make sure cmdDT and reserved bits aren't set
     if (scsiIoCtx->cdb[1] & 0xFE)
     {
@@ -1868,6 +1876,11 @@ static int sntl_Translate_SCSI_Read_Capacity_Command(tDevice *device, bool readC
     uint16_t fieldPointer = 0;
     uint8_t bitPointer = 0;
     uint8_t senseKeySpecificDescriptor[SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH] = { 0 };
+
+#ifdef _DEBUG
+    printf("-->%s \n",__FUNCTION__);
+#endif
+
     //Check that reserved and obsolete bits aren't set
     if (readCapacity16)
     {
@@ -2478,7 +2491,11 @@ static int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *d
         }
         //number of logical blocks received
         {
-            double nvmeWritesInLBAs = (convert_128bit_to_double(&logPage[48]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+            double nvmeWritesInLBAs = 0;
+			if (device->drive_info.deviceBlockSize != 0) 
+			{
+				nvmeWritesInLBAs = (convert_128bit_to_double(&logPage[48]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+			}
             uint64_t numLogBlocksWritten = 0;
             if (nvmeWritesInLBAs >= C_CAST(double, UINT64_MAX))
             {
@@ -2499,7 +2516,12 @@ static int sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice *d
         }
         //number of logical blocks transmitted
         {
-            double nvmeReadsInLBAs = (convert_128bit_to_double(&logPage[32]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+            double nvmeReadsInLBAs = 0;
+
+			if (device->drive_info.deviceBlockSize != 0) 
+			{
+				nvmeReadsInLBAs = (convert_128bit_to_double(&logPage[32]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+			}
             uint64_t numLogBlocksRead = 0;
             if (nvmeReadsInLBAs >= C_CAST(double, UINT64_MAX))
             {
@@ -9838,6 +9860,11 @@ int sntl_Translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
     bool invalidOperationCode = false;
     uint16_t fieldPointer = 0;
     uint8_t bitPointer = 0;
+
+#ifdef _DEBUG
+    printf("-->%s \n",__FUNCTION__);
+#endif
+
     //if we weren't given a sense data pointer, use the sense data in the device structure
     if (!scsiIoCtx->psense)
     {
