@@ -30,6 +30,7 @@ void print_Low_Level_Info(tDevice* device)
 {
     if (device)
     {
+		int adapterIDWidthSpec;
         //Print out things useful for low-level debugging of the tDevice.
         //hacks
         //IOCTL type
@@ -173,7 +174,7 @@ void print_Low_Level_Info(tDevice* device)
             printf("\t\t---Bridge Info---\n");
         }*/
         printf("\t\t---adapter info---\n");
-        int adapterIDWidthSpec = 8;
+        adapterIDWidthSpec = 8;
         switch (device->drive_info.adapter_info.infoType)
         {
         case ADAPTER_INFO_USB:
@@ -1299,6 +1300,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
 #endif
                     if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
+						char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
 #define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
                         DECLARE_ZERO_INIT_ARRAY(char, displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
 #if defined(_WIN32)
@@ -2855,7 +2857,10 @@ bool is_Sector_Size_Emulation_Active(tDevice *device)
 
 eReturnValues calculate_Checksum(uint8_t *pBuf, uint32_t blockSize)
 {
-    if (
+	uint8_t checksum = 0;
+    uint32_t counter = 0;
+
+	if (
         (blockSize > LEGACY_DRIVE_SEC_SIZE)
         || (blockSize == 0)
         || (pBuf == M_NULLPTR)
@@ -2866,8 +2871,7 @@ eReturnValues calculate_Checksum(uint8_t *pBuf, uint32_t blockSize)
 
     printf("%s: blksize %d, pBuf %p\n", __FUNCTION__, blockSize, C_CAST(void*, pBuf));
 
-    uint8_t checksum = 0;
-    uint32_t counter = 0;
+
     for (counter = 0; counter < 511; counter++)
     {
         checksum = checksum + pBuf[counter];

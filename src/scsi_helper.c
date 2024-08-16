@@ -1206,11 +1206,11 @@ void get_Information_From_Sense_Data(uint8_t *ptrSenseData, uint32_t senseDataLe
 {
     if (ptrSenseData && valid && senseDataLength > 0 && information)
     {
-        *valid = false;
-        *information = 0;
         uint8_t format = ptrSenseData[0] & 0x7F; //Stripping the last bit so we just get the format
         uint8_t descriptorLength = 0;//for descriptor format sense data
         uint16_t returnedLength = 8;//assume length returned is at least 8 bytes
+        *valid = false;
+        *information = 0;
         switch (format)
         {
         case SCSI_SENSE_NO_SENSE_DATA:
@@ -1260,10 +1260,10 @@ void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t *ptrSenseData, uint32_
 {
     if (ptrSenseData && senseDataLength > 0 && illegalLengthIndicator)
     {
-        *illegalLengthIndicator = false;
         uint8_t format = ptrSenseData[0] & 0x7F; //Stripping the last bit so we just get the format
         uint8_t descriptorLength = 0;//for descriptor format sense data
         uint16_t returnedLength = 8 + ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
+        *illegalLengthIndicator = false;
         switch (format)
         {
         case SCSI_SENSE_NO_SENSE_DATA:
@@ -1313,10 +1313,10 @@ void get_Stream_Command_Bits_From_Sense_Data(uint8_t *ptrSenseData, uint32_t sen
 {
     if (ptrSenseData && senseDataLength > 0 && illegalLengthIndicator && filemark && endOfMedia)
     {
-        *illegalLengthIndicator = false;
         uint8_t format = ptrSenseData[0] & 0x7F; //Stripping the last bit so we just get the format
         uint8_t descriptorLength = 0;//for descriptor format sense data
         uint16_t returnedLength = 8 + ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
+        *illegalLengthIndicator = false;
         switch (format)
         {
         case SCSI_SENSE_NO_SENSE_DATA:
@@ -1362,10 +1362,10 @@ void get_Command_Specific_Information_From_Sense_Data(uint8_t *ptrSenseData, uin
 {
     if (ptrSenseData && senseDataLength > 0 && commandSpecificInformation)
     {
-        *commandSpecificInformation = 0;
         uint8_t format = ptrSenseData[0] & 0x7F; //Stripping the last bit so we just get the format
         uint8_t descriptorLength = 0;//for descriptor format sense data
         uint16_t returnedLength = 8 + ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
+        *commandSpecificInformation = 0;
         switch (format)
         {
         case SCSI_SENSE_NO_SENSE_DATA:
@@ -1977,12 +1977,14 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
 uint16_t get_Returned_Sense_Data_Length(uint8_t *pbuf)
 {
     uint16_t length = 8;
+	uint8_t format;
+
     if (!pbuf)
     {
         return 0;
     }
-    uint8_t format = pbuf[0] & 0x7F; //Stripping the last bit so we just get the format
-
+    format = pbuf[0] & 0x7F; //Stripping the last bit so we just get the format
+        
     switch (format)
     {
     case SCSI_SENSE_NO_SENSE_DATA:
@@ -2687,13 +2689,14 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 eReturnValues fill_In_Device_Info(tDevice *device)
 {
-    eReturnValues ret = FAILURE;
-#ifdef _DEBUG
-    printf("%s: -->\n", __FUNCTION__);
-#endif
-
+    int           ret      = FAILURE;
     bool mediumNotPresent = false;//assume medium is available until we find out otherwise.
     scsiStatus turStatus;
+	uint8_t *inq_buf;
+    #ifdef _DEBUG
+    printf("%s: -->\n",__FUNCTION__);
+    #endif
+
     memset(&turStatus, 0, sizeof(scsiStatus));
     scsi_Test_Unit_Ready(device, &turStatus);
     if (turStatus.senseKey != SENSE_KEY_NO_ERROR)
@@ -2707,7 +2710,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
         }
     }
 
-    uint8_t *inq_buf = C_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
+    inq_buf = C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (!inq_buf)
     {
         perror("Error allocating memory for standard inquiry data (scsi)");
@@ -2721,6 +2724,13 @@ eReturnValues fill_In_Device_Info(tDevice *device)
     {
         bool checkForSAT = true;
         bool readCapacity = true;
+        uint8_t responseFormat;
+        uint8_t version;
+        uint8_t peripheralQualifier;
+        uint8_t peripheralDeviceType;
+        bool foundUSBStandardDescriptor = false;
+        bool foundSATStandardDescriptor = false;
+        bool foundATAStandardDescriptor = false;
         ret = SUCCESS;
         memcpy(device->drive_info.scsiVpdData.inquiryData, inq_buf, 96);//store this in the device structure to make sure it is available elsewhere in the library as well.
         copy_Inquiry_Data(inq_buf, &device->drive_info);
@@ -2732,8 +2742,8 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             set_Passthrough_Hacks_By_Inquiry_Data(device);
         }
 
-        uint8_t responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
-        uint8_t version = inq_buf[2];
+        responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
+        version = inq_buf[2];
         switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
         {
         case 0:
@@ -2775,8 +2785,8 @@ eReturnValues fill_In_Device_Info(tDevice *device)
         }
         device->drive_info.scsiVersion = version;//changing this to one of these version numbers to keep the rest of the library code that would use this simple. - TJE
         //set the media type as best we can
-        uint8_t peripheralQualifier = (inq_buf[0] & (BIT7 | BIT6 | BIT5)) >> 5;
-        uint8_t peripheralDeviceType = inq_buf[0] & (BIT4 | BIT3 | BIT2 | BIT1 | BIT0);
+        peripheralQualifier = (inq_buf[0] & (BIT7 | BIT6 | BIT5)) >> 5;
+        peripheralDeviceType = inq_buf[0] & (BIT4 | BIT3 | BIT2 | BIT1 | BIT0);
         switch (peripheralDeviceType)
         {
         case PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE:
@@ -2837,10 +2847,6 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             device->drive_info.media_type = MEDIA_UNKNOWN;
             break;
         }
-
-        bool foundUSBStandardDescriptor = false;
-        bool foundSATStandardDescriptor = false;
-        bool foundATAStandardDescriptor = false;
 
         //check version descriptors first (If returned sense data is long enough and reports all of this)
         //This can help improve SAT detection and other passthrough quirks
@@ -3192,6 +3198,8 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                         uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
                         if (serialNumberLength > 0)
                         {
+							char* snPtr;
+                            const char* t10VIDPtr = device->drive_info.T10_vendor_ident;
                             memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                             device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                             for (uint8_t iter = 0; iter < SERIAL_NUM_LEN; ++iter)
@@ -3202,8 +3210,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                                 }
                             }
                             remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
-                            char* snPtr = device->drive_info.serialNumber;
-                            const char* t10VIDPtr = device->drive_info.T10_vendor_ident;
+                            snPtr = device->drive_info.serialNumber;
                             seagate_Serial_Number_Cleanup(t10VIDPtr, &snPtr, SERIAL_NUM_LEN + 1);
                         }
                         else
@@ -3310,8 +3317,11 @@ eReturnValues fill_In_Device_Info(tDevice *device)
 
         bool satVPDPageRead = false;
         bool satComplianceChecked = false;
+		int satCheck = FAILURE;
         if ((!device->drive_info.passThroughHacks.scsiHacks.noVPDPages || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable) && (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)) //SCSI 2 added VPD pages
         {
+            uint16_t supportedVPDPagesLength;
+            uint8_t *supportedVPDPages;
             //from here on we need to check if a VPD page is supported and read it if there is anything in it that we care about to store info in the device struct
             memset(inq_buf, 0, INQ_RETURN_DATA_LENGTH);
             bool dummyUpVPDSupport = false;
@@ -3387,8 +3397,8 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 inq_buf[3] = M_Byte0(offset - 4);//lsb
             }
             //first, get the length of the supported pages
-            uint16_t supportedVPDPagesLength = M_BytesTo2ByteValue(inq_buf[2], inq_buf[3]);
-            uint8_t *supportedVPDPages = C_CAST(uint8_t*, safe_calloc(supportedVPDPagesLength, sizeof(uint8_t)));
+            supportedVPDPagesLength = M_BytesTo2ByteValue(inq_buf[2], inq_buf[3]);
+            supportedVPDPages = C_CAST(uint8_t*, calloc(supportedVPDPagesLength, sizeof(uint8_t)));
             if (!supportedVPDPages)
             {
                 perror("Error allocating memory for supported VPD pages!\n");
@@ -3397,8 +3407,8 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             }
             memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
             //now loop through and read pages as we need to, only reading the pages that we care about
-            uint16_t vpdIter = 0;
-            for (vpdIter = 0; vpdIter < supportedVPDPagesLength && vpdIter < INQ_RETURN_DATA_LENGTH && !device->drive_info.passThroughHacks.scsiHacks.noVPDPages; vpdIter++)
+            //uint16_t vpdIter = 0;
+            for (uint16_t vpdIter = 0; vpdIter < supportedVPDPagesLength && vpdIter < INQ_RETURN_DATA_LENGTH && !device->drive_info.passThroughHacks.scsiHacks.noVPDPages; vpdIter++)
             {
                 switch (supportedVPDPages[vpdIter])
                 {
@@ -3418,6 +3428,8 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                             uint16_t serialNumberLength = M_BytesTo2ByteValue(unitSerialNumber[2], unitSerialNumber[3]);
                             if (serialNumberLength > 0)
                             {
+                                char* snPtr;
+                                const char* t10VIDPtr = device->drive_info.T10_vendor_ident;
                                 memcpy(&device->drive_info.serialNumber[0], &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                                 for (size_t iter = 0; iter < SERIAL_NUM_LEN && iter < safe_strlen(device->drive_info.serialNumber); ++iter)
@@ -3428,8 +3440,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                                     }
                                 }
                                 remove_Leading_And_Trailing_Whitespace(device->drive_info.serialNumber);
-                                char* snPtr = device->drive_info.serialNumber;
-                                const char* t10VIDPtr = device->drive_info.T10_vendor_ident;
+                                snPtr = device->drive_info.serialNumber;
                                 seagate_Serial_Number_Cleanup(t10VIDPtr, &snPtr, SERIAL_NUM_LEN + 1);
                             }
                         }
@@ -3702,7 +3713,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
         //printf("passthrough type set to %d\n", device->drive_info.passThroughHacks.passthroughType);
         eReturnValues satCheck = FAILURE;
         //if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just issue a SAT identify in here to set things up...might reduce multiple commands later
-        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE)
+        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) && (device->drive_info.drive_type != NVME_DRIVE) 
             && device->drive_info.media_type != MEDIA_UNKNOWN && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
         {
             satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
