@@ -4274,6 +4274,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
 #endif //CSMI_DEBUG
                                         //Creating a temporary tDevice structure to use for the passthrough commands.-TJE
                                         tDevice tempDevice;
+                                        memset(&tempDevice, 0, sizeof(tDevice));
                                         tempDevice.os_info.minimumAlignment = sizeof(void*);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
                                         tempDevice.issue_io = C_CAST(issue_io_func, send_CSMI_IO);
                                         tempDevice.drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
