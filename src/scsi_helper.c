@@ -2614,6 +2614,7 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
             //All of these SNs should be only 8 characters long.
             DECLARE_ZERO_INIT_ARRAY(char, zeroes, SERIAL_NUM_LEN + 1);//making bigger than needed for now.
             memset(zeroes, '0', SERIAL_NUM_LEN);
+            zeroes[SERIAL_NUM_LEN] = '\0';
             if (strncmp(zeroes, *unitSerialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
             {
                 //8 zeroes at the beginning. Strip them off
