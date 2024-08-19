@@ -13301,7 +13301,10 @@ eReturnValues os_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, uint
     }
     stop_Timer(&commandTimer);
     device->os_info.last_error = GetLastError();
-    CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+    if (overlappedStruct.hEvent != M_NULLPTR && overlappedStruct.hEvent != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+    }
     overlappedStruct.hEvent = M_NULLPTR;
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
