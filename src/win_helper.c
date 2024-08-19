@@ -2977,6 +2977,10 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
 static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = NOT_SUPPORTED;
+    if (scsiIoCtx == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
     //Only one version of activate structure - TJE
     if (is_Windows_8_One_Or_Higher())
     {
@@ -2993,7 +2997,7 @@ static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             firmwareActivate->Size = sizeof(STORAGE_FIRMWARE_ACTIVATE);
             firmwareActivate->SlotToActivate = 0;
 
-            if (scsiIoCtx && !scsiIoCtx->pAtaCmdOpts)
+            if (scsiIoCtx->pAtaCmdOpts == M_NULLPTR)
             {
                 firmwareActivate->SlotToActivate = scsiIoCtx->cdb[2];//Set the slot number to the buffer ID number...This is the closest this translates.
             }
