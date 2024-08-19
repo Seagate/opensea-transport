@@ -1300,7 +1300,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
 #endif
                     if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
-						char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
+                        DECLARE_ZERO_INIT_ARRAY(char, printable_sn, SERIAL_NUM_LEN + 1);
 #define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
                         DECLARE_ZERO_INIT_ARRAY(char, displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
 #if defined(_WIN32)
@@ -1334,7 +1334,6 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                             safe_Free(C_CAST(void**, &blockName));
                         }
 #endif
-                        DECLARE_ZERO_INIT_ARRAY(char, printable_sn, SERIAL_NUM_LEN + 1);
                         snprintf(printable_sn, SERIAL_NUM_LEN + 1, "%s", deviceList[devIter].drive_info.serialNumber);
                         //if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)

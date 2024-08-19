@@ -4630,6 +4630,7 @@ eReturnValues scsi_Report_Zone_Domains(tDevice* device, eZoneDomainReportingOpti
 eReturnValues scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startingElement, uint32_t allocationLength, uint8_t filter, uint8_t reportType, uint8_t *ptrData)
 {
     eReturnValues ret = FAILURE;
+    eDataTransferDirection dataDir = XFER_DATA_IN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
     cdb[OPERATION_CODE] = 0x9E;
     //set the service action

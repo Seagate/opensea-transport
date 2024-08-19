@@ -1181,7 +1181,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
     if (ret == SUCCESS)
     {
 		ScsiIoCtx scsiIoCtx;
-		int sendIOret;
+        eReturnValues sendIOret;
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             //Print out ATA Command Information in appropriate verbose mode.
@@ -1219,7 +1219,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
             print_Data_Buffer(ataCommandOptions->ptrData, ataCommandOptions->dataSize, true);
             printf("\n");
         }
-        eReturnValues sendIOret = send_IO(&scsiIoCtx);
+        sendIOret = send_IO(&scsiIoCtx);
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity && scsiIoCtx.psense != M_NULLPTR)
         {
             printf("\n  Sense Data Buffer:\n");
@@ -1343,7 +1343,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
                     uint8_t ataAdditionalSenseCodeQualifier = 0;
                     if (SUCCESS == ata_Request_Sense_Data(device, &ataSenseKey, &ataAdditionalSenseCode, &ataAdditionalSenseCodeQualifier))
                     {
-						int ataSenseRet;
+                        eReturnValues ataSenseRet;
                         device->drive_info.ataSenseData.validData = true;
                         device->drive_info.ataSenseData.senseKey = ataSenseKey;
                         device->drive_info.ataSenseData.additionalSenseCode = ataAdditionalSenseCode;
@@ -1352,7 +1352,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
                         {
                             printf("\t  ATA Sense Data reported:\n");
                         }
-                        eReturnValues ataSenseRet = check_Sense_Key_ASC_ASCQ_And_FRU(device, ataSenseKey, ataAdditionalSenseCode, ataAdditionalSenseCodeQualifier, 0);
+                        ataSenseRet = check_Sense_Key_ASC_ASCQ_And_FRU(device, ataSenseKey, ataAdditionalSenseCode, ataAdditionalSenseCodeQualifier, 0);
                         if (driveStatusRet != ataSenseRet)
                         {
                             driveStatusRet = ataSenseRet;
@@ -2413,6 +2413,7 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
     //scsi name string designator
     uint8_t SCSINameStringDesignatorLength = 0;
     uint8_t *SCSINameStringDesignator = M_NULLPTR;
+    uint8_t peripheralDevice = 0;
     //vars for t10 vendor id designator
     DECLARE_ZERO_INIT_ARRAY(uint8_t, t10VendorIdDesignator, 72);
     DECLARE_ZERO_INIT_ARRAY(char, ataModelNumber, ATA_IDENTIFY_MN_LENGTH + 1);
@@ -3269,9 +3270,9 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *
             //read identify data
             uint8_t peripheralDevice = 0;
 			//Product ID (first 16bytes of the ata model number
-            char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
-            char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
-            char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(char, ataSN, ATA_IDENTIFY_SN_LENGTH + 1);
+            DECLARE_ZERO_INIT_ARRAY(char, ataMN, ATA_IDENTIFY_MN_LENGTH + 1);
+            DECLARE_ZERO_INIT_ARRAY(char, ataFW, ATA_IDENTIFY_FW_LENGTH + 1);
 			uint16_t versionOffset = 58;
 
             if (scsiIoCtx->cdb[2] != 0)//if page code is non-zero, we need to return an error
@@ -3332,10 +3333,6 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *
             inquiryData[14] = ' ';
             inquiryData[15] = ' ';
             //Product ID (first 16bytes of the ata model number
-            DECLARE_ZERO_INIT_ARRAY(char, ataSN, ATA_IDENTIFY_SN_LENGTH + 1);
-            DECLARE_ZERO_INIT_ARRAY(char, ataMN, ATA_IDENTIFY_MN_LENGTH + 1);
-            DECLARE_ZERO_INIT_ARRAY(char, ataFW, ATA_IDENTIFY_FW_LENGTH + 1);
-
             fill_ATA_Strings_From_Identify_Data(C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), ataMN, ataSN, ataFW);
 
             memcpy(&inquiryData[16], ataMN, INQ_DATA_PRODUCT_ID_LEN);
@@ -4517,7 +4514,7 @@ static eReturnValues translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCt
             {
                 patternLength = 65535;//64k
             }
-            uint8_t *writePattern = C_CAST(uint8_t*, safe_calloc_aligned(patternLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            writePattern = C_CAST(uint8_t*, safe_calloc_aligned(patternLength, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (writePattern)
             {
                 if (!ataWritePatternZeros)
@@ -5494,7 +5491,7 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(tDevice *device, Scs
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
-	uint8_t *writeData;
+	uint8_t *writeData = M_NULLPTR;
     //filter out invalid fields
     if (((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 2) != 0)
         || ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0)
@@ -5519,8 +5516,8 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(tDevice *device, Scs
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return ret;
     }
-    uint8_t *writeData = C_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t), device->os_info.minimumAlignment));
-    if (!writeData)
+    writeData = C_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+    if (writeData == M_NULLPTR)
     {
         return MEMORY_FAILURE;
     }
@@ -8557,13 +8554,13 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiI
                     selfTestResults[iter + 3] = 0x10;//parameter length = 10h
                     //remaining bytes 4 - 19 are translated from the data we have
                     //This translation is a little trickier to translate. We need to do: selfTestIndex - paramcode + 1 and ONLY if that result is greater than zero do we use that descriptor value
-                    int16_t ataDescriptorNumber = C_CAST(int16_t, selfTestIndex - parameterCode + INT16_C(1));
+                    ataDescriptorNumber = C_CAST(int16_t, selfTestIndex - parameterCode + INT16_C(1));
                     if (ataDescriptorNumber > 0)
                     {
 						uint16_t pageNumber;
                         //set the buffer offset from the descriptor number we got above - we may need to read a different page of the log if it's a multipage log
                         ataLogOffset = ((C_CAST(uint32_t, ataDescriptorNumber) * 26) - 26) + 4;
-                        uint16_t pageNumber = C_CAST(uint16_t, ataLogOffset / LEGACY_DRIVE_SEC_SIZE);
+                        pageNumber = C_CAST(uint16_t, ataLogOffset / LEGACY_DRIVE_SEC_SIZE);
                         if (pageNumber > 0 && lastPageRead != pageNumber)
                         {
                             //need to read a different page of the log
@@ -9432,8 +9429,8 @@ static eReturnValues translate_Application_Client_Log_Sense_0x0F(tDevice *device
     uint16_t fieldPointer = 0;
 	uint16_t numberOfParametersToReturn;
 	uint8_t *applicationClientLog;
-	uint16_t offset;
-	uint16_t parameterCounter;
+	uint16_t offset = 0;
+	uint16_t parameterCounter = 0;
 
     //support parameters 0 - 1FFh
     if (parameterCode > 0x01FF)
@@ -9446,14 +9443,14 @@ static eReturnValues translate_Application_Client_Log_Sense_0x0F(tDevice *device
         return ret;
     }
     //calculate how many parameters we'll be returning.
-    uint16_t numberOfParametersToReturn = C_CAST(uint16_t, (allocationLength - 4) / (4 + 0xFC));//(4 + 0xFC) is the size of a parameter for the application client. allocation length - 4 takes into account the header of the log
+    numberOfParametersToReturn = C_CAST(uint16_t, (allocationLength - 4) / (4 + 0xFC));//(4 + 0xFC) is the size of a parameter for the application client. allocation length - 4 takes into account the header of the log
     //set the header
     applicationClientLog = &scsiIoCtx->pdata[0];
     applicationClientLog[0] = 0x0F;
     applicationClientLog[1] = 0x00;
-    uint16_t offset = 4;
+    offset = 4;
     //now we need to go through and save the most recent entries to the log we'll return
-    uint16_t parameterCounter = 0;
+    parameterCounter = 0;
     while (parameterCode <= 0x01FF && offset < allocationLength && parameterCounter < numberOfParametersToReturn)
     {
         DECLARE_ZERO_INIT_ARRAY(uint8_t, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE);
@@ -10040,13 +10037,13 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice *devic
             while (parameterDataOffset < parameterListLength && parameterDataOffset < totalParameterListLength)
             {
                 uint16_t parameterCode = M_BytesTo2ByteValue(ptrData[parameterDataOffset + 0], ptrData[parameterDataOffset + 1]);
-				uint8_t *hostLogData;
+				uint8_t *hostLogData = M_NULLPTR;
 				uint16_t offsetOnATAPage = 0;
                 uint8_t ataLogPageToRead = 0;
 
                 parameterLength = ptrData[parameterDataOffset + 3];
-                uint8_t *hostLogData = C_CAST(uint8_t*, safe_calloc_aligned(16 * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
-                if (!hostLogData)
+                hostLogData = C_CAST(uint8_t*, safe_calloc_aligned(16 * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
+                if (hostLogData == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
                 }
@@ -11953,8 +11950,8 @@ static eReturnValues translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCt
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
-    int wceRet = SUCCESS;
-    int draRet = SUCCESS;
+    eReturnValues wceRet = SUCCESS;
+    eReturnValues draRet = SUCCESS;
     //start checking everything to make sure it looks right before we issue commands
     if (pageLength != 0x12)
     {
@@ -12042,8 +12039,6 @@ static eReturnValues translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCt
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
         return NOT_SUPPORTED;
     }
-    eReturnValues wceRet = SUCCESS;
-    eReturnValues draRet = SUCCESS;
     //WCE
     if (ptrToBeginningOfModePage[2] & BIT2)
     {
@@ -12912,8 +12907,6 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
         //uint16_t modeDataLength = scsiIoCtx->pdata[0];
         //uint8_t deviceSpecificParameter = scsiIoCtx->pdata[2];
         //TODO: Validate writeProtected and dpoFua bits.
-        bool longLBA = false;
-        uint16_t blockDescriptorLength = scsiIoCtx->pdata[3];
         if (tenByteCommand)
         {
             //modeDataLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1]);

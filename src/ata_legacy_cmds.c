@@ -244,7 +244,7 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, u
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-	uint16_t multipleLogicalSectors;
+	uint16_t multipleLogicalSectors = 0;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
@@ -277,7 +277,7 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(tDevice *device, uint16_t cylinder, u
         ataCommandOptions.tfr.CommandStatus = ATA_READ_MULTIPLE_CMD;//0xC4
     }
     //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
-    uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
+    multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
     while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 0)
     {
         multipleLogicalSectors = multipleLogicalSectors >> 1;//divide by 2
@@ -710,7 +710,7 @@ eReturnValues ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, 
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-	uint16_t multipleLogicalSectors;
+	uint16_t multipleLogicalSectors = 0;
     memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
@@ -751,7 +751,7 @@ eReturnValues ata_Legacy_Write_Multiple_CHS(tDevice *device, uint16_t cylinder, 
     }
 
     //now set the multiple count setting for the SAT builder so that this command can actually work...and we need to set this as a power of 2, whereas the device info is a number of logical sectors
-    uint16_t multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
+    multipleLogicalSectors = device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock;
     while (ataCommandOptions.multipleCount <= 7 && multipleLogicalSectors > 0)
     {
         multipleLogicalSectors = multipleLogicalSectors >> 1;//divide by 2

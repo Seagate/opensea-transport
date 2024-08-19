@@ -3317,7 +3317,6 @@ eReturnValues fill_In_Device_Info(tDevice *device)
 
         bool satVPDPageRead = false;
         bool satComplianceChecked = false;
-		int satCheck = FAILURE;
         if ((!device->drive_info.passThroughHacks.scsiHacks.noVPDPages || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable) && (version >= 2 || device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)) //SCSI 2 added VPD pages
         {
             uint16_t supportedVPDPagesLength;
