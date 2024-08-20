@@ -20,6 +20,8 @@
 #include "code_attributes.h"
 #include "math_utils.h"
 #include "error_translation.h"
+#include "io_utils.h"
+#include "sleep.h"
 
 #include <stdio.h>
 #include <dirent.h>
@@ -360,7 +362,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     else
                     {
                         //printf ("could not map to generic class");
-                        safe_Free(C_CAST(void**, &incomingClassName));
+                        safe_free(&incomingClassName);
                         return NOT_SUPPORTED;
                     }
                 }
@@ -371,7 +373,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         //printf ("could not map to block class");
-                        safe_Free(C_CAST(void**, &incomingClassName));
+                        safe_free(&incomingClassName);
                         return NOT_SUPPORTED;
                     }
                 }
@@ -443,8 +445,8 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                                         *blockHandle = strndup(basename(classPtr), safe_strlen(basename(classPtr)));
                                         *genericHandle = strdup(basename(C_CAST(char *, handle)));
                                     }
-                                    safe_Free(C_CAST(void**, &className));
-                                    safe_Free(C_CAST(void**, &incomingClassName));
+                                    safe_free(&className);
+                                    safe_free(&incomingClassName);
                                     // start PRH valgrind fixes
                                     // this is causing a mem leak... when we bail the loop, there are a string of classList[] items 
                                     // still allocated. 
@@ -452,34 +454,34 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                                     {
                                         safe_Free(C_CAST(void**, &classList[remains]));
                                     }
-                                    safe_Free(C_CAST(void**, &classList));
+                                    safe_free(&classList);
                                     // end PRH valgrind fixes.
                                     return SUCCESS;
                                     break;//found a match, exit the loop
                                 }
                             }
-                            safe_Free(C_CAST(void**, &className));
+                            safe_free(&className);
                         }
                     }
                     safe_Free(C_CAST(void**, &classList[iter])) ;// PRH - valgrind
-                    safe_Free(C_CAST(void**, &temp));
+                    safe_free(&temp);
                 }
-                safe_Free(C_CAST(void**, &classList));
+                safe_free(&classList);
             }
             else
             {
                 //not a link, or some other error....probably an old kernel
-                safe_Free(C_CAST(void**, &incomingClassName));
+                safe_free(&incomingClassName);
                 return NOT_SUPPORTED;
             }
         }
         else
         {
             //Mapping is not supported...probably an old kernel
-            safe_Free(C_CAST(void**, &incomingClassName));
+            safe_free(&incomingClassName);
             return NOT_SUPPORTED;
         }
-        safe_Free(C_CAST(void**, &incomingClassName));
+        safe_free(&incomingClassName);
     }
     return UNKNOWN;
 }
@@ -506,7 +508,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
     int rc = 0;
     struct nvme_adapter_list nvmeAdptList;
     bool isScsi = false;
-    char *nvmeDevName;
+    char *nvmeDevName = M_NULLPTR;
 
     /**
      * In VMWare NVMe device the drivename (for NDDK) 
@@ -540,12 +542,12 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             print_Errno_To_Screen(errno);
             if (device->os_info.fd == EACCES)
             {
-                safe_Free(C_CAST(void**, &deviceHandle));
+                safe_free(&deviceHandle);
                 return PERMISSION_DENIED;
             }
             else
             {
-                safe_Free(C_CAST(void**, &deviceHandle));
+                safe_free(&deviceHandle);
                 return FAILURE;
             }
         }
@@ -561,7 +563,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             device->drive_info.media_type = MEDIA_HDD;
             set_Device_Fields_From_Handle(deviceHandle, device);
             setup_Passthrough_Hacks_By_ID(device);
-            safe_Free(C_CAST(void**, &deviceHandle));
+            safe_free(&deviceHandle);
             return ret;
         }
         //\\TODO: Add support for other flags. 
@@ -659,7 +661,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             printf("Media type: %d\n", device->drive_info.media_type);
 #endif
         }
-        safe_Free(C_CAST(void**, &deviceHandle));
+        safe_free(&deviceHandle);
 
     }
     else
@@ -695,14 +697,21 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             print_Errno_To_Screen(errno);
             if (device->os_info.nvmeFd == EACCES)
             {
-                safe_Free(C_CAST(void**, &deviceHandle));
+                safe_free(&deviceHandle);
                 return PERMISSION_DENIED;
             }
             else
             {
-                safe_Free(C_CAST(void**, &deviceHandle));
+                safe_free(&deviceHandle);
                 return FAILURE;
             }
+        }
+
+        //Set NSID from the incoming handle. It's not clear if this is correct, but based on the vmware structures, the "cookie"
+        //in the adapter info says it points to the controller, so currently assuming this is a reasonable way to read the nsid.
+        if (!get_And_Validate_Integer_Input_Uint32(nvmeDevName + safe_strlen("vmhba"), M_NULLPTR, ALLOW_UNIT_NONE, &device->drive_info.namespaceID))
+        {
+            printf("Error: Unable to read NSID\n");
         }
 
         device->os_info.minimumAlignment = sizeof(void *);
@@ -710,7 +719,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         //Adding support for different device discovery options. 
         if (device->dFlags == OPEN_HANDLE_ONLY)
         {
-            safe_Free(C_CAST(void**, &deviceHandle));
+            safe_free(&deviceHandle);
             return ret;
         }
         //\\TODO: Add support for other flags. 
@@ -768,7 +777,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             printf("Media type: %d\n", device->drive_info.media_type);
 #endif
         }
-        safe_Free(C_CAST(void**, &deviceHandle));
+        safe_free(&deviceHandle);
     }
 
     return ret;
@@ -926,18 +935,16 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
     switch (scsiIoCtx->direction)
     {
     case XFER_NO_DATA:
-    case SG_DXFER_NONE:
         io_hdr.dxfer_direction = SG_DXFER_NONE;
         break;
     case XFER_DATA_IN:
-    case SG_DXFER_FROM_DEV:
         io_hdr.dxfer_direction = SG_DXFER_FROM_DEV;
         break;
     case XFER_DATA_OUT:
-    case SG_DXFER_TO_DEV:
         io_hdr.dxfer_direction = SG_DXFER_TO_DEV;
         break;
-    case SG_DXFER_TO_FROM_DEV:
+    case XFER_DATA_IN_OUT:
+    case XFER_DATA_OUT_IN:
         io_hdr.dxfer_direction = SG_DXFER_TO_FROM_DEV;
         break;
         //case SG_DXFER_UNKNOWN:
@@ -948,7 +955,7 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
         {
             printf("%s Didn't understand direction\n", __FUNCTION__);
         }
-        safe_Free_aligned(C_CAST(void**, &localSenseBuffer));
+        safe_free_aligned(&localSenseBuffer);
         return BAD_PARAMETER;
     }
 
@@ -1231,7 +1238,7 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
 #ifdef _DEBUG
     printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
-    safe_Free_aligned(C_CAST(void**, &localSenseBuffer));
+    safe_free_aligned(&localSenseBuffer);
     return ret;
 }
 
@@ -1293,7 +1300,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     {
         safe_Free(C_CAST(void**, &namelist[iter]));
     }
-    safe_Free(C_CAST(void**, &namelist));
+    safe_free(&namelist);
 
 #ifdef _DEBUG
     printf("get_Device_Count : num_devs %d\n", num_devs);
@@ -1385,7 +1392,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
         safe_Free(C_CAST(void**, &namelist[i]));
     }
-    safe_Free(C_CAST(void**, &namelist));
+    safe_free(&namelist);
 
     //add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER; i++, j++)
@@ -1493,7 +1500,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(C_CAST(void**, &devs));
+    safe_free(&devs);
     return returnValue;
 }
 
@@ -1557,7 +1564,8 @@ eReturnValues close_Device(tDevice *dev)
 eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
 #if !defined (DISABLE_NVME_PASSTHROUGH)
-    eReturnValues ret = 0;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
+    eReturnValues ret = SUCCESS;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
+    int ioctlret = 0;
     struct usr_io uio;
 
 #ifdef _DEBUG
@@ -1607,8 +1615,15 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         }
 
         uio.length = nvmeIoCtx->dataSize;
-        uio.addr = C_CAST(vmk_uint64, nvmeIoCtx->cmd.adminCmd.addr);
-        uio.namespaceID = nvmeIoCtx->cmd.adminCmd.nsid;
+        uio.addr = C_CAST(vmk_uint64, nvmeIoCtx->ptrData);
+        if (nvmeIoCtx->cmd.adminCmd.nsid == 0 || nvmeIoCtx->cmd.adminCmd.nsid == NVME_ALL_NAMESPACES)
+        {
+            uio.namespaceID = C_CAST(vmk_uint8, -1);//this is what the header files say to do for non-specific namespace -TJE
+        }
+        else
+        {
+            uio.namespaceID = nvmeIoCtx->cmd.adminCmd.nsid;
+        }
         uio.timeoutUs = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
 
 #ifdef _DEBUG
@@ -1643,8 +1658,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         */
 
 #endif
-
-        ret = Nvme_AdminPassthru(nvmeIoCtx->device->os_info.nvmeFd, &uio);
+        errno = 0;
+        ioctlret = Nvme_AdminPassthru(nvmeIoCtx->device->os_info.nvmeFd, &uio);
 
 #ifdef _DEBUG
 /*
@@ -1678,14 +1693,15 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 #endif
 
 
-        nvmeIoCtx->device->os_info.last_error = ret;
+        nvmeIoCtx->device->os_info.last_error = C_CAST(unsigned int, ioctlret);
         //Get error? 
-        if (ret < 0)
+        if (ioctlret < 0)
         {
             if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
             {
-                perror("send_IO");
+                printf("send_IO - %d - %08Xh - errno: %d", ioctlret, ioctlret, errno);
             }
+            ret = OS_PASSTHROUGH_FAILURE;
         }
         nvmeIoCtx->commandCompletionData.commandSpecific = uio.comp.param.cmdSpecific;
         nvmeIoCtx->commandCompletionData.dw0Valid = true;
