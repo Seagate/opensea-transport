@@ -225,12 +225,12 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             print_Errno_To_Screen(errno);
             if (device->os_info.fd == EACCES)
             {
-                safe_Free(C_CAST(void**, &deviceHandle));
+                safe_free(&deviceHandle);
                 return PERMISSION_DENIED;
             }
             else
             {
-                safe_Free(C_CAST(void**, &deviceHandle));
+                safe_free(&deviceHandle);
                 return FAILURE;
             }
         }
@@ -258,7 +258,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
 
         ret = fill_Drive_Info_Data(device);
 
-        safe_Free(C_CAST(void**, &deviceHandle));
+        safe_free(&deviceHandle);
         return ret;
     }
     else
@@ -1386,7 +1386,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(C_CAST(void**, &devs));
+    safe_free(&devs);
     return returnValue;
 }
 

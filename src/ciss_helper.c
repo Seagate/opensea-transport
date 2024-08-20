@@ -305,7 +305,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
                 token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
-        safe_Free(C_CAST(void**, &dup));
+        safe_free(&dup);
     }
     return parseCount;
 }
@@ -480,7 +480,7 @@ static eReturnValues get_Physical_Device_Location_Data(tDevice *device, uint8_t 
                 ret = NOT_SUPPORTED;
             }
         }
-        safe_Free_aligned(C_CAST(void**, &physicalDrives));
+        safe_free_aligned(&physicalDrives);
     }
     else
     {
@@ -1712,7 +1712,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
                 }
             }
 
-            safe_Free_aligned(C_CAST(void**, &data));
+            safe_free_aligned(&data);
         }
         else
         {

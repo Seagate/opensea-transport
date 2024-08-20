@@ -289,7 +289,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
             overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
             if (overlappedStruct.hEvent == M_NULLPTR)
             {
-                safe_Free_aligned(C_CAST(void**, &raidFirmwareRequest));
+                safe_free_aligned(&raidFirmwareRequest);
                 return OS_PASSTHROUGH_FAILURE;
             }
             start_Timer(&commandTimer);
@@ -365,7 +365,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
                     break;
                 }
             }
-            safe_Free_aligned(C_CAST(void**, &raidFirmwareRequest));
+            safe_free_aligned(&raidFirmwareRequest);
         }
         else
         {
@@ -430,7 +430,7 @@ bool supports_Intel_Firmware_Download(tDevice *device)
             }
 #endif //INTRST_DEBUG
         }
-        safe_Free(C_CAST(void**, &firmwareInfo));
+        safe_free(&firmwareInfo);
     }
 #if defined (INTRST_DEBUG)
     printf("Intel: FWDL IOCTL = %u\n", supported);
@@ -456,7 +456,7 @@ static eReturnValues internal_Intel_FWDL_Function_Download(tDevice *device, uint
             download->ImageSize = imageDataLength;//TODO: Not sure if this is supposed to be the same or different from the buffersize listed above
             memcpy(download->ImageBuffer, imagePtr, imageDataLength);
             ret = intel_RAID_FW_Request(device, download, allocationSize, timeoutSeconds, INTEL_FIRMWARE_FUNCTION_DOWNLOAD, flags, false, returnCode);
-            safe_Free(C_CAST(void**, &download));
+            safe_free(&download);
         }
         else
         {
@@ -483,7 +483,7 @@ static eReturnValues internal_Intel_FWDL_Function_Activate(tDevice *device, uint
             activate->Size = sizeof(INTEL_STORAGE_FIRMWARE_ACTIVATE);
             activate->SlotToActivate = firmwareSlot;
             ret = intel_RAID_FW_Request(device, activate, allocationSize, timeoutSeconds, INTEL_FIRMWARE_FUNCTION_ACTIVATE, flags, false, returnCode);
-            safe_Free(C_CAST(void**, &activate));
+            safe_free(&activate);
         }
         else
         {
@@ -723,7 +723,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                 nvmPassthroughCommand->Parameters.DataBufferOffset = 0;//this should be ok since we aren't doing a transfer
                 break;
             default:
-                safe_Free_aligned(C_CAST(void**, &nvmPassthroughCommand));
+                safe_free_aligned(&nvmPassthroughCommand);
                 return OS_COMMAND_NOT_AVAILABLE;
             }
             DWORD bytesReturned = 0;
@@ -732,7 +732,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
             if (overlappedStruct.hEvent == M_NULLPTR)
             {
-                safe_Free_aligned(C_CAST(void**, &nvmPassthroughCommand));
+                safe_free_aligned(&nvmPassthroughCommand);
                 return OS_PASSTHROUGH_FAILURE;
             }
             SetLastError(ERROR_SUCCESS);//clear out any errors before we begin
@@ -797,7 +797,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
 
             //set command time
             nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-            safe_Free_aligned(C_CAST(void**, &nvmPassthroughCommand));
+            safe_free_aligned(&nvmPassthroughCommand);
         }
         else
         {

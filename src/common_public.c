@@ -1318,8 +1318,8 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                                 memset(displayHandle, 0, sizeof(displayHandle));
                                 snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
                             }
-                            safe_Free(C_CAST(void**, &genName));
-                            safe_Free(C_CAST(void**, &blockName));
+                            safe_free(&genName);
+                            safe_free(&blockName);
                         }
                         else if ((flags & SD_HANDLES) > 0)
                         {
@@ -1330,8 +1330,8 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                                 memset(displayHandle, 0, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
                                 snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
                             }
-                            safe_Free(C_CAST(void**, &genName));
-                            safe_Free(C_CAST(void**, &blockName));
+                            safe_free(&genName);
+                            safe_free(&blockName);
                         }
 #endif
                         snprintf(printable_sn, SERIAL_NUM_LEN + 1, "%s", deviceList[devIter].drive_info.serialNumber);
@@ -1459,7 +1459,7 @@ bool is_Maxtor_String(char* string)
         {
             isMaxtor = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isMaxtor;
 }
@@ -1527,7 +1527,7 @@ bool is_Seagate_VendorID(tDevice *device)
         {
             isSeagate = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isSeagate;
 }
@@ -1552,7 +1552,7 @@ bool is_Seagate_MN(char* string)
         {
             isSeagate = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isSeagate;
 }
@@ -1657,7 +1657,7 @@ bool is_Conner_VendorID(tDevice *device)
         {
             isConner = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isConner;
 }
@@ -1707,7 +1707,7 @@ bool is_CDC_VendorID(tDevice *device)
             {
                 isCDC = true;
             }
-            safe_Free(C_CAST(void**, &localString));
+            safe_free(&localString);
         }
     }
     return isCDC;
@@ -1734,7 +1734,7 @@ bool is_DEC_VendorID(tDevice *device)
             {
                 isDEC = true;
             }
-            safe_Free(C_CAST(void**, &localString));
+            safe_free(&localString);
         }
     }
     return isDEC;
@@ -1759,7 +1759,7 @@ bool is_MiniScribe_VendorID(tDevice *device)
         {
             isMiniscribe = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isMiniscribe;
 }
@@ -1785,7 +1785,7 @@ bool is_Quantum_VendorID(tDevice *device)
             {
                 isQuantum = true;
             }
-            safe_Free(C_CAST(void**, &localString));
+            safe_free(&localString);
         }
     }
     return isQuantum;
@@ -1810,7 +1810,7 @@ bool is_Quantum_Model_Number(char* string)
         {
             isQuantum = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isQuantum;
 }
@@ -1864,7 +1864,7 @@ bool is_PrarieTek_VendorID(tDevice *device)
             {
                 isPrarieTek = true;
             }
-            safe_Free(C_CAST(void**, &localString));
+            safe_free(&localString);
         }
     }
     return isPrarieTek;
@@ -1891,7 +1891,7 @@ bool is_LaCie(tDevice *device)
         {
             isLaCie = true;
         }
-        safe_Free(C_CAST(void**, &vendorID));
+        safe_free(&vendorID);
     }
     return isLaCie;
 }
@@ -1916,7 +1916,7 @@ bool is_Samsung_String(char* string)
         {
             isSamsung = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isSamsung;
 }

@@ -251,7 +251,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t *controllerID, 
                 token = common_String_Token(M_NULLPTR, &duplen ":", &saveptr);
             }
         }
-        safe_Free(C_CAST(void**, &dup));
+        safe_free(&dup);
     }
     return success;
 }
@@ -322,7 +322,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t *controllerID,
                 token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
-        safe_Free(C_CAST(void**, &dup));
+        safe_free(&dup);
     }
     return success;
 }
@@ -411,7 +411,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t *controllerID,
                 token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
-        safe_Free(C_CAST(void**, &dup));
+        safe_free(&dup);
     }
     return success;
 }
@@ -530,8 +530,8 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                                     {
                                         success = false;
                                     }
-                                    safe_Free(C_CAST(void**, &firstHalf));
-                                    safe_Free(C_CAST(void**, &secondHalf));
+                                    safe_free(&firstHalf);
+                                    safe_free(&secondHalf);
                                 }
                             }
                             else
@@ -539,7 +539,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                                 //missing the next delimiter, which is not supposed to happen, so this is a failure
                                 success = false;
                             }
-                            safe_Free(C_CAST(void**, &targetstr));
+                            safe_free(&targetstr);
                         }
                         else
                         {
@@ -582,7 +582,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename, uint16_t *controllerI
                 token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
-        safe_Free(C_CAST(void**, &dup));
+        safe_free(&dup);
     }
     return success;
 }
@@ -625,7 +625,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(C_CAST(void**, &devicePath));
+                safe_free(&devicePath);
                 //close the protocol
                 close_ATA_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
             }
@@ -661,7 +661,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(C_CAST(void**, &devicePath));
+                safe_free(&devicePath);
                 close_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
             }
             else
@@ -692,7 +692,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(C_CAST(void**, &devicePath));
+                safe_free(&devicePath);
                 close_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
             }
             else
@@ -728,7 +728,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                     //device doesn't exist, so we cannot talk to it
                     return FAILURE;
                 }
-                safe_Free(C_CAST(void**, &devicePath));
+                safe_free(&devicePath);
                 close_NVMe_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum);
                 device->drive_info.namespaceID = device->os_info.address.nvme.namespaceID;
             }
@@ -1050,9 +1050,9 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(C_CAST(void**, &localBuffer));
-        safe_Free_aligned(C_CAST(void**, &localCDB));
-        safe_Free_aligned(C_CAST(void**, &localSensePtr));
+        safe_free_aligned(&localBuffer);
+        safe_free_aligned(&localCDB);
+        safe_free_aligned(&localSensePtr);
         safe_Free_aligned(C_CAST(void**, &srp));
         close_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
@@ -1403,9 +1403,9 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(C_CAST(void**, &localBuffer));
-        safe_Free_aligned(C_CAST(void**, &localCDB));
-        safe_Free_aligned(C_CAST(void**, &localSensePtr));
+        safe_free_aligned(&localBuffer);
+        safe_free_aligned(&localCDB);
+        safe_free_aligned(&localSensePtr);
         safe_Free_aligned(C_CAST(void**, &srp));
         close_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
@@ -1738,7 +1738,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             }
         }
         safe_Free_aligned(C_CAST(void**, &ataPacket));
-        safe_Free_aligned(C_CAST(void**, &localBuffer));
+        safe_free_aligned(&localBuffer);
         safe_Free_aligned(C_CAST(void**, &ataStatus));
         safe_Free_aligned(C_CAST(void**, &ataCommand));
         close_ATA_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
@@ -2128,7 +2128,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         }
         safe_Free_aligned(nrp->MetadataBuffer)
         safe_Free_aligned(C_CAST(void**, &nrp));
-        safe_Free_aligned(C_CAST(void**, &localBuffer));
+        safe_free_aligned(&localBuffer);
         safe_Free_aligned(C_CAST(void**, &nvmCommand));
         safe_Free_aligned(C_CAST(void**, &nvmCompletion));
         close_NVMe_Passthru_Protocol_Ptr(&pPassthru, nvmeIoCtx->device->os_info.controllerNum);

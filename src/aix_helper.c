@@ -1262,7 +1262,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
         char *friendlyName = strdup(filename);
         snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(friendlyName));
-        safe_Free(C_CAST(void**, &friendlyName));
+        safe_free(&friendlyName);
         struct CuDv cudv;
         struct CuDv * ptrcudv;
         memset(&cudv, 0, sizeof(struct CuDv));
@@ -1443,7 +1443,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         }
         //done with using odm, so terminate it
         (void)odm_terminate();
-        safe_Free(C_CAST(void**, &diskFullName));
+        safe_free(&diskFullName);
     }
     return ret;
 }
@@ -2833,7 +2833,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     {
     	safe_Free(C_CAST(void**, &namelist[iter]));
     }
-    safe_Free(C_CAST(void**, &namelist));
+    safe_free(&namelist);
 
     *numberOfDevices = num_devs;
 
@@ -2892,7 +2892,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         safe_Free(C_CAST(void**, &namelist[i]));
     }
     devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(C_CAST(void**, &namelist));
+    safe_free(&namelist);
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
@@ -2978,7 +2978,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 	        returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
 	    }
     }
-    safe_Free(C_CAST(void**, &devs));
+    safe_free(&devs);
     return returnValue;
 }
 

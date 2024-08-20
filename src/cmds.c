@@ -130,7 +130,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice *device, bool exitFailureMod
         ret = scsi_Sanitize_Overwrite(device, exitFailureMode, znr, true, invertBetweenPasses, SANITIZE_OVERWRITE_NO_CHANGES, overwritePasses & 0x1F, pattern, patternLength);
         if (localPattern)
         {
-            safe_Free(C_CAST(void**, &pattern));
+            safe_free(&pattern);
             localPattern = false;
         }
         break;
@@ -563,7 +563,7 @@ eReturnValues security_Send(tDevice *device, uint8_t securityProtocol, uint16_t 
             ret = send_ATA_Trusted_Send_Cmd(device, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
             if (useLocalMemory)
             {
-                safe_Free_aligned(C_CAST(void**, &tcgBufPtr));
+                safe_free_aligned(&tcgBufPtr);
             }
         }
         else
@@ -629,7 +629,7 @@ eReturnValues security_Receive(tDevice *device, uint8_t securityProtocol, uint16
             if (useLocalMemory)
             {
                 memcpy(ptrData, tcgBufPtr, M_Min(dataSize, tcgDataSize));
-                safe_Free_aligned(C_CAST(void**, &tcgBufPtr));
+                safe_free_aligned(&tcgBufPtr);
             }
         }
         else
@@ -740,7 +740,7 @@ eReturnValues write_Same(tDevice *device, uint64_t startingLba, uint64_t numberO
             }
             if (localPattern)
             {
-                safe_Free_aligned(C_CAST(void**, &pattern));
+                safe_free_aligned(&pattern);
             }
         }
         else
@@ -1862,7 +1862,7 @@ eReturnValues nvme_Verify_LBA(tDevice *device, uint64_t lba, uint32_t range)
         {
             ret = MEMORY_FAILURE;
         }
-        safe_Free_aligned(C_CAST(void**, &data));
+        safe_free_aligned(&data);
     }
     return ret;
 }

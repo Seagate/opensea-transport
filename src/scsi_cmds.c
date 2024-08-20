@@ -446,7 +446,7 @@ eReturnValues scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSan
         memcpy(&overwriteBuffer[4], pattern, patternLengthBytes);
     }
     ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
-    safe_Free_aligned(C_CAST(void**, &overwriteBuffer));
+    safe_free_aligned(&overwriteBuffer);
     return ret;
 }
 

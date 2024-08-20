@@ -3270,7 +3270,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                                                     foundPhyInfo = true;
                                                     //TODO: To help prevent multiport or multi-lun issues, we should REALLY check the device identification VPD page, but that can be a future enhancement
                                                 }
-                                                safe_Free(C_CAST(void**, &serialNumber));
+                                                safe_free(&serialNumber);
                                             }
                                         }
                                         //else...catastrophic failure? Not sure what to do here since this should be really rare to begin with.
@@ -3496,13 +3496,13 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined (CSMI_DEBUG)
         printf("GRD: Handle doesn't match std csmi format or Intel NVMe csmi format!\n");
 #endif //CSMI_DEBUG
-        safe_Free(C_CAST(void**, &baseHandle));
+        safe_free(&baseHandle);
         return BAD_PARAMETER;
     }
 #if defined (_WIN32)
     if (baseHandle && safe_strlen(baseHandle) > 0)
     {
-        safe_Free(C_CAST(void**, &baseHandle));
+        safe_free(&baseHandle);
         return BAD_PARAMETER;
     }
     else
@@ -3518,7 +3518,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
         }
         if (snprintfres < 1 || snprintfres > OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
         {
-            safe_Free(C_CAST(void**, &baseHandle));
+            safe_free(&baseHandle);
             return BAD_PARAMETER;
         }
     }
@@ -3531,17 +3531,17 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
         int snprintfres = snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portID, phyID, lun, baseHandle);
         if (snprintfres < 1 || snprintfres > OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
         {
-            safe_Free(C_CAST(void**, &baseHandle));
+            safe_free(&baseHandle);
             return BAD_PARAMETER;
         }
     }
     else
     {
-        safe_Free(C_CAST(void**, &baseHandle));
+        safe_free(&baseHandle);
         return BAD_PARAMETER;
     }
 #endif //_WIN32
-    safe_Free(C_CAST(void**, &baseHandle));
+    safe_free(&baseHandle);
 #if defined (CSMI_DEBUG)
     printf("GRD: Opening low-level device handle\n");
 #endif //CSMI_DEBUG
@@ -3989,7 +3989,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                                             //No CSMI level specified
                                             access = CSMI_SECURITY_ACCESS_LIMITED;
                                         }
-                                        safe_Free(C_CAST(void**, &regData));
+                                        safe_free(&regData);
                                     }
                                 }
                             }
@@ -4013,8 +4013,8 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                 access = CSMI_SECURITY_ACCESS_LIMITED;
             }
         }
-        safe_Free(C_CAST(void**, &tdriverName));
-        safe_Free(C_CAST(void**, &registryKey));
+        safe_free(&tdriverName);
+        safe_free(&registryKey);
     }
 #else //not windows, need root, otherwise not available at all. Return FULL if running as root
     M_USE_UNUSED(driverName);
@@ -5040,7 +5040,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                                                 printf("GDL: End device handle found and set as %s\n", handle);
     #endif //CSMI_DEBUG
                                                                                             }
-                                                                                            safe_Free(C_CAST(void**, &serialNumber));
+                                                                                            safe_free(&serialNumber);
                                                                                         }
                                                                                     }
                                                                                     //else...catastrophic failure? Not sure what to do here since this should be really rare to begin with.

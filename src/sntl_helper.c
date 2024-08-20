@@ -1345,9 +1345,9 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *
     deviceIdentificationPage = C_CAST(uint8_t*, safe_calloc(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength, sizeof(uint8_t)));
     if (!deviceIdentificationPage)
     {
-        safe_Free(C_CAST(void**, &naaDesignator));
-        safe_Free(C_CAST(void**, &SCSINameStringDesignator));
-        safe_Free(C_CAST(void**, &t10VendorIdDesignator));
+        safe_free(&naaDesignator);
+        safe_free(&SCSINameStringDesignator);
+        safe_free(&t10VendorIdDesignator);
         return MEMORY_FAILURE;
     }
     deviceIdentificationPage[0] = 0;
@@ -1363,7 +1363,7 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *
     {
         naaDesignatorLength = 0;
     }
-    safe_Free(C_CAST(void**, &naaDesignator));
+    safe_free(&naaDesignator);
     //t10 second
     if (t10VendorIdDesignatorLength > 0 && t10VendorIdDesignator)
     {
@@ -1373,7 +1373,7 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *
     {
         t10VendorIdDesignatorLength = 0;
     }
-    safe_Free(C_CAST(void**, &t10VendorIdDesignator));
+    safe_free(&t10VendorIdDesignator);
     //scsi name string third
     if (SCSINameStringDesignatorLength > 0 && SCSINameStringDesignator)
     {
@@ -1383,7 +1383,7 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *
     {
         SCSINameStringDesignatorLength = 0;
     }
-    safe_Free(C_CAST(void**, &SCSINameStringDesignator));
+    safe_free(&SCSINameStringDesignator);
     //eui64 last
     if (eui64DesignatorLength > 0 && eui64Designator)
     {
@@ -1393,13 +1393,13 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice *
     {
         eui64DesignatorLength = 0;
     }
-    safe_Free(C_CAST(void**, &eui64Designator));
+    safe_free(&eui64Designator);
     //copy the final data back for the command
     if (scsiIoCtx->pdata && deviceIdentificationPage)
     {
         memcpy(scsiIoCtx->pdata, deviceIdentificationPage, M_Min(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength + SCSINameStringDesignatorLength, scsiIoCtx->dataLength));
     }
-    safe_Free(C_CAST(void**, &deviceIdentificationPage));
+    safe_free(&deviceIdentificationPage);
     return ret;
 }
 
@@ -1611,7 +1611,7 @@ static eReturnValues sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(Sc
                     }
                 }
             }
-            safe_Free_aligned(C_CAST(void**, &supportedLogs));
+            safe_free_aligned(&supportedLogs);
         }
     }
 #endif
@@ -2662,7 +2662,7 @@ static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(tDevice* device, S
                 set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 ret = FAILURE;
             }
-            safe_Free_aligned(C_CAST(void**, &supportedLogs));
+            safe_free_aligned(&supportedLogs);
         }
     }
     else
@@ -3200,7 +3200,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDe
         }
         else
         {
-            safe_Free(C_CAST(void**, &readWriteErrorRecovery));
+            safe_free(&readWriteErrorRecovery);
             set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             return ret;
         }
@@ -3226,7 +3226,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDe
     {
         memcpy(scsiIoCtx->pdata, readWriteErrorRecovery, M_Min(pageLength, allocationLength));
     }
-    safe_Free(C_CAST(void**, &readWriteErrorRecovery));
+    safe_free(&readWriteErrorRecovery);
     return ret;
 }
 
@@ -3333,7 +3333,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, Scsi
             else
             {
                 set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
-                safe_Free(C_CAST(void**, &caching));
+                safe_free(&caching);
                 return ret;
             }
         }
@@ -3375,7 +3375,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Caching_08h(tDevice *device, Scsi
     {
         memcpy(scsiIoCtx->pdata, caching, M_Min(pageLength, allocationLength));
     }
-    safe_Free(C_CAST(void**, &caching));
+    safe_free(&caching);
     return ret;
 }
 
@@ -3475,7 +3475,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Control_0Ah(ScsiIoCtx *scsiIoCtx,
     {
         memcpy(scsiIoCtx->pdata, controlPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(C_CAST(void**, &controlPage));
+    safe_free(&controlPage);
     return ret;
 }
 
@@ -3552,7 +3552,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Power_Condition_1A(ScsiIoCtx *scs
     {
         memcpy(scsiIoCtx->pdata, powerConditionPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(C_CAST(void**, &powerConditionPage));
+    safe_free(&powerConditionPage);
     return ret;
 }
 
@@ -3660,7 +3660,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoC
     {
         memcpy(scsiIoCtx->pdata, controlExtPage, M_Min(pageLength, allocationLength));
     }
-    safe_Free(C_CAST(void**, &controlExtPage));
+    safe_free(&controlExtPage);
     return ret;
 }
 
@@ -3751,7 +3751,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Informational_Exceptions_Control_
     {
         memcpy(scsiIoCtx->pdata, informationalExceptions, M_Min(pageLength, allocationLength));
     }
-    safe_Free(C_CAST(void**, &informationalExceptions));
+    safe_free(&informationalExceptions);
     return ret;
 }
 
@@ -5396,7 +5396,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, Sc
             //dummy up a single lun
             singleLun = true;
         }
-        safe_Free_aligned(C_CAST(void**, &activeNamespaces));
+        safe_free_aligned(&activeNamespaces);
         if (singleLun)
         {
             reportLunsDataLength += 8;
@@ -5435,7 +5435,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(tDevice *device, Sc
     {
         ret = MEMORY_FAILURE;
     }
-    safe_Free(C_CAST(void**, &reportLunsData));
+    safe_free(&reportLunsData);
     return ret;
 }
 
@@ -6437,7 +6437,7 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice *device, ScsiIoCt
                     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
             }
-            safe_Free_aligned(C_CAST(void**, &dsmBuffer));
+            safe_free_aligned(&dsmBuffer);
         }
     }
     return ret;
@@ -6936,7 +6936,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_In(tDevice * device, Scsi
     {
         memcpy(scsiIoCtx->pdata, persistentReserveData, M_Min(persistentReserveDataLength, allocationLength));
     }
-    safe_Free(C_CAST(void**, &persistentReserveData));
+    safe_free(&persistentReserveData);
     return ret;
 }
 
@@ -7346,7 +7346,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(tDevice * device, Scs
     {
         memcpy(scsiIoCtx->pdata, persistentReserveData, M_Min(persistentReserveDataLength, parameterListLength));
     }
-    safe_Free(C_CAST(void**, &persistentReserveData));
+    safe_free(&persistentReserveData);
     return ret;
 }
 
@@ -9808,7 +9808,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Supported_Operation_Codes_Comman
         else
         {
             //free this memory since the last function allocated it, but failed, then check if the op/sa combination is supported
-            safe_Free(C_CAST(void**, &supportedOpData));
+            safe_free(&supportedOpData);
             supportedOpDataLength = 0;
             if (sntl_Check_Operation_Code_and_Service_Action(device, requestedOperationCode, requestedServiceAction, rctd, &supportedOpData, &supportedOpDataLength))
             {
@@ -9832,7 +9832,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Supported_Operation_Codes_Comman
     {
         memcpy(scsiIoCtx->pdata, supportedOpData, M_Min(supportedOpDataLength, allocationLength));
     }
-    safe_Free(C_CAST(void**, &supportedOpData));
+    safe_free(&supportedOpData);
     return ret;
 }
 

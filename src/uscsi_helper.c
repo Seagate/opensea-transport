@@ -634,7 +634,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(C_CAST(void**, &devs));
+    safe_free(&devs);
     return returnValue;
 }
 
