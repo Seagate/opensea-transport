@@ -3134,6 +3134,13 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             checkForSAT = false;
         }
 
+        if (strncmp("Msft", device->drive_info.T10_vendor_ident, 4) == 0 && strncmp("Virtual Disk", device->drive_info.product_identification, 12) == 0)
+        {
+            //This is a microsoft virtual drive setup for one of many reasons (XBox game pass does this when installing games for example)
+            //It does respond to limited SCSI commands, but no ATA passthrough so just disable it.
+            checkForSAT = false;
+        }
+
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
         {
 #if defined (_DEBUG)
