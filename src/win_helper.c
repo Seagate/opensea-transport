@@ -3312,7 +3312,7 @@ eReturnValues close_Device(tDevice *dev)
 #endif
         {
             close_SCSI_SRB_Handle(dev);//\\.\SCSIx: could be opened for different reasons...so we need to close it here.
-            safe_Free(C_CAST(void**, &dev->os_info.csmiDeviceData));//CSMI may have been used, so free this memory if it was before we close out.
+            safe_free_csmi_dev_info(&dev->os_info.csmiDeviceData);//CSMI may have been used, so free this memory if it was before we close out.
             CloseHandle(dev->os_info.forceUnitAccessRWfd);//if FUA handle was opened, this will close it out.
             retValue = CloseHandle(dev->os_info.fd);
             dev->os_info.last_error = GetLastError();
@@ -3462,9 +3462,19 @@ static eReturnValues check_And_Get_Storage_Property(HANDLE deviceHandle, STORAGE
     return ret;
 }
 
+static M_INLINE void safe_free_device_descriptor(STORAGE_DEVICE_DESCRIPTOR **devdesc)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, devdesc));
+}
+
 static eReturnValues win_Get_Device_Descriptor(HANDLE deviceHandle, PSTORAGE_DEVICE_DESCRIPTOR *deviceData)
 {
     return check_And_Get_Storage_Property(deviceHandle, StorageDeviceProperty, C_CAST(void**, deviceData), sizeof(STORAGE_DEVICE_DESCRIPTOR));
+}
+
+static M_INLINE void safe_free_adapter_descriptor(STORAGE_ADAPTER_DESCRIPTOR **adapterdesc)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, adapterdesc));
 }
 
 static eReturnValues win_Get_Adapter_Descriptor(HANDLE deviceHandle, PSTORAGE_ADAPTER_DESCRIPTOR *adapterData)
@@ -3483,6 +3493,11 @@ static eReturnValues win_Get_Adapter_Descriptor(HANDLE deviceHandle, PSTORAGE_AD
 //{
 //    return check_And_Get_Storage_Property(deviceHandle, StorageDeviceWriteCacheProperty, C_CAST(void**, writeCacheInfo), sizeof(STORAGE_WRITE_CACHE_PROPERTY));
 //}
+
+static M_INLINE void safe_free_storage_access_alignment(STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR **accessalignment)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, accessalignment));
+}
 
 static eReturnValues win_Get_Access_Alignment_Descriptor(HANDLE *deviceHandle, PSTORAGE_ACCESS_ALIGNMENT_DESCRIPTOR *alignmentDescriptor)
 {
@@ -3691,6 +3706,11 @@ eReturnValues os_Erase_Boot_Sectors(tDevice* device)
 #endif
 }
 
+static M_INLINE void safe_free_disk_geometry(DISK_GEOMETRY **geom)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, geom));
+}
+
 //WinVer not wrapping this IOCTL...so it's probably old enough not to need it - TJE
 static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *geom)
 {
@@ -3709,7 +3729,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
             }
             else
             {
-                safe_Free(C_CAST(void**, geom));
+                safe_free_disk_geometry(geom);
             }
         }
         else
@@ -3755,6 +3775,11 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
 //}
 
 #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
+// static M_INLINE void safe_free_disk_controller_number(DISK_CONTROLLER_NUMBER **ctrlnum)
+// {
+//     safe_Free(M_REINTERPRET_CAST(void**, ctrlnum));
+// }
+//
 //static eReturnValues win_Get_IDE_Disk_Controller_Number_And_Disk_Number(HANDLE *devHandle, PDISK_CONTROLLER_NUMBER *numbers)
 //{
 //    eReturnValues ret = FAILURE;
@@ -3772,7 +3797,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
 //            }
 //            else
 //            {
-//                safe_Free(C_CAST(void**, numbers));
+//                safe_free_disk_controller_number(numbers);
 //            }
 //        }
 //        else
@@ -3804,6 +3829,12 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY *ge
         safe_free(&diskGeom);
     }
 */
+
+static M_INLINE void safe_free_disk_geometry_ex(DISK_GEOMETRY_EX **geom)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, geom));
+}
+
 static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_EX *geom, PDISK_PARTITION_INFO *partInfo, PDISK_DETECTION_INFO *detectInfo)
 {
     eReturnValues ret = FAILURE;
@@ -3829,12 +3860,12 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
                 //Setup the other pointers if they were provided.
                 if (partInfo)
                 {
-                    *partInfo = C_CAST(PDISK_PARTITION_INFO, (*geom)->Data);
+                    *partInfo = M_REINTERPRET_CAST(PDISK_PARTITION_INFO, (*geom)->Data);
                     if ((*partInfo)->SizeOfPartitionInfo)
                     {
                         if (detectInfo)
                         {
-                            *detectInfo = C_CAST(PDISK_DETECTION_INFO, &(*geom)->Data[(*partInfo)->SizeOfPartitionInfo]);
+                            *detectInfo = M_REINTERPRET_CAST(PDISK_DETECTION_INFO, &(*geom)->Data[(*partInfo)->SizeOfPartitionInfo]);
                             if (!(*detectInfo)->SizeOfDetectInfo)
                             {
                                 *detectInfo = M_NULLPTR;
@@ -3853,7 +3884,7 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
             }
             else
             {
-                safe_Free(C_CAST(void**, geom));
+                safe_free_disk_geometry_ex(geom);
             }
         }
         else
@@ -4726,9 +4757,9 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                     //do nothing since we assume everything else was set correctly earlier
                     break;
                 }
-                safe_free(&device_desc);
+                safe_free_device_descriptor(&device_desc);
             }
-            safe_free(&adapter_desc);
+            safe_free_adapter_descriptor(&adapter_desc);
         }
     }
     // Just in case we bailed out in any way.
@@ -4861,7 +4892,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
                     }
                 }
             }
-            safe_free(&adapterData);
+            safe_free_adapter_descriptor(&adapterData);
             CloseHandle(fd);
         }
     }
@@ -5018,7 +5049,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                             }
                         }
                     }
-                    safe_free(&adapterData);
+                    safe_free_adapter_descriptor(&adapterData);
                 }
                 found++;
                 d++;
@@ -8079,7 +8110,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                         vpdPage[1] = UNIT_SERIAL_NUMBER;
                         if (deviceDesc->RawPropertiesLength > 0)
                         {
-                            char* devSerial = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
+                            const char* devSerial = C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
                             if (deviceDesc->SerialNumberOffset && deviceDesc->SerialNumberOffset != UINT32_MAX)
                             {
                                 memcpy(&vpdPage[4], devSerial, M_Min(safe_strlen(devSerial), 92));//92 for maximum size of current remaining memory for this page
@@ -8146,7 +8177,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                     {
                         memcpy(scsiIoCtx->pdata, vpdPage, M_Min(96U, M_Min(vpdPageLen + 4U, scsiIoCtx->dataLength)));
                     }
-                    safe_free(&deviceDesc);
+                    safe_free_device_descriptor(&deviceDesc);
                 }
                 else
                 {
@@ -8278,7 +8309,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                             inquiryData[34] = 'K';
                             inquiryData[35] = 'E';
                         }
-                        safe_free(&deviceDesc);
+                        safe_free_device_descriptor(&deviceDesc);
                     }
                     else
                     {
@@ -8363,7 +8394,7 @@ static eReturnValues wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
                 readCapacityData[5] = M_Byte2(geometryEx->Geometry.BytesPerSector);
                 readCapacityData[6] = M_Byte1(geometryEx->Geometry.BytesPerSector);
                 readCapacityData[7] = M_Byte0(geometryEx->Geometry.BytesPerSector);
-                safe_free(&geometryEx);
+                safe_free_disk_geometry_ex(&geometryEx);
             }
             else
 #endif //WINVER >= SEA_WIN32_WINNT_WIN2K
@@ -8391,7 +8422,7 @@ static eReturnValues wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
                     readCapacityData[5] = M_Byte2(geometry->BytesPerSector);
                     readCapacityData[6] = M_Byte1(geometry->BytesPerSector);
                     readCapacityData[7] = M_Byte0(geometry->BytesPerSector);
-                    safe_free(&geometry);
+                    safe_free_disk_geometry(&geometry);
                 }
                 else
                 {
@@ -8465,7 +8496,7 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
                     readCapacityData[10] = M_Byte1(geometryEx->Geometry.BytesPerSector);
                     readCapacityData[11] = M_Byte0(geometryEx->Geometry.BytesPerSector);
                     //don't set any other fields unless we can get the access alignment descriptor
-                    safe_free(&geometryEx);
+                    safe_free_disk_geometry_ex(&geometryEx);
                 }
                 else
 #endif //WINVER >= SEA_WIN32_WINNT_WIN2K
@@ -8486,7 +8517,7 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
                         readCapacityData[9] = M_Byte2(geometry->BytesPerSector);
                         readCapacityData[10] = M_Byte1(geometry->BytesPerSector);
                         readCapacityData[11] = M_Byte0(geometry->BytesPerSector);
-                        safe_free(&geometry);
+                        safe_free_disk_geometry(&geometry);
                     }
                     else
                     {
@@ -8530,7 +8561,7 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
                         readCapacityData[14] = M_Byte1(lowestAlignedLBA) & 0x3F;//shouldn't cause a problem as alignment shouldn't be higher than this
                         readCapacityData[15] = M_Byte0(lowestAlignedLBA);
                     }
-                    safe_free(&accessAlignment);
+                    safe_free_storage_access_alignment(&accessAlignment);
                 }
 #endif //WINVER >= SEA_WIN32_WINNT_VISTA
                 if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)

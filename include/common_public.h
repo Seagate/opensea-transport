@@ -17,7 +17,9 @@
 
 #include "code_attributes.h"
 #include "common_types.h"
+#include "type_conversion.h"
 #include "bit_manip.h"
+#include "memory_safety.h"
 
 #include "version.h"
 #if defined (VMK_CROSS_COMP)
@@ -1132,8 +1134,19 @@ extern "C"
 
     //forward declare csmi info to avoid including csmi_helper.h
     typedef struct _csmiDeviceInfo csmiDeviceInfo,*ptrCsmiDeviceInfo;
+
+    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo **csmidevinfo)
+    {
+        safe_Free(M_REINTERPRET_CAST(void**, csmidevinfo));
+    }
+
     //forward declare cciss device 
     typedef struct _cissDeviceInfo cissDeviceInfo,*ptrCissDeviceInfo;
+
+    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo **cissdevinfo)
+    {
+        safe_Free(M_REINTERPRET_CAST(void**, cissdevinfo));
+    }
 
 #define OS_HANDLE_NAME_MAX_LENGTH 256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24

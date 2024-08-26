@@ -2831,9 +2831,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the list of names to not leak memory
     for(int iter = 0; iter < num_devs; ++iter)
     {
-    	safe_Free(C_CAST(void**, &namelist[iter]));
+    	safe_free_dirent(&namelist[iter]);
     }
-    safe_free(&namelist);
+    safe_free_dirent(namelist);
 
     *numberOfDevices = num_devs;
 
@@ -2889,10 +2889,10 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t handleSize = (safe_strlen("/dev/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
-        safe_Free(C_CAST(void**, &namelist[i]));
+        safe_free_dirent(&namelist[i]);
     }
     devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_free(&namelist);
+    safe_free_dirent(namelist);
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
@@ -2963,7 +2963,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(C_CAST(void**, &devs[driveNumber]));
+            safe_free(&devs[driveNumber]);
         }
 	    if (found == failedGetDeviceCount)
 	    {
@@ -2978,7 +2978,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 	        returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
 	    }
     }
-    safe_free(&devs);
+    safe_free(devs);
     return returnValue;
 }
 

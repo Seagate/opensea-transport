@@ -72,6 +72,11 @@ static bool is_NVMe_Handle(char *handle)
     return isNVMeDevice;
 }
 
+static M_INLINE void safe_free_statfs(struct statfs **fs)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, fs));
+}
+
 static int get_Partition_Count(const char* blockDeviceName)
 {
     int result = 0;
@@ -89,7 +94,7 @@ static int get_Partition_Count(const char* blockDeviceName)
             }
         }
     }
-    safe_Free(C_CAST(void**, &mountedFS));
+    safe_free_statfs(&mountedFS);
     return result;
 }
 
@@ -100,6 +105,12 @@ typedef struct _spartitionInfo
     char fsName[PART_INFO_NAME_LENGTH];
     char mntPath[PART_INFO_PATH_LENGTH];
 }spartitionInfo, *ptrsPartitionInfo;
+
+static M_INLINE void safe_free_spartioninfo(spartitionInfo **partinfo)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, partinfo));
+}
+
 //partitionInfoList is a pointer to the beginning of the list
 //listCount is the number of these structures, which should be returned by get_Partition_Count
 static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
@@ -141,7 +152,7 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
                 }
             }
         }
-        safe_Free(C_CAST(void**, &mountedFS));
+        **, &mountedFS));
     }
     return result;
 }
@@ -183,7 +194,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
                     }
                 }
             }
-            safe_Free(C_CAST(void**, &parts));
+            safe_free_spartioninfo(&parts);
         }
         else
         {
@@ -1193,21 +1204,22 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUSED uint64_
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_da_devs; ++iter)
     {
-        safe_Free(C_CAST(void**, &danamelist[iter]));
+        safe_free_dirent(&danamelist[iter]);
     }
-    safe_Free(C_CAST(void**, &danamelist));
+    safe_free_dirent(danamelist);
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_ada_devs; ++iter)
     {
-        safe_Free(C_CAST(void**, &adanamelist[iter]));
+        safe_free_dirent(&adanamelist[iter]);
     }
-    safe_Free(C_CAST(void**, &adanamelist));
+    safe_free_dirent(adanamelist);
 
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_nvme_devs; ++iter)
     {
-        safe_Free(C_CAST(void**, &nvmenamelist));
+        safe_free_dirent(&nvmenamelist[iter]);
     }
+    safe_free_dirent(nvmenamelist);
     if (num_da_devs > 0)
     {
         *numberOfDevices += C_CAST(uint32_t, num_da_devs);
@@ -1294,14 +1306,14 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(danamelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", danamelist[i]->d_name);
-        safe_Free(C_CAST(void**, &danamelist[i]));
+        safe_free_dirent(&danamelist[i]);
     }
     for (j = 0; i < (num_da_devs + num_ada_devs) && j < num_ada_devs; ++i, j++)
     {
         size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(adanamelist[j]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", adanamelist[j]->d_name);
-        safe_Free(C_CAST(void**, &adanamelist[j]));
+        safe_free_dirent(&adanamelist[j]);
     }
 
     for (k = 0; i < (totalDevs) && k < num_nvme_devs; ++i, ++j, ++k)
@@ -1309,13 +1321,13 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(devNameStringLength));
         snprintf(devs[i], devNameStringLength, "/dev/%s", nvmenamelist[k]->d_name);
-        safe_Free(C_CAST(void**, &nvmenamelist[k]));
+        safe_free_dirent(&nvmenamelist[k]);
     }
 
     devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(C_CAST(void**, &danamelist));
-    safe_Free(C_CAST(void**, &adanamelist));
-    safe_Free(C_CAST(void**, &nvmenamelist));
+    safe_free_dirent(danamelist);
+    safe_free_dirent(adanamelist);
+    safe_free_dirent(nvmenamelist);
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
@@ -1371,7 +1383,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(C_CAST(void**, &devs[driveNumber]));
+            safe_free(&devs[driveNumber]);
         }
         if (found == failedGetDeviceCount)
         {
@@ -1386,7 +1398,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_free(&devs);
+    safe_free(devs);
     return returnValue;
 }
 
@@ -1706,7 +1718,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
                     }
                 }
             }
-            safe_Free(C_CAST(void**, &parts));
+            safe_free_spartioninfo(&parts);
         }
         else
         {

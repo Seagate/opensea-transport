@@ -956,9 +956,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the list of names to not leak memory
     for (int iter = 0; iter < num_devs; ++iter)
     {
-        safe_Free(C_CAST(void**, &namelist[iter]));
+        safe_free_dirent(&namelist[iter]);
     }
-    safe_free(&namelist);
+    safe_free_dirent(&namelist);
 
 #ifdef _DEBUG
     printf("get_Device_Count : num_devs %d\n", num_devs);
@@ -1051,9 +1051,9 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t deviceHandleLen = (safe_strlen("/dev/disks/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(deviceHandleLen));
         snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
-        safe_Free(C_CAST(void**, &namelist[i]));
+        safe_free_dirent(&namelist[i]);
     }
-    safe_free(&namelist);
+    safe_free_dirent((&namelist);
 
     //add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER; i++, j++)
@@ -1148,7 +1148,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 d++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(C_CAST(void**, &devs[driveNumber]));
+            safe_free(&devs[driveNumber]);
         }
 #if defined (DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
@@ -1167,7 +1167,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_free(&devs);
+    safe_free(devs);
     return returnValue;
 }
 

@@ -15,6 +15,9 @@
 
 #pragma once
 
+#include "common_types.h"
+#include "type_conversion.h"
+#include "memory_safety.h"
 #include "common_public.h"
 #include "ata_helper.h"
 
@@ -251,6 +254,10 @@ extern "C"
         uint8_t additionalDataOffset;//if bool above is set, then this will be set to the offset of the additional data that couldn't be parsed
     }senseDataFields, *ptrSenseDataFields;
 
+    static M_INLINE void safe_free_sensefields(senseDataFields **sensefields)
+    {
+        safe_Free(M_REINTERPRET_CAST(void**, sensefields));
+    }
 
     typedef struct _biDirectionalCommandBuffers
     {

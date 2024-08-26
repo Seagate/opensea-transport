@@ -1595,14 +1595,14 @@ eReturnValues get_CISS_RAID_Device(const char *filename, tDevice *device)
                         //something went wrong, so clean up.
                         close(device->os_info.cissDeviceData->cissHandle);
                         device->os_info.fd = 0;
-                        safe_Free(C_CAST(void**, &device->os_info.cissDeviceData));
+                        safe_free_ciss_dev_info(&device->os_info.cissDeviceData);
                     }
                 }
                 else
                 {
                     ret = NOT_SUPPORTED;
                     close(device->os_info.cissDeviceData->cissHandle);
-                    safe_Free(C_CAST(void**, &device->os_info.cissDeviceData));
+                    safe_free_ciss_dev_info(&device->os_info.cissDeviceData);
                 }
             }
             else
@@ -1629,7 +1629,7 @@ eReturnValues close_CISS_RAID_Device(tDevice *device)
             device->os_info.last_error = 0;
         }
         device->os_info.fd = -1;
-        safe_Free(C_CAST(void**, &device->os_info.cissDeviceData));
+        safe_free_ciss_dev_info(&device->os_info.cissDeviceData);
         return SUCCESS;
     }
     else
@@ -1694,7 +1694,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
             ret = ciss_Passthrough(&physicalLunCMD, CISS_CMD_CONTROLLER);
 
             //done with this memory now, so clean it up
-            safe_Free(C_CAST(void**, &pseudoDev.os_info.cissDeviceData));
+            safe_free_ciss_dev_info(&pseudoDev.os_info.cissDeviceData);
 
             //print_Data_Buffer(data, dataLength, false);
 

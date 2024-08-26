@@ -54,6 +54,12 @@
 
 extern bool validate_Device_Struct(versionBlock);
 
+//functions to assist freeing csmi structures easily/safely
+static M_INLINE void safe_free_csmi_raid_config(CSMI_SAS_RAID_CONFIG_BUFFER** raidconfig)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, raidconfig));
+}
+
 #if defined (_WIN32)
 void print_Last_Error(DWORD lastError);
 #else
@@ -304,7 +310,7 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
     {
         if (localTimer)
         {
-            safe_Free(C_CAST(void**, &timer));
+            safe_free_seatimer(&timer);
         }
         return MEMORY_FAILURE;
     }
@@ -385,7 +391,7 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
     csmiIoOutParams->sysIoctlReturn = localIoctlReturn;
     if (localTimer)
     {
-        safe_Free(C_CAST(void**, &timer));
+        safe_free_seatimer(&timer);
     }
     return ret;
 }
@@ -3093,7 +3099,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                                         }
                                     }
                                 }
-                                safe_Free(C_CAST(void**, &raidConfig));
+                                safe_free_csmi_raid_config(&raidConfig);
                             }
                         }
                     }
@@ -3294,7 +3300,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                 printf("JSCI: No phy info. Not enough information to use CSMI passthrough\n");
 #endif //CSMI_DEBUG
                 //We don't have enough information to use CSMI passthrough on this device. Free memory and return NOT_SUPPORTED
-                safe_Free(C_CAST(void**, &device->os_info.csmiDeviceData));
+                safe_free_csmi_dev_info(&device->os_info.csmiDeviceData);
                 ret = NOT_SUPPORTED;
             }
 
@@ -3351,7 +3357,7 @@ eReturnValues close_CSMI_RAID_Device(tDevice *device)
 #if defined (_WIN32)
         CloseHandle(device->os_info.fd);
         device->os_info.last_error = GetLastError();
-        safe_Free(C_CAST(void**, &device->os_info.csmiDeviceData));
+        safe_free_csmi_dev_info(&device->os_info.csmiDeviceData);
         device->os_info.last_error = 0;
         device->os_info.fd = INVALID_HANDLE_VALUE;
 #else //_WIN32
@@ -3365,7 +3371,7 @@ eReturnValues close_CSMI_RAID_Device(tDevice *device)
         }
         device->os_info.fd = -1;
 #endif //_WIN32
-        safe_Free(C_CAST(void**, &device->os_info.csmiDeviceData));
+        safe_free_csmi_dev_info(&device->os_info.csmiDeviceData);
         device->os_info.last_error = 0;
         return SUCCESS;
     }
@@ -3771,7 +3777,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
                                 }
                             }
                         }
-                        safe_Free(C_CAST(void**, &raidConfig));
+                        safe_free_csmi_raid_config(&raidConfig);
                     }
                 }
             }
@@ -4244,7 +4250,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
                                     {
                                         raidConfigIncomplete = true;
                                     }
-                                    safe_Free(C_CAST(void**, &csmiRAIDConfig));
+                                    safe_free_csmi_raid_config(&csmiRAIDConfig);
                                 }
                             }
                             if (raidConfigIncomplete)
@@ -5047,7 +5053,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                                 }
                                                                             }
                                                                         }
-                                                                        safe_Free(C_CAST(void**, &tempDevice.os_info.csmiDeviceData));
+                                                                        safe_free_csmi_dev_info(&tempDevice.os_info.csmiDeviceData);
                                                                     }
                                                                     else if ((is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) || is_Empty(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8)) //SAS address is empty
                                                                            && is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bModel, 40) && !is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSerialNumber, 40)) //MN is empty, but SN is not. Missing drive from the set.
@@ -5097,7 +5103,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                 }
                                             }
                                         }
-                                        safe_Free(C_CAST(void**, &csmiRAIDConfig));
+                                        safe_free_csmi_raid_config(&csmiRAIDConfig);
                                     }
                                 }
                                 if (raidInfoIncomplete)

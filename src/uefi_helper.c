@@ -55,6 +55,11 @@ bool os_Is_Infinite_Timeout_Supported(void)
     return true;
 }
 
+static M_INLINE void safe_free_dev_path_protocol(EFI_DEVICE_PATH_PROTOCOL **path)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, path));
+}
+
 #define UEFI_HANDLE_STRING_LENGTH 64
 
 eReturnValues get_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void **pPassthru, uint32_t controllerID)
@@ -2216,7 +2221,7 @@ uint32_t get_ATA_Device_Count()
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &ataPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &ataPtGUID, M_REINTERPRET_CAST(void **, &pPassthru), gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
 
         if (EFI_ERROR(uefiStatus))
         {
@@ -2247,7 +2252,7 @@ uint32_t get_ATA_Device_Count()
                         //EFI_NOT_FOUND means no device at this place.
                         //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                         //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                        safe_Free(C_CAST(void**, &devicePath));
+                        safe_free_dev_path_protocol(&devicePath);
                     }
                 }
             }
@@ -2283,7 +2288,7 @@ eReturnValues get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &ataPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &ataPtGUID, M_REINTERPRET_CAST(void **, &pPassthru), gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
 
         if (EFI_ERROR(uefiStatus))
         {
@@ -2322,7 +2327,7 @@ eReturnValues get_ATA_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                         //EFI_NOT_FOUND means no device at this place.
                         //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                         //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                        safe_Free(C_CAST(void**, &devicePath));
+                        safe_free_dev_path_protocol(&devicePath);
                     }
                 }
             }
@@ -2361,7 +2366,7 @@ uint32_t get_SCSI_Device_Count()
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, M_REINTERPRET_CAST(void **, &pPassthru), gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2383,7 +2388,7 @@ uint32_t get_SCSI_Device_Count()
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(C_CAST(void**, &devicePath));
+                safe_free_dev_path_protocol(&devicePath);
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2417,7 +2422,7 @@ eReturnValues get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, M_REINTERPRET_CAST(void **, &pPassthru), gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2448,7 +2453,7 @@ eReturnValues get_SCSI_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(C_CAST(void**, &devicePath));
+                safe_free_dev_path_protocol(&devicePath);
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2489,7 +2494,7 @@ uint32_t get_SCSIEx_Device_Count()
         DECLARE_ZERO_INIT_ARRAY(uint8_t, target, TARGET_MAX_BYTES);
         uint8_t *targetPtr = &target[0];
         uint64_t lun = UINT64_MAX;//doesn't specify what we should start with for this.
-        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, M_REINTERPRET_CAST(void **, &pPassthru), gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2512,7 +2517,7 @@ uint32_t get_SCSIEx_Device_Count()
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(C_CAST(void**, &devicePath));
+                safe_free_dev_path_protocol(&devicePath);
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2550,7 +2555,7 @@ eReturnValues get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeI
         DECLARE_ZERO_INIT_ARRAY(uint8_t, target, TARGET_MAX_BYTES);
         uint8_t *targetPtr = &target[0];
         uint64_t lun = UINT64_MAX;//doesn't specify what we should start with for this.
-        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &scsiPtGUID, M_REINTERPRET_CAST(void **, &pPassthru), gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2581,7 +2586,7 @@ eReturnValues get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeI
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(C_CAST(void**, &devicePath));
+                safe_free_dev_path_protocol(&devicePath);
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2618,7 +2623,7 @@ uint32_t get_NVMe_Device_Count()
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &nvmePtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &nvmePtGUID, M_REINTERPRET_CAST(void **, &pPassthru), gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2640,7 +2645,7 @@ uint32_t get_NVMe_Device_Count()
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(C_CAST(void**, &devicePath));
+                safe_free_dev_path_protocol(&devicePath);
             }
         }
         //close the protocol since we're going to open this again in getdevice
@@ -2677,7 +2682,7 @@ eReturnValues get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
     UINTN counter = 0;
     while (counter < nodeCount)
     {
-        uefiStatus = gBS->OpenProtocol(handle[counter], &nvmePtGUID, (void **)&pPassthru, gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
+        uefiStatus = gBS->OpenProtocol(handle[counter], &nvmePtGUID, M_REINTERPRET_CAST(void **, &pPassthru), gImageHandle, M_NULLPTR, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
         if (EFI_ERROR(uefiStatus))
         {
             continue;
@@ -2707,7 +2712,7 @@ eReturnValues get_NVMe_Devices(tDevice * const ptrToDeviceList, uint32_t sizeInB
                 //EFI_NOT_FOUND means no device at this place.
                 //EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us according to the API)
                 //EFI_OUT_OF_RESOURCES means cannot allocate memory.
-                safe_Free(C_CAST(void**, &devicePath));
+                safe_free_dev_path_protocol(&devicePath);
             }
         }
         //close the protocol since we're going to open this again in getdevice

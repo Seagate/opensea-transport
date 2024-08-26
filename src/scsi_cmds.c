@@ -138,7 +138,7 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSe
 
     if (localSenseFieldsAllocated)
     {
-        safe_Free(C_CAST(void**, &localSenseFields));
+        safe_free_sensefields(&localSenseFields);
     }
     return ret;
 }

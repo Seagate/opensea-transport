@@ -286,6 +286,12 @@ typedef struct _spartitionInfo
     char fsName[PART_INFO_NAME_LENGTH];
     char mntPath[PART_INFO_PATH_LENGTH];
 }spartitionInfo, *ptrsPartitionInfo;
+
+static M_INLINE void safe_free_spartition_info(spartitionInfo** partinfo)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, partinfo));
+}
+
 //partitionInfoList is a pointer to the beginning of the list
 //listCount is the number of these structures, which should be returned by get_Partition_Count
 static eReturnValues get_Partition_List(const char * blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
@@ -1323,9 +1329,9 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                                     // still allocated. 
                                     for(remains = iter; remains<numberOfItems; remains++)
                                     {
-                                        safe_Free(C_CAST(void**, &classList[remains]));
+                                        safe_free_dirent(&classList[remains]);
                                     }
-                                    safe_Free(C_CAST(void**, classList));
+                                    safe_free_dirent(classList);
                                     safe_free(&temp);
                                     safe_free(&dupHandle);
                                     return SUCCESS;
@@ -1335,10 +1341,10 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                             safe_free(&className);
                         }
                     }
-                    safe_Free(C_CAST(void**, &classList[iter])); // PRH - valgrind
+                    safe_free_dirent(&classList[iter]); // PRH - valgrind
                     safe_free(&temp);
                 }
-                safe_Free(C_CAST(void**, classList));
+                safe_free_dirent(classList);
             }
             else
             {
@@ -1402,7 +1408,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
                     }
                 }
             }
-            safe_Free(C_CAST(void**, &parts));
+            safe_free_spartition_info(&parts);
         }
         else
         {
@@ -2224,9 +2230,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
                 beginRaidHandleList = raidHandleList;
             }
             //now free this as we are done with it.
-            safe_Free(C_CAST(void**, &ccisslist[cissIter]));
+            safe_free_dirent(&ccisslist[cissIter]);
         }
-        safe_Free(C_CAST(void**, &ccisslist));
+        safe_free_dirent(ccisslist);
     }
     for (uint32_t iter = 0; iter < num_devs; ++iter)
     {
@@ -2267,9 +2273,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the list of names to not leak memory
     for (uint32_t iter = 0; iter < num_devs; ++iter)
     {
-        safe_Free(C_CAST(void**, &namelist[iter]));
+        safe_free_dirent(&namelist[iter]);
     }
-    safe_Free(C_CAST(void**, &namelist));
+    safe_free_dirent(namelist);
     //add nvme devices to the list
     scandirresult = scandir("/dev", &nvmenamelist, nvme_filter,sortFunc);
     if (scandirresult >= 0)
@@ -2279,9 +2285,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the nvmenamelist to not leak memory
     for (uint32_t iter = 0; iter < num_nvme_devs; ++iter)
     {
-        safe_Free(C_CAST(void**, &nvmenamelist[iter]));
+        safe_free_dirent(&nvmenamelist[iter]);
     }
-    safe_Free(C_CAST(void**, &nvmenamelist));
+    safe_free_dirent(nvmenamelist);
 
     *numberOfDevices = num_devs + num_nvme_devs;
 
@@ -2391,7 +2397,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t handleSize = (safe_strlen("/dev/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
-        safe_Free(C_CAST(void**, &namelist[i]));
+        safe_free_dirent(&namelist[i]);
     }
     //add nvme devices to the list
     for (j = 0; i < totalDevs && j < num_nvme_devs; i++, j++)
@@ -2399,11 +2405,11 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t handleSize = (safe_strlen("/dev/") + safe_strlen(nvmenamelist[j]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", nvmenamelist[j]->d_name);
-        safe_Free(C_CAST(void**, &nvmenamelist[j]));
+        safe_free_dirent(&nvmenamelist[j]);
     }
     devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(C_CAST(void**, &namelist));
-    safe_Free(C_CAST(void**, &nvmenamelist));
+    safe_free_dirent(namelist);
+    safe_free_dirent(nvmenamelist);
 
     struct dirent **ccisslist;
     int num_ccissdevs = scandir("/dev", &ccisslist, ciss_filter, sortFunc);
@@ -2418,9 +2424,9 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 beginRaidHandleList = raidHandleList;
             }
             //now free this as we are done with it.
-            safe_Free(C_CAST(void**, &ccisslist[cissIter]));
+            safe_free_dirent(&ccisslist[cissIter]);
         }
-        safe_Free(C_CAST(void**, &ccisslist));
+        safe_free_dirent(ccisslist);
     }
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -2518,7 +2524,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(C_CAST(void**, &devs[driveNumber]));
+            safe_free(&devs[driveNumber]);
         }
 
 #if defined (ENABLE_CISS)
@@ -3223,7 +3229,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
                     }
                 }
             }
-            safe_Free(C_CAST(void**, &parts));
+            safe_free_spartition_info(&parts);
         }
         else
         {
