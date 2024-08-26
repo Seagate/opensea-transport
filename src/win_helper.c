@@ -4170,7 +4170,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                             }
                         }
                         //DWORD lastError = GetLastError();
-                        safe_free(&diskExtents);
+                        safe_free(M_REINTERPRET_CAST(void**, &diskExtents));
                     }
                 }
                 CloseHandle(letterHandle);
@@ -5575,6 +5575,11 @@ typedef struct _scsiPassThroughIOStruct {
     UCHAR                       dataBuffer[1];//for double buffered transfer only
 } scsiPassThroughIOStruct, *ptrSCSIPassThroughIOStruct;
 
+static M_INLINE void safe_free_scsi_pt_io(scsiPassThroughIOStruct **scsipt)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, scsipt));
+}
+
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx *scsiIoCtx, ptrSCSIPassThroughIOStruct psptd, uint8_t *alignedPointer)
 {
@@ -5742,7 +5747,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         if (overlappedStruct.hEvent == M_NULLPTR)
         {
-            safe_free(&sptdioDB);
+            safe_free_scsi_pt_io(&sptdioDB);
             return OS_PASSTHROUGH_FAILURE;
         }
         start_Timer(&commandTimer);
@@ -5827,7 +5832,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx *scsiIoCtx)
             }
         }
     }
-    safe_free(&sptdioDB);
+    safe_free_scsi_pt_io(&sptdioDB);
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     return ret;
 }
@@ -6342,6 +6347,11 @@ typedef struct _ATADoubleBufferedIO
     UCHAR dataBuffer[1];
 }ATADoubleBufferedIO, *ptrATADoubleBufferedIO;
 
+static M_INLINE void safe_free_ata_db_io(ATADoubleBufferedIO **atadbio)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, atadbio));
+}
+
 static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx *p_scsiIoCtx, ptrATADoubleBufferedIO p_t_ata_pt)
 {
     eReturnValues ret = SUCCESS;
@@ -6638,7 +6648,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx *scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_free(&doubleBufferedIO);
+    safe_free_ata_db_io(&doubleBufferedIO);
     return ret;
 }
 
@@ -6675,6 +6685,11 @@ typedef struct _IDEDoubleBufferedIO
     ULONG   dataBufferSize;
     UCHAR   dataBuffer[1];
 }IDEDoubleBufferedIO, *ptrIDEDoubleBufferedIO;
+
+static M_INLINE void safe_free_ide_db_io(IDEDoubleBufferedIO **idedbio)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, idedbio));
+}
 
 static eReturnValues convert_SCSI_CTX_To_IDE_PT(ScsiIoCtx *p_scsiIoCtx, ptrIDEDoubleBufferedIO p_t_ide_pt)
 {
@@ -6901,7 +6916,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_free(&doubleBufferedIO);
+    safe_free_ide_db_io(&doubleBufferedIO);
     return ret;
 }
 
@@ -7641,6 +7656,16 @@ static eReturnValues convert_SCSI_CTX_To_ATA_SMART_Cmd(ScsiIoCtx *scsiIoCtx, PSE
     return SUCCESS;
 }
 
+static M_INLINE void safe_free_smart_send_cmd_in(SENDCMDINPARAMS **cmd)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, cmd));
+}
+
+static M_INLINE void safe_free_smart_send_cmd_out(SENDCMDOUTPARAMS **cmd)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, cmd));
+}
+
 static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
@@ -7678,7 +7703,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
     PSENDCMDOUTPARAMS smartIOout = C_CAST(PSENDCMDOUTPARAMS, safe_calloc(1, sizeof(SENDCMDOUTPARAMS) - 1 + dataOutLength + magicPadding));
     if (!smartIOout)
     {
-        safe_free(&smartIOin);
+        safe_free_smart_send_cmd_in(&smartIOin);
         //something went really wrong
         return MEMORY_FAILURE;
     }
@@ -7872,8 +7897,8 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx *scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_free(&smartIOin);
-    safe_free(&smartIOout);
+    safe_free_smart_send_cmd_in(&smartIOin);
+    safe_free_smart_send_cmd_out(&smartIOout);
     return ret;
 }
 
