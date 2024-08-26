@@ -152,7 +152,7 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
                 }
             }
         }
-        **, &mountedFS));
+        safe_free_statfs(&mountedFS);
     }
     return result;
 }
