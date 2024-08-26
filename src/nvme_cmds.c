@@ -842,11 +842,7 @@ eReturnValues nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogP
     getLogPage.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_LOG_PAGE;
     getLogPage.commandType = NVM_ADMIN_CMD;
     getLogPage.commandDirection = XFER_DATA_IN;
-#if defined(VMK_CROSS_COMP)
-    getLogPage.cmd.adminCmd.addr = C_CAST(uint32_t, getLogPageCmdOpts->addr);
-#else
     getLogPage.cmd.adminCmd.addr = C_CAST(uintptr_t, getLogPageCmdOpts->addr);
-#endif
     getLogPage.dataSize = getLogPageCmdOpts->dataLen;
     getLogPage.ptrData = getLogPageCmdOpts->addr;
     getLogPage.cmd.adminCmd.nsid = getLogPageCmdOpts->nsid;
