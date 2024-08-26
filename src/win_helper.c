@@ -3899,6 +3899,10 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
     return ret;
 }
 
+// static M_INLINE void safe_free_len_info(GET_LENGTH_INFORMATION **length)
+// {
+//     safe_Free(M_REINTERPRET_CAST(void**, length));
+// }
 //static eReturnValues win_Get_Length_Information(HANDLE *devHandle, PGET_LENGTH_INFORMATION *length)
 //{
 //    eReturnValues ret = FAILURE;
@@ -3916,7 +3920,7 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE devHandle, PDISK_GEOMETRY_
 //            }
 //            else
 //            {
-//                safe_Free(C_CAST(length)
+//                safe_free_len_info(length);
 //            }
 //        }
 //        else
