@@ -4657,6 +4657,7 @@ eReturnValues scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startin
         printf("Sending SCSI Get Physical Element Status\n");
     }
 
+    eDataTransferDirection dataDir = XFER_DATA_IN;
     //send the command
     if (allocationLength == 0)
     {

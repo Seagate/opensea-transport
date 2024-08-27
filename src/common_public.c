@@ -1295,7 +1295,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
 #endif
                     if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
-						char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
+						//char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
 #define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
                         DECLARE_ZERO_INIT_ARRAY(char, displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
 #if defined(_WIN32)

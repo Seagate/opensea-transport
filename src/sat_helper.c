@@ -1181,7 +1181,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
     if (ret == SUCCESS)
     {
 		ScsiIoCtx scsiIoCtx;
-		int sendIOret;
+		//int sendIOret;
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             //Print out ATA Command Information in appropriate verbose mode.
@@ -1343,7 +1343,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
                     uint8_t ataAdditionalSenseCodeQualifier = 0;
                     if (SUCCESS == ata_Request_Sense_Data(device, &ataSenseKey, &ataAdditionalSenseCode, &ataAdditionalSenseCodeQualifier))
                     {
-						int ataSenseRet;
+						//int ataSenseRet;
                         device->drive_info.ataSenseData.validData = true;
                         device->drive_info.ataSenseData.senseKey = ataSenseKey;
                         device->drive_info.ataSenseData.additionalSenseCode = ataAdditionalSenseCode;
@@ -2489,6 +2489,7 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice *devic
         return MEMORY_FAILURE;
     }
     
+    uint8_t peripheralDevice = 0;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.zonedType == ZONED_TYPE_DEVICE_MANAGED)
     {
@@ -3269,9 +3270,9 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice *device, ScsiIoCtx *
             //read identify data
             uint8_t peripheralDevice = 0;
 			//Product ID (first 16bytes of the ata model number
-            char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
-            char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
-            char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
+            //char ataSN[ATA_IDENTIFY_SN_LENGTH + 1] = { 0 };
+            //char ataMN[ATA_IDENTIFY_MN_LENGTH + 1] = { 0 };
+            //char ataFW[ATA_IDENTIFY_FW_LENGTH + 1] = { 0 };
 			uint16_t versionOffset = 58;
 
             if (scsiIoCtx->cdb[2] != 0)//if page code is non-zero, we need to return an error
@@ -4511,7 +4512,7 @@ static eReturnValues translate_SCSI_Write_Same_Command(tDevice *device, ScsiIoCt
         }
         if (useATAWriteCommands)
         {
-			uint8_t *writePattern;
+			//uint8_t *writePattern;
             uint32_t patternLength = scsiIoCtx->dataLength;
             if (ataWritePatternZeros)
             {
@@ -5494,7 +5495,7 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(tDevice *device, Scs
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
-	uint8_t *writeData;
+	//uint8_t *writeData;
     //filter out invalid fields
     if (((fieldPointer = 1) != 0 && M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 2) != 0)
         || ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0)
@@ -8550,7 +8551,7 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiI
                     uint8_t senseKey = 0;
                     uint8_t additionalSenseCode = 0;
                     uint8_t additionalSenseCodeQualifier = 0;
-					int16_t ataDescriptorNumber;
+					//int16_t ataDescriptorNumber;
                     selfTestResults[iter] = M_Byte1(parameterCode);
                     selfTestResults[iter + 1] = M_Byte0(parameterCode);
                     selfTestResults[iter + 2] = 0x03;//format and linking = 11b
@@ -8560,7 +8561,7 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(tDevice *device, ScsiI
                     int16_t ataDescriptorNumber = C_CAST(int16_t, selfTestIndex - parameterCode + INT16_C(1));
                     if (ataDescriptorNumber > 0)
                     {
-						uint16_t pageNumber;
+						//uint16_t pageNumber;
                         //set the buffer offset from the descriptor number we got above - we may need to read a different page of the log if it's a multipage log
                         ataLogOffset = ((C_CAST(uint32_t, ataDescriptorNumber) * 26) - 26) + 4;
                         uint16_t pageNumber = C_CAST(uint16_t, ataLogOffset / LEGACY_DRIVE_SEC_SIZE);
@@ -9430,10 +9431,10 @@ static eReturnValues translate_Application_Client_Log_Sense_0x0F(tDevice *device
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
-	uint16_t numberOfParametersToReturn;
+	//uint16_t numberOfParametersToReturn;
 	uint8_t *applicationClientLog;
-	uint16_t offset;
-	uint16_t parameterCounter;
+	//uint16_t offset;
+	//uint16_t parameterCounter;
 
     //support parameters 0 - 1FFh
     if (parameterCode > 0x01FF)
@@ -10040,7 +10041,7 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice *devic
             while (parameterDataOffset < parameterListLength && parameterDataOffset < totalParameterListLength)
             {
                 uint16_t parameterCode = M_BytesTo2ByteValue(ptrData[parameterDataOffset + 0], ptrData[parameterDataOffset + 1]);
-				uint8_t *hostLogData;
+				//uint8_t *hostLogData;
 				uint16_t offsetOnATAPage = 0;
                 uint8_t ataLogPageToRead = 0;
 
@@ -11953,8 +11954,8 @@ static eReturnValues translate_Mode_Select_Caching_08h(tDevice *device, ScsiIoCt
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t bitPointer = 0;
     uint16_t fieldPointer = 0;
-    int wceRet = SUCCESS;
-    int draRet = SUCCESS;
+    //int wceRet = SUCCESS;
+    //int draRet = SUCCESS;
     //start checking everything to make sure it looks right before we issue commands
     if (pageLength != 0x12)
     {
@@ -12912,8 +12913,8 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice *device, ScsiIoC
         //uint16_t modeDataLength = scsiIoCtx->pdata[0];
         //uint8_t deviceSpecificParameter = scsiIoCtx->pdata[2];
         //TODO: Validate writeProtected and dpoFua bits.
-        bool longLBA = false;
-        uint16_t blockDescriptorLength = scsiIoCtx->pdata[3];
+        //bool longLBA = false;
+        //uint16_t blockDescriptorLength = scsiIoCtx->pdata[3];
         if (tenByteCommand)
         {
             //modeDataLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1]);
