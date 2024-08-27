@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-project('opensea-transport', 'c', license: 'MPL-2.0', version: '3.0.1', default_options : ['warning_level=2'])
+project('opensea-transport', 'c', license: 'MPL-2.0', version: '8.0.1', default_options : ['warning_level=2'])
 
 c = meson.get_compiler('c')
 
