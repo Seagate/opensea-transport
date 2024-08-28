@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -188,7 +188,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         {
             supported = false;
         }
-        safe_Free_aligned(C_CAST(void**, &passthroughBuffer));
+        safe_free_aligned(&passthroughBuffer);
     }
     return supported;
 }
@@ -438,7 +438,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         case NVM_UNKNOWN_CMD_SET:
             //Fallthrough to default
         default:
-            safe_Free_aligned(C_CAST(void**, &passthroughBuffer));
+            safe_free_aligned(&passthroughBuffer);
             return BAD_PARAMETER;
         }
 
@@ -474,7 +474,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             //TODO: Handle bidirectional transfers!!!
             //NVME_BI_DIRECTION
         default:
-            safe_Free_aligned(C_CAST(void**, &passthroughBuffer));
+            safe_free_aligned(&passthroughBuffer);
             return BAD_PARAMETER;
         }
 
@@ -569,7 +569,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
 
         nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
-        safe_Free_aligned(C_CAST(void**, &passthroughBuffer));
+        safe_free_aligned(&passthroughBuffer);
     }
     else
     {

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-project('opensea-transport', 'c', license: 'MPL-2.0', version: '3.0.1', default_options : ['warning_level=2'])
+project('opensea-transport', 'c', license: 'MPL-2.0', version: '8.0.1', default_options : ['warning_level=2'])
 
 c = meson.get_compiler('c')
 
@@ -37,7 +37,6 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wundef',
   '-Wformat',
   '-Wformat=2',
-  '-Wsign-conversion',
   '-Wint-conversion',#-Warith-conversion
   '-Wenum-conversion',
   '-Wfloat-conversion',
@@ -77,6 +76,11 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wreturn-type',
   '-fvisibility=hidden', #to work similarly to Window's DLL import/export
   ]
+
+  if c.get_id().contains('gcc') and c.version().version_compare('>=10.0')
+    #only enable the sign conversion warning on versions 10 and up because it is way too noisy on earlier GCC versions than it is useful-TJE
+    warning_flags += '-Wsign-conversion'
+  endif
 
   if c.get_id().contains('gcc') and target_machine.system() == 'windows'
     #According to the link below, this is not needed in Windows...it also causes a bug in some versions of GCC for Windows.
@@ -176,13 +180,16 @@ elif c.get_id().contains('msvc')
     '/we4628', # digraphs not supported with -Ze. Character sequence 'digraph' not interpreted as alternate token for 'char'
     '/we4289', # nonstandard extension used : 'var' : loop control variable declared in the for-loop is used outside the for-loop scope
     '/we4464', # relative include path contains '..'
-    '/std:c17', #NOTE: It would be better to specify for the project settings above for all compilers, but currently still supporting MSVC and GCC compilers that may not be C11 compatible.-TJE
     '/GS', #security cookie for stack protection
     '/sdl', #adds recommended security development lifecycle checks
     '/Qspectre',
     '/guard:cf', #control flow guard
     '/d2guard4', #control flow guard
   ]
+
+  if c.has_argument('/std:c17')
+    c_std = 'c17'
+  endif
 
   linker_flags += [
     '/guard:cf', #control flow guard
@@ -212,17 +219,23 @@ endif
 
 global_cpp_args = []
 
-#if GCC less than 5, need to set -std=gnu99 at minimum. gnu11 became the default in 5, 17 default in 7 or 8.
-#TODO: May be able to move to c11/gnu11 instead, but will need to do a lot of testing first
-#skipping sunos since this was a compatibility issue that was reported earlier. May be able to find a better way to handle this in the future.
 if not (target_machine.system() == 'sunos') and c.get_id().contains('gcc')
   if c.version().version_compare('<5.0')
-    if c.has_argument('-std=gnu99')
-      #Add this argument to the list since C99 is a minimum required C compiler standard
-      add_project_arguments('-std=gnu99', language: 'c',)
-    else
-      error('C99/GNU99 standard is required but was not able to be set!')
-    endif
+  #4.7.4+ has C11 support, but c89 is the default standard so we need to change it.
+    if c.has_argument('-std=gnu11')
+        c_std = 'gnu11'
+        if meson.version().version_compare('<1.0.0')
+          add_project_arguments('-std=gnu11', language : 'c')
+        endif
+      elif c.has_argument('-std=gnu99')
+        #Add this argument to the list since C99 is a minimum required C compiler standard
+        c_std = 'gnu99'
+        if meson.version().version_compare('<1.0.0')
+          add_project_arguments('-std=gnu99', language : 'c')
+        endif
+      else
+        error('C99/GNU99 standard is required but was not able to be set!')
+      endif
   endif
 endif
 

@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -286,6 +286,12 @@ typedef struct _spartitionInfo
     char fsName[PART_INFO_NAME_LENGTH];
     char mntPath[PART_INFO_PATH_LENGTH];
 }spartitionInfo, *ptrsPartitionInfo;
+
+static M_INLINE void safe_free_spartition_info(spartitionInfo** partinfo)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, partinfo));
+}
+
 //partitionInfoList is a pointer to the beginning of the list
 //listCount is the number of these structures, which should be returned by get_Partition_Count
 static eReturnValues get_Partition_List(const char * blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
@@ -530,13 +536,13 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
                                 sysFsInfo->driver_info.driverBuildNumber = 0;
                             }
                         }
-                        safe_Free(C_CAST(void**, &versionFileData));
+                        safe_free(&versionFileData);
                     }
                     fclose(versionFile);
                 }
             }
         }
-        safe_Free(C_CAST(void**, &driverVersionFilePath));
+        safe_free(&driverVersionFilePath);
     }
     snprintf(sysFsInfo->driver_info.driverName, MAX_DRIVER_NAME, "%s", basename(driverPath));
     return;
@@ -617,8 +623,8 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
-            safe_Free(C_CAST(void**, &driverPath));
-            safe_Free(C_CAST(void**, &pciPath));
+            safe_free(&driverPath);
+            safe_free(&pciPath);
             sysFsInfo->adapter_info.infoType = ADAPTER_INFO_PCI;
         }
     }
@@ -704,8 +710,8 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
-            safe_Free(C_CAST(void**, &driverPath));
-            safe_Free(C_CAST(void**, &usbPath));
+            safe_free(&driverPath);
+            safe_free(&usbPath);
             sysFsInfo->adapter_info.infoType = ADAPTER_INFO_USB;
         }
     }
@@ -768,8 +774,8 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
-            safe_Free(C_CAST(void**, &driverPath));
-            safe_Free(C_CAST(void**, &fwPath));
+            safe_free(&driverPath);
+            safe_free(&fwPath);
         }
     }
     return;
@@ -858,9 +864,9 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
             //printf("\nPath: %s\tname: %s", sysFsInfo->driver_info.driverPath,
-            safe_Free(C_CAST(void**, &driverPath));
+            safe_free(&driverPath);
             sysFsInfo->adapter_info.infoType = ADAPTER_INFO_PCI;
-            safe_Free(C_CAST(void**, &pciPath));
+            safe_free(&pciPath);
         }
     }
     return;
@@ -902,7 +908,7 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
             ++counter;
        }
     }
-    safe_Free(C_CAST(void**, &handle));
+    safe_free(&handle);
     return;
 }
 
@@ -1113,8 +1119,8 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
                             }
                         }
                         //printf("Finish handle mapping\n");
-                        safe_Free(C_CAST(void**, &block));
-                        safe_Free(C_CAST(void**, &gen));
+                        safe_free(&block);
+                        safe_free(&gen);
                     }
                     else
                     {
@@ -1125,7 +1131,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
                 {
                     //Not a link...nothing further to do
                 }
-                safe_Free(C_CAST(void**, &duphandle));
+                safe_free(&duphandle);
             }
         }
     }
@@ -1232,8 +1238,8 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     else
                     {
                         //printf ("could not map to generic class");
-                        safe_Free(C_CAST(void**, &incomingClassName));
-                        safe_Free(C_CAST(void**, &dupHandle));
+                        safe_free(&incomingClassName);
+                        safe_free(&dupHandle);
                         return NOT_SUPPORTED;
                     }
                 }
@@ -1244,8 +1250,8 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         //printf ("could not map to block class");
-                        safe_Free(C_CAST(void**, &incomingClassName));
-                        safe_Free(C_CAST(void**, &dupHandle));
+                        safe_free(&incomingClassName);
+                        safe_free(&dupHandle);
                         return NOT_SUPPORTED;
                     }
                 }
@@ -1316,46 +1322,46 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                                         *blockHandle = strndup(basename(classPtr), safe_strlen(basename(classPtr)));
                                         *genericHandle = strdup(basehandle);
                                     }
-                                    safe_Free(C_CAST(void**, &className));
-                                    safe_Free(C_CAST(void**, &incomingClassName));
+                                    safe_free(&className);
+                                    safe_free(&incomingClassName);
                                     // start PRH valgrind fixes
                                     // this is causing a mem leak... when we bail the loop, there are a string of classList[] items 
                                     // still allocated. 
                                     for(remains = iter; remains<numberOfItems; remains++)
                                     {
-                                        safe_Free(C_CAST(void**, &classList[remains]));
+                                        safe_free_dirent(&classList[remains]);
                                     }
-                                    safe_Free(C_CAST(void**, &classList));
-                                    safe_Free(C_CAST(void**, &temp));
-                                    safe_Free(C_CAST(void**, &dupHandle));
+                                    safe_free_dirent(classList);
+                                    safe_free(&temp);
+                                    safe_free(&dupHandle);
                                     return SUCCESS;
                                     break;//found a match, exit the loop
                                 }
                             }
-                            safe_Free(C_CAST(void**, &className));
+                            safe_free(&className);
                         }
                     }
-                    safe_Free(C_CAST(void**, &classList[iter])); // PRH - valgrind
-                    safe_Free(C_CAST(void**, &temp));
+                    safe_free_dirent(&classList[iter]); // PRH - valgrind
+                    safe_free(&temp);
                 }
-                safe_Free(C_CAST(void**, &classList));
+                safe_free_dirent(classList);
             }
             else
             {
                 //not a link, or some other error....probably an old kernel
-                safe_Free(C_CAST(void**, &incomingClassName));
-                safe_Free(C_CAST(void**, &dupHandle));
+                safe_free(&incomingClassName);
+                safe_free(&dupHandle);
                 return NOT_SUPPORTED;
             }
-            safe_Free(C_CAST(void**, &dupHandle));
+            safe_free(&dupHandle);
         }
         else
         {
             //Mapping is not supported...probably an old kernel
-            safe_Free(C_CAST(void**, &incomingClassName));
+            safe_free(&incomingClassName);
             return NOT_SUPPORTED;
         }
-        safe_Free(C_CAST(void**, &incomingClassName));
+        safe_free(&incomingClassName);
     }
     return UNKNOWN;
 }
@@ -1402,7 +1408,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
                     }
                 }
             }
-            safe_Free(C_CAST(void**, &parts));
+            safe_free_spartition_info(&parts);
         }
         else
         {
@@ -1457,8 +1463,8 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
         {
             deviceHandle = strdup(filename);
         }
-        safe_Free(C_CAST(void**, &genHandle));
-        safe_Free(C_CAST(void**, &blockHandle));
+        safe_free(&genHandle);
+        safe_free(&blockHandle);
     }
     else
     {
@@ -1477,12 +1483,12 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
         print_Errno_To_Screen(errno);
         if (device->os_info.fd == EACCES)
         {
-            safe_Free(C_CAST(void**, &deviceHandle));
+            safe_free(&deviceHandle);
             return PERMISSION_DENIED;
         }
         else
         {
-            safe_Free(C_CAST(void**, &deviceHandle));
+            safe_free(&deviceHandle);
             return FAILURE;
         }
     }
@@ -1499,7 +1505,7 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
         set_Device_Fields_From_Handle(deviceHandle, device);
         setup_Passthrough_Hacks_By_ID(device);
         set_Device_Partition_Info(device);
-        safe_Free(C_CAST(void**, &deviceHandle));
+        safe_free(&deviceHandle);
         return ret;
     }
     //Add support for other flags. 
@@ -1628,7 +1634,7 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
             }
         }
     }
-    safe_Free(C_CAST(void**, &deviceHandle));
+    safe_free(&deviceHandle);
     return ret;
 }
 
@@ -1823,7 +1829,7 @@ eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx )
         {
             printf("%s Didn't understand direction\n", __FUNCTION__);
         }
-        safe_Free_aligned(C_CAST(void**, &localSenseBuffer));
+        safe_free_aligned(&localSenseBuffer);
         return BAD_PARAMETER;
     }
 
@@ -2127,7 +2133,7 @@ eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx )
 #ifdef _DEBUG
     printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
-    safe_Free_aligned(C_CAST(void**, &localSenseBuffer));
+    safe_free_aligned(&localSenseBuffer);
     return ret;
 }
 
@@ -2224,9 +2230,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
                 beginRaidHandleList = raidHandleList;
             }
             //now free this as we are done with it.
-            safe_Free(C_CAST(void**, &ccisslist[cissIter]));
+            safe_free_dirent(&ccisslist[cissIter]);
         }
-        safe_Free(C_CAST(void**, &ccisslist));
+        safe_free_dirent(ccisslist);
     }
     for (uint32_t iter = 0; iter < num_devs; ++iter)
     {
@@ -2267,9 +2273,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the list of names to not leak memory
     for (uint32_t iter = 0; iter < num_devs; ++iter)
     {
-        safe_Free(C_CAST(void**, &namelist[iter]));
+        safe_free_dirent(&namelist[iter]);
     }
-    safe_Free(C_CAST(void**, &namelist));
+    safe_free_dirent(namelist);
     //add nvme devices to the list
     scandirresult = scandir("/dev", &nvmenamelist, nvme_filter,sortFunc);
     if (scandirresult >= 0)
@@ -2279,9 +2285,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the nvmenamelist to not leak memory
     for (uint32_t iter = 0; iter < num_nvme_devs; ++iter)
     {
-        safe_Free(C_CAST(void**, &nvmenamelist[iter]));
+        safe_free_dirent(&nvmenamelist[iter]);
     }
-    safe_Free(C_CAST(void**, &nvmenamelist));
+    safe_free_dirent(nvmenamelist);
 
     *numberOfDevices = num_devs + num_nvme_devs;
 
@@ -2391,7 +2397,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t handleSize = (safe_strlen("/dev/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
-        safe_Free(C_CAST(void**, &namelist[i]));
+        safe_free_dirent(&namelist[i]);
     }
     //add nvme devices to the list
     for (j = 0; i < totalDevs && j < num_nvme_devs; i++, j++)
@@ -2399,11 +2405,11 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t handleSize = (safe_strlen("/dev/") + safe_strlen(nvmenamelist[j]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", nvmenamelist[j]->d_name);
-        safe_Free(C_CAST(void**, &nvmenamelist[j]));
+        safe_free_dirent(&nvmenamelist[j]);
     }
     devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(C_CAST(void**, &namelist));
-    safe_Free(C_CAST(void**, &nvmenamelist));
+    safe_free_dirent(namelist);
+    safe_free_dirent(nvmenamelist);
 
     struct dirent **ccisslist;
     int num_ccissdevs = scandir("/dev", &ccisslist, ciss_filter, sortFunc);
@@ -2418,9 +2424,9 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 beginRaidHandleList = raidHandleList;
             }
             //now free this as we are done with it.
-            safe_Free(C_CAST(void**, &ccisslist[cissIter]));
+            safe_free_dirent(&ccisslist[cissIter]);
         }
-        safe_Free(C_CAST(void**, &ccisslist));
+        safe_free_dirent(ccisslist);
     }
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -2518,7 +2524,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(C_CAST(void**, &devs[driveNumber]));
+            safe_free(&devs[driveNumber]);
         }
 
 #if defined (ENABLE_CISS)
@@ -2555,7 +2561,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(C_CAST(void**, &devs));
+    safe_free(devs);
     return returnValue;
 }
 
@@ -2619,7 +2625,9 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     memset(&commandTimer, 0, sizeof(commandTimer));
     struct nvme_admin_cmd adminCmd;
     struct nvme_user_io nvmCmd;// it's possible that this is not defined in some funky early nvme kernel, but we don't see that today. This seems to be defined everywhere. -TJE
+#if defined(NVME_IOCTL_IO_CMD)
     struct nvme_passthru_cmd *passThroughCmd = (struct nvme_passthru_cmd*)&adminCmd;//setting a pointer since these are defined to be the same. No point in allocating yet another structure. - TJE
+#endif //NVME_IOCTL_IO_CMD
 
     int ioctlResult = 0;
 
@@ -2759,6 +2767,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             }
             break;
         default:
+#if defined (NVME_IOCTL_IO_CMD)
             //use the generic passthrough command structure and IO_CMD
             memset(passThroughCmd, 0, sizeof(struct nvme_passthru_cmd));
             passThroughCmd->opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
@@ -2822,6 +2831,9 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
                 nvmeIoCtx->commandCompletionData.dw0Valid = true;
                 nvmeIoCtx->commandCompletionData.statusAndCID = C_CAST(uint32_t, ioctlResult) << 17;//shift into place since we don't get the phase tag or command ID bits and these are the status field
             }
+#else
+            ret = OS_COMMAND_NOT_AVAILABLE;
+#endif //NVME_IOCTL_IO_CMD
             break;
         }
         break;
@@ -2848,7 +2860,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 
 static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
 {
-#if !defined(DISABLE_NVME_PASSTHROUGH)
+#if !defined(DISABLE_NVME_PASSTHROUGH) && defined (NVME_IOCTL_SUBSYS_RESET) && defined (NVME_IOCTL_RESET)
     //Can only do a reset on a controller handle. Need to get the controller handle if this is a namespace handle!!!
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     int handleToReset = device->os_info.fd;
@@ -3217,7 +3229,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
                     }
                 }
             }
-            safe_Free(C_CAST(void**, &parts));
+            safe_free_spartition_info(&parts);
         }
         else
         {

@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -138,7 +138,7 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSe
 
     if (localSenseFieldsAllocated)
     {
-        safe_Free(C_CAST(void**, &localSenseFields));
+        safe_free_sensefields(&localSenseFields);
     }
     return ret;
 }
@@ -446,7 +446,7 @@ eReturnValues scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSan
         memcpy(&overwriteBuffer[4], pattern, patternLengthBytes);
     }
     ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
-    safe_Free_aligned(C_CAST(void**, &overwriteBuffer));
+    safe_free_aligned(&overwriteBuffer);
     return ret;
 }
 
@@ -4630,6 +4630,7 @@ eReturnValues scsi_Report_Zone_Domains(tDevice* device, eZoneDomainReportingOpti
 eReturnValues scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startingElement, uint32_t allocationLength, uint8_t filter, uint8_t reportType, uint8_t *ptrData)
 {
     eReturnValues ret = FAILURE;
+    eDataTransferDirection dataDir = XFER_DATA_IN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
     cdb[OPERATION_CODE] = 0x9E;
     //set the service action
@@ -4657,7 +4658,6 @@ eReturnValues scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startin
         printf("Sending SCSI Get Physical Element Status\n");
     }
 
-    eDataTransferDirection dataDir = XFER_DATA_IN;
     //send the command
     if (allocationLength == 0)
     {

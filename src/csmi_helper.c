@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -53,6 +53,12 @@
 #endif
 
 extern bool validate_Device_Struct(versionBlock);
+
+//functions to assist freeing csmi structures easily/safely
+static M_INLINE void safe_free_csmi_raid_config(CSMI_SAS_RAID_CONFIG_BUFFER** raidconfig)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, raidconfig));
+}
 
 #if defined (_WIN32)
 void print_Last_Error(DWORD lastError);
@@ -304,7 +310,7 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
     {
         if (localTimer)
         {
-            safe_Free(C_CAST(void**, &timer));
+            safe_free_seatimer(&timer);
         }
         return MEMORY_FAILURE;
     }
@@ -385,7 +391,7 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
     csmiIoOutParams->sysIoctlReturn = localIoctlReturn;
     if (localTimer)
     {
-        safe_Free(C_CAST(void**, &timer));
+        safe_free_seatimer(&timer);
     }
     return ret;
 }
@@ -3093,7 +3099,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                                         }
                                     }
                                 }
-                                safe_Free(C_CAST(void**, &raidConfig));
+                                safe_free_csmi_raid_config(&raidConfig);
                             }
                         }
                     }
@@ -3270,7 +3276,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                                                     foundPhyInfo = true;
                                                     //TODO: To help prevent multiport or multi-lun issues, we should REALLY check the device identification VPD page, but that can be a future enhancement
                                                 }
-                                                safe_Free(C_CAST(void**, &serialNumber));
+                                                safe_free(&serialNumber);
                                             }
                                         }
                                         //else...catastrophic failure? Not sure what to do here since this should be really rare to begin with.
@@ -3294,7 +3300,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
                 printf("JSCI: No phy info. Not enough information to use CSMI passthrough\n");
 #endif //CSMI_DEBUG
                 //We don't have enough information to use CSMI passthrough on this device. Free memory and return NOT_SUPPORTED
-                safe_Free(C_CAST(void**, &device->os_info.csmiDeviceData));
+                safe_free_csmi_dev_info(&device->os_info.csmiDeviceData);
                 ret = NOT_SUPPORTED;
             }
 
@@ -3351,7 +3357,7 @@ eReturnValues close_CSMI_RAID_Device(tDevice *device)
 #if defined (_WIN32)
         CloseHandle(device->os_info.fd);
         device->os_info.last_error = GetLastError();
-        safe_Free(C_CAST(void**, &device->os_info.csmiDeviceData));
+        safe_free_csmi_dev_info(&device->os_info.csmiDeviceData);
         device->os_info.last_error = 0;
         device->os_info.fd = INVALID_HANDLE_VALUE;
 #else //_WIN32
@@ -3365,7 +3371,7 @@ eReturnValues close_CSMI_RAID_Device(tDevice *device)
         }
         device->os_info.fd = -1;
 #endif //_WIN32
-        safe_Free(C_CAST(void**, &device->os_info.csmiDeviceData));
+        safe_free_csmi_dev_info(&device->os_info.csmiDeviceData);
         device->os_info.last_error = 0;
         return SUCCESS;
     }
@@ -3496,13 +3502,13 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #if defined (CSMI_DEBUG)
         printf("GRD: Handle doesn't match std csmi format or Intel NVMe csmi format!\n");
 #endif //CSMI_DEBUG
-        safe_Free(C_CAST(void**, &baseHandle));
+        safe_free(&baseHandle);
         return BAD_PARAMETER;
     }
 #if defined (_WIN32)
     if (baseHandle && safe_strlen(baseHandle) > 0)
     {
-        safe_Free(C_CAST(void**, &baseHandle));
+        safe_free(&baseHandle);
         return BAD_PARAMETER;
     }
     else
@@ -3518,7 +3524,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
         }
         if (snprintfres < 1 || snprintfres > OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
         {
-            safe_Free(C_CAST(void**, &baseHandle));
+            safe_free(&baseHandle);
             return BAD_PARAMETER;
         }
     }
@@ -3531,17 +3537,17 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
         int snprintfres = snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s", controllerNum, portID, phyID, lun, baseHandle);
         if (snprintfres < 1 || snprintfres > OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
         {
-            safe_Free(C_CAST(void**, &baseHandle));
+            safe_free(&baseHandle);
             return BAD_PARAMETER;
         }
     }
     else
     {
-        safe_Free(C_CAST(void**, &baseHandle));
+        safe_free(&baseHandle);
         return BAD_PARAMETER;
     }
 #endif //_WIN32
-    safe_Free(C_CAST(void**, &baseHandle));
+    safe_free(&baseHandle);
 #if defined (CSMI_DEBUG)
     printf("GRD: Opening low-level device handle\n");
 #endif //CSMI_DEBUG
@@ -3568,7 +3574,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
     //DWORD lastError = GetLastError();
     if (device->os_info.fd != INVALID_HANDLE_VALUE)
 #else //_WIN32
-    if ((device->os_info.fd = open(baseHandle, O_RDWR | O_NONBLOCK)) >= 0)
+    if (baseHandle != M_NULLPTR && (device->os_info.fd = open(baseHandle, O_RDWR | O_NONBLOCK)) >= 0)
 #endif //_WIN32
     {
 #if defined (CSMI_DEBUG)
@@ -3771,7 +3777,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
                                 }
                             }
                         }
-                        safe_Free(C_CAST(void**, &raidConfig));
+                        safe_free_csmi_raid_config(&raidConfig);
                     }
                 }
             }
@@ -3989,7 +3995,7 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                                             //No CSMI level specified
                                             access = CSMI_SECURITY_ACCESS_LIMITED;
                                         }
-                                        safe_Free(C_CAST(void**, &regData));
+                                        safe_free(&regData);
                                     }
                                 }
                             }
@@ -4013,8 +4019,8 @@ eCSMISecurityAccess get_CSMI_Security_Access(char *driverName)
                 access = CSMI_SECURITY_ACCESS_LIMITED;
             }
         }
-        safe_Free(C_CAST(void**, &tdriverName));
-        safe_Free(C_CAST(void**, &registryKey));
+        safe_free(&tdriverName);
+        safe_free(&registryKey);
     }
 #else //not windows, need root, otherwise not available at all. Return FULL if running as root
     M_USE_UNUSED(driverName);
@@ -4244,7 +4250,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
                                     {
                                         raidConfigIncomplete = true;
                                     }
-                                    safe_Free(C_CAST(void**, &csmiRAIDConfig));
+                                    safe_free_csmi_raid_config(&csmiRAIDConfig);
                                 }
                             }
                             if (raidConfigIncomplete)
@@ -4274,6 +4280,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
 #endif //CSMI_DEBUG
                                         //Creating a temporary tDevice structure to use for the passthrough commands.-TJE
                                         tDevice tempDevice;
+                                        memset(&tempDevice, 0, sizeof(tDevice));
                                         tempDevice.os_info.minimumAlignment = sizeof(void*);//setting alignment this way to be compatible across OSs since CSMI doesn't really dictate an alignment, but we should set something. - TJE
                                         tempDevice.issue_io = C_CAST(issue_io_func, send_CSMI_IO);
                                         tempDevice.drive_info.drive_type = SCSI_DRIVE;//assume SCSI for now. Can be changed later
@@ -5039,14 +5046,14 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                                                                 printf("GDL: End device handle found and set as %s\n", handle);
     #endif //CSMI_DEBUG
                                                                                             }
-                                                                                            safe_Free(C_CAST(void**, &serialNumber));
+                                                                                            safe_free(&serialNumber);
                                                                                         }
                                                                                     }
                                                                                     //else...catastrophic failure? Not sure what to do here since this should be really rare to begin with.
                                                                                 }
                                                                             }
                                                                         }
-                                                                        safe_Free(C_CAST(void**, &tempDevice.os_info.csmiDeviceData));
+                                                                        safe_free_csmi_dev_info(&tempDevice.os_info.csmiDeviceData);
                                                                     }
                                                                     else if ((is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSASAddress, 8) || is_Empty(phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8)) //SAS address is empty
                                                                            && is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bModel, 40) && !is_Empty(csmiRAIDConfig->Configuration.Drives[iter].bSerialNumber, 40)) //MN is empty, but SN is not. Missing drive from the set.
@@ -5096,7 +5103,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                                 }
                                             }
                                         }
-                                        safe_Free(C_CAST(void**, &csmiRAIDConfig));
+                                        safe_free_csmi_raid_config(&csmiRAIDConfig);
                                     }
                                 }
                                 if (raidInfoIncomplete)

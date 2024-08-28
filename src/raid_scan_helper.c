@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2020-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2020-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -82,6 +82,11 @@ ptrRaidHandleToScan add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan listBegin
     return M_NULLPTR;
 }
 
+static M_INLINE void free_RaidHandleToScan(ptrRaidHandleToScan *handle)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, handle));
+}
+
 //Make it easier to remove an item. Useful when scanning multiple RAID libs because the first RAID lib can remove handles that did in fact work so that they are not scanned again by another RAID library.
 //returns a pointer to the entry after "toRemove", which can be M_NULLPTR
 //If previous is M_NULLPTR, then this is the beginning of the list. This is allowed.
@@ -98,7 +103,7 @@ ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHand
                 //If there was a previous entry, need to update it's next pointer
                 previous->next = returnMe;
             }
-            safe_Free(C_CAST(void**, &toRemove));
+            free_RaidHandleToScan(&toRemove);
             return returnMe;
         }
         else
@@ -108,7 +113,7 @@ ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHand
             {
                 previous->next = M_NULLPTR;
             }
-            safe_Free(C_CAST(void**, &toRemove));
+            free_RaidHandleToScan(&toRemove);
             return M_NULLPTR;
         }
     }
@@ -123,12 +128,12 @@ void delete_RAID_List(ptrRaidHandleToScan listBegin)
         if (listBegin->next)
         {
             ptrRaidHandleToScan nextDelete = listBegin->next;
-            safe_Free(C_CAST(void**, &listBegin));
+            free_RaidHandleToScan(&listBegin);
             listBegin = nextDelete;
         }
         else
         {
-            safe_Free(C_CAST(void**, &listBegin));
+            free_RaidHandleToScan(&listBegin);
             break;
         }
     }

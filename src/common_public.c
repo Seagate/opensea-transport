@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -20,6 +20,7 @@
 #include "code_attributes.h"
 #include "math_utils.h"
 #include "error_translation.h"
+#include "secure_file.h"
 
 #include "common_public.h"
 #include "platform_helper.h"
@@ -1025,25 +1026,29 @@ void print_Low_Level_Info(tDevice* device)
     }
 }
 
-size_t load_Bin_Buf(char *filename, void *myBuf, size_t bufSize)
+size_t load_Bin_Buf(const char *filename, void *myBuf, size_t bufSize)
 {
-    //eReturnValues ret = UNKNOWN;
-    FILE     *fp;
+    secureFileInfo *fp = secure_Open_File(filename, "rb", M_NULLPTR, M_NULLPTR, M_NULLPTR);
     size_t bytesRead = 0;
 
     //Open file
 
-    if ((fp = fopen(filename, "rb")) == M_NULLPTR)
+    if (fp == M_NULLPTR || fp->error != SEC_FILE_SUCCESS)
     {
-        return FILE_OPEN_ERROR;
+        free_Secure_File_Info(&fp);
+        return 0;
     }
 
-    fseek(fp, 0, SEEK_SET); //should open to start but hey
-
     //Read file contents into buffer
-    bytesRead = fread(myBuf, 1, bufSize, fp);
-    fclose(fp);
-
+    if (SEC_FILE_SUCCESS != secure_Read_File(fp, myBuf, bufSize, sizeof(uint8_t), bufSize, &bytesRead))
+    {
+        printf("Error reading file into memory\n");
+    }
+    if (SEC_FILE_SUCCESS != secure_Close_File(fp))
+    {
+        printf("Error closing file after reading!\n");
+    }
+    free_Secure_File_Info(&fp);
     return bytesRead;
 }
 
@@ -1295,7 +1300,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
 #endif
                     if (scan_Drive_Type_Filter(&deviceList[devIter], flags) && scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
-						//char printable_sn[SERIAL_NUM_LEN + 1] = { 0 };
+                        DECLARE_ZERO_INIT_ARRAY(char, printable_sn, SERIAL_NUM_LEN + 1);
 #define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
                         DECLARE_ZERO_INIT_ARRAY(char, displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
 #if defined(_WIN32)
@@ -1313,8 +1318,8 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                                 memset(displayHandle, 0, sizeof(displayHandle));
                                 snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
                             }
-                            safe_Free(C_CAST(void**, &genName));
-                            safe_Free(C_CAST(void**, &blockName));
+                            safe_free(&genName);
+                            safe_free(&blockName);
                         }
                         else if ((flags & SD_HANDLES) > 0)
                         {
@@ -1325,11 +1330,10 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                                 memset(displayHandle, 0, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
                                 snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
                             }
-                            safe_Free(C_CAST(void**, &genName));
-                            safe_Free(C_CAST(void**, &blockName));
+                            safe_free(&genName);
+                            safe_free(&blockName);
                         }
 #endif
-                        DECLARE_ZERO_INIT_ARRAY(char, printable_sn, SERIAL_NUM_LEN + 1);
                         snprintf(printable_sn, SERIAL_NUM_LEN + 1, "%s", deviceList[devIter].drive_info.serialNumber);
                         //if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
@@ -1455,7 +1459,7 @@ bool is_Maxtor_String(char* string)
         {
             isMaxtor = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isMaxtor;
 }
@@ -1523,7 +1527,7 @@ bool is_Seagate_VendorID(tDevice *device)
         {
             isSeagate = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isSeagate;
 }
@@ -1548,7 +1552,7 @@ bool is_Seagate_MN(char* string)
         {
             isSeagate = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isSeagate;
 }
@@ -1653,7 +1657,7 @@ bool is_Conner_VendorID(tDevice *device)
         {
             isConner = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isConner;
 }
@@ -1703,7 +1707,7 @@ bool is_CDC_VendorID(tDevice *device)
             {
                 isCDC = true;
             }
-            safe_Free(C_CAST(void**, &localString));
+            safe_free(&localString);
         }
     }
     return isCDC;
@@ -1730,7 +1734,7 @@ bool is_DEC_VendorID(tDevice *device)
             {
                 isDEC = true;
             }
-            safe_Free(C_CAST(void**, &localString));
+            safe_free(&localString);
         }
     }
     return isDEC;
@@ -1755,7 +1759,7 @@ bool is_MiniScribe_VendorID(tDevice *device)
         {
             isMiniscribe = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isMiniscribe;
 }
@@ -1781,7 +1785,7 @@ bool is_Quantum_VendorID(tDevice *device)
             {
                 isQuantum = true;
             }
-            safe_Free(C_CAST(void**, &localString));
+            safe_free(&localString);
         }
     }
     return isQuantum;
@@ -1806,7 +1810,7 @@ bool is_Quantum_Model_Number(char* string)
         {
             isQuantum = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isQuantum;
 }
@@ -1860,7 +1864,7 @@ bool is_PrarieTek_VendorID(tDevice *device)
             {
                 isPrarieTek = true;
             }
-            safe_Free(C_CAST(void**, &localString));
+            safe_free(&localString);
         }
     }
     return isPrarieTek;
@@ -1887,7 +1891,7 @@ bool is_LaCie(tDevice *device)
         {
             isLaCie = true;
         }
-        safe_Free(C_CAST(void**, &vendorID));
+        safe_free(&vendorID);
     }
     return isLaCie;
 }
@@ -1912,7 +1916,7 @@ bool is_Samsung_String(char* string)
         {
             isSamsung = true;
         }
-        safe_Free(C_CAST(void**, &localString));
+        safe_free(&localString);
     }
     return isSamsung;
 }

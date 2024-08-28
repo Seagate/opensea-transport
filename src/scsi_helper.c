@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -2236,7 +2236,7 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice *device)
         {
             device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
         }
-        safe_Free_aligned(C_CAST(void**, &ataInformation));
+        safe_free_aligned(&ataInformation);
     }
     if (issueSATIdentify)
     {
@@ -2616,6 +2616,7 @@ void seagate_Serial_Number_Cleanup(const char * t10VendorIdent, char **unitSeria
             //All of these SNs should be only 8 characters long.
             DECLARE_ZERO_INIT_ARRAY(char, zeroes, SERIAL_NUM_LEN + 1);//making bigger than needed for now.
             memset(zeroes, '0', SERIAL_NUM_LEN);
+            zeroes[SERIAL_NUM_LEN] = '\0';
             if (strncmp(zeroes, *unitSerialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
             {
                 //8 zeroes at the beginning. Strip them off
@@ -3061,7 +3062,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                         {
                             fullCmdSupport = true;
                         }
-                        safe_Free_aligned(C_CAST(void**, &nvmeIdentify));
+                        safe_free_aligned(&nvmeIdentify);
                     }
                     //This code will setup known hacks for these devices since it wasn't already detected by lower layers based on VID/PID reported over the USB interface
                     checkForSAT = false;
@@ -3133,6 +3134,13 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             checkForSAT = false;
         }
 
+        if (strncmp("Msft", device->drive_info.T10_vendor_ident, 4) == 0 && strncmp("Virtual Disk", device->drive_info.product_identification, 12) == 0)
+        {
+            //This is a microsoft virtual drive setup for one of many reasons (XBox game pass does this when installing games for example)
+            //It does respond to limited SCSI commands, but no ATA passthrough so just disable it.
+            checkForSAT = false;
+        }
+
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
         {
 #if defined (_DEBUG)
@@ -3174,7 +3182,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                     }
                 }
             }
-            safe_Free_aligned(C_CAST(void**, &inq_buf));
+            safe_free_aligned(&inq_buf);
             return ret;
         }
 
@@ -3222,7 +3230,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                         memset(device->drive_info.serialNumber, 0, SERIAL_NUM_LEN);
                     }
                 }
-                safe_Free_aligned(C_CAST(void**, &unitSerialNumber));
+                safe_free_aligned(&unitSerialNumber);
             }
             else
             {
@@ -3244,7 +3252,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
-                    safe_Free_aligned(C_CAST(void**, &inq_buf));
+                    safe_free_aligned(&inq_buf);
                     return MEMORY_FAILURE;
                 }
                 if (SUCCESS == scsi_Inquiry(device, deviceIdentification, INQ_RETURN_DATA_LENGTH, DEVICE_IDENTIFICATION, true, false))
@@ -3256,7 +3264,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                         byte_Swap_64(&device->drive_info.worldWideName);
                     }
                 }
-                safe_Free_aligned(C_CAST(void**, &deviceIdentification));
+                safe_free_aligned(&deviceIdentification);
             }
             //One last thing...Need to do a SAT scan...
             if (checkForSAT)
@@ -3290,7 +3298,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                     }
                 }
             }
-            safe_Free_aligned(C_CAST(void**, &inq_buf));
+            safe_free_aligned(&inq_buf);
             return ret;
         }
 
@@ -3401,7 +3409,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             if (!supportedVPDPages)
             {
                 perror("Error allocating memory for supported VPD pages!\n");
-                safe_Free_aligned(C_CAST(void**, &inq_buf));
+                safe_free_aligned(&inq_buf);
                 return MEMORY_FAILURE;
             }
             memcpy(supportedVPDPages, &inq_buf[4], supportedVPDPagesLength);
@@ -3444,7 +3452,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free_aligned(C_CAST(void**, &unitSerialNumber));
+                    safe_free_aligned(&unitSerialNumber);
                     break;
                 }
                 case DEVICE_IDENTIFICATION://World wide name
@@ -3464,7 +3472,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                             byte_Swap_64(&device->drive_info.worldWideName);
                         }
                     }
-                    safe_Free_aligned(C_CAST(void**, &deviceIdentification));
+                    safe_free_aligned(&deviceIdentification);
                     break;
                 }
                 case ATA_INFORMATION: //use this to determine if it's SAT compliant
@@ -3590,7 +3598,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                             }
                         }
                     }
-                    safe_Free_aligned(C_CAST(void**, &blockDeviceCharacteristics));
+                    safe_free_aligned(&blockDeviceCharacteristics);
                     break;
                 }
                 default:
@@ -3598,7 +3606,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                     break;
                 }
             }
-            safe_Free(C_CAST(void**, &supportedVPDPages));
+            safe_free(&supportedVPDPages);
             if (!satVPDPageRead && !dummyUpVPDSupport)
             {
                 //This device returned a list of pages already, so we know what it supports.
@@ -3630,7 +3638,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             uint8_t *readCapBuf = C_CAST(uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
             if (!readCapBuf)
             {
-                safe_Free_aligned(C_CAST(void**, &inq_buf));
+                safe_free_aligned(&inq_buf);
                 return MEMORY_FAILURE;
             }
             if (SUCCESS == scsi_Read_Capacity_10(device, readCapBuf, READ_CAPACITY_10_LEN))
@@ -3642,8 +3650,8 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                     uint8_t* temp = C_CAST(uint8_t*, safe_realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                     if (!temp)
                     {
-                        safe_Free_aligned(C_CAST(void**, &readCapBuf));
-                        safe_Free_aligned(C_CAST(void**, &inq_buf));
+                        safe_free_aligned(&readCapBuf);
+                        safe_free_aligned(&inq_buf);
                         return MEMORY_FAILURE;
                     }
                     readCapBuf = temp;
@@ -3679,8 +3687,8 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 uint8_t* temp = C_CAST(uint8_t*, safe_realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN, device->os_info.minimumAlignment));
                 if (temp == M_NULLPTR)
                 {
-                    safe_Free_aligned(C_CAST(void**, &readCapBuf));
-                    safe_Free_aligned(C_CAST(void**, &inq_buf));
+                    safe_free_aligned(&readCapBuf);
+                    safe_free_aligned(&inq_buf);
                     return MEMORY_FAILURE;
                 }
                 readCapBuf = temp;
@@ -3697,7 +3705,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                     }
                 }
             }
-            safe_Free_aligned(C_CAST(void**, &readCapBuf));
+            safe_free_aligned(&readCapBuf);
             if (device->drive_info.devicePhyBlockSize == 0)
             {
                 //If we did not get a physical blocksize, we need to set it to the blocksize (logical).
@@ -3768,7 +3776,7 @@ eReturnValues fill_In_Device_Info(tDevice *device)
         }
         ret = COMMAND_FAILURE;
     }
-    safe_Free_aligned(C_CAST(void**, &inq_buf));
+    safe_free_aligned(&inq_buf);
 
 #ifdef _DEBUG
     printf("\nscsi helper\n");

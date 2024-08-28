@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2018-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2018-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -127,9 +127,9 @@ enum {
                                          vmk_uint32 *likelyhood, vmk_uint32 *enableFlag);
    #endif
 #else
-#define kernelCbSmartGet (M_NULLPTR)
-#define kernelCbIoctl (M_NULLPTR)
-#define kernelCbErrInject (M_NULLPTR)
+#define kernelCbSmartGet (NULL)
+#define kernelCbIoctl (NULL)
+#define kernelCbErrInject (NULL)
 #endif
 
 
@@ -189,7 +189,7 @@ enum {
          struct nvmeAdapterInfo *adapterInfo);
    #endif
 #else
-   #define NvmeMgmt_ListAdapters (M_NULLPTR)
+   #define NvmeMgmt_ListAdapters (NULL)
 #endif
 
 /**
@@ -208,7 +208,7 @@ enum {
          vmk_uint32 *debuglevel);
    #endif
 #else
-   #define NvmeMgmt_SetLogLevel (M_NULLPTR)
+   #define NvmeMgmt_SetLogLevel (NULL)
 #endif
 
 /**

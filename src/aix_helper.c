@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -1262,7 +1262,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
         char *friendlyName = strdup(filename);
         snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(friendlyName));
-        safe_Free(C_CAST(void**, &friendlyName));
+        safe_free(&friendlyName);
         struct CuDv cudv;
         struct CuDv * ptrcudv;
         memset(&cudv, 0, sizeof(struct CuDv));
@@ -1443,7 +1443,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         }
         //done with using odm, so terminate it
         (void)odm_terminate();
-        safe_Free(C_CAST(void**, &diskFullName));
+        safe_free(&diskFullName);
     }
     return ret;
 }
@@ -2831,9 +2831,9 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the list of names to not leak memory
     for(int iter = 0; iter < num_devs; ++iter)
     {
-    	safe_Free(C_CAST(void**, &namelist[iter]));
+    	safe_free_dirent(&namelist[iter]);
     }
-    safe_Free(C_CAST(void**, &namelist));
+    safe_free_dirent(namelist);
 
     *numberOfDevices = num_devs;
 
@@ -2889,10 +2889,10 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         size_t handleSize = (safe_strlen("/dev/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
-        safe_Free(C_CAST(void**, &namelist[i]));
+        safe_free_dirent(&namelist[i]);
     }
     devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(C_CAST(void**, &namelist));
+    safe_free_dirent(namelist);
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
@@ -2963,7 +2963,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(C_CAST(void**, &devs[driveNumber]));
+            safe_free(&devs[driveNumber]);
         }
 	    if (found == failedGetDeviceCount)
 	    {
@@ -2978,7 +2978,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 	        returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
 	    }
     }
-    safe_Free(C_CAST(void**, &devs));
+    safe_free(devs);
     return returnValue;
 }
 

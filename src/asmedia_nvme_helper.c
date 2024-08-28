@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -513,7 +513,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     {
         if (localMemory)
         {
-            safe_Free_aligned(C_CAST(void**, &dataPhasePtr));
+            safe_free_aligned(&dataPhasePtr);
         }
         return ret;
     }
@@ -522,7 +522,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     {
         if (localMemory)
         {
-            safe_Free_aligned(C_CAST(void**, &dataPhasePtr));
+            safe_free_aligned(&dataPhasePtr);
         }
         return ret;
     }
@@ -533,7 +533,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     {
         if (localMemory)
         {
-            safe_Free_aligned(C_CAST(void**, &dataPhasePtr));
+            safe_free_aligned(&dataPhasePtr);
         }
         return ret;
     }
@@ -546,7 +546,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
         {
             memcpy(nvmCmd->ptrData, dataPhasePtr, nvmCmd->dataSize);
         }
-        safe_Free_aligned(C_CAST(void**, &dataPhasePtr));
+        safe_free_aligned(&dataPhasePtr);
     }
 
     bool senseDataIsAllWeGot = true;
