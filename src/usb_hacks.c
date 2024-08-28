@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,13 +13,23 @@
 // \file usb_hacks.c
 // \brief Set of functions to check or make modifications to commands to work on USB bridges that don't always follow SCSI/SAT specs.
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include "usb_hacks.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 #include "ata_helper.h"
 #include "ata_helper_func.h"
 #include <ctype.h>//for checking for printable characters
-#include "common.h"
 
 
 bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice *device)
@@ -32,7 +43,7 @@ bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice *device)
 #endif
         while (device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_UNKNOWN)
         {
-            uint8_t identifyData[LEGACY_DRIVE_SEC_SIZE] = { 0 };
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, LEGACY_DRIVE_SEC_SIZE);
             if (SUCCESS == ata_Identify(device, identifyData, LEGACY_DRIVE_SEC_SIZE))
             {
                 //command succeeded so this is most likely the correct pass-through type to use for this device

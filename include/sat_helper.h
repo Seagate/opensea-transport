@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -62,6 +63,19 @@ extern "C"
     #define SAT_T_DIR_DATA_IN       (0x08) // or (0x01 << 3) i.e. bit 3 is set)
     #define SAT_T_TYPE_BIT_SET      (0x10)
     #define SAT_CK_COND_BIT_SET     (0x20)
+
+    //SAT VPD page 89h definitions
+    #define SAT_ATA_VPD_LENGTH UINT16_C(0x0238)
+    #define SAT_ATA_VPD_T10_VENDOR_OFFSET (8)
+    #define SAT_ATA_VPD_T10_VENDOR_LENGTH (8)
+    #define SAT_ATA_VPD_T10_PRODUCT_ID_OFFSET (16)
+    #define SAT_ATA_VPD_T10_PRODUCT_ID_LENGTH (16)
+    #define SAT_ATA_VPD_T10_PRODUCT_REV_OFFSET (32)
+    #define SAT_ATA_VPD_T10_PRODUCT_REV_LENGTH (4)
+    #define SAT_ATA_VPD_SIGNATURE_OFFSET (36)
+    #define SAT_ATA_VPD_SIGNATURE_LENGTH (20)
+    #define SAT_ATA_VPD_COMMAND_CODE_OFFSET (56)
+    #define SAT_ATA_VPD_IDENTIFY_DATA_OFFSET (60) //length is standard 512B from ATA specs
 
     #if defined (__cplusplus)
 }

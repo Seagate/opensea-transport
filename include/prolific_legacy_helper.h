@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -18,7 +19,7 @@
 
 #pragma once
 
-#include "common.h"
+#include "common_types.h"
 #include "common_public.h"
 #include "ata_helper.h"
 
@@ -47,7 +48,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16], bool *highCDBValid, ataPassthroughCommand *ataCommandOptions);
+    eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16], bool *highCDBValid, ataPassthroughCommand *ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -64,7 +65,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet);
+    eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -80,7 +81,7 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    int send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
+    eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions);
 
 #if defined (__cplusplus)
 }

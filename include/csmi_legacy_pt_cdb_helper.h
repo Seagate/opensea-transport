@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2020-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2020-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -25,12 +26,12 @@ extern "C"
 
 #define CSMI_PASSTHROUGH_CDB_LENGTH UINT8_C(16)
 
-    int build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH], ataPassthroughCommand * ataPtCmd);
+    eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH], ataPassthroughCommand * ataPtCmd);
 
     //NOTE: This is a stub. There is not currently a known way to get RTFRs when sending this passthrough CDB
-    int get_RTFRs_From_CSMI_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet);
+    eReturnValues get_RTFRs_From_CSMI_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet);
 
-    int send_CSMI_Legacy_ATA_Passthrough(tDevice *device, ataPassthroughCommand  *ataCommandOptions);
+    eReturnValues send_CSMI_Legacy_ATA_Passthrough(tDevice *device, ataPassthroughCommand  *ataCommandOptions);
 
 
 #if defined (__cplusplus)

@@ -1,7 +1,8 @@
+# SPDX-License-Identifier: MPL-2.0
 #
 # Do NOT modify or remove this copyright and license
 #
-# Copyright (c) 2012 - 2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+# Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 #
 # This software is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,7 +16,7 @@
 NAME=opensea-transport
 FILE_OUTPUT_DIR=lib
 #Change the Major version when major interface changes are made. E.g. tDevice changes
-MAJOR=3
+MAJOR=8
 #Change the Minor version when new features are added. 
 MINOR=0
 #Change the patch version when only bug fixes are made.
@@ -95,6 +96,10 @@ else
 		
 		CFLAGS += -Wvla -Wfloat-equal -Wjump-misses-init -Wlogical-op -Wdouble-promotion -Wformat-security \
 			-Wold-style-definition -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
+	else
+		CFLAGS += -std=gnu99
+		CFLAGS += -Wvla -Wfloat-equal -Wjump-misses-init -Wlogical-op -Wdouble-promotion -Wformat-security \
+				-Wold-style-definition -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
 	endif
 endif
 UNAME := $(shell uname -s)
@@ -129,7 +134,8 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)jmicron_nvme_helper.c\
 	$(SRC_DIR)asmedia_nvme_helper.c\
 	$(SRC_DIR)csmi_legacy_pt_cdb_helper.c\
-	$(SRC_DIR)csmi_helper.c
+	$(SRC_DIR)csmi_helper.c\
+	$(SRC_DIR)ciss_helper.c
 
 UNAME := $(shell uname)
 
@@ -178,7 +184,7 @@ endif
 
 #setting std=c99 instead of std-gnu99 because we want __has_include to work. This means we must add -D_GNU_SOURCE to the project defines to keep the same functionality in Linux
 #PROJECT_DEFINES += -D_GNU_SOURCE -DDISABLE_NVME_PASSTHROUGH #-D_DEBUG
-PROJECT_DEFINES += -D_GNU_SOURCE 
+PROJECT_DEFINES += -D_GNU_SOURCE -DENABLE_CISS -DENABLE_CSMI
 
 #All of the source files have associated object files
 LIB_OBJ_FILES = $(LIB_SRC_FILES:.c=.o)

@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,14 +12,24 @@
 // 
 // \file nec_legacy_helper.c   Implementation for NEC Legacy USB Pass-through CDBs
 
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+
 #include "nec_legacy_helper.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 #include "ata_helper_func.h"
 
-int build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions)
+eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     memset(cdb, 0, CDB_LEN_16);
     cdb[OPERATION_CODE] = NEC_WRITE_OPCODE;
     cdb[1] = NEC_WRAPPER_SIGNATURE;
@@ -87,16 +98,16 @@ int build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand *ataCommandOptio
     return ret;
 }
 
-int get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, int commandRet)
+eReturnValues get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *ataCommandOptions, eReturnValues commandRet)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
     {
         return commandRet;
     }
-    uint8_t cdb[CDB_LEN_16] = { 0 };
-    uint8_t returnData[11] = { 0 };
-    uint8_t senseData[SPC3_SENSE_LEN] = { 0 };
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 11);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     cdb[OPERATION_CODE] = NEC_READ_OPCODE;
     cdb[1] = NEC_WRAPPER_SIGNATURE;
     //send the command
@@ -119,15 +130,15 @@ int get_RTFRs_From_NEC_Legacy(tDevice *device, ataPassthroughCommand *ataCommand
     return ret;
 }
 
-int send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
+eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *ataCommandOptions)
 {
-    int ret = UNKNOWN;
-    uint8_t necCDB[CDB_LEN_16] = { 0 };
-    uint8_t *senseData = NULL;//only allocate if the pointer in the ataCommandOptions is NULL
+    eReturnValues ret = UNKNOWN;
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, necCDB, CDB_LEN_16);
+    uint8_t *senseData = M_NULLPTR;//only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool localSenseData = false;
     if (!ataCommandOptions->ptrSenseData)
     {
-        senseData = C_CAST(uint8_t*, calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        senseData = C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -178,10 +189,10 @@ int send_NEC_Legacy_Passthrough_Command(tDevice *device, ataPassthroughCommand *
     memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);//clear before copying over data
     memcpy(&device->drive_info.lastCommandSenseData[0], &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     memcpy(&device->drive_info.lastCommandRTFRs, &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
-    safe_Free_aligned(senseData)
+    safe_free_aligned(&senseData);
     if (localSenseData)
     {
-        ataCommandOptions->ptrSenseData = NULL;
+        ataCommandOptions->ptrSenseData = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
     if ((device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > ataCommandOptions->timeout)

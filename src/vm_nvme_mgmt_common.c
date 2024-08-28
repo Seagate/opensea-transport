@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -84,29 +85,12 @@ vmk_MgmtCallbackInfo globalCallbacks[NVME_MGMT_GLOBAL_NUM_CALLBACKS] = {
 /**
  * Global management api signature
  */
-/*
 vmk_MgmtApiSignature globalSignature = {
-   .version         = VMK_REVISION_FROM_NUMBERS(NVME_MGMT_MAJOR, NVME_MGMT_MINOR, NVME_MGMT_UPDATE, NVME_MGMT_PATCH),
-   .name.string     = NVME_MGMT_NAME,
-   .vendor.string   = NVME_MGMT_VENDOR,
-   .numCallbacks    = NVME_MGMT_GLOBAL_NUM_CALLBACKS,
-   .callbacks       = globalCallbacks,
+   .version = VMK_REVISION_FROM_NUMBERS(NVME_MGMT_MAJOR, NVME_MGMT_MINOR, NVME_MGMT_UPDATE, NVME_MGMT_PATCH),
+   .name = { .string = NVME_MGMT_NAME },
+   .vendor = { .string = NVME_MGMT_VENDOR },
+   .numCallbacks = NVME_MGMT_GLOBAL_NUM_CALLBACKS,
+   .callbacks = globalCallbacks,
 };
-*/
-vmk_MgmtApiSignature globalSignature = {
-   VMK_REVISION_FROM_NUMBERS(NVME_MGMT_MAJOR, NVME_MGMT_MINOR, NVME_MGMT_UPDATE, NVME_MGMT_PATCH),
-   NVME_MGMT_NAME,
-   NVME_MGMT_VENDOR,
-   NVME_MGMT_GLOBAL_NUM_CALLBACKS,
-   globalCallbacks,
-};
-/*
-vmk_MgmtApiSignature globalSignature;
-   globalSignature.version         = VMK_REVISION_FROM_NUMBERS(NVME_MGMT_MAJOR, NVME_MGMT_MINOR, NVME_MGMT_UPDATE, NVME_MGMT_PATCH);
-   globalSignature.name.string     = NVME_MGMT_NAME;
-   globalSignature.vendor.string   = NVME_MGMT_VENDOR;
-   globalSignature.numCallbacks    = NVME_MGMT_GLOBAL_NUM_CALLBACKS;
-   globalSignature.callbacks       = globalCallbacks;
-};
-*/
+
 

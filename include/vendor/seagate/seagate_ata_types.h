@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -53,8 +54,8 @@ extern "C"
     typedef enum _eSeagateSetFeaturesSubcommands
     {
         SEAGATE_SF_LOW_CURRENT_SPINUP = 0x5B,
-        SEAGATE_FEATURE_POWER_BALANCE = 0x5C, //TODO: definitions of enable/disable specific to this feature
-        //TODO: other Seagate unique set features codes.
+        SEAGATE_FEATURE_POWER_BALANCE = 0x5C,
+        //other Seagate unique set features codes go here
     }eSeagateSetFeaturesSubcommands;
 
     #define LOW_CURRENT_SPINUP_LBA_MID_SIG  (0xED)
@@ -93,6 +94,7 @@ extern "C"
         SEAGATE_FARM_TIME_SERIES_DISC  = 0x00,
         SEAGATE_FARM_TIME_SERIES_FLASH = 0x01,
         SEAGATE_FARM_TIME_SERIES_WLTR  = 0x02,
+        SEAGATE_FARM_TIME_SERIES_NEURAL_NW = 0x03
     }eSeagateFARMTimeSeriesSublogs;
 
     typedef enum _eSeagateSelfTests
@@ -102,10 +104,6 @@ extern "C"
         SEAGATE_ST_IDD_SHORT_CAPTIVE   = 0xD0,
         SEAGATE_ST_IDD_LONG_CAPTIVE    = 0xD1,
     }eSeagateSelfTests;
-
-    //TODO: Any other SMART read data fields that are parsed for certain bits
-
-    //TODO: Any Seagate unique identify data bits that are parsed for certain bits
 
 #if defined(__cplusplus)
 }

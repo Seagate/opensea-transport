@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -19,7 +20,7 @@
 
 #pragma once
 #include <inttypes.h>
-
+#include "common_types.h"
 #include "nvme_helper.h"
 #include "scsi_helper.h"
 
@@ -41,7 +42,7 @@ extern "C"
 #define ASMEDIA_NVME_PT_NVME_OP_OFFSET 1
 #define ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE UINT8_C(16)
 
-    int send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx *nvmCmd);
+    eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx *nvmCmd);
 
     /////////////////////////////////////
     // ASMEDIA Full packet passthrough //
@@ -102,11 +103,11 @@ extern "C"
 #define ASM_NVMP_DATA_IN UINT8_C(1)
 #define ASM_NVMP_DATA_OUT UINT8_C(2)
 
-    int send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd);
+    eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd);
 
-    int asm_nvme_Reset(tDevice *device);
+    eReturnValues asm_nvme_Reset(tDevice *device);
 
-    int asm_nvme_Subsystem_Reset(tDevice *device);
+    eReturnValues asm_nvme_Subsystem_Reset(tDevice *device);
 
 #if defined (__cplusplus)
 }

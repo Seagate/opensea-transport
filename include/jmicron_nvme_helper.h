@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -59,13 +60,13 @@ extern "C"
         //All other values up to 255 are reserved
     }eJMNvmeVendorControl;
 
-    int build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbDataDirection, uint8_t * dataPtr, uint32_t dataSize, eJMNvmeProtocol jmProtocol, eJMNvmeVendorControl jmCtrl, nvmeCmdCtx * nvmCmd);
+    eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirection *cdbDataDirection, uint8_t * dataPtr, uint32_t dataSize, eJMNvmeProtocol jmProtocol, eJMNvmeVendorControl jmCtrl, nvmeCmdCtx * nvmCmd);
 
-    int send_JM_NVMe_Cmd(nvmeCmdCtx *nvmCmd);
+    eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx *nvmCmd);
 
-    int jm_nvme_Reset(tDevice *device);
+    eReturnValues jm_nvme_Reset(tDevice *device);
 
-    int jm_nvme_Subsystem_Reset(tDevice *device);
+    eReturnValues jm_nvme_Subsystem_Reset(tDevice *device);
 
 #if defined (__cplusplus)
 }

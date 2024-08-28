@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -152,6 +153,8 @@ extern "C"
 
     #define ATA_SMART_ATTRIBUTE_NOMINAL_COMMON_START 0x64 //most attributes start at 100, but there are occasionally some that don't
     #define ATA_SMART_ATTRIBUTE_WORST_COMMON_START 0xFD //It's fairly common for a worst-ever to start at this highest possible value then move down as data is collected.
+    #define ATA_SMART_ATTRIBUTE_MINIMUM 0x01
+    #define ATA_SMART_ATTRIBUTE_MAXIMUM 0xFD
 
     #define ATA_SMART_THRESHOLD_ALWAYS_PASSING 0x00
     #define ATA_SMART_THRESHOLD_MINIMUM 0x01
@@ -161,6 +164,9 @@ extern "C"
 
     #define ATA_SMART_ATTRIBUTE_AUTOSAVE_ENABLE_SIG 0xF1
     #define ATA_SMART_AUTO_OFFLINE_ENABLE_SIG 0xF8
+
+    #define ATA_SMART_ATTRIBUTE_AUTOSAVE_DISABLE_SIG 0x00
+    #define ATA_SMART_AUTO_OFFLINE_DISABLE_SIG 0x00
 
     typedef enum _eATA_CMDS {
         ATA_NOP_CMD                             = 0x00,
@@ -226,6 +232,7 @@ extern "C"
         ATA_ACCESSABLE_MAX_ADDR                 = 0x78,
         ATA_REMOVE_AND_TRUNCATE                 = 0x7C,
         ATA_RESTORE_AND_REBUILD                 = 0x7D,
+        ATA_REMOVE_ELEMENT_AND_MODIFY_ZONES     = 0x7E,
         ATA_CFA_TRANSLATE_SECTOR                = 0x87,
         ATA_EXEC_DRV_DIAG                       = 0x90,
         ATA_INIT_DRV_PARAM                      = 0x91,
@@ -235,6 +242,7 @@ extern "C"
         ATA_LEGACY_ALT_STANDBY_IMMEDIATE        = 0x94,
         ATA_LEGACY_ALT_IDLE_IMMEDIATE           = 0x95,
         ATA_LEGACY_ALT_STANDBY                  = 0x96,
+        ATA_MUTATE_EXT                          = 0x96,
         ATA_LEGACY_ALT_IDLE                     = 0x97,
         ATA_LEGACY_ALT_CHECK_POWER_MODE         = 0x98,
         ATA_LEGACY_ALT_SLEEP                    = 0x99,
@@ -677,6 +685,8 @@ extern "C"
        SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES                           = 0x43,
        SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG      = 0x44,//defined in ATA, obsolete in ATA4
        SF_SET_RATE_BASIS                                                = 0x45,
+       SF_ZAC_ZONE_ACTIVATION_CONTROL                                   = 0x46,//ZAC2 to set the number of zones. Can affect the zone activate ext command or the zone query ext command
+       SF_ZAC_UPDATE_UNRESTRICTED_READ_S_WHILE_READING_ZONES            = 0x47,//ZAC2 update URSWRZ
        SF_EXTENDED_POWER_CONDITIONS                                     = 0x4A,
        SF_SET_CACHE_SEGMENTS                                            = 0x54,//defined in ATA3, obsolete in ATA4
        SF_DISABLE_READ_LOOK_AHEAD_FEATURE                               = 0x55,
@@ -721,6 +731,17 @@ extern "C"
        //F0 - FF are reserved for CFA
        SF_UNKNOWN_FEATURE
    } eATASetFeaturesSubcommands;
+
+   typedef enum _eWRVMode
+   {
+       ATA_WRV_MODE_ALL     = 0x00,//mode 0
+       ATA_WRV_MODE_65536   = 0x01,//mode 1
+       ATA_WRV_MODE_VENDOR  = 0x02,//mode 2
+       ATA_WRV_MODE_USER    = 0x03 //mode 3
+   }eWRVMode;
+
+#define MAX_WRV_USER_SECTORS UINT32_C(261120)
+#define WRV_USER_MULTIPLIER UINT16_C(1024) //sector count * this = number of sectors being verified in this mode.
 
    //this is the 7:3 bits of the count register for the SF_SET_TRANSFER_MODE option
    //Bits 2:0 can be used to specify the mode.
@@ -844,6 +865,7 @@ extern "C"
        ATA_LOG_MUTATE_CONFIGURATIONS                    = 0x42,
        ATA_LOG_CONCURRENT_POSITIONING_RANGES            = 0x47,
        ATA_LOG_SENSE_DATA                               = 0x53,
+       ATA_LOG_CAPACITY_MODELNUMBER_MAPPING             = 0x61,
        //80h - 9F are host specific logs
        ATA_LOG_HOST_SPECIFIC_80H                        = 0x80,
        ATA_LOG_HOST_SPECIFIC_81H                        = 0x81,
@@ -881,6 +903,7 @@ extern "C"
        ATA_SCT_COMMAND_STATUS                           = 0xE0,
        ATA_SCT_DATA_TRANSFER                            = 0xE1,
    }eATALog;
+    #define ATA_LOG_PAGE_LEN_BYTES UINT16_C(512) //each page of a log is 512 bytes. A given log may be multiple pages long, or multiples of this value.
 
    typedef enum _eIdentifyDeviceDataLogPage //Log address 30h, ACS-4 Section 9.11
    {
@@ -895,6 +918,10 @@ extern "C"
        ATA_ID_DATA_LOG_SERIAL_ATA               = 0x08,
        ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION = 0x09,
    }eIdentifyDeviceDataLogPage;
+    #define ATA_ID_DATA_SUP_PG_LIST_LEN_OFFSET UINT16_C(8) //this is the offset in the data where the list length is specified to be read from. The next value is where the list of supported pages begins.
+    #define ATA_ID_DATA_SUP_PG_LIST_OFFSET UINT16_C(9) //when reading the ID Data log's list of supported pages, this is the offset to start at to find the page numbers that are supported.
+    #define ATA_ID_DATA_QWORD_VALID_BIT BIT63 //If bit 63 is set, then the qword is valid
+    #define ATA_ID_DATA_VERSION_1 (0x0001) //to check for at least revision 1 on each page of the log.
 
     //
    typedef enum _eDeviceStatisticsLog //Log Address 04h, ACS-4 Section 9.5
@@ -909,7 +936,17 @@ extern "C"
        ATA_DEVICE_STATS_LOG_SSD             = 0x07,
        ATA_DEVICE_STATS_LOG_ZONED_DEVICE    = 0x08,
        //Add more
+       ATA_DEVICE_STATS_LOG_VENDOR_SPECIFIC = 0xFF
    } eDeviceStatisticsLog;
+    #define ATA_DEV_STATS_SUP_PG_LIST_LEN_OFFSET UINT16_C(8) //this is the offset in the data where the list length is specified to be read from. The next value is where the list of supported pages begins.
+    #define ATA_DEV_STATS_SUP_PG_LIST_OFFSET UINT16_C(9) //when reading the device statistics log's list of supported pages, this is the offset to start at to find the page numbers that are supported.
+    #define ATA_DEV_STATS_STATISTIC_SUPPORTED_BIT BIT63 //If bit 63 is set, then the qword is valid
+    #define ATA_DEV_STATS_VALID_VALUE_BIT BIT62
+    #define ATA_DEV_STATS_NORMALIZED_STAT_BIT BIT61
+    #define ATA_DEV_STATS_SUPPORTS_DSN  BIT60
+    #define ATA_DEV_STATS_MONITORED_CONDITION_MET   BIT59
+    #define ATA_DEV_STATS_READ_THEN_INIT_SUPPORTED  BIT58
+    #define ATA_DEV_STATS_VERSION_1 (0x0001) //to check for at least revision 1 on each page of the log.
 
    typedef enum _eSCTDeviceState
    {
@@ -1036,6 +1073,8 @@ extern "C"
 
        ATA_MINOR_VERSION_ACS3_REV_5             = 0x006D, //ACS-3 Revision 5
 
+       ATA_MINOR_VERSION_ACS6_REV_2             = 0x0073, //ACS-6 Revision 2
+
        ATA_MINOR_VERSION_ACS_2_PUBLISHED        = 0x0082, //ACS-2 published, ANSI INCITS 482-2012
 
        ATA_MINOR_VERSION_ACS4_PUBLISHED         = 0x009C, //ACS-4 published, ANSI, INCITS 529-2018
@@ -1051,11 +1090,36 @@ extern "C"
        ATA_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
    }eATAMinorVersionNumber;
 
-   #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
+   typedef enum _eZACMinorVersionNumber
+   {
+       ZAC_MINOR_VERSION_NOT_REPORTED           = 0x0000,
+       ZAC_MINOR_VERSION_ZAC_REV_5              = 0x05CF,//ZAC revision 05
+       ZAC_MINOR_VERSION_ZAC2_REV_15            = 0x3612,//ZAC2 rev 15
+       ZAC_MINOR_VERSION_ZAC2_REV_1B            = 0x7317,//ZAC2 rev 1b
+       ZAC_MINOR_VERSION_ZAC_REV_4              = 0xA36C,//ZAC revision 04
+       ZAC_MINOR_VERSION_ZAC2_REV12             = 0xB403,//ZAC2 revision 12
+       ZAC_MINOR_VERSION_ZAC_REV_1              = 0xB6E8,//ZAC Revision 1
+       ZAC_MINOR_VERSION_NOT_REPORTED_2         = 0xFFFF
+   }eZACMinorVersionNumber;
 
-   #define ATA_SECURITY_MAX_PW_LENGTH UINT8_C(32)
+   typedef enum _eTransportMinorVersionNumber
+   {
+       TRANSPORT_MINOR_VERSION_NOT_REPORTED                 = 0x0000,
+       TRANSPORT_MINOR_VERSION_ATA8_AST_D1697_VERSION_0B    = 0x0021,//ATA8-AST T13 Project D1697 Version 0b
+       TRANSPORT_MINOR_VERSION_ATA8_AST_D1697_VERSION_1     = 0x0051,//ATA8-AST T13 Project D1697 Version 0b
+       TRANSPORT_MINOR_VERSION_NOT_REPORTED2                = 0xFFFF
+   }eTransportMinorVersionNumber;
 
-   typedef enum _eATASecurityState
+    #define ATA_MAX_BLOCKS_PER_DRQ_DATA_BLOCKS UINT8_C(128)
+
+    #define ATA_SECURITY_MAX_PW_LENGTH UINT8_C(32)
+    #define ATA_SECURITY_GREATER_THAN_MAX_TIME_VALUE UINT16_C(255) //raw ATA identify device value
+    #define ATA_SECURITY_MAX_TIME_MINUTES UINT16_C(508) //raw minutes value
+    #define ATA_SECURITY_GREATER_THAN_MAX_EXTENDED_TIME_VALUE UINT16_C(32767) //raw ATA identify device value
+    #define ATA_SECURITY_MAX_EXTENDED_TIME_MINUTES UINT16_C(65532) //raw minutes value
+    #define ATA_SECURITY_TIME_MULTIPLIER UINT16_C(2)
+
+    typedef enum _eATASecurityState
     {
         ATA_SEC0 = 0, //powered off, we will never see this
         ATA_SEC1 = 1, //not enabled, locked, or frozen

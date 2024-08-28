@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,9 +16,12 @@
 
 #if defined (ENABLE_CSMI)
 
-#include "common.h"
+#include "common_types.h"
 #include <stdint.h>
-#include "csmisas.h"
+#if defined (_WIN32) && !defined(_NTDDSCSIH_)
+    #include <ntddscsi.h>
+#endif
+#include "external/csmi/csmisas.h"
 #include "sata_types.h"
 
 #if defined (__cplusplus)
@@ -36,10 +40,14 @@ extern "C"
         //NOTE: Would reuse definitions from win_helper.h, however that causes a circular include problem, so these are redefined here...if we find a better solution, it would be preferred to reuse the win_helper.h definitions
         #define WIN_CSMI_DRIVE  "\\\\.\\SCSI" // WIN_SCSI_SRB //In windows, we need to open the base SCSI SRB handle to issue CSMI IOs
         #define CSMI_WIN_MAX_DEVICE_NAME_LENGTH UINT8_C(40) //WIN_MAX_DEVICE_NAME_LENGTH
+        #define CSMI_DEVIVE_NAME_MAX_LENGTH CSMI_WIN_MAX_DEVICE_NAME_LENGTH
     #elif defined (__unix__)
         #define NIX_CSMI_DRIVE  "/dev/hba" //This is purely an example, not really useful beyond this
+        #define CSMI_NIX_MAX_DEVICE_NAME_LENGTH UINT8_C(32)
+        #define CSMI_DEVIVE_NAME_MAX_LENGTH CSMI_NIX_MAX_DEVICE_NAME_LENGTH
     #else
         #message Unknown OS...may or may not need a device prefix.
+        #define CSMI_DEVIVE_NAME_MAX_LENGTH UINT8_C(32)
     #endif
 
     #if defined (_WIN32)
@@ -50,7 +58,7 @@ extern "C"
         #define CSMI_INVALID_HANDLE -1
     #endif
 
-    //TODO: This may need expanding if specific versions of each driver need tracking uniquely due to significant differences in reporting or behavior.
+    //NOTE: This may need expanding if specific versions of each driver need tracking uniquely due to significant differences in reporting or behavior.
     typedef enum _eKnownCSMIDriver
     {
         CSMI_DRIVER_UNKNOWN = 0,
@@ -61,6 +69,7 @@ extern "C"
         CSMI_DRIVER_ARCSAS,
         CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY_VD, //iastorvd....not sure how this differs from other drivers
         CSMI_DRIVER_INTEL_GENERIC, //use this if we cannot figure out a better classification. It's a "catch-all" for intel based on iaStor....there are a few variants above that we already catch.
+        CSMI_DRIVER_HPSAMD,//HpSAMD.sys. While this responds to some CSMI IOCTLs, I cannot get any passthrough to work. Even changing the registry to CSMI=Full; does not seem to work or be supported. Setting it to none or limited appear to work, but it is unclear why full does not work.-TJE
     }eKnownCSMIDriver;
 
     //This is all the data, minus the IOCTL header, of the CSMI_SAS_GET_SCSI_ADDRESS_BUFFER
@@ -126,10 +135,11 @@ extern "C"
     //Linux includes linux/types.h for these. They are defined in csmisas.h for Windows
     //NOTE: not taking into account netware because it isn't supported or used at this point.
     //NOTE: only defining the printf macros we used. Adding a "C" to the beginning to differentiating them with the standards
-#ifdef __KERNEL__
+#ifdef __linux__
     //Define these as best we can based on linux/types.h which varies depending on architecture
     //Since this include path includes another file actually making the definition, check which one it is using the definitions they define
     //TODO: if __WORDSIZE == 64 may also work to switch between, but not positive - TJE
+
     #if defined(_ASM_GENERIC_INT_L64_H)
         #define CPRIu8 "u"
         #define CPRIu16 "u"
@@ -154,6 +164,7 @@ extern "C"
         #error "Need to define CSMI printf macros for this OS"
     #endif
 #else
+
     //match the csmisas.h definitions of the types as best we can
     #define CPRIu8 "u"
     #define CPRIu16 "u"
@@ -179,4 +190,5 @@ extern "C"
 #if defined (__cplusplus)
 }
 #endif
-#endif
+
+#endif //ENABLE_CSMI

@@ -1,7 +1,7 @@
 ## @file
 #   Declarations for the opensea-transport library
 ##
-
+# SPDX-License-Identifier: MPL-2.0
 
 [Defines]
   DEC_SPECIFICATION              = 0x00010005

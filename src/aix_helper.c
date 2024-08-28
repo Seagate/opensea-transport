@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2022 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -39,7 +40,14 @@
 #endif
 
 //#include <mntent.h> //for determining mounted file systems
-
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
 #include "aix_helper.h"
 #include "cmds.h"
 
@@ -61,8 +69,8 @@ extern bool validate_Device_Struct(versionBlock);
 // {
 //     int result = 0;
 //     FILE *mount = setmntent(MOUNTED, "r");//MNTTAB or MOUNTED. MOUNTED is virtual file
-//     struct mntent *entry = NULL;
-//     while(NULL != (entry = getmntent(mount)))
+//     struct mntent *entry = M_NULLPTR;
+//     while(M_NULLPTR != (entry = getmntent(mount)))
 //     {
 //         if(strstr(entry->mnt_fsname, blockDeviceName))
 //         {
@@ -83,15 +91,15 @@ extern bool validate_Device_Struct(versionBlock);
 // }spartitionInfo, *ptrsPartitionInfo;
 // //partitionInfoList is a pointer to the beginning of the list
 // //listCount is the number of these structures, which should be returned by get_Partition_Count
-// static int get_Partition_List(const char * blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
+// static eReturnValues get_Partition_List(const char * blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
 // {
 //     int result = SUCCESS;
 //     int matchesFound = 0;
 //     if(listCount > 0)
 //     {
 //         FILE *mount = setmntent(MOUNTED, "r");//MNTTAB or MOUNTED. MOUNTED is virtual file
-//         struct mntent *entry = NULL;
-//         while(NULL != (entry = getmntent(mount)))
+//         struct mntent *entry = M_NULLPTR;
+//         while(M_NULLPTR != (entry = getmntent(mount)))
 //         {
 //             if(strstr(entry->mnt_fsname, blockDeviceName))
 //             {
@@ -329,7 +337,7 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
             printf(" - iSCSI adapter\n");
             break;
         // case DS_LVZ:	/* New logical volume type */
-        //     M_FALLTHROUGH
+        //     M_FALLTHROUGH;
         case DS_LV0:	/* New logical volume type */
             printf(" - New logical volume type\n");
             break;
@@ -474,7 +482,6 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
                 if (devInfoData->flags & DF_IVAL)
                 {
                     printf("\t\t\tflags = %" PRIu16 "\n", devInfoData->un.dk64.flags);
-                    //TODO: Print out flags???
                 }
                 printf("\t\t\tlo_numblks = %ld\n", devInfoData->un.dk64.lo_numblks);
                 printf("\t\t\tsegment_size = %" PRIu32 "\n", devInfoData->un.dk64.segment_size);
@@ -740,19 +747,15 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
                 //???
                 break;
             case DS_FCP:     /* FC SCSI adapter        */
-                //TODO: fcp structure
                 break;
 #if !defined (DISABLE_NVME_PASSTHROUGH)
             case DS_FCNVME:  /* FC-NVMe device       */
-                //TODO: nvmeof_transport structure
                 break;
 #endif //DISABLE_NVME_PASSTHROUGH
             case DS_ISCSI:    /* iSCSI adapter           */
-                //TODO: iscsi structure
                 break;
 #if defined (DS_CAPI_IO)
             case DS_CAPI_IO:  /* CAPI Storage device */
-                //TODO: capi_io structure
                 break;
 #endif //DS_CAPI_IO
 #if !defined (DISABLE_NVME_PASSTHROUGH)
@@ -795,10 +798,8 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
                 break;
 #endif //DISABLE_NVME_PASSTHROUGH
             case DS_CVSCSI:   /* Virtual SCSI Client (hosteD)  */
-                //TODO: vscsi
                 break;
             case DS_SVSCSI:   /* Virtual SCSI Server (hostinG) */
-                //TODO: vscsi_host
                 break;
 #if defined (DS_VRTSCSI)
             case DS_VRTSCSI:  /* VirtIO SCSI Client Adapter */
@@ -837,11 +838,10 @@ static void print_devinfo_struct(struct devinfo *devInfoData)
             //do we care?
             break;
         case DD_SCRWOPT:
-            //TODO:
             //same as SCSI disk or cdrom???
             break;
         case DD_SES:
-            //TODO://same as SCSI disk or cdrom???
+            //same as SCSI disk or cdrom???
             break;
         case DD_AUDIT:
             //do we care?
@@ -975,13 +975,13 @@ static void print_ODM_Error(int odmError)
 
 static void print_CuDv_Struct (struct CuDv *cudv)
 {
-    //making copies to ensure NULL termination -TJE
-    char cudvName[17] = { 0 };
-    char cudvddins[17] = { 0 };
-    char cudvlocation[17] = { 0 };
-    char cudvparent[17] = { 0 };
-    char cudvconnwhere[17] = { 0 };
-    char cudvPdDvLnLvalue[49] = { 0 };
+    //making copies to ensure M_NULLPTR termination -TJE
+    DECLARE_ZERO_INIT_ARRAY(char, cudvName, 17);
+    DECLARE_ZERO_INIT_ARRAY(char, cudvddins, 17);
+    DECLARE_ZERO_INIT_ARRAY(char, cudvlocation, 17);
+    DECLARE_ZERO_INIT_ARRAY(char, cudvparent, 17);
+    DECLARE_ZERO_INIT_ARRAY(char, cudvconnwhere, 17);
+    DECLARE_ZERO_INIT_ARRAY(char, cudvPdDvLnLvalue, 49);
     snprintf(cudvName, 17, "%s", cudv->name);
     snprintf(cudvddins, 17, "%s", cudv->ddins);
     snprintf(cudvlocation, 17, "%s", cudv->location);
@@ -1001,21 +1001,21 @@ static void print_CuDv_Struct (struct CuDv *cudv)
     printf("\tconnwhere: %s\n", cudvconnwhere);
     if (cudv->PdDvLn)
     {
-        char pddvtype[17] = { 0 };
-        char pddvclass[17] = { 0 };
-        char pddvsubclass[17] = { 0 };
-        char pddvprefix[17] = { 0 };
-        char pddvdevid[17] = { 0 };
-        char pddvcatalog[17] = { 0 };
-        char pddvDvDr[17] = { 0 };
-        char pddvDefine[257] = { 0 };
-        char pddvConfigure[257] = { 0 };
-        char pddvChange[257] = { 0 };
-        char pddvUnconfigure[257] = { 0 };
-        char pddvUndefine[257] = { 0 };
-        char pddvStart[257] = { 0 };
-        char pddvStop[257] = { 0 };
-        char pddvuniquetype[49] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(char, pddvtype, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvclass, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvsubclass, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvprefix, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvdevid, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvcatalog, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvDvDr, 17);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvDefine, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvConfigure, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvChange, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvUnconfigure, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvUndefine, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvStart, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvStop, 257);
+        DECLARE_ZERO_INIT_ARRAY(char, pddvuniquetype, 49);
         //making copies to ensure null termination - TJE
         snprintf(pddvtype, 17, "%s", cudv->PdDvLn->type);
         snprintf(pddvclass, 17, "%s", cudv->PdDvLn->class);
@@ -1065,8 +1065,8 @@ static void print_CuDv_Struct (struct CuDv *cudv)
     if (cudv->PdDvLn_info)
     {
         //making copies to ensure null termination -TJE
-        char listinfoClassname[MAX_ODMI_NAME + 1] = { 0 };
-        char listinfoCrit[MAX_ODMI_CRIT + 1] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(char, listinfoClassname, MAX_ODMI_NAME + 1);
+        DECLARE_ZERO_INIT_ARRAY(char, listinfoCrit, MAX_ODMI_CRIT + 1);
         snprintf(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname);
         snprintf(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit);
         printf("\t\tlistinfo:\n");
@@ -1110,8 +1110,8 @@ static int get_Adapter_IDs(tDevice *device, char *name)
     memset(&cudv, 0, sizeof(struct CuDv));
 
     //odm_initialize();
-    char odmCriteria[MAX_ODMI_CRIT] = { 0 };//256
-    if (name && strlen(name) > 0)
+    DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT);//256
+    if (name && safe_strlen(name) > 0)
     {
         snprintf(odmCriteria, MAX_ODMI_CRIT, "name='%s'", name);
         ptrcudv = odm_get_obj(CuDv_CLASS, odmCriteria, &cudv, ODM_FIRST);
@@ -1137,18 +1137,28 @@ static int get_Adapter_IDs(tDevice *device, char *name)
                 //Set a char pointer to the last / + 1
                 const char *ids = strrchr(ptrcudv->PdDvLn_Lvalue, '/') + 1;
                 //now convert this out to a uint32, then byte swap it, then separate into VID and PID
-                uint32_t idCombo = strtoul(ids, NULL, 16);
-                #if defined (__BIG_ENDIAN__) || defined (__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-                //wrapping this as if there was little endian AIX, I doubt it would exhibit the same issue
-                byte_Swap_32(&idCombo);
-                word_Swap_32(&idCombo);//This is done after the byte swap since it will change the order of VID and PID back to expected place
-                #endif //BIG ENDIAN check
-                device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
-                device->drive_info.adapter_info.vendorID = M_Word1(idCombo);
-                device->drive_info.adapter_info.productID = M_Word0(idCombo);
-                device->drive_info.adapter_info.vendorIDValid = true;
-                device->drive_info.adapter_info.productIDValid = true;
-                ret = 1;
+                errno = 0;//clear before calling strtoul
+                char **endptr = M_NULLPTR;
+                unsigned long idCombo = strtoul(ids, &endptr, 16);
+                if ((idCombo == ULONG_MAX && errno == ERANGE) || (ids == *endptr && idCombo == 0))
+                {
+                    //unable to convert the string for some reason
+                    ret = -1;
+                }
+                else 
+                {
+                    #if defined (__BIG_ENDIAN__) || defined (__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+                    //wrapping this as if there was little endian AIX, I doubt it would exhibit the same issue
+                    byte_Swap_32(&idCombo);
+                    word_Swap_32(&idCombo);//This is done after the byte swap since it will change the order of VID and PID back to expected place
+                    #endif //BIG ENDIAN check
+                    device->drive_info.adapter_info.infoType = ADAPTER_INFO_PCI;
+                    device->drive_info.adapter_info.vendorID = M_Word1(idCombo);
+                    device->drive_info.adapter_info.productID = M_Word0(idCombo);
+                    device->drive_info.adapter_info.vendorIDValid = true;
+                    device->drive_info.adapter_info.productIDValid = true;
+                    ret = 1;
+                }
             }
             else
             {
@@ -1171,7 +1181,7 @@ static int get_Adapter_IDs(tDevice *device, char *name)
 //While we are unlikely to see many, if any, USB devices in AIX,
 //it is possible to read the vendor/product IDs somewhere in the attributes:
 //https://www.ibm.com/docs/en/aix/7.3?topic=subsystem-usblibdd-passthru-driver
-int get_Device(const char *filename, tDevice *device)
+eReturnValues get_Device(const char *filename, tDevice *device)
 {
     //use openx. Do not set the SC_DIAGNOSTIC. That can be redone in the lock/unlock routines.
     //open can be used but always performed a SCSI2 reserve. Not necessary for this software
@@ -1184,7 +1194,7 @@ int get_Device(const char *filename, tDevice *device)
     //SC_NO_RESERVE - prevents reservation during openx (this might be good for us since we are not usually reading or writing -TJE)
     //SC_SINGLE - places device in exclusive access mode. (Reservation exclusive access mode???)
     //SC_PR_SHARED_REGISTER - persistent reserve, register and ignore key is used when opening
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     long extensionFlags = 0;
     bool handleOpened = false;
     if (device->deviceVerbosity > VERBOSITY_DEFAULT)
@@ -1220,7 +1230,6 @@ int get_Device(const char *filename, tDevice *device)
         {
             device->os_info.diagnosticModeFlagInUse = true;
         }
-        //TODO: Use more of the info in this IOCTL? It's helpful for debugging right now -TJE
         if (!ioctl(device->os_info.fd, IOCINFO, &driveInfo))
         {
             //Got the devinfo, now parse the data into something we can use for later
@@ -1232,7 +1241,6 @@ int get_Device(const char *filename, tDevice *device)
         }
         else
         {
-            //TODO: check errno for what failed when trying this IOCTL to give better info
             device->os_info.last_error = errno;
             if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
             {
@@ -1243,7 +1251,6 @@ int get_Device(const char *filename, tDevice *device)
             {
                 ret = PERMISSION_DENIED;
             }
-            //TODO: translate other errors into more specific return codes
             else
             {
                 ret = FAILURE;
@@ -1255,13 +1262,13 @@ int get_Device(const char *filename, tDevice *device)
         snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
         char *friendlyName = strdup(filename);
         snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(friendlyName));
-        safe_Free(friendlyName);
+        safe_free(&friendlyName);
         struct CuDv cudv;
         struct CuDv * ptrcudv;
         memset(&cudv, 0, sizeof(struct CuDv));
 
         odm_initialize();
-        char odmCriteria[MAX_ODMI_CRIT] = { 0 };//256
+        DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT);//256
         char *diskFullName = strdup(filename);
         char *diskName = strrchr(diskFullName, 'r');//point to r in /dev/rhdisk#
         if (diskName)
@@ -1276,10 +1283,10 @@ int get_Device(const char *filename, tDevice *device)
                 {
                     print_CuDv_Struct(ptrcudv);
                 }
-                if (strlen(ptrcudv->parent) > 0)
+                if (safe_strlen(ptrcudv->parent) > 0)
                 {
                     //open the controller handle and get the IOCINFO for it -TJE
-                    char controllerHandle[OS_HANDLE_NAME_MAX_LENGTH] = { 0 };
+                    DECLARE_ZERO_INIT_ARRAY(char, controllerHandle, OS_HANDLE_NAME_MAX_LENGTH);
                     snprintf(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
 
                     if (device->deviceVerbosity > VERBOSITY_DEFAULT)
@@ -1291,88 +1298,6 @@ int get_Device(const char *filename, tDevice *device)
                         //successfully opened the controller's handle
                         device->os_info.ctrlfdValid = true;
                         //note: IOCINFO does not seem to work on controllers.
-                        //commented out code remains, but will no longer be used.
-                        //it may be possible to use odm/cfgodm to figure out more info if we need it.
-
-                        //read the iocinfo for the controller to set more flags
-//                             struct devinfo controllerInfo;
-//                             memset(&controllerInfo, 0, sizeof(struct devinfo));
-//                             if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-//                             {
-//                                 printf("Attempting controller IOCINFO\n");
-//                             }
-//                             if (!ioctl(device->os_info.ctrlfd, IOCINFO, &controllerInfo))
-//                             {
-//                                 //Got the devinfo, now parse the data into something we can use for later
-//                                 //TODO: Filter out invalid device types we do not support.-TJE
-//                                 if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-//                                 {
-//                                     print_devinfo_struct(&controllerInfo);
-//                                 }
-//                                 //We can now read from the controllerInfo what device type this is and store some data
-//                                 if (controllerInfo.devtype == DD_BUS)
-//                                 {
-//                                     //adapters for SCSI controllers will show up with this
-//                                     //https://www.ibm.com/docs/en/aix/7.1?topic=drivers-sam-adapter-ioctl-operations
-//                                     //check the subtype for specific info
-//                                     switch(controllerInfo.devsubtype)
-//                                     {
-//                                     case DS_SCSI:     /* SCSI adapter */
-//                                         //TODO: save card_scsi_id?
-//                                         device->os_info.adapterType = AIX_ADAPTER_SCSI;
-//                                         device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-//                                         device->os_info.maxXferLength = controllerInfo.un.scsi.max_transfer;
-//                                         device->drive_info.drive_type = SCSI_DRIVE;
-//                                         device->drive_info.interface_type = SCSI_INTERFACE;
-//                                         break;
-//                                     case DS_IDE:     /* IDE adapter  */
-//                                         device->os_info.adapterType = AIX_ADAPTER_IDE;
-//                                         device->os_info.ptType = AIX_PASSTHROUGH_IDE_ATA;//If we ever get a handle other than rhdisk, switch to atapi for those handles-TJE
-//                                         device->os_info.maxXferLength = controllerInfo.un.ide.max_transfer;
-//                                         device->drive_info.drive_type = ATA_DRIVE;
-//                                         device->drive_info.interface_type = IDE_INTERFACE;
-//                                         break;
-//                                     case DS_SAS:      /* SAS adapter  */
-//                                         device->os_info.adapterType = AIX_ADAPTER_SAS;
-//                                         device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
-//                                         device->os_info.maxXferLength = controllerInfo.un.sas.max_transfer;
-//                                         device->drive_info.drive_type = SCSI_DRIVE;
-//                                         device->drive_info.interface_type = SCSI_INTERFACE;
-//                                         break;
-//                                     case DS_SATA:      /* SATA adapter */
-//                                         device->os_info.adapterType = AIX_ADAPTER_SATA;
-//                                         device->os_info.ptType = AIX_PASSTHROUGH_SATA;
-//                                         device->os_info.maxXferLength = controllerInfo.un.sata.max_transfer;
-//                                         device->drive_info.drive_type = ATA_DRIVE;
-//                                         device->drive_info.interface_type = IDE_INTERFACE;
-//                                         break;
-// #if defined (DS_NVME) && !defined (DISABLE_NVME_PASSTHROUGH)
-//                                     case DS_NVME:     /* non-volatile Memory controller   */
-//                                         device->os_info.adapterType = AIX_ADAPTER_NVME;
-//                                         device->os_info.ptType = AIX_PASSTHROUGH_NVME;
-//                                         device->os_info.maxXferLength = controllerInfo.un.nvme.ioctl_max_transfer;
-//                                         device->drive_info.drive_type = NVME_DRIVE;
-//                                         device->drive_info.interface_type = NVME_INTERFACE;
-//                                         break;
-// #endif //DS_NVME and DISBALE_NVME_PASSTHROUGH
-//                                     default:
-//                                         //unknown adapter type. Currently do nothing.
-//                                         break;
-//                                     }
-//                                 }
-//                                 //TODO: Read CuAt_CLASS data to get scsi_id, lun_id, world_wide_name, node_name, target_name
-//                                 device->os_info.scsiID = 0;
-//                                 device->os_info.lunID = 0;
-//                             }
-//                             else
-//                             {
-//                                 device->os_info.last_error = errno;
-//                                 if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-//                                 {
-//                                     printf("Controller IOCINFO Error: ");
-//                                     print_Errno_To_Screen(device->os_info.last_error);
-//                                 }
-//                             }
                     }
                     else
                     {
@@ -1423,7 +1348,6 @@ int get_Device(const char *filename, tDevice *device)
                     else if (strstr(ptrcudv->parent, "scsi"))//note this is parallel scsi
                     {
                         //SCSI passthrough.
-                        //TODO: do old scsi parents support the much bigger passthorugh vs the smaller 12B or less IOCTLs?
                         device->os_info.adapterType = AIX_ADAPTER_SCSI;
                         device->os_info.ptType = AIX_PASSTHROUGH_SCSI;
                         device->drive_info.drive_type = SCSI_DRIVE;
@@ -1519,23 +1443,23 @@ int get_Device(const char *filename, tDevice *device)
         }
         //done with using odm, so terminate it
         (void)odm_terminate();
-        safe_Free(diskFullName);
+        safe_free(&diskFullName);
     }
     return ret;
 }
 
-int os_Device_Reset(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Device_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Bus_Reset(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Bus_Reset(M_ATTR_UNUSED tDevice *device)
 {
     //if unable to find another way to do this, can close and reopen with SC_FORCED_OPEN
     return NOT_SUPPORTED;
 }
 
-int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
@@ -1798,7 +1722,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //up to 12B for older devices.
 //Trying to use the big passthrough as it allows much larger CDBs and even variable length CDBs instead.
 //Enable using this is we ever need it for compatibility or it does something different than normal passthrough that we need-TJE
-// static int send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
+// static eReturnValues send_AIX_SCSI_Diag_IO(ScsiIoCtx *scsiIoCtx)
 // {
 //     //uses the DKIOCMD when opened with the diagnostic mode flag so that this command is issued with nothing else in queue
 //     //and more or less exclusive access to the device.
@@ -1812,7 +1736,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         struct sc_iocmd aixIoCmd;
 //         memset(&aixIoCmd, 0, sizeof(struct sc_iocmd));
 //         memset(&commandTimer, 0, sizeof(seatimer_t));
-//         if (scsiIoCtx->device->os_info.adapterType != AIX_ADAPTER_SCSI)//TODO: expand this list further???
+//         if (scsiIoCtx->device->os_info.adapterType != AIX_ADAPTER_SCSI)
 //         {
 //             ioctlCode = DKIOLCMD;
 //         }
@@ -2048,7 +1972,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         struct sc_iocmd aixIoCmd;
 //         memset(&aixIoCmd, 0, sizeof(struct sc_iocmd));
 //         memset(&commandTimer, 0, sizeof(seatimer_t));
-//         if (scsiIoCtx->device->os_info.adapterType != AIX_ADAPTER_SCSI)//TODO: expand this list further???
+//         if (scsiIoCtx->device->os_info.adapterType != AIX_ADAPTER_SCSI)
 //         {
 //             ioctlCode = DKIOLCMD;
 //         }
@@ -2129,9 +2053,9 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //     return ret;
 // }
 
-static int send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
+static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
-    int         ret          = SUCCESS;
+    eReturnValues         ret          = SUCCESS;
     //uses passthrough structure
     seatimer_t commandTimer;
     struct sc_passthru aixPassthrough;
@@ -2208,11 +2132,11 @@ static int send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
     }
 
     start_Timer(&commandTimer);
-    ret = ioctl(scsiIoCtx->device->os_info.fd, DK_PASSTHRU, &aixPassthrough);
+    int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, DK_PASSTHRU, &aixPassthrough);
     stop_Timer(&commandTimer);
 
     scsiIoCtx->device->os_info.last_error = errno;
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
@@ -2230,7 +2154,7 @@ static int send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             }
             if (aixPassthrough.adap_set_flags & SC_RET_ID)
             {
-                printf("SCSI ID is different than was provided and the adapter has updated it to: %" PRIu64"\n", aixPassthrough.scsi_id);
+                printf("SCSI ID is different than was provided and the adapter has updated it to: %" PRIu64 "\n", aixPassthrough.scsi_id);
             }
             printf("Additional Device Status: %u\n", aixPassthrough.add_device_status);
             print_Adapter_Queue_Status(aixPassthrough.adap_q_status);
@@ -2305,9 +2229,9 @@ static int send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
 
 //NOTE: This issues the IDE_ATA passthrough. There is a separate ATAPI passthrough if we need to handle those
 //      using that IOCTL instead of the SCSI passthrough IOCTLs. Can be done later as we currently do not handle CD/DVDs, etc -TJE
-static int send_AIX_IDE_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
+static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     //sends the IDE passthrough IOCTL
     seatimer_t commandTimer;
     struct ide_ata_passthru idePassthrough; //28bit commands only
@@ -2387,15 +2311,13 @@ static int send_AIX_IDE_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     idePassthrough.ata_cmd.lba_high = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi;
     idePassthrough.ata_cmd.device = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead;
     idePassthrough.ata_cmd.command = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
-    //TODO: Are there flags for setting PIO vs DMA mode? I cannot find anything that doesn't collide with the
-    //      currently defined/set flags -TJE
 
     start_Timer(&commandTimer);
-    ret = ioctl(scsiIoCtx->device->os_info.fd, IDEPASSTHRU, &idePassthrough);
+    int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, IDEPASSTHRU, &idePassthrough);
     stop_Timer(&commandTimer);
 
     scsiIoCtx->device->os_info.last_error = errno;
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
@@ -2418,9 +2340,9 @@ static int send_AIX_IDE_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-static int send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
+static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     //sends the IDE passthrough IOCTL
     seatimer_t commandTimer;
     struct ide_atapi_passthru idePassthrough; //12 to 16B CDBs only
@@ -2429,7 +2351,7 @@ static int send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
 
     idePassthrough.ide_device = 0;//TODO: fill this in with target device ID
 
-    idePassthrough.flags = ATA_CHS_MODE;//TODO: when should this be set to LBA mode if at all on packets? -TJE
+    idePassthrough.flags = ATA_CHS_MODE;
     //NOTE: There is a flag for ATA_BUS_RESET that may be useful for implementing a reset -TJE
 
     switch(scsiIoCtx->direction)
@@ -2501,11 +2423,11 @@ static int send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
     memcpy(&idePassthrough.atapi_cmd.packet.bytes[0], &scsiIoCtx->cdb[1], M_Min(15, scsiIoCtx->cdbLength - 1));//this holds remaining bytes after opcode, hence -1 from length
 
     start_Timer(&commandTimer);
-    ret = ioctl(scsiIoCtx->device->os_info.fd, IDEPASSTHRU, &idePassthrough);
+    int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, IDEPASSTHRU, &idePassthrough);
     stop_Timer(&commandTimer);
 
     scsiIoCtx->device->os_info.last_error = errno;
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
@@ -2529,7 +2451,7 @@ static int send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
         //setup fixed format data for now
         struct ide_atapi_passthru requestSensePT;
         seatimer_t rscommandTimer;
-        uint8_t localSenseData[SPC3_SENSE_LEN] = { 0 };
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, localSenseData, SPC3_SENSE_LEN);
         uint8_t senseKey = M_Nibble1(idePassthrough.ata_error);//bits 7:4 contain the sense key
         memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
         scsiIoCtx->psense[0] = 0x70;//fixed format
@@ -2547,7 +2469,7 @@ static int send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
         memset(&requestSensePT, 0, sizeof(struct ide_atapi_passthru));
         memset(&rscommandTimer, 0, sizeof(seatimer_t));
         requestSensePT.ide_device = 0;//TODO: fill this in with target device ID
-        requestSensePT.flags = ATA_CHS_MODE;//TODO: when should this be set to LBA mode if at all on packets? -TJE
+        requestSensePT.flags = ATA_CHS_MODE;
         requestSensePT.flags |= IDE_PASSTHRU_READ;
 
         requestSensePT.buffsize = SPC3_SENSE_LEN;
@@ -2566,12 +2488,12 @@ static int send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
         requestSensePT.atapi_cmd.packet.bytes[5] = 0;//control byte
 
         start_Timer(&commandTimer);
-        ret = ioctl(scsiIoCtx->device->os_info.fd, IDEPASSTHRU, &requestSensePT);
+        ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, IDEPASSTHRU, &requestSensePT);
         stop_Timer(&commandTimer);
 
-        if (ret < 0)
+        if (ioctlResult < 0)
         {
-            //TODO: Any error handling after request sense that is necessary -TJE
+            //Any error handling after request sense that is necessary? -TJE
         }
         else
         {
@@ -2589,11 +2511,10 @@ static int send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-static int send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
+static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
     //sends the SATA passthrough IOCTL
-    //TODO: Figure out when we need this over SCSI passthrough
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     seatimer_t commandTimer;
     struct sata_passthru sataPassthrough;
     if (!scsiIoCtx->pAtaCmdOpts)
@@ -2678,7 +2599,6 @@ static int send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         sataPassthrough.xfer_flag |= ATA_DMA_XFER;
         break;
     default:
-        //TODO: catch unsupported values
         break;
     }
 
@@ -2727,11 +2647,11 @@ static int send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     sataPassthrough.sata_address = 0;//where do we get this???
 
     start_Timer(&commandTimer);
-    ret = ioctl(scsiIoCtx->device->os_info.fd, SATAPASSTHRU, &sataPassthrough);
+    int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, SATAPASSTHRU, &sataPassthrough);
     stop_Timer(&commandTimer);
 
     scsiIoCtx->device->os_info.last_error = errno;
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
@@ -2812,10 +2732,10 @@ static int send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int send_IO( ScsiIoCtx *scsiIoCtx )
+eReturnValues send_IO( ScsiIoCtx *scsiIoCtx )
 {
     //switch based on value stored in os_info to define which passthrough interface to use to issue commands -TJE
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     switch(scsiIoCtx->device->drive_info.interface_type)
     {
     case IDE_INTERFACE:
@@ -2848,7 +2768,7 @@ int send_IO( ScsiIoCtx *scsiIoCtx )
         break;
 #endif //DISABLE_NVME_PASSTHROUGH
     case RAID_INTERFACE:
-        if (scsiIoCtx->device->issue_io != NULL)
+        if (scsiIoCtx->device->issue_io != M_NULLPTR)
         {
             ret = scsiIoCtx->device->issue_io(scsiIoCtx);
         }
@@ -2903,7 +2823,7 @@ static int rhdisk_filter( const struct dirent *entry )
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
+eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
     int  num_devs = 0;
     struct dirent **namelist;
@@ -2911,9 +2831,9 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     //free the list of names to not leak memory
     for(int iter = 0; iter < num_devs; ++iter)
     {
-    	safe_Free(namelist[iter])
+    	safe_free_dirent(&namelist[iter]);
     }
-    safe_Free(namelist)
+    safe_free_dirent(namelist);
 
     *numberOfDevices = num_devs;
 
@@ -2944,34 +2864,36 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
-    int returnValue = SUCCESS;
+    eReturnValues returnValue = SUCCESS;
     int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
-    char name[80] = { 0 }; //Because get device needs char
-    int fd;
-    tDevice * d = NULL;
+    int driveNumber = 0;
+    int found = 0;
+    int failedGetDeviceCount = 0;
+    int permissionDeniedCount = 0;
+    DECLARE_ZERO_INIT_ARRAY(char, name, 80); //Because get device needs char
+    int fd = -1;
+    tDevice * d = M_NULLPTR;
 
     int  num_devs = 0;
     struct dirent **namelist;
 
     num_devs = scandir("/dev", &namelist, rhdisk_filter, alphasort);
 
-    char **devs = C_CAST(char **, calloc(num_devs + 1, sizeof(char *)));
+    char **devs = C_CAST(char **, safe_calloc(num_devs + 1, sizeof(char *)));
     int i = 0;
     //add rhdisk devices to the list
     for (; i < (num_devs); i++)
     {
-        size_t handleSize = (strlen("/dev/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(handleSize));
+        size_t handleSize = (safe_strlen("/dev/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
+        devs[i] = C_CAST(char *, safe_malloc(handleSize));
         snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
-        safe_Free(namelist[i])
+        safe_free_dirent(&namelist[i]);
     }
-    devs[i] = NULL; //Added this so the for loop down doesn't cause a segmentation fault.
-    safe_Free(namelist)
+    devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
+    safe_free_dirent(namelist);
 
-    //TODO: Check if sizeInBytes is a multiple of
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
         returnValue = BAD_PARAMETER;
@@ -2986,7 +2908,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
         d = ptrToDeviceList;
         for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
         {
-            if (!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
@@ -3023,7 +2945,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
                 d->dFlags = flags;
-                int ret = get_Device(name, d);
+                eReturnValues ret = get_Device(name, d);
                 if (ret != SUCCESS)
                 {
                     failedGetDeviceCount++;
@@ -3041,7 +2963,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber])
+            safe_free(&devs[driveNumber]);
         }
 	    if (found == failedGetDeviceCount)
 	    {
@@ -3056,7 +2978,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 	        returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
 	    }
     }
-    safe_Free(devs)
+    safe_free(devs);
     return returnValue;
 }
 
@@ -3073,7 +2995,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int close_Device(tDevice *dev)
+eReturnValues close_Device(tDevice *dev)
 {
     int retValue = 0;
     if (dev)
@@ -3105,13 +3027,13 @@ int close_Device(tDevice *dev)
     }
 }
 
-int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
+eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
 #if !defined (DISABLE_NVME_PASSTHROUGH)
     //In AIX, you must issue Admin commands on the controller handle
     //NVM or other commands sets can be issued on the rhdisk handle
     //If this is not done properly, undefined behavior will occur as it may issue the wrong command on the wrong queue.
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     int fdForNVMePassthru = nvmeIoCtx->commandType == NVM_ADMIN_CMD ? nvmeIoCtx->device->os_info.ctrlfd : nvmeIoCtx->device->os_info.fd;//start assuming rhdisk handle for now
     struct nvme_passthru nvmePassthrough;
     seatimer_t commandTimer;
@@ -3194,11 +3116,11 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 
     //issue the IO
     start_Timer(&commandTimer);
-    ret = ioctl(fdForNVMePassthru, NVME_PASSTHRU, &nvmePassthrough);
+    int ioctlResult = ioctl(fdForNVMePassthru, NVME_PASSTHRU, &nvmePassthrough);
     stop_Timer(&commandTimer);
 
     nvmeIoCtx->device->os_info.last_error = errno;
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
@@ -3271,10 +3193,10 @@ int send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 #endif
 }
 
-int os_nvme_Reset(tDevice *device)
+eReturnValues os_nvme_Reset(tDevice *device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     struct nvme_cntl nvmeReset;
     seatimer_t commandTimer;
     memset(&commandTimer, 0, sizeof(commandTimer));
@@ -3284,11 +3206,11 @@ int os_nvme_Reset(tDevice *device)
     nvmeReset.action = NVME_RESET;
     nvmeReset.cmd.reset.reset_type = NVME_CTLR_RESET;
     start_Timer(&commandTimer);
-    ret = ioctl(nvmeIoCtx->device->os_info.ctrlfd, NVME_CNTL, &nvmeReset);
+    int ioctlResult = ioctl(nvmeIoCtx->device->os_info.ctrlfd, NVME_CNTL, &nvmeReset);
     stop_Timer(&commandTimer);
 
     nvmeIoCtx->device->os_info.last_error = errno;
-    if (ret < 0)
+    if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
         if (nvmeIoCtx->device->os_info.last_error != 0)
@@ -3308,7 +3230,7 @@ int os_nvme_Reset(tDevice *device)
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int os_nvme_Subsystem_Reset(tDevice *device)
+eReturnValues os_nvme_Subsystem_Reset(tDevice *device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
@@ -3318,7 +3240,7 @@ int os_nvme_Subsystem_Reset(tDevice *device)
 #endif //DISABLE_NVME_PASSTHROUGH
 }
 
-int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize )
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize )
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
@@ -3330,30 +3252,30 @@ int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pDa
 //supposedly, when not in diagnostic mode, the read(), write(), lseek() can all be used.
 //This is currently not needed though.
 //Another thing we may want to implement here is the read/write ioctl codes that are available.
-int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
 //add SC_DIAGNOSTIC flag
-int os_Lock_Device(tDevice *device)
+eReturnValues os_Lock_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (!device->os_info.diagnosticModeFlagInUse)
     {
         close(device->os_info.fd);//this must be done first or the openx will fail!
@@ -3376,9 +3298,9 @@ int os_Lock_Device(tDevice *device)
 }
 
 //remove SC_DIAGNOSTIC flag
-int os_Unlock_Device(tDevice *device)
+eReturnValues os_Unlock_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->os_info.diagnosticModeFlagInUse)
     {
         close(device->os_info.fd);//this must be done first or the openx will fail!
@@ -3401,12 +3323,12 @@ int os_Unlock_Device(tDevice *device)
 }
 
 //use mount/vmount with the remount option??? (see links below)
-int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
 {
     return NOT_SUPPORTED;
 }
@@ -3416,7 +3338,7 @@ int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
 //https://www.ibm.com/docs/en/aix/7.3?topic=files-fullstath-file
 //https://www.ibm.com/docs/en/aix/7.3?topic=u-umount-uvmount-subroutine#umount
 //https://www.ibm.com/docs/en/aix/7.3?topic=m-mntctl-subroutine
-int os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }

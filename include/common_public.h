@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +15,12 @@
 
 #pragma once
 
-#include "common.h"
+#include "code_attributes.h"
+#include "common_types.h"
+#include "type_conversion.h"
+#include "bit_manip.h"
+#include "memory_safety.h"
+
 #include "version.h"
 #if defined (VMK_CROSS_COMP)
 #include "vm_nvme_lib.h"
@@ -29,7 +35,13 @@
 //#include <camlib.h> //for cam structure held in tDevice
 #endif
 
+#if defined (_WIN32) && !defined(_NTDDSCSIH_)
+#include <ntddscsi.h>
+#endif//_WIN32 & !_NTDDSCSIH_
+
+
 #include "csmi_helper.h" //because the device structure holds some csmi support structure for when we can issue csmi passthrough commands.
+#include "ciss_helper.h" //because this holds a structure to help with issuing CCISS commands
 
 #if defined (__cplusplus)
 #define __STDC_FORMAT_MACROS
@@ -42,28 +54,25 @@ extern "C"
         #undef(OPENSEA_TRANSPORT_API)
     #endif
 
-    #if defined(_WIN32) //DLL/LIB....be VERY careful making modifications to this unless you know what you are doing!
-        #if defined (EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
-            #error "The preprocessor definitions EXPORT_OPENSEA_TRANSPORT and STATIC_OPENSEA_TRANSPORT cannot be combined!"
-        #elif defined(STATIC_OPENSEA_TRANSPORT)
-            #if defined (_DEBUG)
-            #pragma message("Compiling opensea-transport as a static library!")
-            #endif
-            #define OPENSEA_TRANSPORT_API
-        #elif defined(EXPORT_OPENSEA_TRANSPORT)
-            #if defined (_DEBUG)
-            #pragma message("Compiling opensea-transport as exporting DLL!")
-            #endif
-            #define OPENSEA_TRANSPORT_API __declspec(dllexport)
-        #elif defined(IMPORT_OPENSEA_TRANSPORT)
-            #if defined (_DEBUG)
-            #pragma message("Compiling opensea-transport as importing DLL!")
-            #endif
-            #define OPENSEA_TRANSPORT_API __declspec(dllimport)
-        #else
-            #error "You must specify STATIC_OPENSEA_TRANSPORT or EXPORT_OPENSEA_TRANSPORT or IMPORT_OPENSEA_TRANSPORT in the preprocessor definitions!"
+    #if defined (EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
+        #error "The preprocessor definitions EXPORT_OPENSEA_TRANSPORT and STATIC_OPENSEA_TRANSPORT cannot be combined!"
+    #elif defined(EXPORT_OPENSEA_TRANSPORT)
+        #if defined (_DEBUG) && !defined (OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT)
+        #pragma message("Compiling opensea-transport as exporting DLL!")
+        #define OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT
         #endif
-    #else //SO/A....as far as I know, nothing needs to be done here
+        #define OPENSEA_TRANSPORT_API DLL_EXPORT
+    #elif defined(IMPORT_OPENSEA_TRANSPORT)
+        #if defined (_DEBUG) && !defined (OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT)
+        #pragma message("Compiling opensea-transport as importing DLL!")
+        #define OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT
+        #endif
+        #define OPENSEA_TRANSPORT_API DLL_IMPORT
+    #else
+        #if defined (_DEBUG) && !defined (OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT)
+        #pragma message("Compiling opensea-transport as a static library!")
+        #define OPENSEA_TRANSPORT_COMPILATION_MESSAGE_OUTPUT
+        #endif
         #define OPENSEA_TRANSPORT_API
     #endif
 
@@ -72,7 +81,7 @@ extern "C"
     #define OPENSEA_MAX_CONTROLLERS (8U)
     #define MAX_DEVICES_PER_CONTROLLER (256U)
     #define MAX_DEVICES_TO_SCAN (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
-	#define MAX_DRIVER_NAME			40
+    #define MAX_DRIVER_NAME			40
     #define MAX_DRIVER_VER_STR      24
 
     #define SERIAL_NUM_LEN          (20) //Going with ATA lengths
@@ -666,16 +675,16 @@ extern "C"
         bool specifierIDValid;
         eAdapterInfoType infoType;
         //USB and PCI devices use uint16's for vendor product and revision. IEEE1394 uses uint32's since most of these are 24bit numbers
-        //TODO: Annonymous union for different types??? USB  vs PCI vs IEEE1394???
+        //Would an annonymous union for different types be easier??? USB  vs PCI vs IEEE1394???
         uint32_t vendorID;
         uint32_t productID;
         uint32_t revision;
         uint32_t specifierID;//Used on IEEE1394 only
     }adapterInfo;
 
-	typedef struct _driverInfo
-	{
-		char driverName[MAX_DRIVER_NAME];
+    typedef struct _driverInfo
+    {
+        char driverName[MAX_DRIVER_NAME];
         char driverVersionString[MAX_DRIVER_VER_STR];//raw, unparsed string in case parsing into below values goes wrong due to variability in how this is reported between linux drivers.-TJE
         bool majorVerValid;
         bool minorVerValid;
@@ -686,7 +695,7 @@ extern "C"
         uint32_t driverMinorVersion;
         uint32_t driverRevision;
         uint32_t driverBuildNumber;//Likely Windows only
-	} driverInfo;
+    } driverInfo;
 
     typedef enum _eATASynchronousDMAMode
     {
@@ -714,7 +723,7 @@ extern "C"
         NVME_PASSTHROUGH_JMICRON = 100,
         NVME_PASSTHROUGH_ASMEDIA = 101,//ASMedia packet command, which is capable of passing any command
         NVME_PASSTHROUGH_ASMEDIA_BASIC = 102,//ASMedia command that is capable of only select commands. Must be after full passthrough that way when trying one passthrough after another it can properly find full capabilities before basic capabilities.
-        //TODO: Other vendor unique SCSI to NVMe passthrough here
+        //Add other vendor unique SCSI to NVMe passthrough here
         NVME_PASSTHROUGH_UNKNOWN,
         //No passthrough
         PASSTHROUGH_NONE = INT32_MAX
@@ -746,7 +755,8 @@ extern "C"
         bool noNeedLegacyDeviceHeadCompatBits; //original ATA spec required bits 7 and 5 to be set to 1. This was removed a long time ago, but can affect just about any pata device. This helps change when to set them as they are not needed on SATA (or shouldn't be)
         bool dcoDMASupported;//DCO identify and DCO set DMA commands are supported.
         bool hpaSecurityExtDMASupported;//HPA security extension DMA commands are supported.
-        uint8_t reserved[5];//reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
+        bool sanitizeOverwriteDefinitiveEndingPattern;
+        uint8_t reserved[4];//reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
     }ataOptions;
 
     typedef enum _eZonedDeviceType {
@@ -760,7 +770,7 @@ extern "C"
     //This is used by the software SAT translation layer. DO NOT Update this directly
     typedef struct _softwareSATFlags
     {
-        bool identifyDeviceDataLogSupported;
+        bool identifyDeviceDataLogSupported; //TODO: each supported subpage of this log
         bool deviceStatisticsSupported; //if set to true, any 1 of the bools in the following struct is set to true (supported)
         struct
         {
@@ -780,11 +790,41 @@ extern "C"
         bool zeroExtSupported;
         uint8_t rtfrIndex;
         ataReturnTFRs ataPassthroughResults[16];
+        //Other flags that would simplify the software SAT code:
+        // it may be possible to combine software SAT and drive_info flags to simplify this all-TJE
+        //SMART supported/enabled
+        //SMART self test support
+        //long self test time
+        //SMART error logging
+        //TRIM support (rzat, drat) + sectors per trim
+        //dataset management xl support
+        //write uncorrectable ext support
+        //EPC supported/enabled
+        //Legacy standby timer matches values in standard (versus being vendor specific)
+        //APM supported/enabled and current value. Store initial value of APM when software SAT translator was started for default page as well.
+        //save initial read-look ahead and write cache settings when SAT translator was started for default values
+        //separate supported/enabled flags for these features as well.
+        //maxLBA
+        //logical block size
+        //physical block size exponenet
+        //GPL supported
+        //detected pata vs SATA drive
+        //current transfer mode and supported modes (UDMA, MWDMA, PIO, etc)
+        //store last value of legacy standby timer
+        //media SN
+        //WWN
+        //MN?
+        //SN?
+        //download microcode support (dma, modes, etc)
+        //Sanitize modes supported
     }softwareSATFlags;
 
     //This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error processing (USB mostly)
     #define TURF_LIMIT 10
-
+    #define MAX_VPD_ATTEMPTS 5
+    #define MAX_LP_ATTEMPTS 5
+    #define MAX_MP6_ATTEMPTS 8
+    #define MAX_MP10_ATTEMPTS 8
     //The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI adapters, etc. Most of this is related to USB adapters though.
     typedef struct _passthroughHacks
     {
@@ -818,6 +858,7 @@ extern "C"
             //NORWZ/NZTL - not currently handled. No zero length on read or write commands since adapter doesn't handle these properly.
             MXFER - maxTransferLength (bytes)
             WBND - write buffer no deferred download. PMC specific workaround at this time.-TJE
+            MP6FORSPZ - use mode sense/select 6 for pages with subpage 0. Some USB adapters will support a page only with mode sense/select 6 but will not support the same page with the 10 byte command.
             TODO: More hacks for strange adapters as needed can be added in here.
             */
             bool unitSNAvailable;//This means we can request this page even if other VPD pages don't work.
@@ -851,10 +892,20 @@ extern "C"
                 uint8_t serialNumberLength;
             }scsiInq;
             bool writeBufferNoDeferredDownload;//Write buffer is filtered and does not allow updating firmware using deferred download. Specific to PMC 8070 for now
-            uint8_t reserved[5];//padd out above to 8 byte boundaries
+            uint8_t mp6sp0Success;//this is for the next option so that it can be set when detected automatically-TJE
+            bool useMode6BForSubpageZero;//mode pages with subpage zero are supported, but only using 6 byte mode commands for some unknown reason.
+            uint8_t attemptedMP6s;
+            uint8_t successfulMP6s;//counter for number of times mode page 6 read correctly. Can be used for automatic setting of hacks.
+            uint8_t attemptedMP10s;
+            uint8_t successfulMP10s;//counter for number of times mode page 10 read correctly. Can be used for automatic setting of hacks.
+            uint8_t attemptedLPs;
+            uint8_t successfulLPs;//counter for number of times a log page read correctly. Can be used for automatic setting of hacks.
+            uint8_t attemptedVPDs;
+            uint8_t successfulVPDs;//counter for number of times a VPD page read correctly. Can be used for automatic setting of hacks.
+            uint8_t reserved[3];
             uint32_t maxTransferLength;//Maximum SCSI command transfer length in bytes. Mostly here for USB where translations aren't accurate or don't show this properly.
             bool noSATVPDPage;//when this is set, the SAT VPD is not available and should not be read, skipping ahead to instead directly trying a passthrough command
-            uint8_t scsipadding[3];//padd 4 more bytes after transfer length to keep 8 byte boundaries
+            uint8_t reserved2[3];
         }scsiHacks;
         //ATA Hacks refer to SAT translation issues or workarounds.
         struct {
@@ -881,7 +932,7 @@ extern "C"
             NCHK - do not use check condition bit at all
             CHKE - accepts the check condition bit, but returns empty data
             ATANVEMU - ata/nvme emulation (likely only realtek's chip right now). If this is set, the NVMe emulation will set basically only MN, SN, FWrev. DMA not supported, etc. Basically need to treat this as SCSI except for reading this data at this time.-TJE
-            //TODO: Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
+            //Add more hacks below as needed to workaround other weird behavior for ATA passthrough.
             */
             bool smartCommandTransportWithSMARTLogCommandsOnly;//for USB adapters that hang when sent a GPL command to SCT logs, but work fine with SMART log commands
             //bool useA1SATPassthroughWheneverPossible;//For USB adapters that will only process 28bit commands with A1 and will NOT issue them with 85h
@@ -930,7 +981,7 @@ extern "C"
                 bool firmwareCommit;
                 bool vendorUnique;
                 bool deviceSelfTest;
-                bool sanitize;
+                bool sanitize;//any sanitize command
                 bool namespaceManagement;
                 bool namespaceAttachment;
                 bool setFeatures;//this does not have granularity for which features at this time!!!
@@ -940,13 +991,15 @@ extern "C"
                 bool securityReceive;
                 bool formatUserSecureErase;//format with ses set to user erase
                 bool formatCryptoSecureErase;//format with ses set to crypto erase
-                //TODO: As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
+                bool sanitizeCrypto;//Sanitize crypto erase is supported
+                bool sanitizeBlock;//Sanitize block erase is supported
+                bool sanitizeOverwrite;//Sanitize overwrite erase is supported
+                //As other passthroughs are learned with different capabilities, add other commands that ARE supported by them here so that other layers of code can know what capabilities a given device has.
             }limitedCommandsSupported;
-            uint8_t reserved[3];//padd out above bools to 8 byte boundaries
+            //uint8_t reserved[1];//padd out above bools to 8 byte boundaries
             uint32_t maxTransferLength;
             uint32_t nvmepadding;//padd 4 more bytes after transfer length to keep 8 byte boundaries
         }nvmePTHacks;
-        //TODO: Add more hacks and padd this structure
     }passthroughHacks;
 
     typedef struct _driveInfo {
@@ -992,10 +1045,9 @@ extern "C"
             uint32_t lastNVMeCommandSpecific;//DW0 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
             uint32_t lastNVMeStatus;//DW3 of command completion. Not all OS's return this so it is not always valid...only really useful for SNTL when it is used. Linux, Solaris, FreeBSD, UEFI. Windows is the problem child here.
         }lastNVMeResult;
-        //TODO: a union or something so that we don't need to keep adding more bytes for drive types that won't use the ATA stuff or NVMe stuff in this struct.
         bridgeInfo      bridge_info;
         adapterInfo     adapter_info;
-		driverInfo		driver_info;
+        driverInfo		driver_info;
         ataOptions      ata_Options;
         uint64_t        lastCommandTimeNanoSeconds;//The time the last command took in nanoseconds
         softwareSATFlags softSATFlags;//This is used by the software SAT translation layer. DO NOT Update this directly. This should only be updated by the lower layers of opensea-transport.
@@ -1028,7 +1080,8 @@ extern "C"
 #endif
 
 #if defined (_WIN32) && !defined(UEFI_C_SOURCE)
-    //TODO: see if we can move these WIndows specific enums out to the windows unique files.
+    //These are here instead of a Windows unique file due to messy includes.
+    //We should be able to find a better way to handle this kind of OS unique stuff in the future.
     typedef enum _eWindowsIOCTLType
     {
         WIN_IOCTL_NOT_SET = 0,//this should only be like this when allocating memory...
@@ -1081,6 +1134,19 @@ extern "C"
 
     //forward declare csmi info to avoid including csmi_helper.h
     typedef struct _csmiDeviceInfo csmiDeviceInfo,*ptrCsmiDeviceInfo;
+
+    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo **csmidevinfo)
+    {
+        safe_Free(M_REINTERPRET_CAST(void**, csmidevinfo));
+    }
+
+    //forward declare cciss device 
+    typedef struct _cissDeviceInfo cissDeviceInfo,*ptrCissDeviceInfo;
+
+    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo **cissdevinfo)
+    {
+        safe_Free(M_REINTERPRET_CAST(void**, cissdevinfo));
+    }
 
 #define OS_HANDLE_NAME_MAX_LENGTH 256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
@@ -1170,7 +1236,7 @@ extern "C"
         SCSI_ADDRESS        scsi_addr;
         uint32_t            os_drive_number;
         int                 srbtype; //this will be used to filter when a controller supports the new SCSI PassThrough EX IOCTLs
-        int                 alignmentMask;//save the alignment mask. This may be needed on some controllers....not currently used but SHOULD be added later for the SCSI IOCTL DIRECT EX
+        unsigned long       alignmentMask;//save the alignment mask. This may be needed on some controllers....not currently used but SHOULD be added later for the SCSI IOCTL DIRECT EX
         eWindowsIOCTLType   ioType;//This will be set during get_Device so we know how to talk to the drive (Mostly for ATA). Only change this if you know what you're doing.
         eWindowsIOCTLMethod ioMethod;//Use this to force using DIRECT or Double Buffered IOCTLs for each command. By default the library will decide...typically 16KiB or less will use double buffered for compatibility purposes. This is ignored for IDE and SMART IOCTLs since they are only double buffered.
         struct {
@@ -1185,7 +1251,7 @@ extern "C"
             bool allowFlexibleUseOfAPI;//Set this to true to allow using the Win10 API for FWDL for any compatible download commands. If this is false, the Win10 API will only be used on IDE_INTERFACE for an ATA download command and SCSI interface for a supported Write buffer command. If true, it will be used regardless of which command the caller is using. This is useful for pure FW updates versus testing a specific condition.
             uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
             uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
-            //TODO: expand this struct if we need other data when we check for firmware download support on a device.
+            //expand this struct if we need other data when we check for firmware download support on a device.
         }fwdlIOsupport;
         uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
         bool openFabricsNVMePassthroughSupported;//If true, then nvme commands can be issued using the open fabrics NVMe passthrough IOCTL
@@ -1237,30 +1303,28 @@ extern "C"
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
         ptrCsmiDeviceInfo csmiDeviceData;//This is a pointer because it will only be allocated when CSMI is supported. This is also used by Intel RST NVMe passthrough which is basically an extension of CSMI
+        ptrCissDeviceInfo cissDeviceData;//This pointer is allocated only when CCISS is supported.
         uint8_t padd[6];//padd to multiple of 8 bytes
     }OSDriveInfo;
 
-    typedef enum _eDiscoveryOptions
-    {
-        DEFAULT_DISCOVERY,
-        FAST_SCAN, //Gets the basic information for a quick scan like SeaChest displays on the command line.
-        DO_NOT_WAKE_DRIVE, //e.g OK to send commands that do NOT access media
-        NO_DRIVE_CMD,
-        OPEN_HANDLE_ONLY,
-        BUS_RESCAN_ALLOWED = BIT15,//this may wake the drive!
+    #define DEFAULT_DISCOVERY 0
+    #define FAST_SCAN 1 //Gets the basic information for a quick scan like SeaChest displays on the command line.
+    #define DO_NOT_WAKE_DRIVE 2 //e.g OK to send commands that do NOT access media
+    #define NO_DRIVE_CMD 3
+    #define OPEN_HANDLE_ONLY 4
+    #define BUS_RESCAN_ALLOWED BIT15 //this may wake the drive!
         //Flags below are bitfields...so multiple can be set. Flags above should be checked by only checking the first word of this enum.
-        FORCE_ATA_PIO_ONLY = BIT16, //troubleshooting option to only send PIO versions of commands (used in get_Device/fill_Drive_Info).
-        FORCE_ATA_DMA_SAT_MODE = BIT17, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
-        FORCE_ATA_UDMA_SAT_MODE = BIT18, //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
-        GET_DEVICE_FUNCS_IGNORE_CSMI = BIT19, //use this bit in get_Device_Count and get_Device_List to ignore CSMI devices.
-        GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES = BIT20, //matches v2
-        GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE = BIT21, //matches v3
-        GET_DEVICE_FUNCS_VERBOSE_BUFFERS = BIT22, //matches v4
-    } eDiscoveryOptions;
+    #define FORCE_ATA_PIO_ONLY BIT16 //troubleshooting option to only send PIO versions of commands (used in get_Device/fill_Drive_Info).
+    #define FORCE_ATA_DMA_SAT_MODE BIT17 //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
+    #define FORCE_ATA_UDMA_SAT_MODE BIT18 //troubleshooting option to send all DMA commands with protocol set to DMA in SAT CDBs
+    #define GET_DEVICE_FUNCS_IGNORE_CSMI BIT19 //use this bit in get_Device_Count and get_Device_List to ignore CSMI devices.
+    #define GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES BIT20 //matches v2
+    #define GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE BIT21 //matches v3
+    #define GET_DEVICE_FUNCS_VERBOSE_BUFFERS BIT22 //matches v4
 
-    typedef int (*issue_io_func)( void * );
+    typedef eReturnValues (*issue_io_func)( void * );
 
-    #define DEVICE_BLOCK_VERSION    (8)
+    #define DEVICE_BLOCK_VERSION    (9)
 
     // verification for compatibility checking
     typedef struct _versionBlock
@@ -1278,7 +1342,7 @@ extern "C"
         void                *raid_device;
         issue_io_func       issue_io;//scsi IO function pointer for raid or other driver/custom interface to send commands
         issue_io_func       issue_nvme_io;//nvme IO function pointer for raid or other driver/custom interface to send commands
-        eDiscoveryOptions   dFlags;
+        uint64_t            dFlags;
         eVerbosityLevels    deviceVerbosity;
         uint32_t            delay_io;
     }tDevice;
@@ -1489,10 +1553,28 @@ extern "C"
         ZONE_REPORT_LIST_FULL_ZONES                             = 0x05,
         ZONE_REPORT_LIST_READ_ONLY_ZONES                        = 0x06,
         ZONE_REPORT_LIST_OFFLINE_ZONES                          = 0x07,
+        ZONE_REPORT_LIST_INACTIVE_ZONES                         = 0x08,
         ZONE_REPORT_LIST_ZONES_WITH_RESET_SET_TO_ONE            = 0x10,
         ZONE_REPORT_LIST_ZONES_WITH_NON_SEQ_SET_TO_ONE          = 0x11,
+        ZONE_REPORT_LIST_ALL_ZONES_EXCEPT_GAP_ZONES             = 0x3E,
         ZONE_REPORT_LIST_ALL_ZONES_THAT_ARE_NOT_WRITE_POINTERS  = 0x3F
     }eZoneReportingOptions;
+
+    typedef enum _eZoneDomainReportingOptions
+    {
+        ZONE_DOMAIN_REPORT_ALL_ZONE_DOMAINS             = 0x00,
+        ZONE_DOMAIN_REPORT_ALL_ZONES_ACTIVE             = 0x01,
+        ZONE_DOMAIN_REPORT_CONTAIN_ACTIVE_ZONES         = 0x02,
+        ZONE_DOMAIN_REPORT_DO_NOT_CONTAIN_ACTIVE_ZONES  = 0x03,
+    }eZoneDomainReportingOptions;
+
+    typedef enum _eRealmsReportingOptions
+    {
+        REALMS_REPORT_ALL_REALMS                                                    = 0x00,
+        REALMS_REPORT_ALL_REALMS_CONTAIN_SEQUENTIAL_OR_BEFORE_REQUIRED_ACTIVE_ZONES = 0x01,
+        REALMS_REPORT_SEQUENTIAL_WRITE_REQUIRED_ACTIVE_ZONES                        = 0x02,
+        REALMS_REPORT_SEQUENTIAL_WRITE_PREFERRED_ACTIVE_ZONES                       = 0x03,
+    }eRealmsReportingOptions;
 
     typedef enum _eZMAction
     {
@@ -1501,6 +1583,11 @@ extern "C"
         ZM_ACTION_FINISH_ZONE           = 0x02,//non data-out
         ZM_ACTION_OPEN_ZONE             = 0x03,//non data-out
         ZM_ACTION_RESET_WRITE_POINTERS  = 0x04,//non data-out
+        ZM_ACTION_SEQUENTIALIZE_ZONE        = 0x05,//non data-out
+        ZM_ACTION_REPORT_REALMS             = 0x06,//dma in
+        ZM_ACTION_REPORT_ZONE_DOMAINS       = 0x07,//dma in
+        ZM_ACTION_ZONE_ACTIVATE             = 0x08,//dma in
+        ZM_ACTION_ZONE_QUERY                = 0x09,//dma in
     }eZMAction;
 
     OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
@@ -1520,7 +1607,7 @@ extern "C"
     #elif defined (__sun)
         #define MAX_CMD_TIMEOUT_SECONDS 65535
     #elif defined (_AIX)
-        #define MAX_CMD_TIMEOUT_SECONDS (UINT32_MAX - 1) //TODO: This may not be correct but the field that sets this is a uint32. Setting to 1 less than infinite's current value -TJE
+        #define MAX_CMD_TIMEOUT_SECONDS (UINT32_MAX - 1) //NOTE: This may not be correct but the field that sets this is a uint32. Setting to 1 less than infinite's current value -TJE
     #else
         #error "Need to set MAX_CMD_TIMEOUT_SECONDS for this OS"
     #endif
@@ -1539,7 +1626,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Opensea_Transport_Version(apiVersionInfo *ver);
+    OPENSEA_TRANSPORT_API eReturnValues get_Opensea_Transport_Version(apiVersionInfo *ver);
 
     //-----------------------------------------------------------------------------
     //
@@ -1554,7 +1641,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Version_Block(versionBlock * ver);
+    OPENSEA_TRANSPORT_API eReturnValues get_Version_Block(versionBlock * ver);
 
     OPENSEA_TRANSPORT_API bool validate_Device_Struct(versionBlock sanity);
 
@@ -1574,7 +1661,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Device(const char *filename, tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues get_Device(const char *filename, tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1593,7 +1680,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
+    OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags);
 
     //-----------------------------------------------------------------------------
     //
@@ -1619,8 +1706,7 @@ extern "C"
     //!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated. Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
-
+    OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
 
     //-----------------------------------------------------------------------------
     //
@@ -1635,7 +1721,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int close_Device(tDevice *device);
+    OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice *device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1647,13 +1733,12 @@ extern "C"
     //
     //  Entry:
     //!   \param[in] flags = Flags for future use to control the scan
-    //!   \param[in] outputInfo = pointer to an outputInfo struct to control how to output the scan information. If this is NULL, standard screen output is assumed
     //!   \param[in] scanVerbosity = the verbosity to run the scan at
     //!
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, OutputInfo *outputInfo, eVerbosityLevels scanVerbosity);
+    OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity);
 
     //-----------------------------------------------------------------------------
     //
@@ -1667,10 +1752,10 @@ extern "C"
     //!   \param[in] bufSize = amount of data to be written
     //!
     //  Exit:
-    //!   \return SUCCESS on successful completion, !SUCCESS if problems encountered
+    //!   \return size_t bytes read
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int load_Bin_Buf(char *filename, void *myBuf, size_t bufSize);
+    OPENSEA_TRANSPORT_API size_t load_Bin_Buf(const char *filename, void *myBuf, size_t bufSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2058,7 +2143,7 @@ extern "C"
     //!   \return int SUCCESS if passes !SUCCESS if fails for some reason.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int calculate_Checksum(uint8_t *pBuf, uint32_t blockSize);
+    OPENSEA_TRANSPORT_API eReturnValues calculate_Checksum(uint8_t *pBuf, uint32_t blockSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2138,9 +2223,9 @@ extern "C"
         uint8_t raid;
     }removeDuplicateDriveType;
 
-    OPENSEA_TRANSPORT_API int remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
+    OPENSEA_TRANSPORT_API eReturnValues remove_Duplicate_Devices(tDevice *deviceList, volatile uint32_t * numberOfDevices, removeDuplicateDriveType rmvDevFlag);
 
-    OPENSEA_TRANSPORT_API int remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
+    OPENSEA_TRANSPORT_API eReturnValues remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, volatile uint32_t * numberOfDevices);
 
     OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice *device);
     OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice *device);

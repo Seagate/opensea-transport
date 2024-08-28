@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -543,11 +544,26 @@ extern "C"
         NVME_FEAT_KEEP_ALIVE_TIMER_     = 0x0F,
         NVME_FEAT_HOST_CONTROLLED_THERMAL_MANAGEMENT_   = 0x10,
         NVME_FEAT_NON_OPERATIONAL_POWER_STATE_CONFIG_   = 0x11,
+        NVME_FEAT_READ_RECOVERY_LEVEL_CONFIG_   = 0x12,
+        NVME_FEAT_PREDICATABLE_LATENCY_MODE_CONFIG_  = 0x13,
+        NVME_FEAT_PREDICATABLE_LATENCY_MODE_WINDOW_  = 0x14,
+        NVME_FEAT_LBA_STATUS_INFORMATION_REPORT_INTERVAL_    = 0x15,//NVM command set
+        NVME_FEAT_HOST_BEHAVIOR_SUPPORT_ = 0x16,
+        NVME_FEAT_SANITIZE_CONFIG_       = 0x17,
+        NVME_FEAT_ENDURANCE_GROUP_EVENT_CONFIGURATION_   = 0x18,
+        NVME_FEAT_IO_COMMAND_SET_PROFILE_    = 0x19,
+        NVME_FEAT_SPINUP_CONTROL_    = 0x1A,
+        //key value - 20h
+        // 78h-7C = reserved for management features
+        NVME_FEAT_ENHANCED_CONTROLLER_METADATA_  = 0x7D,
+        NVME_FEAT_CONTROLLER_METADATA_   = 0x7E,
+        NVME_FEAT_NAMESPACE_METADATA_    = 0x7F,
         //NVM command set specific
         NVME_FEAT_SOFTWARE_PROGRESS_MARKER_ = 0x80,
         NVME_FEAT_HOST_IDENTIFIER_          = 0x81,
         NVME_FEAT_RESERVATION_NOTIFICATION_MASK_    = 0x82,
         NVME_FEAT_RESERVATION_PERSISTANCE_          = 0x83,
+        NVME_FEAT_NAMESPACE_WRITE_PROTECTION_CONFIG_ = 0x84,
     } eNvmeFeatures;
 
     //Not sure where these belong...but not in the above enum
@@ -861,7 +877,6 @@ extern "C"
         NVME_CMD_SP_SC_TOO_MANY_ACTIVE_ZONES                    = 0xBD,
         NVME_CMD_SP_SC_TOO_MANY_OPEN_ZONES                      = 0xBE,
         NVME_CMD_SP_SC_INVALID_ZONE_STATE_TRANSITION            = 0xBF,
-        //TODO: Fabrics Commands
     }eNvmeCmdSpecificStatus;
 
     typedef enum _eNvmeMediaDataErrStatus

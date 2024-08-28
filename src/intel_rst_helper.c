@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,7 +11,17 @@
 // ******************************************************************************************
 // 
 #if defined (ENABLE_INTEL_RST)
-#include "common.h"
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+
 #include "intel_rst_defs.h"
 #include "intel_rst_helper.h"
 #include "sntl_helper.h"
@@ -196,14 +207,19 @@ static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
     return;
 }
 
-//generic function to handle taking in the various RAID FW Requests to keep code from being dumplicated
-static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t dataRequestLength, uint32_t timeoutSeconds, uint32_t intelFirmwareFunction, uint32_t intelFirmwareFlags, bool readFirmwareInfo, uint32_t *returnCode)
+static M_INLINE void safe_free_irst_raid_fw_buffer(IOCTL_RAID_FIRMWARE_BUFFER **buf)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    safe_Free_aligned(M_REINTERPRET_CAST(void**, buf));
+}
+
+//generic function to handle taking in the various RAID FW Requests to keep code from being dumplicated
+static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t dataRequestLength, uint32_t timeoutSeconds, uint32_t intelFirmwareFunction, uint32_t intelFirmwareFlags, bool readFirmwareInfo, uint32_t *returnCode)
+{
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (device)
     {
         size_t allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
-        IOCTL_RAID_FIRMWARE_BUFFER *raidFirmwareRequest = C_CAST(IOCTL_RAID_FIRMWARE_BUFFER*, calloc_aligned(allocationSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+        IOCTL_RAID_FIRMWARE_BUFFER *raidFirmwareRequest = C_CAST(IOCTL_RAID_FIRMWARE_BUFFER*, safe_calloc_aligned(allocationSize, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (raidFirmwareRequest)
         {
             seatimer_t commandTimer;
@@ -251,7 +267,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                 handleToUse = device->os_info.scsiSRBHandle;
                 //use Windows pathId
                 raidFirmwareRequest->Request.PathId = device->os_info.scsi_addr.PathId;
-                //TODO: may need to add in remaining scsi address in the future, but for now these other fields are reserved
+                //may need to add in remaining scsi address in the future, but for now these other fields are reserved
             }
             //setup the firmware request
             raidFirmwareRequest->Request.FwRequestBlock.Version = INTEL_FIRMWARE_REQUEST_BLOCK_STRUCTURE_VERSION;
@@ -275,10 +291,10 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             DWORD bytesReturned = 0;
             OVERLAPPED overlappedStruct;
             memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-            overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-            if (overlappedStruct.hEvent == NULL)
+            overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
+            if (overlappedStruct.hEvent == M_NULLPTR)
             {
-                safe_Free_aligned(raidFirmwareRequest)
+                safe_free_irst_raid_fw_buffer(&raidFirmwareRequest);
                 return OS_PASSTHROUGH_FAILURE;
             }
             start_Timer(&commandTimer);
@@ -301,7 +317,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
             }
             stop_Timer(&commandTimer);
             CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent = NULL;
+            overlappedStruct.hEvent = M_NULLPTR;
             if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
             {
                 printf("Windows Error: ");
@@ -329,7 +345,6 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                         memcpy(ptrDataRequest, C_CAST(uint8_t*, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
                     }
                     break;
-                    //TODO: Some of these we can dummy up a response for ib ATA, SCSI, and NVMe.
                 case INTEL_FIRMWARE_STATUS_ERROR:
                 case INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST:
                 case INTEL_FIRMWARE_STATUS_INVALID_PARAMETER:
@@ -355,7 +370,7 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
                     break;
                 }
             }
-            safe_Free_aligned(raidFirmwareRequest)
+            safe_free_irst_raid_fw_buffer(&raidFirmwareRequest);
         }
         else
         {
@@ -369,6 +384,11 @@ static int intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest, uint32_t
     return ret;
 }
 
+static M_INLINE void safe_free_irst_fw_info(INTEL_STORAGE_FIRMWARE_INFO_V2 **info)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, info));
+}
+
 bool supports_Intel_Firmware_Download(tDevice *device)
 {
     bool supported = false;
@@ -376,7 +396,7 @@ bool supports_Intel_Firmware_Download(tDevice *device)
     printf("Intel: Checking FWDL IOCTL support\n");
 #endif //INTRST_DEBUG
     uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2) + (sizeof(INTEL_STORAGE_FIRMWARE_SLOT_INFO_V2) * 7);//max of 7 slots
-    PINTEL_STORAGE_FIRMWARE_INFO_V2 firmwareInfo = C_CAST(PINTEL_STORAGE_FIRMWARE_INFO_V2, calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this is passed to another function where it will be copied as needed
+    PINTEL_STORAGE_FIRMWARE_INFO_V2 firmwareInfo = C_CAST(PINTEL_STORAGE_FIRMWARE_INFO_V2, safe_calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this is passed to another function where it will be copied as needed
     if (firmwareInfo)
     {
         uint32_t flags = 0;
@@ -395,7 +415,6 @@ bool supports_Intel_Firmware_Download(tDevice *device)
         if (SUCCESS == intel_RAID_FW_Request(device, firmwareInfo, allocationSize, 15, INTEL_FIRMWARE_FUNCTION_GET_INFO, flags, true, &returnCode))
         {
             supported = firmwareInfo->UpgradeSupport;
-            //TODO: Need to store other things like alignment requirements similar to what is done in Windows 10 API today!
             if (device->os_info.csmiDeviceData)
             {
                 device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported = true;
@@ -421,7 +440,7 @@ bool supports_Intel_Firmware_Download(tDevice *device)
             }
 #endif //INTRST_DEBUG
         }
-        safe_Free(firmwareInfo)
+        safe_free_irst_fw_info(&firmwareInfo);
     }
 #if defined (INTRST_DEBUG)
     printf("Intel: FWDL IOCTL = %u\n", supported);
@@ -429,14 +448,19 @@ bool supports_Intel_Firmware_Download(tDevice *device)
     return supported;
 }
 
-//The idea with this function is that it can handle NVMe or SCSI with generic inputs that will work to reduce code
-static int internal_Intel_FWDL_Function_Download(tDevice *device, uint32_t flags, uint32_t *returnCode, uint8_t* imagePtr, uint32_t imageDataLength, uint32_t imageOffset, uint8_t firmwareSlot, uint32_t timeoutSeconds)
+static M_INLINE void safe_free_irst_fwdl(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2 **fwdl)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
+    safe_Free(M_REINTERPRET_CAST(void**, fwdl));
+}
+
+//The idea with this function is that it can handle NVMe or SCSI with generic inputs that will work to reduce code
+static eReturnValues internal_Intel_FWDL_Function_Download(tDevice *device, uint32_t flags, uint32_t *returnCode, uint8_t* imagePtr, uint32_t imageDataLength, uint32_t imageOffset, uint8_t firmwareSlot, uint32_t timeoutSeconds)
+{
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device && imagePtr)
     {
         uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2) + imageDataLength;
-        PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2 download = C_CAST(PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2, calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this will get copied to an aligned location
+        PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2 download = C_CAST(PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2, safe_calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this will get copied to an aligned location
         if (download)
         {
             download->Version = INTEL_STORAGE_FIRMWARE_DOWNLOAD_STRUCTURE_VERSION_V2;
@@ -447,7 +471,7 @@ static int internal_Intel_FWDL_Function_Download(tDevice *device, uint32_t flags
             download->ImageSize = imageDataLength;//TODO: Not sure if this is supposed to be the same or different from the buffersize listed above
             memcpy(download->ImageBuffer, imagePtr, imageDataLength);
             ret = intel_RAID_FW_Request(device, download, allocationSize, timeoutSeconds, INTEL_FIRMWARE_FUNCTION_DOWNLOAD, flags, false, returnCode);
-            safe_Free(download)
+            safe_free_irst_fwdl(&download);
         }
         else
         {
@@ -461,20 +485,25 @@ static int internal_Intel_FWDL_Function_Download(tDevice *device, uint32_t flags
     return ret;
 }
 
-static int internal_Intel_FWDL_Function_Activate(tDevice *device, uint32_t flags, uint32_t *returnCode, uint8_t firmwareSlot, uint32_t timeoutSeconds)
+static M_INLINE void safe_free_irst_fw_activate(INTEL_STORAGE_FIRMWARE_ACTIVATE **activate)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
+    safe_Free(M_REINTERPRET_CAST(void**, activate));
+}
+
+static eReturnValues internal_Intel_FWDL_Function_Activate(tDevice *device, uint32_t flags, uint32_t *returnCode, uint8_t firmwareSlot, uint32_t timeoutSeconds)
+{
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device)
     {
         uint32_t allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_ACTIVATE);
-        PINTEL_STORAGE_FIRMWARE_ACTIVATE activate = C_CAST(PINTEL_STORAGE_FIRMWARE_ACTIVATE, calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this will get copied to an aligned location
+        PINTEL_STORAGE_FIRMWARE_ACTIVATE activate = C_CAST(PINTEL_STORAGE_FIRMWARE_ACTIVATE, safe_calloc(allocationSize, sizeof(uint8_t)));//alignment not needed since this will get copied to an aligned location
         if (activate)
         {
             activate->Version = INTEL_STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION;
             activate->Size = sizeof(INTEL_STORAGE_FIRMWARE_ACTIVATE);
             activate->SlotToActivate = firmwareSlot;
             ret = intel_RAID_FW_Request(device, activate, allocationSize, timeoutSeconds, INTEL_FIRMWARE_FUNCTION_ACTIVATE, flags, false, returnCode);
-            safe_Free(activate)
+            safe_free_irst_fw_activate(&activate);
         }
         else
         {
@@ -512,7 +541,7 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx *scsiIoCtx, bool *isActivate)
             }
         }
     }
-    else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD|| scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
+    else if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD || scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_DMA))
     {
         if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
         {
@@ -542,16 +571,16 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx *scsiIoCtx, bool *isActivate)
     return compatible;
 }
 
-int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_COMMAND_NOT_AVAILABLE;
+    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     bool isActivate = false;
     if (is_Compatible_SCSI_FWDL_IO(scsiIoCtx, &isActivate))
     {
         uint32_t returnCode = 0;//will most likely help with debugging, but we should check this to dummy up sense data or rtfrs as necessary.
         uint32_t flags = 0;//flags aren't required
         uint32_t timeout = scsiIoCtx->timeout;
-        uint8_t firmwareSlot = 0;//TODO: Some intel documentation suggests that this should be INTEL_STORAGE_FIRMWARE_INFO_INVALID_SLOT, but we should test before using that
+        uint8_t firmwareSlot = 0;//NOTE: Some intel documentation suggests that this should be INTEL_STORAGE_FIRMWARE_INFO_INVALID_SLOT, but we should test before using that
         //special case, if running in SCSI translation mode for NVMe, we should set the controller flag
         if (strcmp(scsiIoCtx->device->drive_info.T10_vendor_ident, "NVMe") == 0)
         {
@@ -608,18 +637,23 @@ int send_Intel_Firmware_Download(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-    //NOTE: This function will handle calling appropriate NVMe firmware update function as well
-    //NOTE2: This will not issue whatever command you want. Only certain commands are supported by the driver. This function will attempt any command given in case driver updates allow other commands in the future.
-static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
+static M_INLINE void safe_free_irst_nvme_passthrough(NVME_IOCTL_PASS_THROUGH **nvmcmd)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    safe_Free_aligned(M_REINTERPRET_CAST(void**, nvmcmd));
+}
+
+//NOTE: This function will handle calling appropriate NVMe firmware update function as well
+//NOTE2: This will not issue whatever command you want. Only certain commands are supported by the driver. This function will attempt any command given in case driver updates allow other commands in the future.
+static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
+{
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (nvmeIoCtx)
     {
         seatimer_t commandTimer;
-        NVME_IOCTL_PASS_THROUGH *nvmPassthroughCommand = NULL;
+        NVME_IOCTL_PASS_THROUGH *nvmPassthroughCommand = M_NULLPTR;
         HANDLE handleToUse = nvmeIoCtx->device->os_info.fd;
         size_t allocationSize = sizeof(NVME_IOCTL_PASS_THROUGH) + nvmeIoCtx->dataSize;
-        nvmPassthroughCommand = C_CAST(NVME_IOCTL_PASS_THROUGH*, calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
+        nvmPassthroughCommand = C_CAST(NVME_IOCTL_PASS_THROUGH*, safe_calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
         if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
         {
             printf("\n====Sending Intel RST NVMe Command====\n");
@@ -672,7 +706,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                 handleToUse = nvmeIoCtx->device->os_info.scsiSRBHandle;
                 //use Windows pathId
                 nvmPassthroughCommand->PathId = nvmeIoCtx->device->os_info.scsi_addr.PathId;
-                //TODO: may need to add in remaining scsi address in the future, but for now these other fields are reserved
+                //may need to add in remaining scsi address in the future, but for now these other fields are reserved
             }
             //time to start setting up the command!
             nvmPassthroughCommand->Parameters.Command.DWord0 = nvmeIoCtx->cmd.dwords.cdw0;
@@ -703,7 +737,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             {
             case XFER_DATA_OUT:
                 memcpy(nvmPassthroughCommand->data, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
-                M_FALLTHROUGH
+                M_FALLTHROUGH;
             case XFER_DATA_IN:
                 //set the data length and offset
                 nvmPassthroughCommand->Parameters.DataBufferLength = nvmeIoCtx->dataSize;
@@ -714,16 +748,16 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                 nvmPassthroughCommand->Parameters.DataBufferOffset = 0;//this should be ok since we aren't doing a transfer
                 break;
             default:
-                safe_Free_aligned(nvmPassthroughCommand)
+                safe_free_irst_nvme_passthrough(&nvmPassthroughCommand);
                 return OS_COMMAND_NOT_AVAILABLE;
             }
             DWORD bytesReturned = 0;
             OVERLAPPED overlappedStruct;
             memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-            overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-            if (overlappedStruct.hEvent == NULL)
+            overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
+            if (overlappedStruct.hEvent == M_NULLPTR)
             {
-                safe_Free_aligned(nvmPassthroughCommand)
+                safe_free_irst_nvme_passthrough(&nvmPassthroughCommand);
                 return OS_PASSTHROUGH_FAILURE;
             }
             SetLastError(ERROR_SUCCESS);//clear out any errors before we begin
@@ -747,7 +781,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             }
             stop_Timer(&commandTimer);
             CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent = NULL;
+            overlappedStruct.hEvent = M_NULLPTR;
             if (!success)
             {
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -775,7 +809,6 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                     nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = nvmPassthroughCommand->Parameters.Completion.completion2;
                     nvmeIoCtx->commandCompletionData.statusAndCID = nvmPassthroughCommand->Parameters.Completion.completion3;
                     break;
-                    //TODO: Handle more error codes? Maybe they will be able to give better or more meaningful status back up to the top layers
                 default:
                     ret = OS_PASSTHROUGH_FAILURE;
                     break;
@@ -786,10 +819,10 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                 print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
                 print_Intel_SRB_Status(nvmPassthroughCommand->Header.ReturnCode);
             }
-            
+
             //set command time
             nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-            safe_Free_aligned(nvmPassthroughCommand)
+            safe_free_irst_nvme_passthrough(&nvmPassthroughCommand);
         }
         else
         {
@@ -810,7 +843,7 @@ static int send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
 #define DUMMY_NVME_STATUS(sct, sc) \
     C_CAST(uint32_t, (sct << 25) | (sc << 17))
 
-//TODO: This may need adjusting with bus trace help in the future, but for now this is a best guess from what info we have.-TJE
+//This may need adjusting with bus trace help in the future, but for now this is a best guess from what info we have.-TJE
 static void dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, uint32_t returnCode)
 {
     switch (returnCode)
@@ -875,9 +908,9 @@ static void dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, uint32_t returnCode)
     }
 }
 
-int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
+eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (nvmeIoCtx)
     {
         if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
@@ -942,9 +975,9 @@ int send_Intel_NVM_Firmware_Download(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
+eReturnValues send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #if defined (INTRST_DEBUG)
     printf("Intel: NVM passthrough request\n");
 #endif //INTRST_DEBUG
@@ -984,9 +1017,9 @@ int send_Intel_NVM_Command(nvmeCmdCtx *nvmeIoCtx)
     return ret;
 }
 
-int send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx *scsiIoCtx)
 {
-    int ret = OS_PASSTHROUGH_FAILURE;
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #if defined (INTRST_DEBUG)
     printf("Intel: Received SCSI command for translation\n");
 #endif //INTRST_DEBUG

@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2023 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,6 +10,19 @@
 //
 // ******************************************************************************************
 // 
+
+#include "common_types.h"
+#include "precision_timer.h"
+#include "memory_safety.h"
+#include "type_conversion.h"
+#include "string_utils.h"
+#include "bit_manip.h"
+#include "code_attributes.h"
+#include "math_utils.h"
+#include "error_translation.h"
+#include "io_utils.h"
+#include "sleep.h"
+
 #include <stdio.h>
 #include <dirent.h>
 #include <ctype.h>
@@ -29,15 +43,12 @@
 #include "ata_helper_func.h"
 #include "usb_hacks.h"
 
-
-
-
 extern bool validate_Device_Struct(versionBlock);
 
 //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
 bool os_Is_Infinite_Timeout_Supported(void)
 {
-    return false;//TODO: Documentation does not state if an infinite timeout is supported. If it actually is, need to define the infinite timeout value properly, and set it to the correct value
+    return false;//Documentation does not state if an infinite timeout is supported. If it actually is, need to define the infinite timeout value properly, and set it to the correct value
 }
 
 /*
@@ -85,12 +96,18 @@ typedef struct _spartitionInfo
 {
     char fsName[PART_INFO_NAME_LENGTH];
     char mntPath[PART_INFO_PATH_LENGTH];
-}spartitionInfo, * ptrsPartitionInfo;
+}spartitionInfo, *ptrsPartitionInfo;
+
+static M_INLINE void safe_free_spartition_info(spartitionInfo** partinfo)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, partinfo));
+}
+
 //partitionInfoList is a pointer to the beginning of the list
 //listCount is the number of these structures, which should be returned by get_Partition_Count
-static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
+static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
 {
-    int result = SUCCESS;
+    eReturnValues result = SUCCESS;
     int matchesFound = 0;
     if (listCount > 0)
     {
@@ -126,13 +143,13 @@ static int get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo par
     return result;
 }
 
-static int set_Device_Partition_Info(tDevice* device)
+static eReturnValues set_Device_Partition_Info(tDevice* device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     int partitionCount = 0;
-    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = {0};
+    DECLARE_ZERO_INIT_ARRAY(char, blockHandle, OS_HANDLE_NAME_MAX_LENGTH);
     snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
-    set_Device_Name(device->os_info.name, &blockHandle[strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - strlen("/dev/"));
+    set_Device_Name(device->os_info.name, &blockHandle[safe_strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - safe_strlen("/dev/"));
     //note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the information in the mount tab file.
     partitionCount = get_Partition_Count(blockHandle);
 #if defined (_DEBUG)
@@ -143,7 +160,7 @@ static int set_Device_Partition_Info(tDevice* device)
         device->os_info.fileSystemInfo.fileSystemInfoValid = true;
         device->os_info.fileSystemInfo.hasActiveFileSystem = false;
         device->os_info.fileSystemInfo.isSystemDisk = false;
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
@@ -167,7 +184,7 @@ static int set_Device_Partition_Info(tDevice* device)
                     }
                 }
             }
-            safe_Free(parts);
+            safe_free_spartition_info(&parts);
         }
         else
         {
@@ -183,14 +200,14 @@ static int set_Device_Partition_Info(tDevice* device)
     return ret;
 }
 
-int get_Device(const char *filename, tDevice *device)
+eReturnValues get_Device(const char *filename, tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
 
-    if((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
+    if ((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
     {
         perror("open");
-        device->os_info.fd = errno;
+        device->os_info.last_error = C_CAST(unsigned int, errno);
         printf("open failure\n");
         ret = FAILURE;
     }
@@ -225,7 +242,7 @@ int get_Device(const char *filename, tDevice *device)
         }
         //fill in the device info
         ret = fill_Drive_Info_Data(device);
-        
+
         //set the drive type now
         switch (device->drive_info.interface_type)
         {
@@ -255,18 +272,17 @@ int get_Device(const char *filename, tDevice *device)
     return ret;
 }
 
-static int uscsi_Reset(int fd, int resetFlag)
+static eReturnValues uscsi_Reset(int fd, int resetFlag)
 {
     struct uscsi_cmd uscsi_io;
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
 
     memset(&uscsi_io, 0, sizeof(uscsi_io));
 
     uscsi_io.uscsi_flags |= resetFlag;
-    ret = ioctl(fd, USCSICMD, &uscsi_io);
-    if (ret < 0)
+    int ioctlResult = ioctl(fd, USCSICMD, &uscsi_io);
+    if (ioctlResult < 0)
     {
-        //TODO: check errno to figure out failure versus not supported???
         ret = OS_COMMAND_NOT_AVAILABLE;
     }
     else
@@ -276,27 +292,27 @@ static int uscsi_Reset(int fd, int resetFlag)
     return ret;
 }
 
-int os_Device_Reset(tDevice *device)
+eReturnValues os_Device_Reset(tDevice *device)
 {
     //NOTE: USCSI_RESET is the same thing, but for legacy versions
-    //TODO: is USCSI_RESET_LUN better???
+    //Also USCSI_RESET_LUN is available. Maybe it would be better?
     return uscsi_Reset(device->os_info.fd, USCSI_RESET_TARGET);
 }
     
-int os_Bus_Reset(tDevice *device)
+eReturnValues os_Bus_Reset(tDevice *device)
 {
     //USCSI_RESET_ALL seems to imply a bus reset
     return uscsi_Reset(device->os_info.fd, USCSI_RESET_ALL);
 }
 
-int os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-int send_IO (ScsiIoCtx *scsiIoCtx)
+eReturnValues send_IO (ScsiIoCtx *scsiIoCtx)
 {
-    int ret = FAILURE;
+    eReturnValues ret = FAILURE;
     switch (scsiIoCtx->device->drive_info.interface_type)
     {
     case SCSI_INTERFACE:
@@ -305,7 +321,7 @@ int send_IO (ScsiIoCtx *scsiIoCtx)
         ret = send_uscsi_io(scsiIoCtx);
         break;
     case RAID_INTERFACE:
-        if (scsiIoCtx->device->issue_io != NULL)
+        if (scsiIoCtx->device->issue_io != M_NULLPTR)
         {
             ret = scsiIoCtx->device->issue_io(scsiIoCtx);
         }
@@ -322,7 +338,7 @@ int send_IO (ScsiIoCtx *scsiIoCtx)
         ret = send_uscsi_io(scsiIoCtx);
         break;
     default:
-        if(VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
         }
@@ -340,14 +356,14 @@ int send_IO (ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_uscsi_io(ScsiIoCtx *scsiIoCtx)
 {
     //http://docs.oracle.com/cd/E23824_01/html/821-1475/uscsi-7i.html
     struct uscsi_cmd uscsi_io;
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
 
     memset(&uscsi_io, 0, sizeof(uscsi_io));
-    if(VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
+    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("Sending command with send_IO\n");
     }
@@ -393,9 +409,9 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
         uscsi_io.uscsi_flags |= USCSI_WRITE;
         break;
     default:
-        if(VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("%s Didn't understand direction\n",__FUNCTION__);
+            printf("%s Didn't understand direction\n", __FUNCTION__);
         }
         return BAD_PARAMETER;
     }
@@ -411,12 +427,12 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
 
     //issue the io
     start_Timer(&commandTimer);
-    ret = ioctl(scsiIoCtx->device->os_info.fd, USCSICMD, &uscsi_io);
+    int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, USCSICMD, &uscsi_io);
     stop_Timer(&commandTimer);
-    if( ret < 0)
+    if(ioctlResult < 0)
     {
         ret = FAILURE;
-        if(VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
+        if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
         {
             perror("send_IO");
         }
@@ -425,17 +441,17 @@ int send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-static int uscsi_filter( const struct dirent *entry )
+static int uscsi_filter(const struct dirent *entry)
 {
     //in this folder everything will start with a c.
-    int uscsiHandle = strncmp("c",entry->d_name,1);
-    if(uscsiHandle != 0)
+    int uscsiHandle = strncmp("c", entry->d_name, 1);
+    if (uscsiHandle != 0)
     {
         return !uscsiHandle;
     }
     //now, we need to filter out the device names that have "p"s for the partitions and "s"s for the slices
     char *partitionOrSlice = strpbrk(entry->d_name, "pPsS");
-    if(partitionOrSlice != NULL)
+    if (partitionOrSlice != M_NULLPTR)
     {
         return 0;
     }
@@ -445,13 +461,13 @@ static int uscsi_filter( const struct dirent *entry )
     }
 }
 
-int close_Device(tDevice *device)
+eReturnValues close_Device(tDevice *device)
 {
     int retValue = 0;
-    if(device)
+    if (device)
     {
         retValue = close(device->os_info.fd);
-        device->os_info.last_error = errno;
+        device->os_info.last_error = C_CAST(unsigned int, errno);
         if(retValue == 0)
         {
             device->os_info.fd = -1;
@@ -485,7 +501,7 @@ int close_Device(tDevice *device)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
+eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
     int  num_devs = 0;
 
@@ -493,10 +509,13 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     for (int iter = 0; iter < num_devs; ++iter)
     {
-        safe_Free(namelist[iter])
+        safe_free_dirent(&namelist[iter]);
     }
-    safe_Free(namelist)
-    *numberOfDevices = num_devs;
+    safe_free_dirent(namelist);
+    if (num_devs >= 0)
+    {
+        *numberOfDevices = C_CAST(uint32_t, num_devs);
+    }
     M_USE_UNUSED(flags); 
     return SUCCESS;
 }
@@ -525,31 +544,38 @@ int get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, M_ATTR_UNUSED uint64_t flags)
 {
-    int returnValue = SUCCESS;
-    int numberOfDevices = 0;
-    int driveNumber = 0, found = 0, failedGetDeviceCount = 0, permissionDeniedCount = 0;
-    char name[80] = { 0 }; //Because get device needs char
-    int fd;
-    tDevice * d = NULL;
-    
-    struct dirent **namelist;
-    int num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
-    
-    char **devs = C_CAST(char **, calloc(num_devs + 1, sizeof(char *)));
-    int i = 0;
-    for(; i < num_devs; i++)
-    {
-        size_t handleSize = (strlen("/dev/rdsk/") + strlen(namelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, malloc(handleSize));
-        snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
-        safe_Free(namelist[i])
-    }
-    devs[i] = NULL;
-    safe_Free(namelist)
+    eReturnValues returnValue = SUCCESS;
+    uint32_t numberOfDevices = 0;
+    uint32_t num_rdsk = 0;
+    uint32_t driveNumber = 0;
+    uint32_t found = 0;
+    uint32_t failedGetDeviceCount = 0;
+    uint32_t permissionDeniedCount = 0;
+    DECLARE_ZERO_INIT_ARRAY(char, name, 80); //Because get device needs char
+    int fd = -1;
+    tDevice * d = M_NULLPTR;
 
-    //TODO: Check if sizeInBytes is a multiple of 
+    struct dirent **namelist;
+    int scandirres = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
+    if (scandirres > 0)
+    {
+        num_rdsk = C_CAST(uint32_t, scandirres);
+    }
+    
+    char **devs = C_CAST(char **, safe_calloc(num_rdsk + 1, sizeof(char *)));
+    uint32_t i = 0;
+    for(; i < num_rdsk; i++)
+    {
+        size_t handleSize = (safe_strlen("/dev/rdsk/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
+        devs[i] = C_CAST(char *, safe_malloc(handleSize));
+        snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
+        safe_free_dirent(&namelist[i]);
+    }
+    devs[i] = M_NULLPTR;
+    safe_free_dirent(namelist);
+
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
         returnValue = BAD_PARAMETER;
@@ -562,9 +588,9 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = 0; ((driveNumber >= 0 && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) && (found < numberOfDevices)); ++driveNumber)
         {
-            if(!devs[driveNumber] || strlen(devs[driveNumber]) == 0)
+            if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
@@ -581,7 +607,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
-                int ret = get_Device(name, d);
+                eReturnValues ret = get_Device(name, d);
                 if (ret != SUCCESS)
                 {
                     failedGetDeviceCount++;
@@ -599,7 +625,7 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
                 failedGetDeviceCount++;
             }
             //free the dev[deviceNumber] since we are done with it now.
-            safe_Free(devs[driveNumber])
+            safe_free(&devs[driveNumber]);
         }
         if (found == failedGetDeviceCount)
         {
@@ -614,53 +640,53 @@ int get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versi
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_Free(devs)
+    safe_free(&devs);
     return returnValue;
 }
 
-int os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Flush(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Flush(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
+eReturnValues send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx *nvmeIoCtx)
 {
     return NOT_SUPPORTED;
 }
 
-int pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice * device, M_ATTR_UNUSED uint8_t * pData, M_ATTR_UNUSED uint32_t dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-int os_nvme_Reset(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_nvme_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Lock_Device(tDevice *device)
+eReturnValues os_Lock_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     //Get flags
     int flags = fcntl(device->os_info.fd, F_GETFL);
     //disable O_NONBLOCK
@@ -670,9 +696,9 @@ int os_Lock_Device(tDevice *device)
     return ret;
 }
 
-int os_Unlock_Device(tDevice *device)
+eReturnValues os_Unlock_Device(tDevice *device)
 {
-    int ret = SUCCESS;
+    eReturnValues ret = SUCCESS;
     //Get flags
     int flags = fcntl(device->os_info.fd, F_GETFL);
     //enable O_NONBLOCK
@@ -682,24 +708,23 @@ int os_Unlock_Device(tDevice *device)
     return ret;
 }
 
-int os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
-{
-    //TODO: Complete this stub when this is figured out - TJE
-    return NOT_SUPPORTED;
-}
-
-int os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-int os_Unmount_File_Systems_On_Device(tDevice *device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
 {
-    int ret = SUCCESS;
+    return NOT_SUPPORTED;
+}
+
+eReturnValues os_Unmount_File_Systems_On_Device(tDevice *device)
+{
+    eReturnValues ret = SUCCESS;
     int partitionCount = 0;
-    char blockHandle[OS_HANDLE_NAME_MAX_LENGTH] = {0};
+    DECLARE_ZERO_INIT_ARRAY(char, blockHandle, OS_HANDLE_NAME_MAX_LENGTH);
     snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
-    set_Device_Name(device->os_info.name, &blockHandle[strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - strlen("/dev/"));
+    set_Device_Name(device->os_info.name, &blockHandle[safe_strlen("/dev/")], OS_HANDLE_NAME_MAX_LENGTH - safe_strlen("/dev/"));
     //note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the information in the mount tab file.
     partitionCount = get_Partition_Count(blockHandle);
 #if defined (_DEBUG)
@@ -707,7 +732,7 @@ int os_Unmount_File_Systems_On_Device(tDevice *device)
 #endif
     if (partitionCount > 0)
     {
-        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, calloc(partitionCount, sizeof(spartitionInfo)));
+        ptrsPartitionInfo parts = C_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts)
         {
             if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
@@ -729,7 +754,7 @@ int os_Unmount_File_Systems_On_Device(tDevice *device)
                         if (0 > umountResult)
                         {
                             ret = FAILURE;
-                            device->os_info.last_error = errno;
+                            device->os_info.last_error = C_CAST(unsigned int, errno);
                             if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                             {
                                 printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
@@ -740,7 +765,7 @@ int os_Unmount_File_Systems_On_Device(tDevice *device)
                     }
                 }
             }
-            safe_Free(parts);
+            safe_free_spartition_info(&parts);
         }
         else
         {
