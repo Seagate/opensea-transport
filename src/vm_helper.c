@@ -958,7 +958,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     {
         safe_free_dirent(&namelist[iter]);
     }
-    safe_free_dirent(&namelist);
+    safe_free_dirent(namelist);
 
 #ifdef _DEBUG
     printf("get_Device_Count : num_devs %d\n", num_devs);
@@ -1053,7 +1053,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
         safe_free_dirent(&namelist[i]);
     }
-    safe_free_dirent((&namelist);
+    safe_free_dirent(namelist);
 
     //add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER; i++, j++)
