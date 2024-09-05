@@ -49,6 +49,8 @@ extern "C"
         SCSI_VERSION_SPC_3          = 5,
         SCSI_VERSION_SPC_4          = 6,
         SCSI_VERSION_SPC_5          = 7,
+        //jump past 08-0C as these were used for asni, iso, emca combination value standard identification and are obsolete.
+        SCSI_VERSION_SPC_6          = 0x0D,
     }eSCSIVersion;
 
     typedef enum _eCDBLen{
