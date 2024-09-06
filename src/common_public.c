@@ -114,7 +114,6 @@ void print_Low_Level_Info(tDevice* device)
             printf("Tape\n");
             break;
         case UNKNOWN_DRIVE:
-        default:
             printf("unknown\n");
             break;
         }
@@ -146,7 +145,6 @@ void print_Low_Level_Info(tDevice* device)
             printf("IEEE 1394/Firewire\n");
             break;
         case UNKNOWN_INTERFACE:
-        default:
             printf("unknown\n");
             break;
         }
@@ -165,7 +163,7 @@ void print_Low_Level_Info(tDevice* device)
         case ZONED_TYPE_HOST_MANAGED:
             printf("host managed\n");
             break;
-        default:
+        case ZONED_TYPE_RESERVED:
             printf("unknown\n");
             break;
         }
@@ -189,7 +187,7 @@ void print_Low_Level_Info(tDevice* device)
             printf("\t\t\tPCI/PCIe:\n");
             adapterIDWidthSpec = 4;
             break;
-        default:
+        case ADAPTER_INFO_UNKNOWN:
             printf("\t\t\tUnknown or no adapter info available\n");
             break;
         }
@@ -280,6 +278,9 @@ void print_Low_Level_Info(tDevice* device)
         case ATA_PASSTHROUGH_UNKNOWN:
             printf("ATA unknown\n");
             break;
+        case ATA_PASSTHROUGH_BEGIN_NON_USB:
+            printf("ATA non-USB\n");
+            break;
         case NVME_PASSTHROUGH_JMICRON:
             printf("NVMe JMicron\n");
             break;
@@ -289,8 +290,11 @@ void print_Low_Level_Info(tDevice* device)
         case NVME_PASSTHROUGH_ASMEDIA_BASIC:
             printf("NVMe ASMedia Basic\n");
             break;
-        default:
-            printf("unknown or none\n");
+        case PASSTHROUGH_NONE:
+            printf("None\n");
+            break;
+        case NVME_PASSTHROUGH_UNKNOWN:
+            printf("NVMe Unknown\n");
             break;
         }
         //TODO: Test unit ready command after a failure value
@@ -659,9 +663,6 @@ void print_Low_Level_Info(tDevice* device)
         case WIN_IOCTL_BASIC:
             printf("Basic\n");
             break;
-        default:
-            printf("Unknown\n");
-            break;
         }
         printf("\t\t\tIOCTL Method: ");
         switch (device->os_info.ioMethod)
@@ -676,7 +677,6 @@ void print_Low_Level_Info(tDevice* device)
             printf("Force Double Buffered\n");
             break;
         case WIN_IOCTL_MAX_METHOD:
-        default:
             printf("Unknown\n");
             break;
         }
