@@ -2724,15 +2724,15 @@ eReturnValues fill_In_Device_Info(tDevice *device)
     {
         bool checkForSAT = true;
         bool readCapacity = true;
-        uint8_t responseFormat;
-        uint8_t version;
-        uint8_t peripheralQualifier;
-        uint8_t peripheralDeviceType;
+        uint8_t responseFormat = get_bit_range_uint8(inq_buf[3], 3, 0);
+        uint8_t version = inq_buf[2];
+        eSCSIPeripheralQualifier peripheralQualifier = M_STATIC_CAST(eSCSIPeripheralQualifier, get_bit_range_uint8(inq_buf[0], 7, 5));
+        eSCSIPeripheralDeviceType peripheralDeviceType = M_STATIC_CAST(eSCSIPeripheralDeviceType, get_bit_range_uint8(inq_buf[0], 4, 0));
         bool foundUSBStandardDescriptor = false;
         bool foundSATStandardDescriptor = false;
         bool foundATAStandardDescriptor = false;
         ret = SUCCESS;
-        memcpy(device->drive_info.scsiVpdData.inquiryData, inq_buf, 96);//store this in the device structure to make sure it is available elsewhere in the library as well.
+        safe_memcpy(device->drive_info.scsiVpdData.inquiryData, INQ_RETURN_DATA_LENGTH, inq_buf, INQ_RETURN_DATA_LENGTH);//store this in the device structure to make sure it is available elsewhere in the library as well.
         copy_Inquiry_Data(inq_buf, &device->drive_info);
 
         if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
@@ -2741,9 +2741,6 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             //TODO: can running this be used to prevent checking for SAT if this is already set? This could help with certain scenarios
             set_Passthrough_Hacks_By_Inquiry_Data(device);
         }
-
-        responseFormat = M_GETBITRANGE(inq_buf[3], 3, 0);
-        version = inq_buf[2];
         switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
         {
         case 0:
@@ -2779,14 +2776,12 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 (version >= 0x88 && version <= 0x8C))
             {
                 //these are obsolete version numbers
-                version = M_GETBITRANGE(version, 3, 0);
+                version = get_bit_range_uint8(version, 3, 0);
             }
             break;
         }
         device->drive_info.scsiVersion = version;//changing this to one of these version numbers to keep the rest of the library code that would use this simple. - TJE
         //set the media type as best we can
-        peripheralQualifier = (inq_buf[0] & (BIT7 | BIT6 | BIT5)) >> 5;
-        peripheralDeviceType = inq_buf[0] & (BIT4 | BIT3 | BIT2 | BIT1 | BIT0);
         switch (peripheralDeviceType)
         {
         case PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE:
