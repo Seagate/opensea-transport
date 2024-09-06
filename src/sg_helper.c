@@ -554,6 +554,7 @@ static void get_SYS_FS_ATA_Info(const char *inHandleLink, sysFSLowLevelDeviceInf
     printf("ATA interface!\n");
 #endif
     sysFsInfo->interface_type = IDE_INTERFACE;
+    sysFsInfo->drive_type = ATA_DRIVE;
     //get vendor and product IDs of the controller attached to this device.
     DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
     snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
@@ -637,6 +638,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     printf("USB interface!\n");
 #endif
     sysFsInfo->interface_type = USB_INTERFACE;
+    sysFsInfo->drive_type = SCSI_DRIVE;//changed later depending on what passthrough the USB adapter supports
     //set the USB VID and PID. NOTE: There may be a better way to do this, but this seems to work for now.
     DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
     snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
@@ -787,6 +789,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     printf("SCSI interface!\n");
 #endif
     sysFsInfo->interface_type = SCSI_INTERFACE;
+    sysFsInfo->drive_type = SCSI_DRIVE;
     //get vendor and product IDs of the controller attached to this device.
 
     DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
