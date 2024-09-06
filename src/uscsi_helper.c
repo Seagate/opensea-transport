@@ -242,31 +242,6 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         }
         //fill in the device info
         ret = fill_Drive_Info_Data(device);
-
-        //set the drive type now
-        switch (device->drive_info.interface_type)
-        {
-        case IDE_INTERFACE:
-        case USB_INTERFACE:
-            device->drive_info.drive_type = ATA_DRIVE;
-            break;
-        case NVME_INTERFACE:
-            device->drive_info.drive_type = NVME_DRIVE;
-            break;
-        case SCSI_INTERFACE:
-            if (0 == strncmp(device->drive_info.T10_vendor_ident, "ATA", 3))
-            {
-                device->drive_info.drive_type = ATA_DRIVE;
-            }
-            else
-            {
-                device->drive_info.drive_type = SCSI_DRIVE;
-            }
-            break;
-        default:
-            device->drive_info.drive_type = UNKNOWN_DRIVE;
-            break;
-        }
     }
 
     return ret;
