@@ -342,6 +342,7 @@
     <ClInclude Include="..\..\..\..\include\prolific_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\psp_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\raid_scan_helper.h" />
+    <ClInclude Include="..\..\..\..\include\realtek_nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\sata_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\sata_types.h" />
     <ClInclude Include="..\..\..\..\include\sat_helper.h" />
@@ -464,6 +465,7 @@
     <ClCompile Include="..\..\..\..\src\prolific_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\psp_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\raid_scan_helper.c" />
+    <ClCompile Include="..\..\..\..\src\realtek_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\sata_helper_func.c" />
     <ClCompile Include="..\..\..\..\src\sat_helper.c" />
     <ClCompile Include="..\..\..\..\src\scsi_cmds.c" />

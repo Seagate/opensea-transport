@@ -31,6 +31,7 @@
 #include "common_public.h"
 #include "jmicron_nvme_helper.h"
 #include "asmedia_nvme_helper.h"
+#include "realtek_nvme_helper.h"
 
 eReturnValues nvme_Reset(tDevice *device)
 {
@@ -42,6 +43,7 @@ eReturnValues nvme_Reset(tDevice *device)
         return jm_nvme_Reset(device);
     case NVME_PASSTHROUGH_ASMEDIA:
         return asm_nvme_Reset(device);
+    case NVME_PASSTHROUGH_REALTEK:
     case NVME_PASSTHROUGH_ASMEDIA_BASIC:
         return OS_COMMAND_NOT_AVAILABLE;
     default:
@@ -59,6 +61,7 @@ eReturnValues nvme_Subsystem_Reset(tDevice *device)
         return jm_nvme_Subsystem_Reset(device);
     case NVME_PASSTHROUGH_ASMEDIA:
         return asm_nvme_Subsystem_Reset(device);
+    case NVME_PASSTHROUGH_REALTEK:
     case NVME_PASSTHROUGH_ASMEDIA_BASIC:
         return OS_COMMAND_NOT_AVAILABLE;
     default:
@@ -149,6 +152,9 @@ eReturnValues nvme_Cmd(tDevice *device, nvmeCmdCtx * cmdCtx)
         break;
     case NVME_PASSTHROUGH_ASMEDIA:
         ret = send_ASM_NVMe_Cmd(cmdCtx);
+        break;
+    case NVME_PASSTHROUGH_REALTEK:
+        ret = send_Realtek_NVMe_Cmd(cmdCtx);
         break;
     default:
         return BAD_PARAMETER;
@@ -847,20 +853,20 @@ eReturnValues nvme_Get_Log_Page(tDevice *device, nvmeGetLogPageCmdOpts * getLogP
     getLogPage.ptrData = getLogPageCmdOpts->addr;
     getLogPage.cmd.adminCmd.nsid = getLogPageCmdOpts->nsid;
 
-    numDwords = (getLogPageCmdOpts->dataLen / NVME_DWORD_SIZE) - 1;//zero based DWORD value
-
+    numDwords = (getLogPageCmdOpts->dataLen / NVME_DWORD_SIZE) - UINT32_C(1);//zero based DWORD value
+    
     dWord10 |= getLogPageCmdOpts->lid;
     dWord10 |= (getLogPageCmdOpts->lsp & 0x0F) << 8;
     dWord10 |= (getLogPageCmdOpts->rae & 0x01) << 15;
-    dWord10 |= numDwords << 16;
+    dWord10 |= M_Word0(numDwords) << 16;
 
     getLogPage.cmd.adminCmd.cdw10 = dWord10;
-    getLogPage.cmd.adminCmd.cdw11 = numDwords >> 16;
+    getLogPage.cmd.adminCmd.cdw11 = M_Word1(numDwords);
 
-    getLogPage.cmd.adminCmd.cdw12 = C_CAST(uint32_t, getLogPageCmdOpts->offset & 0xFFFFFFFF);
-    getLogPage.cmd.adminCmd.cdw13 = C_CAST(uint32_t, getLogPageCmdOpts->offset >> 32);
+    getLogPage.cmd.adminCmd.cdw12 = M_DoubleWord0(getLogPageCmdOpts->offset);//  C_CAST(uint32_t, getLogPageCmdOpts->offset & 0xFFFFFFFF);
+    getLogPage.cmd.adminCmd.cdw13 = M_DoubleWord1(getLogPageCmdOpts->offset); //C_CAST(uint32_t, getLogPageCmdOpts->offset >> 32);
 
-    getLogPage.ptrData = C_CAST(uint8_t*, getLogPageCmdOpts->addr);
+    getLogPage.ptrData = getLogPageCmdOpts->addr;
     getLogPage.dataSize = getLogPageCmdOpts->dataLen;
 
     getLogPage.timeout = 15;

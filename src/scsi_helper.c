@@ -3721,16 +3721,26 @@ eReturnValues fill_In_Device_Info(tDevice *device)
             satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
         }
 
+        bool checkRealtekNVMe = false;
+        if (satCheck == SUCCESS && device->drive_info.bridge_info.childDeviceMaxLba == 0 && safe_strlen(device->drive_info.bridge_info.childDriveMN) && safe_strlen(device->drive_info.bridge_info.childDriveSN) && safe_strlen(device->drive_info.bridge_info.childDriveFW))
+        {
+            checkRealtekNVMe = true;
+        }
+
         //Because we may find an NVMe over USB device, if we find one of these, perform a little more discovery...
         if ((device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN)
-            ||
-            (satCheck != SUCCESS && checkJMicronNVMe)
+            || (satCheck != SUCCESS && checkJMicronNVMe)
+            || (checkRealtekNVMe)
             )
         {
             eReturnValues scsiRet = ret;
             if (checkJMicronNVMe)
             {
                 device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_JMICRON;
+            }
+            else if (checkRealtekNVMe)
+            {
+                device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_REALTEK;
             }
             //NOTE: It is OK if this fails since it will fall back to treating as SCSI
             ret = fill_In_NVMe_Device_Info(device);
@@ -3752,10 +3762,14 @@ eReturnValues fill_In_Device_Info(tDevice *device)
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 524288;
                 device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
             }
-            else if (checkJMicronNVMe)
+            else if (ret != SUCCESS && (checkJMicronNVMe || checkRealtekNVMe))
             {
                 device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
                 ret = scsiRet;//do not fail here since this should otherwise be treated as a SCSI drive
+            }
+            else if (ret == SUCCESS)
+            {
+                device->drive_info.drive_type = NVME_DRIVE;
             }
             else
             {

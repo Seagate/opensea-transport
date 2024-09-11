@@ -723,6 +723,7 @@ extern "C"
         NVME_PASSTHROUGH_JMICRON = 100,
         NVME_PASSTHROUGH_ASMEDIA = 101,//ASMedia packet command, which is capable of passing any command
         NVME_PASSTHROUGH_ASMEDIA_BASIC = 102,//ASMedia command that is capable of only select commands. Must be after full passthrough that way when trying one passthrough after another it can properly find full capabilities before basic capabilities.
+        NVME_PASSTHROUGH_REALTEK = 103,
         //Add other vendor unique SCSI to NVMe passthrough here
         NVME_PASSTHROUGH_UNKNOWN,
         //No passthrough
