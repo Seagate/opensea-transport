@@ -1318,7 +1318,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
                     {
                         checkError = true;
                     }
-                    if (device->drive_info.ata_Options.senseDataReportingEnabled && ataCommandOptions->rtfr.status & ATA_STATUS_BIT_SENSE_DATA_AVAILABLE && ataCommandOptions->tfr.CommandStatus != ATA_REQUEST_SENSE_DATA && device->drive_info.interface_type != SCSI_INTERFACE)
+                    if (device->drive_info.ata_Options.senseDataReportingEnabled && ataCommandOptions->rtfr.status & ATA_STATUS_BIT_SENSE_DATA_AVAILABLE && ataCommandOptions->tfr.CommandStatus != ATA_REQUEST_SENSE_DATA)
                     {
                         requestATASenseData = true;
                     }
@@ -1353,7 +1353,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice *device, ataPassthroughComman
                             printf("\t  ATA Sense Data reported:\n");
                         }
                         ataSenseRet = check_Sense_Key_ASC_ASCQ_And_FRU(device, ataSenseKey, ataAdditionalSenseCode, ataAdditionalSenseCodeQualifier, 0);
-                        if (driveStatusRet != ataSenseRet)
+                        if (driveStatusRet != ataSenseRet && (ataSenseKey != 0 || ataAdditionalSenseCode != 0 || ataAdditionalSenseCodeQualifier != 0))
                         {
                             driveStatusRet = ataSenseRet;
                         }
