@@ -266,30 +266,58 @@ src_files = ['src/asmedia_nvme_helper.c',
              'src/ti_legacy_helper.c', 
              'src/usb_hacks.c']
 
+# Handle various options related to NVMe passthrough support, CISS support, CSMI support, etc. All of these SHOULD be on by default but can be disabled.
+nvmesupport = get_option('nvmept')
+if nvmesupport.disabled()
+  add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language : 'c')
+endif
+csmisupport = get_option('csmiraid')
+if csmisupport.enabled()
+  add_project_arguments('-DENABLE_CSMI', language : 'c')
+endif
+cisssupport = get_option('cissraid')
+irstsupport = get_option('irstpt')
+ofnvmesupport = get_option('ofnvme')
+
 os_deps = []
 
 if target_machine.system() == 'linux'
   src_files += ['src/sg_helper.c']
-  add_project_arguments('-DENABLE_CISS', '-DENABLE_CSMI', language : 'c')
-  if c.check_header('linux/nvme_ioctl.h')
-    global_cpp_args += ['-DSEA_NVME_IOCTL_H']
-  elif c.check_header('linux/nvme.h')
-    global_cpp_args += ['-DSEA_NVME_H']
-  elif c.check_header('uapi/nvme.h')
-    global_cpp_args += ['-DSEA_UAPI_NVME_H']
-  else
-    global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+  if cisssupport.enabled()
+    add_project_arguments('-DENABLE_CISS', language : 'c')
+  endif
+  if nvmesupport.enabled()
+    if c.check_header('linux/nvme_ioctl.h')
+      global_cpp_args += ['-DSEA_NVME_IOCTL_H']
+    elif c.check_header('linux/nvme.h')
+      global_cpp_args += ['-DSEA_NVME_H']
+    elif c.check_header('uapi/nvme.h')
+      global_cpp_args += ['-DSEA_UAPI_NVME_H']
+    else
+      add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language : 'c')
+      message('Auto-disabling NVMe support as no ioctl header can be found')
+    endif
   endif
 elif target_machine.system() == 'freebsd'
   src_files += ['src/cam_helper.c']
   cam_dep = c.find_library('cam')
   os_deps += [cam_dep]
+  #TODO: Need to do some testing on FreeBSD before we allow this
+  # if cisssupport.enabled()
+  #   add_project_arguments('-DENABLE_CISS', language : 'c')
+  # endif
   if not c.check_header('dev/nvme/nvme.h')
-    global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+    add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language : 'c')
+    message('Auto-disabling NVMe support as no ioctl header can be found')
   endif
 elif target_machine.system() == 'sunos'
   src_files += ['src/uscsi_helper.c']
-  global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+  add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language : 'c')
+  message('Auto-disabling NVMe support as no ioctl header can be found')
+  #TODO: Need to do some testing on Illumos before we allow this
+  # if cisssupport.enabled()
+  #   add_project_arguments('-DENABLE_CISS', language : 'c')
+  # endif
 elif target_machine.system() == 'aix'
   src_files += ['src/aix_helper.c']
   odm_dep = c.find_library('odm')
@@ -297,22 +325,28 @@ elif target_machine.system() == 'aix'
   cfg_dep = c.find_library('cfg')
   os_deps += [cfg_dep]
   if not c.check_header('sys/nvme.h')
-    global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
+    add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language : 'c')
+    message('Auto-disabling NVMe support as no ioctl header can be found')
   endif
 elif target_machine.system() == 'windows'
   src_files += ['src/win_helper.c']
   if c.get_define('__MINGW32__') != ''
     #BR note: -D_WIN32_WINNT=0x0601 fixes unknown Windows version in winioctl.h and errors such as unknown type name ‘PDEVICE_LB_PROVISIONING_DESCRIPTOR’
-  add_project_arguments('-D_WIN32_WINNT=0x0601', language : 'c')
+    add_project_arguments('-D_WIN32_WINNT=0x0601', language : 'c')
     cfgmgr32 = c.find_library('cfgmgr32')
     os_deps += [cfgmgr32]
+    #TODO: Need to figure out a better way to detect when it is possible to include NVMe passthrough support with MinGW
+    add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language : 'c')
+    message('Auto-disabling NVMe support as no ioctl header can be found')
   endif
-  add_project_arguments('-DENABLE_INTEL_RST', '-DENABLE_OFNVME', '-DENABLE_CSMI', language : 'c')
+  if irstsupport.enabled()
+    add_project_arguments('-DENABLE_INTEL_RST', language : 'c')
+  endif
+  if ofnvmesupport.enabled()
+    add_project_arguments('-DENABLE_OFNVME', language : 'c')
+  endif
   global_cpp_args += ['-D_CRT_NONSTDC_NO_DEPRECATE', '-D_CRT_SECURE_NO_WARNINGS']
   global_cpp_args += ['-DSTATIC_OPENSEA_TRANSPORT', '-D_UNICODE', '-DUNICODE']
-  if c.get_define('__MINGW32__') != ''
-    global_cpp_args += ['-DDISABLE_NVME_PASSTHROUGH']
-  endif
 endif # TODO UEFI and vmware
 
 opensea_common = subproject('opensea-common')
