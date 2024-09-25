@@ -115,14 +115,24 @@ Revision History:
 /* TARGET OS LINUX SPECIFIC CODE                                         */
 /*************************************************************************/
 
-#ifdef __linux__
+#ifdef __unix__
 //#ifdef __KERNEL__
 
 // Linux base types
-
-#include <linux/types.h>
-
-#define __i8    char
+#if defined __linux__
+   #include <linux/types.h>
+   #define __i8    char
+#else
+   #define __u8    unsigned char
+   #define __u16   unsigned short
+   #ifndef __LP64__
+      #define __u32   unsigned long
+      #define __u64   unsigned long long
+   #else
+      #define __u32   unsigned int
+      #define __u64   unsigned long
+   #endif //__LP64__
+#endif //__linux__
 
 // pack definition
 
