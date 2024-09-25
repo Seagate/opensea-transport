@@ -123,6 +123,7 @@ Revision History:
    #include <linux/types.h>
    #define __i8    char
 #else
+   #define __i8    char
    #define __u8    unsigned char
    #define __u16   unsigned short
    #ifndef __LP64__
