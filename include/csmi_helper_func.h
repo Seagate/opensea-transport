@@ -155,6 +155,25 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
+    //  csmi_Get_RAID_Features(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_FEATURES_BUFFER raidFeaturesBuffer, eVerbosityLevels verbosity)
+    //
+    //! \brief   Description:  Sends the CSMI Get RAID Features IOCTL. This is not supported on many CSMI RAIDs as it was not part of the original CSMI proposal.
+    //
+    //  Entry:
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on other OSs
+    //!   \param[in] controllerNumber - Linux only, controller number since Linux needs this in the IOCTL_HEADER
+    //!   \param[in] raidFeaturesBuffer - CSMI spec buffer to use. This should be empty.
+    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //! 
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device, OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_FEATURES_BUFFER raidFeaturesBuffer, eVerbosityLevels verbosity);
+
+    //-----------------------------------------------------------------------------
+    //
     //  csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
     //
     //! \brief   Description:  Sends the CSMI Get Phy Info IOCTL
