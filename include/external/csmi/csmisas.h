@@ -605,7 +605,7 @@ typedef struct _IOCTL_HEADER {
 #define CSMI_SAS_RAID_FEATURE_SPARES_SHARED     0x00000040
 
 // RAID Priority
-// (bDefaultTransformPriority, etc.)
+// (bDefaultTransformPriority, bTransformPriority, bDefaultRebuildPriority, bRebuildPriority, bDefaultSurfaceScanPriority, bSurfaceScanPriority)
 #define CSMI_SAS_PRIORITY_UNKNOWN   0
 #define CSMI_SAS_PRIORITY_UNCHANGED 0
 #define CSMI_SAS_PRIORITY_AUTO      1

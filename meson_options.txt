@@ -1,0 +1,20 @@
+# ---------------------------------------------
+# File: meson_options.txt
+# Author: Tyler Erickson
+# Last Modified: 9/18/2024
+#
+# Seagate 2024
+#
+# Description: options for meson.build
+# ---------------------------------------------
+
+#nvme passthrough support. Can be disabled if desrired (why would you?)
+option('nvmept', type : 'feature', value : 'enabled')
+#CSMI support. Mostly used on Windows but some Linux use as well. Adds support for RAID passthrough when CSMI is supported by a driver
+option('csmiraid', type : 'feature', value : 'enabled')
+#CISS support. Mostly affects Linux. No impact to Windows since no known CISS passthrough implemented today.
+option('cissraid', type : 'feature', value : 'enabled')
+#Intel RST Windows passthrough support. No impact to anything other than Windows builds.
+option('irstpt', type : 'feature', value : 'enabled')
+#openfabrics NVMe interface support. No impact to anything other than Windows builds
+option('ofnvme', type : 'feature', value : 'enabled')
