@@ -216,7 +216,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
     struct ccb_pathinq cpi;
     union ccb         *ccb = M_NULLPTR;
     eReturnValues ret = SUCCESS;
-    int this_drive_type = 0;
+    //int this_drive_type = 0;
     DECLARE_ZERO_INIT_ARRAY(char, devName, 20);
     int devUnit = 0;
     char *deviceHandle = M_NULLPTR;
@@ -331,16 +331,16 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                                        M_Min(FW_REV_LEN, SID_REVISION_SIZE));
                             memcpy(&device->drive_info.serialNumber, cgd.serial_num, SERIAL_NUM_LEN);
 
-                            // 0 - means ATA. 1 - means SCSI
-                            this_drive_type = memcmp(device->drive_info.T10_vendor_ident, "ATA", 3);
-                            if (this_drive_type == 0)
-                            {
-                                device->drive_info.drive_type = ATA_DRIVE;
-                            }
-                            else
-                            {
-                                device->drive_info.drive_type = SCSI_DRIVE;
-                            }
+                            // // 0 - means ATA. 1 - means SCSI
+                            // this_drive_type = memcmp(device->drive_info.T10_vendor_ident, "ATA", 3);
+                            // if (this_drive_type == 0)
+                            // {
+                            //     device->drive_info.drive_type = ATA_DRIVE;
+                            // }
+                            // else
+                            // {
+                            //     device->drive_info.drive_type = SCSI_DRIVE;
+                            // }
 
                         }
                         else if (cgd.protocol == PROTO_ATA || cgd.protocol == PROTO_ATAPI)

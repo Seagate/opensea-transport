@@ -302,9 +302,9 @@ void print_FIS(void *fis, uint32_t fisLengthBytes)
                 printf("\tFisType:\t%02" PRIX8 " - Unknown\n", fisPtr[0]);
             }
             //start loop at 1 since we've already printed the first byte describing the type of FIS
-            for (uint8_t fisIter = 1; fisIter < 20; ++fisIter)
+            for (uint8_t fisIter = 1; fisIter < UNKNOWN_FIS_TYPE_LENGTH; ++fisIter)
             {
-                printf("\tFIS[%" PRIu8 "]:\t%02" PRIX8 "\n", fisIter, fisPtr[fisIter]);
+                printf("\tFIS[%2" PRIu8 "]:\t%02" PRIX8 "\n", fisIter, fisPtr[fisIter]);
             }
             printf("\n");
             break;

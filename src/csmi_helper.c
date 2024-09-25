@@ -9,7 +9,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // ******************************************************************************************
-// 
+//
 #if defined (ENABLE_CSMI)
 
 #include <stdio.h>
@@ -267,7 +267,7 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
 {
     eReturnValues ret = SUCCESS;
     int localIoctlReturn = 0;//This is OK in Windows because BOOL is a typedef for int
-    seatimer_t *timer = M_NULLPTR; 
+    seatimer_t *timer = M_NULLPTR;
     bool localTimer = false;
 #if defined (_WIN32)
     OVERLAPPED overlappedStruct;
@@ -346,8 +346,8 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wsign-conversion"
 #elif defined __GNUC__
-//temporarily disable the warning for sign conversion because ioctl definition 
-// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and 
+//temporarily disable the warning for sign conversion because ioctl definition
+// in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and
 // in others is defined as ioctl(int, int, ...)
 //While debugging there does not seem to be a real conversion issue here.
 //These ioctls still work in either situation, so disabling the warning seems best since there is not
@@ -947,6 +947,122 @@ eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNu
     return ret;
 }
 
+static void print_CSMI_RaidType(__u8 bRaidType)
+{
+    switch (bRaidType)
+    {
+    case CSMI_SAS_RAID_TYPE_NONE:
+        printf("None\n");
+        break;
+    case CSMI_SAS_RAID_TYPE_0:
+        printf("0\n");
+        break;
+    case CSMI_SAS_RAID_TYPE_1:
+        printf("1\n");
+        break;
+    case CSMI_SAS_RAID_TYPE_10:
+        printf("10\n");
+        break;
+    case CSMI_SAS_RAID_TYPE_5:
+        printf("5\n");
+        break;
+    case CSMI_SAS_RAID_TYPE_15:
+        printf("15\n");
+        break;
+    case CSMI_SAS_RAID_TYPE_6:
+        printf("6\n");
+        break;
+    case CSMI_SAS_RAID_TYPE_50:
+        printf("50\n");
+        break;
+    case CSMI_SAS_RAID_TYPE_VOLUME:
+        printf("Volume\n");
+        break;
+    case CSMI_SAS_RAID_TYPE_1E:
+        printf("1E\n");
+        break;
+    case CSMI_SAS_RAID_TYPE_OTHER:
+        printf("Other\n");
+        break;
+    default:
+        printf("Unknown\n");
+        break;
+    }
+}
+
+static void print_CSMI_RAID_Failure_Code(__u32 uFailureCode)
+{
+    switch(uFailureCode)
+    {
+    case CSMI_SAS_FAIL_CODE_OK:
+        printf("No Error\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_PARAMETER_INVALID:
+        printf("Parameter Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_TRANSFORM_PRIORITY_INVALID:
+        printf("Transform Priority Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_REBUILD_PRIORITY_INVALID:
+        printf("Rebuild Priority Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_CACHE_RATIO_INVALID:
+        printf("Cache Ratio Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_SURFACE_SCAN_INVALID:
+        printf("Surface Scan Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_CLEAR_CONFIGURATION_INVALID:
+        printf("Clear Configuration Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_ELEMENT_INDEX_INVALID:
+        printf("Element Index Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_SUBELEMENT_INDEX_INVALID:
+        printf("Subelement Index Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_EXTENT_INVALID:
+        printf("Extent Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_BLOCK_COUNT_INVALID:
+        printf("Block Count Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_DRIVE_INDEX_INVALID:
+        printf("Drive Index Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_EXISTING_LUN_INVALID:
+        printf("Existing LUN Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_RAID_TYPE_INVALID:
+        printf("RAID Type Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_STRIPE_SIZE_INVALID:
+        printf("Stripe Size Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_TRANSFORMATION_INVALID:
+        printf("Transformation Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_CHANGE_COUNT_INVALID:
+        printf("Change Count Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_ENUMERATION_TYPE_INVALID:
+        printf("Enumeration Type Invalid\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_EXCEEDED_RAID_SET_COUNT:
+        printf("Exceeded RAID Set Count\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_DUPLICATE_LUN:
+        printf("Duplicate LUN\n");
+        break;
+    case CSMI_SAS_FAIL_CODE_WAIT_FOR_OPERATION:
+        printf("Wait For Operation\n");
+        break;
+    default:
+        printf("Unknown Failure Code: %" CPRIu32 "\n", uFailureCode);
+        break;
+    }
+}
+
 //TODO: Need to pass in CSMI version information
 static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t configLength)
 {
@@ -957,45 +1073,7 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
         printf("\tCapacity (MB): %" CPRIu32 "\n", config->uCapacity);
         printf("\tStripe Size (KB): %" CPRIu32 "\n", config->uStripeSize);
         printf("\tRAID Type: ");
-        switch (config->bRaidType)
-        {
-        case CSMI_SAS_RAID_TYPE_NONE:
-            printf("None\n");
-            break;
-        case CSMI_SAS_RAID_TYPE_0:
-            printf("0\n");
-            break;
-        case CSMI_SAS_RAID_TYPE_1:
-            printf("1\n");
-            break;
-        case CSMI_SAS_RAID_TYPE_10:
-            printf("10\n");
-            break;
-        case CSMI_SAS_RAID_TYPE_5:
-            printf("5\n");
-            break;
-        case CSMI_SAS_RAID_TYPE_15:
-            printf("15\n");
-            break;
-        case CSMI_SAS_RAID_TYPE_6:
-            printf("6\n");
-            break;
-        case CSMI_SAS_RAID_TYPE_50:
-            printf("50\n");
-            break;
-        case CSMI_SAS_RAID_TYPE_VOLUME:
-            printf("Volume\n");
-            break;
-        case CSMI_SAS_RAID_TYPE_1E:
-            printf("1E\n");
-            break;
-        case CSMI_SAS_RAID_TYPE_OTHER:
-            printf("Other\n");
-            break;
-        default:
-            printf("Unknown\n");
-            break;
-        }
+        print_CSMI_RaidType(config->bRaidType);
         printf("\tStatus: ");
         switch (config->bStatus)
         {
@@ -1051,15 +1129,15 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
         //Use DataType to switch between what was reported back
         if (!is_Empty(&config->bDataType, 20))//this is being checked since failure code and change count were added later
         {
-            printf("\tFailure Code: %" CPRIu32 "\n", config->uFailureCode);
+            printf("\tFailure Code: ");
+            print_CSMI_RAID_Failure_Code(config->uFailureCode);
             printf("\tChange Count: %" CPRIu32 "\n", config->uChangeCount);
         }
         bool driveDataValid = true;
         //If an ASCII character is in the bDataType offset, this is Intel's driver
         //at some point, need to switch to using CSMI version information....somehow
         //driverInfo.Information.usCSMIMajorRevision > 0 || driverInfo.Information.usCSMIMinorRevision > 81
-        if (!safe_isascii(
-config->bDataType))
+        if (!safe_isascii(config->bDataType))
         {
             switch (config->bDataType)
             {
@@ -1202,9 +1280,9 @@ config->bDataType))
 //	Status: OK
 //	Drive Count: 1
 //	----RAID Drive 0----
-//		Model #: 
-//		Firmware: 
-//		Serial #: 
+//		Model #:
+//		Firmware:
+//		Serial #:
 //		SAS Address: 0000000000000000h
 //		SAS LUN: 0000000000000000h
 //		Drive Status: OK
@@ -1221,9 +1299,9 @@ config->bDataType))
 //	Status: OK
 //	Drive Count: 2
 //	----RAID Drive 0----
-//		Model #: 
-//		Firmware: 
-//		Serial #: 
+//		Model #:
+//		Firmware:
+//		Serial #:
 //		SAS Address: 0000000000000000h
 //		SAS LUN: 0000000000000000h
 //		Drive Status: OK
@@ -1233,9 +1311,9 @@ config->bDataType))
 //		Drive Index: 0
 //		Total User Blocks: 0
 //	----RAID Drive 1----
-//		Model #: 
-//		Firmware: 
-//		Serial #: 
+//		Model #:
+//		Firmware:
+//		Serial #:
 //		SAS Address: 0000000000000000h
 //		SAS LUN: 0000000000000000h
 //		Drive Status: OK
@@ -1252,9 +1330,9 @@ config->bDataType))
 //	Status: OK
 //	Drive Count: 2
 //	----RAID Drive 0----
-//		Model #: 
-//		Firmware: 
-//		Serial #: 
+//		Model #:
+//		Firmware:
+//		Serial #:
 //		SAS Address: 0000000000000000h
 //		SAS LUN: 0000000000000000h
 //		Drive Status: OK
@@ -1264,9 +1342,9 @@ config->bDataType))
 //		Drive Index: 0
 //		Total User Blocks: 0
 //	----RAID Drive 1----
-//		Model #: 
-//		Firmware: 
-//		Serial #: 
+//		Model #:
+//		Firmware:
+//		Serial #:
 //		SAS Address: 0000000000000000h
 //		SAS LUN: 0000000000000000h
 //		Drive Status: OK
@@ -1287,16 +1365,16 @@ config->bDataType))
 //	Failure Code: 0
 //	Change Count: 0
 //	----RAID Drive 0----
-//		Model #: ST18000NM000J-2TV103                    
-//		Firmware: SN02    
+//		Model #: ST18000NM000J-2TV103
+//		Firmware: SN02
 //		Serial #:             WR507HEG
 //		SAS Address: 0000040400000000h
 //		SAS LUN: 0000000000000000h
 //		Drive Status: OK
 //		Drive Usage: Member
 //	----RAID Drive 1----
-//		Model #: ST18000NM000J-2TV103                    
-//		Firmware: SN02    
+//		Model #: ST18000NM000J-2TV103
+//		Firmware: SN02
 //		Serial #:             WR5081B1
 //		SAS Address: 0000050500000000h
 //		SAS LUN: 0000000000000000h
@@ -1358,7 +1436,272 @@ eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controller
     return ret;
 }
 
-//TODO: Get RAID Features
+//Get RAID Features
+
+static void print_CSMI_RAID_Features(PCSMI_SAS_RAID_FEATURES features)
+{
+    if (features)
+    {
+        printf("\n====CSMI RAID Features====\n");
+        printf("\tFeatures:\n");
+        if (features->uFeatures & CSMI_SAS_RAID_FEATURE_TRANSFORMATION)
+        {
+            printf("\t\tTransformational\n");
+            printf("\t\tDefault Transform Priority:\n");
+            if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_UNCHANGED)
+            {
+                printf("\t\t\tUnchanged\n");
+            }
+            if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_AUTO)
+            {
+                printf("\t\t\tAuto\n");
+            }
+            if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_OFF)
+            {
+                printf("\t\t\tOff\n");
+            }
+            if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_LOW)
+            {
+                printf("\t\t\tLow\n");
+            }
+            if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_MEDIUM)
+            {
+                printf("\t\t\tMedium\n");
+            }
+            if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_HIGH)
+            {
+                printf("\t\t\tHigh\n");
+            }
+            printf("\t\tTransform Priority:\n");
+            if (features->bTransformPriority == CSMI_SAS_PRIORITY_UNCHANGED)
+            {
+                printf("\t\t\tUnchanged\n");
+            }
+            if (features->bTransformPriority == CSMI_SAS_PRIORITY_AUTO)
+            {
+                printf("\t\t\tAuto\n");
+            }
+            if (features->bTransformPriority == CSMI_SAS_PRIORITY_OFF)
+            {
+                printf("\t\t\tOff\n");
+            }
+            if (features->bTransformPriority == CSMI_SAS_PRIORITY_LOW)
+            {
+                printf("\t\t\tLow\n");
+            }
+            if (features->bTransformPriority == CSMI_SAS_PRIORITY_MEDIUM)
+            {
+                printf("\t\t\tMedium\n");
+            }
+            if (features->bTransformPriority == CSMI_SAS_PRIORITY_HIGH)
+            {
+                printf("\t\t\tHigh\n");
+            }
+            printf("\t\tRAID Set Transformational Rules:\n");
+            if (features->uRaidSetTransformationRules & CSMI_SAS_RAID_RULE_AVAILABLE_MEMORY)
+            {
+                printf("\t\t\tAvailable Memory\n");
+            }
+            if (features->uRaidSetTransformationRules & CSMI_SAS_RAID_RULE_OVERLAPPED_EXTENTS)
+            {
+                printf("\t\t\tOverlapped Extents\n");
+            }
+        }
+        if (features->uFeatures & CSMI_SAS_RAID_FEATURE_REBUILD)
+        {
+            printf("\t\tRebuild\n");
+            printf("\t\tDefault Rebuild Priority:\n");
+            if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_UNCHANGED)
+            {
+                printf("\t\t\tUnchanged\n");
+            }
+            if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_AUTO)
+            {
+                printf("\t\t\tAuto\n");
+            }
+            if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_OFF)
+            {
+                printf("\t\t\tOff\n");
+            }
+            if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_LOW)
+            {
+                printf("\t\t\tLow\n");
+            }
+            if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_MEDIUM)
+            {
+                printf("\t\t\tMedium\n");
+            }
+            if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_HIGH)
+            {
+                printf("\t\t\tHigh\n");
+            }
+            printf("\t\tRebuild Priority:\n");
+            if (features->bRebuildPriority == CSMI_SAS_PRIORITY_UNCHANGED)
+            {
+                printf("\t\t\tUnchanged\n");
+            }
+            if (features->bRebuildPriority == CSMI_SAS_PRIORITY_AUTO)
+            {
+                printf("\t\t\tAuto\n");
+            }
+            if (features->bRebuildPriority == CSMI_SAS_PRIORITY_OFF)
+            {
+                printf("\t\t\tOff\n");
+            }
+            if (features->bRebuildPriority == CSMI_SAS_PRIORITY_LOW)
+            {
+                printf("\t\t\tLow\n");
+            }
+            if (features->bRebuildPriority == CSMI_SAS_PRIORITY_MEDIUM)
+            {
+                printf("\t\t\tMedium\n");
+            }
+            if (features->bRebuildPriority == CSMI_SAS_PRIORITY_HIGH)
+            {
+                printf("\t\t\tHigh\n");
+            }
+        }
+        if (features->uFeatures & CSMI_SAS_RAID_FEATURE_SPLIT_MIRROR)
+        {
+            printf("\t\tSplit Mirror\n");
+        }
+        if (features->uFeatures & CSMI_SAS_RAID_FEATURE_MERGE_MIRROR)
+        {
+            printf("\t\tMerge Mirror\n");
+        }
+        if (features->uFeatures & CSMI_SAS_RAID_FEATURE_LUN_RENUMBER)
+        {
+            printf("\t\tLUN Renumber\n");
+        }
+        if (features->uFeatures & CSMI_SAS_RAID_FEATURE_SURFACE_SCAN)
+        {
+            printf("\t\tSurface Scan\n");
+            printf("\t\tDefault Surface Scan Priority:\n");
+            if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_UNCHANGED)
+            {
+                printf("\t\t\tUnchanged\n");
+            }
+            if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_AUTO)
+            {
+                printf("\t\t\tAuto\n");
+            }
+            if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_OFF)
+            {
+                printf("\t\t\tOff\n");
+            }
+            if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_LOW)
+            {
+                printf("\t\t\tLow\n");
+            }
+            if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_MEDIUM)
+            {
+                printf("\t\t\tMedium\n");
+            }
+            if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_HIGH)
+            {
+                printf("\t\t\tHigh\n");
+            }
+            printf("\t\tSurface Scan Priority:\n");
+            if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_UNCHANGED)
+            {
+                printf("\t\t\tUnchanged\n");
+            }
+            if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_AUTO)
+            {
+                printf("\t\t\tAuto\n");
+            }
+            if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_OFF)
+            {
+                printf("\t\t\tOff\n");
+            }
+            if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_LOW)
+            {
+                printf("\t\t\tLow\n");
+            }
+            if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_MEDIUM)
+            {
+                printf("\t\t\tMedium\n");
+            }
+            if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_HIGH)
+            {
+                printf("\t\t\tHigh\n");
+            }
+        }
+        if (features->uFeatures & CSMI_SAS_RAID_FEATURE_SPARES_SHARED)
+        {
+            printf("\t\tSpares Shared\n");
+        }
+        //TODO: Check reserved features 32bytes
+        printf("\tRAID Type Description(s):\n");
+        for (uint8_t raidTypeIter = 0; raidTypeIter < 24; ++raidTypeIter)
+        {
+            if (!is_Empty(&features->RaidType[raidTypeIter], sizeof(CSMI_SAS_RAID_TYPE_DESCRIPTION)))
+            {
+                printf("\t\tRAID Type: ");
+                //bRaidType
+                print_CSMI_RaidType(features->RaidType[raidTypeIter].bRaidType);
+                //uSupportedStripeSizeMap
+                printf("Supported Stripe Size Map: %" CPRIu32 "\n", features->RaidType[raidTypeIter].uSupportedStripeSizeMap);
+            }
+        }
+        //Cache ratios supported. 104 possible, some special values
+
+        printf("\tChange Count: %" CPRIu32 "\n", features->uChangeCount);
+        printf("\tFailure Code: ");
+        print_CSMI_RAID_Failure_Code(features->uFailureCode);
+    }
+}
+
+eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_FEATURES_BUFFER raidFeaturesBuffer, eVerbosityLevels verbosity)
+{
+    eReturnValues ret = SUCCESS;
+    csmiIOin ioIn;
+    csmiIOout ioOut;
+    memset(&ioIn, 0, sizeof(csmiIOin));
+    memset(&ioOut, 0, sizeof(csmiIOout));
+    memset(raidFeaturesBuffer, 0, sizeof(CSMI_SAS_RAID_FEATURES_BUFFER));
+
+    //setup inputs
+    ioIn.controllerNumber = controllerNumber;
+    ioIn.deviceHandle = deviceHandle;
+    ioIn.ioctlBuffer = raidFeaturesBuffer;
+    ioIn.ioctlBufferSize = sizeof(CSMI_SAS_RAID_FEATURES_BUFFER);
+    ioIn.dataLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_FEATURES_BUFFER) - sizeof(IOCTL_HEADER));
+    ioIn.ioctlCode = CC_CSMI_SAS_GET_RAID_FEATURES;
+    ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
+    ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
+    memcpy(ioIn.ioctlSignature, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
+    ioIn.csmiVerbosity = verbosity;
+
+    if (VERBOSITY_COMMAND_NAMES <= verbosity)
+    {
+        printf("Sending CSMI Get RAID Features\n");
+    }
+    //issue command
+    ret = issue_CSMI_IO(&ioIn, &ioOut);
+    //validate result
+    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    {
+        ret = csmi_Return_To_OpenSea_Result(raidFeaturesBuffer->IoctlHeader.ReturnCode);
+        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
+        {
+            print_CSMI_RAID_Features(&raidFeaturesBuffer->Information);
+        }
+    }
+    else
+    {
+        ret = OS_PASSTHROUGH_FAILURE;
+    }
+
+    if (VERBOSITY_COMMAND_NAMES <= verbosity)
+    {
+        print_Return_Enum("CSMI Get RAID Features\n", ret);
+    }
+
+    return ret;
+}
+
+//TODO:
 //      Set RAID Control
 //      Get RAID Element
 //      Set RAID Operation
@@ -1635,7 +1978,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //			Device Type: End Device
 //			Restricted: 00h
 //			Initiator Port Protocol: SATA, SMP, STP, SSP
-//			Target Port Protocol: 
+//			Target Port Protocol:
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000000000000000h
 //			Phy Identifier: 0
@@ -1650,7 +1993,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //		Attached:
 //			Device Type: Unused or No Device Attached
 //			Restricted: 00h
-//			Initiator Port Protocol: 
+//			Initiator Port Protocol:
 //			Target Port Protocol: SATA, SMP, STP, SSP
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000000000000000h
@@ -1662,7 +2005,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //			Device Type: End Device
 //			Restricted: 00h
 //			Initiator Port Protocol: SATA, SMP, STP, SSP
-//			Target Port Protocol: 
+//			Target Port Protocol:
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000000000000000h
 //			Phy Identifier: 1
@@ -1677,7 +2020,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //		Attached:
 //			Device Type: Unused or No Device Attached
 //			Restricted: 00h
-//			Initiator Port Protocol: 
+//			Initiator Port Protocol:
 //			Target Port Protocol: SATA, SMP, STP, SSP
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000010000000000h
@@ -1689,7 +2032,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //			Device Type: End Device
 //			Restricted: 00h
 //			Initiator Port Protocol: SATA, SMP, STP, SSP
-//			Target Port Protocol: 
+//			Target Port Protocol:
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000000000000000h
 //			Phy Identifier: 2
@@ -1704,7 +2047,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //		Attached:
 //			Device Type: Unused or No Device Attached
 //			Restricted: 00h
-//			Initiator Port Protocol: 
+//			Initiator Port Protocol:
 //			Target Port Protocol: SATA, SMP, STP, SSP
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000020000000000h
@@ -1716,7 +2059,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //			Device Type: End Device
 //			Restricted: 00h
 //			Initiator Port Protocol: SATA, SMP, STP, SSP
-//			Target Port Protocol: 
+//			Target Port Protocol:
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000000000000000h
 //			Phy Identifier: 3
@@ -1731,7 +2074,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //		Attached:
 //			Device Type: Unused or No Device Attached
 //			Restricted: 00h
-//			Initiator Port Protocol: 
+//			Initiator Port Protocol:
 //			Target Port Protocol: SATA, SMP, STP, SSP
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000030000000000h
@@ -1743,7 +2086,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //			Device Type: End Device
 //			Restricted: 00h
 //			Initiator Port Protocol: SATA, SMP, STP, SSP
-//			Target Port Protocol: 
+//			Target Port Protocol:
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000000000000000h
 //			Phy Identifier: 4
@@ -1758,7 +2101,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //		Attached:
 //			Device Type: End Device
 //			Restricted: 00h
-//			Initiator Port Protocol: 
+//			Initiator Port Protocol:
 //			Target Port Protocol: SATA, SMP, STP, SSP
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000040000000000h
@@ -1770,7 +2113,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //			Device Type: End Device
 //			Restricted: 00h
 //			Initiator Port Protocol: SATA, SMP, STP, SSP
-//			Target Port Protocol: 
+//			Target Port Protocol:
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000000000000000h
 //			Phy Identifier: 5
@@ -1785,7 +2128,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //		Attached:
 //			Device Type: End Device
 //			Restricted: 00h
-//			Initiator Port Protocol: 
+//			Initiator Port Protocol:
 //			Target Port Protocol: SATA, SMP, STP, SSP
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000050000000000h
@@ -1797,7 +2140,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //			Device Type: End Device
 //			Restricted: 00h
 //			Initiator Port Protocol: SATA, SMP, STP, SSP
-//			Target Port Protocol: 
+//			Target Port Protocol:
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000000000000000h
 //			Phy Identifier: 6
@@ -1812,7 +2155,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //		Attached:
 //			Device Type: Unused or No Device Attached
 //			Restricted: 00h
-//			Initiator Port Protocol: 
+//			Initiator Port Protocol:
 //			Target Port Protocol: SATA, SMP, STP, SSP
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000060000000000h
@@ -1824,7 +2167,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //			Device Type: End Device
 //			Restricted: 00h
 //			Initiator Port Protocol: SATA, SMP, STP, SSP
-//			Target Port Protocol: 
+//			Target Port Protocol:
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000000000000000h
 //			Phy Identifier: 7
@@ -1839,7 +2182,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //		Attached:
 //			Device Type: Unused or No Device Attached
 //			Restricted: 00h
-//			Initiator Port Protocol: 
+//			Initiator Port Protocol:
 //			Target Port Protocol: SATA, SMP, STP, SSP
 //			Restricted 2: 0000000000000000h
 //			SAS Address: 0000070000000000h
@@ -2065,6 +2408,10 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 //			Phy Identifier: 0
 //			Signal Class: Unknown
 
+//ARCSAS Driver: For some unknown reason this driver needs an additional 484 bytes after the sizeof(CSMI_SAS_PHY_INFO_BUFFER) to respond.
+//               I do not know why since it's all zeroes in my case, but that may also depend on RAID configuration setup. But this seems to be the minimum
+//               number of bytes required for this driver to respond to this IOCTL. It may be some alignment issue or appending extra vendor unique data somewhere.-TJE
+
 //Caller allocated full buffer, then we fill in the rest and send it. Data length not needed since this one is a fixed size
 eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer, eVerbosityLevels verbosity)
 {
@@ -2073,14 +2420,21 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
     memset(&ioOut, 0, sizeof(csmiIOout));
-    memset(phyInfoBuffer, 0, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
+    PCSMI_SAS_PHY_INFO_BUFFER temp = phyInfoBuffer;
+    uint32_t phyInfoSize = sizeof(CSMI_SAS_PHY_INFO_BUFFER) + 484;//ARCSAS Workaround. Easier to handle by over-allocating as this does not break compatibility with other drivers. Unknown what extra space is needed for.
+    phyInfoBuffer = safe_malloc(phyInfoSize);//allocating out own internal version to a larger size
+    if (phyInfoBuffer == M_NULLPTR)
+    {
+        return MEMORY_FAILURE;
+    }
+    memset(phyInfoBuffer, 0, phyInfoSize);
 
     //setup inputs
     ioIn.controllerNumber = controllerNumber;
     ioIn.deviceHandle = deviceHandle;
     ioIn.ioctlBuffer = phyInfoBuffer;
-    ioIn.ioctlBufferSize = sizeof(CSMI_SAS_PHY_INFO_BUFFER);
-    ioIn.dataLength = sizeof(CSMI_SAS_PHY_INFO_BUFFER) - sizeof(IOCTL_HEADER);
+    ioIn.ioctlBufferSize = phyInfoSize;
+    ioIn.dataLength = phyInfoSize - sizeof(IOCTL_HEADER);
     ioIn.ioctlCode = CC_CSMI_SAS_GET_PHY_INFO;
     ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
@@ -2096,6 +2450,7 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     //validate result
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
+        safe_memcpy(temp, sizeof(CSMI_SAS_PHY_INFO_BUFFER), phyInfoBuffer, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
         ret = csmi_Return_To_OpenSea_Result(phyInfoBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
         {
@@ -2111,6 +2466,7 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     {
         print_Return_Enum("CSMI Get Phy Info\n", ret);
     }
+    safe_Free(M_REINTERPRET_CAST(void**, &phyInfoBuffer));//temp holds the passed in phyInfoBuffer and that has already been updated when this succeeds
 
     return ret;
 }
@@ -2491,7 +2847,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
                 memcpy(stpInputs->ptrData, stpPassthrough->bDataBuffer, M_Min(stpInputs->dataLength, stpPassthrough->Status.uDataBytes));
             }
         }
-        
+
         //copy back result
         memcpy(stpOutputs->statusFIS, stpPassthrough->Status.bStatusFIS, D2H_FIS_LENGTH);
 
@@ -2500,7 +2856,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE deviceHandle, uint32_t con
             //if the caller allocted memory for the SCR data, then copy it back for them
             memcpy(stpOutputs->scrPtr, stpPassthrough->Status.uSCR, 16 * sizeof(uint32_t));
         }
-        
+
     }
     else
     {
@@ -3002,7 +3358,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle, tDevi
 
             //before continuing, check if this is a known driver to work around known issues.
             device->os_info.csmiDeviceData->csmiKnownDriverType = get_Known_CSMI_Driver_Type(&driverInfo.Information);
-                
+
             //get SAS Address
 #if defined (CSMI_DEBUG)
             printf("JSCI: Getting SAS Address\n");
@@ -3561,7 +3917,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #endif //_MSC_VER && _MSC_VER < VS2015
     //lets try to open the device.
     device->os_info.fd = CreateFile(ptrDeviceName,
-        GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
+        GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
         M_NULLPTR,
         OPEN_EXISTING,
@@ -3723,7 +4079,7 @@ eReturnValues get_CSMI_RAID_Device(const char *filename, tDevice *device)
 #endif //CSMI_DEBUG
                     for (uint32_t raidSet = 0; raidSet < raidInfo.Information.uNumRaidSets && !foundDrive; ++raidSet)
                     {
-                        //need to parse the RAID info to figure out how much memory to allocate and read the 
+                        //need to parse the RAID info to figure out how much memory to allocate and read the
                         uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + (raidInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES)));
                         PCSMI_SAS_RAID_CONFIG_BUFFER raidConfig = C_CAST(PCSMI_SAS_RAID_CONFIG_BUFFER, safe_calloc(raidConfigLength, sizeof(uint8_t)));
                         if (!raidConfig)
@@ -4108,7 +4464,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
             _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
             //lets try to open the controller.
             fd = CreateFile(deviceName,
-                GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
+                GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
                 M_NULLPTR,
                 OPEN_EXISTING,
@@ -4151,7 +4507,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
                         if ((controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID
                             || controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
-                            && knownDriver != CSMI_DRIVER_ARCSAS
+                            //&& knownDriver != CSMI_DRIVER_ARCSAS
                             )
                         {
 #if defined (CSMI_DEBUG)
@@ -4167,7 +4523,15 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
 #endif //CSMI_DEBUG
                             bool raidConfigIncomplete = false;//if a driver has not filled in SASAddress or MN/SN info, then set this to true to use the PhyInfo instead. This may also happen for specific drivers in the future - TJE
                             //note: not checking raidConfigIncomplete in this loop to assist with some debug output later. This allows for warning about possible duplicates here.
-                            for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets; ++raidSet)
+                            //ARCSAS note: Raidsets start at 1 instead of zero!
+                            uint32_t raidSet = UINT32_C(0);
+                            uint32_t numRaidSets = csmiRAIDInfo.Information.uNumRaidSets;
+                            if (knownDriver == CSMI_DRIVER_ARCSAS)
+                            {
+                                raidSet = UINT32_C(1);
+                                numRaidSets += UINT32_C(1);
+                            }
+                            for (; raidSet < numRaidSets; ++raidSet)
                             {
                                 //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
                                 uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));//Intel driver recommends allocating for 8 drives to make sure nothing is missed. Maybe check if maxdriverperset less than this to allcoate for 8???
@@ -4466,7 +4830,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t * numberOfDevices, uint64_t fl
 //!                      NOTE: currently flags param is not being used.
 //!
 //  Exit:
-//!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated. 
+//!   \return SUCCESS - pass, WARN_NOT_ALL_DEVICES_ENUMERATED - some deviec had trouble being enumerated.
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
@@ -4481,7 +4845,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
     DECLARE_ZERO_INIT_ARRAY(char, deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH);
 #endif
     eVerbosityLevels csmiListVerbosity = VERBOSITY_DEFAULT;//If debugging, change this and down below where this is set per device will also need changing
-    
+
     if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
     {
         csmiListVerbosity = VERBOSITY_COMMAND_NAMES;
@@ -4570,11 +4934,11 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                 {
                     printf("WARNING: Unable to scan controller number! raid handle = %s\n", raidList->handle);
                 }
-                
+
                 _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
                 //lets try to open the controller.
                 fd = CreateFile(deviceName,
-                    GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS, 
+                    GENERIC_WRITE | GENERIC_READ, //FILE_ALL_ACCESS,
                     FILE_SHARE_READ | FILE_SHARE_WRITE,
                     M_NULLPTR,
                     OPEN_EXISTING,
@@ -4673,8 +5037,16 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                 printf("GDL: Checking RAID configs. Number of RAID sets: %" CPRIu32 "\n", csmiRAIDInfo.Information.uNumRaidSets);
 #endif //CSMI_DEBUG
                                 bool raidInfoIncomplete = false;
-                                bool matchedPhys[32] = { false };//array is used to track which phys have already been scanned and matched correctly
-                                for (uint32_t raidSet = 0; raidSet < csmiRAIDInfo.Information.uNumRaidSets && found < numberOfDevices; ++raidSet)
+                                //array is used to track which phys have already been scanned and matched correctly
+                                bool matchedPhys[32] = { false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false };
+                                uint32_t raidSet = UINT32_C(0);
+                                uint32_t numRaidSets = csmiRAIDInfo.Information.uNumRaidSets;
+                                if (knownCSMIDriver == CSMI_DRIVER_ARCSAS)
+                                {
+                                    raidSet = UINT32_C(1);
+                                    numRaidSets += UINT32_C(1);
+                                }
+                                for (; raidSet < numRaidSets && found < numberOfDevices; ++raidSet)
                                 {
                                     //start with a length that adds no padding for extra drives, then reallocate to a new size when we know the new size
                                     uint32_t raidConfigLength = C_CAST(uint32_t, sizeof(CSMI_SAS_RAID_CONFIG_BUFFER) + csmiRAIDInfo.Information.uMaxDrivesPerSet * sizeof(CSMI_SAS_RAID_DRIVES));
@@ -4734,7 +5106,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
 #if defined (CSMI_DEBUG)
                                                         printf("GDL: Valid drive to use.\n");
 #endif //CSMI_DEBUG
-#if defined (_WIN32)                                    
+#if defined (_WIN32)
                                                         if (isIntelDriver && strncmp(C_CAST(const char*, csmiRAIDConfig->Configuration.Drives[iter].bModel), "NVMe", 4) == 0)
                                                         {
                                                             //This should only happen on Intel Drivers using SRT
@@ -4759,7 +5131,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
 #if defined (CSMI_DEBUG)
                                                             printf("GDL: Standard CSMI detected. Checking phy info. Number of Phys: %" CPRIu8 "\n", phyInfo.Information.bNumberOfPhys);
 #endif //CSMI_DEBUG
-                                                            //Compare this drive info to phy info as best we can using SASAddress field. 
+                                                            //Compare this drive info to phy info as best we can using SASAddress field.
                                                             //NOTE: If this doesn't work on some controllers, then this will get even more complicated as we will need to try other CSMI commands and attempt reading drive identify or inquiry data to make the match correctly!!!
                                                             //Loop through phy info and find matching SAS address...should only occur ONCE even with multiple Luns since they attach to the same Phy
                                                             for (uint8_t phyIter = 0, physFound = 0; !foundDevice && phyIter < 32 && physFound < phyInfo.Information.bNumberOfPhys; ++phyIter)
@@ -5113,7 +5485,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                     //Solving these problems is probably possible by removing duplicates at the end, but that is far from optimal -TJE
                                     for (uint8_t phyIter = 0, physFound = 0; phyIter < 32 && physFound < phyInfo.Information.bNumberOfPhys && found < numberOfDevices; ++phyIter)
                                     {
-                                        if (phyInfo.Information.Phy[phyIter].Attached.bDeviceType == CSMI_SAS_NO_DEVICE_ATTACHED) 
+                                        if (phyInfo.Information.Phy[phyIter].Attached.bDeviceType == CSMI_SAS_NO_DEVICE_ATTACHED)
                                         {
                                             //nothing here, so continue
 #if defined (CSMI_DEBUG)
@@ -5357,7 +5729,7 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
 
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(stpTimer);
 
-    //Check result and copy back additional info. 
+    //Check result and copy back additional info.
     if (stpOutputs.retryAsSSPPassthrough)
     {
         //STP is not supported by this controller/driver for this device.
@@ -5469,7 +5841,7 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx *scsiIoCtx)
             }
         }
     }
-    
+
     return ret;
 }
 
