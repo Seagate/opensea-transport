@@ -670,6 +670,7 @@ extern "C"
        SF_ENABLE_CFA_POWER_MODE1                                        = 0x0A,
        SF_ENABLE_WRITE_READ_VERIFY_FEATURE                              = 0x0B,
        SF_ENABLE_DEVICE_LIFE_CONTROL                                    = 0x0C,
+       SF_CDL_FEATURE                                                   = 0x0D,
        SF_ENABLE_SATA_FEATURE                                           = 0x10,
        SF_TLC_SET_CCTL                                                  = 0x20,//set command completion time limit for devices supporting the old time limited commands feature set
        SF_TCL_SET_ERROR_HANDLING                                        = 0x21,//Sets error handling for devices supporting TLC and read/write continuous mode
