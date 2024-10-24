@@ -78,10 +78,7 @@ extern "C"
     } eNvmeNameSpace ;
 
     //Figure 78: Get Log Page - Error Information Log Entry (Log Identifier 01h)
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _nvmeErrLogEntry {
+    M_PACK_ALIGN_STRUCT(nvmeErrLogEntry, 1,
         uint64_t            errorCount;
         uint16_t            subQueueID;
         uint16_t            cmdID;
@@ -93,17 +90,9 @@ extern "C"
         uint8_t             resv1[3]; 
         uint64_t            cmdSpecificInfo;
         uint8_t             resv2[24];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    } nvmeErrLogEntry;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeErrLogEntry;
-    #endif
+    );
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _nvmeSmartLog {
+    M_PACK_ALIGN_STRUCT(nvmeSmartLog, 1,
         uint8_t             criticalWarning;
         uint8_t             temperature[2];
         uint8_t             availSpare;
@@ -129,27 +118,14 @@ extern "C"
         uint32_t            totalTimeThermalMgmtTemp1;
         uint32_t            totalTimeThermalMgmtTemp2;
         uint8_t             rsvd216[280];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    } nvmeSmartLog;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeSmartLog;
-    #endif
+    );
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _nvmeFirmwareSlotInfo {
+    M_PACK_ALIGN_STRUCT(nvmeFirmwareSlotInfo, 1,
         uint8_t     afi; //Active Firmware Info Bit 2:0 indicates the firmware slot 
         uint8_t     rsvd1[7];
         uint64_t    FSR[7];
         uint8_t     rsvd2[448];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    } nvmeFirmwareSlotInfo;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeFirmwareSlotInfo;
-    #endif
+    );
 
     enum {
         /* Self-test log Validation bits */
@@ -160,10 +136,7 @@ extern "C"
         NVME_SELF_TEST_REPORTS      = 20,
     };
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _nvmeSelfTestRes {
+    M_PACK_ALIGN_STRUCT(nvmeSelfTestRes, 1,
         uint8_t         deviceSelfTestStatus;
         uint8_t         segmentNum;
         uint8_t         validDiagnosticInfo;
@@ -174,27 +147,14 @@ extern "C"
         uint8_t         statusCodeType;
         uint8_t         statusCode;
         uint8_t         vendorSpecific[2];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    } nvmeSelfTestRes;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeSelfTestRes;
-    #endif
+    );
     
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _nvmeSelfTestLog {
+    M_PACK_ALIGN_STRUCT(nvmeSelfTestLog, 1,
         uint8_t                 crntDevSelftestOprn;
         uint8_t                 crntDevSelftestCompln;
         uint8_t                 rsvd[2];
         nvmeSelfTestRes         result[20];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    } nvmeSelfTestLog;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeSelfTestLog;
-    #endif
+    );
 
     enum {
         NVME_CMD_EFFECTS_CSUPP      = 1 << 0,
@@ -205,19 +165,11 @@ extern "C"
         NVME_CMD_EFFECTS_CSE_MASK   = 3 << 16,
     };
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _nvmeEffectsLog {
+    M_PACK_ALIGN_STRUCT(nvmeEffectsLog, 1,
         uint32_t acs[256];
         uint32_t iocs[256];
         uint8_t  resv[2048];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    } nvmeEffectsLog;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeEffectsLog;
-    #endif
+    );
 
 
     typedef enum _eNvmeSmartAttr{
@@ -288,10 +240,7 @@ extern "C"
         uint64_t MS__u64;
     } u128;
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__) 
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _nvmeSuperCapDramSmartAttr {
+    M_PACK_ALIGN_STRUCT(nvmeSuperCapDramSmartAttr, 1,
        uint16_t     superCapCurrentTemperature;        // 00-01
        uint16_t     superCapMaximumTemperature;        // 02-03
        uint8_t      superCapStatus;                    // 04
@@ -300,22 +249,14 @@ extern "C"
        u128         dataUnitsWrittenToDramNamespace;   // 24-39
        uint64_t     dramCorrectableErrorCount;         // 40-47
        uint64_t     dramUncorrectableErrorCount;       // 48-55
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    } nvmeSuperCapDramSmartAttr;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeSuperCapDramSmartAttr;
-    #endif
+    );
 
     typedef struct _nvmeSuperCapDramSmart {
        nvmeSuperCapDramSmartAttr    attrScSmart;
        uint8_t                      vendorSpecificReserved[456];        // 56-511
     } nvmeSuperCapDramSmart;
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__) 
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _nvmeTemetryLogHdr {
+    M_PACK_ALIGN_STRUCT(nvmeTemetryLogHdr, 1,
         uint8_t     logId;
         uint8_t     rsvd1[4];
         uint8_t     ieeeId[3];
@@ -326,20 +267,12 @@ extern "C"
         uint8_t     teleDataAval;
         uint8_t     teleDataGenNum;
         uint8_t     reasonIdentifier[128];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    } nvmeTemetryLogHdr;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmeTemetryLogHdr;
-    #endif
+    );
 
 /**************************
 * PCIE ERROR INFORMATION
 **************************/
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__) 
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _nvmePcieErrorLogPage {
+    M_PACK_ALIGN_STRUCT(nvmePcieErrorLogPage, 1,
        uint32_t   version;
        uint32_t   badDllpErrCnt;
        uint32_t   badTlpErrCnt;
@@ -359,12 +292,7 @@ extern "C"
        uint32_t   malformedTlpErrCnt;
        uint32_t   cplTlpPoisonedErrCnt;
        uint32_t   memRdTlpPoisonedErrCnt;
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    } nvmePcieErrorLogPage;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) nvmePcieErrorLogPage;
-    #endif
+    );
 //EOF PCIE ERROR INFORMATION
 
 
@@ -391,10 +319,7 @@ extern "C"
     } eNvmeOPCodes;
 
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _nvmCommand {
+    M_PACK_ALIGN_STRUCT(nvmCommand, 1,
         uint8_t             opcode; //CDW0
         uint8_t             flags; //CDW0
         uint16_t            commandId; //CDW0
@@ -410,77 +335,7 @@ extern "C"
         uint32_t            cdw13;//CDW13
         uint32_t            cdw14;//CDW14
         uint32_t            cdw15;//CDW15
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-        }nvmCommand;
-    #pragma pack(pop)
-    #else
-        }__attribute__((packed, aligned(1))) nvmCommand;
-    #endif
-
-#if 0
-    typedef struct _nvmeRWCommand {
-        uint8_t             opcode;
-        uint8_t             flags;
-        uint16_t            commandId;
-        uint32_t            nsid;
-        uint64_t            rsvd2;
-        uint64_t            metadata;
-        uint64_t            prp1;
-        uint64_t            prp2;
-        uint64_t            slba;
-        uint16_t            length;
-        uint16_t            control;
-        uint32_t            dsmgmt;
-        uint32_t            reftag;
-        uint16_t            apptag;
-        uint16_t            appmask;
-    } nvmeRWCommand;
-
-    typedef enum _eNvmeRWCmds {
-        NVME_RW_LR_         = 1 << 15,
-        NVME_RW_FUA_            = 1 << 14,
-        NVME_RW_DSM_FREQ_UNSPEC_        = 0,
-        NVME_RW_DSM_FREQ_TYPICAL_   = 1,
-        NVME_RW_DSM_FREQ_RARE_      = 2,
-        NVME_RW_DSM_FREQ_READS_     = 3,
-        NVME_RW_DSM_FREQ_WRITES_        = 4,
-        NVME_RW_DSM_FREQ_RW_        = 5,
-        NVME_RW_DSM_FREQ_ONCE_      = 6,
-        NVME_RW_DSM_FREQ_PREFETCH_  = 7,
-        NVME_RW_DSM_FREQ_TEMP_      = 8,
-        NVME_RW_DSM_LATENCY_NONE_   = 0 << 4,
-        NVME_RW_DSM_LATENCY_IDLE_   = 1 << 4,
-        NVME_RW_DSM_LATENCY_NORM_   = 2 << 4,
-        NVME_RW_DSM_LATENCY_LOW_        = 3 << 4,
-        NVME_RW_DSM_SEQ_REQ_        = 1 << 6,
-        NVME_RW_DSM_COMPRESSED_     = 1 << 7,
-    } eNvmeRWCmds;
-
-    typedef struct _nvmeDsmCmd {
-        uint8_t             opcode;
-        uint8_t             flags;
-        uint16_t            commandId;
-        uint32_t            nsid;
-        uint64_t            rsvd2[2];
-        uint64_t            prp1;
-        uint64_t            prp2;
-        uint32_t            nr;
-        uint32_t            attributes;
-        uint32_t            rsvd12[4];
-    } nvmeDsmCmd;
-
-    typedef enum _eNvmeDsmCmds{
-        NVME_DSMGMT_IDR_        = 1 << 0,
-        NVME_DSMGMT_IDW_        = 1 << 1,
-        NVME_DSMGMT_AD_     = 1 << 2,
-    } eNvmeDsmCmds;
-
-    typedef struct _nvmeDsmRange {
-        uint32_t            cattr;
-        uint32_t            nlb;
-        uint64_t            slba;
-    } nvmeDsmRange;
-#endif
+    );
 
     // NVMe Spec - Figure 62: Firmware Commit - Command Dword 10
     typedef enum _nvmeFWCommitAction {
@@ -907,39 +762,7 @@ extern "C"
         //c0-FFh are vendor specific
     }eNvmePathRelatedStatus;
 
-
-    //NVME_SC_DNR_          = 0x4000 //Where is this coming from???
-
-#if 0
-    typedef struct _nvmeCompletion {
-        uint32_t    result;     /* Used by admin commands to return data */
-        uint32_t    rsvd;
-        uint16_t    sqHead; /* how much of this queue may be reclaimed */
-        uint16_t    sqId;       /* submission queue that generated this entry */
-        uint16_t    commandId;  /* of the command which completed */
-        uint16_t    status;     /* did the command fail, and if so, why? */
-    } nvmeCompletion;
-
-    typedef struct _nvmeUserIO {
-        uint8_t     opcode;
-        uint8_t     flags;
-        uint16_t    control;
-        uint16_t    nblocks;
-        uint16_t    rsvd;
-        uint64_t    metadata;
-        uint64_t    addr;
-        uint64_t    slba;
-        uint32_t    dsmgmt;
-        uint32_t    reftag;
-        uint16_t    apptag;
-        uint16_t    appmask;
-    } nvmeUserIO;
-#endif
-
-#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-#pragma pack(push, 1)
-#endif
-    typedef struct _nvmeAdminCommand {
+    M_PACK_ALIGN_STRUCT(nvmeAdminCommand, 1,
         uint8_t     opcode; //Common Dword 0 (CDW0)
         uint8_t     flags; //Common Dword 0 (CDW0) 
         uint16_t    rsvd1; //Common Dword 0 (CDW0)
@@ -956,12 +779,7 @@ extern "C"
         uint32_t    cdw13; //Command Dword 10(CDW10)
         uint32_t    cdw14; //Command Dword 10(CDW10)
         uint32_t    cdw15; //Command Dword 10(CDW10)
-#if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    }nvmeAdminCommand;
-#pragma pack(pop)
-#else
-    }__attribute__((packed, aligned(1))) nvmeAdminCommand;
-#endif
+    );
 
     typedef struct _nvmCommandDWORDS {
         uint32_t            cdw0; //CDW0

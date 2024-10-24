@@ -465,42 +465,33 @@ extern "C"
         bool                            fwdlLastSegment;//firmware download unique flag to help low-level OSs (Windows)
     } ataPassthroughCommand;
 
-#define SMART_ATTRIBUTE_RAW_DATA_BYTE_COUNT UINT8_C(7)
+    #define SMART_ATTRIBUTE_RAW_DATA_BYTE_COUNT UINT8_C(7)
 
     //added these packs to make sure this structure gets interpreted correctly
     // in the code when I point it to a buffer and try and access it.
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _ataSMARTAttribute
-    {
+    M_PACK_ALIGN_STRUCT(ataSMARTAttribute, 1, 
         uint8_t     attributeNumber;
-        uint16_t    status;//bit 0 = prefail warranty bit, bit 1 = online collection, bit 2 = performance, bit 3 = error rate, bit 4 = even counter, bit 5 = self preserving
+        uint16_t    status;/*bit 0 = prefail warranty bit, bit 1 = online collection, bit 2 = performance, bit 3 = error rate, bit 4 = even counter, bit 5 = self preserving*/
         uint8_t     nominal;
         uint8_t     worstEver;
-        uint8_t     rawData[SMART_ATTRIBUTE_RAW_DATA_BYTE_COUNT];//attribute and vendor specific
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    }ataSMARTAttribute;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) ataSMARTAttribute;
-    #endif
+        uint8_t     rawData[SMART_ATTRIBUTE_RAW_DATA_BYTE_COUNT];/*attribute and vendor specific*/
+    );
 
-#define SMART_THRESHOLD_RESERVED_DATA_BYTE_COUNT UINT8_C(10)
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _ataSMARTThreshold
-    {
+    //Static assert to make sure this structure is exactly12B and compiler has not inserted extra padding
+    M_STATIC_ASSERT(sizeof(ataSMARTAttribute) == 12, smart_attribute_not_12_bytes);
+
+    #define SMART_THRESHOLD_RESERVED_DATA_BYTE_COUNT UINT8_C(10)
+
+    M_PACK_ALIGN_STRUCT(ataSMARTThreshold, 1, 
         uint8_t      attributeNumber;
         uint8_t      thresholdValue;
         uint8_t      reservedBytes[SMART_THRESHOLD_RESERVED_DATA_BYTE_COUNT];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    }ataSMARTThreshold;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) ataSMARTThreshold;
-    #endif
+    );
+
+    //Static assert to make sure this structure is exactly12B and compiler has not inserted extra padding
+    M_STATIC_ASSERT(sizeof(ataSMARTThreshold) == 12, smart_threshold_not_12_bytes);
+
+    #define ATA_LOG_PAGE_LEN_BYTES UINT16_C(512) //each page of a log is 512 bytes. A given log may be multiple pages long, or multiples of this value.
 
     /*
     RO  - Log is read only.
@@ -513,59 +504,66 @@ extern "C"
     (b) - The device shall return command aborted if a SMART feature set (see 4.19) command accesses a log that
     is marked only with GPL.
     */
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _ataLogDirectorySector
-    {
-        //  Log Address | Log Name                                  | Feature Set   | R/W   | Access 
-        uint16_t LogDir;                     //  00          | Log directory                             | none          | RO    | GPL,SL
-        uint16_t SummarySMARTErrLog;         //  01          | Summary SMART Error Log                   | SMART         | RO    | SL (a)
-        uint16_t CompSMARTErrLog;            //  02          | Comprehensive SMART Error Log             | SMART         | RO    | SL (a)
-        uint16_t ExtCompSMARTErrLog;         //  03          | Ext. Comprehensive SMART Error Log        | SMART         | RO    | GPL (b)
-        uint16_t DeviceStatistics;           //  04          | Device Statistics                         | none          | RO    | GPL, SL
-        uint16_t ReservedCFA1;               //  05          |                                           |               |       |   
-        uint16_t SMARTSelfTestLog;           //  06          | SMART Self-Test Log                       | SMART         | RO    | SL (a)
-        uint16_t ExtSMARTSelfTestLog;        //  07          | Ext. SMART Self-Test Log                  | SMART         | RO    | GLB (b)
-        uint16_t PowerConditions;            //  08          | Power Conditions                          | EPC           | RO    | GPL (b)
-        uint16_t SelectiveSelfTestLog;       //  09          | Selective Self-Test Log                   | SMART         | R/W   | SL (a)
-        uint16_t DeviceStatNotification;     //  0A          | Device Statistics Notification            | DSN           | R/W   | GPL (b)
-        uint16_t ReservedCFA2;               //  0B          |                                           |               |       |       
-        uint16_t Reserved1;                  //  0C          |                                           |               |       |       
-        uint16_t LPSMisAlignLog;             //  0D          | LPS Mis-alignment Log                     | LPS           | RO    | GPL,SL
-        uint16_t Reserved2[2];               //  OE..0F      |                                           |               |       |
-        uint16_t NCQCmdErrLog;               //  10          | NCQ Command Error Log                     | NCQ           | RO    | GPL (b)
-        uint16_t SATAPhyEventCountLog;       //  11          | SATA Phy Event Counters Log               | none          | RO    | GPL (b)
-        uint16_t SATANCQQueueManageLog;      //  12          | SATA NCQ Queue Management Log             | NCQ           | RO    | GPL (b)
-        uint16_t SATANCQSendRecvLog;         //  13          | SATA NCQ Send & Receive Log               | NCQ           | RO    | GPL (b)
-        uint16_t ReservedSATA[4];            //  14..17      | Reserved for Serial ATA                   |               |       |       
-        uint16_t LBAStatus;                  //  18          | LBA Status                                | none          | RO    | GPL (b)
-        uint16_t Reserved3[7];               //  19..20      | Reserved, 20h is Obsolete                 |               |       |           
-        uint16_t WriteStreamErrLog;          //  21          | Write Stream Error Log                    | Streaming     | RO    | GPL (b)
-        uint16_t ReadStreamErrLog;           //  22          | Read Stream Error Log                     | Streaming     | RO    | GPL (b)
-        uint16_t Obsolete1;                  //  23          |                                           |               |       |       
-        uint16_t CurrDevInternalStsDataLog;  //  24          | Current Device Internal Status Data Log   | none          | RO    | GPL (b)
-        uint16_t SavedDevInternalStsDataLog; //  25          | Saved Device Internal Status Data Log     | none          | RO    | GPL (b)
-        uint16_t Reserved4[10];              //  26..2F      |                                           |               |       |           
-        uint16_t IdentifyDeviceData;         //  30          | IDENTIFY DEVICE data                      | none          | RO    | GPL, SL
-        uint16_t Reserved5[79];              //  31..7F      |                                           |               |       |        
-        uint16_t HostSpecific[32];           //  80..9F      | Host Specific                             | SMART         | R/W   | GPL, SL
-        uint16_t DeviceVendorSpecific[64];   //  A0..DF      | Device Vendor Specific                    | SMART         | VS    | GPL, SL
-        uint16_t SCTCmdSts;                  //  E0          | SCT Command / Status                      | SCT           | R/W   | GPL, SL
-        uint16_t SCTDataXfer;                //  E1          | SCT Data Transfer                         | SCT           | R/W   | GPL, SL
-        uint16_t Reserved6[30];              //  E2..FF      |                                           |               |       |           
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    }ataLogDirectorySector;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) ataLogDirectorySector;
-    #endif
+                                             /*  Log Address | Log Name                                  | Feature Set   | R/W   | Access */
+    M_PACK_ALIGN_STRUCT(ataLogDirectorySector, 1,
+        uint16_t LogDir;                     /*  00          | Log directory                             | none          | RO    | GPL,SL */
+        uint16_t SummarySMARTErrLog;         /*  01          | Summary SMART Error Log                   | SMART         | RO    | SL (a) */
+        uint16_t CompSMARTErrLog;            /*  02          | Comprehensive SMART Error Log             | SMART         | RO    | SL (a) */
+        uint16_t ExtCompSMARTErrLog;         /*  03          | Ext. Comprehensive SMART Error Log        | SMART         | RO    | GPL (b)*/
+        uint16_t DeviceStatistics;           /*  04          | Device Statistics                         | none          | RO    | GPL, SL*/
+        uint16_t ReservedCFA1;               /*  05          |                                           |               |       |        */
+        uint16_t SMARTSelfTestLog;           /*  06          | SMART Self-Test Log                       | SMART         | RO    | SL (a) */
+        uint16_t ExtSMARTSelfTestLog;        /*  07          | Ext. SMART Self-Test Log                  | SMART         | RO    | GLB (b)*/
+        uint16_t PowerConditions;            /*  08          | Power Conditions                          | EPC           | RO    | GPL (b)*/
+        uint16_t SelectiveSelfTestLog;       /*  09          | Selective Self-Test Log                   | SMART         | R/W   | SL (a) */
+        uint16_t DeviceStatNotification;     /*  0A          | Device Statistics Notification            | DSN           | R/W   | GPL (b)*/
+        uint16_t ReservedCFA2;               /*  0B          |                                           |               |       |        */
+        uint16_t PendingDefects;             /*  0C          | Pending Defects Log                       |               |       |        */
+        uint16_t LPSMisAlignLog;             /*  0D          | LPS Mis-alignment Log                     | LPS           | RO    | GPL,SL */
+        uint16_t ReservedZAC;                /*  0E          |                                           |               |       |        */
+        uint16_t SenseDataForSuccessfulNCQ;  /*  0F          | Sense data for successful NCQ commands    | NCQ           | RO    | GPL (b)*/
+        uint16_t NCQCmdErrLog;               /*  10          | NCQ Command Error Log                     | NCQ           | RO    | GPL (b)*/
+        uint16_t SATAPhyEventCountLog;       /*  11          | SATA Phy Event Counters Log               | none          | RO    | GPL (b)*/
+        uint16_t SATANCQQueueManageLog;      /*  12          | SATA NCQ Queue Management Log             | NCQ           | RO    | GPL (b)*/
+        uint16_t SATANCQSendRecvLog;         /*  13          | SATA NCQ Send & Receive Log               | NCQ           | RO    | GPL (b)*/
+        uint16_t HybridInfoLog;              /*  14          | Hybrid Information Log                    | Hybrid Info   | RO    | GPL (b)*/
+        uint16_t RebuildAssistLog;           /*  15          | Rebuild Assist Log                        | Rebuild Assist| R/W   | GPL (b)*/
+        uint16_t OOBandManagementControl;    /*  16          | Out Of Band Management Control Log        | OOB Management| R/W   | GPL (b)*/
+        uint16_t ReservedSATA;               /*  17          | Reserved for Serial ATA                   |               |       |        */
+        uint16_t CommandDurationLimits;      /*  18          | Command Duration Limits Log               | CDL           | R/W   | GPL (b)*/
+        uint16_t LBAStatus;                  /*  19          | LBA Status                                | none          | RO    | GPL (b)*/
+        uint16_t Reserved3[6];               /*  1A..1F      | Reserved                                  |               |       |        */
+        uint16_t StreamingPerformance;       /*  20          | Streaming Performance Log (Obsolete)      | Streaming     | RO    | GPL (b)*/
+        uint16_t WriteStreamErrLog;          /*  21          | Write Stream Error Log                    | Streaming     | RO    | GPL (b)*/
+        uint16_t ReadStreamErrLog;           /*  22          | Read Stream Error Log                     | Streaming     | RO    | GPL (b)*/
+        uint16_t DelayedLBALog;              /*  23          | Delayed LBA Log (Obsolete)                |               | RO    |        */
+        uint16_t CurrDevInternalStsDataLog;  /*  24          | Current Device Internal Status Data Log   | none          | RO    | GPL (b)*/
+        uint16_t SavedDevInternalStsDataLog; /*  25          | Saved Device Internal Status Data Log     | none          | RO    | GPL (b)*/
+        uint16_t Reserved4[9];               /*  26..2E      |                                           |               |       |        */
+        uint16_t SetSectorConfiguration;     /*  2F          | Set Sector Configuration Log              | none          | RO    | GPL (b)*/
+        uint16_t IdentifyDeviceData;         /*  30          | IDENTIFY DEVICE data                      | none          | RO    | GPL, SL*/
+        uint16_t Reserved5[17];              /*  31..41      |                                           |               |       |        */
+        uint16_t MutateConfigurations;       /*  42          | Mutate Configurations Log                 | User Data Init| RO    | GPL (b)*/
+        uint16_t Reserved7[4];               /*  43..46      |                                           |               |       |        */
+        uint16_t ConcurrentPositioning;      /*  47          | Concurrent Positioning Ranges Log         | none          | RO    | GPL (b)*/
+        uint16_t Reserved8[11];              /*  48..52      |                                           |               |       |        */
+        uint16_t SenseDataLog;               /*  53          | Sense Data log                            | Sense Data Rep| RO    | GPL (b)*/
+        uint16_t Reserved9[5];               /*  54..58      |                                           |               |       |        */
+        uint16_t PowerConsumpotionCtrl;      /*  59          | Power Consumption Control Log             | Power Consumpt| RO    | GPL (b)*/
+        uint16_t Reserved10[7];              /*  5A..60      |                                           |               |       |        */
+        uint16_t CapacityMNMappingLog;       /*  61          | Capacity Model Number Mapping Log         | none          | RO    | GPL (b)*/
+        uint16_t Reserved11[30];             /*  62..7F      |                                           |               |       |        */
+        uint16_t HostSpecific[32];           /*  80..9F      | Host Specific                             | SMART         | R/W   | GPL, SL*/
+        uint16_t DeviceVendorSpecific[64];   /*  A0..DF      | Device Vendor Specific                    | SMART         | VS    | GPL, SL*/
+        uint16_t SCTCmdSts;                  /*  E0          | SCT Command / Status                      | SCT           | R/W   | GPL, SL*/
+        uint16_t SCTDataXfer;                /*  E1          | SCT Data Transfer                         | SCT           | R/W   | GPL, SL*/
+        uint16_t Reserved6[30];              /*  E2..FF      |                                           |               |       |        */
+    );
 
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    #pragma pack(push, 1)
-    #endif
-    typedef struct _ataPowerConditionsDescriptor
-    {
+    //Make sure structure above is exactly 512B because if it is updated it is easy to make mistakes and throw this off again.
+    M_STATIC_ASSERT(sizeof(ataLogDirectorySector) == ATA_LOG_PAGE_LEN_BYTES, ata_log_directory_is_not_512_bytes);
+
+    M_PACK_ALIGN_STRUCT(ataPowerConditionsDescriptor, 1,
         uint8_t reserved;
         uint8_t powerConditionFlags;
         uint16_t reserved2;
@@ -576,12 +574,9 @@ extern "C"
         uint32_t minimumTimerSetting;
         uint32_t maximumTimerSetting;
         uint8_t reserved3[36];
-    #if !defined (__GNUC__) || defined (__MINGW32__) || defined (__MINGW64__)
-    }ataPowerConditionsDescriptor;
-    #pragma pack(pop)
-    #else
-    }__attribute__((packed,aligned(1))) ataPowerConditionsDescriptor;
-    #endif
+    );
+
+    M_STATIC_ASSERT(sizeof(ataPowerConditionsDescriptor) == 64, ata_EPC_descriptor_not_64_bytes);
 
     typedef struct _ataSMARTValue {
         ataSMARTAttribute    data;
@@ -903,7 +898,6 @@ extern "C"
        ATA_SCT_COMMAND_STATUS                           = 0xE0,
        ATA_SCT_DATA_TRANSFER                            = 0xE1,
    }eATALog;
-    #define ATA_LOG_PAGE_LEN_BYTES UINT16_C(512) //each page of a log is 512 bytes. A given log may be multiple pages long, or multiples of this value.
 
    typedef enum _eIdentifyDeviceDataLogPage //Log address 30h, ACS-4 Section 9.11
    {
@@ -1130,6 +1124,6 @@ extern "C"
         ATA_SEC6 = 6  //enabled, frozen
     }eATASecurityState;
 
-    #if defined(__cplusplus)
+#if defined(__cplusplus)
 } //extern "C"
-    #endif
+#endif
