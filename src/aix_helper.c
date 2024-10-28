@@ -1107,7 +1107,7 @@ static int get_Adapter_IDs(tDevice *device, char *name)
     int ret = 0;
     struct CuDv cudv;
     struct CuDv * ptrcudv;
-    memset(&cudv, 0, sizeof(struct CuDv));
+    safe_memset(&cudv, sizeof(struct CuDv), 0, sizeof(struct CuDv));
 
     //odm_initialize();
     DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT);//256
@@ -1221,7 +1221,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
     {
         //able to open the device. Read the devinfo, then open controller and read its devinfo -TJE
         struct devinfo driveInfo;
-        memset(&driveInfo, 0, sizeof(struct devinfo));
+        safe_memset(&driveInfo, sizeof(struct devinfo), 0, sizeof(struct devinfo));
         if (device->deviceVerbosity > VERBOSITY_DEFAULT)
         {
             printf("Attempting device IOCINFO\n");
@@ -1265,7 +1265,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         safe_free(&friendlyName);
         struct CuDv cudv;
         struct CuDv * ptrcudv;
-        memset(&cudv, 0, sizeof(struct CuDv));
+        safe_memset(&cudv, sizeof(struct CuDv), 0, sizeof(struct CuDv));
 
         odm_initialize();
         DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT);//256
@@ -1732,10 +1732,9 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //     if (scsiIoCtx->cdbLength <= 12)
 //     {
 //         int ioctlCode = DKIOCMD;
-//         seatimer_t commandTimer;
+//         DECLARE_SEATIMER(commandTimer);
 //         struct sc_iocmd aixIoCmd;
-//         memset(&aixIoCmd, 0, sizeof(struct sc_iocmd));
-//         memset(&commandTimer, 0, sizeof(seatimer_t));
+//         safe_memset(&aixIoCmd, sizeof(struct sc_iocmd), 0, sizeof(struct sc_iocmd));
 //         if (scsiIoCtx->device->os_info.adapterType != AIX_ADAPTER_SCSI)
 //         {
 //             ioctlCode = DKIOLCMD;
@@ -1791,7 +1790,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             }
 //         }
 //         aixIoCmd.command_length = scsiIoCtx->cdbLength;
-//         memcpy(&aixIoCmd.scsi_cdb[0], scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+//         safe_memcpy(&aixIoCmd.scsi_cdb[0], 12, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
 //         aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
 
@@ -1848,11 +1847,9 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //     }
 //     else if (scsiIoCtx->cdbLength <= 16)
 //     {
-//         seatimer_t commandTimer;
+//         DECLARE_SEATIMER(commandTimer);
 //         struct sc_iocmd16cdb aixIoCmd;
-//         memset(&aixIoCmd, 0, sizeof(struct sc_iocmd16cdb));
-//         memset(&commandTimer, 0, sizeof(seatimer_t));
-
+//         safe_memset(&aixIoCmd, sizeof(struct sc_iocmd16cdb), 0, sizeof(struct sc_iocmd16cdb));
 //         aixIoCmd.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
 //         aixIoCmd.flags = SC_QUIESCE_IO;//or SC_MIX_IO? Leaving as quiesce for now -TJE
 //         aixIoCmd.q_flags = 0;//SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
@@ -1904,7 +1901,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             }
 //         }
 //         aixIoCmd.command_length = scsiIoCtx->cdbLength;
-//         memcpy(&aixIoCmd.scsi_cdb[0], scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+//         safe_memcpy(&aixIoCmd.scsi_cdb[0], 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
 //         aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
 
@@ -1968,10 +1965,9 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //     if (issueRequestSense && scsiIoCtx->psense)
 //     {
 //         int ioctlCode = DKIOCMD;
-//         seatimer_t commandTimer;
+//         DECLARE_SEATIMER(commandTimer);
 //         struct sc_iocmd aixIoCmd;
-//         memset(&aixIoCmd, 0, sizeof(struct sc_iocmd));
-//         memset(&commandTimer, 0, sizeof(seatimer_t));
+//         safe_memset(&aixIoCmd, sizeof(struct sc_iocmd), 0, sizeof(struct sc_iocmd));
 //         if (scsiIoCtx->device->os_info.adapterType != AIX_ADAPTER_SCSI)
 //         {
 //             ioctlCode = DKIOLCMD;
@@ -2048,7 +2044,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //     }
 //     else if (scsiIoCtx->psense)
 //     {
-//         memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+//         safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
 //     }
 //     return ret;
 // }
@@ -2057,10 +2053,9 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues         ret          = SUCCESS;
     //uses passthrough structure
-    seatimer_t commandTimer;
+    DECLARE_SEATIMER(commandTimer);
     struct sc_passthru aixPassthrough;
-    memset(&aixPassthrough, 0, sizeof(struct sc_passthru));
-    memset(&commandTimer, 0, sizeof(seatimer_t));
+    safe_memset(&aixPassthrough, sizeof(struct sc_passthru), 0, sizeof(struct sc_passthru));
 
     aixPassthrough.version = SCSI_VERSION_2;//TODO: version 1 vs version 2? Probably only helpful on old AIX installations
     aixPassthrough.q_tag_msg = 0;//SC_NO_Q, SC_SIMPLE_Q, SC_HEAD_OF_Q, SC_ORDERED_Q, SC_ACA_Q
@@ -2096,7 +2091,7 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
         //      This may be useful to use in the future. -TJE
         return OS_COMMAND_NOT_AVAILABLE;
     }
-    memcpy(&aixPassthrough.scsi_cdb[0], scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+    safe_memcpy(&aixPassthrough.scsi_cdb[0], SC_PASSTHRU_CDB_LEN, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
     aixPassthrough.autosense_length = scsiIoCtx->senseDataSize;
     aixPassthrough.data_length = scsiIoCtx->dataLength;
     aixPassthrough.buffer = C_CAST(char *, scsiIoCtx->pdata);
@@ -2233,7 +2228,7 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     //sends the IDE passthrough IOCTL
-    seatimer_t commandTimer;
+    DECLARE_SEATIMER(commandTimer);
     struct ide_ata_passthru idePassthrough; //28bit commands only
     if (!scsiIoCtx->pAtaCmdOpts)
     {
@@ -2246,8 +2241,7 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         return OS_COMMAND_NOT_AVAILABLE;
     }
 
-    memset(&commandTimer, 0, sizeof(seatimer_t));
-    memset(&idePassthrough, 0, sizeof(struct ide_ata_passthru));
+    safe_memset(&idePassthrough, sizeof(struct ide_ata_passthru), 0, sizeof(struct ide_ata_passthru));
 
     idePassthrough.version = IDE_ATA_PASSTHRU_VERSION_1;
 
@@ -2344,10 +2338,9 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     //sends the IDE passthrough IOCTL
-    seatimer_t commandTimer;
+    DECLARE_SEATIMER(commandTimer);
     struct ide_atapi_passthru idePassthrough; //12 to 16B CDBs only
-    memset(&commandTimer, 0, sizeof(seatimer_t));
-    memset(&idePassthrough, 0, sizeof(struct ide_atapi_passthru));
+    safe_memset(&idePassthrough, sizeof(struct ide_atapi_passthru), 0, sizeof(struct ide_atapi_passthru));
 
     idePassthrough.ide_device = 0;//TODO: fill this in with target device ID
 
@@ -2420,7 +2413,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
     idePassthrough.atapi_cmd.resvd1 = RESERVED;
     idePassthrough.atapi_cmd.resvd2 = RESERVED;
     idePassthrough.atapi_cmd.packet.op_code = scsiIoCtx->cdb[OPERATION_CODE];
-    memcpy(&idePassthrough.atapi_cmd.packet.bytes[0], &scsiIoCtx->cdb[1], M_Min(15, scsiIoCtx->cdbLength - 1));//this holds remaining bytes after opcode, hence -1 from length
+    safe_memcpy(&idePassthrough.atapi_cmd.packet.bytes[0], 15, &scsiIoCtx->cdb[1], M_Min(15, scsiIoCtx->cdbLength - 1));//this holds remaining bytes after opcode, hence -1 from length
 
     start_Timer(&commandTimer);
     int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, IDEPASSTHRU, &idePassthrough);
@@ -2450,10 +2443,10 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
         //Check condition occurred
         //setup fixed format data for now
         struct ide_atapi_passthru requestSensePT;
-        seatimer_t rscommandTimer;
+        DECLARE_SEATIMER(rscommandTimer);
         DECLARE_ZERO_INIT_ARRAY(uint8_t, localSenseData, SPC3_SENSE_LEN);
         uint8_t senseKey = M_Nibble1(idePassthrough.ata_error);//bits 7:4 contain the sense key
-        memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+        safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
         scsiIoCtx->psense[0] = 0x70;//fixed format
         scsiIoCtx->psense[2] = senseKey;
         if (idePassthrough.ata_error & BIT0)
@@ -2466,8 +2459,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
         }
 
         //try a request sense and return this if everything works alright
-        memset(&requestSensePT, 0, sizeof(struct ide_atapi_passthru));
-        memset(&rscommandTimer, 0, sizeof(seatimer_t));
+        safe_memset(&requestSensePT, sizeof(struct ide_atapi_passthru), 0, sizeof(struct ide_atapi_passthru));
         requestSensePT.ide_device = 0;//TODO: fill this in with target device ID
         requestSensePT.flags = ATA_CHS_MODE;
         requestSensePT.flags |= IDE_PASSTHRU_READ;
@@ -2501,7 +2493,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx *scsiIoCtx)
             //NOTE: Assuming fixed format
             if (senseKey == M_Nibble0(localSenseData[2])
             {
-                memcpy(scsiIoCtx->psense, localSenseData, M_Min(scsiIoCtx->senseDataSize, SPC3_SENSE_LEN));
+                safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, localSenseData, M_Min(scsiIoCtx->senseDataSize, SPC3_SENSE_LEN));
             }
         }
     }
@@ -2515,7 +2507,7 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
 {
     //sends the SATA passthrough IOCTL
     eReturnValues ret = SUCCESS;
-    seatimer_t commandTimer;
+    DECLARE_SEATIMER(commandTimer);
     struct sata_passthru sataPassthrough;
     if (!scsiIoCtx->pAtaCmdOpts)
     {
@@ -2528,8 +2520,7 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx *scsiIoCtx)
         return OS_COMMAND_NOT_AVAILABLE;
     }
 
-    memset(&commandTimer, 0, sizeof(seatimer_t));
-    memset(&sataPassthrough, 0, sizeof(struct sata_passthru));
+    safe_memset(&sataPassthrough, sizeof(struct sata_passthru), 0, sizeof(struct sata_passthru));
 
     sataPassthrough.version = 0;//I don't see a defined version in ide.h, so setting zero as seems to be how most of these work in AIX-TJE
 
@@ -2912,7 +2903,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             {
                 continue;
             }
-            memset(name, 0, sizeof(name));//clear name before reusing it
+            safe_memset(name, sizeof(name), 0, sizeof(name));//clear name before reusing it
             snprintf(name, sizeof(name), "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.
@@ -2940,7 +2931,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             {
                 close(fd);
                 eVerbosityLevels temp = d->deviceVerbosity;
-                memset(d, 0, sizeof(tDevice));
+                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
                 d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
@@ -3036,9 +3027,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     eReturnValues ret = SUCCESS;
     int fdForNVMePassthru = nvmeIoCtx->commandType == NVM_ADMIN_CMD ? nvmeIoCtx->device->os_info.ctrlfd : nvmeIoCtx->device->os_info.fd;//start assuming rhdisk handle for now
     struct nvme_passthru nvmePassthrough;
-    seatimer_t commandTimer;
-    memset(&nvmePassthrough, 0, sizeof(struct nvme_passthru));
-    memset(&commandTimer, 0, sizeof(seatimer_t));
+    DECLARE_SEATIMER(commandTimer);
+    safe_memset(&nvmePassthrough, sizeof(struct nvme_passthru), 0, sizeof(struct nvme_passthru));
 
     nvmePassthrough.version = 0;//version 0 is only version so far -TJE
 
@@ -3198,9 +3188,8 @@ eReturnValues os_nvme_Reset(tDevice *device)
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = SUCCESS;
     struct nvme_cntl nvmeReset;
-    seatimer_t commandTimer;
-    memset(&commandTimer, 0, sizeof(commandTimer));
-    memset(&nvmeReset, 0, sizeof(struct nvme_cntl));
+    DECLARE_SEATIMER(commandTimer);
+    safe_memset(&nvmeReset, sizeof(struct nvme_cntl), 0, sizeof(struct nvme_cntl));
 
     nvmeReset.version = 0;
     nvmeReset.action = NVME_RESET;

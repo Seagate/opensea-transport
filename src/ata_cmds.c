@@ -72,7 +72,7 @@ eReturnValues ata_Soft_Reset(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand softReset;
-    memset(&softReset, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&softReset, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     softReset.commadProtocol = ATA_PROTOCOL_SOFT_RESET;
     softReset.commandType = ATA_CMD_TYPE_TASKFILE;
     softReset.commandDirection = XFER_NO_DATA;
@@ -87,7 +87,7 @@ eReturnValues ata_Hard_Reset(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand hardReset;
-    memset(&hardReset, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&hardReset, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     hardReset.commadProtocol = ATA_PROTOCOL_HARD_RESET;
     hardReset.commandType = ATA_CMD_TYPE_TASKFILE;
     hardReset.commandDirection = XFER_NO_DATA;
@@ -102,7 +102,7 @@ eReturnValues ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand identify;
-    memset(&identify, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&identify, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     identify.commandType = ATA_CMD_TYPE_TASKFILE;
     identify.commandDirection = XFER_DATA_IN;
     identify.commadProtocol = ATA_PROTOCOL_PIO;
@@ -131,7 +131,7 @@ eReturnValues ata_Identify(tDevice *device, uint8_t *ptrData, uint32_t dataSize)
     if (ret == SUCCESS && ptrData != C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
     {
         //copy the data to the device structure so that it's not (as) stale
-        memcpy(&device->drive_info.IdentifyData.ata.Word000, ptrData, sizeof(tAtaIdentifyData));
+        safe_memcpy(&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData), ptrData, 512);
     }
 
 #if defined (__BIG_ENDIAN__)
@@ -173,7 +173,7 @@ eReturnValues ata_Sanitize_Command(tDevice *device, eATASanitizeFeature sanitize
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataSanitizeCmd;
-    memset(&ataSanitizeCmd, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataSanitizeCmd, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataSanitizeCmd.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataSanitizeCmd.commandDirection = XFER_NO_DATA;
     ataSanitizeCmd.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
@@ -352,7 +352,7 @@ eReturnValues ata_Read_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pag
     }
 
     //zap it
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
 
     if (!ptrData)
     {
@@ -476,7 +476,7 @@ eReturnValues ata_Write_Log_Ext(tDevice *device, uint8_t logAddress, uint16_t pa
     }
 
     //zap it
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
 
     if (!ptrData)
     {
@@ -569,7 +569,7 @@ eReturnValues ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo,
         printf("Sending ATA SMART command - ");
     }
     //zap it
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.forceCheckConditionBit = forceRTFRs;
     switch (feature)
     {
@@ -694,7 +694,7 @@ eReturnValues ata_SMART_Command(tDevice *device, uint8_t feature, uint8_t lbaLo,
     if (ataCommandOptions.commandDirection == XFER_DATA_IN)
     {
         //make sure the buffer is cleared to zero
-        memset(ptrData, 0, dataSize);
+        safe_memset(ptrData, dataSize, 0, dataSize);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -867,7 +867,7 @@ eReturnValues ata_Security_Disable_Password(tDevice *device, uint8_t *ptrData)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -902,7 +902,7 @@ eReturnValues ata_Security_Erase_Prepare(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -937,7 +937,7 @@ eReturnValues ata_Security_Erase_Unit(tDevice *device, uint8_t *ptrData, uint32_
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -975,7 +975,7 @@ eReturnValues ata_Security_Set_Password(tDevice *device, uint8_t *ptrData)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -1012,7 +1012,7 @@ eReturnValues ata_Security_Unlock(tDevice *device, uint8_t *ptrData)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -1049,7 +1049,7 @@ eReturnValues ata_Security_Freeze_Lock(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -1084,7 +1084,7 @@ eReturnValues ata_Accessible_Max_Address_Feature(tDevice* device, uint16_t featu
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
@@ -1121,7 +1121,7 @@ eReturnValues ata_Accessible_Max_Address_Feature(tDevice* device, uint16_t featu
 
     if (rtfrs != M_NULLPTR)
     {
-        memcpy(rtfrs, &(ataCommandOptions.rtfr), sizeof(ataReturnTFRs));
+        safe_memcpy(rtfrs, sizeof(ataReturnTFRs), &(ataCommandOptions.rtfr), sizeof(ataReturnTFRs));
     }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1136,7 +1136,7 @@ eReturnValues ata_Get_Native_Max_Address_Ext(tDevice *device, uint64_t *nativeMa
 {
     eReturnValues ret = UNKNOWN;
     ataReturnTFRs rtfrs;
-    memset(&rtfrs, 0, sizeof(rtfrs));
+    safe_memset(&rtfrs, sizeof(rtfrs), 0, sizeof(rtfrs));
     ret = ata_Accessible_Max_Address_Feature(device, AMAC_GET_NATIVE_MAX_ADDRESS, 0, &rtfrs, 0);
     if (ret == SUCCESS && nativeMaxLBA)
     {
@@ -1164,7 +1164,7 @@ eReturnValues ata_Read_Native_Max_Address(tDevice *device, uint64_t *nativeMaxLB
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -1233,7 +1233,7 @@ eReturnValues ata_Set_Max(tDevice *device, eHPAFeature setMaxFeature, uint32_t n
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.ptrData = ptrData;
@@ -1322,7 +1322,7 @@ eReturnValues ata_Set_Max_Address_Ext(tDevice *device, uint64_t newMaxLBA, bool 
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -1368,7 +1368,7 @@ eReturnValues ata_Download_Microcode(tDevice *device, eDownloadMicrocodeFeatures
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -1472,7 +1472,7 @@ eReturnValues ata_Check_Power_Mode(tDevice *device, uint8_t *powerMode)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataCommandOptions));
+    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -1518,7 +1518,7 @@ eReturnValues ata_Configure_Stream(tDevice *device, uint8_t streamID, bool addRe
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -1569,7 +1569,7 @@ eReturnValues ata_Data_Set_Management(tDevice *device, bool trimBit, uint8_t* pt
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     switch (device->drive_info.ata_Options.dmaMode)
     {
     case ATA_DMA_MODE_NO_DMA:
@@ -1651,7 +1651,7 @@ eReturnValues ata_Execute_Device_Diagnostic(tDevice *device, uint8_t* diagnostic
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_DEV_DIAG;
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
@@ -1690,7 +1690,7 @@ eReturnValues ata_Flush_Cache(tDevice *device, bool extendedCommand)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -1751,7 +1751,7 @@ eReturnValues ata_Idle(tDevice *device, uint8_t standbyTimerPeriod)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -1784,7 +1784,7 @@ eReturnValues ata_Idle_Immediate(tDevice *device, bool unloadFeature)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -1825,7 +1825,7 @@ eReturnValues ata_Read_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -1900,7 +1900,7 @@ eReturnValues ata_Read_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uint
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -1987,7 +1987,7 @@ eReturnValues ata_Read_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData,
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -2069,7 +2069,7 @@ eReturnValues ata_Read_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData, 
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -2143,7 +2143,7 @@ eReturnValues ata_Read_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t *
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -2192,7 +2192,7 @@ eReturnValues ata_Read_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamID
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -2291,7 +2291,7 @@ eReturnValues ata_Read_Verify_Sectors(tDevice *device, bool extendedCmd, uint16_
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -2360,7 +2360,7 @@ eReturnValues ata_Request_Sense_Data(tDevice *device, uint8_t *senseKey, uint8_t
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -2408,7 +2408,7 @@ eReturnValues ata_Set_Date_And_Time(tDevice *device, uint64_t timeStamp)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -2450,7 +2450,7 @@ eReturnValues ata_Set_Multiple_Mode(tDevice *device, uint8_t drqDataBlockCount)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -2486,7 +2486,7 @@ eReturnValues ata_Sleep(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -2522,7 +2522,7 @@ eReturnValues ata_Standby(tDevice *device, uint8_t standbyTimerPeriod)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -2559,7 +2559,7 @@ eReturnValues ata_Standby_Immediate(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -2595,7 +2595,7 @@ eReturnValues ata_Trusted_Non_Data(tDevice *device, uint8_t securityProtocol, bo
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -2640,7 +2640,7 @@ eReturnValues ata_Trusted_Receive(tDevice *device, bool useDMA, uint8_t security
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -2722,7 +2722,7 @@ eReturnValues ata_Trusted_Send(tDevice *device, bool useDMA, uint8_t securityPro
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -2805,7 +2805,7 @@ eReturnValues ata_Write_Buffer(tDevice *device, uint8_t *ptrData, bool useDMA)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -2882,7 +2882,7 @@ eReturnValues ata_Write_DMA(tDevice *device, uint64_t LBA, uint8_t *ptrData, uin
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -2976,7 +2976,7 @@ eReturnValues ata_Write_Multiple(tDevice *device, uint64_t LBA, uint8_t *ptrData
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -3074,7 +3074,7 @@ eReturnValues ata_Write_Sectors(tDevice *device, uint64_t LBA, uint8_t *ptrData,
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -3148,7 +3148,7 @@ eReturnValues ata_Write_Sectors_No_Retry(tDevice *device, uint64_t LBA, uint8_t 
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -3196,7 +3196,7 @@ eReturnValues ata_Write_Stream_Ext(tDevice *device, bool useDMA, uint8_t streamI
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -3295,7 +3295,7 @@ eReturnValues ata_Write_Uncorrectable(tDevice *device, uint8_t unrecoverableOpti
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -3348,7 +3348,7 @@ eReturnValues ata_NV_Cache_Feature(tDevice *device, eNVCacheFeatures feature, ui
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
@@ -3598,7 +3598,7 @@ eReturnValues ata_Set_Features(tDevice *device, uint8_t subcommand, uint8_t subc
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;
@@ -3726,7 +3726,7 @@ eReturnValues ata_Identify_Packet_Device(tDevice *device, uint8_t *ptrData, uint
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
     ataCommandOptions.ataTransferBlocks = ATA_PT_512B_BLOCKS;
@@ -3758,7 +3758,7 @@ eReturnValues ata_Identify_Packet_Device(tDevice *device, uint8_t *ptrData, uint
     if (ret == SUCCESS && ptrData != C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
     {
         //copy the data to the device structure so that it's not (as) stale
-        memcpy(&device->drive_info.IdentifyData.ata.Word000, ptrData, sizeof(tAtaIdentifyData));
+        safe_memcpy(&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData), ptrData, 512);
     }
 
 #if defined (__BIG_ENDIAN__)
@@ -3796,7 +3796,7 @@ eReturnValues ata_Device_Configuration_Overlay_Feature(tDevice *device, eDCOFeat
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commandType = ATA_CMD_TYPE_TASKFILE;
@@ -3960,7 +3960,7 @@ eReturnValues ata_DCO_Set(tDevice *device, bool useDMA, uint8_t *ptrData, uint32
 //eReturnValues ata_Packet(tDevice *device, uint8_t *scsiCDB, bool dmaBit, bool dmaDirBit, uint16_t byteCountLimit, uint8_t *ptrData, uint32_t *dataSize)
 //{
 //    ataPassthroughCommand packetCommand;
-//    memset(&packetCommand, 0, sizeof(ataPassthroughCommand));
+//    safe_memset(&packetCommand, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
 //    packetCommand.commadProtocol = ATA_CMD_TYPE_PACKET;
 //    packetCommand.tfr.CommandStatus = ATAPI_COMMAND;
 //    if (dmaBit)
@@ -3977,7 +3977,7 @@ eReturnValues ata_ZAC_Management_In(tDevice *device, eZMAction action, uint8_t a
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
@@ -4062,7 +4062,7 @@ eReturnValues ata_ZAC_Management_Out(tDevice *device, eZMAction action, uint8_t 
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = dataSize;
     ataCommandOptions.commandType = ATA_CMD_TYPE_EXTENDED_TASKFILE;
@@ -4253,7 +4253,7 @@ eReturnValues ata_Media_Eject(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4289,7 +4289,7 @@ eReturnValues ata_Get_Media_Status(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4325,7 +4325,7 @@ eReturnValues ata_Media_Lock(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4361,7 +4361,7 @@ eReturnValues ata_Media_Unlock(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4397,7 +4397,7 @@ eReturnValues ata_Zeros_Ext(tDevice *device, uint16_t numberOfLogicalSectors, ui
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4448,7 +4448,7 @@ eReturnValues ata_Set_Sector_Configuration_Ext(tDevice *device, uint16_t command
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4490,7 +4490,7 @@ eReturnValues ata_Get_Physical_Element_Status(tDevice *device, uint8_t filter, u
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = dataSize;
@@ -4548,7 +4548,7 @@ eReturnValues ata_Remove_Element_And_Truncate(tDevice *device, uint32_t elementI
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4603,7 +4603,7 @@ eReturnValues ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elem
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4658,7 +4658,7 @@ eReturnValues ata_Restore_Elements_And_Rebuild(tDevice *device)
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4713,7 +4713,7 @@ eReturnValues ata_Mutate_Ext(tDevice* device, bool requestMaximumAccessibleCapac
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4775,7 +4775,7 @@ eReturnValues ata_NCQ_Non_Data(tDevice *device, uint8_t subCommand /*bits 4:0*/,
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_NO_DATA;
     ataCommandOptions.ptrData = M_NULLPTR;
     ataCommandOptions.dataSize = 0;
@@ -4851,7 +4851,7 @@ eReturnValues ata_NCQ_Receive_FPDMA_Queued(tDevice *device, uint8_t subCommand /
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = sectorCount * LEGACY_DRIVE_SEC_SIZE;
@@ -4913,7 +4913,7 @@ eReturnValues ata_NCQ_Send_FPDMA_Queued(tDevice *device, uint8_t subCommand /*bi
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = sectorCount * LEGACY_DRIVE_SEC_SIZE;
@@ -4986,7 +4986,7 @@ eReturnValues ata_NCQ_Read_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba,
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_IN;
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = sectorCount * device->drive_info.deviceBlockSize;
@@ -5046,7 +5046,7 @@ eReturnValues ata_NCQ_Write_FPDMA_Queued(tDevice *device, bool fua, uint64_t lba
 {
     eReturnValues ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    memset(&ataCommandOptions, 0, sizeof(ataPassthroughCommand));
+    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection = XFER_DATA_OUT;
     ataCommandOptions.ptrData = ptrData;
     ataCommandOptions.dataSize = sectorCount * device->drive_info.deviceBlockSize;

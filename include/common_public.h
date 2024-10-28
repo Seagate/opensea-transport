@@ -594,10 +594,11 @@ extern "C"
 
     // Defined by SPC3 as the maximum sense length
     #define SPC3_SENSE_LEN  UINT8_C(252)
-
+    #define SPC_INQ_DATA_LEN UINT8_C(96)
+    #define VPD_83H_LEN 64
     typedef struct _tVpdData {
-        uint8_t  inquiryData[96]; //INQ_RETURN_DATA_LENGTH
-        uint8_t  vpdPage83[64];
+        uint8_t  inquiryData[SPC_INQ_DATA_LEN]; //INQ_RETURN_DATA_LENGTH
+        uint8_t  vpdPage83[VPD_83H_LEN];
     }tVpdData;
 
     typedef enum _eMediaType {
@@ -1608,7 +1609,7 @@ extern "C"
     #elif defined (__sun)
         #define MAX_CMD_TIMEOUT_SECONDS 65535
     #elif defined (_AIX)
-        #define MAX_CMD_TIMEOUT_SECONDS (UINT32_MAX - 1) //NOTE: This may not be correct but the field that sets this is a uint32. Setting to 1 less than infinite's current value -TJE
+        #define MAX_CMD_TIMEOUT_SECONDS (UINT32_MAX - 1) /*NOTE: This may not be correct but the field that sets this is a uint32. Setting to 1 less than infinite's current value -TJE*/
     #else
         #error "Need to set MAX_CMD_TIMEOUT_SECONDS for this OS"
     #endif

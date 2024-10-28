@@ -222,11 +222,11 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
         IOCTL_RAID_FIRMWARE_BUFFER *raidFirmwareRequest = C_CAST(IOCTL_RAID_FIRMWARE_BUFFER*, safe_calloc_aligned(allocationSize, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (raidFirmwareRequest)
         {
-            seatimer_t commandTimer;
+            DECLARE_SEATIMER(commandTimer);
             HANDLE handleToUse = device->os_info.fd;//start with this in case of CSMI RAID
             //fill in SRB_IO_HEADER first
             raidFirmwareRequest->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
-            memcpy(raidFirmwareRequest->Header.Signature, INTEL_RAID_FW_SIGNATURE, 8);
+            safe_memcpy(raidFirmwareRequest->Header.Signature, 8, INTEL_RAID_FW_SIGNATURE, 8);
             raidFirmwareRequest->Header.Timeout = timeoutSeconds;
             if (device->drive_info.defaultTimeoutSeconds > 0 && device->drive_info.defaultTimeoutSeconds > timeoutSeconds)
             {
@@ -279,7 +279,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
                 //NOTE: The offset should be a multiple of sizeof(void), which reading the structure types indicated that this should be the case for 64bit and 32bit builds. Anything else will need additional byte padding.
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset = sizeof(SRB_IO_CONTROL) + sizeof(RAID_FIRMWARE_REQUEST_BLOCK);
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferLength = dataRequestLength;
-                memcpy(&raidFirmwareRequest->ioctlBuffer, ptrDataRequest, dataRequestLength);
+                safe_memcpy(&raidFirmwareRequest->ioctlBuffer, allocationSize - sizeof(SRB_IO_CONTROL) - sizeof(RAID_FIRMWARE_REQUEST_BLOCK), ptrDataRequest, dataRequestLength);
             }
 
             if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -290,7 +290,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
             //send the command
             DWORD bytesReturned = 0;
             OVERLAPPED overlappedStruct;
-            memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+            safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
             overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
             if (overlappedStruct.hEvent == M_NULLPTR)
             {
@@ -342,7 +342,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice *device, void *ptrDataRequest
                     //should have completion data here
                     if (readFirmwareInfo && ptrDataRequest)
                     {
-                        memcpy(ptrDataRequest, C_CAST(uint8_t*, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
+                        safe_memcpy(ptrDataRequest, dataRequestLength, C_CAST(uint8_t*, raidFirmwareRequest) + raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset, dataRequestLength);
                     }
                     break;
                 case INTEL_FIRMWARE_STATUS_ERROR:
@@ -469,7 +469,7 @@ static eReturnValues internal_Intel_FWDL_Function_Download(tDevice *device, uint
             download->BufferSize = imageDataLength;
             download->Slot = firmwareSlot;
             download->ImageSize = imageDataLength;//TODO: Not sure if this is supposed to be the same or different from the buffersize listed above
-            memcpy(download->ImageBuffer, imagePtr, imageDataLength);
+            safe_memcpy(download->ImageBuffer, allocationSize - sizeof(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2), imagePtr, imageDataLength);
             ret = intel_RAID_FW_Request(device, download, allocationSize, timeoutSeconds, INTEL_FIRMWARE_FUNCTION_DOWNLOAD, flags, false, returnCode);
             safe_free_irst_fwdl(&download);
         }
@@ -649,7 +649,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (nvmeIoCtx)
     {
-        seatimer_t commandTimer;
+        DECLARE_SEATIMER(commandTimer);
         NVME_IOCTL_PASS_THROUGH *nvmPassthroughCommand = M_NULLPTR;
         HANDLE handleToUse = nvmeIoCtx->device->os_info.fd;
         size_t allocationSize = sizeof(NVME_IOCTL_PASS_THROUGH) + nvmeIoCtx->dataSize;
@@ -660,10 +660,9 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
         }
         if (nvmPassthroughCommand)
         {
-            memset(&commandTimer, 0, sizeof(seatimer_t));
             //setup the header (SRB_IO_CONTROL) first
             nvmPassthroughCommand->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
-            memcpy(nvmPassthroughCommand->Header.Signature, INTELNVM_SIGNATURE, 8);
+            safe_memcpy(nvmPassthroughCommand->Header.Signature, 8, INTELNVM_SIGNATURE, 8);
             nvmPassthroughCommand->Header.Timeout = nvmeIoCtx->timeout;
             if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
             {
@@ -736,7 +735,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             switch (nvmeIoCtx->commandDirection)
             {
             case XFER_DATA_OUT:
-                memcpy(nvmPassthroughCommand->data, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+                safe_memcpy(nvmPassthroughCommand->data, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
                 M_FALLTHROUGH;
             case XFER_DATA_IN:
                 //set the data length and offset
@@ -753,7 +752,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
             }
             DWORD bytesReturned = 0;
             OVERLAPPED overlappedStruct;
-            memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+            safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
             overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
             if (overlappedStruct.hEvent == M_NULLPTR)
             {
@@ -797,7 +796,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx *nvmeIoCtx)
                     //if(nvmPassthroughCommand->Header.ReturnCode)
                     if (nvmeIoCtx->commandDirection == XFER_DATA_IN && nvmeIoCtx->ptrData)
                     {
-                        memcpy(nvmeIoCtx->ptrData, nvmPassthroughCommand->data, nvmeIoCtx->dataSize);
+                        safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, nvmPassthroughCommand->data, nvmeIoCtx->dataSize);
                     }
                     //copy completion data
                     nvmeIoCtx->commandCompletionData.dw0Valid = true;

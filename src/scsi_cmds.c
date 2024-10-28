@@ -46,7 +46,7 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSe
         pSenseFields = localSenseFields;
     }
     //clear the last command sense data every single time before we issue any commands
-    memset(scsiIoCtx->device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
+    safe_memset(scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("\n  CDB:\n");
@@ -103,7 +103,7 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSe
         ret = sendIOret;
     }
 
-    if ((scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds / 1000000000) > scsiIoCtx->timeout)
+    if ((scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > scsiIoCtx->timeout)
     {
         ret = OS_COMMAND_TIMEOUT;
     }
@@ -126,12 +126,12 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx *scsiIoCtx, ptrSenseDataFields pSe
             {
                 uint64_t lastCommandTime = scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds;
                 DECLARE_ZERO_INIT_ARRAY(uint8_t, lastSenseData, SPC3_SENSE_LEN);
-                memcpy(lastSenseData, scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN);
+                safe_memcpy(lastSenseData, SPC3_SENSE_LEN, scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN);
                 //issue test unit ready
                 scsi_Test_Unit_Ready(scsiIoCtx->device, M_NULLPTR);
                 //copy everything back now.
                 scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = lastCommandTime;
-                memcpy(scsiIoCtx->device->drive_info.lastCommandSenseData, lastSenseData, SPC3_SENSE_LEN);
+                safe_memcpy(scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, lastSenseData, SPC3_SENSE_LEN);
             }
         }
     }
@@ -150,9 +150,8 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cd
     eReturnValues ret = UNKNOWN;
     ScsiIoCtx scsiIoCtx;
     uint8_t *senseBuffer = senseData;
-    memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
+    safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
 
-    //if we were not given a sense buffer, assume we want to use the last command sense data that is part of the device struct
     if (!senseBuffer || senseDataLen == 0)
     {
         senseBuffer = device->drive_info.lastCommandSenseData;
@@ -160,7 +159,7 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cd
     }
     else
     {
-        memset(senseBuffer, 0, senseDataLen);
+        safe_memset(senseBuffer, senseDataLen, 0, senseDataLen);
     }
     //check a couple of the parameters before continuing
     if (!device)
@@ -188,7 +187,7 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cd
     scsiIoCtx.device = device;
     scsiIoCtx.psense = senseBuffer;
     scsiIoCtx.senseDataSize = senseDataLen;
-    memcpy(&scsiIoCtx.cdb[0], &cdb[0], C_CAST(size_t, cdbLen));//this cast to size_t should be safe since cdbLen should never be negative and should match a common value in the enum-TJE
+    safe_memcpy(&scsiIoCtx.cdb[0], SCSI_IO_CTX_MAX_CDB_LEN, &cdb[0], C_CAST(size_t, cdbLen));//this cast to size_t should be safe since cdbLen should never be negative and should match a common value in the enum-TJE
     scsiIoCtx.cdbLength = C_CAST(uint8_t, cdbLen);
     scsiIoCtx.direction = dataDirection;
     scsiIoCtx.pdata = pdata;
@@ -206,7 +205,7 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice *device, uint8_t *cdb, eCDBLen cd
 
     if (senseData && senseDataLen > 0 && senseData != device->drive_info.lastCommandSenseData)
     {
-        memcpy(device->drive_info.lastCommandSenseData, senseBuffer, M_Min(SPC3_SENSE_LEN, senseDataLen));
+        safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, senseBuffer, M_Min(SPC3_SENSE_LEN, senseDataLen));
     }
 
     return ret;
@@ -265,7 +264,7 @@ eReturnValues scsi_Report_Supported_Operation_Codes(tDevice *device, bool rctd, 
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
     senseDataFields senseFields;
-    memset(&senseFields, 0, sizeof(senseDataFields));
+    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -357,7 +356,7 @@ eReturnValues scsi_Sanitize_Cmd(tDevice *device, eScsiSanitizeFeature sanitizeFe
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
     eDataTransferDirection dataDir = XFER_NO_DATA;
 
-    memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
+    safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -443,7 +442,7 @@ eReturnValues scsi_Sanitize_Overwrite(tDevice *device, bool allowUnrestrictedSan
     overwriteBuffer[3] = M_Byte0(patternLengthBytes);
     if (patternLengthBytes > 0)
     {
-        memcpy(&overwriteBuffer[4], pattern, patternLengthBytes);
+        safe_memcpy(&overwriteBuffer[4], patternLengthBytes, pattern, patternLengthBytes);
     }
     ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit, patternLengthBytes + 4, overwriteBuffer);
     safe_free_aligned(&overwriteBuffer);
@@ -493,7 +492,7 @@ eReturnValues scsi_Log_Sense_Cmd(tDevice *device, bool saveParameters, uint8_t p
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
     senseDataFields senseFields;
-    memset(&senseFields, 0, sizeof(senseDataFields));
+    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -732,7 +731,7 @@ eReturnValues scsi_Mode_Sense_6(tDevice * device, uint8_t pageCode, uint8_t allo
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
     senseDataFields senseFields;
-    memset(&senseFields, 0, sizeof(senseDataFields));
+    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -827,7 +826,7 @@ eReturnValues scsi_Mode_Sense_10(tDevice *device, uint8_t pageCode, uint32_t all
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
     senseDataFields senseFields;
-    memset(&senseFields, 0, sizeof(senseDataFields));
+    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1116,7 +1115,7 @@ eReturnValues scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength,
             if (pdata != device->drive_info.scsiVpdData.inquiryData)
             {
                 //this should only be copying std inquiry data to thislocation in the device struct to keep it up to date each time an inquiry is sent to the drive.
-                memcpy(device->drive_info.scsiVpdData.inquiryData, pdata, M_Min(dataLength, 96));
+                safe_memcpy(device->drive_info.scsiVpdData.inquiryData, SPC_INQ_DATA_LEN, pdata, M_Min(dataLength, SPC_INQ_DATA_LEN));
             }
             version = pdata[2];
             switch (version) //convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard numbers
@@ -1162,7 +1161,7 @@ eReturnValues scsi_Inquiry(tDevice *device, uint8_t *pdata, uint32_t dataLength,
     {
         //check if invalid field in CDB for VPD pages.
         senseDataFields senseFields;
-        memset(&senseFields, 0, sizeof(senseDataFields));
+        safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
         get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseFields);
         if (senseFields.validStructure)
         {
@@ -1684,7 +1683,7 @@ eReturnValues scsi_Report_Timestamp(tDevice *device, uint32_t allocationLength, 
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
     ScsiIoCtx scsiIoCtx;
-    memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
+    safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -4066,7 +4065,7 @@ eReturnValues scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor
 //    eReturnValues ret = FAILURE;
 //    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 //    ScsiIoCtx scsiIoCtx;
-//    memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
+//    safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
 //
 //    if (ptrDataOut == M_NULLPTR || ptrDataIn == M_NULLPTR)
 //    {
@@ -4107,11 +4106,11 @@ eReturnValues scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor
 //
 //    // Set up the CTX
 //    scsiIoCtx.device = device;
-//    memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
+//    safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
 //    scsiIoCtx.psense = device->drive_info.lastCommandSenseData;
 //    scsiIoCtx.senseDataSize = SPC3_SENSE_LEN;
-//    memcpy(&scsiIoCtx.cdb[0], &cdb[0], sizeof(cdb));
-//    scsiIoCtx.cdbLength = sizeof(cdb);
+//    safe_memcpy(&scsiIoCtx.cdb[0], SCSI_IO_CTX_MAX_CDB_LEN, &cdb[0], CDB_LEN_10);
+//    scsiIoCtx.cdbLength = CDB_LEN_10;
 //    scsiIoCtx.direction = XFER_DATA_OUT_IN;
 //    //set the buffer info in the bidirectional command structure
 //    scsiIoCtx.biDirectionalBuffers.dataInBuffer = ptrDataIn;
@@ -4158,7 +4157,7 @@ eReturnValues scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor
 //    eReturnValues ret = FAILURE;
 //    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
 //    ScsiIoCtx scsiIoCtx;
-//    memset(&scsiIoCtx, 0, sizeof(ScsiIoCtx));
+//    safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
 //
 //    if (ptrDataOut == M_NULLPTR || ptrDataIn == M_NULLPTR)
 //    {
@@ -4221,11 +4220,11 @@ eReturnValues scsi_Write_Same_32(tDevice *device, uint8_t wrprotect, bool anchor
 //
 //    // Set up the CTX
 //    scsiIoCtx.device = device;
-//    memset(device->drive_info.lastCommandSenseData, 0, SPC3_SENSE_LEN);
+//    safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
 //    scsiIoCtx.psense = device->drive_info.lastCommandSenseData;
 //    scsiIoCtx.senseDataSize = SPC3_SENSE_LEN;
-//    memcpy(&scsiIoCtx.cdb[0], &cdb[0], sizeof(cdb));
-//    scsiIoCtx.cdbLength = sizeof(cdb);
+//    safe_memcpy(&scsiIoCtx.cdb[0], SCSI_IO_CTX_MAX_CDB_LEN, &cdb[0], CDB_LEN_32);
+//    scsiIoCtx.cdbLength = CDB_LEN_32;
 //    scsiIoCtx.direction = XFER_DATA_OUT_IN;
 //    //set the buffer info in the bidirectional command structure
 //    scsiIoCtx.biDirectionalBuffers.dataInBuffer = ptrDataIn;

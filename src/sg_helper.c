@@ -124,10 +124,8 @@ extern bool validate_Device_Struct(versionBlock);
 #if defined (_DEBUG)
 static void print_io_hdr(sg_io_hdr_t *pIo)
 {
-    time_t time_now;
     DECLARE_ZERO_INIT_ARRAY(char, timeFormat, TIME_STRING_LENGTH);
-    memset(timeFormat, 0, TIME_STRING_LENGTH);//clear this again before reusing it
-    time_now = time(M_NULLPTR);
+    time_t time_now = time(M_NULLPTR);
     printf("\n%s: %s---------------------------------\n", __FUNCTION__, get_Current_Time_String(&time_now, timeFormat, TIME_STRING_LENGTH));
     printf("type int interface_id %d\n", pIo->interface_id);           /* [i] 'S' (required) */
     printf("type int  dxfer_direction %d\n", pIo->dxfer_direction);        /* [i] */
@@ -185,7 +183,7 @@ static int sd_filter(const struct dirent *entry)
 //    bool linkMappingSupported = false;
 //    //kernel version 2.6 and higher is required to map the handles between sg and sd/sr/st/scd
 //    OSVersionNumber linuxVersion;
-//    memset(&linuxVersion, 0, sizeof(OSVersionNumber));
+//    safe_memset(&linuxVersion, sizeof(OSVersionNumber), 0, sizeof(OSVersionNumber));
 //    if(SUCCESS == get_Operating_System_Version_And_Name(&linuxVersion, M_NULLPTR))
 //    {
 //        if (linuxVersion.versionType.linuxVersion.kernelVersion >= 2 && linuxVersion.versionType.linuxVersion.majorVersion >= 6)
@@ -464,14 +462,14 @@ static void get_Driver_Version_Info_From_Path(char* driverPath, sysFSLowLevelDev
         //This is a bit of a mess, but a simple call to realpath was not working, likely due to the current directory not being exactly what we want to start with to allow
         //that function to correctly figure out the path.
         safe_memmove(&driverVersionFilePath[4], OPENSEA_PATH_MAX - 4, busPtr, busPtrLen);
-        memset(&driverVersionFilePath[busPtrLen + 4], 0, OPENSEA_PATH_MAX - (busPtrLen + 4));
+        safe_memset(&driverVersionFilePath[busPtrLen + 4], OPENSEA_PATH_MAX - (busPtrLen + 4), 0, OPENSEA_PATH_MAX - (busPtrLen + 4));
         driverVersionFilePath[0] = '/';
         driverVersionFilePath[1] = 's';
         driverVersionFilePath[2] = 'y';
         driverVersionFilePath[3] = 's';
 
         struct stat driverversionstat;
-        memset(&driverversionstat, 0, sizeof(struct stat));
+        safe_memset(&driverversionstat, sizeof(struct stat), 0, sizeof(struct stat));
         if (0 == stat(driverVersionFilePath, &driverversionstat))
         {
             off_t versionFileSize = driverversionstat.st_size;
@@ -1025,7 +1023,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
             }
             //first make sure this directory exists
             struct stat inHandleStat;
-            memset(&inHandleStat, 0, sizeof(struct stat));
+            safe_memset(&inHandleStat, sizeof(struct stat), 0, sizeof(struct stat));
             if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
             {
                 char* duphandle = strdup(handle);
@@ -1035,7 +1033,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
                 }
                 const char *basehandle = basename(duphandle);
                 struct stat link;
-                memset(&link, 0, sizeof(struct stat));
+                safe_memset(&link, sizeof(struct stat), 0, sizeof(struct stat));
                 common_String_Concat(incomingHandleClassPath, PATH_MAX, basehandle);
                 //now read the link with the handle appended on the end
                 if (lstat(incomingHandleClassPath, &link) == 0 && S_ISLNK(link.st_mode))
@@ -1144,15 +1142,15 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo * 
 static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 {
     sysFSLowLevelDeviceInfo sysFsInfo;
-    memset(&sysFsInfo, 0, sizeof(sysFSLowLevelDeviceInfo));
+    safe_memset(&sysFsInfo, sizeof(sysFSLowLevelDeviceInfo), 0, sizeof(sysFSLowLevelDeviceInfo));
     get_Linux_SYS_FS_Info(handle, &sysFsInfo);
     //now copy the saved data to tDevice. -TJE
     if (device)
     {
         device->drive_info.drive_type = sysFsInfo.drive_type;
         device->drive_info.interface_type = sysFsInfo.interface_type;
-        memcpy(&device->drive_info.adapter_info, &sysFsInfo.adapter_info, sizeof(adapterInfo));
-        memcpy(&device->drive_info.driver_info, &sysFsInfo.driver_info, sizeof(driverInfo));
+        safe_memcpy(&device->drive_info.adapter_info, sizeof(adapterInfo), &sysFsInfo.adapter_info, sizeof(adapterInfo));
+        safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysFsInfo.driver_info, sizeof(driverInfo));
         if (safe_strlen(sysFsInfo.primaryHandleStr) > 0)
         {
             snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysFsInfo.primaryHandleStr);
@@ -1268,7 +1266,7 @@ eReturnValues map_Block_To_Generic_Handle(const char *handle, char **genericHand
                     size_t tempLen = safe_strlen(classPath) + safe_strlen(classList[iter]->d_name) + 1;
                     char *temp = C_CAST(char*, safe_calloc(tempLen, sizeof(char)));
                     struct stat tempStat;
-                    memset(&tempStat, 0, sizeof(struct stat));
+                    safe_memset(&tempStat, sizeof(struct stat), 0, sizeof(struct stat));
                     snprintf(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
                     if (lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode))/*check if this is a link*/
                     {
@@ -1557,7 +1555,7 @@ static eReturnValues get_Lin_Device(const char *filename, tDevice *device)
             printf("Getting SG SCSI address\n");
 #endif
             struct sg_scsi_id hctlInfo;
-            memset(&hctlInfo, 0, sizeof(struct sg_scsi_id));
+            safe_memset(&hctlInfo, sizeof(struct sg_scsi_id), 0, sizeof(struct sg_scsi_id));
             errno = 0;//clear before calling this ioctl
             int getHctl = ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo);
             if (getHctl == 0 && errno == 0)//when this succeeds, both of these will be zeros
@@ -1766,15 +1764,14 @@ eReturnValues send_sg_io( ScsiIoCtx *scsiIoCtx )
     sg_io_hdr_t io_hdr;
     uint8_t     *localSenseBuffer = M_NULLPTR;
     eReturnValues         ret          = SUCCESS;
-    seatimer_t  commandTimer;
+    DECLARE_SEATIMER(commandTimer);
 #ifdef _DEBUG
     printf("-->%s \n", __FUNCTION__);
 #endif
 
-    memset(&commandTimer, 0, sizeof(seatimer_t));
     //int idx = 0;
     // Start with zapping the io_hdr
-    memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
+    safe_memset(&io_hdr, sizeof(sg_io_hdr_t), 0, sizeof(sg_io_hdr_t));
 
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
@@ -2213,7 +2210,7 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     ptrRaidHandleToScan raidHandleList = M_NULLPTR;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     raidTypeHint raidHint;
-    memset(&raidHint, 0, sizeof(raidTypeHint));
+    safe_memset(&raidHint, sizeof(raidTypeHint), 0, sizeof(raidTypeHint));
     //need to check if existing sg/sd handles are attached to hpsa or smartpqi drives in addition to /dev/cciss devices
     struct dirent **ccisslist;
     uint32_t num_ccissdevs = 0;
@@ -2241,10 +2238,10 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
     {
         //before freeing, check if any of these handles may be a RAID handle
         sysFSLowLevelDeviceInfo sysFsInfo;
-        memset(&sysFsInfo, 0, sizeof(sysFSLowLevelDeviceInfo));
+        safe_memset(&sysFsInfo, sizeof(sysFSLowLevelDeviceInfo), 0, sizeof(sysFSLowLevelDeviceInfo));
         get_Linux_SYS_FS_Info(namelist[iter]->d_name, &sysFsInfo);
 
-        memset(&raidHint, 0, sizeof(raidTypeHint));//clear out before checking driver name since this will be expanded to check other drivers in the future
+        safe_memset(&raidHint, sizeof(raidTypeHint), 0, sizeof(raidTypeHint));//clear out before checking driver name since this will be expanded to check other drivers in the future
 #if defined (ENABLE_CISS)
         if (sysFsInfo.scsiDevType == PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE)
         {
@@ -2346,15 +2343,13 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     int fd = -1;
     tDevice * d = M_NULLPTR;
 #if defined (DEGUG_SCAN_TIME)
-    seatimer_t getDeviceTimer;
-    seatimer_t getDeviceListTimer;
-    memset(&getDeviceTimer, 0, sizeof(seatimer_t));
-    memset(&getDeviceListTimer, 0, sizeof(seatimer_t));
+    DECLARE_SEATIMER(getDeviceTimer);
+    DECLARE_SEATIMER(getDeviceListTimer);
 #endif
     ptrRaidHandleToScan raidHandleList = M_NULLPTR;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     raidTypeHint raidHint;
-    memset(&raidHint, 0, sizeof(raidTypeHint));
+    safe_memset(&raidHint, sizeof(raidTypeHint), 0, sizeof(raidTypeHint));
     
     int scandirresult = 0;
     uint32_t num_sg_devs = 0;
@@ -2453,7 +2448,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             {
                 continue;
             }
-            memset(name, 0, sizeof(name));//clear name before reusing it
+            safe_memset(name, sizeof(name), 0, sizeof(name));//clear name before reusing it
             snprintf(name, sizeof(name), "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
@@ -2462,13 +2457,12 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             {
                 close(fd);
                 eVerbosityLevels temp = d->deviceVerbosity;
-                memset(d, 0, sizeof(tDevice));
+                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
                 d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
 #if defined (DEGUG_SCAN_TIME)
-                seatimer_t getDeviceTimer;
-                memset(&getDeviceTimer, 0, sizeof(seatimer_t));
+                DECLARE_SEATIMER(getDeviceTimer);
                 start_Timer(&getDeviceTimer);
 #endif
                 d->dFlags =  flags;
@@ -2483,7 +2477,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 }
                 else
                 {
-                    memset(&raidHint, 0, sizeof(raidTypeHint));
+                    safe_memset(&raidHint, sizeof(raidTypeHint), 0, sizeof(raidTypeHint));
 #if defined (ENABLE_CISS)
                     //check that we are only scanning a SCSI controller for RAID to avoid duplicates
                     //NOTE: If num_sg_devs == 0, then the sg driver is missing and SCSI controllers do not get /dev/sd handles, so we will skip this check in this special case.
@@ -2624,8 +2618,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = SUCCESS;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
-    seatimer_t commandTimer;
-    memset(&commandTimer, 0, sizeof(commandTimer));
+    DECLARE_SEATIMER(commandTimer);
     struct nvme_admin_cmd adminCmd;
     struct nvme_user_io nvmCmd;// it's possible that this is not defined in some funky early nvme kernel, but we don't see that today. This seems to be defined everywhere. -TJE
 #if defined(NVME_IOCTL_IO_CMD)
@@ -2642,7 +2635,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     switch (nvmeIoCtx->commandType)
     {
     case NVM_ADMIN_CMD:
-        memset(&adminCmd, 0, sizeof(struct nvme_admin_cmd));
+        safe_memset(&adminCmd, sizeof(struct nvme_admin_cmd), 0, sizeof(struct nvme_admin_cmd));
         adminCmd.opcode = nvmeIoCtx->cmd.adminCmd.opcode;
         adminCmd.flags = nvmeIoCtx->cmd.adminCmd.flags;
         adminCmd.rsvd1 = nvmeIoCtx->cmd.adminCmd.rsvd1;
@@ -2712,7 +2705,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         case NVME_CMD_READ:
         case NVME_CMD_WRITE:
             //use user IO cmd structure and SUBMIT_IO IOCTL
-            memset(&nvmCmd, 0, sizeof(nvmCmd));
+            safe_memset(&nvmCmd, sizeof(nvmCmd), 0, sizeof(nvmCmd));
             nvmCmd.opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
             nvmCmd.flags = nvmeIoCtx->cmd.nvmCmd.flags;
             nvmCmd.control = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw12);
@@ -2772,7 +2765,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         default:
 #if defined (NVME_IOCTL_IO_CMD)
             //use the generic passthrough command structure and IO_CMD
-            memset(passThroughCmd, 0, sizeof(struct nvme_passthru_cmd));
+            safe_memset(passThroughCmd, sizeof(struct nvme_passthru_cmd), 0, sizeof(struct nvme_passthru_cmd));
             passThroughCmd->opcode = nvmeIoCtx->cmd.nvmCmd.opcode;
             passThroughCmd->flags = nvmeIoCtx->cmd.nvmCmd.flags;
             passThroughCmd->rsvd1 = RESERVED;
@@ -2867,8 +2860,7 @@ static eReturnValues linux_NVMe_Reset(tDevice *device, bool subsystemReset)
     //Can only do a reset on a controller handle. Need to get the controller handle if this is a namespace handle!!!
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     int handleToReset = device->os_info.fd;
-    seatimer_t commandTimer;
-    memset(&commandTimer, 0, sizeof(commandTimer));
+    DECLARE_SEATIMER(commandTimer);
     int ioRes = 0;
     bool openedControllerHandle = false;//used so we can close the handle at the end.
     //Need to make sure the handle we use to issue the reset is a controller handle and not a namespace handle.
@@ -3041,7 +3033,7 @@ eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t data
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = UNKNOWN;
-    int fd=0;
+    int fd = 0;
     void * barRegs = M_NULLPTR;
     DECLARE_ZERO_INIT_ARRAY(char, sysfsPath, PATH_MAX);
     snprintf(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
@@ -3053,7 +3045,7 @@ eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t data
         if (barRegs != MAP_FAILED)
         {
             ret = SUCCESS;
-            memcpy(pData, barRegs, dataSize);
+            safe_memcpy(pData, dataSize, barRegs, dataSize);
         }
         else
         {

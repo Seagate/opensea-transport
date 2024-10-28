@@ -36,15 +36,15 @@ static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData, char nvmMN[NV
     {
         nvmeIDCtrl* ctrlData = C_CAST(nvmeIDCtrl*, ptrCtrlData);
         //make sure buffers all all zeroed out before filling them
-        memset(nvmMN, 0, M_Min(MODEL_NUM_LEN + 1, NVME_CTRL_IDENTIFY_MN_LEN + 1));
-        memset(nvmSN, 0, M_Min(SERIAL_NUM_LEN + 1, NVME_CTRL_IDENTIFY_SN_LEN + 1));
-        memset(nvmFW, 0, M_Min(FW_REV_LEN + 1, NVME_CTRL_IDENTIFY_FW_LEN + 1));
+        safe_memset(nvmMN, NVME_CTRL_IDENTIFY_MN_LEN + 1, 0, M_Min(MODEL_NUM_LEN + 1, NVME_CTRL_IDENTIFY_MN_LEN + 1));
+        safe_memset(nvmSN, NVME_CTRL_IDENTIFY_SN_LEN + 1, 0, M_Min(SERIAL_NUM_LEN + 1, NVME_CTRL_IDENTIFY_SN_LEN + 1));
+        safe_memset(nvmFW, NVME_CTRL_IDENTIFY_FW_LEN + 1, 0, M_Min(FW_REV_LEN + 1, NVME_CTRL_IDENTIFY_FW_LEN + 1));
         //fill each buffer with data from NVMe ctrl data
-        memcpy(nvmSN, ctrlData->sn, M_Min(SERIAL_NUM_LEN, NVME_CTRL_IDENTIFY_SN_LEN));
+        safe_memcpy(nvmSN, NVME_CTRL_IDENTIFY_SN_LEN + 1, ctrlData->sn, M_Min(SERIAL_NUM_LEN, NVME_CTRL_IDENTIFY_SN_LEN));
         remove_Leading_And_Trailing_Whitespace(nvmSN);
-        memcpy(nvmFW, ctrlData->fr, M_Min(FW_REV_LEN, NVME_CTRL_IDENTIFY_FW_LEN));
+        safe_memcpy(nvmFW, NVME_CTRL_IDENTIFY_FW_LEN + 1, ctrlData->fr, M_Min(FW_REV_LEN, NVME_CTRL_IDENTIFY_FW_LEN));
         remove_Leading_And_Trailing_Whitespace(nvmFW);
-        memcpy(nvmMN, ctrlData->mn, M_Min(MODEL_NUM_LEN, NVME_CTRL_IDENTIFY_MN_LEN));
+        safe_memcpy(nvmMN, NVME_CTRL_IDENTIFY_MN_LEN + 1, ctrlData->mn, M_Min(MODEL_NUM_LEN, NVME_CTRL_IDENTIFY_MN_LEN));
         remove_Leading_And_Trailing_Whitespace(nvmMN);
     }
     return;
@@ -150,7 +150,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice *device)
                 if (supportedLogs)
                 {
                     nvmeGetLogPageCmdOpts supLogs;
-                    memset(&supLogs, 0, sizeof(nvmeGetLogPageCmdOpts));
+                    safe_memset(&supLogs, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
                     supLogs.addr = supportedLogs;
                     supLogs.dataLen = 1024;
                     supLogs.lid = NVME_LOG_SUPPORTED_PAGES_ID;
@@ -1055,7 +1055,7 @@ eReturnValues nvme_Get_SMART_Log_Page(tDevice *device, uint32_t nsid, uint8_t * 
         return ret;
     }
 
-    memset(&cmdOpts, 0, sizeof(nvmeGetLogPageCmdOpts));
+    safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     smartLog = C_CAST(nvmeSmartLog *, pData);
 
     cmdOpts.nsid = nsid;
@@ -1084,7 +1084,7 @@ eReturnValues nvme_Get_ERROR_Log_Page(tDevice *device, uint8_t * pData, uint32_t
         return ret;
     }
 
-    memset(&cmdOpts, 0, sizeof(nvmeGetLogPageCmdOpts));
+    safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_ERROR_ID;
@@ -1109,7 +1109,7 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(tDevice *device, uint8_t * pData, uint32
         return ret;
     }
 
-    memset(&cmdOpts, 0, sizeof(nvmeGetLogPageCmdOpts));
+    safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_FW_SLOT_ID;
@@ -1134,7 +1134,7 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice *device, uint8_t * pData, uin
         return ret;
     }
 
-    memset(&cmdOpts, 0, sizeof(nvmeGetLogPageCmdOpts));
+    safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_CMD_SPT_EFET_ID;
@@ -1159,7 +1159,7 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice *device, uint8_t * pData, ui
         return ret;
     }
 
-    memset(&cmdOpts, 0, sizeof(nvmeGetLogPageCmdOpts));
+    safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid = NVME_LOG_DEV_SELF_TEST_ID;
@@ -1176,7 +1176,7 @@ eReturnValues nvme_Read_Ext_Smt_Log(tDevice *device, EXTENDED_SMART_INFO_T *Extd
 {
     eReturnValues ret = SUCCESS;
     nvmeGetLogPageCmdOpts getExtSMARTLog;
-    memset(&getExtSMARTLog, 0, sizeof(nvmeGetLogPageCmdOpts));
+    safe_memset(&getExtSMARTLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     getExtSMARTLog.dataLen = sizeof(EXTENDED_SMART_INFO_T);
     getExtSMARTLog.lid = 0xC4;
     getExtSMARTLog.nsid = device->drive_info.namespaceID;

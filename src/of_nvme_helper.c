@@ -126,16 +126,14 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
     uint8_t *passthroughBuffer = C_CAST(uint8_t*, safe_calloc_aligned(bufferSize, sizeof(uint8_t), sizeof(void*)));
     if (passthroughBuffer)
     {
-        seatimer_t commandTimer;
+        DECLARE_SEATIMER(commandTimer);
         BOOL success = TRUE;
         PNVME_PASS_THROUGH_IOCTL ioctl = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
         ioctl->SrbIoCtrl.HeaderLength = sizeof(SRB_IO_CONTROL);
-        memcpy(ioctl->SrbIoCtrl.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
+        safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
         ioctl->SrbIoCtrl.Timeout = 15;
-
-        memset(&commandTimer, 0, sizeof(seatimer_t));
 
         ioctl->QueueId = 0;//admin queue
         ioctl->NVMeCmd[0] = 0x06;//identify
@@ -152,7 +150,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
         DWORD last_error = ERROR_SUCCESS;
         OVERLAPPED overlappedStruct;
-        memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         DWORD returned_data = 0;
         start_Timer(&commandTimer);
@@ -197,17 +195,17 @@ eReturnValues send_OFNVME_Reset(tDevice * device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    memset(&ofnvmeReset, 0, sizeof(SRB_IO_CONTROL));
+    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_RESET_DEVICE);
     ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     device->os_info.last_error = 0;
     OVERLAPPED overlappedStruct;
-    memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data = 0;
     BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
@@ -260,17 +258,17 @@ eReturnValues send_OFNVME_Add_Namespace(tDevice * device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    memset(&ofnvmeReset, 0, sizeof(SRB_IO_CONTROL));
+    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_ADD_NAMESPACE);
     ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     device->os_info.last_error = 0;
     OVERLAPPED overlappedStruct;
-    memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data = 0;
     BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
@@ -323,17 +321,17 @@ eReturnValues send_OFNVME_Remove_Namespace(tDevice * device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    memset(&ofnvmeReset, 0, sizeof(SRB_IO_CONTROL));
+    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_REMOVE_NAMESPACE);
     ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
     device->os_info.last_error = 0;
     OVERLAPPED overlappedStruct;
-    memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data = 0;
     BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
@@ -392,16 +390,14 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
     uint8_t *passthroughBuffer = C_CAST(uint8_t*, safe_calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
     if (passthroughBuffer)
     {
-        seatimer_t commandTimer;
+        DECLARE_SEATIMER(commandTimer);
         BOOL success = TRUE;
         PNVME_PASS_THROUGH_IOCTL ioctl = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
         ioctl->SrbIoCtrl.HeaderLength = sizeof(SRB_IO_CONTROL);
-        memcpy(ioctl->SrbIoCtrl.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
+        safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
         ioctl->SrbIoCtrl.Timeout = nvmeIoCtx->timeout;
-
-        memset(&commandTimer, 0, sizeof(seatimer_t));
 
         //setup NVMe DWORDS based on NVM or ADMIN command
         //Set queue ID. 0 for admin, something else otherwise
@@ -467,7 +463,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             ioctl->MetaDataLen = 0;//no metadata or interleaved should be set to zero.
             ioctl->ReturnBufferLen = sizeof(NVME_PASS_THROUGH_IOCTL);//only the size of the structure since we aren't reading anything back from the device.
             ioctl->DataBufferLen = nvmeIoCtx->dataSize;//NOTE: This size is supposed to include metadata! It also depends on if metadata is interleaved or at the beginning of the buffer
-            memcpy(ioctl->DataBuffer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            safe_memcpy(ioctl->DataBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
             break;
         case XFER_DATA_IN_OUT:
         case XFER_DATA_OUT_IN:
@@ -482,7 +478,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
         nvmeIoCtx->device->os_info.last_error = 0;
         OVERLAPPED overlappedStruct;
-        memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         DWORD returned_data = 0;
         start_Timer(&commandTimer);
@@ -522,7 +518,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
                 if (nvmeIoCtx->commandDirection == XFER_DATA_IN)
                 {
                     //copy back in the data that was read from the device.
-                    memcpy(nvmeIoCtx->ptrData, ioctl->DataBuffer, M_Min(nvmeIoCtx->dataSize, ioctl->ReturnBufferLen - sizeof(NVME_PASS_THROUGH_IOCTL)));
+                    safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, ioctl->DataBuffer, M_Min(nvmeIoCtx->dataSize, ioctl->ReturnBufferLen - sizeof(NVME_PASS_THROUGH_IOCTL)));
                 }
                 //copy back completion data
                 nvmeIoCtx->commandCompletionData.commandSpecific = ioctl->CplEntry[0];

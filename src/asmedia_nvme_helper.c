@@ -84,7 +84,7 @@ static eReturnValues build_Basic_Passthrough_CDB(nvmeCmdCtx *nvmCmd, uint8_t* cd
         else
         {
             //can send this command, so set it up and send it
-            memset(cdb, 0, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE);
+            safe_memset(cdb, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE, 0, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE);
             cdb[OPERATION_CODE] = ASMEDIA_NVME_PASSTHROUGH_OP;
             cdb[ASMEDIA_NVME_PT_NVME_OP_OFFSET] = nvmCmd->cmd.adminCmd.opcode;
             cdb[2] = RESERVED;
@@ -113,7 +113,7 @@ static eReturnValues build_Basic_Passthrough_CDB(nvmeCmdCtx *nvmCmd, uint8_t* cd
         else
         {
             //can send this command, so set it up and send it
-            memset(cdb, 0, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE);
+            safe_memset(cdb, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE, 0, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE);
             cdb[OPERATION_CODE] = ASMEDIA_NVME_PASSTHROUGH_OP;
             cdb[ASMEDIA_NVME_PT_NVME_OP_OFFSET] = nvmCmd->cmd.adminCmd.opcode;
             cdb[2] = RESERVED;
@@ -164,7 +164,7 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransfe
         return BAD_PARAMETER;
     }
 
-    memset(cdb, 0, ASMEDIA_NVME_PACKET_CDB_SIZE);
+    safe_memset(cdb, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE, 0, ASMEDIA_NVME_PACKET_CDB_SIZE);
 
     //Before validating other parameters, need to know which operation is being requested.
     switch (asmOperation)
@@ -251,7 +251,7 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t *cdb, eDataTransfe
 
             //finally, setup the data buffer with the NVM command DWORDS for the USB adapter to send to the device.
             //setup each dword in the buffer
-            memset(dataPtr, 0, dataSize);
+            safe_memset(dataPtr, dataSize, 0, dataSize);
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
                 //CDW0
@@ -491,9 +491,9 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
     }
     dataPhasePtr = nvmCmd->ptrData;
     dataPhaseSize = nvmCmd->dataSize;
-    if (nvmCmd->ptrData && nvmCmd->dataSize > 0 && nvmCmd->dataSize % 512)
+    if (nvmCmd->ptrData && nvmCmd->dataSize > 0 && nvmCmd->dataSize % UINT32_C(512))
     {
-        dataPhaseSize = ((nvmCmd->dataSize + 511) / 512) * 512;//round up to nearest 512B boundary
+        dataPhaseSize = uint32_round_up_power2(nvmCmd->dataSize, UINT32_C(512));
         dataPhasePtr = C_CAST(uint8_t*, safe_calloc_aligned(dataPhaseSize, sizeof(uint8_t), nvmCmd->device->os_info.minimumAlignment));
         if (!dataPhasePtr)
         {
@@ -502,7 +502,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
         //if a data-out command, need to copy what is intended to go to the device to the new buffer
         if (nvmCmd->ptrData && nvmCmd->commandDirection == XFER_DATA_OUT && nvmCmd->dataSize > 0)
         {
-            memcpy(dataPhasePtr, nvmCmd->ptrData, nvmCmd->dataSize);
+            safe_memcpy(dataPhasePtr, dataPhaseSize, nvmCmd->ptrData, nvmCmd->dataSize);
         }
         localMemory = true;
     }
@@ -544,7 +544,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx *nvmCmd)
         //copy back to original smaller buffer from the oversized padded buffer if read command
         if (nvmCmd->ptrData && nvmCmd->commandDirection == XFER_DATA_IN && nvmCmd->dataSize > 0)
         {
-            memcpy(nvmCmd->ptrData, dataPhasePtr, nvmCmd->dataSize);
+            safe_memcpy(nvmCmd->ptrData, nvmCmd->dataSize, dataPhasePtr, nvmCmd->dataSize);
         }
         safe_free_aligned(&dataPhasePtr);
     }

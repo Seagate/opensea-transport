@@ -1225,7 +1225,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                 perror(errorMessage);
                 return;
             }
-            memset(&version, 0, sizeof(versionBlock));
+            safe_memset(&version, sizeof(versionBlock), 0, sizeof(versionBlock));
             version.size = sizeof(tDevice);
             version.version = DEVICE_BLOCK_VERSION;
 
@@ -1318,7 +1318,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                             char *blockName = M_NULLPTR;
                             if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                             {
-                                memset(displayHandle, 0, sizeof(displayHandle));
+                                safe_memset(displayHandle, sizeof(displayHandle), 0, sizeof(displayHandle));
                                 snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
                             }
                             safe_free(&genName);
@@ -1330,7 +1330,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                             char *blockName = M_NULLPTR;
                             if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                             {
-                                memset(displayHandle, 0, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
+                                safe_memset(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, 0, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
                                 snprintf(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
                             }
                             safe_free(&genName);
@@ -1341,8 +1341,8 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                         //if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE && is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
                         {
-                            memset(printable_sn, 0, SERIAL_NUM_LEN);
-                            memcpy(printable_sn, deviceList[devIter].drive_info.serialNumber, 8);
+                            safe_memset(printable_sn, SERIAL_NUM_LEN + 1, 0, SERIAL_NUM_LEN);
+                            safe_memcpy(printable_sn, SERIAL_NUM_LEN + 1, deviceList[devIter].drive_info.serialNumber, 8);
                         }
                         printf("%-8s %-12s %-23s %-22s %-10s\n", \
                             deviceList[devIter].drive_info.T10_vendor_ident, displayHandle, \
@@ -3245,10 +3245,10 @@ eReturnValues remove_Device(tDevice *deviceList, uint32_t driveToRemoveIdx, vola
 
     for (i = driveToRemoveIdx; i < *numberOfDevices - 1; i++)
     {
-        memcpy((deviceList + i), (deviceList + i + 1), sizeof(tDevice));
+        safe_memcpy((deviceList + i), sizeof(tDevice), (deviceList + i + 1), sizeof(tDevice));
     }
 
-    memset((deviceList + i), 0, sizeof(tDevice));
+    safe_memset((deviceList + i), sizeof(tDevice), 0, sizeof(tDevice));
     *numberOfDevices -= 1;
     ret = SUCCESS;
 

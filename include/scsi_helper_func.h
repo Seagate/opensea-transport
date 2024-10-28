@@ -218,12 +218,14 @@ extern "C"
     //
     //  Entry:
     //!   \param[in] pbuf - pointer to the data buffer containing VPD page 0x80 data
+    //!   \param[in] bufferlen - Length of the buffer pointed to by pbuf
     //!   \param[out] serialNumber - pointer to the string to hold the serial number
+    //!   \param[in] serialNumberMemLen - Length of the buffer pointed to by serialNumber
     //!
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    void copy_Serial_Number(uint8_t *pbuf, char *serialNumber);
+    void copy_Serial_Number(uint8_t *pbuf, size_t bufferlen, char *serialNumber, size_t serialNumberMemLen);
 
     //-----------------------------------------------------------------------------
     //

@@ -520,7 +520,7 @@ eReturnValues send_ATA_SCT_Data_Table(tDevice *device, uint16_t functionCode, ui
         if (functionCode == 0x0001)
         {
             //now read the log that tells us the table we requested
-            memset(dataBuf, 0, dataSize);//clear the buffer before we read in data since we are done with what we had to send to the drive
+            safe_memset(dataBuf, dataSize, 0, dataSize);//clear the buffer before we read in data since we are done with what we had to send to the drive
             ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_IN, dataBuf, dataSize);
         }
         //else we need to add functionality since something new was added to the spec
@@ -869,8 +869,8 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
         if (validSN && ataSN)
         {
             uint16_t snLimit = M_Min(SERIAL_NUM_LEN, ATA_IDENTIFY_SN_LENGTH);
-            memset(ataSN, 0, snLimit + 1);
-            memcpy(ataSN, idData->SerNum, snLimit);
+            safe_memset(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, 0, snLimit + 1);
+            safe_memcpy(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, idData->SerNum, snLimit);
             for (uint8_t iter = 0; iter < snLimit; ++iter)
             {
                 if (!safe_isascii(ataSN[iter]) || !safe_isprint(ataSN[iter]))
@@ -886,8 +886,8 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
         if (validFW && ataFW)
         {
             uint16_t fwLimit = M_Min(FW_REV_LEN, ATA_IDENTIFY_FW_LENGTH);
-            memset(ataFW, 0, fwLimit + 1);
-            memcpy(ataFW, idData->FirmVer, fwLimit);
+            safe_memset(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, 0, fwLimit + 1);
+            safe_memcpy(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, idData->FirmVer, fwLimit);
             for (uint8_t iter = 0; iter < fwLimit; ++iter)
             {
                 if (!safe_isascii(ataFW[iter]) || !safe_isprint(ataFW[iter]))
@@ -903,8 +903,8 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData, char ataMN[AT
         if (validMN && ataMN)
         {
             uint16_t mnLimit = M_Min(MODEL_NUM_LEN, ATA_IDENTIFY_MN_LENGTH);
-            memset(ataMN, 0, mnLimit + 1);
-            memcpy(ataMN, idData->ModelNum, mnLimit);
+            safe_memset(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, 0, mnLimit + 1);
+            safe_memcpy(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, idData->ModelNum, mnLimit);
             for (uint8_t iter = 0; iter < mnLimit; ++iter)
             {
                 if (!safe_isascii(ataMN[iter]) || !safe_isprint(ataMN[iter]))
@@ -956,7 +956,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
             {
                 scsi_Test_Unit_Ready(device, M_NULLPTR);
             }
-            memset(identifyData, 0, 512);
+            safe_memset(identifyData, 512, 0, 512);
             device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
             if ((SUCCESS == ata_Identify(device, C_CAST(uint8_t *, ident_word), sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)) || (!is_SAT_Invalid_Operation_Code(device) && SUCCESS == ata_Identify_Packet_Device(device, C_CAST(uint8_t *, ident_word), sizeof(tAtaIdentifyData)) && is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)))
             {
@@ -1424,9 +1424,9 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
         if (device->drive_info.interface_type == SCSI_INTERFACE)
         {
             //for the SCSI interface, copy this information back to the main drive info since SCSI translated info may truncate these fields and we don't want that
-            memcpy(device->drive_info.product_identification, device->drive_info.bridge_info.childDriveMN, MODEL_NUM_LEN);
-            memcpy(device->drive_info.serialNumber, device->drive_info.bridge_info.childDriveSN, SERIAL_NUM_LEN);
-            memcpy(device->drive_info.product_revision, device->drive_info.bridge_info.childDriveFW, FW_REV_LEN);
+            safe_memcpy(device->drive_info.product_identification, MODEL_NUM_LEN + 1, device->drive_info.bridge_info.childDriveMN, MODEL_NUM_LEN);
+            safe_memcpy(device->drive_info.serialNumber, SERIAL_NUM_LEN + 1, device->drive_info.bridge_info.childDriveSN, SERIAL_NUM_LEN);
+            safe_memcpy(device->drive_info.product_revision, FW_REV_LEN + 1, device->drive_info.bridge_info.childDriveFW, FW_REV_LEN);
             device->drive_info.worldWideName = device->drive_info.bridge_info.childWWN;
         }
     }
@@ -1520,7 +1520,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
                 bool copyOfIDData = false;
                 bool supportedCapabilities = false;
                 bool zonedDeviceInfo = false;
-                memset(logBuffer, 0, ATA_LOG_PAGE_LEN_BYTES);
+                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
                 if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_PAGES, logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
                 {
                     uint8_t pageNumber = logBuffer[2];
@@ -1558,12 +1558,12 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
                         }
                     }
                 }
-                memset(logBuffer, 0, ATA_LOG_PAGE_LEN_BYTES);
+                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
                 if (copyOfIDData && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA, logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
                 {
                     device->drive_info.softSATFlags.identifyDeviceDataLogSupported = true;
                 }
-                memset(logBuffer, 0, ATA_LOG_PAGE_LEN_BYTES);
+                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
                 if (supportedCapabilities && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
                 {
                     uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
@@ -1608,7 +1608,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
                         }
                     }
                 }
-                memset(logBuffer, 0, ATA_LOG_PAGE_LEN_BYTES);
+                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
                 if (zonedDeviceInfo && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION, logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
                 {
                     uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);
@@ -1625,7 +1625,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
             }
             if (readDeviceStatisticsLog)
             {
-                memset(logBuffer, 0, ATA_LOG_PAGE_LEN_BYTES);
+                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
                 if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_LIST, logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
                 {
                     uint16_t iter = ATA_DEV_STATS_SUP_PG_LIST_OFFSET;
@@ -1662,7 +1662,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice *device)
                     if (device->drive_info.softSATFlags.deviceStatsPages.generalStatisitcsSupported)
                     {
                         //need to read this page and check if the data and time timestamp statistic is supported
-                        memset(logBuffer, 0, ATA_LOG_PAGE_LEN_BYTES);
+                        safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
                         if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_GENERAL, logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
                         {
                             uint64_t qword0 = M_BytesTo8ByteValue(logBuffer[7], logBuffer[6], logBuffer[5], logBuffer[4], logBuffer[3], logBuffer[2], logBuffer[1], logBuffer[0]);

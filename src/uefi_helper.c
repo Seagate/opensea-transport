@@ -604,14 +604,14 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             device->drive_info.interface_type = IDE_INTERFACE;
             device->drive_info.drive_type = ATA_DRIVE;
             device->os_info.passthroughType = UEFI_PASSTHROUGH_ATA;
-            EFI_ATA_PASS_THRU_PROTOCOL *pPassthru;
+            EFI_ATA_PASS_THRU_PROTOCOL *pPassthru = M_NULLPTR;
             if (SUCCESS == get_ATA_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
             {
                 EFI_DEVICE_PATH_PROTOCOL *devicePath; //will be allocated in the call to the uefi systen
                 EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.ata.port, device->os_info.address.ata.portMultiplierPort, &devicePath);
                 if (buildPath == EFI_SUCCESS)
                 {
-                    memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
+                    safe_memcpy(&device->os_info.devicePath, sizeof(EFI_DEV_PATH), devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
                     ATA_ATAPI_PASS_THRU_INSTANCE *instance = ATA_PASS_THRU_PRIVATE_DATA_FROM_THIS(pPassthru);
                     if (instance->Mode == EfiAtaIdeMode && device->os_info.address.ata.portMultiplierPort > 0)
                     {
@@ -654,11 +654,11 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             EFI_EXT_SCSI_PASS_THRU_PROTOCOL *pPassthru;
             if (SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
             {
-                EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+                EFI_DEVICE_PATH_PROTOCOL *devicePath = M_NULLPTR;//will be allocated in the call to the uefi systen
                 EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, C_CAST(uint8_t*, &device->os_info.address.scsiEx.target), device->os_info.address.scsiEx.lun, &devicePath);
                 if (buildPath == EFI_SUCCESS)
                 {
-                    memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
+                    safe_memcpy(&device->os_info.devicePath, sizeof(EFI_DEV_PATH), devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
                     device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
                 }
                 else
@@ -685,11 +685,11 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             EFI_SCSI_PASS_THRU_PROTOCOL *pPassthru;
             if (SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
             {
-                EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+                EFI_DEVICE_PATH_PROTOCOL *devicePath = M_NULLPTR;//will be allocated in the call to the uefi systen
                 EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.scsi.target, device->os_info.address.scsi.lun, &devicePath);
                 if (buildPath == EFI_SUCCESS)
                 {
-                    memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
+                    safe_memcpy(&device->os_info.devicePath, sizeof(EFI_DEV_PATH), devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
                     device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
                 }
                 else
@@ -721,11 +721,11 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL *pPassthru;
             if (SUCCESS == get_NVMe_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
             {
-                EFI_DEVICE_PATH_PROTOCOL *devicePath;//will be allocated in the call to the uefi systen
+                EFI_DEVICE_PATH_PROTOCOL *devicePath = M_NULLPTR;//will be allocated in the call to the uefi systen
                 EFI_STATUS buildPath = pPassthru->BuildDevicePath(pPassthru, device->os_info.address.nvme.namespaceID, &devicePath);
                 if (buildPath == EFI_SUCCESS)
                 {
-                    memcpy(&device->os_info.devicePath, devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
+                    safe_memcpy(&device->os_info.devicePath, sizeof(EFI_DEV_PATH), devicePath, M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
                     device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
                 }
                 else
@@ -863,7 +863,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
 #endif
     if (SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {
-        seatimer_t commandTimer;
+        DECLARE_SEATIMER(commandTimer);
         uint8_t *alignedPointer = scsiIoCtx->pdata;
         uint8_t *alignedCDB = scsiIoCtx->cdb;
         uint8_t *alignedSensePtr = scsiIoCtx->psense;
@@ -929,7 +929,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             alignedPointer = localBuffer;
             if (scsiIoCtx->direction == XFER_DATA_OUT)
             {
-                memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+                safe_memcpy(alignedPointer, scsiIoCtx->dataLength, scsiIoCtx->pdata, scsiIoCtx->dataLength);
             }
         }
 
@@ -948,7 +948,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             }
             alignedCDB = localCDB;
             //copy CDB into aligned CDB memory pointer
-            memcpy(alignedCDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+            safe_memcpy(alignedCDB, scsiIoCtx->cdbLength, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
         }
 
         if (pPassthru->Mode->IoAlign > 1 && !IS_ALIGNED(scsiIoCtx->psense, pPassthru->Mode->IoAlign))
@@ -1022,11 +1022,11 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx *scsiIoCtx)
             ret = SUCCESS;
             if (localSenseBuffer)
             {
-                memcpy(scsiIoCtx->psense, alignedSensePtr, M_Min(scsiIoCtx->senseDataSize, srp->SenseDataLength));
+                safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, alignedSensePtr, M_Min(scsiIoCtx->senseDataSize, srp->SenseDataLength));
             }
             if (localAlignedBuffer && scsiIoCtx->direction == XFER_DATA_IN)
             {
-                memcpy(scsiIoCtx->pdata, alignedPointer, scsiIoCtx->dataLength);
+                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, alignedPointer, scsiIoCtx->dataLength);
             }
         }
         else
@@ -1172,7 +1172,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
 #endif
     if (SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {
-        seatimer_t commandTimer;
+        DECLARE_SEATIMER(commandTimer);
         uint8_t *alignedPointer = scsiIoCtx->pdata;
         uint8_t *alignedCDB = scsiIoCtx->cdb;
         uint8_t *alignedSensePtr = scsiIoCtx->psense;
@@ -1243,7 +1243,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             alignedPointer = localBuffer;
             if (scsiIoCtx->direction == XFER_DATA_OUT)
             {
-                memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+                safe_memcpy(alignedPointer, scsiIoCtx->dataLength, scsiIoCtx->pdata, scsiIoCtx->dataLength);
             }
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
             if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
@@ -1275,7 +1275,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             }
             alignedCDB = localCDB;
             //copy CDB into aligned CDB memory pointer
-            memcpy(alignedCDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+            safe_memcpy(alignedCDB, scsiIoCtx->cdbLength, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
             if (!IS_ALIGNED(alignedCDB, pPassthru->Mode->IoAlign))
             {
@@ -1375,11 +1375,11 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx *scsiIoCtx)
             ret = SUCCESS;
             if (localSenseBuffer)
             {
-                memcpy(scsiIoCtx->psense, alignedSensePtr, M_Min(scsiIoCtx->senseDataSize, srp->SenseDataLength));
+                safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, alignedSensePtr, M_Min(scsiIoCtx->senseDataSize, srp->SenseDataLength));
             }
             if (localAlignedBuffer && scsiIoCtx->direction == XFER_DATA_IN)
             {
-                memcpy(scsiIoCtx->pdata, alignedPointer, scsiIoCtx->dataLength);
+                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, alignedPointer, scsiIoCtx->dataLength);
             }
         }
         else
@@ -1443,7 +1443,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
     }
     if (SUCCESS == get_ATA_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
     {
-        seatimer_t commandTimer;
+        DECLARE_SEATIMER(commandTimer);
         uint8_t *alignedPointer = scsiIoCtx->pAtaCmdOpts->ptrData;
         uint8_t* localBuffer = M_NULLPTR;
         bool localAlignedBuffer = false;
@@ -1510,7 +1510,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             alignedPointer = localBuffer;
             if (scsiIoCtx->direction == XFER_DATA_OUT)
             {
-                memcpy(alignedPointer, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+                safe_memcpy(alignedPointer, scsiIoCtx->pAtaCmdOpts->dataSize, scsiIoCtx->pdata, scsiIoCtx->dataLength);
             }
 #if defined (UEFI_PASSTHRU_DEBUG_MESSAGES)
             if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
@@ -1666,7 +1666,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx *scsiIoCtx)
             if (localAlignedBuffer && scsiIoCtx->pAtaCmdOpts->commandDirection == XFER_DATA_IN)
             {
                 //memcpy the data back to the user's pointer since we had to allocate one locally.
-                memcpy(scsiIoCtx->pAtaCmdOpts->ptrData, alignedPointer, scsiIoCtx->dataLength);
+                safe_memcpy(scsiIoCtx->pAtaCmdOpts->ptrData, scsiIoCtx->pAtaCmdOpts->dataSize, alignedPointer, scsiIoCtx->pAtaCmdOpts->dataSize);
             }
             ret = SUCCESS;
             //convert RTFRs to sense data since the above layer is using SAT for everthing to make it easy to port across systems
@@ -1821,7 +1821,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 #endif
     if (SUCCESS == get_NVMe_Passthru_Protocol_Ptr(&pPassthru, nvmeIoCtx->device->os_info.controllerNum))
     {
-        seatimer_t commandTimer;
+        DECLARE_SEATIMER(commandTimer);
         uint8_t *alignedPointer = nvmeIoCtx->ptrData;
         uint8_t *localBuffer = M_NULLPTR;
         bool localAlignedBuffer = false;
@@ -1935,7 +1935,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             alignedPointer = localBuffer;
             if (nvmeIoCtx->commandDirection == XFER_DATA_OUT)
             {
-                memcpy(alignedPointer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+                safe_memcpy(alignedPointer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
             }
             if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
             {
@@ -2102,7 +2102,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
             nvmeIoCtx->commandCompletionData.dw3Valid = true;
             if (localAlignedBuffer && nvmeIoCtx->commandDirection == XFER_DATA_IN && nvmeIoCtx->ptrData)
             {
-                memcpy(nvmeIoCtx->ptrData, alignedPointer, nvmeIoCtx->dataSize);
+                safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, alignedPointer, nvmeIoCtx->dataSize);
             }
         }
         else
@@ -2499,8 +2499,8 @@ uint32_t get_SCSIEx_Device_Count()
         {
             continue;
         }
-        memset(target, 0xFF, TARGET_MAX_BYTES);
-        memset(invalidTarget, 0xFF, TARGET_MAX_BYTES);
+        safe_memset(target, TARGET_MAX_BYTES, 0xFF, TARGET_MAX_BYTES);
+        safe_memset(invalidTarget, TARGET_MAX_BYTES, 0xFF, TARGET_MAX_BYTES);
         while (uefiStatus == EFI_SUCCESS)
         {
             uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &targetPtr, &lun);
@@ -2560,8 +2560,8 @@ eReturnValues get_SCSIEx_Devices(tDevice * const ptrToDeviceList, uint32_t sizeI
         {
             continue;
         }
-        memset(target, 0xFF, TARGET_MAX_BYTES);
-        memset(invalidTarget, 0xFF, TARGET_MAX_BYTES);
+        safe_memset(target, TARGET_MAX_BYTES, 0xFF, TARGET_MAX_BYTES);
+        safe_memset(invalidTarget, TARGET_MAX_BYTES, 0xFF, TARGET_MAX_BYTES);
         while (uefiStatus == EFI_SUCCESS)
         {
             uefiStatus = pPassthru->GetNextTargetLun(pPassthru, &targetPtr, &lun);

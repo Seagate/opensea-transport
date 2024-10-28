@@ -185,7 +185,7 @@ eReturnValues spin_down_drive(tDevice *device, bool sleepState)
         else
         {
             nvmeFeaturesCmdOpt standby;
-            memset(&standby, 0, sizeof(nvmeFeaturesCmdOpt));
+            safe_memset(&standby, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
             standby.fid = NVME_FEAT_POWER_MGMT_;
             standby.featSetGetValue = device->drive_info.IdentifyData.nvme.ctrl.npss;
             ret = nvme_Set_Features(device, &standby);
@@ -628,7 +628,7 @@ eReturnValues security_Receive(tDevice *device, uint8_t securityProtocol, uint16
             ret = send_ATA_Trusted_Receive_Cmd(device, securityProtocol, securityProtocolSpecific, tcgBufPtr, tcgDataSize);
             if (useLocalMemory)
             {
-                memcpy(ptrData, tcgBufPtr, M_Min(dataSize, tcgDataSize));
+                safe_memcpy(ptrData, dataSize, tcgBufPtr, M_Min(dataSize, tcgDataSize));
                 safe_free_aligned(&tcgBufPtr);
             }
         }
@@ -1541,7 +1541,7 @@ eReturnValues scsi_Read(tDevice *device, uint64_t lba, bool forceUnitAccess, uin
                 if (SUCCESS != ret)
                 {
                     senseDataFields readSense;
-                    memset(&readSense, 0, sizeof(senseDataFields));
+                    safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
                     get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &readSense);
                     if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x20 && readSense.scsiStatusCodes.ascq == 0x00)
                     {
@@ -1624,7 +1624,7 @@ eReturnValues scsi_Write(tDevice *device, uint64_t lba, bool forceUnitAccess, ui
             if (SUCCESS != ret)
             {
                 senseDataFields readSense;
-                memset(&readSense, 0, sizeof(senseDataFields));
+                safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
                 get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &readSense);
                 if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x20 && readSense.scsiStatusCodes.ascq == 0x00)
                 {

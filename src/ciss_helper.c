@@ -67,7 +67,7 @@ static bool is_SmartPQI_Unique_IOCTLs_Supported(int fd)
 {
 #if defined (__FreeBSD__)
     pqi_pci_info_t pciInfo;
-    memset(&pciInfo, 0, sizeof(pqi_pci_info_t));
+    safe_memset(&pciInfo, sizeof(pqi_pci_info_t), 0, sizeof(pqi_pci_info_t));
 #if defined __clang__
 // clang specific because behavior can differ even with the GCC diagnostic being "compatible"
 // https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
@@ -108,7 +108,7 @@ static bool supports_CISS_IOCTLs(int fd)
     bool supported = false;
 #if defined (__linux__) || defined (__FreeBSD__)
     cciss_pci_info_struct pciInfo;
-    memset(&pciInfo, 0, sizeof(cciss_pci_info_struct));
+    safe_memset(&pciInfo, sizeof(cciss_pci_info_struct), 0, sizeof(cciss_pci_info_struct));
 #if defined __clang__
 // clang specific because behavior can differ even with the GCC diagnostic being "compatible"
 // https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
@@ -143,7 +143,7 @@ static bool supports_CISS_IOCTLs(int fd)
     #endif
 #elif defined (__sun)
     cpqary3_ctlr_info_t ctrlInfo;
-    memset(&ctrlInfo, 0, sizeof(cpqary3_ctlr_info_t));
+    safe_memset(&ctrlInfo, sizeof(cpqary3_ctlr_info_t), 0, sizeof(cpqary3_ctlr_info_t));
 #if defined __clang__
 // clang specific because behavior can differ even with the GCC diagnostic being "compatible"
 // https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
@@ -450,7 +450,7 @@ static eReturnValues ciss_Scsi_Report_Physical_LUNs(tDevice *device, uint8_t ext
 }
 
 //This is a reworked old function from first internal code to support CISS...is this still needed like this?-TJE
-static eReturnValues get_Physical_Device_Location_Data(tDevice *device, uint8_t *physicalLocationData)
+static eReturnValues get_Physical_Device_Location_Data(tDevice *device, uint8_t *physicalLocationData, uint32_t physicalLocationDataLength)
 {
     eReturnValues ret = UNKNOWN;
     uint32_t dataLength = UINT32_C(8) + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
@@ -466,7 +466,7 @@ static eReturnValues get_Physical_Device_Location_Data(tDevice *device, uint8_t 
                 if (device->os_info.cissDeviceData->driveNumber <= (lunListLength / PHYSICAL_LUN_DESCRIPTOR_LENGTH))
                 {
                     //should be able to find the device in the data
-                    memcpy(physicalLocationData, &physicalDrives[(device->os_info.cissDeviceData->driveNumber + 1) * PHYSICAL_LUN_DESCRIPTOR_LENGTH], LUN_ADDR_LEN);//+1 to get past the header
+                    safe_memcpy(physicalLocationData, physicalLocationDataLength, &physicalDrives[(device->os_info.cissDeviceData->driveNumber + 1) * PHYSICAL_LUN_DESCRIPTOR_LENGTH], LUN_ADDR_LEN);//+1 to get past the header
                     ret = SUCCESS;
                 }
                 else
@@ -511,16 +511,15 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
         }
         if (scsiIoCtx->cdbLength <= 16 && scsiIoCtx->dataLength <= UINT16_MAX)
         {
-#if defined (__linux__) || defined (__FreeBSD__) //interface is the same on Linux and FreeBSD
+#if defined (__linux__) || defined (__FreeBSD__) /*interface is the same on Linux and FreeBSD*/
             if (scsiIoCtx->device->os_info.cissDeviceData->smartpqi)
             {
 #if defined (__FreeBSD__)
                 //if the smartpqi bool is set, use the structures from that driver to issue the command to ensure
                 //that the packing matches exactly to minimize compatibility problems.
                 pqi_IOCTL_Command_struct pqiCmd;
-                seatimer_t commandTimer;
-                memset(&commandTimer, 0, sizeof(seatimer_t));
-                memset(&pqiCmd, 0, sizeof(pqi_IOCTL_Command_struct));
+                DECLARE_SEATIMER(commandTimer);
+                safe_memset(&pqiCmd, sizeof(pqi_IOCTL_Command_struct), 0, sizeof(pqi_IOCTL_Command_struct));
 
                 switch (cmdType)
                 {
@@ -528,7 +527,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                     break;
                 default: //this will work OK for other cases. May need modifications for logical volume commands. -TJE
                     //set path to device
-                    memcpy(&pqiCmd.LUN_info, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
+                    safe_memcpy(&pqiCmd.LUN_info, sizeof(pqi_LUNAddr_struct), scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
                     break;
                 }
                 //now setup to send a CDB
@@ -571,7 +570,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                 {
                     pqiCmd.Request.Timeout = 15;
                 }
-                memcpy(pqiCmd.Request.CDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+                safe_memcpy(pqiCmd.Request.CDB, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
                 ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
 
@@ -612,10 +611,10 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                 //Copy and sense data we received, then need to check for errors
                 if (scsiIoCtx->psense)
                 {
-                    memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+                    safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
                     if (pqiCmd.error_info.SenseLen)
                     {
-                        memcpy(scsiIoCtx->psense, pqiCmd.error_info.SenseInfo, pqiCmd.error_info.SenseLen);
+                        safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, pqiCmd.error_info.SenseInfo, M_Min(pqiCmd.error_info.SenseLen, scsiIoCtx->senseDataSize));
                     }
                 }
                 //set command time:
@@ -766,9 +765,8 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
             else
             {
                 IOCTL_Command_struct cissCmd;
-                seatimer_t commandTimer;
-                memset(&commandTimer, 0, sizeof(seatimer_t));
-                memset(&cissCmd, 0, sizeof(IOCTL_Command_struct));
+                DECLARE_SEATIMER(commandTimer);
+                safe_memset(&cissCmd, sizeof(IOCTL_Command_struct), 0, sizeof(IOCTL_Command_struct));
 
                 switch (cmdType)
                 {
@@ -776,7 +774,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                     break;
                 default: //this will work OK for other cases. May need modifications for logical volume commands. -TJE
                     //set path to device
-                    memcpy(&cissCmd.LUN_info, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
+                    safe_memcpy(&cissCmd.LUN_info, sizeof(LUNAddr_struct), scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
                     break;
                 }
                 //now setup to send a CDB
@@ -819,7 +817,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                 {
                     cissCmd.Request.Timeout = 15;
                 }
-                memcpy(cissCmd.Request.CDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+                safe_memcpy(cissCmd.Request.CDB, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
                 ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
 
@@ -860,10 +858,10 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                 //Copy and sense data we received, then need to check for errors
                 if (scsiIoCtx->psense)
                 {
-                    memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+                    safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
                     if (cissCmd.error_info.SenseLen)
                     {
-                        memcpy(scsiIoCtx->psense, cissCmd.error_info.SenseInfo, cissCmd.error_info.SenseLen);
+                        safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, cissCmd.error_info.SenseInfo, M_Min(cissCmd.error_info.SenseLen, scsiIoCtx->senseDataSize));
                     }
                 }
                 //set command time:
@@ -1010,9 +1008,8 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
             }
 #elif defined (__sun)
             cpqary3_scsi_pass_t cissCmd;
-            seatimer_t commandTimer;
-            memset(&commandTimer, 0, sizeof(seatimer_t));
-            memset(&cissCmd, 0, sizeof(cpqary3_scsi_pass_t));
+            DECLARE_SEATIMER(commandTimer);
+            safe_memset(&cissCmd, sizeof(cpqary3_scsi_pass_t), 0, sizeof(cpqary3_scsi_pass_t));
 
             switch (cmdType)
             {
@@ -1020,7 +1017,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
                 break;
             default: //this will work OK for other cases. May need modifications for logical volume commands. -TJE
                 //set path to device
-                memcpy(&cissCmd.lun_addr, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
+                safe_memcpy(&cissCmd.lun_addr, 8, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
                 break;
             }
 
@@ -1057,7 +1054,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
             {
                 cissCmd.Timeout = 15;
             }
-            memcpy(cissCmd.cdb, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+            safe_memcpy(cissCmd.cdb, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
             ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
 
@@ -1098,10 +1095,10 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType cmdT
             //Copy and sense data we received, then need to check for errors
             if (scsiIoCtx->psense)
             {
-                memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+                safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
                 if (cissCmd.err_info.SenseLen)
                 {
-                    memcpy(scsiIoCtx->psense, cissCmd.err_info.SenseInfo, cissCmd.err_info.SenseLen);
+                    safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, cissCmd.err_info.SenseInfo, M_Min(cissCmd.err_info.SenseLen, scsiIoCtx->senseDataSize));
                 }
             }
             //set command time:
@@ -1272,9 +1269,8 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType 
         if (scsiIoCtx->cdbLength <= 16 && scsiIoCtx->dataLength <= MAX_KMALLOC_SIZE)
         {
             BIG_IOCTL_Command_struct cissCmd;
-            seatimer_t commandTimer;
-            memset(&commandTimer, 0, sizeof(seatimer_t));
-            memset(&cissCmd, 0, sizeof(BIG_IOCTL_Command_struct));
+            DECLARE_SEATIMER(commandTimer);
+            safe_memset(&cissCmd, sizeof(BIG_IOCTL_Command_struct), 0, sizeof(BIG_IOCTL_Command_struct));
 
             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
@@ -1287,7 +1283,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType 
                 break;
             default: //this will work OK for other cases. May need modifications for logical volume commands. -TJE
                 //set path to device
-                memcpy(&cissCmd.LUN_info, scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
+                safe_memcpy(&cissCmd.LUN_info, sizeof(LUNAddr_struct), scsiIoCtx->device->os_info.cissDeviceData->physicalLocation, LUN_ADDR_LEN);//this is 8 bytes in size maximum
                 break;
             }
             //now setup to send a CDB
@@ -1332,7 +1328,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType 
             {
                 cissCmd.Request.Timeout = 15;
             }
-            memcpy(cissCmd.Request.CDB, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+            safe_memcpy(cissCmd.Request.CDB, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
             ret = OS_PASSTHROUGH_FAILURE;//OS_COMMAND_NOT_AVAILABLE, OS_COMMAND_BLOCKED
 
@@ -1364,10 +1360,10 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx * scsiIoCtx, eCISSptCmdType 
             //Copy and sense data we received, then need to check for errors
             if (scsiIoCtx->psense)
             {
-                memset(scsiIoCtx->psense, 0, scsiIoCtx->senseDataSize);
+                safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
                 if (cissCmd.error_info.SenseLen)
                 {
-                    memcpy(scsiIoCtx->psense, cissCmd.error_info.SenseInfo, cissCmd.error_info.SenseLen);
+                    safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, cissCmd.error_info.SenseInfo, M_Min(cissCmd.error_info.SenseLen, scsiIoCtx->senseDataSize));
                 }
             }
             //set command time:
@@ -1560,7 +1556,7 @@ eReturnValues get_CISS_RAID_Device(const char *filename, tDevice *device)
         return LIBRARY_MISMATCH;
     }
     //set the name that was provided for other display.
-    memcpy(device->os_info.name, filename, safe_strlen(filename));
+    safe_memcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename, safe_strlen(filename));
     if (PARSE_COUNT_SUCCESS == parse_CISS_Handle(filename, handlePtr, &driveNumber))
     {
         device->os_info.cissDeviceData = safe_calloc(1, sizeof(cissDeviceInfo));
@@ -1585,7 +1581,7 @@ eReturnValues get_CISS_RAID_Device(const char *filename, tDevice *device)
                     device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA = true;//this may not be true for all CISS controllers, but will likely work with any of them -TJE
                     //handle opened, now get the physical device location from the C2h command
                     //This is done here to reuse lots of other code to issue commands.
-                    if (SUCCESS == (ret = get_Physical_Device_Location_Data(device, device->os_info.cissDeviceData->physicalLocation)))
+                    if (SUCCESS == (ret = get_Physical_Device_Location_Data(device, device->os_info.cissDeviceData->physicalLocation, 8)))
                     {
                         //finally call fill_Drive_Info to let opensea-transport set it's support bits and other device information
                         ret = fill_Drive_Info_Data(device);
@@ -1654,7 +1650,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
         if (data)
         {
             //setup the psuedo device
-            memset(&pseudoDev, 0, sizeof(tDevice));
+            safe_memset(&pseudoDev, sizeof(tDevice), 0, sizeof(tDevice));
             pseudoDev.os_info.fd = fd;
             pseudoDev.sanity.version = DEVICE_BLOCK_VERSION;
             pseudoDev.sanity.size = sizeof(tDevice);
@@ -1674,7 +1670,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
             cdb[11] = 0;//control byte
 
             //setup the scsiIoCtx
-            memset(&physicalLunCMD, 0, sizeof(ScsiIoCtx));
+            safe_memset(&physicalLunCMD, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
             physicalLunCMD.device = &pseudoDev;
             physicalLunCMD.direction = XFER_DATA_IN;
             physicalLunCMD.pdata = data;
@@ -1683,7 +1679,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t *count)
             physicalLunCMD.timeout = 15;
             physicalLunCMD.dataLength = dataLength;
             physicalLunCMD.cdbLength = 12;
-            memcpy(physicalLunCMD.cdb, cdb, 12);
+            safe_memcpy(physicalLunCMD.cdb, SCSI_IO_CTX_MAX_CDB_LEN, cdb, 12);
 
             //setup the cissDeviceData struct as it is needed to issue the CMD
             pseudoDev.os_info.cissDeviceData = safe_calloc(1, sizeof(cissDeviceInfo));
@@ -1767,7 +1763,7 @@ eReturnValues get_CISS_RAID_Device_Count(uint32_t * numberOfDevices, M_ATTR_UNUS
         bool handleRemoved = false;
         if (raidList->raidHint.cissRAID || raidList->raidHint.unknownRAID)
         {
-            memset(deviceName, 0, CISS_HANDLE_MAX_LENGTH);
+            safe_memset(deviceName, CISS_HANDLE_MAX_LENGTH, 0, CISS_HANDLE_MAX_LENGTH);
             //check if the passed in handle contains /dev/ or not so we can open it correctly
             if (strstr(raidList->handle, "/dev/"))
             {
@@ -1883,7 +1879,7 @@ eReturnValues get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
             bool handleRemoved = false;
             if (raidList->raidHint.cissRAID || raidList->raidHint.unknownRAID)
             {
-                memset(deviceName, 0, CISS_HANDLE_MAX_LENGTH);
+                safe_memset(deviceName, CISS_HANDLE_MAX_LENGTH, 0, CISS_HANDLE_MAX_LENGTH);
                 if (strstr(raidList->handle, "/dev/"))
                 {
                     snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "%s", raidList->handle);
@@ -1910,7 +1906,7 @@ eReturnValues get_CISS_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_
                                 //handle is formatted as "ciss:os_handle:driveNumber" NOTE: osHandle is everything after /dev/
                                 snprintf(handle, CISS_HANDLE_MAX_LENGTH, "ciss:%s:%" PRIu32, basename(deviceName), currentDev);
                                 //get the CISS device with a get_CISS_Device function
-                                memset(d, 0, sizeof(tDevice));
+                                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
                                 d->sanity.size = ver.size;
                                 d->sanity.version = ver.version;
                                 d->dFlags = flags;

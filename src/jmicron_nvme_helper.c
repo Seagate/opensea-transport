@@ -36,7 +36,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirectio
         return BAD_PARAMETER;
     }
 
-    memset(cdb, 0, JMICRON_NVME_CDB_SIZE);
+    safe_memset(cdb, JMICRON_NVME_CDB_SIZE, 0, JMICRON_NVME_CDB_SIZE);
 
     uint32_t parameterListLength = 0;
 
@@ -58,10 +58,10 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t * cdb, eDataTransferDirectio
         }
         else
         {
-            memset(dataPtr, 0, JMICRON_NVME_CMD_PAYLOAD_SIZE);
+            safe_memset(dataPtr, dataSize, 0, JMICRON_NVME_CMD_PAYLOAD_SIZE);
             parameterListLength = JMICRON_NVME_CMD_PAYLOAD_SIZE;
             //set the signature
-            memcpy(dataPtr, JMICRON_NVME_NAMESTRING, safe_strlen(JMICRON_NVME_NAMESTRING));
+            safe_memcpy(dataPtr, dataSize, JMICRON_NVME_NAMESTRING, safe_strlen(JMICRON_NVME_NAMESTRING));
             //based on vendor ctrl value, we may setup a cmd, or leave those fields blank to setup some other action
             dataPtr[72] = C_CAST(uint8_t, jmCtrl);
             if (jmCtrl == JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD)
@@ -292,7 +292,7 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     default:
         return OS_COMMAND_NOT_AVAILABLE;
     }
-    memset(jmCDB, 0, JMICRON_NVME_CDB_SIZE);
+    safe_memset(jmCDB, JMICRON_NVME_CDB_SIZE, 0, JMICRON_NVME_CDB_SIZE);
     ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, M_NULLPTR, nvmCmd->dataSize, transferProtocol, JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD, nvmCmd);
     if (SUCCESS != ret)
     {
@@ -307,8 +307,8 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx * nvmCmd)
     {
         //3. build CDB for response info
         //send CDB for response info
-        memset(jmCDB, 0, JMICRON_NVME_CDB_SIZE);
-        memset(jmPayload, 0, JMICRON_NVME_CMD_PAYLOAD_SIZE);
+        safe_memset(jmCDB, JMICRON_NVME_CDB_SIZE, 0, JMICRON_NVME_CDB_SIZE);
+        safe_memset(jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, 0, JMICRON_NVME_CMD_PAYLOAD_SIZE);
         ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, JM_PROTOCOL_RETURN_RESPONSE_INFO, JM_VENDOR_CTRL_SERVICE_PROTOCOL_FIELD, nvmCmd);
         if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir, M_NULLPTR, 0, 15))
         {

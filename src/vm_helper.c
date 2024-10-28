@@ -60,10 +60,8 @@ extern bool validate_Device_Struct(versionBlock);
 #if defined (_DEBUG)
 static void print_io_hdr(sg_io_hdr_t *pIo)
 {
-    time_t time_now;
     DECLARE_ZERO_INIT_ARRAY(char, timeFormat, TIME_STRING_LENGTH);
-    memset(timeFormat, 0, TIME_STRING_LENGTH);//clear this again before reusing it
-    time_now = time(M_NULLPTR);
+    time_t time_now = time(M_NULLPTR);
     printf("\n%s: %s---------------------------------\n", __FUNCTION__, get_Current_Time_String(&time_now, timeFormat, TIME_STRING_LENGTH));
     printf("type int interface_id %d\n", pIo->interface_id);           /* [i] 'S' (required) */
     printf("type int  dxfer_direction %d\n", pIo->dxfer_direction);        /* [i] */
@@ -183,7 +181,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
 {
     sysVMLowLevelDeviceInfo sysVmInfo;
     /**
-     * Setting up difaults
+     * Setting up defaults
      */
     //sysVmInfo.drive_type = SCSI_DRIVE;
     //device->drive_info.drive_type = ATA_DRIVE;
@@ -191,15 +189,15 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
     //device->drive_info.interface_type = IDE_INTERFACE;
     //sysVmInfo.media_type = MEDIA_HDD;
 
-    memset(&sysVmInfo, 0, sizeof(sysVMLowLevelDeviceInfo));
+    safe_memset(&sysVmInfo, sizeof(sysVMLowLevelDeviceInfo), 0, sizeof(sysVMLowLevelDeviceInfo));
     get_VMV_SYS_FS_Info(handle, &sysVmInfo);
     //now copy the saved data to tDevice. -DB
     if (device)
     {
         device->drive_info.drive_type = sysVmInfo.drive_type;
         device->drive_info.interface_type = sysVmInfo.interface_type;
-        memcpy(&device->drive_info.adapter_info, &sysVmInfo.adapter_info, sizeof(adapterInfo));
-        memcpy(&device->drive_info.driver_info, &sysVmInfo.driver_info, sizeof(driverInfo));
+        safe_memcpy(&device->drive_info.adapter_info, sizeof(adapterInfo), &sysVmInfo.adapter_info, sizeof(adapterInfo));
+        safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysVmInfo.driver_info, sizeof(driverInfo));
         if (strlen(sysVmInfo.primaryHandleStr) > 0)
         {
             snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysVmInfo.primaryHandleStr);
@@ -297,7 +295,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         if ((device->os_info.fd >= 0) && (ret == SUCCESS))
         {
             struct sg_scsi_id hctlInfo;
-            memset(&hctlInfo, 0, sizeof(struct sg_scsi_id));
+            safe_memset(&hctlInfo, sizeof(struct sg_scsi_id), 0, sizeof(struct sg_scsi_id));
             int getHctl = ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo);
             if (getHctl == 0 && errno == 0)//when this succeeds, both of these will be zeros
             {
@@ -323,7 +321,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             //set the OS Type
             device->os_info.osType = OS_ESX;
 
-            memcpy(device->os_info.name, deviceHandle, safe_strlen(deviceHandle) + 1);
+            safe_memcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, deviceHandle, safe_strlen(deviceHandle) + 1);
 
             //set scsi interface and scsi drive until we know otherwise
             device->drive_info.drive_type = SCSI_DRIVE;
@@ -448,7 +446,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             device->drive_info.media_type = MEDIA_NVM;
             memcmp(device->drive_info.T10_vendor_ident, "NVMe", 4);
             device->os_info.osType = OS_ESX;
-            memcpy(&(device->os_info.name), filename, safe_strlen(filename) + 1);
+            safe_memcpy(&(device->os_info.name), OS_HANDLE_NAME_MAX_LENGTH, filename, safe_strlen(filename) + 1);
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
             if (device->drive_info.interface_type == NVME_INTERFACE)
@@ -582,16 +580,14 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
     sg_io_hdr_t io_hdr;
     uint8_t *localSenseBuffer = M_NULLPTR;
     eReturnValues ret = SUCCESS;
-    seatimer_t  commandTimer;
+    DECLARE_SEATIMER(commandTimer);
 #ifdef _DEBUG
     printf("-->%s \n", __FUNCTION__);
 #endif
 
-
-    memset(&commandTimer, 0, sizeof(seatimer_t));
     //int idx = 0;
     // Start with zapping the io_hdr
-    memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
+    safe_memset(&io_hdr, sizeof(sg_io_hdr_t), 0, sizeof(sg_io_hdr_t));
 
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
@@ -1021,10 +1017,8 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     struct nvme_adapter_list nvmeAdptList;
     int rc = 0;
 #if defined (DEGUG_SCAN_TIME)
-    seatimer_t getDeviceTimer;
-    seatimer_t getDeviceListTimer;
-    memset(&getDeviceTimer, 0, sizeof(seatimer_t));
-    memset(&getDeviceListTimer, 0, sizeof(seatimer_t));
+    DECLARE_SEATIMER(getDeviceTimer);
+    DECLARE_SEATIMER(getDeviceListTimer);
 #endif
     struct dirent **namelist = M_NULLPTR;
 
@@ -1060,7 +1054,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     {
         size_t nvmeAdptNameLen = safe_strlen(nvmeAdptList.adapters[j].name) + 1;
         devs[i] = C_CAST(char *, safe_malloc(nvmeAdptNameLen));
-        memset(devs[i], 0, nvmeAdptNameLen);
+        safe_memset(devs[i], nvmeAdptNameLen, 0, nvmeAdptNameLen);
         snprintf(devs[i], nvmeAdptNameLen, "%s", nvmeAdptList.adapters[j].name);
 #ifdef _DEBUG
         printf("Discovered NVMe Device index - %d Name - %s \n", j, nvmeAdptList.adapters[j].name);
@@ -1090,7 +1084,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             {
                 continue;
             }
-            memset(name, 0, sizeof(name));//clear name before reusing it
+            safe_memset(name, sizeof(name), 0, sizeof(name));//clear name before reusing it
             snprintf(name, sizeof(name), "%s", devs[driveNumber]);
 
             nvmeDevName = strstr(name, "vmhba");
@@ -1105,13 +1099,12 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 {
                     close(fd);
                     eVerbosityLevels temp = d->deviceVerbosity;
-                    memset(d, 0, sizeof(tDevice));
+                    safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
                     d->deviceVerbosity = temp;
                     d->sanity.size = ver.size;
                     d->sanity.version = ver.version;
     #if defined (DEGUG_SCAN_TIME)
-                    seatimer_t getDeviceTimer;
-                    memset(&getDeviceTimer, 0, sizeof(seatimer_t));
+                    DECLARE_SEATIMER(getDeviceTimer);
                     start_Timer(&getDeviceTimer);
     #endif
                     d->dFlags = flags;
@@ -1276,15 +1269,14 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     eReturnValues ret = SUCCESS;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
     int ioctlret = 0;
     struct usr_io uio;
-    seatimer_t cmdtimer;
+    DECLARE_SEATIMER(cmdtimer);
 
 #ifdef _DEBUG
     printf("-->%s\n", __FILE__);
     printf("-->%s\n", __FUNCTION__);
 #endif
 
-    memset(&uio, 0, sizeof(struct usr_io));
-    memset(&cmdtimer, 0, sizeof(seatimer_t));
+    safe_memset(&uio, sizeof(struct usr_io), 0, sizeof(struct usr_io));
 
     if (nvmeIoCtx == M_NULLPTR)
     {
@@ -1297,7 +1289,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     switch (nvmeIoCtx->commandType)
     {
     case NVM_ADMIN_CMD:
-        memcpy(&(uio.cmd), &(nvmeIoCtx->cmd.adminCmd), sizeof(nvmeCommands));
+        safe_memcpy(&(uio.cmd), sizeof(struct nvme_cmd), &(nvmeIoCtx->cmd.adminCmd), sizeof(nvmeCommands));
 
         if ((nvmeIoCtx->commandDirection == XFER_NO_DATA) ||
             (nvmeIoCtx->commandDirection == XFER_DATA_IN))
@@ -1361,7 +1353,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         break;
 
     case NVM_CMD:
-        memcpy(&(uio.cmd), &(nvmeIoCtx->cmd.nvmCmd), sizeof(nvmeCommands));
+        safe_memcpy(&(uio.cmd), (struct nvme_cmd), &(nvmeIoCtx->cmd.nvmCmd), sizeof(nvmeCommands));
         
         if ((nvmeIoCtx->commandDirection == XFER_NO_DATA) ||
             (nvmeIoCtx->commandDirection == XFER_DATA_IN))
@@ -1479,7 +1471,7 @@ eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t data
         if (barRegs != MAP_FAILED)
         {
             ret = SUCCESS;
-            memcpy(pData, barRegs, dataSize);
+            safe_memcpy(pData, dataSize, barRegs, dataSize);
         }
         else
         {

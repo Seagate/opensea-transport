@@ -25,7 +25,7 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t* cdb, eDataTransferDire
         return BAD_PARAMETER;
     }
 
-    memset(cdb, 0, REALTEK_NVME_CDB_SIZE);
+    safe_memset(cdb, REALTEK_NVME_CDB_SIZE, 0, REALTEK_NVME_CDB_SIZE);
 
     switch (phase)
     {
@@ -37,7 +37,7 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t* cdb, eDataTransferDire
         }
         else
         {
-            memset(dataPtr, 0, REALTEK_NVME_CMD_PAYLOAD_LEN);
+            safe_memset(dataPtr, REALTEK_NVME_CMD_PAYLOAD_LEN, 0, REALTEK_NVME_CMD_PAYLOAD_LEN);
             cdb[OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_OUT;
             //set length to 0x40 - aka 64 bytes
             cdb[1] = M_Byte0(REALTEK_NVME_CMD_PAYLOAD_LEN);//length
@@ -216,7 +216,7 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
 
     //2. build CDB for data trasfer (including non-data)
     //send CDB for data transfer (this tiggers the actual command to execute)
-    memset(realtekCDB, 0, REALTEK_NVME_CDB_SIZE);
+    safe_memset(realtekCDB, REALTEK_NVME_CDB_SIZE, 0, REALTEK_NVME_CDB_SIZE);
     ret = build_Realtek_NVMe_CDB_And_Payload(realtekCDB, &realtekCDBDir, nvmCmd->ptrData, nvmCmd->dataSize, REALTEK_PHASE_DATA, nvmCmd);
     if (SUCCESS != ret)
     {
@@ -230,8 +230,8 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     {
         //3. build CDB for response info
         //send CDB for response info
-        memset(realtekCDB, 0, REALTEK_NVME_CDB_SIZE);
-        memset(realtekPayload, 0, REALTEK_NVME_CMD_PAYLOAD_LEN);
+        safe_memset(realtekCDB, REALTEK_NVME_CDB_SIZE, 0, REALTEK_NVME_CDB_SIZE);
+        safe_memset(realtekPayload, REALTEK_NVME_CMD_PAYLOAD_LEN, 0, REALTEK_NVME_CMD_PAYLOAD_LEN);
         ret = build_Realtek_NVMe_CDB_And_Payload(realtekCDB, &realtekCDBDir, realtekPayload, REALTEK_NVME_COMPLETION_PAYLOAD_LEN, REALTEK_PHASE_COMPLETION, nvmCmd);
         if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, realtekCDB, REALTEK_NVME_CDB_SIZE, realtekPayload, REALTEK_NVME_COMPLETION_PAYLOAD_LEN, realtekCDBDir, NULL, 0, 15))
         {

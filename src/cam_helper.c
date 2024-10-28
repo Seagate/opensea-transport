@@ -46,7 +46,7 @@ extern bool validate_Device_Struct(versionBlock);
 
 #if !defined (CCB_CLEAR_ALL_EXCEPT_HDR)
 //This is defined in newer versions of cam in FreeBSD, and is really useful.
-//This is being redefined here in case it is missing for backwards compatibiity with old FreeBSD versions
+//This is being redefined here in case it is missing for backwards compatibility with old FreeBSD versions
 #define CCB_CLEAR_ALL_EXCEPT_HDR(ccbp)			\
 	    bzero((char *)(ccbp) + sizeof((ccbp)->ccb_h),	\
 	        sizeof(*(ccbp)) - sizeof((ccbp)->ccb_h))
@@ -314,7 +314,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                 {
                     if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                     {
-                        bcopy(&ccb->cgd, &cgd, sizeof(struct ccb_getdev));
+                        safe_memcpy(&cgd, sizeof(struct ccb_getdev), &ccb->cgd, sizeof(struct ccb_getdev));
                         
                         //default to scsi drive and scsi interface
                         device->drive_info.drive_type = SCSI_DRIVE;
@@ -324,23 +324,15 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                         {
                             device->drive_info.interface_type = SCSI_INTERFACE;
 
-                            memcpy(&device->drive_info.T10_vendor_ident, cgd.inq_data.vendor, SID_VENDOR_SIZE);
-                            memcpy(&device->drive_info.product_identification, cgd.inq_data.product,\
+                            safe_memcpy(&device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, cgd.inq_data.vendor, SID_VENDOR_SIZE);
+                            safe_memcpy(&device->drive_info.product_identification, MODEL_NUM_LEN + 1, cgd.inq_data.product,\
                                        M_Min(MODEL_NUM_LEN, SID_PRODUCT_SIZE));
-                            memcpy(&device->drive_info.product_revision, cgd.inq_data.revision,\
+                            safe_memcpy(&device->drive_info.product_revision, FW_REV_LEN + 1, cgd.inq_data.revision,\
                                        M_Min(FW_REV_LEN, SID_REVISION_SIZE));
-                            memcpy(&device->drive_info.serialNumber, cgd.serial_num, SERIAL_NUM_LEN);
+                            //cgd.serial_num is max of 256B. M_Min not used because this is much bigger than our internal structure.-TJE
+                            safe_memcpy(&device->drive_info.serialNumber, SERIAL_NUM_LEN + 1, cgd.serial_num, SERIAL_NUM_LEN);
 
-                            // // 0 - means ATA. 1 - means SCSI
-                            // this_drive_type = memcmp(device->drive_info.T10_vendor_ident, "ATA", 3);
-                            // if (this_drive_type == 0)
-                            // {
-                            //     device->drive_info.drive_type = ATA_DRIVE;
-                            // }
-                            // else
-                            // {
-                            //     device->drive_info.drive_type = SCSI_DRIVE;
-                            // }
+                            //remove ATA vs SCSI check as that will be performed in an above layer of the code.
 
                         }
                         else if (cgd.protocol == PROTO_ATA || cgd.protocol == PROTO_ATAPI)
@@ -351,12 +343,12 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                             {
                                 device->drive_info.drive_type = ATAPI_DRIVE;
                             }
-                            memcpy(&device->drive_info.T10_vendor_ident, "ATA", 3);
-                            memcpy(&device->drive_info.product_identification, cgd.ident_data.model,\
+                            safe_memcpy(&device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "ATA", 3);
+                            safe_memcpy(&device->drive_info.product_identification, MODEL_NUM_LEN + 1, cgd.ident_data.model,\
                                        M_Min(MODEL_NUM_LEN, 40)); //40 comes from ata_param stuct in the ata.h
-                            memcpy(&device->drive_info.product_revision, cgd.ident_data.revision,\
+                            safe_memcpy(&device->drive_info.product_revision, FW_REV_LEN + 1, cgd.ident_data.revision,\
                                        M_Min(FW_REV_LEN, 8)); //8 comes from ata_param stuct in the ata.h
-                            memcpy(&device->drive_info.serialNumber, cgd.ident_data.serial,\
+                            safe_memcpy(&device->drive_info.serialNumber, SERIAL_NUM_LEN + 1, cgd.ident_data.serial,\
                                        M_Min(SERIAL_NUM_LEN, 20)); //20 comes from ata_param stuct in the ata.h
                         }
                         else
@@ -370,7 +362,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                         {
                             if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                             {
-                                bcopy(&ccb->cpi, &cpi, sizeof(struct ccb_pathinq));
+                                safe_memcpy(&cpi, sizeof(struct ccb_pathing), &ccb->cpi, sizeof(struct ccb_pathinq));
                                 //set the interface from a ccb_pathinq struct
                                 switch (cpi.transport)
                                 {
@@ -403,7 +395,7 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                                 }
                                 //TODO: Parse other flags to set hacks and capabilities to help with adapter or interface specific limitations
                                 //       - target flags which may help identify device capabilities (no 6-byte commands, group 6 & 7 command support, ata_ext request support.
-                                //       - target flag that says no 6-byte commands can help uniquly identify IEEE1394 devices
+                                //       - target flag that says no 6-byte commands can help uniquely identify IEEE1394 devices
                                 //      These should be saved later when we run into compatibility issues or need to make other improvements. For now, getting the interface is a huge help
 
 #if defined (__FreeBSD__) && __FreeBSD__ >= 9
@@ -725,8 +717,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx *scsiIoCtx)
 
             if (ret == SUCCESS)
             {
-                seatimer_t commandTimer;
-                memset(&commandTimer, 0, sizeof(seatimer_t));
+                DECLARE_SEATIMER(commandTimer);
 #if defined (_DEBUG)
                 printf("ATAIO: cmd=0x%02"PRIX8" feat=0x%02"PRIX8" lbalow=0x%02"PRIX8" lbamid=0x%02"PRIX8" lbahi=0x%02"PRIX8" sc=0x%02"PRIX8"\n", \
                            ataio->cmd.command, ataio->cmd.features, ataio->cmd.lba_low, ataio->cmd.lba_mid,\
@@ -961,7 +952,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx *scsiIoCtx)
         ccb->ccb_h.flags |= CAM_DEV_QFRZDIS;
         //ccb->ccb_h.flags |= CAM_PASS_ERR_RECOVER; // Needed?
 
-        memcpy(&csio->cdb_io.cdb_bytes[0], &scsiIoCtx->cdb[0], IOCDBLEN);
+        safe_memcpy(&csio->cdb_io.cdb_bytes[0], IOCDBLEN, &scsiIoCtx->cdb[0], IOCDBLEN);
 #if defined (_DEBUG)
         printf("%s cdb [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
                [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n", \
@@ -984,8 +975,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx *scsiIoCtx)
             csio->cdb_io.cdb_bytes[15]
         );
 #endif
-        seatimer_t commandTimer;
-        memset(&commandTimer, 0, sizeof(seatimer_t));
+        DECLARE_SEATIMER(commandTimer);
         start_Timer(&commandTimer);
         int ioctlResult = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
         stop_Timer(&commandTimer);
@@ -1059,9 +1049,8 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx *scsiIoCtx)
                 && (ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND)
                 && ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0))
             {
-                //memcpy(scsiIoCtx->psense, &csio->sense_data.sense_buf[0], scsiIoCtx->senseDataSize);
-                memcpy(scsiIoCtx->psense, &csio->sense_data.error_code, sizeof(uint8_t));
-                memcpy(scsiIoCtx->psense + 1, &csio->sense_data.sense_buf[0], (scsiIoCtx->senseDataSize) - 1);
+                safe_memcpy(scsiIoCtx->psense, (scsiIoCtx->senseDataSize, &csio->sense_data.error_code, sizeof(uint8_t));
+                safe_memcpy(scsiIoCtx->psense + 1, (scsiIoCtx->senseDataSize - 1, &csio->sense_data.sense_buf[0], (scsiIoCtx->senseDataSize) - 1);
 #if defined (_DEBUG)  
                 printf("%s error code %d, sense [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
                    [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n", \
@@ -1347,7 +1336,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             {
                 continue;
             }
-            memset(name, 0, sizeof(name));//clear name before reusing it
+            safe_memset(name, sizeof(name), 0, sizeof(name));//clear name before reusing it
             snprintf(name, 80, "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
@@ -1361,7 +1350,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                     d->os_info.cam_dev = M_NULLPTR;
                 }*/
                 eVerbosityLevels temp = d->deviceVerbosity;
-                memset(d, 0, sizeof(tDevice));
+                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
                 d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;
@@ -1482,11 +1471,10 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
 #else //DISABLE_NVME_PASSTHROUGH
     eReturnValues ret = SUCCESS;
     int ioctlResult = 0;
-    seatimer_t commandTimer;
-    memset(&commandTimer, 0, sizeof(commandTimer));
+    DECLARE_SEATIMER(commandTimer);
     struct nvme_get_nsid gnsid;
     struct nvme_pt_command pt;
-    memset(&pt, 0, sizeof(pt));
+    safe_memset(&pt, sizeof(pt), 0, sizeof(pt));
 
     switch (nvmeIoCtx->commandType)
     {
@@ -1570,7 +1558,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx)
         //This is not portable, but according to the FreeBSD source tree, the change away from a bitfield struct was done to support big endian
         //FreeBSD, so this SHOULD be ok to keep like this.
         uint16_t temp = 0;
-        memcpy(&temp, &pt.cpl.status, sizeof(uint16_t));
+        safe_memcpy(&temp, sizeof(uint16_t), &pt.cpl.status, sizeof(uint16_t));
         nvmeIoCtx->commandCompletionData.dw3 = M_WordsTo4ByteValue(temp, pt.cpl.cid);
 #endif
         nvmeIoCtx->commandCompletionData.dw0Valid = true;
@@ -1596,9 +1584,8 @@ eReturnValues os_nvme_Reset(tDevice *device)
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     int handleToReset = device->os_info.fd;
-    seatimer_t commandTimer;
+    DECLARE_SEATIMER(commandTimer);
     int ioRes = 0;
-    memset(&commandTimer, 0, sizeof(commandTimer));
 
     start_Timer(&commandTimer);
     ioRes = ioctl(handleToReset, NVME_RESET_CONTROLLER);

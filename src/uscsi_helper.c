@@ -70,7 +70,7 @@ static int get_Partition_Count(const char* blockDeviceName)
     int result = 0;
     FILE* mount = fopen("/etc/mnttab", "r");//we only need to know about mounted partitions. Mounted partitions need to be known so that they can be unmounted when necessary. - TJE
     struct mnttab entry;
-    memset(&entry, 0, sizeof(struct mnttab));
+    safe_memset(&entry, sizeof(struct mnttab), 0, sizeof(struct mnttab));
     if (mount)
     {
         while (0 == getmntent(mount, &entry))
@@ -115,7 +115,7 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
         if (mount)
         {
             struct mnttab entry;
-            memset(&entry, 0, sizeof(struct mnttab));
+            safe_memset(&entry, sizeof(struct mnttab), 0, sizeof(struct mnttab));
             while (0 == getmntent(mount, &entry))
             {
                 if (strstr(entry.mnt_special, blockDeviceName))
@@ -252,7 +252,7 @@ static eReturnValues uscsi_Reset(int fd, int resetFlag)
     struct uscsi_cmd uscsi_io;
     eReturnValues ret = SUCCESS;
 
-    memset(&uscsi_io, 0, sizeof(uscsi_io));
+    safe_memset(&uscsi_io, sizeof(uscsi_io), 0, sizeof(uscsi_io));
 
     uscsi_io.uscsi_flags |= resetFlag;
     int ioctlResult = ioctl(fd, USCSICMD, &uscsi_io);
@@ -337,7 +337,7 @@ eReturnValues send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     struct uscsi_cmd uscsi_io;
     eReturnValues ret = SUCCESS;
 
-    memset(&uscsi_io, 0, sizeof(uscsi_io));
+    safe_memset(&uscsi_io, sizeof(uscsi_io), 0, sizeof(uscsi_io));
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("Sending command with send_IO\n");
@@ -397,8 +397,7 @@ eReturnValues send_uscsi_io(ScsiIoCtx *scsiIoCtx)
     scsiIoCtx->returnStatus.asc = 0;
     scsiIoCtx->returnStatus.ascq = 0;
 
-    seatimer_t commandTimer;
-    memset(&commandTimer, 0, sizeof(seatimer_t));
+    DECLARE_SEATIMER(commandTimer);
 
     //issue the io
     start_Timer(&commandTimer);
@@ -569,7 +568,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             {
                 continue;
             }
-            memset(name, 0, sizeof(name));//clear name before reusing it
+            safe_memset(name, sizeof(name), 0, sizeof(name));//clear name before reusing it
             snprintf(name, sizeof(name), "%s", devs[driveNumber]);
             fd = -1;
             //lets try to open the device.      
@@ -578,7 +577,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             {
                 close(fd);
                 eVerbosityLevels temp = d->deviceVerbosity;
-                memset(d, 0, sizeof(tDevice));
+                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
                 d->deviceVerbosity = temp;
                 d->sanity.size = ver.size;
                 d->sanity.version = ver.version;

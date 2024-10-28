@@ -106,7 +106,8 @@ extern "C"
         SENSE_DESCRIPTOR_ATA_STATUS_RETURN                  = 0x09,
         SENSE_DESCRIPTOR_ANOTHER_PROGRESS_INDICATION        = 0x0A,
         SENSE_DESCRIPTOR_USER_DATA_SEGMENT_REFERRAL         = 0x0B,
-        SENSE_DESCRIPTOR_FORWAREDED_SENSE_DATA              = 0x0C,
+        SENSE_DESCRIPTOR_FORWAREDED_SENSE_DATA              = 0x0C,//obsolete. Typo fixed in enum value below this one
+        SENSE_DESCRIPTOR_FORWARDED_SENSE_DATA               = 0x0C,
         SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE         = 0x0D,
         SENSE_DESCRIPTOR_DEVICE_DESIGNATION                 = 0x0E,
         SENSE_DESCRIPTOR_MICROCODE_ACTIVATION               = 0x0F,
@@ -282,10 +283,11 @@ extern "C"
 // \param verbose will print some more debug info.
 // \param returnStatus return status of the scsi
 // \param rtfrs will contain the ATA return tfrs, when requested.
+#define SCSI_IO_CTX_MAX_CDB_LEN 64
     typedef struct _ScsiIoCtx
     {
         tDevice          *device;
-        uint8_t         cdb[64]; //64 just so if we ever get there.
+        uint8_t         cdb[SCSI_IO_CTX_MAX_CDB_LEN]; //64 just so if we ever get there.
         uint8_t         cdbLength;
         eDataTransferDirection direction;
         uint8_t         *pdata;
