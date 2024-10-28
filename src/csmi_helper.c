@@ -2422,17 +2422,19 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     memset(&ioOut, 0, sizeof(csmiIOout));
     PCSMI_SAS_PHY_INFO_BUFFER temp = phyInfoBuffer;
     uint32_t phyInfoSize = sizeof(CSMI_SAS_PHY_INFO_BUFFER) + 484;//ARCSAS Workaround. Easier to handle by over-allocating as this does not break compatibility with other drivers. Unknown what extra space is needed for.
-    phyInfoBuffer = safe_malloc(phyInfoSize);//allocating out own internal version to a larger size
-    if (phyInfoBuffer == M_NULLPTR)
+    PCSMI_SAS_PHY_INFO_BUFFER temp = safe_malloc(phyInfoSize);//allocating out own internal version to a larger size
+    if (temp == M_NULLPTR)
     {
         return MEMORY_FAILURE;
     }
-    memset(phyInfoBuffer, 0, phyInfoSize);
+    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
+    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
+    safe_memset(temp, phyInfoSize, 0, phyInfoSize);
 
     //setup inputs
     ioIn.controllerNumber = controllerNumber;
     ioIn.deviceHandle = deviceHandle;
-    ioIn.ioctlBuffer = phyInfoBuffer;
+    ioIn.ioctlBuffer = temp;
     ioIn.ioctlBufferSize = phyInfoSize;
     ioIn.dataLength = phyInfoSize - sizeof(IOCTL_HEADER);
     ioIn.ioctlCode = CC_CSMI_SAS_GET_PHY_INFO;
@@ -2450,7 +2452,7 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     //validate result
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
-        safe_memcpy(temp, sizeof(CSMI_SAS_PHY_INFO_BUFFER), phyInfoBuffer, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
+        safe_memcpy(phyInfoBuffer, sizeof(CSMI_SAS_PHY_INFO_BUFFER), temp, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
         ret = csmi_Return_To_OpenSea_Result(phyInfoBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
         {
@@ -2466,7 +2468,7 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     {
         print_Return_Enum("CSMI Get Phy Info\n", ret);
     }
-    safe_Free(M_REINTERPRET_CAST(void**, &phyInfoBuffer));//temp holds the passed in phyInfoBuffer and that has already been updated when this succeeds
+    safe_Free(M_REINTERPRET_CAST(void**, &temp));//temp holds the passed in phyInfoBuffer and that has already been updated when this succeeds
 
     return ret;
 }
