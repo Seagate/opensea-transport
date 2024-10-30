@@ -2420,7 +2420,6 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNum
     csmiIOout ioOut;
     memset(&ioIn, 0, sizeof(csmiIOin));
     memset(&ioOut, 0, sizeof(csmiIOout));
-    PCSMI_SAS_PHY_INFO_BUFFER temp = phyInfoBuffer;
     uint32_t phyInfoSize = sizeof(CSMI_SAS_PHY_INFO_BUFFER) + 484;//ARCSAS Workaround. Easier to handle by over-allocating as this does not break compatibility with other drivers. Unknown what extra space is needed for.
     PCSMI_SAS_PHY_INFO_BUFFER temp = safe_malloc(phyInfoSize);//allocating out own internal version to a larger size
     if (temp == M_NULLPTR)
