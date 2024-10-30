@@ -55,7 +55,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
 Return the device name without the path.
 e.g. return c?t?d? from /dev/rdsk/c?t?d?
 */
-static void set_Device_Name(const char* filename, char * name, int sizeOfName)
+static void set_Device_Name(const char* filename, char * name, size_t sizeOfName)
 {
     char * s = strrchr(filename, '/') + 1;
     snprintf(name, sizeOfName, "%s", s);
@@ -478,18 +478,18 @@ eReturnValues close_Device(tDevice *device)
 //-----------------------------------------------------------------------------
 eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 {
-    int  num_devs = 0;
+    int  num_rdsk = 0;
 
     struct dirent **namelist;
-    num_devs = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
-    for (int iter = 0; iter < num_devs; ++iter)
+    num_rdsk = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
+    for (int iter = 0; iter < num_rdsk; ++iter)
     {
         safe_free_dirent(&namelist[iter]);
     }
     safe_free_dirent(namelist);
-    if (num_devs >= 0)
+    if (num_rdsk >= 0)
     {
-        *numberOfDevices = C_CAST(uint32_t, num_devs);
+        *numberOfDevices = C_CAST(uint32_t, num_rdsk);
     }
     M_USE_UNUSED(flags); 
     return SUCCESS;
@@ -563,7 +563,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) && (found < numberOfDevices)); ++driveNumber)
+        for (driveNumber = UINT32_C(0); ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) && (found < numberOfDevices)); ++driveNumber)
         {
             if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
             {
@@ -606,7 +606,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         {
             returnValue = FAILURE;
         }
-        else if(permissionDeniedCount == (num_devs))
+        else if(permissionDeniedCount == num_rdsk)
         {
             returnValue = PERMISSION_DENIED;
         }
