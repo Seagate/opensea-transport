@@ -14,27 +14,27 @@
 
 #pragma once
 
-#if defined (ENABLE_OFNVME)
+#if defined(ENABLE_OFNVME)
 
-#include "common_types.h"
-#include "common_public.h"
-#include "nvme_helper.h"
-#include <stdint.h>
-#include "of_nvmeIoctl.h"
+#    include "common_public.h"
+#    include "common_types.h"
+#    include "nvme_helper.h"
+#    include "of_nvmeIoctl.h"
+#    include <stdint.h>
 
-#if defined (__cplusplus)
+#    if defined(__cplusplus)
 extern "C"
 {
-#endif
+#    endif
 
+#    define WIN_OFNVME_DRIVE                                                                                           \
+        "\\\\.\\SCSI" // This is how the handle will actually be opened, not necessarily what should be displayed
 
-#define WIN_OFNVME_DRIVE  "\\\\.\\SCSI" //This is how the handle will actually be opened, not necessarily what should be displayed
+#    define WIN_OFNVME_DISPLAY "NVME" // display to user and read from user as NVME? where ? is a handle number
 
-#define WIN_OFNVME_DISPLAY "NVME" //display to user and read from user as NVME? where ? is a handle number
+    // If there are other structures or necessary definitions, add them here
 
-    //If there are other structures or necessary definitions, add them here
-
-#if defined (__cplusplus)
+#    if defined(__cplusplus)
 }
-#endif
-#endif//ENABLE_OFNVME
+#    endif
+#endif // ENABLE_OFNVME

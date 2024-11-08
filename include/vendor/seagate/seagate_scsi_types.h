@@ -33,7 +33,7 @@ extern "C"
     #define SEAGATE_INQ_COPYRIGHT_OFFSET UINT8_C(96)
     #define SEAGATE_INQ_COPYRIGHT_LENGTH UINT8_C(48)
 
-    typedef enum _eSeagateVPDPages
+    typedef enum eSeagateVPDPagesEnum
     {
         SEAGATE_VPD_FIRMWARE_NUMBERS    = 0xC0,
         SEAGATE_VPD_DATE_CODE           = 0xC1,
@@ -41,26 +41,26 @@ extern "C"
         SEAGATE_VPD_DEVICE_BEHAVIOR     = 0xC3,
     }eSeagateVPDPages;
 
-    typedef enum _eSeagateModePages
+    typedef enum eSeagateModePagesEnum
     {
         SEAGATE_MP_UNIT_ATTENTION_PARAMETERS    = 0x00,
     }eSeagateModePages;
 
     //Seagate unique protocol specific mode page sub pages
-    typedef enum _eSeagateProtocolMPSP
+    typedef enum eSeagateProtocolMPSPEnum
     {
         SEAGATE_MP_SP_SAS_TRANCEIVER_CONTROL_OUT    = 0xE5, //page 19h
         SEAGATE_MP_SP_SAS_TRANCEIVER_CONTROL_IN     = 0xE6, //page 19h
     }eSeagateProtocolMPSP;
 
-    typedef enum _eSeagateLogPages //not subpages. Unique subpages should be in a different enum, similar to protocol specific MP above
+    typedef enum eSeagateLogPagesEnum //not subpages. Unique subpages should be in a different enum, similar to protocol specific MP above
     {
         SEAGATE_LP_CACHE_STATISTICS = 0x37,
         SEAGATE_LP_FACTORY_LOG      = 0x3E,
         SEAGATE_LP_FARM             = 0x3D, //must use subpages.
     }eSeagateLogPages;
 
-    typedef enum _eSeagateFARMSP
+    typedef enum eSeagateFARMSPEnum
     {
         SEAGATE_FARM_SP_CURRENT = 0x03,
         SEAGATE_FARM_SP_FACTORY = 0x04,
@@ -72,13 +72,13 @@ extern "C"
 		SEAGATE_FARM_SP_STICKY_END = 0xC7,
     }eSeagateFARMSP;
 
-    typedef enum _eSeagateDiagnosticPages
+    typedef enum eSeagateDiagnosticPagesEnum
     {
         SEAGATE_DIAG_IN_DRIVE_DIAGNOSTICS = 0x98,
         SEAGATE_DIAG_POWER_MEASUREMENT    = 0x99,
     }eSeagateDiagnosticPages;
 
-    typedef enum _eSeagateErrorHistoryBuffers
+    typedef enum eSeagateErrorHistoryBuffersEnum
     {
         SEAGATE_ERR_HIST_POWER_TELEMETRY    = 0x54,
     }eSeagateErrorHistoryBuffers;

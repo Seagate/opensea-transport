@@ -9,26 +9,26 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // ******************************************************************************************
-// 
+//
 // \file of_nvme_helper_func.h
 // \brief Defines the function calls to help with open fabrics NVME implementation
 
 #pragma once
 
-#if defined (ENABLE_OFNVME)
+#if defined(ENABLE_OFNVME)
 
-#include "common_types.h"
-#include <stdint.h>
-#include "of_nvmeIoctl.h"
-#include "of_nvme_helper.h"
-#include "common_public.h"
-#include "nvme_helper.h"
-#include "scsi_helper.h"
+#    include "common_public.h"
+#    include "common_types.h"
+#    include "nvme_helper.h"
+#    include "of_nvmeIoctl.h"
+#    include "of_nvme_helper.h"
+#    include "scsi_helper.h"
+#    include <stdint.h>
 
-#if defined (__cplusplus)
+#    if defined(__cplusplus)
 extern "C"
 {
-#endif
+#    endif
 
     OPENSEA_TRANSPORT_API bool supports_OFNVME_IO(HANDLE deviceHandle);
 
@@ -45,15 +45,15 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx *nvmeIoCtx);
+    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx);
 
-    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(tDevice * device);
+    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(tDevice * device);
+    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(tDevice * device);
+    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(tDevice* device);
 
-#if defined (__cplusplus)
+#    if defined(__cplusplus)
 }
-#endif
-#endif//ENABLE_OFNVME
+#    endif
+#endif // ENABLE_OFNVME
