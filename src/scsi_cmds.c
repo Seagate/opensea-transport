@@ -487,7 +487,6 @@ static eSCSICmdSupport is_SCSI_Operation_Code_Supported_ReportOP(tDevice*       
                     else
                     {
                         // do not retry
-                        retrycount = MAX_OPCODE_RETRY + UINT8_C(1);
                         break;
                     }
                 }

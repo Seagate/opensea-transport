@@ -77,11 +77,12 @@ static M_INLINE void close_mnttab(FILE** mnttab)
 static int get_Partition_Count(const char* blockDeviceName)
 {
     int   result = 0;
-    FILE* mount  = fopen("/etc/mnttab", "r"); // we only need to know about mounted partitions. Mounted partitions need
+    FILE* mount  = M_NULLPTR;
+    errno_t fileopenerr = safe_fopen(&mount, "/etc/mnttab", "r"); // we only need to know about mounted partitions. Mounted partitions need
                                               // to be known so that they can be unmounted when necessary. - TJE
     struct mnttab entry;
     safe_memset(&entry, sizeof(struct mnttab), 0, sizeof(struct mnttab));
-    if (mount)
+    if (fileopenerr == 0 && mount)
     {
         while (0 == getmntent(mount, &entry))
         {
@@ -121,9 +122,10 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
     int           matchesFound = 0;
     if (listCount > 0)
     {
-        FILE* mount = fopen("/etc/mnttab", "r"); // we only need to know about mounted partitions. Mounted partitions
+        FILE* mount = M_NULLPTR;
+        errno_t fileopenerr = safe_fopen(&mount, "/etc/mnttab", "r"); // we only need to know about mounted partitions. Mounted partitions
                                                  // need to be known so that they can be unmounted when necessary. - TJE
-        if (mount)
+        if (fileopenerr == 0 && mount)
         {
             struct mnttab entry;
             safe_memset(&entry, sizeof(struct mnttab), 0, sizeof(struct mnttab));

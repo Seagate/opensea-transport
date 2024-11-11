@@ -2022,7 +2022,7 @@ static eReturnValues sntl_Translate_SCSI_Inquiry_Command(tDevice* device, ScsiIo
             // SBC3
             inquiryData[versionOffset]     = 0x04;
             inquiryData[versionOffset + 1] = 0xC0;
-            versionOffset += 2;
+            //versionOffset += 2;
             // TODO: should we say we conform to these newer specifications?
             ////SAM6 -
             // inquiryData[versionOffset] = 0x00;
@@ -2097,7 +2097,6 @@ static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(tDevice*   device
         {
             // invalid field in CDB
             ret                     = NOT_SUPPORTED;
-            bitPointer              = UINT8_C(7);
             uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
             uint8_t counter         = UINT8_C(0);
             while (reservedByteVal > 0 && counter < 8)
@@ -2596,7 +2595,6 @@ static eReturnValues sntl_Translate_Background_Scan_Results_Log_0x15(tDevice* de
         backgroundResults[offset + 13] = 0;
         backgroundResults[offset + 14] = 0; // number of background medium scans performed
         backgroundResults[offset + 15] = 0;
-        offset += 8;
     }
     if (scsiIoCtx->pdata)
     {
@@ -4599,6 +4597,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice* device, Sc
         sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST,
                                             0x20, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat,
                                             senseKeySpecificDescriptor, 1);
+        return ret;
     }
     if (pageFormat)
     {
@@ -5009,6 +5008,8 @@ static eReturnValues sntl_Translate_SCSI_Synchronize_Cache_Command(tDevice* devi
     case 0x35: // synchronize cache 10
         if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] != 0) || ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[6] != 0))
         {
+            sntl_Set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer,
+                                                                 fieldPointer);
             // can't support these bits (including immediate)
             sntl_Set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST,
                                                 0x24, 0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat,
@@ -7035,7 +7036,7 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
                                             senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (parameterListLength > 0 && parameterListLength < 8)
+    if (parameterListLength > UINT16_C(0) && parameterListLength < UINT16_C(8))
     {
         fieldPointer = UINT16_C(7);
         bitPointer   = UINT8_C(7);
@@ -7046,14 +7047,14 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
                                             0x1A, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat,
                                             senseKeySpecificDescriptor, 1);
     }
-    else if (parameterListLength != 0 && scsiIoCtx->pdata)
+    else if (parameterListLength != UINT16_C(0) && scsiIoCtx->pdata)
     {
         // process the contents of the parameter data and send some commands to the drive
         uint16_t unmapBlockDescriptorLength =
-            (M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]) / 16) *
-            16; // this can be set to zero, which is NOT an error. Also, I'm making sure this is a multiple of 16 to
+            (M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]) / UINT16_C(16)) *
+            UINT16_C(16); // this can be set to zero, which is NOT an error. Also, I'm making sure this is a multiple of 16 to
                 // avoid partial block descriptors-TJE
-        if (unmapBlockDescriptorLength > 0)
+        if (unmapBlockDescriptorLength > UINT16_C(0))
         {
             uint8_t* dsmBuffer = C_CAST(
                 uint8_t*, safe_calloc_aligned(
@@ -7065,9 +7066,9 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
                 C_CAST(uint16_t, M_Min(unmapBlockDescriptorLength + 8, parameterListLength));
             uint16_t unmapBlockDescriptorIter = UINT16_C(8);
             uint64_t numberOfLBAsToDeallocate =
-                0; // this will be checked later to make sure it isn't greater than what we reported on the VPD pages
+                UINT64_C(0); // this will be checked later to make sure it isn't greater than what we reported on the VPD pages
             uint16_t numberOfBlockDescriptors =
-                0; // this will be checked later to make sure it isn't greater than what we reported on the VPD pages
+                UINT16_C(0); // this will be checked later to make sure it isn't greater than what we reported on the VPD pages
             uint16_t nvmeDSMOffset  = UINT16_C(0);
             uint8_t  numberOfRanges = UINT8_C(0);
             if (!dsmBuffer)
@@ -7084,9 +7085,9 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
             }
             // start building the buffer to transfer with data set management
             for (; unmapBlockDescriptorIter < minBlockDescriptorLength;
-                 unmapBlockDescriptorIter += 16, numberOfBlockDescriptors++)
+                 unmapBlockDescriptorIter += UINT16_C(16), numberOfBlockDescriptors++)
             {
-                bool     exitLoop                 = false;
+                bool     exitLoop                 = false;//to exit for from while loop below
                 uint64_t unmapLogicalBlockAddress = M_BytesTo8ByteValue(
                     scsiIoCtx->pdata[unmapBlockDescriptorIter + 0], scsiIoCtx->pdata[unmapBlockDescriptorIter + 1],
                     scsiIoCtx->pdata[unmapBlockDescriptorIter + 2], scsiIoCtx->pdata[unmapBlockDescriptorIter + 3],
@@ -7114,7 +7115,6 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
                     sntl_Set_Sense_Data_For_Translation(
                         scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0,
                         device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-                    exitLoop = true;
                     break;
                 }
                 else if (unmapLogicalBlockAddress + unmapNumberOfLogicalBlocks > device->drive_info.deviceMaxLba)
@@ -7127,7 +7127,6 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
                     sntl_Set_Sense_Data_For_Translation(
                         scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0,
                         device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
-                    exitLoop = true;
                     break;
                 }
                 // check that we haven't had too many block descriptors yet
@@ -7139,7 +7138,6 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
                     sntl_Set_Sense_Data_For_Translation(
                         scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0,
                         device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
-                    exitLoop = true;
                     break;
                 }
                 // check that we haven't been asked to TRIM more LBAs than we care to support in this code
@@ -7152,7 +7150,6 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
                     sntl_Set_Sense_Data_For_Translation(
                         scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x26, 0,
                         device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
-                    exitLoop = true;
                     break;
                 }
                 // now that we've done all of our checks so far, start setting up the buffer

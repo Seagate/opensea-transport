@@ -509,8 +509,9 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
             off_t versionFileSize = driverversionstat.st_size;
             if (versionFileSize > 0)
             {
-                FILE* versionFile = fopen(driverVersionFilePath, "r");
-                if (versionFile)
+                FILE* versionFile = M_NULLPTR;
+                errno_t fileopenerr = safe_fopen(&versionFile, driverVersionFilePath, "r");
+                if (fileopenerr == 0 && versionFile)
                 {
                     char* versionFileData =
                         M_REINTERPRET_CAST(char*, safe_calloc(C_CAST(size_t, versionFileSize) + 1, sizeof(char)));
@@ -597,7 +598,7 @@ static bool read_sysfs_file_uint8(FILE* sysfsfile, uint8_t* value)
     {
         char*  line    = M_NULLPTR;
         size_t linelen = SIZE_T_C(0);
-        if (getline(&line, &linelen, sysfsfile) != -1)
+        if (getline(&line, &linelen, sysfsfile) != SSIZE_T_C(-1))
         {
             success = get_And_Validate_Integer_Input_Uint8(line, M_NULLPTR, ALLOW_UNIT_NONE, value);
             safe_free(&line);
@@ -613,7 +614,7 @@ static bool read_sysfs_file_uint16(FILE* sysfsfile, uint16_t* value)
     {
         char*  line    = M_NULLPTR;
         size_t linelen = SIZE_T_C(0);
-        if (getline(&line, &linelen, sysfsfile) != -1)
+        if (getline(&line, &linelen, sysfsfile) != SSIZE_T_C(-1))
         {
             success = get_And_Validate_Integer_Input_Uint16(line, M_NULLPTR, ALLOW_UNIT_NONE, value);
             safe_free(&line);
@@ -629,7 +630,7 @@ static bool read_sysfs_file_uint32(FILE* sysfsfile, uint32_t* value)
     {
         char*  line    = M_NULLPTR;
         size_t linelen = SIZE_T_C(0);
-        if (getline(&line, &linelen, sysfsfile) != -1)
+        if (getline(&line, &linelen, sysfsfile) != SSIZE_T_C(-1))
         {
             success = get_And_Validate_Integer_Input_Uint32(line, M_NULLPTR, ALLOW_UNIT_NONE, value);
             safe_free(&line);
@@ -664,16 +665,17 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
         {
             snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
             // printf("shortened Path = %s\n", dirname(pciPath));
-            FILE* temp = fopen(pciPath, "r");
-            if (temp != M_NULLPTR)
+            FILE* temp = M_NULLPTR;
+            errno_t fileopenerr = safe_fopen(&temp, pciPath, "r");
+            if (fileopenerr == 0 && temp != M_NULLPTR)
             {
                 sysFsInfo->adapter_info.vendorIDValid = read_sysfs_file_uint32(temp, &sysFsInfo->adapter_info.vendorID);
                 close_sysfs_file(&temp);
             }
             pciPath = dirname(pciPath); // remove vendor from the end
             common_String_Concat(pciPath, PATH_MAX, "/device");
-            temp = fopen(pciPath, "r");
-            if (temp != M_NULLPTR)
+            fileopenerr = safe_fopen(&temp, pciPath, "r");
+            if (fileopenerr == 0 && temp != M_NULLPTR)
             {
                 sysFsInfo->adapter_info.productIDValid =
                     read_sysfs_file_uint32(temp, &sysFsInfo->adapter_info.productID);
@@ -682,8 +684,8 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             // Store revision data. This seems to be in the bcdDevice file.
             pciPath = dirname(pciPath); // remove device from the end
             common_String_Concat(pciPath, PATH_MAX, "/revision");
-            temp = fopen(pciPath, "r");
-            if (temp != M_NULLPTR)
+            fileopenerr = safe_fopen(&temp, pciPath, "r");
+            if (fileopenerr == 0 && temp != M_NULLPTR)
             {
                 sysFsInfo->adapter_info.revisionValid = read_sysfs_file_uint32(temp, &sysFsInfo->adapter_info.revision);
                 close_sysfs_file(&temp);
@@ -693,7 +695,7 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             common_String_Concat(pciPath, PATH_MAX, "/driver");
             char*   driverPath = M_REINTERPRET_CAST(char*, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             ssize_t len        = readlink(pciPath, driverPath, OPENSEA_PATH_MAX);
-            if (len != -1)
+            if (len != SSIZE_T_C(-1))
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
@@ -767,8 +769,9 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             // now that the path is correct, we need to read the files idVendor and idProduct
             common_String_Concat(usbPath, PATH_MAX, "/idVendor");
             // printf("idVendor USB Path = %s\n", usbPath);
-            FILE* temp = fopen(usbPath, "r");
-            if (temp != M_NULLPTR)
+            FILE* temp = M_NULLPTR;
+            errno_t fileopenerr = safe_fopen(&temp, usbPath, "r");
+            if (fileopenerr == 0 && temp != M_NULLPTR)
             {
                 sysFsInfo->adapter_info.vendorIDValid = get_usb_file_id_hex(temp, &sysFsInfo->adapter_info.vendorID);
                 close_sysfs_file(&temp);
@@ -777,8 +780,8 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             // printf("full USB Path = %s\n", usbPath);
             common_String_Concat(usbPath, PATH_MAX, "/idProduct");
             // printf("idProduct USB Path = %s\n", usbPath);
-            temp = fopen(usbPath, "r");
-            if (temp != M_NULLPTR)
+            fileopenerr = safe_fopen(&temp, usbPath, "r");
+            if (fileopenerr == 0 && temp != M_NULLPTR)
             {
                 sysFsInfo->adapter_info.productIDValid = get_usb_file_id_hex(temp, &sysFsInfo->adapter_info.productID);
                 close_sysfs_file(&temp);
@@ -786,8 +789,8 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             // Store revision data. This seems to be in the bcdDevice file.
             usbPath = dirname(usbPath); // remove idProduct from the end
             common_String_Concat(usbPath, PATH_MAX, "/bcdDevice");
-            temp = fopen(usbPath, "r");
-            if (temp != M_NULLPTR)
+            fileopenerr = safe_fopen(&temp, usbPath, "r");
+            if (fileopenerr == 0 && temp != M_NULLPTR)
             {
                 sysFsInfo->adapter_info.revisionValid = get_usb_file_id_hex(temp, &sysFsInfo->adapter_info.revision);
                 close_sysfs_file(&temp);
@@ -797,7 +800,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             common_String_Concat(usbPath, PATH_MAX, "/driver");
             char*   driverPath = M_REINTERPRET_CAST(char*, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             ssize_t len        = readlink(usbPath, driverPath, OPENSEA_PATH_MAX);
-            if (len != -1)
+            if (len != SSIZE_T_C(-1))
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
@@ -844,8 +847,9 @@ static bool get_ieee1394_ids(FILE*     idFile,
                         break;
                     }
                     errno = 0; // Always set to zero before strtoul according to ISO secure C coding
+                    temp      = 0UL; // reset before calling strtoul to allow checking for errors
                     temp  = strtoul(stroffset, &endptr, 16);
-                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && endptr == stroffset))
+                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0UL && endptr == stroffset))
                     {
                         success = false;
                         parsing = false;
@@ -856,7 +860,6 @@ static bool get_ieee1394_ids(FILE*     idFile,
                         {
                             *vendorID = M_STATIC_CAST(uint32_t, temp);
                             stroffset = endptr + 2;
-                            temp      = 0UL; // reset
                         }
                         else
                         {
@@ -870,7 +873,6 @@ static bool get_ieee1394_ids(FILE*     idFile,
                         {
                             *productID = M_STATIC_CAST(uint32_t, temp);
                             stroffset  = endptr + 2;
-                            temp       = 0UL; // reset
                         }
                         else
                         {
@@ -884,7 +886,6 @@ static bool get_ieee1394_ids(FILE*     idFile,
                         {
                             *specifierID = M_STATIC_CAST(uint32_t, temp);
                             stroffset    = endptr + 3;
-                            temp         = 0UL; // reset
                         }
                         else
                         {
@@ -944,8 +945,9 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             snprintf(fwPath, PATH_MAX, "%.*s/modalias", C_CAST(int, newStrLen), fullFWPath);
             // printf("full FW Path = %s\n", dirname(fwPath));
             // printf("modalias FW Path = %s\n", fwPath);
-            FILE* temp = fopen(fwPath, "r");
-            if (temp != M_NULLPTR)
+            FILE* temp = M_NULLPTR;
+            errno_t fileopenerr = safe_fopen(&temp, fwPath, "r");
+            if (fileopenerr == 0 && temp != M_NULLPTR)
             {
                 // This file contains everything in one place. Otherwise we would need to parse multiple files at
                 // slightly different paths to get everything - TJE
@@ -969,7 +971,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             common_String_Concat(fwPath, PATH_MAX, "/driver");
             char*   driverPath = M_REINTERPRET_CAST(char*, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             ssize_t len        = readlink(fwPath, driverPath, OPENSEA_PATH_MAX);
-            if (len != -1)
+            if (len != SSIZE_T_C(-1))
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
@@ -1016,16 +1018,17 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
         {
             snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
             // printf("Shortened PCI Path: %s\n", dirname(pciPath));
-            FILE* temp = fopen(pciPath, "r");
-            if (temp != M_NULLPTR)
+            FILE* temp = M_NULLPTR;
+            errno_t fileopenerr = safe_fopen(&temp, pciPath, "r");
+            if (fileopenerr == 0 && temp != M_NULLPTR)
             {
                 sysFsInfo->adapter_info.vendorIDValid = read_sysfs_file_uint32(temp, &sysFsInfo->adapter_info.vendorID);
                 close_sysfs_file(&temp);
             }
             pciPath = dirname(pciPath); // remove vendor from the end
             common_String_Concat(pciPath, PATH_MAX, "/device");
-            temp = fopen(pciPath, "r");
-            if (temp != M_NULLPTR)
+            fileopenerr = safe_fopen(&temp, pciPath, "r");
+            if (fileopenerr == 0 && temp != M_NULLPTR)
             {
                 sysFsInfo->adapter_info.productIDValid =
                     read_sysfs_file_uint32(temp, &sysFsInfo->adapter_info.productID);
@@ -1034,8 +1037,8 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             // Store revision data. This seems to be in the bcdDevice file.
             pciPath = dirname(pciPath); // remove device from the end
             common_String_Concat(pciPath, PATH_MAX, "/revision");
-            temp = fopen(pciPath, "r");
-            if (temp != M_NULLPTR)
+            fileopenerr = safe_fopen(&temp, pciPath, "r");
+            if (fileopenerr == 0 && temp != M_NULLPTR)
             {
                 sysFsInfo->adapter_info.revisionValid = read_sysfs_file_uint32(temp, &sysFsInfo->adapter_info.revision);
                 close_sysfs_file(&temp);
@@ -1044,7 +1047,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             pciPath = dirname(pciPath);
             common_String_Concat(pciPath, PATH_MAX, "/driver");
             char* driverPath = M_REINTERPRET_CAST(char*, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
-            if (-1 != readlink(pciPath, driverPath, OPENSEA_PATH_MAX))
+            if (SSIZE_T_C(-1) != readlink(pciPath, driverPath, OPENSEA_PATH_MAX))
             {
                 get_Driver_Version_Info_From_Path(driverPath, sysFsInfo);
             }
@@ -1109,8 +1112,9 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
     char* fullPath = &fullPathBuffer[0];
     snprintf(fullPath, PATH_MAX, "%s", sysFsInfo->fullDevicePath);
     common_String_Concat(fullPath, PATH_MAX, "/device/type");
-    FILE* temp = fopen(fullPath, "r");
-    if (temp != M_NULLPTR)
+    FILE* temp = M_NULLPTR;
+    errno_t fileopenerr = safe_fopen(&temp, fullPath, "r");
+    if (fileopenerr == 0 && temp != M_NULLPTR)
     {
         uint8_t scsiDeviceType = UINT8_C(0);
         sysFsInfo->scsiDevType = PERIPHERAL_UNKNOWN_OR_NO_DEVICE_TYPE;
@@ -1126,11 +1130,11 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
         // this file is stored
         fullPath = dirname(fullPath);
         common_String_Concat(fullPath, PATH_MAX, "/inquiry");
-        temp = fopen(fullPath, "rb");
-        if (temp != M_NULLPTR)
+        fileopenerr = safe_fopen(&temp, fullPath, "rb");
+        if (fileopenerr == 0 && temp != M_NULLPTR)
         {
             uint8_t peripheralType = UINT8_C(0);
-            if (1 == fread(&peripheralType, sizeof(uint8_t), 1, temp))
+            if (SIZE_T_C(1) == fread(&peripheralType, sizeof(uint8_t), SIZE_T_C(1), temp))
             {
                 sysFsInfo->scsiDevType = M_GETBITRANGE(peripheralType, 4, 0);
             }
@@ -1139,8 +1143,8 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
     }
     fullPath = dirname(fullPath);
     common_String_Concat(fullPath, PATH_MAX, "/queue_depth");
-    temp = fopen(fullPath, "r");
-    if (temp != M_NULLPTR)
+    fileopenerr = safe_fopen(&temp, fullPath, "r");
+    if (fileopenerr == 0 && temp != M_NULLPTR)
     {
         if (!read_sysfs_file_uint16(temp, &sysFsInfo->queueDepth))
         {
@@ -1728,6 +1732,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
             if (ioctlResult < 0)
             {
                 perror("nvme_ioctl_id");
+                safe_free(&deviceHandle);
                 return FAILURE;
             }
             device->drive_info.namespaceID = C_CAST(uint32_t, ioctlResult);

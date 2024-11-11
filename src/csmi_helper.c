@@ -533,7 +533,7 @@ eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE                  deviceHandle,
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(driverInfoBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
@@ -667,7 +667,7 @@ eReturnValues csmi_Get_Controller_Configuration(CSMI_HANDLE                   de
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(ctrlConfigBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
@@ -769,7 +769,7 @@ eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE                   deviceHan
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(ctrlStatusBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
@@ -834,7 +834,7 @@ eReturnValues csmi_Controller_Firmware_Download(CSMI_HANDLE                     
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(firmwareBuffer->IoctlHeader.ReturnCode);
     }
@@ -936,7 +936,7 @@ eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE                deviceHandle,
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(raidInfoBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
@@ -1453,7 +1453,7 @@ eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE                  deviceHandle,
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(raidConfigBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
@@ -1700,9 +1700,9 @@ eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE                    deviceHandle
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    memset(&ioIn, 0, sizeof(csmiIOin));
-    memset(&ioOut, 0, sizeof(csmiIOout));
-    memset(raidFeaturesBuffer, 0, sizeof(CSMI_SAS_RAID_FEATURES_BUFFER));
+    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
+    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
+    safe_memset(raidFeaturesBuffer, sizeof(CSMI_SAS_RAID_FEATURES_BUFFER), 0, sizeof(CSMI_SAS_RAID_FEATURES_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -1713,7 +1713,7 @@ eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE                    deviceHandle
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_RAID_FEATURES;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
-    memcpy(ioIn.ioctlSignature, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
+    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
     ioIn.csmiVerbosity = verbosity;
 
     if (VERBOSITY_COMMAND_NAMES <= verbosity)
@@ -1723,7 +1723,7 @@ eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE                    deviceHandle
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(raidFeaturesBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
@@ -2507,7 +2507,7 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               deviceHandle,
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         safe_memcpy(phyInfoBuffer, sizeof(CSMI_SAS_PHY_INFO_BUFFER), temp, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
         ret = csmi_Return_To_OpenSea_Result(phyInfoBuffer->IoctlHeader.ReturnCode);
@@ -2563,7 +2563,7 @@ eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE                   deviceHandle,
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(phyInfoBuffer->IoctlHeader.ReturnCode);
     }
@@ -2620,7 +2620,7 @@ eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE                  deviceHandle,
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(linkErrorsBuffer->IoctlHeader.ReturnCode);
     }
@@ -2758,7 +2758,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE      deviceHandle,
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(sspPassthrough->IoctlHeader.ReturnCode);
         // if (sspPassthrough->IoctlHeader.ReturnCode == CSMI_SAS_STATUS_SUCCESS)
@@ -2925,7 +2925,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE      deviceHandle,
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(stpPassthrough->IoctlHeader.ReturnCode);
         if (stpPassthrough->IoctlHeader.ReturnCode == CSMI_SAS_SCSI_EMULATION)
@@ -3020,7 +3020,7 @@ eReturnValues csmi_Get_SATA_Signature(CSMI_HANDLE                     deviceHand
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(sataSignatureBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
@@ -3100,7 +3100,7 @@ eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE                       deviceHand
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(scsiAddressBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
@@ -3183,7 +3183,7 @@ eReturnValues csmi_Get_Device_Address(CSMI_HANDLE                         device
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
-    if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
+    if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(deviceAddressBuffer->IoctlHeader.ReturnCode);
         if (VERBOSITY_COMMAND_VERBOSE <= verbosity)

@@ -2816,7 +2816,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                             .driverVersionString,
                                                                                         MAX_DRIVER_VER_STR, "%ls",
                                                                                         property);
-#if defined(__STDC_SECURE_LIB__)
+#if defined(HAVE_MSFT_SECURE_LIB)
                                                                                     int scanfRet = swscanf_s(
                                                                                         property, L"%u.%u.%u.%u",
                                                                                         &device->drive_info.driver_info
@@ -3012,7 +3012,7 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
                                                         uint32_t         firmwareFunction,
                                                         uint32_t         firmwareFlags,
                                                         uint32_t*        returnCode,
-                                                        unsigned int*    lastError,
+                                                        DWORD*           lastError,
                                                         uint64_t*        timeNanoseconds)
 {
     eReturnValues           ret             = OS_PASSTHROUGH_FAILURE;
