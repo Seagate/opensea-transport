@@ -12169,7 +12169,7 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
     }
     stop_Timer(&commandTimer);
 #    if defined(_DEBUG)
-    printf("%s: nvmeIoCtx->device->os_info.last_error=%d(0x%x)\n", __FUNCTION__, nvmeIoCtx->device->os_info.last_error,
+    printf("%s: nvmeIoCtx->device->os_info.last_error=%lu(0x%lx)\n", __FUNCTION__, nvmeIoCtx->device->os_info.last_error,
            nvmeIoCtx->device->os_info.last_error);
 #    endif
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -12307,7 +12307,7 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
     }
     stop_Timer(&commandTimer);
 #    if defined(_DEBUG)
-    printf("%s: nvmeIoCtx->device->os_info.last_error=%d(0x%x)\n", __FUNCTION__, nvmeIoCtx->device->os_info.last_error,
+    printf("%s: nvmeIoCtx->device->os_info.last_error=%lu(0x%lx)\n", __FUNCTION__, nvmeIoCtx->device->os_info.last_error,
            nvmeIoCtx->device->os_info.last_error);
 #    endif
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
