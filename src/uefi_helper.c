@@ -193,7 +193,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t* controllerID, 
             uint8_t       count   = UINT8_C(0);
             rsize_t       duplen  = safe_strlen(dup);
             char*         saveptr = M_NULLPTR;
-            char*         token   = common_String_Token(dup, &duplen, ":", &saveptr);
+            char*         token   = safe_String_Token(dup, &duplen, ":", &saveptr);
             char*         endptr  = M_NULLPTR;
             unsigned long temp    = 0UL;
             success = true; // set to true so we can exit the loop quickly if an error is detected during parsing
@@ -248,7 +248,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t* controllerID, 
                     break;
                 }
                 ++count;
-                token = common_String_Token(M_NULLPTR, &duplen ":", &saveptr);
+                token = safe_String_Token(M_NULLPTR, &duplen ":", &saveptr);
             }
         }
         safe_free(&dup);
@@ -270,7 +270,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t* controllerID,
             uint8_t       count   = UINT8_C(0);
             char*         saveptr = M_NULLPTR;
             rsize_t       duplen  = safe_strlen(dup);
-            char*         token   = common_String_Token(dup, &duplen, ":", &saveptr);
+            char*         token   = safe_String_Token(dup, &duplen, ":", &saveptr);
             char*         endptr  = M_NULLPTR;
             unsigned long temp    = 0UL;
             success = true; // set to true so we can exit the loop quickly if an error is detected during parsing
@@ -312,7 +312,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t* controllerID,
                     break;
                 }
                 ++count;
-                token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
+                token = safe_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
         safe_free(&dup);
@@ -334,7 +334,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t* controllerID,
             uint8_t            count   = UINT8_C(0);
             char*              saveptr = M_NULLPTR;
             rsize_t            duplen  = safe_strlen(dup);
-            char*              token   = common_String_Token(dup, &duplen, ":", &saveptr);
+            char*              token   = safe_String_Token(dup, &duplen, ":", &saveptr);
             char*              endptr  = M_NULLPTR;
             unsigned long      temp    = 0UL;
             unsigned long long btemp   = 0ULL;
@@ -391,7 +391,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t* controllerID,
                     break;
                 }
                 ++count;
-                token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
+                token = safe_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
         safe_free(&dup);
@@ -415,7 +415,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
             uint8_t            count   = UINT8_C(0);
             char*              saveptr = M_NULLPTR;
             rsize_t            duplen  = safe_strlen(dup);
-            char*              token   = common_String_Token(dup, &duplen, ":", &saveptr);
+            char*              token   = safe_String_Token(dup, &duplen, ":", &saveptr);
             char*              endptr  = M_NULLPTR;
             unsigned long      temp    = 0UL;
             unsigned long long btemp   = 0ULL;
@@ -562,7 +562,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
                     break;
                 }
                 ++count;
-                token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
+                token = safe_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
         safe_free(&dup);

@@ -18,6 +18,7 @@
 #include "math_utils.h"
 #include "memory_safety.h"
 #include "precision_timer.h"
+#include "sort_and_search.h"
 #include "string_utils.h"
 #include "time_utils.h"
 #include "type_conversion.h"
@@ -1081,7 +1082,7 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice* device,
         break;
     default:
         asc_ascq_result = C_CAST(ascAscqRetDesc*,
-                                 bsearch(&asc_ascq_key, ascAscqLookUp, sizeof(ascAscqLookUp) / sizeof(ascAscqLookUp[0]),
+                                 safe_bsearch(&asc_ascq_key, ascAscqLookUp, sizeof(ascAscqLookUp) / sizeof(ascAscqLookUp[0]),
                                          sizeof(ascAscqLookUp[0]), (int (*)(const void*, const void*))cmp_Asc_Ascq));
         if (asc_ascq_result)
         {
@@ -4808,7 +4809,7 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
     scsiVersionDescriptor  versionDescriptorKey    = {versionDescriptor, M_NULLPTR};
 
     versionDescriptorResult = C_CAST(scsiVersionDescriptor*,
-                                     bsearch(&versionDescriptorKey, scsiVersionDescriptorTable,
+                                     safe_bsearch(&versionDescriptorKey, scsiVersionDescriptorTable,
                                              sizeof(scsiVersionDescriptorTable) / sizeof(scsiVersionDescriptorTable[0]),
                                              sizeof(scsiVersionDescriptorTable[0]),
                                              (int (*)(const void*, const void*))cmp_Version_Descriptor));

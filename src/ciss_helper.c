@@ -263,7 +263,7 @@ static uint8_t parse_CISS_Handle(const char* devName, char* osHandle, uint16_t* 
             uint8_t counter = UINT8_C(0);
             char*   saveptr = M_NULLPTR;
             rsize_t duplen  = safe_strlen(dup);
-            char*   token   = common_String_Token(dup, &duplen, ":", &saveptr);
+            char*   token   = safe_String_Token(dup, &duplen, ":", &saveptr);
             while (token && counter < 3)
             {
                 switch (counter)
@@ -294,7 +294,7 @@ static uint8_t parse_CISS_Handle(const char* devName, char* osHandle, uint16_t* 
                     break;
                 }
                 ++counter;
-                token = common_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
+                token = safe_String_Token(M_NULLPTR, &duplen, ":", &saveptr);
             }
         }
         safe_free(&dup);

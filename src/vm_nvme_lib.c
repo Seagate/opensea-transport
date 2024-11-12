@@ -17,6 +17,7 @@
 #include "math_utils.h"
 #include "memory_safety.h"
 #include "precision_timer.h"
+#include "sort_and_search.h"
 #include "string_utils.h"
 #include "type_conversion.h"
 
@@ -659,7 +660,7 @@ static int comp_vmk_err(const void* a, const void* b)
 const char* get_VMK_API_Error(VMK_ReturnStatus status)
 {
     VMKErrorCode  key = {.code = status};
-    VMKErrorCode* err = bsearch(&key, vmkerrorTable, sizeof(vmkerrorTable) / sizeof(vmkerrorTable[0]),
+    VMKErrorCode* err = safe_bsearch(&key, vmkerrorTable, sizeof(vmkerrorTable) / sizeof(vmkerrorTable[0]),
                                 sizeof(VMKErrorCode), comp_vmk_err);
     if (err)
     {

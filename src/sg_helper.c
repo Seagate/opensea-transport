@@ -673,7 +673,7 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
                 close_sysfs_file(&temp);
             }
             pciPath = dirname(pciPath); // remove vendor from the end
-            common_String_Concat(pciPath, PATH_MAX, "/device");
+            safe_strcat(pciPath, PATH_MAX, "/device");
             fileopenerr = safe_fopen(&temp, pciPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
             {
@@ -683,7 +683,7 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             }
             // Store revision data. This seems to be in the bcdDevice file.
             pciPath = dirname(pciPath); // remove device from the end
-            common_String_Concat(pciPath, PATH_MAX, "/revision");
+            safe_strcat(pciPath, PATH_MAX, "/revision");
             fileopenerr = safe_fopen(&temp, pciPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
             {
@@ -692,7 +692,7 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             }
             // Get Driver Information.
             pciPath = dirname(pciPath); // remove driver from the end
-            common_String_Concat(pciPath, PATH_MAX, "/driver");
+            safe_strcat(pciPath, PATH_MAX, "/driver");
             char*   driverPath = M_REINTERPRET_CAST(char*, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             ssize_t len        = readlink(pciPath, driverPath, OPENSEA_PATH_MAX);
             if (len != SSIZE_T_C(-1))
@@ -767,7 +767,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             usbPath = dirname(usbPath);
             // printf("full USB Path = %s\n", usbPath);
             // now that the path is correct, we need to read the files idVendor and idProduct
-            common_String_Concat(usbPath, PATH_MAX, "/idVendor");
+            safe_strcat(usbPath, PATH_MAX, "/idVendor");
             // printf("idVendor USB Path = %s\n", usbPath);
             FILE* temp = M_NULLPTR;
             errno_t fileopenerr = safe_fopen(&temp, usbPath, "r");
@@ -778,7 +778,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             }
             usbPath = dirname(usbPath); // remove idVendor from the end
             // printf("full USB Path = %s\n", usbPath);
-            common_String_Concat(usbPath, PATH_MAX, "/idProduct");
+            safe_strcat(usbPath, PATH_MAX, "/idProduct");
             // printf("idProduct USB Path = %s\n", usbPath);
             fileopenerr = safe_fopen(&temp, usbPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
@@ -788,7 +788,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             }
             // Store revision data. This seems to be in the bcdDevice file.
             usbPath = dirname(usbPath); // remove idProduct from the end
-            common_String_Concat(usbPath, PATH_MAX, "/bcdDevice");
+            safe_strcat(usbPath, PATH_MAX, "/bcdDevice");
             fileopenerr = safe_fopen(&temp, usbPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
             {
@@ -797,7 +797,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             }
             // Get Driver Information.
             usbPath = dirname(usbPath); // remove idProduct from the end
-            common_String_Concat(usbPath, PATH_MAX, "/driver");
+            safe_strcat(usbPath, PATH_MAX, "/driver");
             char*   driverPath = M_REINTERPRET_CAST(char*, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             ssize_t len        = readlink(usbPath, driverPath, OPENSEA_PATH_MAX);
             if (len != SSIZE_T_C(-1))
@@ -968,7 +968,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             sysFsInfo->adapter_info.infoType = ADAPTER_INFO_IEEE1394;
             // Get Driver Information.
             fwPath = dirname(fwPath); // remove idProduct from the end
-            common_String_Concat(fwPath, PATH_MAX, "/driver");
+            safe_strcat(fwPath, PATH_MAX, "/driver");
             char*   driverPath = M_REINTERPRET_CAST(char*, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             ssize_t len        = readlink(fwPath, driverPath, OPENSEA_PATH_MAX);
             if (len != SSIZE_T_C(-1))
@@ -1026,7 +1026,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
                 close_sysfs_file(&temp);
             }
             pciPath = dirname(pciPath); // remove vendor from the end
-            common_String_Concat(pciPath, PATH_MAX, "/device");
+            safe_strcat(pciPath, PATH_MAX, "/device");
             fileopenerr = safe_fopen(&temp, pciPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
             {
@@ -1036,7 +1036,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             }
             // Store revision data. This seems to be in the bcdDevice file.
             pciPath = dirname(pciPath); // remove device from the end
-            common_String_Concat(pciPath, PATH_MAX, "/revision");
+            safe_strcat(pciPath, PATH_MAX, "/revision");
             fileopenerr = safe_fopen(&temp, pciPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
             {
@@ -1045,7 +1045,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             }
             // Store Driver Information
             pciPath = dirname(pciPath);
-            common_String_Concat(pciPath, PATH_MAX, "/driver");
+            safe_strcat(pciPath, PATH_MAX, "/driver");
             char* driverPath = M_REINTERPRET_CAST(char*, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
             if (SSIZE_T_C(-1) != readlink(pciPath, driverPath, OPENSEA_PATH_MAX))
             {
@@ -1070,7 +1070,7 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
     {
         char*   saveptr = M_NULLPTR;
         rsize_t addrlen = safe_strlen(scsiAddress);
-        char*   token   = common_String_Token(scsiAddress, &addrlen, ":", &saveptr);
+        char*   token   = safe_String_Token(scsiAddress, &addrlen, ":", &saveptr);
         uint8_t counter = UINT8_C(0);
         while (token)
         {
@@ -1092,7 +1092,7 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
             default:
                 break;
             }
-            token = common_String_Token(M_NULLPTR, &addrlen, ":", &saveptr);
+            token = safe_String_Token(M_NULLPTR, &addrlen, ":", &saveptr);
             ++counter;
         }
     }
@@ -1111,7 +1111,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
     DECLARE_ZERO_INIT_ARRAY(char, fullPathBuffer, PATH_MAX);
     char* fullPath = &fullPathBuffer[0];
     snprintf(fullPath, PATH_MAX, "%s", sysFsInfo->fullDevicePath);
-    common_String_Concat(fullPath, PATH_MAX, "/device/type");
+    safe_strcat(fullPath, PATH_MAX, "/device/type");
     FILE* temp = M_NULLPTR;
     errno_t fileopenerr = safe_fopen(&temp, fullPath, "r");
     if (fileopenerr == 0 && temp != M_NULLPTR)
@@ -1129,7 +1129,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
         // could not open the type file, so try the inquiry file and read the first byte as raw binary since this is how
         // this file is stored
         fullPath = dirname(fullPath);
-        common_String_Concat(fullPath, PATH_MAX, "/inquiry");
+        safe_strcat(fullPath, PATH_MAX, "/inquiry");
         fileopenerr = safe_fopen(&temp, fullPath, "rb");
         if (fileopenerr == 0 && temp != M_NULLPTR)
         {
@@ -1142,7 +1142,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
         }
     }
     fullPath = dirname(fullPath);
-    common_String_Concat(fullPath, PATH_MAX, "/queue_depth");
+    safe_strcat(fullPath, PATH_MAX, "/queue_depth");
     fileopenerr = safe_fopen(&temp, fullPath, "r");
     if (fileopenerr == 0 && temp != M_NULLPTR)
     {
@@ -1186,22 +1186,22 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
             bool bsg           = false;
             DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
             // char *incomingClassName = M_NULLPTR;
-            common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
+            safe_strcat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
             if (is_Block_Device_Handle(handle))
             {
-                common_String_Concat(incomingHandleClassPath, PATH_MAX, "block/");
+                safe_strcat(incomingHandleClassPath, PATH_MAX, "block/");
                 incomingBlock = true;
                 // incomingClassName = strdup("block");
             }
             else if (is_Block_SCSI_Generic_Handle(handle))
             {
                 bsg = true;
-                common_String_Concat(incomingHandleClassPath, PATH_MAX, "bsg/");
+                safe_strcat(incomingHandleClassPath, PATH_MAX, "bsg/");
                 // incomingClassName = strdup("bsg");
             }
             else if (is_SCSI_Generic_Handle(handle))
             {
-                common_String_Concat(incomingHandleClassPath, PATH_MAX, "scsi_generic/");
+                safe_strcat(incomingHandleClassPath, PATH_MAX, "scsi_generic/");
                 // incomingClassName = strdup("scsi_generic");
             }
             else
@@ -1224,7 +1224,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                 const char* basehandle = basename(duphandle);
                 struct stat link;
                 safe_memset(&link, sizeof(struct stat), 0, sizeof(struct stat));
-                common_String_Concat(incomingHandleClassPath, PATH_MAX, basehandle);
+                safe_strcat(incomingHandleClassPath, PATH_MAX, basehandle);
                 // now read the link with the handle appended on the end
                 if (lstat(incomingHandleClassPath, &link) == 0 && S_ISLNK(link.st_mode))
                 {
@@ -1388,21 +1388,21 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
         bool incomingBlock = false; // only set for SD!
         DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
         char* incomingClassName = M_NULLPTR;
-        common_String_Concat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
+        safe_strcat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
         if (is_Block_Device_Handle(handle))
         {
-            common_String_Concat(incomingHandleClassPath, PATH_MAX, "block/");
+            safe_strcat(incomingHandleClassPath, PATH_MAX, "block/");
             incomingBlock     = true;
             incomingClassName = strdup("block");
         }
         else if (is_Block_SCSI_Generic_Handle(handle))
         {
-            common_String_Concat(incomingHandleClassPath, PATH_MAX, "bsg/");
+            safe_strcat(incomingHandleClassPath, PATH_MAX, "bsg/");
             incomingClassName = strdup("bsg");
         }
         else if (is_SCSI_Generic_Handle(handle))
         {
-            common_String_Concat(incomingHandleClassPath, PATH_MAX, "scsi_generic/");
+            safe_strcat(incomingHandleClassPath, PATH_MAX, "scsi_generic/");
             incomingClassName = strdup("scsi_generic");
         }
         // first make sure this directory exists
@@ -1415,7 +1415,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                 return MEMORY_FAILURE;
             }
             const char* basehandle = basename(dupHandle);
-            common_String_Concat(incomingHandleClassPath, PATH_MAX, basehandle);
+            safe_strcat(incomingHandleClassPath, PATH_MAX, basehandle);
             // now read the link with the handle appended on the end
             DECLARE_ZERO_INIT_ARRAY(char, inHandleLink, PATH_MAX);
             if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
