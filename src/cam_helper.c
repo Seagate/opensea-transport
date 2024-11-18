@@ -223,11 +223,17 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     eReturnValues      ret = SUCCESS;
     // int this_drive_type = 0;
     DECLARE_ZERO_INIT_ARRAY(char, devName, 20);
-    int   devUnit           = 0;
-    char* deviceHandle      = M_NULLPTR;
-    deviceHandle            = strdup(filename);
+    int     devUnit         = 0;
+    char*   deviceHandle    = M_NULLPTR;
+    errno_t duphandle       = safe_strdup(&deviceHandle, filename);
     device->os_info.cam_dev = M_NULLPTR; // initialize this to M_NULLPTR (which it already should be) just to make sure
                                          // everything else functions as expected
+
+    if (duphandle != 0 || deviceHandle == M_NULLPTR)
+    {
+        return MEMORY_FAILURE;
+    }
+
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     struct nvme_get_nsid gnsid;
 

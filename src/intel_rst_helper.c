@@ -136,7 +136,6 @@ static void print_Intel_SRB_Status(uint32_t srbStatus)
         printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
         break;
     }
-    return;
 }
 
 static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
@@ -204,7 +203,6 @@ static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
         printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
         break;
     }
-    return;
 }
 
 static M_INLINE void safe_free_irst_raid_fw_buffer(IOCTL_RAID_FIRMWARE_BUFFER** buf)

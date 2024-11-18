@@ -772,7 +772,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max_Address(tDevice* device, uint32_t newMaxLBA, bool voltileValue);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max_Address(tDevice* device, uint32_t newMaxLBA, bool volatileValue);
 
     //-----------------------------------------------------------------------------
     //
@@ -2311,7 +2311,7 @@ extern "C"
     //!   \return uint8_t checksum value
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint8_t calculate_ATA_Checksum(uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API uint8_t calculate_ATA_Checksum(const uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2334,7 +2334,9 @@ extern "C"
     //!   has an error
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Checksum_Valid(uint8_t* ptrData, uint32_t dataSize, uint32_t* firstInvalidSector);
+    OPENSEA_TRANSPORT_API bool is_Checksum_Valid(const uint8_t* ptrData,
+                                                 uint32_t       dataSize,
+                                                 uint32_t*      firstInvalidSector);
 
     //-----------------------------------------------------------------------------
     //
@@ -2406,7 +2408,7 @@ extern "C"
                                                                        uint16_t newMaxCylinder,
                                                                        uint8_t  newMaxHead,
                                                                        uint8_t  newMaxSector,
-                                                                       bool     volitileValue);
+                                                                       bool     volatileValue);
 
     OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Set_Max_Address_Ext_CHS(tDevice* device,
                                                                            uint16_t newMaxCylinder,

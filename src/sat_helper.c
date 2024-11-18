@@ -120,7 +120,7 @@ eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(tDevice*       device
     return ret;
 }
 
-eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(uint8_t*       ptrSenseData,
+eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* ptrSenseData,
                                                           uint32_t       senseDataSize,
                                                           ataReturnTFRs* rtfr)
 {
@@ -184,7 +184,7 @@ eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(uint8_t*       ptrSens
 }
 
 eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(tDevice*               device,
-                                                     uint8_t*               ptrSenseData,
+                                                     const uint8_t*         ptrSenseData,
                                                      uint32_t               senseDataSize,
                                                      ataPassthroughCommand* ataCmd)
 {
@@ -1944,7 +1944,6 @@ static void set_Sense_Data_By_RTFRs(tDevice* device, ataReturnTFRs* rtfrs, uint8
         set_Sense_Data_For_Translation(sensePtr, senseDataLength, senseKey, asc, ascq,
                                        device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
     }
-    return;
 }
 
 // To be used by the SATL when issuing a single read command (non-ncq)
@@ -13581,10 +13580,10 @@ static eReturnValues translate_SCSI_Mode_Sense_Command(tDevice* device, ScsiIoCt
     return ret;
 }
 
-static eReturnValues translate_Mode_Select_Caching_08h(tDevice*   device,
-                                                       ScsiIoCtx* scsiIoCtx,
-                                                       uint8_t*   ptrToBeginningOfModePage,
-                                                       uint16_t   pageLength)
+static eReturnValues translate_Mode_Select_Caching_08h(tDevice*       device,
+                                                       ScsiIoCtx*     scsiIoCtx,
+                                                       const uint8_t* ptrToBeginningOfModePage,
+                                                       uint16_t       pageLength)
 {
     eReturnValues ret = SUCCESS;
     uint16_t      dataOffset =
@@ -13738,10 +13737,10 @@ static eReturnValues translate_Mode_Select_Caching_08h(tDevice*   device,
     return ret;
 }
 
-static eReturnValues translate_Mode_Select_Control_0Ah(tDevice*   device,
-                                                       ScsiIoCtx* scsiIoCtx,
-                                                       uint8_t*   ptrToBeginningOfModePage,
-                                                       uint16_t   pageLength)
+static eReturnValues translate_Mode_Select_Control_0Ah(tDevice*       device,
+                                                       ScsiIoCtx*     scsiIoCtx,
+                                                       const uint8_t* ptrToBeginningOfModePage,
+                                                       uint16_t       pageLength)
 {
     eReturnValues ret = SUCCESS;
     uint16_t      dataOffset =
@@ -13873,10 +13872,10 @@ static eReturnValues translate_Mode_Select_Control_0Ah(tDevice*   device,
     return ret;
 }
 
-static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*   device,
-                                                               ScsiIoCtx* scsiIoCtx,
-                                                               uint8_t*   ptrToBeginningOfModePage,
-                                                               uint16_t   pageLength)
+static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       device,
+                                                               ScsiIoCtx*     scsiIoCtx,
+                                                               const uint8_t* ptrToBeginningOfModePage,
+                                                               uint16_t       pageLength)
 {
     eReturnValues ret            = SUCCESS;
     bool          saveParameters = false;
@@ -14498,10 +14497,10 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*   device
     return ret;
 }
 
-static eReturnValues translate_Mode_Select_ATA_Power_Condition_1A_F1(tDevice*   device,
-                                                                     ScsiIoCtx* scsiIoCtx,
-                                                                     uint8_t*   ptrToBeginningOfModePage,
-                                                                     uint16_t   pageLength)
+static eReturnValues translate_Mode_Select_ATA_Power_Condition_1A_F1(tDevice*       device,
+                                                                     ScsiIoCtx*     scsiIoCtx,
+                                                                     const uint8_t* ptrToBeginningOfModePage,
+                                                                     uint16_t       pageLength)
 {
     eReturnValues ret = SUCCESS;
     uint16_t      dataOffset =

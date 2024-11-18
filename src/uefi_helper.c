@@ -120,7 +120,6 @@ void close_Passthru_Protocol_Ptr(EFI_GUID ptGuid, void** pPassthru, uint32_t con
     {
         *pPassthru = M_NULLPTR; // this pointer is no longer valid!
     }
-    return;
 }
 // ATA PT since UDK 2010
 eReturnValues get_ATA_Passthru_Protocol_Ptr(EFI_ATA_PASS_THRU_PROTOCOL** pPassthru, uint32_t controllerID)
@@ -185,9 +184,9 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t* controllerID, 
     bool success = false;
     if (filename && controllerID && port && pmport)
     {
-        char* dup = strdup(
-            filename); // before tokenizing, always duplicate the original string since tokenizing will modify it.
-        if (dup)
+        // before tokenizing, always duplicate the original string since tokenizing will modify it.
+        char* dup = M_NULLPTR;
+        if (safe_strdup(&dup, filename) == 0 && dup != M_NULLPTR)
         {
 #define MAX_ATA_HANDLE_FIELDS UINT8_C(4) // ata:<controllerID>:<port>:<portMultiplierPort>
             uint8_t       count   = UINT8_C(0);
@@ -208,10 +207,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t* controllerID, 
                     }
                     break;
                 case 1: // controller ID
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    temp   = strtoul(token, &endptr, 16);
-                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr) || (temp > UINT16_MAX))
+                    if (0 != safe_strtoul(&temp, token, &endptr, BASE_16_HEX) || (temp > UINT16_MAX))
                     {
                         success = false;
                     }
@@ -221,10 +217,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t* controllerID, 
                     }
                     break;
                 case 2: // port
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    temp   = strtoul(token, &endptr, 16);
-                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr) || (temp > UINT16_MAX))
+                    if (0 != safe_strtoul(&temp, token, &endptr, BASE_16_HEX) || (temp > UINT16_MAX))
                     {
                         success = false;
                     }
@@ -234,10 +227,7 @@ static bool get_ATA_Device_Handle(const char* filename, uint16_t* controllerID, 
                     }
                     break;
                 case 3: // portMP
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    temp   = strtoul(token, &endptr, 16);
-                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr) || (temp > UINT16_MAX))
+                    if (0 != safe_strtoul(&temp, token, &endptr, BASE_16_HEX) || (temp > UINT16_MAX))
                     {
                         success = false;
                     }
@@ -262,9 +252,9 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t* controllerID,
     bool success = false;
     if (filename && controllerID && nsid)
     {
-        char* dup = strdup(
-            filename); // before tokenizing, always duplicate the original string since tokenizing will modify it.
-        if (dup)
+        // before tokenizing, always duplicate the original string since tokenizing will modify it.
+        char* dup = M_NULLPTR;
+        if (safe_strdup(&dup, filename) == 0 && dup != M_NULLPTR)
         {
 #    define MAX_NVME_HANDLE_FIELDS UINT8_C(3) // nvme:<controllerID>:<namespaceID>
             uint8_t       count   = UINT8_C(0);
@@ -285,10 +275,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t* controllerID,
                     }
                     break;
                 case 1: // controller ID
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    temp   = strtoul(token, &endptr, 16);
-                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr) || (temp > UINT16_MAX))
+                    if (0 != safe_strtoul(&temp, token, &endptr, BASE_16_HEX) || (temp > UINT16_MAX))
                     {
                         success = false;
                     }
@@ -298,10 +285,7 @@ static bool get_NVMe_Device_Handle(const char* filename, uint16_t* controllerID,
                     }
                     break;
                 case 2: // nsid
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    temp   = strtoul(token, &endptr, 16);
-                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr) || (temp > UINT32_MAX))
+                    if (0 != safe_strtoul(&temp, token, &endptr, BASE_16_HEX) || (temp > UINT32_MAX))
                     {
                         success = false;
                     }
@@ -326,9 +310,9 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t* controllerID,
     bool success = false;
     if (filename && controllerID && target && lun)
     {
-        char* dup = strdup(
-            filename); // before tokenizing, always duplicate the original string since tokenizing will modify it.
-        if (dup)
+        // before tokenizing, always duplicate the original string since tokenizing will modify it.
+        char* dup = M_NULLPTR;
+        if (safe_strdup(&dup, filename) == 0 && dup != M_NULLPTR)
         {
 #define MAX_SCSI_HANDLE_FIELDS UINT8_C(4) // scsi:<controllerID>:<target>:<lun>
             uint8_t            count   = UINT8_C(0);
@@ -350,10 +334,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t* controllerID,
                     }
                     break;
                 case 1: // controller ID
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    temp   = strtoul(token, &endptr, 16);
-                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr) || (temp > UINT16_MAX))
+                    if (0 != safe_strtoul(&temp, token, &endptr, BASE_16_HEX) || (temp > UINT16_MAX))
                     {
                         success = false;
                     }
@@ -363,10 +344,7 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t* controllerID,
                     }
                     break;
                 case 2: // target
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    temp   = strtoul(token, &endptr, 16);
-                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr) || (temp > UINT32_MAX))
+                    if (0 != safe_strtoul(&temp, token, &endptr, BASE_16_HEX) || (temp > UINT32_MAX))
                     {
                         success = false;
                     }
@@ -376,17 +354,13 @@ static bool get_SCSI_Device_Handle(const char* filename, uint16_t* controllerID,
                     }
                     break;
                 case 3: // lun
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    btemp  = strtoull(token, &endptr, 16);
-                    if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr) ||
-                        (btemp > UINT64_MAX))
+                    if (0 != safe_strtoull(&btemp, token, &endptr, BASE_16_HEX) || (btemp > UINT64_MAX))
                     {
                         success = false;
                     }
                     else
                     {
-                        *target = C_CAST(uint64_t, btemp);
+                        *lun = C_CAST(uint64_t, btemp);
                     }
                     break;
                 }
@@ -407,9 +381,9 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
     bool success = false;
     if (filename && controllerID && target && lun)
     {
-        char* dup = strdup(
-            filename); // before tokenizing, always duplicate the original string since tokenizing will modify it.
-        if (dup)
+        // before tokenizing, always duplicate the original string since tokenizing will modify it.
+        char* dup = M_NULLPTR;
+        if (safe_strdup(&dup, filename) == 0 && dup != M_NULLPTR)
         {
 #define MAX_SCSI_HANDLE_FIELDS UINT8_C(4) // scsiEx:<controllerID>:<target>:<lun> //16, 128, 64
             uint8_t            count   = UINT8_C(0);
@@ -431,10 +405,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
                     }
                     break;
                 case 1: // controller ID
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    temp   = strtoul(token, &endptr, 16);
-                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0 && token == endptr) || (temp > UINT16_MAX))
+                    if (0 != safe_strtoul(&temp, token, &endptr, BASE_16_HEX) || (temp > UINT16_MAX))
                     {
                         success = false;
                     }
@@ -445,23 +416,20 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
                     break;
                 case 2: // target //FIXME: Does not handle full 128bit targetID
                     // first try seeing if the target is less than 128bits and a 64bit conversion will be enough
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    btemp  = strtoull(token, &endptr, 16);
-                    if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr))
+                    if (0 != safe_strtoull(&btemp, token, &endptr, BASE_16_HEX))
                     {
                         // Either the target is a much larget value than 64bits can hold, or there was a parsing error.
                         // First see if we can seperate it into two pieces to parse before deciding this was a failure
-                        char* targetstr = strdup(token);
-                        if (targetstr)
+                        char* targetstr = M_NULLPTR;
+                        if (safe_strdup(&targetstr, token) == 0 && targetstr != M_NULLPTR)
                         {
                             char* delimiter = strstr(targetstr, ":");
                             if (delimiter)
                             {
                                 // change the next : to a null so it's easier to break the string into two parts
                                 *delimiter           = '\0';
-                                size_t halftargetlen = safe_strlen(targetstr) / 2;
-                                if (safe_strlen(targetstr) % 2)
+                                size_t halftargetlen = safe_strlen(targetstr) / SIZE_T_C(2);
+                                if (safe_strlen(targetstr) % SIZE_T_C(2))
                                 {
                                     // this is supposed to be evenly divisible by 2 as we require the user to type the
                                     // full string!
@@ -473,10 +441,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
                                     char* secondHalf = strndup(targetstr + halftargetlen, halftargetlen);
                                     if (firstHalf && secondHalf)
                                     {
-                                        endptr = M_NULLPTR;
-                                        btemp  = strtoull(firstHalf, &endptr, 16);
-                                        if ((btemp == ULLONG_MAX && errno == ERANGE) ||
-                                            (btemp == 0 && firstHalf == endptr))
+                                        if (0 != safe_strtoull(&btemp, firstHalf, &endptr, BASE_16_HEX))
                                         {
                                             success = false;
                                         }
@@ -491,11 +456,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
                                             target[5] = M_Byte2(btemp);
                                             target[6] = M_Byte1(btemp);
                                             target[7] = M_Byte0(btemp);
-                                            endptr    = M_NULLPTR;
-                                            errno     = 0; // clear to zero as stated in ISO C secure coding
-                                            btemp     = strtoull(secondHalf, &endptr, 16);
-                                            if ((btemp == ULLONG_MAX && errno == ERANGE) ||
-                                                (btemp == 0 && secondHalf == endptr))
+                                            if (0 != safe_strtoull(&btemp, secondHalf, &endptr, BASE_16_HEX))
                                             {
                                                 success = false;
                                             }
@@ -547,14 +508,11 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
                     }
                     break;
                 case 3: // lun
-                    endptr = M_NULLPTR;
-                    errno  = 0; // clear to zero as stated in ISO C secure coding
-                    btemp  = strtoull(token, &endptr, 16);
-                    if ((btemp == ULLONG_MAX && errno == ERANGE) || (btemp == 0 && token == endptr) ||
+                    if (0 != safe_strtoull(&btemp, token, &endptr, BASE_16_HEX))
                         (btemp > UINT64_MAX))
-                    {
-                        success = false;
-                    }
+                        {
+                            success = false;
+                        }
                     else
                     {
                         *target = C_CAST(uint64_t, btemp);

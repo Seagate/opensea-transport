@@ -270,7 +270,9 @@ extern "C"
         bool    additionalDataAvailable;
         uint8_t additionalDataOffset; // if bool above is set, then this will be set to the offset of the additional
                                       // data that couldn't be parsed
-    } senseDataFields, *ptrSenseDataFields;
+    } senseDataFields;
+
+    typedef senseDataFields* ptrSenseDataFields;
 
     static M_INLINE void safe_free_sensefields(senseDataFields** sensefields)
     {

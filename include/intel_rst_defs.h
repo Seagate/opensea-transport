@@ -17,8 +17,10 @@
 
 #pragma once
 #if defined(_WIN32)
-
+#    include "predef_env_detect.h"
+DISABLE_WARNING_4255
 #    include <windows.h>
+RESTORE_WARNING_4255
 #    if !defined(_NTDDSCSIH_)
 #        include <ntddscsi.h>
 #    endif

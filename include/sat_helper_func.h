@@ -57,7 +57,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(uint8_t*       ptrSenseData,
+    eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* ptrSenseData,
                                                               uint32_t       senseDataSize,
                                                               ataReturnTFRs* rtfr);
 
@@ -80,7 +80,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(tDevice*               device,
-                                                         uint8_t*               ptrSenseData,
+                                                         const uint8_t*         ptrSenseData,
                                                          uint32_t               senseDataSize,
                                                          ataPassthroughCommand* ataCmd);
 

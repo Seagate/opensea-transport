@@ -31,8 +31,9 @@
 #    include <stdio.h>
 #    include <stdlib.h>
 #    include <string.h>
+DISABLE_WARNING_4255
 #    include <windows.h>
-
+RESTORE_WARNING_4255
 #    if defined(_DEBUG) && !defined(OFNVME_DEBUG)
 #        define OFNVME_DEBUG
 #    endif //_DEBUG && !OFNVME_DEBUG
@@ -114,7 +115,6 @@ static void print_Ofnvme_SRB_Status(uint32_t srbStatus)
         printf("Attach Namespace Failed\n");
         break;
     }
-    return;
 }
 
 // Need to setup an admin identify and try sending it. If this device doesn't support this IOCTL, it should fail,

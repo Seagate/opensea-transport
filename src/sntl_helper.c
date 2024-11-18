@@ -550,7 +550,6 @@ static void set_Sense_Data_By_Generic_NVMe_Status(tDevice* device,
         sntl_Set_Sense_Data_For_Translation(sensePtr, senseDataLength, senseKey, asc, ascq,
                                             device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
     }
-    return;
 }
 
 // the completion queue will tell us if the error is specific to a command versus a generic error
@@ -674,7 +673,6 @@ static void set_Sense_Data_By_Command_Specific_NVMe_Status(tDevice* device,
         sntl_Set_Sense_Data_For_Translation(sensePtr, senseDataLength, senseKey, asc, ascq,
                                             device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
     }
-    return;
 }
 
 static void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice* device,
@@ -770,7 +768,6 @@ static void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice* device,
         sntl_Set_Sense_Data_For_Translation(sensePtr, senseDataLength, senseKey, asc, ascq,
                                             device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
     }
-    return;
 }
 
 static void set_Sense_Data_By_NVMe_Status(tDevice* device,
@@ -2022,8 +2019,8 @@ static eReturnValues sntl_Translate_SCSI_Inquiry_Command(tDevice* device, ScsiIo
             // SBC3
             inquiryData[versionOffset]     = 0x04;
             inquiryData[versionOffset + 1] = 0xC0;
-            //versionOffset += 2;
-            // TODO: should we say we conform to these newer specifications?
+            // versionOffset += 2;
+            //  TODO: should we say we conform to these newer specifications?
             ////SAM6 -
             // inquiryData[versionOffset] = 0x00;
             // inquiryData[versionOffset + 1] = 0xC0;
@@ -4110,7 +4107,6 @@ static void fill_Mode_Data_Block_Descriptor(uint8_t  dataBlockDescriptor[SNTL_DA
             dataBlockDescriptor[7] = M_Byte0(blockSize);
         }
     }
-    return;
 }
 
 static eReturnValues sntl_Translate_SCSI_Mode_Sense_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
@@ -4351,10 +4347,10 @@ static eReturnValues sntl_Translate_SCSI_Mode_Sense_Command(tDevice* device, Scs
     return ret;
 }
 
-static eReturnValues sntl_Translate_Mode_Select_Caching_08h(tDevice*   device,
-                                                            ScsiIoCtx* scsiIoCtx,
-                                                            uint8_t*   ptrToBeginningOfModePage,
-                                                            uint16_t   pageLength)
+static eReturnValues sntl_Translate_Mode_Select_Caching_08h(tDevice*       device,
+                                                            ScsiIoCtx*     scsiIoCtx,
+                                                            const uint8_t* ptrToBeginningOfModePage,
+                                                            uint16_t       pageLength)
 {
     eReturnValues ret = SUCCESS;
     uint16_t      dataOffset =
@@ -7052,8 +7048,8 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
         // process the contents of the parameter data and send some commands to the drive
         uint16_t unmapBlockDescriptorLength =
             (M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]) / UINT16_C(16)) *
-            UINT16_C(16); // this can be set to zero, which is NOT an error. Also, I'm making sure this is a multiple of 16 to
-                // avoid partial block descriptors-TJE
+            UINT16_C(16); // this can be set to zero, which is NOT an error. Also, I'm making sure this is a multiple of
+                          // 16 to avoid partial block descriptors-TJE
         if (unmapBlockDescriptorLength > UINT16_C(0))
         {
             uint8_t* dsmBuffer = C_CAST(
@@ -7065,10 +7061,10 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
             uint16_t minBlockDescriptorLength =
                 C_CAST(uint16_t, M_Min(unmapBlockDescriptorLength + 8, parameterListLength));
             uint16_t unmapBlockDescriptorIter = UINT16_C(8);
-            uint64_t numberOfLBAsToDeallocate =
-                UINT64_C(0); // this will be checked later to make sure it isn't greater than what we reported on the VPD pages
-            uint16_t numberOfBlockDescriptors =
-                UINT16_C(0); // this will be checked later to make sure it isn't greater than what we reported on the VPD pages
+            uint64_t numberOfLBAsToDeallocate = UINT64_C(
+                0); // this will be checked later to make sure it isn't greater than what we reported on the VPD pages
+            uint16_t numberOfBlockDescriptors = UINT16_C(
+                0); // this will be checked later to make sure it isn't greater than what we reported on the VPD pages
             uint16_t nvmeDSMOffset  = UINT16_C(0);
             uint8_t  numberOfRanges = UINT8_C(0);
             if (!dsmBuffer)
@@ -7087,7 +7083,7 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
             for (; unmapBlockDescriptorIter < minBlockDescriptorLength;
                  unmapBlockDescriptorIter += UINT16_C(16), numberOfBlockDescriptors++)
             {
-                bool     exitLoop                 = false;//to exit for from while loop below
+                bool     exitLoop                 = false; // to exit for from while loop below
                 uint64_t unmapLogicalBlockAddress = M_BytesTo8ByteValue(
                     scsiIoCtx->pdata[unmapBlockDescriptorIter + 0], scsiIoCtx->pdata[unmapBlockDescriptorIter + 1],
                     scsiIoCtx->pdata[unmapBlockDescriptorIter + 2], scsiIoCtx->pdata[unmapBlockDescriptorIter + 3],

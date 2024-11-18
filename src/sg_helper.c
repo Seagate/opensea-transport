@@ -377,6 +377,8 @@ typedef struct s_sysFSLowLevelDeviceInfo
     uint16_t queueDepth;                                       // if 0, then this was unable to be read and populated
 } sysFSLowLevelDeviceInfo;
 
+#define DRIVER_VERSION_LIST_LENGTH 4
+
 M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driververstr,
                                                             uint32_t*   versionlist,
                                                             uint8_t     versionlistlen,
@@ -387,16 +389,15 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
     // major.minor.rev
     // major.minor.rev[build]-string
     // There may be more.
-    if (driververstr && versionlist && versionlistlen == 4 &&
+    if (driververstr && versionlist && versionlistlen == DRIVER_VERSION_LIST_LENGTH &&
         versionCount) // require 4 spaces for the current parsing based off of what is commented above
     {
-        char* end           = M_NULLPTR;
-        char* str           = M_CONST_CAST(char*, driververstr);
-        errno               = 0; // clear to zero as stated in ISO C secure coding
-        unsigned long value = strtoul(str, &end, 10);
+        char*         end   = M_NULLPTR;
+        const char*   str   = driververstr;
+        unsigned long value = 0UL;
         *versionCount       = 0;
         // major
-        if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end) || end[0] != '.')
+        if (0 != safe_strtoul(&value, str, &end, BASE_10_DECIMAL) || end[0] != '.')
         {
             return false;
         }
@@ -404,9 +405,7 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
         *versionCount += 1;
         str = end + 1; // update to past the first dot.
         // minor
-        errno = 0; // clear to zero as stated in ISO C secure coding
-        value = strtoul(str, &end, 10);
-        if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+        if (0 != safe_strtoul(&value, str, &end, BASE_10_DECIMAL))
         {
             return false;
         }
@@ -416,13 +415,11 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
         {
             return true;
         }
-        else if (end[0] == '.' && safe_strlen(end) > 1)
+        else if (end[0] == '.' && safe_strlen(end) > SIZE_T_C(1))
         {
             // rev is available
-            str   = end + 1;
-            errno = 0; // clear to zero as stated in ISO C secure coding
-            value = strtoul(str, &end, 10);
-            if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+            str = end + 1;
+            if (0 != safe_strtoul(&value, str, &end, BASE_10_DECIMAL))
             {
                 return false;
             }
@@ -432,13 +429,11 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
             {
                 return true;
             }
-            else if (end[0] == '[' && safe_strlen(end) > 1)
+            else if (end[0] == '[' && safe_strlen(end) > SIZE_T_C(1))
             {
                 // build is available
-                str   = end + 1;
-                errno = 0; // clear to zero as stated in ISO C secure coding
-                value = strtoul(str, &end, 10);
-                if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+                str = end + 1;
+                if (0 != safe_strtoul(&value, str, &end, BASE_10_DECIMAL))
                 {
                     return false;
                 }
@@ -509,7 +504,7 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
             off_t versionFileSize = driverversionstat.st_size;
             if (versionFileSize > 0)
             {
-                FILE* versionFile = M_NULLPTR;
+                FILE*   versionFile = M_NULLPTR;
                 errno_t fileopenerr = safe_fopen(&versionFile, driverVersionFilePath, "r");
                 if (fileopenerr == 0 && versionFile)
                 {
@@ -524,7 +519,7 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
                             printf("versionFileData = %s\n", versionFileData);
                             snprintf(sysFsInfo->driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%s",
                                      versionFileData);
-                            DECLARE_ZERO_INIT_ARRAY(uint32_t, versionList, 4);
+                            DECLARE_ZERO_INIT_ARRAY(uint32_t, versionList, DRIVER_VERSION_LIST_LENGTH);
                             uint8_t versionCount = UINT8_C(0);
                             if (get_Driver_Version_Info_From_String(versionFileData, versionList, 4, &versionCount))
                             {
@@ -559,19 +554,19 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
                                     // error reading the string! consider the whole scanf a failure!
                                     // Will need to add other format parsing here if there is something else to read
                                     // instead.-TJE
-                                    sysFsInfo->driver_info.driverMajorVersion = 0;
-                                    sysFsInfo->driver_info.driverMinorVersion = 0;
-                                    sysFsInfo->driver_info.driverRevision     = 0;
-                                    sysFsInfo->driver_info.driverBuildNumber  = 0;
+                                    sysFsInfo->driver_info.driverMajorVersion = UINT32_C(0);
+                                    sysFsInfo->driver_info.driverMinorVersion = UINT32_C(0);
+                                    sysFsInfo->driver_info.driverRevision     = UINT32_C(0);
+                                    sysFsInfo->driver_info.driverBuildNumber  = UINT32_C(0);
                                     break;
                                 }
                             }
                             else
                             {
-                                sysFsInfo->driver_info.driverMajorVersion = 0;
-                                sysFsInfo->driver_info.driverMinorVersion = 0;
-                                sysFsInfo->driver_info.driverRevision     = 0;
-                                sysFsInfo->driver_info.driverBuildNumber  = 0;
+                                sysFsInfo->driver_info.driverMajorVersion = UINT32_C(0);
+                                sysFsInfo->driver_info.driverMinorVersion = UINT32_C(0);
+                                sysFsInfo->driver_info.driverRevision     = UINT32_C(0);
+                                sysFsInfo->driver_info.driverBuildNumber  = UINT32_C(0);
                             }
                         }
                         safe_free(&versionFileData);
@@ -580,15 +575,15 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
                 }
             }
         }
-        char* drvPathDup = strdup(driverPath);
-        if (drvPathDup != M_NULLPTR)
+        char* drvPathDup = M_NULLPTR;
+        ;
+        if (safe_strdup(&drvPathDup, driverPath) == 0 && drvPathDup != M_NULLPTR)
         {
             snprintf(sysFsInfo->driver_info.driverName, MAX_DRIVER_NAME, "%s", basename(drvPathDup));
             safe_free(&drvPathDup);
         }
         safe_free(&driverVersionFilePath);
     }
-    return;
 }
 
 static bool read_sysfs_file_uint8(FILE* sysfsfile, uint8_t* value)
@@ -665,7 +660,7 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
         {
             snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
             // printf("shortened Path = %s\n", dirname(pciPath));
-            FILE* temp = M_NULLPTR;
+            FILE*   temp        = M_NULLPTR;
             errno_t fileopenerr = safe_fopen(&temp, pciPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
             {
@@ -704,7 +699,6 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             sysFsInfo->adapter_info.infoType = ADAPTER_INFO_PCI;
         }
     }
-    return;
 }
 
 static M_INLINE bool get_usb_file_id_hex(FILE* usbFile, uint32_t* hexvalue)
@@ -717,11 +711,8 @@ static M_INLINE bool get_usb_file_id_hex(FILE* usbFile, uint32_t* hexvalue)
         size_t linelen = SIZE_T_C(0);
         if (getline(&line, &linelen, usbFile) != -1)
         {
-            errno = 0; // ISO secure coding standard recommends this to ensure
-                       // errno is interpreted correctly after this call
-            char*         endptr = M_NULLPTR;
-            unsigned long temp   = strtoul(line, &endptr, 16);
-            if ((temp == ULONG_MAX && errno == ERANGE) || (line == endptr && temp == 0))
+            unsigned long temp = 0UL;
+            if (0 != safe_strtoul(&temp, line, M_NULLPTR, BASE_16_HEX))
             {
                 success = false;
             }
@@ -769,7 +760,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             // now that the path is correct, we need to read the files idVendor and idProduct
             safe_strcat(usbPath, PATH_MAX, "/idVendor");
             // printf("idVendor USB Path = %s\n", usbPath);
-            FILE* temp = M_NULLPTR;
+            FILE*   temp        = M_NULLPTR;
             errno_t fileopenerr = safe_fopen(&temp, usbPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
             {
@@ -809,7 +800,6 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
             sysFsInfo->adapter_info.infoType = ADAPTER_INFO_USB;
         }
     }
-    return;
 }
 
 static bool get_ieee1394_ids(FILE*     idFile,
@@ -846,10 +836,7 @@ static bool get_ieee1394_ids(FILE*     idFile,
                         parsing = false;
                         break;
                     }
-                    errno = 0; // Always set to zero before strtoul according to ISO secure C coding
-                    temp      = 0UL; // reset before calling strtoul to allow checking for errors
-                    temp  = strtoul(stroffset, &endptr, 16);
-                    if ((temp == ULONG_MAX && errno == ERANGE) || (temp == 0UL && endptr == stroffset))
+                    if (0 != safe_strtoul(&temp, stroffset, &endptr, BASE_16_HEX))
                     {
                         success = false;
                         parsing = false;
@@ -945,7 +932,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             snprintf(fwPath, PATH_MAX, "%.*s/modalias", C_CAST(int, newStrLen), fullFWPath);
             // printf("full FW Path = %s\n", dirname(fwPath));
             // printf("modalias FW Path = %s\n", fwPath);
-            FILE* temp = M_NULLPTR;
+            FILE*   temp        = M_NULLPTR;
             errno_t fileopenerr = safe_fopen(&temp, fwPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
             {
@@ -979,7 +966,6 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             safe_free(&fwPath);
         }
     }
-    return;
 }
 
 static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceInfo* sysFsInfo)
@@ -1018,7 +1004,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
         {
             snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
             // printf("Shortened PCI Path: %s\n", dirname(pciPath));
-            FILE* temp = M_NULLPTR;
+            FILE*   temp        = M_NULLPTR;
             errno_t fileopenerr = safe_fopen(&temp, pciPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
             {
@@ -1057,14 +1043,17 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
             safe_free(&pciPath);
         }
     }
-    return;
 }
 
 static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDeviceInfo* sysFsInfo)
 {
     // printf("getting SCSI address\n");
     // set the scsi address field
-    char* handle      = strdup(inHandleLink);
+    char* handle = M_NULLPTR;
+    if (0 != safe_strdup(&handle, inHandleLink))
+    {
+        return;
+    }
     char* scsiAddress = basename(dirname(dirname(handle))); // SCSI address should be 2nd from the end of the link
     if (scsiAddress)
     {
@@ -1074,20 +1063,27 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
         uint8_t counter = UINT8_C(0);
         while (token)
         {
-            errno = 0; // clear to zero as stated in ISO C secure coding
+            unsigned long temp = 0UL;
+            if (0 != safe_strtoul(&temp, token, M_NULLPTR, BASE_10_DECIMAL) || temp > UINT8_MAX)
+            {
+#if defined(_DEBUG)
+                printf("Error parsing HCTL\n");
+#endif //_DEBUG
+                break;
+            }
             switch (counter)
             {
             case 0: // host
-                sysFsInfo->scsiAddress.host = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
+                sysFsInfo->scsiAddress.host = M_STATIC_CAST(uint8_t, temp);
                 break;
             case 1: // bus
-                sysFsInfo->scsiAddress.channel = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
+                sysFsInfo->scsiAddress.channel = M_STATIC_CAST(uint8_t, temp);
                 break;
             case 2: // target
-                sysFsInfo->scsiAddress.target = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
+                sysFsInfo->scsiAddress.target = M_STATIC_CAST(uint8_t, temp);
                 break;
             case 3: // lun
-                sysFsInfo->scsiAddress.lun = C_CAST(uint8_t, strtoul(token, M_NULLPTR, 10));
+                sysFsInfo->scsiAddress.lun = M_STATIC_CAST(uint8_t, temp);
                 break;
             default:
                 break;
@@ -1097,7 +1093,6 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
         }
     }
     safe_free(&handle);
-    return;
 }
 
 // read type or inquiry files, queue depth.
@@ -1112,7 +1107,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
     char* fullPath = &fullPathBuffer[0];
     snprintf(fullPath, PATH_MAX, "%s", sysFsInfo->fullDevicePath);
     safe_strcat(fullPath, PATH_MAX, "/device/type");
-    FILE* temp = M_NULLPTR;
+    FILE*   temp        = M_NULLPTR;
     errno_t fileopenerr = safe_fopen(&temp, fullPath, "r");
     if (fileopenerr == 0 && temp != M_NULLPTR)
     {
@@ -1185,24 +1180,20 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
             bool incomingBlock = false; // only set for SD!
             bool bsg           = false;
             DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
-            // char *incomingClassName = M_NULLPTR;
             safe_strcat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
             if (is_Block_Device_Handle(handle))
             {
                 safe_strcat(incomingHandleClassPath, PATH_MAX, "block/");
                 incomingBlock = true;
-                // incomingClassName = strdup("block");
             }
             else if (is_Block_SCSI_Generic_Handle(handle))
             {
                 bsg = true;
                 safe_strcat(incomingHandleClassPath, PATH_MAX, "bsg/");
-                // incomingClassName = strdup("bsg");
             }
             else if (is_SCSI_Generic_Handle(handle))
             {
                 safe_strcat(incomingHandleClassPath, PATH_MAX, "scsi_generic/");
-                // incomingClassName = strdup("scsi_generic");
             }
             else
             {
@@ -1216,8 +1207,8 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
             safe_memset(&inHandleStat, sizeof(struct stat), 0, sizeof(struct stat));
             if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
             {
-                char* duphandle = strdup(handle);
-                if (duphandle == M_NULLPTR)
+                char* duphandle = M_NULLPTR;
+                if (0 != safe_strdup(&duphandle, handle) || duphandle == M_NULLPTR)
                 {
                     return;
                 }
@@ -1337,7 +1328,6 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
             }
         }
     }
-    return;
 }
 
 static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
@@ -1366,7 +1356,6 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
                      basename(sysFsInfo.secondaryHandleStr));
         }
     }
-    return;
 }
 
 // map a block handle (sd) to a generic handle (sg or bsg)
@@ -1387,30 +1376,26 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
     {
         bool incomingBlock = false; // only set for SD!
         DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
-        char* incomingClassName = M_NULLPTR;
         safe_strcat(incomingHandleClassPath, PATH_MAX, "/sys/class/");
         if (is_Block_Device_Handle(handle))
         {
             safe_strcat(incomingHandleClassPath, PATH_MAX, "block/");
-            incomingBlock     = true;
-            incomingClassName = strdup("block");
+            incomingBlock = true;
         }
         else if (is_Block_SCSI_Generic_Handle(handle))
         {
             safe_strcat(incomingHandleClassPath, PATH_MAX, "bsg/");
-            incomingClassName = strdup("bsg");
         }
         else if (is_SCSI_Generic_Handle(handle))
         {
             safe_strcat(incomingHandleClassPath, PATH_MAX, "scsi_generic/");
-            incomingClassName = strdup("scsi_generic");
         }
         // first make sure this directory exists
         struct stat inHandleStat;
         if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
         {
-            char* dupHandle = strdup(handle);
-            if (!dupHandle)
+            char* dupHandle = M_NULLPTR;
+            if (0 != safe_strdup(&dupHandle, handle) || dupHandle)
             {
                 return MEMORY_FAILURE;
             }
@@ -1443,7 +1428,6 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                     else
                     {
                         // printf ("could not map to generic class");
-                        safe_free(&incomingClassName);
                         safe_free(&dupHandle);
                         return NOT_SUPPORTED;
                     }
@@ -1455,7 +1439,6 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         // printf ("could not map to block class");
-                        safe_free(&incomingClassName);
                         safe_free(&dupHandle);
                         return NOT_SUPPORTED;
                     }
@@ -1522,18 +1505,25 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                                                                      (M_STATIC_CAST(uintptr_t, classPtr) -
                                                                       M_STATIC_CAST(uintptr_t, mapLink))) == 0)
                                 {
+                                    eReturnValues ret = SUCCESS;
                                     if (incomingBlock)
                                     {
-                                        *blockHandle   = strndup(basehandle, safe_strlen(basehandle));
-                                        *genericHandle = strdup(basename(classPtr));
+                                        if (0 != safe_strndup(blockHandle, basehandle, safe_strlen(basehandle)) ||
+                                            0 != safe_strdup(genericHandle, basename(classPtr)))
+                                        {
+                                            ret = MEMORY_FAILURE;
+                                        }
                                     }
                                     else
                                     {
-                                        *blockHandle   = strndup(basename(classPtr), safe_strlen(basename(classPtr)));
-                                        *genericHandle = strdup(basehandle);
+                                        if (0 != safe_strndup(blockHandle, basename(classPtr),
+                                                              safe_strlen(basename(classPtr))) ||
+                                            0 != safe_strdup(genericHandle, basehandle))
+                                        {
+                                            ret = MEMORY_FAILURE;
+                                        }
                                     }
                                     safe_free(&className);
-                                    safe_free(&incomingClassName);
                                     // start PRH valgrind fixes
                                     // this is causing a mem leak... when we bail the loop, there are a string of
                                     // classList[] items still allocated.
@@ -1544,7 +1534,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                                     safe_free_dirent(classList);
                                     safe_free(&temp);
                                     safe_free(&dupHandle);
-                                    return SUCCESS;
+                                    return ret;
                                     break; // found a match, exit the loop
                                 }
                             }
@@ -1559,7 +1549,6 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
             else
             {
                 // not a link, or some other error....probably an old kernel
-                safe_free(&incomingClassName);
                 safe_free(&dupHandle);
                 return NOT_SUPPORTED;
             }
@@ -1568,10 +1557,8 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
         else
         {
             // Mapping is not supported...probably an old kernel
-            safe_free(&incomingClassName);
             return NOT_SUPPORTED;
         }
-        safe_free(&incomingClassName);
     }
     return UNKNOWN;
 }
@@ -1672,14 +1659,22 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
         }
         else // If we can't map, let still try anyway.
         {
-            deviceHandle = strdup(filename);
+            if (0 != safe_strdup(&deviceHandle, filename))
+            {
+                safe_free(&genHandle);
+                safe_free(&blockHandle);
+                return MEMORY_FAILURE;
+            }
         }
         safe_free(&genHandle);
         safe_free(&blockHandle);
     }
     else
     {
-        deviceHandle = strdup(filename);
+        if (0 != safe_strdup(&deviceHandle, filename))
+        {
+            return MEMORY_FAILURE;
+        }
     }
 #if defined(_DEBUG)
     printf("%s: Attempting to open %s\n", __FUNCTION__, deviceHandle);
@@ -3118,19 +3113,16 @@ static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
     {
         return FAILURE;
     }
-    unsigned long controller = 0, namespaceID = 0;
-    errno      = 0; // clear to zero as stated in ISO C secure coding
-    controller = strtoul(handle, &endptr, 10);
-    if ((controller == ULONG_MAX && errno == ERANGE) || (handle == endptr && controller == 0))
+    unsigned long controller  = 0UL;
+    unsigned long namespaceID = 0UL;
+    if (0 != safe_strtoul(&controller, handle, &endptr, BASE_10_DECIMAL))
     {
         return FAILURE;
     }
-    if (endptr && safe_strlen(endptr) > 1 && endptr[0] == 'n')
+    if (endptr && safe_strlen(endptr) > SIZE_T_C(1) && endptr[0] == 'n')
     {
         handle += 1;
-        errno       = 0; // clear to zero as stated in ISO C secure coding
-        namespaceID = strtoul(handle, &endptr, 10);
-        if ((namespaceID == ULONG_MAX && errno == ERANGE) || (handle == endptr && namespaceID == 0))
+        if (0 != safe_strtoul(&namespaceID, handle, &endptr, BASE_10_DECIMAL))
         {
             return FAILURE;
         }

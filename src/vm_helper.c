@@ -179,7 +179,6 @@ static void get_VMV_SYS_FS_Info(const char* handle, sysVMLowLevelDeviceInfo* sys
             sysVmInfo->interface_type = SCSI_INTERFACE;
         }
     }
-    return;
 }
 
 static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
@@ -217,7 +216,6 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
                      basename(sysVmInfo.secondaryHandleStr));
         }
     }
-    return;
 }
 
 #define LIN_MAX_HANDLE_LENGTH 16
@@ -244,7 +242,10 @@ eReturnValues get_Device(const char* filename, tDevice* device)
      * List down both NVMe and HDD/SSD drives
      * Get the device after matching the name
      */
-    deviceHandle = strdup(filename);
+    if (0 != safe_strdup(&deviceHandle, filename))
+    {
+        return MEMORY_FAILURE;
+    }
 
     if (isScsi)
     {

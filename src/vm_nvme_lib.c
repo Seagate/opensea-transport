@@ -21,7 +21,6 @@
 #include "string_utils.h"
 #include "type_conversion.h"
 
-#include "common_types.h"
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -661,7 +660,7 @@ const char* get_VMK_API_Error(VMK_ReturnStatus status)
 {
     VMKErrorCode  key = {.code = status};
     VMKErrorCode* err = safe_bsearch(&key, vmkerrorTable, sizeof(vmkerrorTable) / sizeof(vmkerrorTable[0]),
-                                sizeof(VMKErrorCode), comp_vmk_err);
+                                     sizeof(VMKErrorCode), comp_vmk_err);
     if (err)
     {
         return err->description;

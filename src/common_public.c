@@ -1405,20 +1405,21 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
     {
         printf("Unable to get number of devices from OS\n");
     }
-    return;
 }
 
 bool validate_Device_Struct(versionBlock sanity)
 {
+    bool   valid    = false;
     size_t tdevSize = sizeof(tDevice);
     if ((sanity.size == tdevSize) && (sanity.version == DEVICE_BLOCK_VERSION))
     {
-        return true;
+        valid = true;
     }
     else
     {
-        return false;
+        valid = false;
     }
+    return valid;
 }
 
 eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver)
@@ -1436,12 +1437,12 @@ eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver)
     }
 }
 
-eReturnValues get_Version_Block(versionBlock* blk)
+eReturnValues get_Version_Block(versionBlock* ver)
 {
-    if (blk)
+    if (ver)
     {
-        blk->size    = sizeof(tDevice);
-        blk->version = DEVICE_BLOCK_VERSION;
+        ver->size    = sizeof(tDevice);
+        ver->version = DEVICE_BLOCK_VERSION;
         return SUCCESS;
     }
     else
@@ -2838,46 +2839,51 @@ eSeagateFamily is_Seagate_Family(tDevice* device)
 
 bool is_SSD(tDevice* device)
 {
+    bool isSSD = false;
     if (device->drive_info.media_type == MEDIA_NVM || device->drive_info.media_type == MEDIA_SSD)
     {
-        return true;
+        isSSD = true;
     }
     else
     {
-        return false;
+        isSSD = false;
     }
+    return isSSD;
 }
 
 bool is_SATA(tDevice* device)
 {
+    bool isSata = false;
     if (device->drive_info.drive_type == ATA_DRIVE)
     {
         // Word 76 will be greater than zero, and never 0xFFFF on a SATA drive (bit 0 must be cleared to zero)
         if (is_ATA_Identify_Word_Valid_SATA(device->drive_info.IdentifyData.ata.Word076))
         {
-            return true;
+            isSata = true;
         }
     }
-    return false;
+    return isSata;
 }
 
 bool is_Sector_Size_Emulation_Active(tDevice* device)
 {
+    bool emulationActive = false;
     if (device->drive_info.bridge_info.isValid)
     {
         if (device->drive_info.deviceBlockSize != device->drive_info.bridge_info.childDeviceBlockSize)
         {
-            return true;
+            emulationActive = true;
         }
         else
         {
-            return false;
+            emulationActive = false;
         }
     }
     else
     {
-        return false;
+        emulationActive = false;
     }
+    return emulationActive;
 }
 
 eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize)

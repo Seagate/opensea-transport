@@ -50,7 +50,6 @@ static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData,
         safe_memcpy(nvmMN, NVME_CTRL_IDENTIFY_MN_LEN + 1, ctrlData->mn, NVME_CTRL_IDENTIFY_MN_LEN);
         remove_Leading_And_Trailing_Whitespace(nvmMN);
     }
-    return;
 }
 
 // \file nvme_cmds.c   Implementation for NVM Express helper functions

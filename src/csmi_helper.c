@@ -21,9 +21,12 @@
 #    include <sys/types.h>
 #    if defined(_WIN32)
 #        include "intel_rst_helper.h"
+#        include "predef_env_detect.h"
 #        include "windows_version_detect.h" //for WinPE check
 #        include <tchar.h>
+DISABLE_WARNING_4255
 #        include <windows.h>
+RESTORE_WARNING_4255
 #    else
 #        include <sys/ioctl.h>
 #        include <unistd.h>
@@ -144,7 +147,6 @@ static void print_IOCTL_Return_Code(uint32_t returnCode)
         printf("Unknown error code %" PRIu32 "\n", returnCode);
         break;
     }
-    return;
 }
 
 #    if defined(_WIN32)
@@ -499,7 +501,6 @@ static void print_CSMI_Driver_Info(PCSMI_SAS_DRIVER_INFO driverInfo)
                driverInfo->usCSMIMinorRevision);
         printf("\n");
     }
-    return;
 }
 
 eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE                  deviceHandle,
@@ -735,7 +736,6 @@ static void print_CSMI_Controller_Status(PCSMI_SAS_CNTLR_STATUS status)
             }
         }
     }
-    return;
 }
 
 eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE                   deviceHandle,
@@ -877,7 +877,6 @@ static void print_CSMI_RAID_Info(PCSMI_SAS_RAID_INFO raidInfo)
             // Add another is_Empty here for 44 bytes if other things get added here.
         }
     }
-    return;
 }
 
 // Sample RAID info outputs from some drivers:
@@ -1294,7 +1293,6 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
             }
         }
     }
-    return;
 }
 
 // example RAID config output from different drives:
@@ -1785,7 +1783,6 @@ static void print_CSMI_Port_Protocol(uint8_t portProtocol)
         needComma = true;
     }
     printf("\n");
-    return;
 }
 
 static void print_CSMI_SAS_Identify(PCSMI_SAS_IDENTIFY identify)
@@ -1847,7 +1844,6 @@ static void print_CSMI_SAS_Identify(PCSMI_SAS_IDENTIFY identify)
             break;
         }
     }
-    return;
 }
 
 static void print_CSMI_Link_Rate(uint8_t linkRate)
@@ -1952,7 +1948,6 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
             printf("\n");
         }
     }
-    return;
 }
 
 // NOTE: AMD's rcraid driver seems to treat non-raid drives slightly different in the phy info output. In the case I
@@ -2982,7 +2977,6 @@ static void print_CSMI_SATA_Signature(PCSMI_SAS_SATA_SIGNATURE signature)
         print_FIS(signature->bSignatureFIS, 20);
         printf("\n");
     }
-    return;
 }
 
 // TODO: consider using a pointer to a FIS to fill in on completion instead...
@@ -3060,7 +3054,6 @@ static void print_CSMI_Get_SCSI_Address(PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAd
         printf("\tTarget ID: %" CPRIu8 "\n", scsiAddress->bTargetId);
         printf("\tLUN: %" CPRIu8 "\n", scsiAddress->bLun);
     }
-    return;
 }
 
 eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE                       deviceHandle,
@@ -3139,7 +3132,6 @@ static void print_CSMI_Device_Address(PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER addres
                address->bSASLun[0], address->bSASLun[1], address->bSASLun[2], address->bSASLun[3], address->bSASLun[4],
                address->bSASLun[5], address->bSASLun[6], address->bSASLun[7]);
     }
-    return;
 }
 
 eReturnValues csmi_Get_Device_Address(CSMI_HANDLE                         deviceHandle,
@@ -3328,7 +3320,6 @@ static void print_CSMI_Connector_Info(PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorI
         }
         printf("\n");
     }
-    return;
 }
 
 eReturnValues csmi_Get_Connector_Info(CSMI_HANDLE                     deviceHandle,
@@ -3982,14 +3973,13 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename,
     if (filename && isIntelFormat && field1 && field2 && field3 && field4)
     {
         char* end = M_NULLPTR;
-        char* str = M_CONST_CAST(
-            char*, filename); // need to update str pointer as we scan the string, but not actually modifying data
+        // need to update str pointer as we scan the string, but not actually modifying data
+        char* str = M_CONST_CAST(char*, filename);
         if (strstr(filename, "csmi:") == str) // must begin with this
         {
             str += safe_strlen("csmi:");
-            errno               = 0; // clear to zero as stated in ISO C secure coding
-            unsigned long value = strtoul(str, &end, 10);
-            if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+            unsigned long value = 0UL;
+            if (0 != safe_strtoul(&value, str, &end, BASE_10_DECIMAL))
             {
                 return false;
             }
@@ -4007,10 +3997,8 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename,
                 {
                     *isIntelFormat = false;
                 }
-                str   = end;
-                errno = 0; // clear to zero as stated in ISO C secure coding
-                value = strtoul(str, &end, 10);
-                if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+                str = end;
+                if (0 != safe_strtoul(&value, str, &end, BASE_10_DECIMAL))
                 {
                     return false;
                 }
@@ -4018,10 +4006,8 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename,
                 {
                     *field2 = C_CAST(uint32_t, value);
                     end += 1; // move past next :
-                    str   = end;
-                    errno = 0; // clear to zero as stated in ISO C secure coding
-                    value = strtoul(str, &end, 10);
-                    if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+                    str = end;
+                    if (0 != safe_strtoul(&value, str, &end, BASE_10_DECIMAL))
                     {
                         return false;
                     }
@@ -4029,10 +4015,8 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename,
                     {
                         *field3 = C_CAST(uint32_t, value);
                         end += 1; // move past next :
-                        str   = end;
-                        errno = 0; // clear to zero as stated in ISO C secure coding
-                        value = strtoul(str, &end, 10);
-                        if ((value == ULONG_MAX && errno == ERANGE) || (value == 0 && str == end))
+                        str = end;
+                        if (0 != safe_strtoul(&value, str, &end, BASE_10_DECIMAL))
                         {
                             return false;
                         }
@@ -4049,8 +4033,14 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename,
                                 // If this parameter was provided, duplicate it to pass out
                                 if (nixbasehandle)
                                 {
-                                    *nixbasehandle = strdup(end);
-                                    return true;
+                                    if (0 == safe_strdup(nixbasehandle, end))
+                                    {
+                                        return true;
+                                    }
+                                    else
+                                    {
+                                        return false;
+                                    }
                                 }
                                 else
                                 {
@@ -4544,7 +4534,7 @@ bool is_CSMI_Handle(const char* filename)
 // Adapter scope:  HKLM\System\CurrentControlSet\Services<miniport name>\Parameters\Device<adapter#>
 // Storport key location
 // HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\<PortDriverName>\Parameters\CSMI = dword value
-eCSMISecurityAccess get_CSMI_Security_Access(char* driverName)
+eCSMISecurityAccess get_CSMI_Security_Access(const char* driverName)
 {
     eCSMISecurityAccess access = CSMI_SECURITY_ACCESS_NONE;
 #    if defined(_WIN32)
@@ -5322,13 +5312,12 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                 if (scsiPortHandle)
                 {
                     scanhandle += safe_strlen("\\\\.\\SCSI");
-                    errno                 = 0; // clear to zero as stated in ISO C secure coding
-                    unsigned long ctrlnum = strtoul(scanhandle, &endHandle, 10);
-                    if ((ctrlnum == ULONG_MAX && errno == ERANGE) || (ctrlnum == 0 && scanhandle == endHandle))
+                    unsigned long ctrlnum = 0UL;
+                    if (0 != safe_strtoul(&ctrlnum, scanhandle, &endHandle, BASE_10_DECIMAL))
                     {
                         return FAILURE;
                     }
-                    if (endHandle && safe_strlen(endHandle) >= 1)
+                    if (endHandle && safe_strlen(endHandle) >= SIZE_T_C(1))
                     {
                         if (strcmp(endHandle, ":") != 0)
                         {
@@ -6814,7 +6803,6 @@ void print_CSMI_Device_Info(tDevice* device)
     {
         printf("No CSMI info, not a CSMI supporting device.\n");
     }
-    return;
 }
 
 #endif // ENABLE_CSMI

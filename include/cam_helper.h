@@ -40,7 +40,6 @@ extern "C"
 #include <ctype.h>
 #include <err.h>
 #include <fcntl.h>
-#include <inttypes.h>
 #include <libutil.h>
 #include <limits.h>
 #include <stdio.h>

@@ -58,7 +58,7 @@ bool is_ATA_Identify_Word_Valid_SATA(uint16_t word)
     return valid;
 }
 
-static bool is_Buffer_Non_Zero(uint8_t* ptrData, uint32_t dataLen)
+static bool is_Buffer_Non_Zero(const uint8_t* ptrData, uint32_t dataLen)
 {
     bool isNonZero = false;
     if (ptrData)
@@ -1055,7 +1055,6 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
         }
     }
-    return;
 }
 
 eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
@@ -2484,7 +2483,7 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataComm
     printf("\n");
 }
 
-uint8_t calculate_ATA_Checksum(uint8_t* ptrData)
+uint8_t calculate_ATA_Checksum(const uint8_t* ptrData)
 {
     uint32_t checksum = UINT32_C(0);
     uint32_t counter  = UINT32_C(0);
@@ -2499,7 +2498,7 @@ uint8_t calculate_ATA_Checksum(uint8_t* ptrData)
     return M_Byte0(checksum); // (~checksum + 1);//return this? or just the checksum?
 }
 
-bool is_Checksum_Valid(uint8_t* ptrData, uint32_t dataSize, uint32_t* firstInvalidSector)
+bool is_Checksum_Valid(const uint8_t* ptrData, uint32_t dataSize, uint32_t* firstInvalidSector)
 {
     bool     isValid = false;
     uint32_t checksumCalc;

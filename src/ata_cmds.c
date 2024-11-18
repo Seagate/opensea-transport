@@ -1259,15 +1259,15 @@ eReturnValues ata_Read_Native_Max_Address(tDevice* device, uint64_t* nativeMaxLB
 eReturnValues ata_Set_Max(tDevice*    device,
                           eHPAFeature setMaxFeature,
                           uint32_t    newMaxLBA,
-                          bool        volitileValue,
+                          bool        volatileValue,
                           uint8_t*    ptrData,
-                          uint32_t    dataSize)
+                          uint32_t    dataLength)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
     safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
     ataCommandOptions.commandType       = ATA_CMD_TYPE_TASKFILE;
-    ataCommandOptions.dataSize          = dataSize;
+    ataCommandOptions.dataSize          = dataLength;
     ataCommandOptions.ptrData           = ptrData;
     ataCommandOptions.tfr.CommandStatus = ATA_SET_MAX;
     if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
@@ -1308,14 +1308,14 @@ eReturnValues ata_Set_Max(tDevice*    device,
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (volitileValue)
+    if (volatileValue)
     {
         ataCommandOptions.tfr.SectorCount |= BIT0;
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Set Max, LBA = %" PRIu32 ", %s\n", newMaxLBA,
-               (volitileValue ? "Volatile" : "Non-Volatile"));
+               (volatileValue ? "Volatile" : "Non-Volatile"));
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1327,9 +1327,9 @@ eReturnValues ata_Set_Max(tDevice*    device,
     return ret;
 }
 
-eReturnValues ata_Set_Max_Address(tDevice* device, uint32_t newMaxLBA, bool volitileValue)
+eReturnValues ata_Set_Max_Address(tDevice* device, uint32_t newMaxLBA, bool volatileValue)
 {
-    return ata_Set_Max(device, HPA_SET_MAX_ADDRESS, newMaxLBA, volitileValue, M_NULLPTR, 0);
+    return ata_Set_Max(device, HPA_SET_MAX_ADDRESS, newMaxLBA, volatileValue, M_NULLPTR, 0);
 }
 
 eReturnValues ata_Set_Max_Password(tDevice* device, uint8_t* ptrData, uint32_t dataLength)

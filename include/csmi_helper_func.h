@@ -640,7 +640,7 @@ extern "C"
     //!   \return eCSMISecurityAccess value that describes access level
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eCSMISecurityAccess get_CSMI_Security_Access(char* driverName);
+    OPENSEA_TRANSPORT_API eCSMISecurityAccess get_CSMI_Security_Access(const char* driverName);
 
 #    if defined(__cplusplus)
 }

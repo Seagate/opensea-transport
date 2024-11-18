@@ -203,12 +203,11 @@ static bool create_OS_CISS_Handle_Name(const char* input, char* osHandle)
             if (input[0] == 'c')
             {
                 char* endptr = M_NULLPTR;
-                char* str    = M_CONST_CAST(char*, input) +
-                            1;           // need to update str pointer as we parse the handle, but not changing any data
-                errno               = 0; // clear to zero as stated in ISO C secure coding
-                unsigned long value = strtoul(input, &endptr, 10);
-                if ((value == ULONG_MAX && errno == ERANGE) || (str == endptr) ||
-                    (value > UINT16_MAX)) // this should not happen for this format
+                // need to update str pointer as we parse the handle, but not changing any data
+                char*         str   = M_CONST_CAST(char*, input) + 1;
+                unsigned long value = 0UL;
+                if (0 != safe_strtoul(&value, str, &endptr, BASE_10_DECIMAL) ||
+                    (value > UINT16_MAX)) // this should not happen for this format)
                 {
                     success = false;
                 }
@@ -217,10 +216,8 @@ static bool create_OS_CISS_Handle_Name(const char* input, char* osHandle)
                     controller = C_CAST(uint16_t, value);
                     if (endptr && endptr[0] == 'd')
                     {
-                        str   = endptr + 1;
-                        errno = 0; // clear to zero as stated in ISO C secure coding
-                        value = strtoul(input, &endptr, 10);
-                        if ((value == ULONG_MAX && errno == ERANGE) || (str == endptr) || (value > UINT16_MAX))
+                        str = endptr + 1;
+                        if (0 != safe_strtoul(&value, str, &endptr, BASE_10_DECIMAL) || (value > UINT16_MAX))
                         {
                             success = false;
                         }
@@ -256,15 +253,16 @@ static uint8_t parse_CISS_Handle(const char* devName, char* osHandle, uint16_t* 
     if (devName)
     {
         // TODO: Check the format of the handle to see if it is ciss format that can be supported
-        char* dup = strdup(devName);
-        if (strstr(dup, CISS_HANDLE_BASE_NAME) == dup)
+        char*   dup    = M_NULLPTR;
+        errno_t duperr = safe_strdup(&dup, devName);
+        if (duperr == 0 && dup != M_NULLPTR && strstr(dup, CISS_HANDLE_BASE_NAME) == dup)
         {
             // starts with ciss, so now we should check to make sure we found everything else
             uint8_t counter = UINT8_C(0);
             char*   saveptr = M_NULLPTR;
             rsize_t duplen  = safe_strlen(dup);
             char*   token   = safe_String_Token(dup, &duplen, ":", &saveptr);
-            while (token && counter < 3)
+            while (token && counter < UINT8_C(3))
             {
                 switch (counter)
                 {
@@ -282,7 +280,7 @@ static uint8_t parse_CISS_Handle(const char* devName, char* osHandle, uint16_t* 
                     if (safe_isdigit(token[0]))
                     {
                         errno              = 0; // clear to zero as stated in ISO C secure coding
-                        unsigned long temp = strtoul(token, M_NULLPTR, 10);
+                        unsigned long temp = strtoul(token, M_NULLPTR, BASE_10_DECIMAL);
                         if (!(temp == ULONG_MAX && errno == ERANGE))
                         {
                             *physicalDriveNumber = C_CAST(uint16_t, temp);

@@ -36,7 +36,9 @@
 #include <tchar.h>
 #include <time.h>
 #include <wchar.h>
+DISABLE_WARNING_4255
 #include <windows.h> // added for forced PnP rescan
+RESTORE_WARNING_4255
 // NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h> // added for forced PnP rescan
 //#include <setupapi.h> //NOTE: Not available for ARM
@@ -2999,7 +3001,6 @@ static void print_Firmware_Miniport_SRB_Status(ULONG returnCode)
         printf("Unknown Firmware SRB Status: 0x%" PRIX32 "\n", C_CAST(uint32_t, returnCode));
         break;
     }
-    return;
 }
 
 // this in an internal function so that it can be reused for reading firmware slot info, sending a download command, or
@@ -4192,20 +4193,6 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
 
 #endif // WINVER >= SEA_WIN32_WINNT_WINBLUE
 
-// static eReturnValues get_os_drive_number( char *filename )
-//{
-//     int  drive_num = -1;
-//     char *pdev     = M_NULLPTR;
-//     //char * next_token = M_NULLPTR;
-//     pdev = strrchr(filename, 'e');
-//     if (pdev != M_NULLPTR)
-//     {
-//         errno = 0;//ISO secure coding standard recommends this to ensure errno is interpretted correctly after this
-//         call drive_num = strtol(pdev + 1, M_NULLPTR, 0);
-//     }
-//     return drive_num;
-// }
-
 static eReturnValues close_SCSI_SRB_Handle(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
@@ -5051,15 +5038,13 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
         device->os_info.scsiSRBHandle = INVALID_HANDLE_VALUE; // set this to invalid ahead of anywhere that it might get
                                                               // opened below for discovering additional capabilities.
         // set the handle name
-        strcpy_s(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
+        safe_strcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
 
         if (strstr(device->os_info.name, WIN_PHYSICAL_DRIVE))
         {
-            char* end           = M_NULLPTR;
-            char* drivenum      = strstr(device->os_info.name, WIN_PHYSICAL_DRIVE) + safe_strlen(WIN_PHYSICAL_DRIVE);
-            errno               = 0; // clear to zero as stated in ISO C secure coding
-            unsigned long drive = strtoul(drivenum, &end, 10);
-            if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
+            unsigned long drive    = 0UL;
+            char*         drivenum = strstr(device->os_info.name, WIN_PHYSICAL_DRIVE) + safe_strlen(WIN_PHYSICAL_DRIVE);
+            if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
             }
@@ -5068,11 +5053,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
         }
         else if (strstr(device->os_info.name, WIN_CDROM_DRIVE))
         {
-            char* end           = M_NULLPTR;
-            char* drivenum      = strstr(device->os_info.name, WIN_CDROM_DRIVE) + safe_strlen(WIN_CDROM_DRIVE);
-            errno               = 0; // clear to zero as stated in ISO C secure coding
-            unsigned long drive = strtoul(drivenum, &end, 10);
-            if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
+            unsigned long drive    = 0UL;
+            char*         drivenum = strstr(device->os_info.name, WIN_CDROM_DRIVE) + safe_strlen(WIN_CDROM_DRIVE);
+            if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
             }
@@ -5081,11 +5064,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
         }
         else if (strstr(device->os_info.name, WIN_TAPE_DRIVE))
         {
-            char* end           = M_NULLPTR;
-            char* drivenum      = strstr(device->os_info.name, WIN_TAPE_DRIVE) + safe_strlen(WIN_TAPE_DRIVE);
-            errno               = 0; // clear to zero as stated in ISO C secure coding
-            unsigned long drive = strtoul(drivenum, &end, 10);
-            if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
+            unsigned long drive    = 0UL;
+            char*         drivenum = strstr(device->os_info.name, WIN_TAPE_DRIVE) + safe_strlen(WIN_TAPE_DRIVE);
+            if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
             }
@@ -5094,11 +5075,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
         }
         else if (strstr(device->os_info.name, WIN_CHANGER_DEVICE))
         {
-            char* end           = M_NULLPTR;
-            char* drivenum      = strstr(device->os_info.name, WIN_CHANGER_DEVICE) + safe_strlen(WIN_CHANGER_DEVICE);
-            errno               = 0; // clear to zero as stated in ISO C secure coding
-            unsigned long drive = strtoul(drivenum, &end, 10);
-            if ((drive == ULONG_MAX && errno == ERANGE) || (drive == 0 && end == drivenum))
+            unsigned long drive    = 0UL;
+            char*         drivenum = strstr(device->os_info.name, WIN_CHANGER_DEVICE) + safe_strlen(WIN_CHANGER_DEVICE);
+            if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
             }
@@ -12169,8 +12148,8 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
     }
     stop_Timer(&commandTimer);
 #    if defined(_DEBUG)
-    printf("%s: nvmeIoCtx->device->os_info.last_error=%lu(0x%lx)\n", __FUNCTION__, nvmeIoCtx->device->os_info.last_error,
-           nvmeIoCtx->device->os_info.last_error);
+    printf("%s: nvmeIoCtx->device->os_info.last_error=%lu(0x%lx)\n", __FUNCTION__,
+           nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
 #    endif
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     if (overlappedStruct.hEvent)
@@ -12307,8 +12286,8 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
     }
     stop_Timer(&commandTimer);
 #    if defined(_DEBUG)
-    printf("%s: nvmeIoCtx->device->os_info.last_error=%lu(0x%lx)\n", __FUNCTION__, nvmeIoCtx->device->os_info.last_error,
-           nvmeIoCtx->device->os_info.last_error);
+    printf("%s: nvmeIoCtx->device->os_info.last_error=%lu(0x%lx)\n", __FUNCTION__,
+           nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
 #    endif
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     if (overlappedStruct.hEvent)
@@ -14428,6 +14407,120 @@ static eReturnValues open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice*
     return ret;
 }
 
+static void set_Command_Completion_For_OS_Read_Write_NVMe(tDevice* device, DWORD lastError)
+{
+    // For nvme, set the NVMe status as best we can, then fall through and set SCSI style sense data as well.
+    // This switch case will handle many, if not all the same cases as SCSI below, but this seemed like the easier
+    // way to solve this problem for now. - TJE if the DISABLE_NVME_PASSTHROUGH flag is refactored, this can
+    // probably be cleaned up a lot - TJE
+    device->drive_info.lastNVMeResult.lastNVMeCommandSpecific =
+        0; // cannot report this as far as I know, so clear it to zero
+    switch (lastError)
+    {
+    case ERROR_NOT_READY: // sense key not ready
+        // namespace not ready
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_NS_NOT_READY_);
+        break;
+    case ERROR_WRITE_PROTECT:
+        // attempted to write to read-only range
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, NVME_CMD_SP_SC_ATTEMPTED_WRITE_TO_READ_ONLY_RANGE);
+        break;
+    case ERROR_WRITE_FAULT:
+        // write fault
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_WRITE_FAULT_);
+        break;
+    case ERROR_READ_FAULT: // should this be "Deallocated or unwritten logical block on NVME?
+    case ERROR_DEVICE_HARDWARE_ERROR:
+        // internal device error
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INTERNAL_);
+        break;
+    case ERROR_CRC: // medium error, uncorrectable data
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_UNREC_READ_ERROR_);
+        break;
+    case ERROR_SEEK:             // cannot find area or track on disk?
+        M_FALLTHROUGH;           // Fallthrough for now unless we can figure out a better, more specific error when this
+                                 // happens - TJE
+    case ERROR_SECTOR_NOT_FOUND: // ID not found (beyond max LBA type error)
+        // lba out of range
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_LBA_RANGE_);
+        break;
+    case ERROR_OFFSET_ALIGNMENT_VIOLATION: // alignment error for the device
+        // namespace not ready??? THere doesn't seem to be anything similar in the spec like SAS/SATA
+        // have...probably because LBAs don't report differing logical and physical size
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_NS_NOT_READY_);
+        break;
+    case ERROR_TIMEOUT:
+        // command abort requested. Assume this system asked to abort this when it took too long
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
+        break;
+    case ERROR_DEVICE_NOT_CONNECTED: // CRC error???
+        // data transfer error?
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_DATA_XFER_ERROR_);
+        break;
+    case ERROR_BAD_COMMAND:
+        // invalid op code??? or invalid field in command? no idea...-TJE
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INVALID_OPCODE_);
+        break;
+    case ERROR_INVALID_DATA: // Not sure if this is the same as CRC or something else, so this may need changing if
+                             // we see it in the future.
+    case ERROR_DATA_CHECKSUM_ERROR: // Not sure if this will show up for RAW IO like this is doing or not, but we
+                                    // may need a case for this in the future.
+        // data transfer error?
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_DATA_XFER_ERROR_);
+        break;
+    default:
+        // setting to abort requested since we don't know what else to set...generic enough
+        device->drive_info.lastNVMeResult.lastNVMeStatus =
+            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
+        break;
+    }
+}
+
+static void set_Command_Completion_For_OS_Read_Write_ATA(tDevice* device, DWORD lastError)
+{
+    device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+    switch (lastError)
+    {
+        // Some of these are in here "just in case", but this is not a comprehensive list of what could be returned.
+        // Some may never be returned, others may not be in this list and are falling to the default case - TJE The
+        // only one I haven't been able to find a good answer for is an interface CRC error, which are hard to
+        // create and test for - TJE
+    case ERROR_WRITE_FAULT:
+    case ERROR_READ_FAULT:
+    case ERROR_DEVICE_HARDWARE_ERROR:
+        device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_DEVICE_FAULT;
+        break;
+    case ERROR_CRC: // medium error, uncorrectable data
+        device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_UNCORRECTABLE_DATA;
+        break;
+    case ERROR_SEEK:             // cannot find area or track on disk?
+        M_FALLTHROUGH;           // Fallthrough for now unless we can figure out a better, more specific error when this
+                                 // happens - TJE
+    case ERROR_SECTOR_NOT_FOUND: // ID not found (beyond max LBA type error)
+        device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_ID_NOT_FOUND;
+        break;
+    case ERROR_OFFSET_ALIGNMENT_VIOLATION: // alignment error for the device
+        device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_ALIGNMENT_ERROR;
+        break;
+    default:
+        // set the sense key to aborted command...don't set the asc or ascq since we don't know what to set those to
+        // right now
+        device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_ABORT;
+        break;
+    }
+}
+
 static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, DWORD lastError)
 {
     eReturnValues ret = SUCCESS;
@@ -14449,89 +14542,17 @@ static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, D
         uint8_t senseKey = UINT8_C(0);
         uint8_t asc      = UINT8_C(0);
         uint8_t ascq     = UINT8_C(0);
-        ret              = FAILURE;
-        // For nvme, set the NVMe status as best we can, then fall through and set SCSI style sense data as well.
-        // This switch case will handle many, if not all the same cases as SCSI below, but this seemed like the easier
-        // way to solve this problem for now. - TJE if the DISABLE_NVME_PASSTHROUGH flag is refactored, this can
-        // probably be cleaned up a lot - TJE
-        device->drive_info.lastNVMeResult.lastNVMeCommandSpecific =
-            0; // cannot report this as far as I know, so clear it to zero
-        switch (lastError)
+        // NOLINTBEGIN(bugprone-branch-clone)
+        if (device->drive_info.drive_type == NVME_DRIVE)
         {
-        case ERROR_NOT_READY: // sense key not ready
-            // namespace not ready
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_NS_NOT_READY_);
-            break;
-        case ERROR_WRITE_PROTECT:
-            // attempted to write to read-only range
-            device->drive_info.lastNVMeResult.lastNVMeStatus = WIN_DUMMY_NVME_STATUS(
-                NVME_SCT_COMMAND_SPECIFIC_STATUS, NVME_CMD_SP_SC_ATTEMPTED_WRITE_TO_READ_ONLY_RANGE);
-            break;
-        case ERROR_WRITE_FAULT:
-            // write fault
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_WRITE_FAULT_);
-            break;
-        case ERROR_READ_FAULT: // should this be "Deallocated or unwritten logical block on NVME?
-        case ERROR_DEVICE_HARDWARE_ERROR:
-            // internal device error
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INTERNAL_);
-            break;
-        case ERROR_CRC: // medium error, uncorrectable data
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_UNREC_READ_ERROR_);
-            break;
-        case ERROR_SEEK:   // cannot find area or track on disk?
-            M_FALLTHROUGH; // Fallthrough for now unless we can figure out a better, more specific error when this
-                           // happens - TJE
-        case ERROR_SECTOR_NOT_FOUND: // ID not found (beyond max LBA type error)
-            // lba out of range
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_LBA_RANGE_);
-            break;
-        case ERROR_OFFSET_ALIGNMENT_VIOLATION: // alignment error for the device
-            // namespace not ready??? THere doesn't seem to be anything similar in the spec like SAS/SATA
-            // have...probably because LBAs don't report differing logical and physical size
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_NS_NOT_READY_);
-            break;
-        case ERROR_TIMEOUT:
-            // command abort requested. Assume this system asked to abort this when it took too long
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
-            break;
-        case ERROR_DEVICE_NOT_CONNECTED: // CRC error???
-            // data transfer error?
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_DATA_XFER_ERROR_);
-            break;
-        case ERROR_BAD_COMMAND:
-            // invalid op code??? or invalid field in command? no idea...-TJE
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INVALID_OPCODE_);
-            break;
-        case ERROR_INVALID_DATA: // Not sure if this is the same as CRC or something else, so this may need changing if
-                                 // we see it in the future.
-        case ERROR_DATA_CHECKSUM_ERROR: // Not sure if this will show up for RAW IO like this is doing or not, but we
-                                        // may need a case for this in the future.
-            // data transfer error?
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_DATA_XFER_ERROR_);
-            break;
-        default:
-            // setting to abort requested since we don't know what else to set...generic enough
-            device->drive_info.lastNVMeResult.lastNVMeStatus =
-                WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
-            break;
+            set_Command_Completion_For_OS_Read_Write_NVMe(device, lastError);
         }
+        else if (device->drive_info.drive_type == ATA_DRIVE)
+        {
+            set_Command_Completion_For_OS_Read_Write_ATA(device, lastError);
+        }
+        // NOLINTEND(bugprone-branch-clone)
 
-        // failure for one reason or another. The last error may or may not tell us exactly what happened.
-        if (device->drive_info.drive_type == ATA_DRIVE)
-        {
-            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
-        }
         device->drive_info.lastCommandSenseData[0] = SCSI_SENSE_CUR_INFO_FIXED;
         switch (device->os_info.last_error)
         {
@@ -14555,19 +14576,11 @@ static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, D
             senseKey = SENSE_KEY_HARDWARE_ERROR;
             asc      = 0x44;
             ascq     = 0;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_DEVICE_FAULT;
-            }
             break;
         case ERROR_CRC: // medium error, uncorrectable data
             senseKey = SENSE_KEY_MEDIUM_ERROR;
             asc      = 0x11;
             ascq     = 0;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_UNCORRECTABLE_DATA;
-            }
             break;
         case ERROR_SEEK:   // cannot find area or track on disk?
             M_FALLTHROUGH; // Fallthrough for now unless we can figure out a better, more specific error when this
@@ -14576,20 +14589,12 @@ static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, D
             senseKey = SENSE_KEY_ILLEGAL_REQUEST;
             asc      = 0x21;
             ascq     = 0x00;
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_ID_NOT_FOUND;
-            }
             break;
         case ERROR_OFFSET_ALIGNMENT_VIOLATION: // alignment error for the device
             senseKey = SENSE_KEY_ILLEGAL_REQUEST;
             asc      = 0x21;
             ascq = 0x04; // technically this is "unaligned write command" which would not be accurate with a read, but
                          // this is the best I can do right now....maybe 07 for read boundary error???
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_ALIGNMENT_ERROR;
-            }
             break;
         case ERROR_TIMEOUT:
             senseKey = SENSE_KEY_ABORTED_COMMAND;

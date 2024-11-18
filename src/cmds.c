@@ -1628,7 +1628,6 @@ static void get_SCSI_DPO_FUA_Support(tDevice* device)
         }
         device->drive_info.dpoFUAvalid = true;
     }
-    return;
 }
 
 eReturnValues scsi_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)

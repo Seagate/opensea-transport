@@ -1081,9 +1081,10 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice* device,
         }
         break;
     default:
-        asc_ascq_result = C_CAST(ascAscqRetDesc*,
-                                 safe_bsearch(&asc_ascq_key, ascAscqLookUp, sizeof(ascAscqLookUp) / sizeof(ascAscqLookUp[0]),
-                                         sizeof(ascAscqLookUp[0]), (int (*)(const void*, const void*))cmp_Asc_Ascq));
+        asc_ascq_result =
+            C_CAST(ascAscqRetDesc*,
+                   safe_bsearch(&asc_ascq_key, ascAscqLookUp, sizeof(ascAscqLookUp) / sizeof(ascAscqLookUp[0]),
+                                sizeof(ascAscqLookUp[0]), (int (*)(const void*, const void*))cmp_Asc_Ascq));
         if (asc_ascq_result)
         {
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -1138,12 +1139,12 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice* device,
     return ret;
 }
 
-void get_Sense_Key_ASC_ASCQ_FRU(uint8_t* pbuf,
-                                uint32_t pbufSize,
-                                uint8_t* senseKey,
-                                uint8_t* asc,
-                                uint8_t* ascq,
-                                uint8_t* fru)
+void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* pbuf,
+                                uint32_t       pbufSize,
+                                uint8_t*       senseKey,
+                                uint8_t*       asc,
+                                uint8_t*       ascq,
+                                uint8_t*       fru)
 {
     uint8_t  format                = pbuf[0] & 0x7F; // Stripping the last bit.
     uint8_t  additionalSenseLength = pbuf[7];        // total sense data length
@@ -1203,10 +1204,10 @@ void get_Sense_Key_ASC_ASCQ_FRU(uint8_t* pbuf,
     }
 }
 
-void get_Information_From_Sense_Data(uint8_t*  ptrSenseData,
-                                     uint32_t  senseDataLength,
-                                     bool*     valid,
-                                     uint64_t* information)
+void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
+                                     uint32_t       senseDataLength,
+                                     bool*          valid,
+                                     uint64_t*      information)
 {
     if (ptrSenseData && valid && senseDataLength > 0 && information)
     {
@@ -1268,9 +1269,9 @@ void get_Information_From_Sense_Data(uint8_t*  ptrSenseData,
     }
 }
 
-void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t* ptrSenseData,
-                                                  uint32_t senseDataLength,
-                                                  bool*    illegalLengthIndicator)
+void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
+                                                  uint32_t       senseDataLength,
+                                                  bool*          illegalLengthIndicator)
 {
     if (ptrSenseData && senseDataLength > 0 && illegalLengthIndicator)
     {
@@ -1325,11 +1326,11 @@ void get_Illegal_Length_Indicator_From_Sense_Data(uint8_t* ptrSenseData,
     }
 }
 
-void get_Stream_Command_Bits_From_Sense_Data(uint8_t* ptrSenseData,
-                                             uint32_t senseDataLength,
-                                             bool*    filemark,
-                                             bool*    endOfMedia,
-                                             bool*    illegalLengthIndicator)
+void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
+                                             uint32_t       senseDataLength,
+                                             bool*          filemark,
+                                             bool*          endOfMedia,
+                                             bool*          illegalLengthIndicator)
 {
     if (ptrSenseData && senseDataLength > 0 && illegalLengthIndicator && filemark && endOfMedia)
     {
@@ -1380,9 +1381,9 @@ void get_Stream_Command_Bits_From_Sense_Data(uint8_t* ptrSenseData,
     }
 }
 
-void get_Command_Specific_Information_From_Sense_Data(uint8_t*  ptrSenseData,
-                                                      uint32_t  senseDataLength,
-                                                      uint64_t* commandSpecificInformation)
+void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseData,
+                                                      uint32_t       senseDataLength,
+                                                      uint64_t*      commandSpecificInformation)
 {
     if (ptrSenseData && senseDataLength > 0 && commandSpecificInformation)
     {
@@ -1443,7 +1444,7 @@ void get_Command_Specific_Information_From_Sense_Data(uint8_t*  ptrSenseData,
     }
 }
 
-void get_Sense_Key_Specific_Information(uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
+void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
 {
     if (ptrSenseData && sksp && senseDataLength > 0)
     {
@@ -1547,7 +1548,7 @@ void get_Sense_Key_Specific_Information(uint8_t* ptrSenseData, uint32_t senseDat
     }
 }
 
-void get_Sense_Data_Fields(uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields)
+void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields)
 {
     if (ptrSenseData && senseDataLength > 0 && senseFields)
     {
@@ -1902,10 +1903,9 @@ void get_Sense_Data_Fields(uint8_t* ptrSenseData, uint32_t senseDataLength, ptrS
             break;
         }
     }
-    return;
 }
 
-void print_Sense_Fields(ptrSenseDataFields senseFields)
+void print_Sense_Fields(const ptrSenseDataFields senseFields)
 {
     if (senseFields && senseFields->validStructure)
     {
@@ -2099,7 +2099,7 @@ void print_Sense_Fields(ptrSenseDataFields senseFields)
     }
 }
 
-uint16_t get_Returned_Sense_Data_Length(uint8_t* pbuf)
+uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf)
 {
     uint16_t length = UINT16_C(8);
     uint8_t  format;
@@ -2886,7 +2886,6 @@ void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerial
                         safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
         }
     }
-    return;
 }
 
 // \fn fill_In_Device_Info(device device)
@@ -4808,11 +4807,11 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
     scsiVersionDescriptor* versionDescriptorResult = M_NULLPTR;
     scsiVersionDescriptor  versionDescriptorKey    = {versionDescriptor, M_NULLPTR};
 
-    versionDescriptorResult = C_CAST(scsiVersionDescriptor*,
-                                     safe_bsearch(&versionDescriptorKey, scsiVersionDescriptorTable,
-                                             sizeof(scsiVersionDescriptorTable) / sizeof(scsiVersionDescriptorTable[0]),
-                                             sizeof(scsiVersionDescriptorTable[0]),
-                                             (int (*)(const void*, const void*))cmp_Version_Descriptor));
+    versionDescriptorResult = C_CAST(
+        scsiVersionDescriptor*,
+        safe_bsearch(&versionDescriptorKey, scsiVersionDescriptorTable,
+                     sizeof(scsiVersionDescriptorTable) / sizeof(scsiVersionDescriptorTable[0]),
+                     sizeof(scsiVersionDescriptorTable[0]), (int (*)(const void*, const void*))cmp_Version_Descriptor));
     if (versionDescriptorResult)
     {
         snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "%s", versionDescriptorResult->stringDescription);
@@ -5272,5 +5271,4 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
             break;
         }
     }
-    return;
 }

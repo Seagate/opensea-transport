@@ -346,7 +346,7 @@ eReturnValues ata_Legacy_Set_Max_Address_CHS(tDevice* device,
                                              uint16_t newMaxCylinder,
                                              uint8_t  newMaxHead,
                                              uint8_t  newMaxSector,
-                                             bool     volitileValue)
+                                             bool     volatileValue)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -369,7 +369,7 @@ eReturnValues ata_Legacy_Set_Max_Address_CHS(tDevice* device,
     {
         ataCommandOptions.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
-    if (volitileValue)
+    if (volatileValue)
     {
         ataCommandOptions.tfr.SectorCount |= BIT0;
     }

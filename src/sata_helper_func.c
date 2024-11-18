@@ -317,5 +317,4 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             break;
         }
     }
-    return;
 }

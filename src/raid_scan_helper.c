@@ -142,5 +142,4 @@ void delete_RAID_List(ptrRaidHandleToScan listBegin)
             break;
         }
     }
-    return;
 }

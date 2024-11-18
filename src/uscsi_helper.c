@@ -76,10 +76,11 @@ static M_INLINE void close_mnttab(FILE** mnttab)
 //       best I could to prevent needing changes. - TJE
 static int get_Partition_Count(const char* blockDeviceName)
 {
-    int   result = 0;
-    FILE* mount  = M_NULLPTR;
-    errno_t fileopenerr = safe_fopen(&mount, "/etc/mnttab", "r"); // we only need to know about mounted partitions. Mounted partitions need
-                                              // to be known so that they can be unmounted when necessary. - TJE
+    int     result = 0;
+    FILE*   mount  = M_NULLPTR;
+    errno_t fileopenerr =
+        safe_fopen(&mount, "/etc/mnttab", "r"); // we only need to know about mounted partitions. Mounted partitions
+                                                // need to be known so that they can be unmounted when necessary. - TJE
     struct mnttab entry;
     safe_memset(&entry, sizeof(struct mnttab), 0, sizeof(struct mnttab));
     if (fileopenerr == 0 && mount)
@@ -122,9 +123,10 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
     int           matchesFound = 0;
     if (listCount > 0)
     {
-        FILE* mount = M_NULLPTR;
-        errno_t fileopenerr = safe_fopen(&mount, "/etc/mnttab", "r"); // we only need to know about mounted partitions. Mounted partitions
-                                                 // need to be known so that they can be unmounted when necessary. - TJE
+        FILE*   mount       = M_NULLPTR;
+        errno_t fileopenerr = safe_fopen(&mount, "/etc/mnttab",
+                                         "r"); // we only need to know about mounted partitions. Mounted partitions
+                                               // need to be known so that they can be unmounted when necessary. - TJE
         if (fileopenerr == 0 && mount)
         {
             struct mnttab entry;

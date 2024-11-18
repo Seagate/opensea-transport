@@ -863,7 +863,6 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
             break;
         }
     }
-    return;
 }
 
 static void print_ODM_Error(int odmError)
@@ -973,7 +972,6 @@ static void print_ODM_Error(int odmError)
         printf("ODMI Unknown error: %d\n", odmError);
         break;
     }
-    return;
 }
 
 static void print_CuDv_Struct(struct CuDv* cudv)
@@ -1102,7 +1100,6 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         //  }
     }
     printf("\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
-    return;
 }
 
 static int get_Adapter_IDs(tDevice* device, char* name)
@@ -1140,10 +1137,8 @@ static int get_Adapter_IDs(tDevice* device, char* name)
                 // Set a char pointer to the last / + 1
                 const char* ids = strrchr(ptrcudv->PdDvLn_Lvalue, '/') + 1;
                 // now convert this out to a uint32, then byte swap it, then separate into VID and PID
-                errno                 = 0; // clear before calling strtoul
-                char**        endptr  = M_NULLPTR;
-                unsigned long idCombo = strtoul(ids, &endptr, 16);
-                if ((idCombo == ULONG_MAX && errno == ERANGE) || (ids == *endptr && idCombo == 0))
+                unsigned long idCombo = 0UL;
+                if (0 != safe_strtoul(&idCombo, ids, &endptr, BASE_16_HEX))
                 {
                     // unable to convert the string for some reason
                     ret = -1;
@@ -1268,8 +1263,12 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         // Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more
         // details -TJE set name and friendly name
         snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
-        char* friendlyName = strdup(filename);
-        snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(friendlyName));
+        char*   friendlyName = M_NULLPTR;
+        errno_t duperr       = safe_strdup(&friendlyName, filename);
+        if (duperr == 0 && friendlyName != M_NULLPTR)
+        {
+            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(friendlyName));
+        }
         safe_free(&friendlyName);
         struct CuDv  cudv;
         struct CuDv* ptrcudv;
@@ -1277,8 +1276,13 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 
         odm_initialize();
         DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT); // 256
-        char* diskFullName = strdup(filename);
-        char* diskName     = strrchr(diskFullName, 'r'); // point to r in /dev/rhdisk#
+        char* diskFullName = M_NULLPTR;
+        duperr             = safe_strdup(&diskFullName, filename);
+        if (duperr != 0 || diskFullName == M_NULLPTR)
+        {
+            return MEMORY_FAILURE;
+        }
+        char* diskName = strrchr(diskFullName, 'r'); // point to r in /dev/rhdisk#
         if (diskName)
         {
             diskName++; // point just past the r so that it is only hdisk#
@@ -1731,7 +1735,6 @@ static void print_Passthrough_Bus_And_Adapter_Status(uchar status_validity,
         printf("Unknown value for status_validity: %u", status_validity);
         break;
     }
-    return;
 }
 
 static void print_Adapter_Queue_Status(uchar adap_q_status)
@@ -1748,7 +1751,6 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
     {
         printf("Adapter Queue Status: Unknown: %u\n", adap_q_status);
     }
-    return;
 }
 
 // This function is not currently in use, but will work with up to 16B CDBs.

@@ -34,7 +34,6 @@ extern "C"
 #include <string.h> // For memset
 #include <unistd.h>
     // \todo Figure out which scsi.h & sg.h should we be including kernel specific or in /usr/..../include
-#include "nvme_helper.h"
 
 #define SG_PHYSICAL_DRIVE  "/dev/sg"   // followed by a number
 #define SD_PHYSICAL_DRIVE  "/dev/sd"   // followed by a letter
