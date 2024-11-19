@@ -612,7 +612,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                 DEVINST deviceInstance = 0;
                 // if a match is found, call locate devnode. If this is not present, it will fail and we need to
                 // continue through the loop convert the deviceID to uppercase to make matching easier
-                _tcsupr_s(deviceID, _tcslen(deviceID));
+                _tcsupr_s(deviceID, _tcslen(deviceID) + 1);//+1 for the NULL terminator otherwise this will fail
                 cmRet = CM_Locate_DevNode(&deviceInstance, deviceID, CM_LOCATE_DEVNODE_NORMAL);
                 if (CR_SUCCESS == cmRet)
                 {
