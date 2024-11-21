@@ -307,41 +307,22 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
         *csmiIoOutParams->lastError = lastError;
     }
     // print_Windows_Error_To_Screen(GetLastError());
-#    else // Linux or other 'nix systems
+#    else  // Linux or other 'nix systems
     // finish OS specific IOHEADER setup
     ioctlHeader->IOControllerNumber = csmiIoInParams->controllerNumber;
     ioctlHeader->Direction          = csmiIoInParams->ioctlDirection;
     // issue the IO
     start_Timer(timer);
-#        if defined __clang__
-// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
-// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
-#            pragma clang diagnostic push
-#            pragma clang diagnostic ignored "-Wsign-conversion"
-#        elif defined __GNUC__
-// temporarily disable the warning for sign conversion because ioctl definition
-//  in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and
-//  in others is defined as ioctl(int, int, ...)
-// While debugging there does not seem to be a real conversion issue here.
-// These ioctls still work in either situation, so disabling the warning seems best since there is not
-// another way I have found to determine when to cast or not cast the sign conversion.-TJE
-#            pragma GCC diagnostic push
-#            pragma GCC diagnostic ignored "-Wsign-conversion"
-#        endif //__clang__, __GNUC__
+    DISABLE_WARNING_SIGN_CONVERSION;
     localIoctlReturn = ioctl(csmiIoInParams->deviceHandle, csmiIoInParams->ioctlCode, csmiIoInParams->ioctlBuffer);
-#        if defined __clang__
-#            pragma clang diagnostic pop
-#        elif defined __GNUC__
-// reenable the unused function warning
-#            pragma GCC diagnostic pop
-#        endif //__clang__, __GNUC__
+    RESTORE_WARNING_SIGN_CONVERSION;
     stop_Timer(timer);
     lastError = errno;
     if (csmiIoOutParams->lastError)
     {
         *csmiIoOutParams->lastError = C_CAST(unsigned int, lastError);
     }
-#    endif     //_WIN32
+#    endif //_WIN32
     if (VERBOSITY_COMMAND_NAMES <= csmiIoInParams->csmiVerbosity)
     {
         printf("\tCSMI IO results:\n");
@@ -4147,7 +4128,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
 #    if defined(_WIN32)
     DECLARE_ZERO_INIT_ARRAY(TCHAR, device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH);
     CONST TCHAR* ptrDeviceName = &device_name[0];
-#        if defined(_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+#        if defined(_MSC_VER) && _MSC_VER < MSVC_2015
     _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT("lu") TEXT(":"),
                 controllerNum);
 #        else  //_MSC_VER && _MSCVER < VS2015

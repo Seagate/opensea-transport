@@ -2882,28 +2882,9 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         adminCmd.cdw15        = nvmeIoCtx->cmd.adminCmd.cdw15;
         adminCmd.timeout_ms   = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
         start_Timer(&commandTimer);
-#    if defined __clang__
-// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
-// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
-#        pragma clang diagnostic push
-#        pragma clang diagnostic ignored "-Wsign-conversion"
-#    elif defined __GNUC__
-// temporarily disable the warning for sign conversion because ioctl definition
-//  in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and
-//  in others is defined as ioctl(int, int, ...)
-// While debugging there does not seem to be a real conversion issue here.
-// These ioctls still work in either situation, so disabling the warning seems best since there is not
-// another way I have found to determine when to cast or not cast the sign conversion.-TJE
-#        pragma GCC diagnostic push
-#        pragma GCC diagnostic ignored "-Wsign-conversion"
-#    endif //__clang__, __GNUC__
+        DISABLE_WARNING_SIGN_CONVERSION
         ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
-#    if defined __clang__
-#        pragma clang diagnostic pop
-#    elif defined __GNUC__
-// reenable the unused function warning
-#        pragma GCC diagnostic pop
-#    endif //__clang__, __GNUC__
+        RESTORE_WARNING_SIGN_CONVERSION
         stop_Timer(&commandTimer);
         if (ioctlResult < 0)
         {
@@ -2949,28 +2930,9 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             nvmCmd.apptag   = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw15);
             nvmCmd.appmask  = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw15);
             start_Timer(&commandTimer);
-#    if defined __clang__
-// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
-// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
-#        pragma clang diagnostic push
-#        pragma clang diagnostic ignored "-Wsign-conversion"
-#    elif defined __GNUC__
-// temporarily disable the warning for sign conversion because ioctl definition
-//  in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and
-//  in others is defined as ioctl(int, int, ...)
-// While debugging there does not seem to be a real conversion issue here.
-// These ioctls still work in either situation, so disabling the warning seems best since there is not
-// another way I have found to determine when to cast or not cast the sign conversion.-TJE
-#        pragma GCC diagnostic push
-#        pragma GCC diagnostic ignored "-Wsign-conversion"
-#    endif //__clang__, __GNUC__
+            DISABLE_WARNING_SIGN_CONVERSION
             ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_SUBMIT_IO, &nvmCmd);
-#    if defined __clang__
-#        pragma clang diagnostic pop
-#    elif defined __GNUC__
-// reenable the unused function warning
-#        pragma GCC diagnostic pop
-#    endif //__clang__, __GNUC__
+            RESTORE_WARNING_SIGN_CONVERSION
             stop_Timer(&commandTimer);
             if (ioctlResult < 0)
             {
@@ -3021,28 +2983,9 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
                                              ? nvmeIoCtx->timeout * 1000
                                              : 15000; // timeout is in seconds, so converting to milliseconds
             start_Timer(&commandTimer);
-#        if defined __clang__
-// clang specific because behavior can differ even with the GCC diagnostic being "compatible"
-// https ://clang.llvm.org/docs/UsersManual.html#controlling-diagnostics-via-pragmas
-#            pragma clang diagnostic push
-#            pragma clang diagnostic ignored "-Wsign-conversion"
-#        elif defined __GNUC__
-// temporarily disable the warning for sign conversion because ioctl definition
-//  in some distributions/cross compilers is defined as ioctl(int, unsigned long, ...) and
-//  in others is defined as ioctl(int, int, ...)
-// While debugging there does not seem to be a real conversion issue here.
-// These ioctls still work in either situation, so disabling the warning seems best since there is not
-// another way I have found to determine when to cast or not cast the sign conversion.-TJE
-#            pragma GCC diagnostic push
-#            pragma GCC diagnostic ignored "-Wsign-conversion"
-#        endif //__clang__, __GNUC__
+            DISABLE_WARNING_SIGN_CONVERSION
             ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_IO_CMD, passThroughCmd);
-#        if defined __clang__
-#            pragma clang diagnostic pop
-#        elif defined __GNUC__
-// reenable the unused function warning
-#            pragma GCC diagnostic pop
-#        endif //__clang__, __GNUC__
+            RESTORE_WARNING_SIGN_CONVERSION
             stop_Timer(&commandTimer);
             if (ioctlResult < 0)
             {

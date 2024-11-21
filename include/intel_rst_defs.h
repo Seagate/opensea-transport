@@ -157,26 +157,14 @@ extern "C"
         INTEL_FIRMWARE_REQUEST_BLOCK FwRequestBlock;
     } RAID_FIRMWARE_REQUEST_BLOCK;
 
-#    if defined(_MSC_VER)
-#        pragma warning(push)
-#        pragma warning(disable : 4200) // nonstandard extension used : zero-sized array in struct/union
-#    endif                              //_MSC_VER
-#    if defined(__clang__)
-#        pragma clang diagnostic push
-#        pragma clang diagnostic ignored "-Wzero-length-array"
-#    endif //__clang__
+    DISABLE_WARNING_ZERO_LENGTH_ARRAY
     typedef struct s_IOCTL_RAID_FIRMWARE_BUFFER
     {
         SRB_IO_CONTROL              Header;
         RAID_FIRMWARE_REQUEST_BLOCK Request;
         UCHAR                       ioctlBuffer[0];
     } IOCTL_RAID_FIRMWARE_BUFFER;
-#    if defined(_MSC_VER)
-#        pragma warning(pop) // disable warning 4200
-#    endif                   //_MSC_VER
-#    if defined(__clang__)
-#        pragma clang diagnostic pop
-#    endif //__clang__
+    RESTORE_WARNING_ZERO_LENGTH_ARRAY
 
     // The RAID FW ioctl can send only STORAGE_FIRMWARE_INFO_V2, STORAGE_FIRMWARE_DOWNLOAD_V2, STORAGE_FIRMWARE_ACTIVATE
     // These are redefined here so that an up to date Windows API is not required to compile this code.
@@ -198,14 +186,7 @@ extern "C"
 
     } INTEL_STORAGE_FIRMWARE_SLOT_INFO_V2, *PINTEL_STORAGE_FIRMWARE_SLOT_INFO_V2;
 
-#    if defined(_MSC_VER)
-#        pragma warning(push)
-#        pragma warning(disable : 4200) // nonstandard extension used : zero-sized array in struct/union
-#    endif                              //_MSC_VER
-#    if defined(__clang__)
-#        pragma clang diagnostic push
-#        pragma clang diagnostic ignored "-Wzero-length-array"
-#    endif //__clang__
+    DISABLE_WARNING_ZERO_LENGTH_ARRAY
     typedef struct s_INTEL_STORAGE_FIRMWARE_INFO_V2
     {
 
@@ -249,12 +230,7 @@ extern "C"
 
     } INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2, *PINTEL_STORAGE_FIRMWARE_DOWNLOAD_V2;
 
-#    if defined(_MSC_VER)
-#        pragma warning(pop) // disable warning 4200
-#    endif                   //_MSC_VER
-#    if defined(__clang__)
-#        pragma clang diagnostic pop
-#    endif //__clang__
+    RESTORE_WARNING_ZERO_LENGTH_ARRAY
 
 #    define INTEL_STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION 0x1
 

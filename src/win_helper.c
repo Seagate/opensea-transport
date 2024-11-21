@@ -293,7 +293,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
     {
         ULONG       propertyBufLen = ULONG_C(0);
         DEVPROPTYPE propertyType   = ULONG_C(0);
-#if defined(_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+#if defined(_MSC_VER) && _MSC_VER < MSVC_2015
         // This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined
         // for it versus newer versions.
         int scannedVals =
@@ -357,7 +357,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
     {
         uint32_t subsystem = UINT32_C(0);
         uint32_t revision  = UINT32_C(0);
-#if defined(_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+#if defined(_MSC_VER) && _MSC_VER < MSVC_2015
         // This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined
         // for it versus newer versions.
         int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("PCI\\VEN_%lx&DEV_%lx&SUBSYS_%lx&REV_%lx\\%*s"),
@@ -409,7 +409,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
             DECLARE_ZERO_INIT_ARRAY(TCHAR, vendorIDString, 7);
             _tcsncpy_s(vendorIDString, 7, token, 6);
             _tprintf_s(TEXT("%s\n"), vendorIDString);
-#if defined(_MSC_VER) && _MSC_VER < SEA_MSC_VER_VS2015
+#if defined(_MSC_VER) && _MSC_VER < MSVC_2015
             // This is a hack around how VS2013 handles string concatenation with how the printf format macros were
             // defined for it versus newer versions.
             int result = _stscanf(token, TEXT("%06lx"), &device->drive_info.adapter_info.vendorID);
@@ -2687,7 +2687,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
 #endif // _DEBUG
                                                                                     }
                                                                                 }
-                                                                                safe_free(&pparentBuffer);
+                                                                                safe_free_tchar(&pparentBuffer);
                                                                             }
                                                                         }
                                                                     }
@@ -2866,7 +2866,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                     }
                                                                 }
                                                             }
-                                                            safe_free(&parentBuffer);
+                                                            safe_free_tchar(&parentBuffer);
                                                         }
                                                     }
                                                 }
@@ -2885,7 +2885,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                     }
                                 }
                             }
-                            safe_free(&interfaceList);
+                            safe_free_tchar(&interfaceList);
                         }
                     }
                 } // else node is not available most likely...possibly not attached to the system.
@@ -2895,7 +2895,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                 ret = SUCCESS;
             }
         }
-        safe_free(&listBuffer);
+        safe_free_tchar(&listBuffer);
     }
     return ret;
 }
@@ -3153,6 +3153,18 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
     return ret;
 }
 
+#    if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
+static M_INLINE void safe_free_firmwareinfov2(PSTORAGE_FIRMWARE_INFO_V2 *info)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, info));
+}
+#endif
+
+static M_INLINE void safe_free_firmwareinfo(PSTORAGE_FIRMWARE_INFO *info)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, info));
+}
+
 static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool controllerRequest)
 {
     eReturnValues ret = NOT_SUPPORTED;
@@ -3201,7 +3213,7 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                 }
 #        endif
             }
-            safe_free(&firmwareInfo);
+            safe_free_firmwareinfov2(&firmwareInfo);
         }
         else
         {
@@ -3263,7 +3275,7 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                     }
 #    endif //_DEBUG
                 }
-                safe_free(&firmwareInfo);
+                safe_free_firmwareinfo(&firmwareInfo);
             }
             else
             {
@@ -3726,6 +3738,18 @@ static eReturnValues dummy_Up_SCSI_Sense_FWDL(ScsiIoCtx* scsiIoCtx, ULONG return
     return ret;
 }
 
+#    if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
+static M_INLINE void safe_free_firmwaredownloadv2(PSTORAGE_FIRMWARE_DOWNLOAD_V2 *fwdl)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, fwdl));
+}
+#endif
+
+static M_INLINE void safe_free_firmwaredownload(PSTORAGE_FIRMWARE_DOWNLOAD *fwdl)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, fwdl));
+}
+
 static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = NOT_SUPPORTED;
@@ -3771,7 +3795,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                safe_free(&firmwareDownload);
+                safe_free_firmwaredownloadv2(&firmwareDownload);
                 return BAD_PARAMETER;
             }
 
@@ -3801,7 +3825,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             {
                 ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
             }
-            safe_free(&firmwareDownload);
+            safe_free_firmwaredownloadv2(&firmwareDownload);
         }
         else
         {
@@ -3849,7 +3873,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
                 }
                 else
                 {
-                    safe_free(&firmwareDownload);
+                    safe_free_firmwaredownload(&firmwareDownload);
                     return BAD_PARAMETER;
                 }
 
@@ -3866,7 +3890,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
                 {
                     ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
                 }
-                safe_free(&firmwareDownload);
+                safe_free_firmwaredownload(&firmwareDownload);
             }
             else
             {
@@ -3874,6 +3898,11 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             }
         }
     return ret;
+}
+
+static M_INLINE void safe_free_firmwareactivate(PSTORAGE_FIRMWARE_ACTIVATE *activate)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, activate));
 }
 
 static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
@@ -3924,7 +3953,7 @@ static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             {
                 ret = dummy_Up_SCSI_Sense_FWDL(scsiIoCtx, returnCode);
             }
-            safe_free(&firmwareActivate);
+            safe_free_firmwareactivate(&firmwareActivate);
         }
         else
         {
@@ -4093,7 +4122,7 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIo
             {
                 ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
-            safe_free(&firmwareDownload);
+            safe_free_firmwaredownloadv2(&firmwareDownload);
         }
         else
         {
@@ -4134,7 +4163,7 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIo
                 {
                     ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
                 }
-                safe_free(&firmwareDownload);
+                safe_free_firmwaredownload(&firmwareDownload);
             }
             else
             {
@@ -4181,7 +4210,7 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
             {
                 ret = dummy_Up_NVM_Status_FWDL(nvmeIoCtx, returnCode);
             }
-            safe_free(&firmwareActivate);
+            safe_free_firmwareactivate(&firmwareActivate);
         }
         else
         {
@@ -6341,6 +6370,11 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoC
     return ret;
 }
 
+static M_INLINE void safe_free_SCSIPassthroughEx(ptrSCSIPassThroughEXIOStruct *scsipt)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, scsipt));
+}
+
 static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues                ret           = FAILURE;
@@ -6464,7 +6498,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_free(&sptdioEx);
+    safe_free_SCSIPassthroughEx(&sptdioEx);
     return ret;
 }
 
@@ -6700,7 +6734,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
             }
         }
     }
-    safe_free(&sptdio);
+    safe_free_SCSIPassthroughEx(&sptdio);
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     safe_free(&localBuffer);
     return ret;
@@ -8394,6 +8428,12 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
 #    if !defined(STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT)
 #        define STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT 0x00000004
 #    endif
+
+static M_INLINE void safe_free_hwfwdl(PSTORAGE_HW_FIRMWARE_DOWNLOAD *dl)
+{
+    safe_Free(M_REINTERPRET_CAST(void**, dl));
+}
+
 static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret        = OS_PASSTHROUGH_FAILURE;
@@ -8462,7 +8502,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     }
     else
     {
-        safe_free(&downloadIO);
+        safe_free_hwfwdl(&downloadIO);
         return BAD_PARAMETER;
     }
     // set the size of the buffer
@@ -8611,6 +8651,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
                 printf("Win 10 FWDL API returned invalid function, retrying with passthrough\n");
             }
             scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported = false;
+            safe_free_hwfwdl(&downloadIO);
             return send_IO(scsiIoCtx);
         default:
             ret = OS_PASSTHROUGH_FAILURE;
@@ -8622,6 +8663,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
             print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
         }
     }
+    safe_free_hwfwdl(&downloadIO);
     return ret;
 }
 
