@@ -6763,7 +6763,7 @@ static M_INLINE void safe_free_scsi_pt_io(scsiPassThroughIOStruct** scsipt)
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx*                 scsiIoCtx,
                                                                   ptrSCSIPassThroughIOStruct psptd,
-                                                                  uint8_t*                   alignedPointer)
+                                                                  const uint8_t*             alignedPointer)
 {
     eReturnValues ret                            = SUCCESS;
     psptd->scsiPassthroughDirect.Length          = sizeof(SCSI_PASS_THROUGH_DIRECT);
@@ -6775,7 +6775,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx*    
     psptd->scsiPassthroughDirect.SenseInfoLength = C_CAST(UCHAR, scsiIoCtx->senseDataSize);
     ZeroMemory(psptd->senseBuffer, SPC3_SENSE_LEN);
     psptd->scsiPassthroughDirect.DataTransferLength = scsiIoCtx->dataLength;
-    psptd->scsiPassthroughDirect.DataBuffer         = alignedPointer;
+    psptd->scsiPassthroughDirect.DataBuffer         = M_CONST_CAST(PVOID, alignedPointer);
     switch (scsiIoCtx->direction)
     {
         // NOLINTBEGIN(bugprone-branch-clone)
