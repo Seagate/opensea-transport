@@ -12670,7 +12670,7 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
             // if this feature has a databuffer, set it up to transmit it.
             protocolSpecificData->ProtocolDataLength = nvmeIoCtx->dataSize;
             protocolSpecificData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT);
-            memcpy_s(C_CAST(uint8_t*, protocolSpecificData) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT),
+            safe_memcpy(C_CAST(uint8_t*, protocolSpecificData) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT),
                      nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         }
         else
