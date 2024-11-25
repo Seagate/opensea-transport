@@ -439,7 +439,9 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
                                 {
                                     char* firstHalf  = M_NULLPTR;
                                     char* secondHalf = M_NULLPTR;
-                                    if (0 == safe_strndup(&firstHalf, targetstr, halftargetlen) && 0 == safe_strndup(&secondHalf, targetstr + halftargetlen, halftargetlen) && firstHalf != M_NULLPTR && secondHalf != M_NULLPTR)
+                                    if (0 == safe_strndup(&firstHalf, targetstr, halftargetlen) &&
+                                        0 == safe_strndup(&secondHalf, targetstr + halftargetlen, halftargetlen) &&
+                                        firstHalf != M_NULLPTR && secondHalf != M_NULLPTR)
                                     {
                                         if (0 != safe_strtoull(&btemp, firstHalf, &endptr, BASE_16_HEX))
                                         {

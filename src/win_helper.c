@@ -293,7 +293,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
     {
         ULONG       propertyBufLen = ULONG_C(0);
         DEVPROPTYPE propertyType   = ULONG_C(0);
-#        if IS_MSVC_VERSION(MSVC_2015)
+#if IS_MSVC_VERSION(MSVC_2015)
         int scannedVals =
             _sntscanf_s(buffer, bufferLength, TEXT("USB\\VID_%") TEXT(SCNx32) TEXT("&PID_%") TEXT(SCNx32) TEXT("\\%*s"),
                         &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID);
@@ -357,13 +357,13 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
     {
         uint32_t subsystem = UINT32_C(0);
         uint32_t revision  = UINT32_C(0);
-#        if IS_MSVC_VERSION(MSVC_2015)
-int scannedVals = _sntscanf_s(buffer, bufferLength,
+#if IS_MSVC_VERSION(MSVC_2015)
+        int scannedVals = _sntscanf_s(buffer, bufferLength,
                                       TEXT("PCI\\VEN_%") TEXT(SCNx32) TEXT("&DEV_%") TEXT(SCNx32) TEXT("&SUBSYS_%")
                                           TEXT(SCNx32) TEXT("&REV_%") TEXT(SCNx32) TEXT("\\%*s"),
                                       &device->drive_info.adapter_info.vendorID,
                                       &device->drive_info.adapter_info.productID, &subsystem, &revision);
-                                      #else
+#else
         // This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined
         // for it versus newer versions.
         int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("PCI\\VEN_%lx&DEV_%lx&SUBSYS_%lx&REV_%lx\\%*s"),
@@ -409,8 +409,8 @@ int scannedVals = _sntscanf_s(buffer, bufferLength,
             DECLARE_ZERO_INIT_ARRAY(TCHAR, vendorIDString, 7);
             _tcsncpy_s(vendorIDString, 7, token, 6);
             _tprintf_s(TEXT("%s\n"), vendorIDString);
-#        if IS_MSVC_VERSION(MSVC_2015)
-int result = _stscanf_s(token, TEXT("%06") TEXT(SCNx32), &device->drive_info.adapter_info.vendorID);
+#if IS_MSVC_VERSION(MSVC_2015)
+            int result = _stscanf_s(token, TEXT("%06") TEXT(SCNx32), &device->drive_info.adapter_info.vendorID);
 #else
             // This is a hack around how VS2013 handles string concatenation with how the printf format macros were
             // defined for it versus newer versions.
@@ -3154,13 +3154,13 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
 }
 
 #    if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
-static M_INLINE void safe_free_firmwareinfov2(PSTORAGE_FIRMWARE_INFO_V2 *info)
+static M_INLINE void safe_free_firmwareinfov2(PSTORAGE_FIRMWARE_INFO_V2* info)
 {
     safe_Free(M_REINTERPRET_CAST(void**, info));
 }
-#endif
+#    endif
 
-static M_INLINE void safe_free_firmwareinfo(PSTORAGE_FIRMWARE_INFO *info)
+static M_INLINE void safe_free_firmwareinfo(PSTORAGE_FIRMWARE_INFO* info)
 {
     safe_Free(M_REINTERPRET_CAST(void**, info));
 }
@@ -3739,13 +3739,13 @@ static eReturnValues dummy_Up_SCSI_Sense_FWDL(ScsiIoCtx* scsiIoCtx, ULONG return
 }
 
 #    if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
-static M_INLINE void safe_free_firmwaredownloadv2(PSTORAGE_FIRMWARE_DOWNLOAD_V2 *fwdl)
+static M_INLINE void safe_free_firmwaredownloadv2(PSTORAGE_FIRMWARE_DOWNLOAD_V2* fwdl)
 {
     safe_Free(M_REINTERPRET_CAST(void**, fwdl));
 }
-#endif
+#    endif
 
-static M_INLINE void safe_free_firmwaredownload(PSTORAGE_FIRMWARE_DOWNLOAD *fwdl)
+static M_INLINE void safe_free_firmwaredownload(PSTORAGE_FIRMWARE_DOWNLOAD* fwdl)
 {
     safe_Free(M_REINTERPRET_CAST(void**, fwdl));
 }
@@ -3900,7 +3900,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-static M_INLINE void safe_free_firmwareactivate(PSTORAGE_FIRMWARE_ACTIVATE *activate)
+static M_INLINE void safe_free_firmwareactivate(PSTORAGE_FIRMWARE_ACTIVATE* activate)
 {
     safe_Free(M_REINTERPRET_CAST(void**, activate));
 }
@@ -6370,7 +6370,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoC
     return ret;
 }
 
-static M_INLINE void safe_free_SCSIPassthroughEx(ptrSCSIPassThroughEXIOStruct *scsipt)
+static M_INLINE void safe_free_SCSIPassthroughEx(ptrSCSIPassThroughEXIOStruct* scsipt)
 {
     safe_Free(M_REINTERPRET_CAST(void**, scsipt));
 }
@@ -8429,7 +8429,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
 #        define STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT 0x00000004
 #    endif
 
-static M_INLINE void safe_free_hwfwdl(PSTORAGE_HW_FIRMWARE_DOWNLOAD *dl)
+static M_INLINE void safe_free_hwfwdl(PSTORAGE_HW_FIRMWARE_DOWNLOAD* dl)
 {
     safe_Free(M_REINTERPRET_CAST(void**, dl));
 }
@@ -11823,7 +11823,7 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx* nvmeIoCtx)
 // https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddstor/ns-ntddstor-storage_protocol_data_subvalue_get_log_page
 // So it is defined differently (name only) to prevent colisions if WinAPI version updates and has it at some point -
 // TJE
-typedef union _MSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4
+typedef union u_MSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4
 {
     struct
     {
@@ -12671,7 +12671,7 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
             protocolSpecificData->ProtocolDataLength = nvmeIoCtx->dataSize;
             protocolSpecificData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT);
             safe_memcpy(C_CAST(uint8_t*, protocolSpecificData) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT),
-                     nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+                        nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
         }
         else
         {

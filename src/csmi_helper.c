@@ -4133,7 +4133,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
                 controllerNum);
 #        else
     _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT("lu") TEXT(":"),
-                controllerNum);   
+                controllerNum);
 #        endif //_MSC_VER && _MSC_VER < VS2015
     // lets try to open the device.
     device->os_info.fd = CreateFile(ptrDeviceName,
