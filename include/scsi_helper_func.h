@@ -146,7 +146,7 @@ extern "C"
                                                      uint32_t           senseDataLength,
                                                      ptrSenseDataFields senseFields);
 
-    OPENSEA_TRANSPORT_API void print_Sense_Fields(const ptrSenseDataFields senseFields);
+    OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields senseFields);
 
     //-----------------------------------------------------------------------------
     //

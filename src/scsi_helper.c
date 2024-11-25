@@ -1905,7 +1905,7 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
     }
 }
 
-void print_Sense_Fields(const ptrSenseDataFields senseFields)
+void print_Sense_Fields(constPtrSenseDataFields senseFields)
 {
     if (senseFields && senseFields->validStructure)
     {
