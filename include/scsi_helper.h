@@ -272,7 +272,7 @@ extern "C"
                                       // data that couldn't be parsed
     } senseDataFields;
 
-    typedef senseDataFields* ptrSenseDataFields;
+    typedef senseDataFields*       ptrSenseDataFields;
     typedef const senseDataFields* constPtrSenseDataFields;
 
     static M_INLINE void safe_free_sensefields(senseDataFields** sensefields)

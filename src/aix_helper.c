@@ -1195,7 +1195,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     // (Reservation exclusive access mode???) SC_PR_SHARED_REGISTER - persistent reserve, register and ignore key is
     // used when opening
     eReturnValues ret            = SUCCESS;
-    long          extensionFlags = 0;
+    long          extensionFlags = 0L;
     bool          handleOpened   = false;
     if (device->deviceVerbosity > VERBOSITY_DEFAULT)
     {
@@ -2957,7 +2957,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             // This can be an issue when there is somethign not quite right with the drive.
             // This cannot be used all the time though. You cannot use it on the system drive.
             // So first try without it, then try again if it won't open with SC_DIAGNOSTIC.
-            long extensionFlag = 0; // start with no additional flags - TJE
+            long extensionFlag = 0L; // start with no additional flags - TJE
             bool opened        = false;
             fd                 = openx(name, 0, 0, extensionFlag);
             if (fd >= 0)
@@ -3356,7 +3356,7 @@ eReturnValues os_Unlock_Device(tDevice* device)
     {
         close(device->os_info.fd); // this must be done first or the openx will fail!
         // try opening without the diagnostic flag.
-        long extensionFlag = 0;
+        long extensionFlag = 0L;
         device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
         if (device->os_info.fd >= 0)
         {

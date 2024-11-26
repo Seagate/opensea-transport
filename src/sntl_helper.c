@@ -2697,7 +2697,7 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
         }
         // number of logical blocks received
         {
-            double nvmeWritesInLBAs = 0;
+            double nvmeWritesInLBAs = 0.0;
             if (device->drive_info.deviceBlockSize != 0)
             {
                 nvmeWritesInLBAs =
@@ -2723,7 +2723,7 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
         }
         // number of logical blocks transmitted
         {
-            double nvmeReadsInLBAs = 0;
+            double nvmeReadsInLBAs = 0.0;
 
             if (device->drive_info.deviceBlockSize != 0)
             {

@@ -5159,7 +5159,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                         if (DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, M_NULLPTR, 0,
                                             diskExtents, diskExtentsSizeBytes, &returnedBytes, M_NULLPTR))
                         {
-                            for (DWORD counter = 0; counter < diskExtents->NumberOfDiskExtents; ++counter)
+                            for (DWORD counter = DWORD_C(0); counter < diskExtents->NumberOfDiskExtents; ++counter)
                             {
                                 if (diskExtents->Extents[counter].DiskNumber == device->os_info.os_drive_number)
                                 {
