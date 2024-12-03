@@ -2867,7 +2867,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
     {
         safe_free_dirent(&namelist[iter]);
     }
-    safe_free_dirent(namelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
 
     *numberOfDevices = num_devs;
 
@@ -2926,7 +2926,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
         safe_free_dirent(&namelist[i]);
     }
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
-    safe_free_dirent(namelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
@@ -3015,7 +3015,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_free(devs);
+    safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }
 
