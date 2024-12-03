@@ -508,7 +508,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
     {
         safe_free_dirent(&namelist[iter]);
     }
-    safe_free_dirent(namelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist);
     if (num_devs >= 0)
     {
         *numberOfDevices = C_CAST(uint32_t, num_devs);
@@ -574,7 +574,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
         safe_free_dirent(&namelist[i]);
     }
     devs[i] = M_NULLPTR;
-    safe_free_dirent(namelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist);
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
@@ -642,7 +642,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_free(&devs);
+    safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }
 

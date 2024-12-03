@@ -7166,7 +7166,10 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    safe_free(&localBuffer);
+    if (localAlignedBuffer)
+    {
+        safe_free(&localBuffer);
+    }
     return ret;
 }
 

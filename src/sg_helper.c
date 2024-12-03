@@ -1395,7 +1395,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
         if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
         {
             char* dupHandle = M_NULLPTR;
-            if (0 != safe_strdup(&dupHandle, handle) || dupHandle)
+            if (0 != safe_strdup(&dupHandle, handle) || dupHandle == M_NULLPTR)
             {
                 return MEMORY_FAILURE;
             }
@@ -1445,10 +1445,10 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                 }
                 // now we need to loop through each think in the class folder, read the link, and check if we match.
                 struct dirent** classList;
-                int             remains       = 0;
                 int             numberOfItems = scandir(classPath, &classList,
                                                         M_NULLPTR /*not filtering anything. Just go through each item*/, alphasort);
-                for (int iter = 0; iter < numberOfItems; ++iter)
+                eReturnValues   ret           = SUCCESS;
+                for (int iter = 0; iter < numberOfItems && ret == SUCCESS; ++iter)
                 {
                     // now we need to read the link for classPath/d_name into a buffer...then compare it to the one we
                     // read earlier.
@@ -1505,7 +1505,6 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                                                                      (M_STATIC_CAST(uintptr_t, classPtr) -
                                                                       M_STATIC_CAST(uintptr_t, mapLink))) == 0)
                                 {
-                                    eReturnValues ret = SUCCESS;
                                     if (incomingBlock)
                                     {
                                         if (0 != safe_strndup(blockHandle, basehandle, safe_strlen(basehandle)) ||
@@ -1524,27 +1523,25 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                                         }
                                     }
                                     safe_free(&className);
-                                    // start PRH valgrind fixes
-                                    // this is causing a mem leak... when we bail the loop, there are a string of
-                                    // classList[] items still allocated.
-                                    for (remains = iter; remains < numberOfItems; remains++)
-                                    {
-                                        safe_free_dirent(&classList[remains]);
-                                    }
-                                    safe_free_dirent(classList);
                                     safe_free(&temp);
                                     safe_free(&dupHandle);
-                                    return ret;
                                     break; // found a match, exit the loop
                                 }
                             }
                             safe_free(&className);
                         }
                     }
-                    safe_free_dirent(&classList[iter]); // PRH - valgrind
                     safe_free(&temp);
                 }
-                safe_free_dirent(classList);
+                for (int classiter = 0; classiter < numberOfItems; ++classiter)
+                {
+                    safe_free_dirent(&classList[classiter]);
+                }
+                safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &classList));
+                if (ret != SUCCESS)
+                {
+                    return ret;
+                }
             }
             else
             {
@@ -2410,11 +2407,11 @@ static int nvme_filter(const struct dirent* entry)
 //-----------------------------------------------------------------------------
 eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 {
-    uint32_t        num_devs      = UINT32_C(0);
-    uint32_t        num_nvme_devs = UINT32_C(0);
-    int             scandirresult = 0;
-    struct dirent** namelist;
-    struct dirent** nvmenamelist;
+    uint32_t        num_devs                                      = UINT32_C(0);
+    uint32_t        num_nvme_devs                                 = UINT32_C(0);
+    int             scandirresult                                 = 0;
+    struct dirent** namelist                                      = M_NULLPTR;
+    struct dirent** nvmenamelist                                  = M_NULLPTR;
     int (*sortFunc)(const struct dirent**, const struct dirent**) = &alphasort;
 #if defined(_GNU_SOURCE)
     sortFunc = &versionsort; // use versionsort instead when available with _GNU_SOURCE
@@ -2427,6 +2424,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
     }
     if (num_devs == 0)
     {
+        safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
         // check for SD devices
         scandirresult = scandir("/dev", &namelist, sd_filter, sortFunc);
         if (scandirresult >= 0)
@@ -2462,8 +2460,8 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
             // now free this as we are done with it.
             safe_free_dirent(&ccisslist[cissIter]);
         }
-        safe_free_dirent(ccisslist);
     }
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &ccisslist));
     for (uint32_t iter = UINT32_C(0); iter < num_devs; ++iter)
     {
         // before freeing, check if any of these handles may be a RAID handle
@@ -2499,7 +2497,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
     {
         safe_free_dirent(&namelist[iter]);
     }
-    safe_free_dirent(namelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
     // add nvme devices to the list
     scandirresult = scandir("/dev", &nvmenamelist, nvme_filter, sortFunc);
     if (scandirresult >= 0)
@@ -2511,7 +2509,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
     {
         safe_free_dirent(&nvmenamelist[iter]);
     }
-    safe_free_dirent(nvmenamelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &nvmenamelist));
 
     *numberOfDevices = num_devs + num_nvme_devs;
 
@@ -2595,6 +2593,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     }
     if (num_sg_devs == 0)
     {
+        safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
         // check for SD devices
         scandirresult = scandir("/dev", &namelist, sd_filter, sortFunc);
         if (scandirresult >= 0)
@@ -2630,8 +2629,8 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
         safe_free_dirent(&nvmenamelist[j]);
     }
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
-    safe_free_dirent(namelist);
-    safe_free_dirent(nvmenamelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &nvmenamelist));
 
     struct dirent** ccisslist;
     int             num_ccissdevs = scandir("/dev", &ccisslist, ciss_filter, sortFunc);
@@ -2649,7 +2648,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             // now free this as we are done with it.
             safe_free_dirent(&ccisslist[cissIter]);
         }
-        safe_free_dirent(ccisslist);
+        safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &ccisslist));
     }
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
@@ -2782,7 +2781,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_free(devs);
+    safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }
 

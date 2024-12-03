@@ -1220,20 +1220,20 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
     {
         safe_free_dirent(&danamelist[iter]);
     }
-    safe_free_dirent(danamelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &danamelist));
     // free the list of names to not leak memory
     for (int iter = 0; iter < num_ada_devs; ++iter)
     {
         safe_free_dirent(&adanamelist[iter]);
     }
-    safe_free_dirent(adanamelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &adanamelist));
 
     // free the list of names to not leak memory
     for (int iter = 0; iter < num_nvme_devs; ++iter)
     {
         safe_free_dirent(&nvmenamelist[iter]);
     }
-    safe_free_dirent(nvmenamelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &nvmenamelist));
     if (num_da_devs > 0)
     {
         *numberOfDevices += C_CAST(uint32_t, num_da_devs);
@@ -1342,9 +1342,9 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     }
 
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
-    safe_free_dirent(danamelist);
-    safe_free_dirent(adanamelist);
-    safe_free_dirent(nvmenamelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &danamelist));
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &adanamelist));
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &nvmenamelist));
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
@@ -1417,7 +1417,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_free(devs);
+    safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }
 
