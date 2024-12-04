@@ -4246,7 +4246,7 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(tDevice* device, Scs
             if (scsiIoCtx->pdata)
             {
                 safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, response,
-                            M_Min(scsiIoCtx->dataLength, sizeof(response) / sizeof(*response)));
+                            M_Min(scsiIoCtx->dataLength, SIZE_OF_STACK_ARRAY(response)));
             }
             scsiIoCtx->pAtaCmdOpts = M_NULLPTR;
             return SUCCESS;

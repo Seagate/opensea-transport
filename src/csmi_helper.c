@@ -4765,7 +4765,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
                             M_NULLPTR);
             if (fd != INVALID_HANDLE_VALUE)
 #    else
-            snprintf(deviceName, (sizeof(deviceName) / sizeof(*deviceName)), "%s", raidList->handle);
+            snprintf(deviceName, SIZE_OF_STACK_ARRAY(deviceName), "%s", raidList->handle);
             if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)
 #    endif
             {

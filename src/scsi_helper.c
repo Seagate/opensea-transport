@@ -1081,10 +1081,10 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice* device,
         }
         break;
     default:
-        asc_ascq_result =
-            C_CAST(ascAscqRetDesc*,
-                   safe_bsearch(&asc_ascq_key, ascAscqLookUp, sizeof(ascAscqLookUp) / sizeof(ascAscqLookUp[0]),
-                                sizeof(ascAscqLookUp[0]), (int (*)(const void*, const void*))cmp_Asc_Ascq));
+        asc_ascq_result = C_CAST(
+            ascAscqRetDesc*, safe_bsearch(&asc_ascq_key, ascAscqLookUp, SIZE_OF_STACK_ARRAY(ascAscqLookUp),
+                                          sizeof(ascAscqLookUp[0]), (int (*)(const void*, const void*))cmp_Asc_Ascq));
+
         if (asc_ascq_result)
         {
             if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
