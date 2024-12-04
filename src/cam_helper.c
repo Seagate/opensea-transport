@@ -378,7 +378,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         {
                             if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                             {
-                                safe_memcpy(&cpi, sizeof(struct ccb_pathing), &ccb->cpi, sizeof(struct ccb_pathinq));
+                                safe_memcpy(&cpi, sizeof(struct ccb_pathinq), &ccb->cpi, sizeof(struct ccb_pathinq));
                                 // set the interface from a ccb_pathinq struct
                                 switch (cpi.transport)
                                 {
