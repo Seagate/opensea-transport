@@ -10,7 +10,7 @@
 //
 // ******************************************************************************************
 //
-#if defined(ENABLE_CSMI)
+#if 1 // defined(ENABLE_CSMI)
 
 #    include <assert.h>
 #    include <fcntl.h>
@@ -3712,20 +3712,11 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
                             {
                                 // ATA identify
                                 DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, 512);
-                                ataPassthroughCommand identify;
-                                safe_memset(&identify, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
-                                identify.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
-                                identify.ataTransferBlocks        = ATA_PT_512B_BLOCKS;
-                                identify.commadProtocol           = ATA_PROTOCOL_PIO;
-                                identify.commandDirection         = XFER_DATA_IN;
-                                identify.commandType              = ATA_CMD_TYPE_TASKFILE;
-                                identify.timeout                  = 15;
-                                csmiPTCmd.pdata = identify.ptrData = identifyData;
-                                csmiPTCmd.dataLength = identify.dataSize = 512;
-                                csmiPTCmd.pAtaCmdOpts                    = &identify;
-                                identify.tfr.CommandStatus               = ATA_IDENTIFY;
-                                identify.tfr.SectorCount                 = 1;
-                                identify.tfr.DeviceHead                  = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+                                ataPassthroughCommand identify =
+                                    create_ata_pio_in_cmd(device, ATA_IDENTIFY, false, 1, identifyData, 512);
+                                csmiPTCmd.pdata       = identifyData;
+                                csmiPTCmd.dataLength  = 512;
+                                csmiPTCmd.pAtaCmdOpts = &identify;
 #    if defined(CSMI_DEBUG)
                                 printf("JSCI: Detected SATA protocol. Attempting Identify CMD\n");
 #    endif // CSMI_DEBUG
@@ -5046,21 +5037,11 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
                                         {
                                             // ATA identify
                                             DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, 512);
-                                            ataPassthroughCommand identify;
-                                            safe_memset(&identify, sizeof(ataPassthroughCommand), 0,
-                                                        sizeof(ataPassthroughCommand));
-                                            identify.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
-                                            identify.ataTransferBlocks        = ATA_PT_512B_BLOCKS;
-                                            identify.commadProtocol           = ATA_PROTOCOL_PIO;
-                                            identify.commandDirection         = XFER_DATA_IN;
-                                            identify.commandType              = ATA_CMD_TYPE_TASKFILE;
-                                            identify.timeout                  = 15;
-                                            csmiPTCmd.pdata = identify.ptrData = identifyData;
-                                            csmiPTCmd.dataLength = identify.dataSize = 512;
-                                            csmiPTCmd.pAtaCmdOpts                    = &identify;
-                                            identify.tfr.CommandStatus               = ATA_IDENTIFY;
-                                            identify.tfr.SectorCount                 = 1;
-                                            identify.tfr.DeviceHead = DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+                                            ataPassthroughCommand identify = create_ata_pio_in_cmd(
+                                                &tempDevice, ATA_IDENTIFY, false, 1, identifyData, 512);
+                                            csmiPTCmd.pdata       = identifyData;
+                                            csmiPTCmd.dataLength  = 512;
+                                            csmiPTCmd.pAtaCmdOpts = &identify;
 #    if defined(CSMI_DEBUG)
                                             printf("GDC: Detected SATA protocol. Attempting Identify CMD\n");
 #    endif // CSMI_DEBUG
@@ -5840,29 +5821,13 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                             // ATA identify
                                                                             DECLARE_ZERO_INIT_ARRAY(uint8_t,
                                                                                                     identifyData, 512);
-                                                                            ataPassthroughCommand identify;
-                                                                            safe_memset(&identify,
-                                                                                        sizeof(ataPassthroughCommand),
-                                                                                        0,
-                                                                                        sizeof(ataPassthroughCommand));
-                                                                            identify.ataCommandLengthLocation =
-                                                                                ATA_PT_LEN_SECTOR_COUNT;
-                                                                            identify.ataTransferBlocks =
-                                                                                ATA_PT_512B_BLOCKS;
-                                                                            identify.commadProtocol = ATA_PROTOCOL_PIO;
-                                                                            identify.commandDirection = XFER_DATA_IN;
-                                                                            identify.commandType =
-                                                                                ATA_CMD_TYPE_TASKFILE;
-                                                                            identify.timeout = 15;
-                                                                            csmiPTCmd.pdata  = identify.ptrData =
-                                                                                identifyData;
-                                                                            csmiPTCmd.dataLength = identify.dataSize =
-                                                                                512;
-                                                                            csmiPTCmd.pAtaCmdOpts      = &identify;
-                                                                            identify.tfr.CommandStatus = ATA_IDENTIFY;
-                                                                            identify.tfr.SectorCount   = 1;
-                                                                            identify.tfr.DeviceHead =
-                                                                                DEVICE_REG_BACKWARDS_COMPATIBLE_BITS;
+                                                                            ataPassthroughCommand identify =
+                                                                                create_ata_pio_in_cmd(
+                                                                                    &tempDevice, ATA_IDENTIFY, false, 1,
+                                                                                    identifyData, 512);
+                                                                            csmiPTCmd.pdata       = identifyData;
+                                                                            csmiPTCmd.dataLength  = 512;
+                                                                            csmiPTCmd.pAtaCmdOpts = &identify;
 #    if defined(CSMI_DEBUG)
                                                                             printf("GDL: Detected SATA protocol. "
                                                                                    "Attempting Identify CMD\n");

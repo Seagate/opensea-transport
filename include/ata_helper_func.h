@@ -2440,7 +2440,7 @@ extern "C"
 
     OPENSEA_TRANSPORT_API eReturnValues ata_Read_Verify_Sectors_No_Retry(tDevice* device,
                                                                          uint16_t numberOfSectors,
-                                                                         uint64_t LBA);
+                                                                         uint32_t LBA);
 
     OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_DMA_CHS(tDevice* device,
                                                                  uint16_t cylinder,
@@ -2476,24 +2476,24 @@ extern "C"
 
     // last seen in ATA-3
     OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Long_CHS(tDevice* device,
-                                                                 bool     retires,
+                                                                 bool     retries,
                                                                  uint16_t cylinder,
                                                                  uint8_t  head,
                                                                  uint8_t  sector,
                                                                  uint8_t* ptrData,
                                                                  uint32_t dataSize);
     OPENSEA_TRANSPORT_API eReturnValues
-    ata_Legacy_Read_Long(tDevice* device, bool retires, uint32_t lba, uint8_t* ptrData, uint32_t dataSize);
+    ata_Legacy_Read_Long(tDevice* device, bool retries, uint32_t lba, uint8_t* ptrData, uint32_t dataSize);
     // last seen in ATA-3
     OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Long_CHS(tDevice* device,
-                                                                  bool     retires,
+                                                                  bool     retries,
                                                                   uint16_t cylinder,
                                                                   uint8_t  head,
                                                                   uint8_t  sector,
                                                                   uint8_t* ptrData,
                                                                   uint32_t dataSize);
     OPENSEA_TRANSPORT_API eReturnValues
-    ata_Legacy_Write_Long(tDevice* device, bool retires, uint32_t lba, uint8_t* ptrData, uint32_t dataSize);
+    ata_Legacy_Write_Long(tDevice* device, bool retries, uint32_t lba, uint8_t* ptrData, uint32_t dataSize);
 
     // last seen in ATA-2
     // Sub command 22h = LBA (or Cyl lo, hi, head#), and sec number specify where to start. count specifies how many
@@ -2717,6 +2717,13 @@ extern "C"
                                                                    uint8_t  prio,
                                                                    uint8_t  ncqTag,
                                                                    uint8_t  icc);
+
+    // Old TCG commands
+    OPENSEA_TRANSPORT_API eReturnValues
+    ata_Read_DMA_Queued(tDevice* device, bool ext, uint64_t lba, uint8_t* ptrData, uint16_t sectorCount, uint8_t tag);
+
+    OPENSEA_TRANSPORT_API eReturnValues
+    ata_Write_DMA_Queued(tDevice* device, bool ext, uint64_t lba, uint8_t* ptrData, uint16_t sectorCount, uint8_t tag);
 
 #if defined(__cplusplus)
 }
