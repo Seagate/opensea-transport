@@ -1517,7 +1517,7 @@ eReturnValues scsi_Inquiry(tDevice* device,
                     (version >= 0x88 && version <= 0x8C))
                 {
                     // these are obsolete version numbers
-                    version = M_GETBITRANGE(version, 3, 0);
+                    version = get_bit_range_uint8(version, 3, 0);
                 }
                 break;
             }
@@ -5752,7 +5752,7 @@ eReturnValues scsi_Persistent_Reserve_In(tDevice* device,
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
     cdb[OPERATION_CODE] = PERSISTENT_RESERVE_IN_CMD;
     // set the service action
-    cdb[1] = M_GETBITRANGE(serviceAction, 4, 0);
+    cdb[1] = get_bit_range_uint8(serviceAction, 4, 0);
     // reserved
     cdb[2] = RESERVED;
     cdb[3] = RESERVED;
@@ -5768,7 +5768,7 @@ eReturnValues scsi_Persistent_Reserve_In(tDevice* device,
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending SCSI Persistent Reserve In - %" PRIu8 "\n",
-               C_CAST(uint8_t, M_GETBITRANGE(serviceAction, 4, 0)));
+               C_CAST(uint8_t, get_bit_range_uint8(serviceAction, 4, 0)));
     }
     // send the command
     if (ptrData && allocationLength)
@@ -5799,7 +5799,7 @@ eReturnValues scsi_Persistent_Reserve_Out(tDevice* device,
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
     cdb[OPERATION_CODE] = PERSISTENT_RESERVE_OUT_CMD;
     // set the service action
-    cdb[1] = M_GETBITRANGE(serviceAction, 4, 0);
+    cdb[1] = get_bit_range_uint8(serviceAction, 4, 0);
     // scope & type
     cdb[2] = M_NibblesTo1ByteValue(M_Nibble0(scope), M_Nibble0(type));
     // reserved
@@ -5816,7 +5816,7 @@ eReturnValues scsi_Persistent_Reserve_Out(tDevice* device,
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending SCSI Persistent Reserve Out - %" PRIu8 "\n",
-               C_CAST(uint8_t, M_GETBITRANGE(serviceAction, 4, 0)));
+               C_CAST(uint8_t, get_bit_range_uint8(serviceAction, 4, 0)));
     }
     // send the command
     if (ptrData && parameterListLength)

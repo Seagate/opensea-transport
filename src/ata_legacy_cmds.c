@@ -901,7 +901,7 @@ eReturnValues ata_Legacy_Write_Verify_CHS(tDevice* device,
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
-        device, ATA_WRITE_SECTV_RETRY, false, dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+        device, ATA_WRITE_SECTV_RETRY, false, dataSize / device->drive_info.deviceBlockSize, ptrData, dataSize);
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
     if (ptrData == M_NULLPTR)
     {
@@ -927,7 +927,7 @@ eReturnValues ata_Legacy_Write_Verify(tDevice* device, uint32_t lba, uint8_t* pt
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_write_lba_cmd(
-        device, ATA_WRITE_SECTV_RETRY, false, dataSize / LEGACY_DRIVE_SEC_SIZE, lba, ptrData, dataSize);
+        device, ATA_WRITE_SECTV_RETRY, false, dataSize / device->drive_info.deviceBlockSize, lba, ptrData, dataSize);
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;

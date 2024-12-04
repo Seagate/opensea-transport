@@ -1683,7 +1683,7 @@ eReturnValues ata_Read_Verify_Sectors(tDevice* device, bool extendedCmd, uint16_
     }
     else
     {
-        set_ata_pt_LBA_28(&ataCommandOptions, LBA);
+        set_ata_pt_LBA_28(&ataCommandOptions, M_DoubleWord0(LBA));
     }
     ataCommandOptions.tfr.SectorCount = M_Byte0(numberOfSectors);
 

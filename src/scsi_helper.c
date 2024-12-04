@@ -1516,7 +1516,7 @@ void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t se
                 sksp->type                  = SENSE_KEY_SPECIFIC_FIELD_POINTER;
                 sksp->field.cdbOrData       = ptrSenseData[senseKeySpecificOffset] & BIT6;
                 sksp->field.bitPointerValid = ptrSenseData[senseKeySpecificOffset] & BIT3;
-                sksp->field.bitPointer      = M_GETBITRANGE(ptrSenseData[senseKeySpecificOffset], 2, 0);
+                sksp->field.bitPointer      = get_bit_range_uint8(ptrSenseData[senseKeySpecificOffset], 2, 0);
                 sksp->field.fieldPointer    = M_BytesTo2ByteValue(ptrSenseData[senseKeySpecificOffset + 1],
                                                                   ptrSenseData[senseKeySpecificOffset + 2]);
                 break;
@@ -1531,7 +1531,7 @@ void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t se
                 sksp->type                      = SENSE_KEY_SPECIFIC_SEGMENT_POINTER;
                 sksp->segment.segmentDescriptor = ptrSenseData[senseKeySpecificOffset] & BIT5;
                 sksp->segment.bitPointerValid   = ptrSenseData[senseKeySpecificOffset] & BIT3;
-                sksp->segment.bitPointer        = M_GETBITRANGE(ptrSenseData[senseKeySpecificOffset], 2, 0);
+                sksp->segment.bitPointer        = get_bit_range_uint8(ptrSenseData[senseKeySpecificOffset], 2, 0);
                 sksp->segment.fieldPointer      = M_BytesTo2ByteValue(ptrSenseData[senseKeySpecificOffset + 1],
                                                                       ptrSenseData[senseKeySpecificOffset + 2]);
                 break;
@@ -1611,7 +1611,7 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
                             senseFields->senseKeySpecificInformation.field.cdbOrData = ptrSenseData[15] & BIT6;
                             senseFields->senseKeySpecificInformation.field.bitPointerValid = ptrSenseData[15] & BIT3;
                             senseFields->senseKeySpecificInformation.field.bitPointer =
-                                M_GETBITRANGE(ptrSenseData[15], 2, 0);
+                                get_bit_range_uint8(ptrSenseData[15], 2, 0);
                             senseFields->senseKeySpecificInformation.field.fieldPointer =
                                 M_BytesTo2ByteValue(ptrSenseData[16], ptrSenseData[17]);
                             break;
@@ -1628,7 +1628,7 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
                                 ptrSenseData[15] & BIT5;
                             senseFields->senseKeySpecificInformation.segment.bitPointerValid = ptrSenseData[15] & BIT3;
                             senseFields->senseKeySpecificInformation.segment.bitPointer =
-                                M_GETBITRANGE(ptrSenseData[15], 2, 0);
+                                get_bit_range_uint8(ptrSenseData[15], 2, 0);
                             senseFields->senseKeySpecificInformation.segment.fieldPointer =
                                 M_BytesTo2ByteValue(ptrSenseData[16], ptrSenseData[17]);
                             break;
@@ -1702,7 +1702,7 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
                         senseFields->senseKeySpecificInformation.field.bitPointerValid =
                             ptrSenseData[offset + 4] & BIT3;
                         senseFields->senseKeySpecificInformation.field.bitPointer =
-                            M_GETBITRANGE(ptrSenseData[offset + 4], 2, 0);
+                            get_bit_range_uint8(ptrSenseData[offset + 4], 2, 0);
                         senseFields->senseKeySpecificInformation.field.fieldPointer =
                             M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
                         break;
@@ -1720,7 +1720,7 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
                         senseFields->senseKeySpecificInformation.segment.bitPointerValid =
                             ptrSenseData[offset + 4] & BIT3;
                         senseFields->senseKeySpecificInformation.segment.bitPointer =
-                            M_GETBITRANGE(ptrSenseData[offset + 4], 2, 0);
+                            get_bit_range_uint8(ptrSenseData[offset + 4], 2, 0);
                         senseFields->senseKeySpecificInformation.segment.fieldPointer =
                             M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
                         break;
@@ -1820,7 +1820,7 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
                         senseFields->senseKeySpecificInformation.field.bitPointerValid =
                             ptrSenseData[offset + 4] & BIT3;
                         senseFields->senseKeySpecificInformation.field.bitPointer =
-                            M_GETBITRANGE(ptrSenseData[offset + 4], 2, 0);
+                            get_bit_range_uint8(ptrSenseData[offset + 4], 2, 0);
                         senseFields->senseKeySpecificInformation.field.fieldPointer =
                             M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
                         break;
@@ -1838,7 +1838,7 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
                         senseFields->senseKeySpecificInformation.segment.bitPointerValid =
                             ptrSenseData[offset + 4] & BIT3;
                         senseFields->senseKeySpecificInformation.segment.bitPointer =
-                            M_GETBITRANGE(ptrSenseData[offset + 4], 2, 0);
+                            get_bit_range_uint8(ptrSenseData[offset + 4], 2, 0);
                         senseFields->senseKeySpecificInformation.segment.fieldPointer =
                             M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
                         break;
@@ -2205,7 +2205,7 @@ void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
         sectorSizeExponent = ptrBuf[13] & 0x0F;
         *physicalBlockSize = C_CAST(uint32_t, *logicalBlockSize * power_Of_Two(sectorSizeExponent));
         // set the sector alignment info
-        *sectorAlignment = M_GETBITRANGE(M_BytesTo2ByteValue(ptrBuf[14], ptrBuf[15]), 13, 0);
+        *sectorAlignment = get_bit_range_uint16(M_BytesTo2ByteValue(ptrBuf[14], ptrBuf[15]), 13, 0);
     }
     else
     {
@@ -3191,7 +3191,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             {
                 checkForSAT = false;
             }
-            if (M_GETBITRANGE(inq_buf[56], 3, 2) != 0) // clocking
+            if (get_bit_range_uint8(inq_buf[56], 3, 2) != 0) // clocking
             {
                 checkForSAT = false;
             }
@@ -4026,10 +4026,10 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                             device->drive_info.sectorAlignment    = sectorAlignment;
                         }
                         device->drive_info.currentProtectionType = 0;
-                        device->drive_info.piExponent            = M_GETBITRANGE(readCapBuf[13], 7, 4);
+                        device->drive_info.piExponent            = get_bit_range_uint8(readCapBuf[13], 7, 4);
                         if (readCapBuf[12] & BIT0)
                         {
-                            device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
+                            device->drive_info.currentProtectionType = get_bit_range_uint8(readCapBuf[12], 3, 1) + 1;
                             checkForSAT                              = false;
                         }
                     }
@@ -4055,10 +4055,10 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                                             &device->drive_info.deviceMaxLba, &device->drive_info.sectorAlignment,
                                             readCapBuf, true);
                     device->drive_info.currentProtectionType = 0;
-                    device->drive_info.piExponent            = M_GETBITRANGE(readCapBuf[13], 7, 4);
+                    device->drive_info.piExponent            = get_bit_range_uint8(readCapBuf[13], 7, 4);
                     if (readCapBuf[12] & BIT0)
                     {
-                        device->drive_info.currentProtectionType = M_GETBITRANGE(readCapBuf[12], 3, 1) + 1;
+                        device->drive_info.currentProtectionType = get_bit_range_uint8(readCapBuf[12], 3, 1) + 1;
                         checkForSAT                              = false;
                     }
                 }

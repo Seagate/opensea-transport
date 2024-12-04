@@ -139,12 +139,12 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
 
         if (ret == SUCCESS)
         {
-            uint8_t flbas = M_GETBITRANGE(nsData->flbas, 3, 0);
+            uint8_t flbas = get_bit_range_uint8(nsData->flbas, 3, 0);
             // get the LBAF number. THis field varies depending on other things reported by the drive in NVMe 2.0
             if (nsData->nlbaf > 16)
             {
                 // need to append 2 more bits to interpret this correctly since number of formats > 16
-                flbas |= M_GETBITRANGE(nsData->flbas, 6, 5) << 4;
+                flbas |= get_bit_range_uint8(nsData->flbas, 6, 5) << 4;
             }
             *fillLogicalSectorSize  = C_CAST(uint32_t, power_Of_Two(nsData->lbaf[flbas].lbaDS));
             *fillPhysicalSectorSize = *fillLogicalSectorSize; // True for NVMe?
@@ -299,8 +299,8 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
     {
         *doNotRetry     = nvmeStatusDWord & BIT31;
         *more           = nvmeStatusDWord & BIT30;
-        *statusCodeType = M_GETBITRANGE(nvmeStatusDWord, 27, 25);
-        *statusCode     = M_GETBITRANGE(nvmeStatusDWord, 24, 17);
+        *statusCodeType = get_8bit_range_uint32(nvmeStatusDWord, 27, 25);
+        *statusCode     = get_8bit_range_uint32(nvmeStatusDWord, 24, 17);
     }
 }
 
@@ -310,8 +310,8 @@ eReturnValues check_NVMe_Status(uint32_t nvmeStatusDWord)
     eReturnValues ret = SUCCESS;
     // bool doNotRetry = nvmeStatusDWord & BIT31;
     // bool more  = nvmeStatusDWord & BIT30;
-    uint8_t statusCodeType = M_GETBITRANGE(nvmeStatusDWord, 27, 25);
-    uint8_t statusCode     = M_GETBITRANGE(nvmeStatusDWord, 24, 17);
+    uint8_t statusCodeType = get_8bit_range_uint32(nvmeStatusDWord, 27, 25);
+    uint8_t statusCode     = get_8bit_range_uint32(nvmeStatusDWord, 24, 17);
 
     switch (statusCodeType)
     {

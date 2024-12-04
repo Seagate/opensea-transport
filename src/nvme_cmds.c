@@ -91,7 +91,7 @@ eReturnValues nvme_Cmd(tDevice* device, nvmeCmdCtx* cmdCtx)
         }
 #endif //_DEBUG
     }
-    switch (M_GETBITRANGE(opcode, 1, 0))
+    switch (get_bit_range_uint8(opcode, 1, 0))
     {
     case 0: // no data
         if (cmdCtx->commandDirection != XFER_NO_DATA)
@@ -261,17 +261,17 @@ eReturnValues nvme_Asynchronous_Event_Request(tDevice* device,
 
     if (logPageIdentifier)
     {
-        *logPageIdentifier = M_GETBITRANGE(adminCommand.commandCompletionData.dw0, 23, 16);
+        *logPageIdentifier = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 23, 16);
     }
 
     if (asynchronousEventInformation)
     {
-        *asynchronousEventInformation = M_GETBITRANGE(adminCommand.commandCompletionData.dw0, 15, 8);
+        *asynchronousEventInformation = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 15, 8);
     }
 
     if (asynchronousEventType)
     {
-        *asynchronousEventType = M_GETBITRANGE(adminCommand.commandCompletionData.dw0, 2, 0);
+        *asynchronousEventType = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 2, 0);
     }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -301,9 +301,9 @@ eReturnValues nvme_Device_Self_Test(tDevice* device, uint32_t nsid, uint8_t self
     //  1Dh = The controller or NVM subsystem already has a device self-test operation in process
     if (adminCommand.commandCompletionData.dw3Valid)
     {
-        if (M_GETBITRANGE(adminCommand.commandCompletionData.statusAndCID, 27, 25) ==
+        if (get_8bit_range_uint32(adminCommand.commandCompletionData.statusAndCID, 27, 25) ==
                 NVME_SCT_COMMAND_SPECIFIC_STATUS &&
-            M_GETBITRANGE(adminCommand.commandCompletionData.statusAndCID, 24, 17) == 0x1D)
+            get_8bit_range_uint32(adminCommand.commandCompletionData.statusAndCID, 24, 17) == 0x1D)
         {
             ret = IN_PROGRESS;
         }
@@ -892,7 +892,7 @@ eReturnValues nvme_Sanitize(tDevice* device,
     {
         nvmCommand.cmd.adminCmd.cdw10 |= BIT3;
     }
-    nvmCommand.cmd.adminCmd.cdw10 |= M_GETBITRANGE(sanitizeAction, 2, 0);
+    nvmCommand.cmd.adminCmd.cdw10 |= get_bit_range_uint8(sanitizeAction, 2, 0);
     nvmCommand.cmd.adminCmd.cdw11 = overwritePattern;
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -978,12 +978,12 @@ eReturnValues nvme_Format(tDevice* device, nvmeFormatCmdOpts* formatCmdOpts)
     formatCmd.cmd.adminCmd.nsid   = formatCmdOpts->nsid;
 
     // Construct the correct
-    dWord10 = C_CAST(uint32_t, M_GETBITRANGE(formatCmdOpts->ses, 2, 0) << 9);
+    dWord10 = C_CAST(uint32_t, get_bit_range_uint8(formatCmdOpts->ses, 2, 0)) << 9;
     if (formatCmdOpts->pil)
     {
         dWord10 |= BIT8;
     }
-    dWord10 |= M_GETBITRANGE(formatCmdOpts->pi, 2, 0) << 5;
+    dWord10 |= C_CAST(uint32_t, get_bit_range_uint8(formatCmdOpts->pi, 2, 0)) << 5;
     if (formatCmdOpts->ms)
     {
         dWord10 |= BIT4;
@@ -1071,7 +1071,7 @@ eReturnValues nvme_Reservation_Register(tDevice* device,
     {
         nvmCmd.cmd.nvmCmd.cdw10 |= BIT3;
     }
-    nvmCmd.cmd.nvmCmd.cdw10 |= M_GETBITRANGE(reservationRegisterAction, 2, 0);
+    nvmCmd.cmd.nvmCmd.cdw10 |= get_bit_range_uint8(reservationRegisterAction, 2, 0);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1113,7 +1113,7 @@ eReturnValues nvme_Reservation_Acquire(tDevice* device,
     {
         nvmCmd.cmd.nvmCmd.cdw10 |= BIT3;
     }
-    nvmCmd.cmd.nvmCmd.cdw10 |= M_GETBITRANGE(reservtionAcquireAction, 2, 0);
+    nvmCmd.cmd.nvmCmd.cdw10 |= get_bit_range_uint8(reservtionAcquireAction, 2, 0);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1155,7 +1155,7 @@ eReturnValues nvme_Reservation_Release(tDevice* device,
     {
         nvmCmd.cmd.nvmCmd.cdw10 |= BIT3;
     }
-    nvmCmd.cmd.nvmCmd.cdw10 |= M_GETBITRANGE(reservtionReleaseAction, 2, 0);
+    nvmCmd.cmd.nvmCmd.cdw10 |= get_bit_range_uint8(reservtionReleaseAction, 2, 0);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {

@@ -98,7 +98,7 @@ static eReturnValues build_Basic_Passthrough_CDB(nvmeCmdCtx* nvmCmd, uint8_t* cd
         // Need to filter out fields that cannot be set in this pass-through command before proceeding
         if (nvmCmd->cmd.adminCmd.cdw11 > 0 || nvmCmd->cmd.adminCmd.cdw14 > 0 || nvmCmd->cmd.adminCmd.cdw15 > 0 ||
             nvmCmd->cmd.adminCmd.cdw2 > 0 || nvmCmd->cmd.adminCmd.cdw3 > 0 ||
-            M_GETBITRANGE(nvmCmd->cmd.adminCmd.cdw10, 15, 8) > 0)
+            get_8bit_range_uint32(nvmCmd->cmd.adminCmd.cdw10, 15, 8) > 0)
         {
             ret = OS_COMMAND_NOT_AVAILABLE;
         }

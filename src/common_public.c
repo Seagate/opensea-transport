@@ -1732,7 +1732,7 @@ bool is_Connor(tDevice* device, bool USBchildDrive)
 bool is_CDC_VendorID(tDevice* device)
 {
     bool isCDC = false;
-    if (M_GETBITRANGE(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) == 0)
+    if (get_bit_range_uint8(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) == 0)
     {
         size_t cdcLen    = safe_strlen("CDC");
         size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
@@ -1759,7 +1759,7 @@ bool is_CDC_VendorID(tDevice* device)
 bool is_DEC_VendorID(tDevice* device)
 {
     bool isDEC = false;
-    if (M_GETBITRANGE(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) == 0)
+    if (get_bit_range_uint8(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) == 0)
     {
         size_t cdcLen    = safe_strlen("DEC");
         size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
@@ -1810,7 +1810,7 @@ bool is_MiniScribe_VendorID(tDevice* device)
 bool is_Quantum_VendorID(tDevice* device)
 {
     bool isQuantum = false;
-    if (M_GETBITRANGE(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) ==
+    if (get_bit_range_uint8(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) ==
         0) // must be direct access block device for HDD
     {
         size_t quantumLen = safe_strlen("QUANTUM");
@@ -1875,7 +1875,7 @@ bool is_Quantum(tDevice* device, bool USBchildDrive)
         else
         {
             bool result = false;
-            if (M_GETBITRANGE(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) ==
+            if (get_bit_range_uint8(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) ==
                 0) // must be direct access block device for HDD
             {
                 result = is_Quantum_Model_Number(device->drive_info.product_identification);
@@ -1892,7 +1892,7 @@ bool is_Quantum(tDevice* device, bool USBchildDrive)
 bool is_PrarieTek_VendorID(tDevice* device)
 {
     bool isPrarieTek = false;
-    if (M_GETBITRANGE(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) ==
+    if (get_bit_range_uint8(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) ==
         0) // must be direct access block device for HDD
     {
         size_t prarieTekLen = safe_strlen("PRAIRIE");

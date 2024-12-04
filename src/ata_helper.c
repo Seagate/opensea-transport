@@ -1305,8 +1305,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         if (is_ATA_Identify_Word_Valid(ident_word[62]))
         {
             // SWDMA
-            // uint8_t swdmaSupported = M_GETBITRANGE(ident_word[62], 2, 0);
-            uint8_t swdmaSelected = M_GETBITRANGE(ident_word[62], 10, 8);
+            // uint8_t swdmaSupported = get_8bit_range_uint16(ident_word[62], 2, 0);
+            uint8_t swdmaSelected = get_8bit_range_uint16(ident_word[62], 10, 8);
             if (swdmaSelected)
             {
                 device->drive_info.ata_Options.dmaMode      = ATA_DMA_MODE_NO_DMA;
@@ -1317,8 +1317,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         if (is_ATA_Identify_Word_Valid(ident_word[63]))
         {
             // MWDMA
-            // uint8_t mwdmaSupported = M_GETBITRANGE(ident_word[63], 2, 0);
-            uint8_t mwdmaSelected = M_GETBITRANGE(ident_word[63], 10, 8);
+            // uint8_t mwdmaSupported = get_8bit_range_uint16(ident_word[63], 2, 0);
+            uint8_t mwdmaSelected = get_8bit_range_uint16(ident_word[63], 10, 8);
             if (mwdmaSelected)
             {
                 device->drive_info.ata_Options.dmaMode =
@@ -1434,7 +1434,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         // another check to make sure we've identified device 1 correctly
         if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[93]))
         {
-            if (M_GETBITRANGE(ident_word[93], 12, 8) > 0 && ident_word[93] & BIT8)
+            if (get_8bit_range_uint16(ident_word[93], 12, 8) > 0 && ident_word[93] & BIT8)
             {
                 device->drive_info.ata_Options.isDevice1 = true;
             }

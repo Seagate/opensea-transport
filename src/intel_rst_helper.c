@@ -569,7 +569,7 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx* scsiIoCtx, bool* isActivate)
     // subcommands.
     if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
     {
-        uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+        uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0);
         if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
         {
             compatible          = true;
@@ -1017,7 +1017,7 @@ eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx)
             }
             else if (nvmeIoCtx->cmd.adminCmd.opcode == NVME_ADMIN_CMD_ACTIVATE_FW)
             {
-                uint8_t activateAction = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
+                uint8_t activateAction = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
                 if (activateAction == NVME_CA_ACTIVITE_ON_RST ||
                     activateAction == NVME_CA_ACTIVITE_IMMEDIATE) // check the activate action
                 {
@@ -1026,7 +1026,7 @@ eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx)
                     // image in a specified slot (and to or not to activate).
                     flags |= INTEL_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
                 }
-                firmwareSlot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+                firmwareSlot = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
                 // send activate command API
                 ret = internal_Intel_FWDL_Function_Activate(nvmeIoCtx->device, flags, &returnCode, firmwareSlot,
                                                             nvmeIoCtx->timeout);

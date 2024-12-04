@@ -3346,7 +3346,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
 #    endif
         if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
         {
-            uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+            uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0);
             if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
             {
                 supportedCMD        = true;
@@ -3461,7 +3461,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
         // command since that is all that is supported
         if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
         {
-            uint8_t  wbMode         = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+            uint8_t  wbMode         = get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0);
             uint32_t transferLength = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
             switch (wbMode)
             {
@@ -3506,7 +3506,7 @@ static bool is_Activate_Command(ScsiIoCtx* scsiIoCtx)
     else if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
     {
         // it's a write buffer command, so we need to also check the mode.
-        uint8_t wbMode = M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0);
+        uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0);
         switch (wbMode)
         {
         case 0x0F:
@@ -4187,11 +4187,11 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
         {
             uint32_t returnCode     = UINT32_C(0);
             uint32_t fwdlFlags      = FIRMWARE_REQUEST_FLAG_CONTROLLER; // start with this, but may need other flags
-            uint8_t  activateAction = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
+            uint8_t  activateAction = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
             // Setup input values
             firmwareActivate->Version        = STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION;
             firmwareActivate->Size           = sizeof(STORAGE_FIRMWARE_ACTIVATE);
-            firmwareActivate->SlotToActivate = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+            firmwareActivate->SlotToActivate = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
             if (activateAction == NVME_CA_ACTIVITE_ON_RST ||
                 activateAction == NVME_CA_ACTIVITE_IMMEDIATE) // check the activate action
             {
@@ -9746,7 +9746,7 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         // first check the service action
-        if (M_GETBITRANGE(scsiIoCtx->cdb[1], 4, 0) == 0x10)
+        if (get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0) == 0x10)
         {
             uint32_t allocationLength =
                 M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
@@ -9940,7 +9940,7 @@ static eReturnValues wbst_Read_6(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+        if (get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -9985,7 +9985,7 @@ static eReturnValues wbst_Read_10(ScsiIoCtx* scsiIoCtx)
              BIT0) // reladr bit. Obsolete.
                    //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
             || (scsiIoCtx->cdb[1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
-            || (M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0))
+            || (get_bit_range_uint8(scsiIoCtx->cdb[6], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10041,7 +10041,7 @@ static eReturnValues wbst_Read_12(ScsiIoCtx* scsiIoCtx)
              BIT0) // reladr bit. Obsolete.
                    //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
             || (scsiIoCtx->cdb[1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
-            || (M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0))
+            || (get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10101,7 +10101,7 @@ static eReturnValues wbst_Read_16(ScsiIoCtx* scsiIoCtx)
              BIT0) // reladr bit. Obsolete.
                    //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
             || (scsiIoCtx->cdb[1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
-            || (M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0))
+            || (get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10183,7 +10183,7 @@ static eReturnValues wbst_Write_6(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 5) != 0)
+        if (get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10239,7 +10239,7 @@ static eReturnValues wbst_Write_10(ScsiIoCtx* scsiIoCtx)
              BIT0) // reladr bit. Obsolete.
                    //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
             || (scsiIoCtx->cdb[1] & BIT2) // reserved bit
-            || (M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0))
+            || (get_bit_range_uint8(scsiIoCtx->cdb[6], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10295,7 +10295,7 @@ static eReturnValues wbst_Write_12(ScsiIoCtx* scsiIoCtx)
              BIT0) // reladr bit. Obsolete.
                    //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
             || (scsiIoCtx->cdb[1] & BIT2) // reserved bit
-            || (M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0))
+            || (get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10354,7 +10354,7 @@ static eReturnValues wbst_Write_16(ScsiIoCtx* scsiIoCtx)
              BIT0) // reladr bit. Obsolete. also now the DLD2 bit
                    //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
             || (scsiIoCtx->cdb[1] & BIT2) // reserved bit
-            || (M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0))
+            || (get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10430,7 +10430,8 @@ static eReturnValues wbst_Verify_10(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if ((scsiIoCtx->cdb[1] & BIT3) || (scsiIoCtx->cdb[1] & BIT0) || (M_GETBITRANGE(scsiIoCtx->cdb[6], 7, 6) != 0))
+        if ((scsiIoCtx->cdb[1] & BIT3) || (scsiIoCtx->cdb[1] & BIT0) ||
+            (get_bit_range_uint8(scsiIoCtx->cdb[6], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10440,7 +10441,7 @@ static eReturnValues wbst_Verify_10(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint8_t  byteCheck = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 1);
+            uint8_t  byteCheck = get_bit_range_uint8(scsiIoCtx->cdb[1], 2, 1);
             uint64_t lba =
                 M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
             uint32_t verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
@@ -10479,7 +10480,8 @@ static eReturnValues wbst_Verify_12(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if ((scsiIoCtx->cdb[1] & BIT3) || (scsiIoCtx->cdb[1] & BIT0) || (M_GETBITRANGE(scsiIoCtx->cdb[10], 7, 6) != 0))
+        if ((scsiIoCtx->cdb[1] & BIT3) || (scsiIoCtx->cdb[1] & BIT0) ||
+            (get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10489,7 +10491,7 @@ static eReturnValues wbst_Verify_12(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint8_t  byteCheck = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 1);
+            uint8_t  byteCheck = get_bit_range_uint8(scsiIoCtx->cdb[1], 2, 1);
             uint64_t lba =
                 M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
             uint32_t verificationLength =
@@ -10529,7 +10531,8 @@ static eReturnValues wbst_Verify_16(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if ((scsiIoCtx->cdb[1] & BIT3) || (scsiIoCtx->cdb[1] & BIT0) || (M_GETBITRANGE(scsiIoCtx->cdb[14], 7, 6) != 0))
+        if ((scsiIoCtx->cdb[1] & BIT3) || (scsiIoCtx->cdb[1] & BIT0) ||
+            (get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10539,7 +10542,7 @@ static eReturnValues wbst_Verify_16(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint8_t  byteCheck = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 1);
+            uint8_t  byteCheck = get_bit_range_uint8(scsiIoCtx->cdb[1], 2, 1);
             uint64_t lba =
                 M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
                                     scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
@@ -10834,7 +10837,7 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
         //       It may be worth implementing if they ever return from beyond the grave...or if we can test and prove it
         //       works on HDDs
         // Ideally this is a nop and it returns that it's ready without actually doing anything
-        if (M_GETBITRANGE(scsiIoCtx->cdb[1], 7, 6) || scsiIoCtx->cdb[1] & BIT3 || scsiIoCtx->cdb[2] ||
+        if (get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 6) || scsiIoCtx->cdb[1] & BIT3 || scsiIoCtx->cdb[2] ||
             scsiIoCtx->cdb[3] || scsiIoCtx->cdb[4])
         {
             // invalid field in CDB
@@ -10847,11 +10850,11 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
         {
             bool    longList         = scsiIoCtx->cdb[1] & BIT5;
             bool    formatData       = scsiIoCtx->cdb[1] & BIT4;
-            uint8_t defectListFormat = M_GETBITRANGE(scsiIoCtx->cdb[1], 2, 0);
+            uint8_t defectListFormat = get_bit_range_uint8(scsiIoCtx->cdb[1], 2, 0);
             if (formatData && scsiIoCtx->pdata && scsiIoCtx->dataLength > 4)
             {
                 // Parameter header information
-                // uint8_t protectionFieldUsage = M_GETBITRANGE(scsiIoCtx->pdata[0], 2, 0);
+                // uint8_t protectionFieldUsage = get_bit_range_uint8(scsiIoCtx->pdata[0], 2, 0);
                 bool formatOptionsValid = scsiIoCtx->pdata[1] & BIT7;
                 // bool disablePrimary = scsiIoCtx->pdata[1] & BIT6; //ignore this bit. Commented out so we can use it
                 // if we ever need to.
@@ -10929,10 +10932,10 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
                         {
                             // Set up the initialization pattern information since we were given one
                             initializationPatternModifier =
-                                M_GETBITRANGE(scsiIoCtx->pdata[initializationPatternOffset + 0], 7, 6);
+                                get_bit_range_uint8(scsiIoCtx->pdata[initializationPatternOffset + 0], 7, 6);
                             securityInitialize = scsiIoCtx->pdata[initializationPatternOffset + 1] & BIT5;
                             initializationPatternByte0ReservedBits =
-                                M_GETBITRANGE(scsiIoCtx->pdata[initializationPatternOffset + 0], 4, 0);
+                                get_bit_range_uint8(scsiIoCtx->pdata[initializationPatternOffset + 0], 4, 0);
                             initializationPatternType = scsiIoCtx->pdata[initializationPatternOffset + 1];
                             initializationPatternLength =
                                 M_BytesTo2ByteValue(scsiIoCtx->pdata[initializationPatternOffset + 2],
@@ -11610,7 +11613,7 @@ static eReturnValues win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCt
         nvmeIoCtx->commandCompletionData.dw3      = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 0x0B);
         nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = 0;
     }
-    else if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 8) > 0 || nvmeIoCtx->cmd.adminCmd.cdw11 ||
+    else if (get_bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 8) > 0 || nvmeIoCtx->cmd.adminCmd.cdw11 ||
              nvmeIoCtx->cmd.adminCmd.cdw12 || nvmeIoCtx->cmd.adminCmd.cdw13 || nvmeIoCtx->cmd.adminCmd.cdw14 ||
              nvmeIoCtx->cmd.adminCmd.cdw15)
     {
@@ -12153,7 +12156,7 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
     safe_memset(&downloadActivate, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE), 0, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
     downloadActivate.Version = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     downloadActivate.Size    = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
-    uint8_t activateAction   = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
+    uint8_t activateAction   = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
     downloadActivate.Flags |=
         STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER; // this command must go to the controller, not the namespace
     if (activateAction == NVME_CA_ACTIVITE_ON_RST ||
@@ -12164,7 +12167,7 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
         // to or not to activate).
         downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
     }
-    downloadActivate.Slot = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+    downloadActivate.Slot = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
 #    if defined(_DEBUG)
     printf("%s: downloadActivate->Version=%ld\n\t->Size=%ld\n\t->Flags=0x%lX\n\t->Slot=%d\n", __FUNCTION__,
            downloadActivate.Version, downloadActivate.Size, downloadActivate.Flags, downloadActivate.Slot);
@@ -12284,7 +12287,7 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
         downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
     }
 #    endif
-    downloadIO->Slot = STORAGE_HW_FIRMWARE_INVALID_SLOT; // M_GETBITRANGE(nvmeIoCtx->cmd, 1, 0);
+    downloadIO->Slot = STORAGE_HW_FIRMWARE_INVALID_SLOT; // get_8bit_range_uint32(nvmeIoCtx->cmd, 1, 0);
     // we need to set the offset since MS uses this in the command sent to the device.
     downloadIO->Offset = C_CAST(uint64_t, nvmeIoCtx->cmd.adminCmd.cdw11) << 2; // convert #DWords to bytes for offset
     // set the size of the buffer
@@ -12375,14 +12378,14 @@ static eReturnValues win10_Translate_Security_Send(nvmeCmdCtx* nvmeIoCtx)
     eReturnValues    ret         = OS_COMMAND_NOT_AVAILABLE;
     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     // Windows API call does not exist...need to issue a SCSI IO and let the driver translate it for us...how silly
-    if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 0) ==
+    if (get_bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 0) ==
         0) // check that the nvme specific field isn't set since we can't issue that
     {
         // turn verbosity to silent since we don't need to see everything from issueing the scsi io...purpose right now
         // is to make it look like an NVM io and be transparent to the caller.
         nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-        ret = scsi_SecurityProtocol_Out(nvmeIoCtx->device, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 24),
-                                        M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 23, 8), false,
+        ret = scsi_SecurityProtocol_Out(nvmeIoCtx->device, get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 24),
+                                        get_16bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 23, 8), false,
                                         nvmeIoCtx->cmd.adminCmd.cdw11, nvmeIoCtx->ptrData, 0);
         // command completed, so turn verbosity back to what it was
         nvmeIoCtx->device->deviceVerbosity = inVerbosity;
@@ -12395,14 +12398,14 @@ static eReturnValues win10_Translate_Security_Receive(nvmeCmdCtx* nvmeIoCtx)
     eReturnValues    ret         = OS_COMMAND_NOT_AVAILABLE;
     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
     // Windows API call does not exist...need to issue a SCSI IO and let the driver translate it for us...how silly
-    if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 0) ==
+    if (get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 0) ==
         0) // check that the nvme specific field isn't set since we can't issue that
     {
         // turn verbosity to silent since we don't need to see everything from issueing the scsi io...purpose right now
         // is to make it look like an NVM io and be transparent to the caller.
         nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-        ret = scsi_SecurityProtocol_In(nvmeIoCtx->device, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 24),
-                                       M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 23, 8), false,
+        ret = scsi_SecurityProtocol_In(nvmeIoCtx->device, get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 24),
+                                       get_16bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 23, 8), false,
                                        nvmeIoCtx->cmd.adminCmd.cdw11, nvmeIoCtx->ptrData);
         // command completed, so turn verbosity back to what it was
         nvmeIoCtx->device->deviceVerbosity = inVerbosity;
@@ -12500,10 +12503,10 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx* nvmeIoCtx)
     eReturnValues    ret               = OS_COMMAND_NOT_AVAILABLE;
     eVerbosityLevels inVerbosity       = nvmeIoCtx->device->deviceVerbosity;
     nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
-    uint8_t workloadHint               = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 7, 5);
-    uint8_t powerState                 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 4, 0);
+    uint8_t workloadHint               = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw11, 7, 5);
+    uint8_t powerState                 = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw11, 4, 0);
     if (workloadHint == 0 &&
-        M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 31, 8) ==
+        get_bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw11, 31, 8) ==
             0) // cannot send workload hints in the API calls available, also filtering out reserved bits
     {
         double maxPowerScalar = 0.01;
@@ -12561,10 +12564,10 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 
-    uint8_t thsel  = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 21, 20);
-    uint8_t tmpsel = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 19, 16);
+    uint8_t thsel  = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw11, 21, 20);
+    uint8_t tmpsel = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw11, 19, 16);
 
-    int32_t temperatureThreshold = C_CAST(int32_t, M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw11, 15, 0));
+    int32_t temperatureThreshold = C_CAST(int32_t, get_16bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw11, 15, 0));
 
     // TODO: check reserved fields are zero to return an error since they may communicate a different behavior we are
     // not currently
@@ -12878,16 +12881,16 @@ static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOC
                 {
                     // next we need to screen other fields to make sure there aren't other things being asked while
                     // running the format.
-                    if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9) == 2)
+                    if (get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9) == 2)
                     {
                         // crypto erase.
                         // Finish validating other parameters.
                         // cannot change PI, metadata, or LBA format.
-                        uint32_t reservedBitsDWord10       = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
-                        bool     pil                       = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
-                        uint8_t  pi                        = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
-                        bool     mset                      = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
-                        uint8_t  lbaFormat                 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
+                        uint32_t reservedBitsDWord10 = get_bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
+                        bool     pil                 = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
+                        uint8_t  pi                  = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
+                        bool     mset                = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
+                        uint8_t  lbaFormat           = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
                         nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
                         if (reservedBitsDWord10 == 0 && !pil && !mset && pi == 0)
                         {
@@ -12932,7 +12935,7 @@ static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOC
                     // ignore "overwrite pattern"
 
                     // If we are here and this is a supported OS and API, check for a valid Sanitize operation.
-                    switch (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0))
+                    switch (get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0))
                     {
                     case SANITIZE_NVM_EXIT_FAILURE_MODE:
                     case SANITIZE_NVM_OVERWRITE:
@@ -12977,7 +12980,7 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
             reinitMedia.Version          = sizeof(STORAGE_REINITIALIZE_MEDIA);
             reinitMedia.Size             = sizeof(STORAGE_REINITIALIZE_MEDIA);
             reinitMedia.TimeoutInSeconds = nvmeIoCtx->timeout;
-            switch (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0))
+            switch (get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0))
             {
             case SANITIZE_NVM_EXIT_FAILURE_MODE:
             case SANITIZE_NVM_OVERWRITE:
@@ -13087,12 +13090,12 @@ static eReturnValues win10_Translate_Format(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret                 = OS_COMMAND_NOT_AVAILABLE;
     eVerbosityLevels inVerbosity         = nvmeIoCtx->device->deviceVerbosity;
-    uint32_t         reservedBitsDWord10 = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
-    uint8_t          secureEraseSettings = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9);
+    uint32_t         reservedBitsDWord10 = get_bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 12);
+    uint8_t          secureEraseSettings = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 11, 9);
     bool             pil                 = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8;
-    uint8_t          pi                  = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
+    uint8_t          pi                  = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
     bool             mset                = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
-    uint8_t          lbaFormat           = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
+    uint8_t          lbaFormat           = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
     nvmeIoCtx->device->deviceVerbosity   = VERBOSITY_QUIET;
     if (reservedBitsDWord10 == 0 && !pil && !mset && pi == 0)
     {
@@ -13204,7 +13207,7 @@ static eReturnValues win10_Translate_Format(nvmeCmdCtx* nvmeIoCtx)
         //     //default:
         //     //    return OS_COMMAND_NOT_AVAILABLE;
         //     //}
-        //     //formatParameterData[0] = M_GETBITRANGE(piUsage, 2, 0);
+        //     //formatParameterData[0] = get_bit_range_uint8(piUsage, 2, 0);
         //     ret = scsi_Format_Unit(nvmeIoCtx->device, 0, false, false, false, 0, 0, M_NULLPTR, 0, 0, 60);
         //     //}
         // }
@@ -13265,15 +13268,15 @@ static eReturnValues win10_Translate_Read(nvmeCmdCtx* nvmeIoCtx)
                             M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
     bool     limitedRetry          = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT31;
     bool     fua                   = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT30;
-    uint8_t  prInfo                = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw12, 29, 26);
+    uint8_t  prInfo                = get_8bit_range_uint32(nvmeIoCtx->cmd.nvmCmd.cdw12, 29, 26);
     bool     pract                 = prInfo & BIT3;
-    uint8_t  prchk                 = M_GETBITRANGE(prInfo, 2, 0);
+    uint8_t  prchk                 = get_bit_range_uint8(prInfo, 2, 0);
     uint16_t numberOfLogicalBlocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1; // nvme is zero based!
     uint8_t  dsm                   = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw13);
     // bool incompresible = dsm & BIT7;
     // bool sequentialRequest = dsm & BIT6;
-    // uint8_t accessLatency = M_GETBITRANGE(dsm, 5, 4);
-    // uint8_t accessFrequency = M_GETBITRANGE(dsm, 3, 0);
+    // uint8_t accessLatency = get_bit_range_uint8(dsm, 5, 4);
+    // uint8_t accessFrequency = get_bit_range_uint8(dsm, 3, 0);
     uint32_t expectedLogicalBlockAccessTag      = nvmeIoCtx->cmd.nvmCmd.cdw14;
     uint16_t expectedLogicalBlockTagMask        = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw15);
     uint16_t expectedLogicalBlockApplicationTag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw15);
@@ -13344,17 +13347,17 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx* nvmeIoCtx)
                             M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10));
     bool     limitedRetry          = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT31;
     bool     fua                   = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT30;
-    uint8_t  prInfo                = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw12, 29, 26);
+    uint8_t  prInfo                = get_8bit_range_uint32(nvmeIoCtx->cmd.nvmCmd.cdw12, 29, 26);
     bool     pract                 = prInfo & BIT3;
-    uint8_t  prchk                 = M_GETBITRANGE(prInfo, 2, 0);
-    uint8_t  dtype                 = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw12, 23, 20);
+    uint8_t  prchk                 = get_bit_range_uint8(prInfo, 2, 0);
+    uint8_t  dtype                 = get_8bit_range_uint32(nvmeIoCtx->cmd.nvmCmd.cdw12, 23, 20);
     uint16_t numberOfLogicalBlocks = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1; // nvme is zero based!
     uint16_t dspec                 = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw13);
     uint8_t  dsm                   = M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw13);
     // bool incompresible = dsm & BIT7;
     // bool sequentialRequest = dsm & BIT6;
-    // uint8_t accessLatency = M_GETBITRANGE(dsm, 5, 4);
-    // uint8_t accessFrequency = M_GETBITRANGE(dsm, 3, 0);
+    // uint8_t accessLatency = get_bit_range_uint8(dsm, 5, 4);
+    // uint8_t accessFrequency = get_bit_range_uint8(dsm, 3, 0);
     uint32_t initialLogicalBlockAccessTag = nvmeIoCtx->cmd.nvmCmd.cdw14;
     uint16_t logicalBlockTagMask          = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw15);
     uint16_t logicalBlockApplicationTag   = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw15);
@@ -13422,8 +13425,8 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx* nvmeIoCtx)
 //     M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw11), M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw11),
 //     M_Byte3(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte2(nvmeIoCtx->cmd.nvmCmd.cdw10), M_Byte1(nvmeIoCtx->cmd.nvmCmd.cdw10),
 //     M_Byte0(nvmeIoCtx->cmd.nvmCmd.cdw10)); bool limitedRetry = nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT31; bool fua =
-//     nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT30; uint8_t prInfo = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw12, 29, 26); bool
-//     pract = prInfo & BIT3; uint8_t prchk = M_GETBITRANGE(prInfo, 2, 0); uint16_t numberOfLogicalBlocks =
+//     nvmeIoCtx->cmd.nvmCmd.cdw12 & BIT30; uint8_t prInfo = get_8bit_range_uint32(nvmeIoCtx->cmd.nvmCmd.cdw12, 29, 26);
+//     bool pract = prInfo & BIT3; uint8_t prchk = get_bit_range_uint8(prInfo, 2, 0); uint16_t numberOfLogicalBlocks =
 //     M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12) + 1; uint32_t expectedLogicalBlockAccessTag = nvmeIoCtx->cmd.nvmCmd.cdw14;
 //     uint16_t expectedLogicalBlockTagMask = M_Word1(nvmeIoCtx->cmd.nvmCmd.cdw12);
 //     uint16_t expectedLogicalBlockApplicationTag = M_Word0(nvmeIoCtx->cmd.nvmCmd.cdw12);
@@ -13614,10 +13617,10 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
         //#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
         //     ret = nvme_Ioctl_Storage_Reinitialize_Media(nvmeIoCtx);
         //#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
-        uint8_t action = M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
+        uint8_t action = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
         // First check for fields that are not supported
-        if (M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 10) > 0 || nvmeIoCtx->cmd.adminCmd.cdw10 & BIT9 ||
-            nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8 || M_GETBITRANGE(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 4) > 0 ||
+        if (get_bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 10) > 0 || nvmeIoCtx->cmd.adminCmd.cdw10 & BIT9 ||
+            nvmeIoCtx->cmd.adminCmd.cdw10 & BIT8 || get_bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 4) > 0 ||
             action == 0 || action == 1 || action == 3 || action >= 5 || nvmeIoCtx->cmd.adminCmd.cdw11 != 0)
         {
             // Command not supported for translation
@@ -13653,9 +13656,9 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
 //     //Command inputs
-//     uint8_t cptpl = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 31, 30);
+//     uint8_t cptpl = get_8bit_range_uint32(nvmeIoCtx->cmd.nvmCmd.cdw10, 31, 30);
 //     bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
-//     uint8_t rrega = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
+//     uint8_t rrega = get_8bit_range_uint32(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
 //     //data structure inputs
 //     //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2],
 //     nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6],
@@ -13755,9 +13758,9 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
 //     //Command inputs
-//     uint8_t rtype = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 15, 8);
+//     uint8_t rtype = get_8bit_range_uint32(nvmeIoCtx->cmd.nvmCmd.cdw10, 15, 8);
 //     bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
-//     uint8_t racqa = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
+//     uint8_t racqa = get_8bit_range_uint32(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
 //     //data structure inputs
 //     //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2],
 //     nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6],
@@ -13844,9 +13847,9 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
 //     //Command inputs
-//     uint8_t rtype = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 15, 8);
+//     uint8_t rtype = get_8bit_range_uint32(nvmeIoCtx->cmd.nvmCmd.cdw10, 15, 8);
 //     bool iekey = nvmeIoCtx->cmd.nvmCmd.cdw10 & BIT3;
-//     uint8_t rrela = M_GETBITRANGE(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
+//     uint8_t rrela = get_8bit_range_uint32(nvmeIoCtx->cmd.nvmCmd.cdw10, 2, 0);
 //     //data structure inputs
 //     //uint64_t crkey = M_BytesTo8ByteValue(nvmeIoCtx->ptrData[0], nvmeIoCtx->ptrData[1], nvmeIoCtx->ptrData[2],
 //     nvmeIoCtx->ptrData[3], nvmeIoCtx->ptrData[4], nvmeIoCtx->ptrData[5], nvmeIoCtx->ptrData[6],

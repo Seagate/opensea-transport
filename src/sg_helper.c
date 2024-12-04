@@ -1131,7 +1131,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
             uint8_t peripheralType = UINT8_C(0);
             if (SIZE_T_C(1) == fread(&peripheralType, sizeof(uint8_t), SIZE_T_C(1), temp))
             {
-                sysFsInfo->scsiDevType = M_GETBITRANGE(peripheralType, 4, 0);
+                sysFsInfo->scsiDevType = get_bit_range_uint8(peripheralType, 4, 0);
             }
             close_sysfs_file(&temp);
         }
@@ -2710,7 +2710,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                     //       This special case exists because sometimes a kernel is built and deployed without the SG
                     //       driver enabled, but we still want to detect RAID devices, so we don't want to skip
                     //       enumerating a RAID when all we see are the logical RAID volumes -TJE
-                    if (M_GETBITRANGE(d->drive_info.scsiVpdData.inquiryData[0], 4, 0) ==
+                    if (get_bit_range_uint8(d->drive_info.scsiVpdData.inquiryData[0], 4, 0) ==
                             PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE ||
                         num_sg_devs == 0)
                     {
