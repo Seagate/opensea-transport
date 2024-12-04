@@ -1146,62 +1146,15 @@ void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* pbuf,
                                 uint8_t*       ascq,
                                 uint8_t*       fru)
 {
-    uint8_t  format                = pbuf[0] & 0x7F; // Stripping the last bit.
-    uint8_t  additionalSenseLength = pbuf[7];        // total sense data length
-    uint32_t iter                  = UINT32_C(8);    // set to beginning of the descriptors
-    // clear everything to zero first
-    *senseKey = 0;
-    *asc      = 0;
-    *ascq     = 0;
-    *fru      = 0;
+    senseDataFields senseFields;
+    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
 
-    switch (format)
-    {
-    case SCSI_SENSE_NO_SENSE_DATA:
-        break;
-    case SCSI_SENSE_CUR_INFO_FIXED:
-    case SCSI_SENSE_DEFER_ERR_FIXED:
-        *senseKey = pbuf[2] & 0x0F;
-        *asc      = pbuf[12];
-        *ascq     = pbuf[13];
-        *fru      = pbuf[14];
-        break;
-    case SCSI_SENSE_CUR_INFO_DESC:
-    case SCSI_SENSE_DEFER_ERR_DESC:
-        *senseKey = pbuf[1] & 0x0F;
-        *asc      = pbuf[2];
-        *ascq     = pbuf[3];
-        // for descriptor format we have to loop through the buffer until we find the FRU descriptor (if available)
-        while (iter < SPC3_SENSE_LEN && iter < pbufSize &&
-               iter < (C_CAST(uint32_t, additionalSenseLength) + UINT32_C(8)))
-        {
-            bool    gotFRU           = false;
-            uint8_t descriptorType   = pbuf[iter];
-            uint8_t additionalLength = pbuf[iter + 1]; // descriptor length
-            switch (descriptorType)
-            {
-            case SENSE_DESCRIPTOR_FIELD_REPLACEABLE_UNIT:
-                *fru   = pbuf[iter + 3];
-                gotFRU = true;
-                break;
-            case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
-                *fru   = pbuf[iter + 7];
-                gotFRU = true;
-                break;
-            default:
-                break;
-            }
-            if (gotFRU)
-            {
-                break;
-            }
-            iter += additionalLength + 2; // the 2 is the number of bytes for the descriptor header
-        }
-        break;
-    case SCSI_SENSE_VENDOR_SPECIFIC: // vendor specific sense data format.
-    default:                         // unknown sense data format.
-        break;
-    }
+    get_Sense_Data_Fields(pbuf, pbufSize, &senseFields);
+
+    *senseKey = senseFields.scsiStatusCodes.senseKey;
+    *asc      = senseFields.scsiStatusCodes.asc;
+    *ascq     = senseFields.scsiStatusCodes.ascq;
+    *fru      = senseFields.scsiStatusCodes.fru;
 }
 
 void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
@@ -1209,63 +1162,18 @@ void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
                                      bool*          valid,
                                      uint64_t*      information)
 {
-    if (ptrSenseData && valid && senseDataLength > 0 && information)
+    senseDataFields senseFields;
+    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+
+    get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
+
+    if (valid)
     {
-        uint8_t  format           = ptrSenseData[0] & 0x7F; // Stripping the last bit so we just get the format
-        uint8_t  descriptorLength = UINT8_C(0);             // for descriptor format sense data
-        uint16_t returnedLength   = UINT16_C(8);            // assume length returned is at least 8 bytes
-        *valid                    = false;
-        *information              = 0;
-        switch (format)
-        {
-        case SCSI_SENSE_NO_SENSE_DATA:
-            break;
-        case SCSI_SENSE_CUR_INFO_FIXED:
-        case SCSI_SENSE_DEFER_ERR_FIXED:
-            *valid       = ptrSenseData[0] & BIT7;
-            *information = M_BytesTo4ByteValue(ptrSenseData[3], ptrSenseData[4], ptrSenseData[5], ptrSenseData[6]);
-            break;
-        case SCSI_SENSE_CUR_INFO_DESC:
-        case SCSI_SENSE_DEFER_ERR_DESC:
-            returnedLength += ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
-            // loop through the descriptors to see if a sense key specific descriptor was provided
-            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX;
-                 offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength;
-                 offset += descriptorLength + 2)
-            {
-                bool    gotInformation = false;
-                uint8_t descriptorType = ptrSenseData[offset];
-                descriptorLength       = ptrSenseData[offset + 1];
-                switch (descriptorType)
-                {
-                case SENSE_DESCRIPTOR_INFORMATION:
-                    *valid         = ptrSenseData[offset + 2] & BIT7;
-                    *information   = M_BytesTo8ByteValue(ptrSenseData[offset + 4], ptrSenseData[offset + 5],
-                                                         ptrSenseData[offset + 6], ptrSenseData[offset + 7],
-                                                         ptrSenseData[offset + 8], ptrSenseData[offset + 9],
-                                                         ptrSenseData[offset + 10], ptrSenseData[offset + 11]);
-                    gotInformation = true;
-                    break;
-                case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
-                    *valid         = ptrSenseData[offset + 2] & BIT7;
-                    *information   = M_BytesTo8ByteValue(ptrSenseData[offset + 8], ptrSenseData[offset + 9],
-                                                         ptrSenseData[offset + 10], ptrSenseData[offset + 11],
-                                                         ptrSenseData[offset + 12], ptrSenseData[offset + 13],
-                                                         ptrSenseData[offset + 14], ptrSenseData[offset + 15]);
-                    gotInformation = true;
-                    break;
-                default: // not a descriptor we care about, so skip it
-                    break;
-                }
-                if (gotInformation || descriptorLength == 0)
-                {
-                    break;
-                }
-            }
-            break;
-        default:
-            break;
-        }
+        *valid = senseFields.valid;
+    }
+    if (information)
+    {
+        *information = senseFields.descriptorInformation;
     }
 }
 
@@ -1273,56 +1181,14 @@ void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
                                                   uint32_t       senseDataLength,
                                                   bool*          illegalLengthIndicator)
 {
-    if (ptrSenseData && senseDataLength > 0 && illegalLengthIndicator)
+    senseDataFields senseFields;
+    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+
+    get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
+
+    if (illegalLengthIndicator)
     {
-        uint8_t  format           = ptrSenseData[0] & 0x7F; // Stripping the last bit so we just get the format
-        uint8_t  descriptorLength = UINT8_C(0);             // for descriptor format sense data
-        uint16_t returnedLength   = UINT16_C(8) + ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
-        *illegalLengthIndicator   = false;
-        switch (format)
-        {
-        case SCSI_SENSE_NO_SENSE_DATA:
-            break;
-        case SCSI_SENSE_CUR_INFO_FIXED:
-        case SCSI_SENSE_DEFER_ERR_FIXED:
-            *illegalLengthIndicator = ptrSenseData[2] & BIT5;
-            break;
-        case SCSI_SENSE_CUR_INFO_DESC:
-        case SCSI_SENSE_DEFER_ERR_DESC:
-            // loop through the descriptors to see if a sense key specific descriptor was provided
-            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX;
-                 offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength;
-                 offset += descriptorLength + 2)
-            {
-                bool    gotILI         = false;
-                uint8_t descriptorType = ptrSenseData[offset];
-                descriptorLength       = ptrSenseData[offset + 1];
-                switch (descriptorType)
-                {
-                case SENSE_DESCRIPTOR_BLOCK_COMMANDS: // SBC
-                    *illegalLengthIndicator = ptrSenseData[offset + 3] & BIT5;
-                    gotILI                  = true;
-                    break;
-                case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE: // SBC
-                    *illegalLengthIndicator = ptrSenseData[offset + 2] & BIT5;
-                    gotILI                  = true;
-                    break;
-                case SENSE_DESCRIPTOR_STREAM_COMMANDS: // SSC
-                    *illegalLengthIndicator = ptrSenseData[offset + 3] & BIT5;
-                    gotILI                  = true;
-                    break;
-                default: // not a descriptor we care about, so skip it
-                    break;
-                }
-                if (gotILI || descriptorLength == 0)
-                {
-                    break;
-                }
-            }
-            break;
-        default:
-            break;
-        }
+        *illegalLengthIndicator = senseFields.illegalLengthIndication;
     }
 }
 
@@ -1332,52 +1198,22 @@ void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
                                              bool*          endOfMedia,
                                              bool*          illegalLengthIndicator)
 {
-    if (ptrSenseData && senseDataLength > 0 && illegalLengthIndicator && filemark && endOfMedia)
+    senseDataFields senseFields;
+    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+
+    get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
+
+    if (filemark)
     {
-        uint8_t  format           = ptrSenseData[0] & 0x7F; // Stripping the last bit so we just get the format
-        uint8_t  descriptorLength = UINT8_C(0);             // for descriptor format sense data
-        uint16_t returnedLength   = UINT16_C(8) + ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
-        *illegalLengthIndicator   = false;
-        switch (format)
-        {
-        case SCSI_SENSE_NO_SENSE_DATA:
-            break;
-        case SCSI_SENSE_CUR_INFO_FIXED:
-        case SCSI_SENSE_DEFER_ERR_FIXED:
-            *illegalLengthIndicator = ptrSenseData[2] & BIT5;
-            *endOfMedia             = ptrSenseData[2] & BIT6;
-            *filemark               = ptrSenseData[2] & BIT7;
-            break;
-        case SCSI_SENSE_CUR_INFO_DESC:
-        case SCSI_SENSE_DEFER_ERR_DESC:
-            // loop through the descriptors to see if a sense key specific descriptor was provided
-            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX;
-                 offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength;
-                 offset += descriptorLength + 2)
-            {
-                bool    gotbits        = false;
-                uint8_t descriptorType = ptrSenseData[offset];
-                descriptorLength       = ptrSenseData[offset + 1];
-                switch (descriptorType)
-                {
-                case SENSE_DESCRIPTOR_STREAM_COMMANDS: // SSC
-                    *illegalLengthIndicator = ptrSenseData[offset + 3] & BIT5;
-                    *endOfMedia             = ptrSenseData[offset + 3] & BIT6;
-                    *filemark               = ptrSenseData[offset + 3] & BIT7;
-                    gotbits                 = true;
-                    break;
-                default: // not a descriptor we care about, so skip it
-                    break;
-                }
-                if (gotbits || descriptorLength == 0)
-                {
-                    break;
-                }
-            }
-            break;
-        default:
-            break;
-        }
+        *filemark = senseFields.filemark;
+    }
+    if (endOfMedia)
+    {
+        *endOfMedia = senseFields.endOfMedia;
+    }
+    if (illegalLengthIndicator)
+    {
+        *illegalLengthIndicator = senseFields.illegalLengthIndication;
     }
 }
 
@@ -1385,166 +1221,27 @@ void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseDat
                                                       uint32_t       senseDataLength,
                                                       uint64_t*      commandSpecificInformation)
 {
-    if (ptrSenseData && senseDataLength > 0 && commandSpecificInformation)
+    senseDataFields senseFields;
+    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+
+    get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
+
+    if (commandSpecificInformation)
     {
-        uint8_t  format             = ptrSenseData[0] & 0x7F; // Stripping the last bit so we just get the format
-        uint8_t  descriptorLength   = UINT8_C(0);             // for descriptor format sense data
-        uint16_t returnedLength     = UINT16_C(8) + ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
-        *commandSpecificInformation = 0;
-        switch (format)
-        {
-        case SCSI_SENSE_NO_SENSE_DATA:
-            break;
-        case SCSI_SENSE_CUR_INFO_FIXED:
-        case SCSI_SENSE_DEFER_ERR_FIXED:
-            if (returnedLength >= 12)
-            {
-                *commandSpecificInformation =
-                    M_BytesTo4ByteValue(ptrSenseData[8], ptrSenseData[9], ptrSenseData[10], ptrSenseData[11]);
-            }
-            break;
-        case SCSI_SENSE_CUR_INFO_DESC:
-        case SCSI_SENSE_DEFER_ERR_DESC:
-            // loop through the descriptors to see if a sense key specific descriptor was provided
-            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX;
-                 offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength;
-                 offset += descriptorLength + UINT8_C(2))
-            {
-                bool    gotCommandInformation = false;
-                uint8_t descriptorType        = ptrSenseData[offset];
-                descriptorLength              = ptrSenseData[offset + 1];
-                switch (descriptorType)
-                {
-                case SENSE_DESCRIPTOR_COMMAND_SPECIFIC_INFORMATION:
-                    *commandSpecificInformation = M_BytesTo8ByteValue(
-                        ptrSenseData[offset + 4], ptrSenseData[offset + 5], ptrSenseData[offset + 6],
-                        ptrSenseData[offset + 7], ptrSenseData[offset + 8], ptrSenseData[offset + 9],
-                        ptrSenseData[offset + 10], ptrSenseData[offset + 11]);
-                    gotCommandInformation = true;
-                    break;
-                case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
-                    *commandSpecificInformation = M_BytesTo8ByteValue(
-                        ptrSenseData[offset + 16], ptrSenseData[offset + 17], ptrSenseData[offset + 18],
-                        ptrSenseData[offset + 19], ptrSenseData[offset + 20], ptrSenseData[offset + 21],
-                        ptrSenseData[offset + 22], ptrSenseData[offset + 23]);
-                    gotCommandInformation = true;
-                    break;
-                default: // not a descriptor we care about, so skip it
-                    break;
-                }
-                if (gotCommandInformation || descriptorLength == 0)
-                {
-                    break;
-                }
-            }
-            break;
-        default:
-            break;
-        }
+        *commandSpecificInformation = senseFields.descriptorCommandSpecificInformation;
     }
 }
 
 void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
 {
-    if (ptrSenseData && sksp && senseDataLength > 0)
+    senseDataFields senseFields;
+    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+
+    get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
+
+    if (sksp)
     {
-        uint8_t  senseKey               = UINT8_C(0);
-        uint8_t  format                 = ptrSenseData[0] & 0x7F; // Stripping the last bit so we just get the format
-        uint16_t returnedLength         = UINT16_C(8);            // assume length returned is at least 8 bytes
-        bool     sksv                   = false;
-        uint8_t  senseKeySpecificOffset = UINT8_C(0);
-        uint8_t  descriptorLength       = UINT8_C(0); // for descriptor format sense data
-        switch (format)
-        {
-        case SCSI_SENSE_NO_SENSE_DATA:
-            break;
-        case SCSI_SENSE_CUR_INFO_FIXED:
-        case SCSI_SENSE_DEFER_ERR_FIXED:
-            senseKey = M_Nibble0(ptrSenseData[2]);
-            returnedLength += ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
-            senseKeySpecificOffset = 15;
-            sksv                   = ptrSenseData[senseKeySpecificOffset] & BIT7;
-            break;
-        case SCSI_SENSE_CUR_INFO_DESC:
-        case SCSI_SENSE_DEFER_ERR_DESC:
-            returnedLength += ptrSenseData[SCSI_SENSE_ADDT_LEN_INDEX];
-            senseKey = M_Nibble0(ptrSenseData[2]);
-            // loop through the descriptors to see if a sense key specific descriptor was provided
-            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX;
-                 offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength;
-                 offset += descriptorLength + 2)
-            {
-                bool    senseKeySpecificFound = false;
-                uint8_t descriptorType        = ptrSenseData[offset];
-                descriptorLength              = ptrSenseData[offset + 1];
-                switch (descriptorType)
-                {
-                case SENSE_DESCRIPTOR_SENSE_KEY_SPECIFIC:
-                case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
-                    senseKeySpecificOffset =
-                        C_CAST(uint8_t, offset + 4); // This shouldn't be a problem as offset should never be larger
-                                                     // than 252 in the first place.
-                    senseKeySpecificFound = true;
-                    break;
-                default: // not a descriptor we care about, so skip it
-                    break;
-                }
-                if (senseKeySpecificFound || descriptorLength == UINT8_C(0))
-                {
-                    break;
-                }
-            }
-            break;
-        default:
-            returnedLength = SPC3_SENSE_LEN;
-            break;
-        }
-        if (senseKeySpecificOffset > 0U && sksv && returnedLength >= (senseKeySpecificOffset + 2U) &&
-            senseDataLength >= (senseKeySpecificOffset + 2U))
-        {
-            sksp->senseKeySpecificValid = sksv;
-            // Need at least 17 bytes to read this field
-            switch (senseKey)
-            {
-            case SENSE_KEY_NO_ERROR:
-            case SENSE_KEY_NOT_READY:
-                sksp->type                        = SENSE_KEY_SPECIFIC_PROGRESS_INDICATION;
-                sksp->progress.progressIndication = M_BytesTo2ByteValue(ptrSenseData[senseKeySpecificOffset + 1],
-                                                                        ptrSenseData[senseKeySpecificOffset + 2]);
-                break;
-            case SENSE_KEY_ILLEGAL_REQUEST:
-                sksp->type                  = SENSE_KEY_SPECIFIC_FIELD_POINTER;
-                sksp->field.cdbOrData       = ptrSenseData[senseKeySpecificOffset] & BIT6;
-                sksp->field.bitPointerValid = ptrSenseData[senseKeySpecificOffset] & BIT3;
-                sksp->field.bitPointer      = get_bit_range_uint8(ptrSenseData[senseKeySpecificOffset], 2, 0);
-                sksp->field.fieldPointer    = M_BytesTo2ByteValue(ptrSenseData[senseKeySpecificOffset + 1],
-                                                                  ptrSenseData[senseKeySpecificOffset + 2]);
-                break;
-            case SENSE_KEY_HARDWARE_ERROR:
-            case SENSE_KEY_RECOVERED_ERROR:
-            case SENSE_KEY_MEDIUM_ERROR:
-                sksp->type                        = SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT;
-                sksp->retryCount.actualRetryCount = M_BytesTo2ByteValue(ptrSenseData[senseKeySpecificOffset + 1],
-                                                                        ptrSenseData[senseKeySpecificOffset + 2]);
-                break;
-            case SENSE_KEY_COPY_ABORTED:
-                sksp->type                      = SENSE_KEY_SPECIFIC_SEGMENT_POINTER;
-                sksp->segment.segmentDescriptor = ptrSenseData[senseKeySpecificOffset] & BIT5;
-                sksp->segment.bitPointerValid   = ptrSenseData[senseKeySpecificOffset] & BIT3;
-                sksp->segment.bitPointer        = get_bit_range_uint8(ptrSenseData[senseKeySpecificOffset], 2, 0);
-                sksp->segment.fieldPointer      = M_BytesTo2ByteValue(ptrSenseData[senseKeySpecificOffset + 1],
-                                                                      ptrSenseData[senseKeySpecificOffset + 2]);
-                break;
-            case SENSE_KEY_UNIT_ATTENTION:
-                sksp->type                   = SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW;
-                sksp->unitAttention.overflow = ptrSenseData[senseKeySpecificOffset] & BIT0;
-                break;
-            default:
-                sksp->type = SENSE_KEY_SPECIFIC_UNKNOWN;
-                safe_memcpy(&sksp->unknownDataType, 3, &ptrSenseData[senseKeySpecificOffset], 3);
-                break;
-            }
-        }
+        safe_memcpy(sksp, sizeof(senseKeySpecific), &senseFields.senseKeySpecificInformation, sizeof(senseKeySpecific));
     }
 }
 
