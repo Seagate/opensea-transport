@@ -4138,7 +4138,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Sense_Command(tDevice* device, Scs
         modeParameterHeader[2] |= BIT4; // set the DPOFUA bit
         if (returnDataBlockDescriptor)
         {
-            modeParameterHeader[3] = 8; // 8 bytes for the short descriptor
+            modeParameterHeader[MODE_HEADER_6_BLK_DESC_OFFSET] = 8; // 8 bytes for the short descriptor
         }
         // check for invalid fields
         byte1 &= 0xF7; // removing dbd bit since we can support that
@@ -4163,13 +4163,13 @@ static eReturnValues sntl_Translate_SCSI_Mode_Sense_Command(tDevice* device, Scs
         {
             if (longLBABit)
             {
-                modeParameterHeader[6] = M_Byte1(16);
-                modeParameterHeader[7] = M_Byte0(16);
+                modeParameterHeader[MODE_HEADER_10_BLK_DESC_OFFSET]     = M_Byte1(16);
+                modeParameterHeader[MODE_HEADER_10_BLK_DESC_OFFSET + 1] = M_Byte0(16);
             }
             else
             {
-                modeParameterHeader[6] = M_Byte1(8);
-                modeParameterHeader[7] = M_Byte0(8);
+                modeParameterHeader[MODE_HEADER_10_BLK_DESC_OFFSET]     = M_Byte1(8);
+                modeParameterHeader[MODE_HEADER_10_BLK_DESC_OFFSET + 1] = M_Byte0(8);
             }
         }
         byte1 &= 0xE7; // removing llbaa and DBD bits since we can support those
@@ -4607,11 +4607,11 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice* device, Sc
         // uint16_t modeDataLength = scsiIoCtx->pdata[0];
         // uint8_t deviceSpecificParameter = scsiIoCtx->pdata[2];
         bool     longLBA               = false;
-        uint16_t blockDescriptorLength = scsiIoCtx->pdata[3];
+        uint16_t blockDescriptorLength = scsiIoCtx->pdata[MODE_HEADER_6_BLK_DESC_OFFSET];
         if (tenByteCommand)
         {
             // modeDataLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1]);
-            if (scsiIoCtx->pdata[2] != 0) // mediumType
+            if (scsiIoCtx->pdata[MODE_HEADER_10_MEDIUM_TYPE_OFFSET] != 0) // mediumType
             {
                 fieldPointer = UINT16_C(2);
                 bitPointer   = UINT8_C(7);
@@ -4622,7 +4622,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice* device, Sc
                     device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 return NOT_SUPPORTED;
             }
-            if ((scsiIoCtx->pdata[3] & 0x7F) !=
+            if ((scsiIoCtx->pdata[MODE_HEADER_10_DEV_SPECIFIC] & 0x7F) !=
                 0) // device specific parameter - WP bit is ignored in SBC. dpofua is reserved.
             {
                 fieldPointer = UINT16_C(3);
@@ -4650,7 +4650,8 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice* device, Sc
             {
                 longLBA = true;
             }
-            blockDescriptorLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[6], scsiIoCtx->pdata[7]);
+            blockDescriptorLength = M_BytesTo2ByteValue(scsiIoCtx->pdata[MODE_HEADER_10_BLK_DESC_OFFSET],
+                                                        scsiIoCtx->pdata[MODE_HEADER_10_BLK_DESC_OFFSET + 1]);
             if (((fieldPointer = 4) != 0 && scsiIoCtx->pdata[4] & 0xFE)  // reserved bits/bytes
                 || ((fieldPointer = 5) != 0 && scsiIoCtx->pdata[5] != 0) // reserved bits/bytes
             )
@@ -4678,7 +4679,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice* device, Sc
         }
         else
         {
-            if (scsiIoCtx->pdata[1] != 0) // mediumType
+            if (scsiIoCtx->pdata[MODE_HEADER_6_MEDIUM_TYPE_OFFSET] != 0) // mediumType
             {
                 fieldPointer = UINT16_C(1);
                 bitPointer   = UINT8_C(7);
@@ -4689,7 +4690,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice* device, Sc
                     device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                 return NOT_SUPPORTED;
             }
-            if ((scsiIoCtx->pdata[2] & 0x7F) !=
+            if ((scsiIoCtx->pdata[MODE_HEADER_6_DEV_SPECIFIC] & 0x7F) !=
                 0) // device specific parameter - WP bit is ignored in SBC. dpofua is reserved.
             {
                 fieldPointer = UINT16_C(2);

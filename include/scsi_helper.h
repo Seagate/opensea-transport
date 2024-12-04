@@ -707,16 +707,26 @@ extern "C"
                                             // data....this shouldn't be used when reading this page from a SAS device.
     } eScsiLogPageLengths;
 
-#define MODE_PARAMETER_HEADER_6_LEN    UINT8_C(4)
-#define MODE_PARAMETER_HEADER_10_LEN   UINT8_C(8)
+#define MODE_PARAMETER_HEADER_6_LEN       UINT8_C(4)
+#define MODE_PARAMETER_HEADER_10_LEN      UINT8_C(8)
 
-#define SHORT_LBA_BLOCK_DESCRIPTOR_LEN UINT8_C(8)  // for mode sense/select 6
-#define LONG_LBA_BLOCK_DESCRIPTOR_LEN  UINT8_C(16) // for mode sense/select 10
+#define MODE_HEADER_6_MP_LEN_OFFSET       0
+#define MODE_HEADER_6_MEDIUM_TYPE_OFFSET  1
+#define MODE_HEADER_6_DEV_SPECIFIC        2
+#define MODE_HEADER_6_BLK_DESC_OFFSET     3
 
-#define LOG_PAGE_HEADER_LENGTH         UINT8_C(4)
+#define MODE_HEADER_10_MP_LEN_OFFSET      0
+#define MODE_HEADER_10_MEDIUM_TYPE_OFFSET 2
+#define MODE_HEADER_10_DEV_SPECIFIC       3
+#define MODE_HEADER_10_BLK_DESC_OFFSET    6
 
-#define READ_CAPACITY_10_LEN           UINT8_C(8)
-#define READ_CAPACITY_16_LEN           UINT8_C(32)
+#define SHORT_LBA_BLOCK_DESCRIPTOR_LEN    UINT8_C(8)  // for mode sense/select 6
+#define LONG_LBA_BLOCK_DESCRIPTOR_LEN     UINT8_C(16) // for mode sense/select 10
+
+#define LOG_PAGE_HEADER_LENGTH            UINT8_C(4)
+
+#define READ_CAPACITY_10_LEN              UINT8_C(8)
+#define READ_CAPACITY_16_LEN              UINT8_C(32)
 
     typedef enum eSCSIPeripheralQualifierEnum
     {
