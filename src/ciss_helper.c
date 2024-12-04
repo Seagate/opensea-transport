@@ -222,7 +222,6 @@ static uint8_t parse_CISS_Handle(const char* devName, char* osHandle, uint16_t* 
                 case 2: // physical drive number
                     if (safe_isdigit(token[0]))
                     {
-                        errno              = 0; // clear to zero as stated in ISO C secure coding
                         unsigned long temp = 0UL;
                         if (0 == safe_strtoul(&temp, token, M_NULLPTR, BASE_10_DECIMAL))
                         {
