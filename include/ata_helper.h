@@ -637,7 +637,7 @@ extern "C"
             cmd->tfr.icc  = icc;
             if (cmd->tfr.aux1 || cmd->tfr.aux2 || cmd->tfr.aux3 || cmd->tfr.aux4 || cmd->tfr.icc)
             {
-                cmd->commandType = ATA_CMD_TYPE_COMPLETE_TASKFILE;
+                cmd->commandType = M_ACCESS_ENUM(eAtaCmdType, ATA_CMD_TYPE_COMPLETE_TASKFILE);
             }
         }
     }
@@ -687,50 +687,52 @@ extern "C"
                                                              uint8_t*               ptrdata,
                                                              uint32_t               dataSize)
     {
-        ataPassthroughCommand pio = {
-            .commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-            .commandDirection  = direction,
-            .commadProtocol    = ATA_PROTOCOL_PIO,
-            .tfr.CommandStatus = opcode,
-            .tfr.ErrorFeature  = UINT8_C(0),
-            .tfr.LbaLow        = UINT8_C(0),
-            .tfr.LbaMid        = UINT8_C(0),
-            .tfr.LbaHi         = UINT8_C(0),
-            .tfr.DeviceHead    = UINT8_C(0),
-            .tfr.LbaLow48      = UINT8_C(0),
-            .tfr.LbaMid48      = UINT8_C(0),
-            .tfr.LbaHi48       = UINT8_C(0),
-            .tfr.Feature48     = UINT8_C(0),
-            .tfr.SectorCount   = M_Byte0(sectorCount),
-            .tfr.SectorCount48 = ext ? M_Byte1(sectorCount) : UINT8_C(0),
-            .tfr.icc           = UINT8_C(0),
-            .tfr.DeviceControl = UINT8_C(0),
-            .tfr.aux1          = UINT8_C(0),
-            .tfr.aux2          = UINT8_C(0),
-            .tfr.aux3          = UINT8_C(0),
-            .tfr.aux4          = UINT8_C(0),
-            .rtfr.error        = UINT8_C(0),
-            .rtfr.secCntExt    = UINT8_C(0),
-            .rtfr.secCnt       = UINT8_C(0),
-            .rtfr.lbaLowExt    = UINT8_C(0),
-            .rtfr.lbaLow       = UINT8_C(0),
-            .rtfr.lbaMidExt    = UINT8_C(0),
-            .rtfr.lbaMid       = UINT8_C(0),
-            .rtfr.lbaHiExt     = UINT8_C(0),
-            .rtfr.lbaHi        = UINT8_C(0),
-            .rtfr.device       = UINT8_C(0),
-            .rtfr.status       = UINT8_C(0),
-            .ptrData           = ptrdata,
-            .dataSize          = dataSize,
-            .ataTransferBlocks =
-                ATA_PT_512B_BLOCKS, /* NOTE: This is most common, but may need adjusting depending on the command */
-            .ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT, /* NOTE: Unlikely this needs change, but may need
-                                                                    changing in certain situations */
-            .multipleCount          = 0,
-            .forceCheckConditionBit = false,
-            .forceCDBSize           = 0,
-            .fwdlFirstSegment       = false,
-            .fwdlLastSegment        = false};
+        ataPassthroughCommand pio;
+        pio.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        pio.commandDirection  = direction;
+        pio.commadProtocol    = ATA_PROTOCOL_PIO;
+        pio.tfr.CommandStatus = opcode;
+        pio.tfr.ErrorFeature  = UINT8_C(0);
+        pio.tfr.LbaLow        = UINT8_C(0);
+        pio.tfr.LbaMid        = UINT8_C(0);
+        pio.tfr.LbaHi         = UINT8_C(0);
+        pio.tfr.DeviceHead    = UINT8_C(0);
+        pio.tfr.LbaLow48      = UINT8_C(0);
+        pio.tfr.LbaMid48      = UINT8_C(0);
+        pio.tfr.LbaHi48       = UINT8_C(0);
+        pio.tfr.Feature48     = UINT8_C(0);
+        pio.tfr.SectorCount   = M_Byte0(sectorCount);
+        pio.tfr.SectorCount48 = ext ? M_Byte1(sectorCount) : UINT8_C(0);
+        pio.tfr.icc           = UINT8_C(0);
+        pio.tfr.DeviceControl = UINT8_C(0);
+        pio.tfr.aux1          = UINT8_C(0);
+        pio.tfr.aux2          = UINT8_C(0);
+        pio.tfr.aux3          = UINT8_C(0);
+        pio.tfr.aux4          = UINT8_C(0);
+        pio.rtfr.error        = UINT8_C(0);
+        pio.rtfr.secCntExt    = UINT8_C(0);
+        pio.rtfr.secCnt       = UINT8_C(0);
+        pio.rtfr.lbaLowExt    = UINT8_C(0);
+        pio.rtfr.lbaLow       = UINT8_C(0);
+        pio.rtfr.lbaMidExt    = UINT8_C(0);
+        pio.rtfr.lbaMid       = UINT8_C(0);
+        pio.rtfr.lbaHiExt     = UINT8_C(0);
+        pio.rtfr.lbaHi        = UINT8_C(0);
+        pio.rtfr.device       = UINT8_C(0);
+        pio.rtfr.status       = UINT8_C(0);
+        pio.ptrData           = ptrdata;
+        pio.dataSize          = dataSize;
+        pio.ataTransferBlocks = M_ACCESS_ENUM(
+            eATAPassthroughTransferBlocks,
+            ATA_PT_512B_BLOCKS); /* NOTE: This is most common, but may need adjusting depending on the command */
+        pio.ataCommandLengthLocation =
+            M_ACCESS_ENUM(eATAPassthroughLength, ATA_PT_LEN_SECTOR_COUNT); /* NOTE: Unlikely this needs change, but may
+                                     need changing in certain situations */
+        pio.multipleCount          = 0;
+        pio.forceCheckConditionBit = false;
+        pio.forceCDBSize           = 0;
+        pio.fwdlFirstSegment       = false;
+        pio.fwdlLastSegment        = false;
         set_ata_pt_device_bits(&pio, device);
         return pio;
     }
@@ -742,7 +744,8 @@ extern "C"
                                                                 uint8_t* ptrdata,
                                                                 uint32_t dataSize)
     {
-        return create_ata_pio_cmd(device, opcode, ext, XFER_DATA_IN, sectorCount, ptrdata, dataSize);
+        return create_ata_pio_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_IN), sectorCount,
+                                  ptrdata, dataSize);
     }
 
     static M_INLINE ataPassthroughCommand create_ata_pio_out_cmd(tDevice* device,
@@ -752,7 +755,8 @@ extern "C"
                                                                  uint8_t* ptrdata,
                                                                  uint32_t dataSize)
     {
-        return create_ata_pio_cmd(device, opcode, ext, XFER_DATA_OUT, sectorCount, ptrdata, dataSize);
+        return create_ata_pio_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_OUT),
+                                  sectorCount, ptrdata, dataSize);
     }
 
     static M_INLINE ataPassthroughCommand create_ata_pio_lba_cmd(tDevice*               device,
@@ -764,49 +768,49 @@ extern "C"
                                                                  uint8_t*               ptrdata,
                                                                  uint32_t               dataSize)
     {
-        ataPassthroughCommand pio = {.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-                                     .commandDirection  = direction,
-                                     .commadProtocol    = ATA_PROTOCOL_PIO,
-                                     .tfr.CommandStatus = opcode,
-                                     .tfr.ErrorFeature  = UINT8_C(0),
-                                     .tfr.LbaLow        = M_Byte0(lba),
-                                     .tfr.LbaMid        = M_Byte1(lba),
-                                     .tfr.LbaHi         = M_Byte2(lba),
-                                     .tfr.DeviceHead    = LBA_MODE_BIT | (ext ? UINT8_C(0) : M_Nibble6(lba)),
-                                     .tfr.LbaLow48      = ext ? M_Byte3(lba) : UINT8_C(0),
-                                     .tfr.LbaMid48      = ext ? M_Byte4(lba) : UINT8_C(0),
-                                     .tfr.LbaHi48       = ext ? M_Byte5(lba) : UINT8_C(0),
-                                     .tfr.Feature48     = UINT8_C(0),
-                                     .tfr.SectorCount   = M_Byte0(sectorCount),
-                                     .tfr.SectorCount48 = ext ? M_Byte1(sectorCount) : UINT8_C(0),
-                                     .tfr.icc           = UINT8_C(0),
-                                     .tfr.DeviceControl = UINT8_C(0),
-                                     .tfr.aux1          = UINT8_C(0),
-                                     .tfr.aux2          = UINT8_C(0),
-                                     .tfr.aux3          = UINT8_C(0),
-                                     .tfr.aux4          = UINT8_C(0),
-                                     .rtfr.error        = UINT8_C(0),
-                                     .rtfr.secCntExt    = UINT8_C(0),
-                                     .rtfr.secCnt       = UINT8_C(0),
-                                     .rtfr.lbaLowExt    = UINT8_C(0),
-                                     .rtfr.lbaLow       = UINT8_C(0),
-                                     .rtfr.lbaMidExt    = UINT8_C(0),
-                                     .rtfr.lbaMid       = UINT8_C(0),
-                                     .rtfr.lbaHiExt     = UINT8_C(0),
-                                     .rtfr.lbaHi        = UINT8_C(0),
-                                     .rtfr.device       = UINT8_C(0),
-                                     .rtfr.status       = UINT8_C(0),
-                                     .ptrData           = ptrdata,
-                                     .dataSize          = dataSize,
-                                     .ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE,
-                                     .ataCommandLengthLocation =
-                                         ATA_PT_LEN_SECTOR_COUNT, /* NOTE: Unlikely this needs change, but may need
-                                                                     changing in certain situations */
-                                     .multipleCount          = 0,
-                                     .forceCheckConditionBit = false,
-                                     .forceCDBSize           = 0,
-                                     .fwdlFirstSegment       = false,
-                                     .fwdlLastSegment        = false};
+        ataPassthroughCommand pio;
+        pio.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        pio.commandDirection         = direction;
+        pio.commadProtocol           = ATA_PROTOCOL_PIO;
+        pio.tfr.CommandStatus        = opcode;
+        pio.tfr.ErrorFeature         = UINT8_C(0);
+        pio.tfr.LbaLow               = M_Byte0(lba);
+        pio.tfr.LbaMid               = M_Byte1(lba);
+        pio.tfr.LbaHi                = M_Byte2(lba);
+        pio.tfr.DeviceHead           = LBA_MODE_BIT | (ext ? UINT8_C(0) : M_Nibble6(lba));
+        pio.tfr.LbaLow48             = ext ? M_Byte3(lba) : UINT8_C(0);
+        pio.tfr.LbaMid48             = ext ? M_Byte4(lba) : UINT8_C(0);
+        pio.tfr.LbaHi48              = ext ? M_Byte5(lba) : UINT8_C(0);
+        pio.tfr.Feature48            = UINT8_C(0);
+        pio.tfr.SectorCount          = M_Byte0(sectorCount);
+        pio.tfr.SectorCount48        = ext ? M_Byte1(sectorCount) : UINT8_C(0);
+        pio.tfr.icc                  = UINT8_C(0);
+        pio.tfr.DeviceControl        = UINT8_C(0);
+        pio.tfr.aux1                 = UINT8_C(0);
+        pio.tfr.aux2                 = UINT8_C(0);
+        pio.tfr.aux3                 = UINT8_C(0);
+        pio.tfr.aux4                 = UINT8_C(0);
+        pio.rtfr.error               = UINT8_C(0);
+        pio.rtfr.secCntExt           = UINT8_C(0);
+        pio.rtfr.secCnt              = UINT8_C(0);
+        pio.rtfr.lbaLowExt           = UINT8_C(0);
+        pio.rtfr.lbaLow              = UINT8_C(0);
+        pio.rtfr.lbaMidExt           = UINT8_C(0);
+        pio.rtfr.lbaMid              = UINT8_C(0);
+        pio.rtfr.lbaHiExt            = UINT8_C(0);
+        pio.rtfr.lbaHi               = UINT8_C(0);
+        pio.rtfr.device              = UINT8_C(0);
+        pio.rtfr.status              = UINT8_C(0);
+        pio.ptrData                  = ptrdata;
+        pio.dataSize                 = dataSize;
+        pio.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
+        pio.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT; /* NOTE: Unlikely this needs change, but may need
+                                                                   changing in certain situations */
+        pio.multipleCount          = 0;
+        pio.forceCheckConditionBit = false;
+        pio.forceCDBSize           = 0;
+        pio.fwdlFirstSegment       = false;
+        pio.fwdlLastSegment        = false;
         set_ata_pt_device_bits(&pio, device);
         if (ext)
         {
@@ -838,7 +842,8 @@ extern "C"
                                                                       uint8_t* ptrdata,
                                                                       uint32_t dataSize)
     {
-        return create_ata_pio_lba_cmd(device, opcode, ext, XFER_DATA_IN, sectorCount, lba, ptrdata, dataSize);
+        return create_ata_pio_lba_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_IN),
+                                      sectorCount, lba, ptrdata, dataSize);
     }
 
     static M_INLINE ataPassthroughCommand create_ata_pio_write_lba_cmd(tDevice* device,
@@ -849,7 +854,8 @@ extern "C"
                                                                        uint8_t* ptrdata,
                                                                        uint32_t dataSize)
     {
-        return create_ata_pio_lba_cmd(device, opcode, ext, XFER_DATA_OUT, sectorCount, lba, ptrdata, dataSize);
+        return create_ata_pio_lba_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_OUT),
+                                      sectorCount, lba, ptrdata, dataSize);
     }
 
     static M_INLINE eAtaProtocol get_ata_pt_dma_protocol(tDevice* device)
@@ -870,50 +876,50 @@ extern "C"
                                                              uint8_t*               ptrdata,
                                                              uint32_t               dataSize)
     {
-        ataPassthroughCommand dma = {
-            .commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-            .commandDirection  = direction,
-            .commadProtocol    = get_ata_pt_dma_protocol(device),
-            .tfr.CommandStatus = opcode,
-            .tfr.ErrorFeature  = UINT8_C(0),
-            .tfr.LbaLow        = UINT8_C(0),
-            .tfr.LbaMid        = UINT8_C(0),
-            .tfr.LbaHi         = UINT8_C(0),
-            .tfr.DeviceHead    = UINT8_C(0),
-            .tfr.LbaLow48      = UINT8_C(0),
-            .tfr.LbaMid48      = UINT8_C(0),
-            .tfr.LbaHi48       = UINT8_C(0),
-            .tfr.Feature48     = UINT8_C(0),
-            .tfr.SectorCount   = M_Byte0(sectorCount),
-            .tfr.SectorCount48 = ext ? M_Byte1(sectorCount) : UINT8_C(0),
-            .tfr.icc           = UINT8_C(0),
-            .tfr.DeviceControl = UINT8_C(0),
-            .tfr.aux1          = UINT8_C(0),
-            .tfr.aux2          = UINT8_C(0),
-            .tfr.aux3          = UINT8_C(0),
-            .tfr.aux4          = UINT8_C(0),
-            .rtfr.error        = UINT8_C(0),
-            .rtfr.secCntExt    = UINT8_C(0),
-            .rtfr.secCnt       = UINT8_C(0),
-            .rtfr.lbaLowExt    = UINT8_C(0),
-            .rtfr.lbaLow       = UINT8_C(0),
-            .rtfr.lbaMidExt    = UINT8_C(0),
-            .rtfr.lbaMid       = UINT8_C(0),
-            .rtfr.lbaHiExt     = UINT8_C(0),
-            .rtfr.lbaHi        = UINT8_C(0),
-            .rtfr.device       = UINT8_C(0),
-            .rtfr.status       = UINT8_C(0),
-            .ptrData           = ptrdata,
-            .dataSize          = dataSize,
-            .ataTransferBlocks =
-                ATA_PT_512B_BLOCKS, /* NOTE: This is most common, but may need adjusting depending on the command */
-            .ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT, /* NOTE: Unlikely this needs change, but may need
-                                                                    changing in certain situations */
-            .multipleCount          = 0,
-            .forceCheckConditionBit = false,
-            .forceCDBSize           = 0,
-            .fwdlFirstSegment       = false,
-            .fwdlLastSegment        = false};
+        ataPassthroughCommand dma;
+        dma.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        dma.commandDirection  = direction;
+        dma.commadProtocol    = get_ata_pt_dma_protocol(device);
+        dma.tfr.CommandStatus = opcode;
+        dma.tfr.ErrorFeature  = UINT8_C(0);
+        dma.tfr.LbaLow        = UINT8_C(0);
+        dma.tfr.LbaMid        = UINT8_C(0);
+        dma.tfr.LbaHi         = UINT8_C(0);
+        dma.tfr.DeviceHead    = UINT8_C(0);
+        dma.tfr.LbaLow48      = UINT8_C(0);
+        dma.tfr.LbaMid48      = UINT8_C(0);
+        dma.tfr.LbaHi48       = UINT8_C(0);
+        dma.tfr.Feature48     = UINT8_C(0);
+        dma.tfr.SectorCount   = M_Byte0(sectorCount);
+        dma.tfr.SectorCount48 = ext ? M_Byte1(sectorCount) : UINT8_C(0);
+        dma.tfr.icc           = UINT8_C(0);
+        dma.tfr.DeviceControl = UINT8_C(0);
+        dma.tfr.aux1          = UINT8_C(0);
+        dma.tfr.aux2          = UINT8_C(0);
+        dma.tfr.aux3          = UINT8_C(0);
+        dma.tfr.aux4          = UINT8_C(0);
+        dma.rtfr.error        = UINT8_C(0);
+        dma.rtfr.secCntExt    = UINT8_C(0);
+        dma.rtfr.secCnt       = UINT8_C(0);
+        dma.rtfr.lbaLowExt    = UINT8_C(0);
+        dma.rtfr.lbaLow       = UINT8_C(0);
+        dma.rtfr.lbaMidExt    = UINT8_C(0);
+        dma.rtfr.lbaMid       = UINT8_C(0);
+        dma.rtfr.lbaHiExt     = UINT8_C(0);
+        dma.rtfr.lbaHi        = UINT8_C(0);
+        dma.rtfr.device       = UINT8_C(0);
+        dma.rtfr.status       = UINT8_C(0);
+        dma.ptrData           = ptrdata;
+        dma.dataSize          = dataSize;
+        dma.ataTransferBlocks =
+            ATA_PT_512B_BLOCKS; /* NOTE: This is most common, but may need adjusting depending on the command */
+        dma.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT; /* NOTE: Unlikely this needs change, but may need
+                                                                changing in certain situations */
+        dma.multipleCount          = 0;
+        dma.forceCheckConditionBit = false;
+        dma.forceCDBSize           = 0;
+        dma.fwdlFirstSegment       = false;
+        dma.fwdlLastSegment        = false;
         set_ata_pt_device_bits(&dma, device);
         return dma;
     }
@@ -927,47 +933,48 @@ extern "C"
                                                                  uint8_t*               ptrdata,
                                                                  uint32_t               dataSize)
     {
-        ataPassthroughCommand dma = {.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-                                     .commandDirection  = direction,
-                                     .commadProtocol    = get_ata_pt_dma_protocol(device),
-                                     .tfr.CommandStatus = opcode,
-                                     .tfr.ErrorFeature  = UINT8_C(0),
-                                     .tfr.LbaLow        = M_Byte0(lba),
-                                     .tfr.LbaMid        = M_Byte1(lba),
-                                     .tfr.LbaHi         = M_Byte2(lba),
-                                     .tfr.DeviceHead    = LBA_MODE_BIT | (ext ? UINT8_C(0) : M_Nibble6(lba)),
-                                     .tfr.LbaLow48      = ext ? M_Byte3(lba) : UINT8_C(0),
-                                     .tfr.LbaMid48      = ext ? M_Byte4(lba) : UINT8_C(0),
-                                     .tfr.LbaHi48       = ext ? M_Byte5(lba) : UINT8_C(0),
-                                     .tfr.Feature48     = UINT8_C(0),
-                                     .tfr.SectorCount   = M_Byte0(sectorCount),
-                                     .tfr.SectorCount48 = ext ? M_Byte1(sectorCount) : UINT8_C(0),
-                                     .tfr.icc           = UINT8_C(0),
-                                     .tfr.DeviceControl = UINT8_C(0),
-                                     .tfr.aux1          = UINT8_C(0),
-                                     .tfr.aux2          = UINT8_C(0),
-                                     .tfr.aux3          = UINT8_C(0),
-                                     .tfr.aux4          = UINT8_C(0),
-                                     .rtfr.error        = UINT8_C(0),
-                                     .rtfr.secCntExt    = UINT8_C(0),
-                                     .rtfr.secCnt       = UINT8_C(0),
-                                     .rtfr.lbaLowExt    = UINT8_C(0),
-                                     .rtfr.lbaLow       = UINT8_C(0),
-                                     .rtfr.lbaMidExt    = UINT8_C(0),
-                                     .rtfr.lbaMid       = UINT8_C(0),
-                                     .rtfr.lbaHiExt     = UINT8_C(0),
-                                     .rtfr.lbaHi        = UINT8_C(0),
-                                     .rtfr.device       = UINT8_C(0),
-                                     .rtfr.status       = UINT8_C(0),
-                                     .ptrData           = ptrdata,
-                                     .dataSize          = dataSize,
-                                     .ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE,
-                                     .ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT,
-                                     .multipleCount            = 0,
-                                     .forceCheckConditionBit   = false,
-                                     .forceCDBSize             = 0,
-                                     .fwdlFirstSegment         = false,
-                                     .fwdlLastSegment          = false};
+        ataPassthroughCommand dma;
+        dma.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        dma.commandDirection         = direction;
+        dma.commadProtocol           = get_ata_pt_dma_protocol(device);
+        dma.tfr.CommandStatus        = opcode;
+        dma.tfr.ErrorFeature         = UINT8_C(0);
+        dma.tfr.LbaLow               = M_Byte0(lba);
+        dma.tfr.LbaMid               = M_Byte1(lba);
+        dma.tfr.LbaHi                = M_Byte2(lba);
+        dma.tfr.DeviceHead           = LBA_MODE_BIT | (ext ? UINT8_C(0) : M_Nibble6(lba));
+        dma.tfr.LbaLow48             = ext ? M_Byte3(lba) : UINT8_C(0);
+        dma.tfr.LbaMid48             = ext ? M_Byte4(lba) : UINT8_C(0);
+        dma.tfr.LbaHi48              = ext ? M_Byte5(lba) : UINT8_C(0);
+        dma.tfr.Feature48            = UINT8_C(0);
+        dma.tfr.SectorCount          = M_Byte0(sectorCount);
+        dma.tfr.SectorCount48        = ext ? M_Byte1(sectorCount) : UINT8_C(0);
+        dma.tfr.icc                  = UINT8_C(0);
+        dma.tfr.DeviceControl        = UINT8_C(0);
+        dma.tfr.aux1                 = UINT8_C(0);
+        dma.tfr.aux2                 = UINT8_C(0);
+        dma.tfr.aux3                 = UINT8_C(0);
+        dma.tfr.aux4                 = UINT8_C(0);
+        dma.rtfr.error               = UINT8_C(0);
+        dma.rtfr.secCntExt           = UINT8_C(0);
+        dma.rtfr.secCnt              = UINT8_C(0);
+        dma.rtfr.lbaLowExt           = UINT8_C(0);
+        dma.rtfr.lbaLow              = UINT8_C(0);
+        dma.rtfr.lbaMidExt           = UINT8_C(0);
+        dma.rtfr.lbaMid              = UINT8_C(0);
+        dma.rtfr.lbaHiExt            = UINT8_C(0);
+        dma.rtfr.lbaHi               = UINT8_C(0);
+        dma.rtfr.device              = UINT8_C(0);
+        dma.rtfr.status              = UINT8_C(0);
+        dma.ptrData                  = ptrdata;
+        dma.dataSize                 = dataSize;
+        dma.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
+        dma.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
+        dma.multipleCount            = 0;
+        dma.forceCheckConditionBit   = false;
+        dma.forceCDBSize             = 0;
+        dma.fwdlFirstSegment         = false;
+        dma.fwdlLastSegment          = false;
         set_ata_pt_device_bits(&dma, device);
         if (ext)
         {
@@ -998,7 +1005,8 @@ extern "C"
                                                                 uint8_t* ptrdata,
                                                                 uint32_t dataSize)
     {
-        return create_ata_dma_cmd(device, opcode, ext, XFER_DATA_IN, sectorCount, ptrdata, dataSize);
+        return create_ata_dma_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_IN), sectorCount,
+                                  ptrdata, dataSize);
     }
 
     static M_INLINE ataPassthroughCommand create_ata_dma_out_cmd(tDevice* device,
@@ -1008,7 +1016,8 @@ extern "C"
                                                                  uint8_t* ptrdata,
                                                                  uint32_t dataSize)
     {
-        return create_ata_dma_cmd(device, opcode, ext, XFER_DATA_OUT, sectorCount, ptrdata, dataSize);
+        return create_ata_dma_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_OUT),
+                                  sectorCount, ptrdata, dataSize);
     }
 
     static M_INLINE ataPassthroughCommand create_ata_dma_read_lba_cmd(tDevice* device,
@@ -1019,7 +1028,8 @@ extern "C"
                                                                       uint8_t* ptrdata,
                                                                       uint32_t dataSize)
     {
-        return create_ata_dma_lba_cmd(device, opcode, ext, XFER_DATA_IN, sectorCount, lba, ptrdata, dataSize);
+        return create_ata_dma_lba_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_IN),
+                                      sectorCount, lba, ptrdata, dataSize);
     }
 
     static M_INLINE ataPassthroughCommand create_ata_dma_write_lba_cmd(tDevice* device,
@@ -1030,105 +1040,106 @@ extern "C"
                                                                        uint8_t* ptrdata,
                                                                        uint32_t dataSize)
     {
-        return create_ata_dma_lba_cmd(device, opcode, ext, XFER_DATA_OUT, sectorCount, lba, ptrdata, dataSize);
+        return create_ata_dma_lba_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_OUT),
+                                      sectorCount, lba, ptrdata, dataSize);
     }
 
     static M_INLINE ataPassthroughCommand create_ata_nondata_cmd(tDevice* device, uint8_t opcode, bool ext)
     {
-        ataPassthroughCommand nodata = {
-            .commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-            .commandDirection  = XFER_NO_DATA,
-            .commadProtocol    = ATA_PROTOCOL_NO_DATA,
-            .tfr.CommandStatus = opcode,
-            .tfr.ErrorFeature  = UINT8_C(0),
-            .tfr.LbaLow        = UINT8_C(0),
-            .tfr.LbaMid        = UINT8_C(0),
-            .tfr.LbaHi         = UINT8_C(0),
-            .tfr.DeviceHead    = UINT8_C(0),
-            .tfr.LbaLow48      = UINT8_C(0),
-            .tfr.LbaMid48      = UINT8_C(0),
-            .tfr.LbaHi48       = UINT8_C(0),
-            .tfr.Feature48     = UINT8_C(0),
-            .tfr.SectorCount   = UINT8_C(0),
-            .tfr.SectorCount48 = UINT8_C(0),
-            .tfr.icc           = UINT8_C(0),
-            .tfr.DeviceControl = UINT8_C(0),
-            .tfr.aux1          = UINT8_C(0),
-            .tfr.aux2          = UINT8_C(0),
-            .tfr.aux3          = UINT8_C(0),
-            .tfr.aux4          = UINT8_C(0),
-            .rtfr.error        = UINT8_C(0),
-            .rtfr.secCntExt    = UINT8_C(0),
-            .rtfr.secCnt       = UINT8_C(0),
-            .rtfr.lbaLowExt    = UINT8_C(0),
-            .rtfr.lbaLow       = UINT8_C(0),
-            .rtfr.lbaMidExt    = UINT8_C(0),
-            .rtfr.lbaMid       = UINT8_C(0),
-            .rtfr.lbaHiExt     = UINT8_C(0),
-            .rtfr.lbaHi        = UINT8_C(0),
-            .rtfr.device       = UINT8_C(0),
-            .rtfr.status       = UINT8_C(0),
-            .ptrData           = M_NULLPTR,
-            .dataSize          = UINT32_C(0),
-            .ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER, /* NOTE: This is most common, but may need adjusting depending
-                                                             on the command */
-            .ataCommandLengthLocation = ATA_PT_LEN_NO_DATA, /* NOTE: Unlikely this needs change, but may need
-                                                                    changing in certain situations */
-            .multipleCount          = 0,
-            .forceCheckConditionBit = false,
-            .forceCDBSize           = 0,
-            .fwdlFirstSegment       = false,
-            .fwdlLastSegment        = false};
+        ataPassthroughCommand nodata;
+        nodata.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        nodata.commandDirection  = M_ACCESS_ENUM(eDataTransferDirection, XFER_NO_DATA);
+        nodata.commadProtocol    = ATA_PROTOCOL_NO_DATA;
+        nodata.tfr.CommandStatus = opcode;
+        nodata.tfr.ErrorFeature  = UINT8_C(0);
+        nodata.tfr.LbaLow        = UINT8_C(0);
+        nodata.tfr.LbaMid        = UINT8_C(0);
+        nodata.tfr.LbaHi         = UINT8_C(0);
+        nodata.tfr.DeviceHead    = UINT8_C(0);
+        nodata.tfr.LbaLow48      = UINT8_C(0);
+        nodata.tfr.LbaMid48      = UINT8_C(0);
+        nodata.tfr.LbaHi48       = UINT8_C(0);
+        nodata.tfr.Feature48     = UINT8_C(0);
+        nodata.tfr.SectorCount   = UINT8_C(0);
+        nodata.tfr.SectorCount48 = UINT8_C(0);
+        nodata.tfr.icc           = UINT8_C(0);
+        nodata.tfr.DeviceControl = UINT8_C(0);
+        nodata.tfr.aux1          = UINT8_C(0);
+        nodata.tfr.aux2          = UINT8_C(0);
+        nodata.tfr.aux3          = UINT8_C(0);
+        nodata.tfr.aux4          = UINT8_C(0);
+        nodata.rtfr.error        = UINT8_C(0);
+        nodata.rtfr.secCntExt    = UINT8_C(0);
+        nodata.rtfr.secCnt       = UINT8_C(0);
+        nodata.rtfr.lbaLowExt    = UINT8_C(0);
+        nodata.rtfr.lbaLow       = UINT8_C(0);
+        nodata.rtfr.lbaMidExt    = UINT8_C(0);
+        nodata.rtfr.lbaMid       = UINT8_C(0);
+        nodata.rtfr.lbaHiExt     = UINT8_C(0);
+        nodata.rtfr.lbaHi        = UINT8_C(0);
+        nodata.rtfr.device       = UINT8_C(0);
+        nodata.rtfr.status       = UINT8_C(0);
+        nodata.ptrData           = M_NULLPTR;
+        nodata.dataSize          = UINT32_C(0);
+        nodata.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;   /* NOTE: This is most common, but may need adjusting
+                                                           depending   on the command */
+        nodata.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA; /* NOTE: Unlikely this needs change, but may need
+                                                                changing in certain situations */
+        nodata.multipleCount          = 0;
+        nodata.forceCheckConditionBit = false;
+        nodata.forceCDBSize           = 0;
+        nodata.fwdlFirstSegment       = false;
+        nodata.fwdlLastSegment        = false;
         set_ata_pt_device_bits(&nodata, device);
         return nodata;
     }
 
     static M_INLINE ataPassthroughCommand create_ata_dev_diag_cmd(tDevice* device, uint8_t opcode, bool ext)
     {
-        ataPassthroughCommand nodata = {
-            .commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-            .commandDirection  = XFER_NO_DATA,
-            .commadProtocol    = ATA_PROTOCOL_DEV_DIAG,
-            .tfr.CommandStatus = opcode,
-            .tfr.ErrorFeature  = UINT8_C(0),
-            .tfr.LbaLow        = UINT8_C(0),
-            .tfr.LbaMid        = UINT8_C(0),
-            .tfr.LbaHi         = UINT8_C(0),
-            .tfr.DeviceHead    = UINT8_C(0),
-            .tfr.LbaLow48      = UINT8_C(0),
-            .tfr.LbaMid48      = UINT8_C(0),
-            .tfr.LbaHi48       = UINT8_C(0),
-            .tfr.Feature48     = UINT8_C(0),
-            .tfr.SectorCount   = UINT8_C(0),
-            .tfr.SectorCount48 = UINT8_C(0),
-            .tfr.icc           = UINT8_C(0),
-            .tfr.DeviceControl = UINT8_C(0),
-            .tfr.aux1          = UINT8_C(0),
-            .tfr.aux2          = UINT8_C(0),
-            .tfr.aux3          = UINT8_C(0),
-            .tfr.aux4          = UINT8_C(0),
-            .rtfr.error        = UINT8_C(0),
-            .rtfr.secCntExt    = UINT8_C(0),
-            .rtfr.secCnt       = UINT8_C(0),
-            .rtfr.lbaLowExt    = UINT8_C(0),
-            .rtfr.lbaLow       = UINT8_C(0),
-            .rtfr.lbaMidExt    = UINT8_C(0),
-            .rtfr.lbaMid       = UINT8_C(0),
-            .rtfr.lbaHiExt     = UINT8_C(0),
-            .rtfr.lbaHi        = UINT8_C(0),
-            .rtfr.device       = UINT8_C(0),
-            .rtfr.status       = UINT8_C(0),
-            .ptrData           = M_NULLPTR,
-            .dataSize          = UINT32_C(0),
-            .ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER, /* NOTE: This is most common, but may need adjusting depending
-                                                             on the command */
-            .ataCommandLengthLocation = ATA_PT_LEN_NO_DATA, /* NOTE: Unlikely this needs change, but may need
-                                                                    changing in certain situations */
-            .multipleCount          = 0,
-            .forceCheckConditionBit = false,
-            .forceCDBSize           = 0,
-            .fwdlFirstSegment       = false,
-            .fwdlLastSegment        = false};
+        ataPassthroughCommand nodata;
+        nodata.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        nodata.commandDirection  = M_ACCESS_ENUM(eDataTransferDirection, XFER_NO_DATA);
+        nodata.commadProtocol    = ATA_PROTOCOL_DEV_DIAG;
+        nodata.tfr.CommandStatus = opcode;
+        nodata.tfr.ErrorFeature  = UINT8_C(0);
+        nodata.tfr.LbaLow        = UINT8_C(0);
+        nodata.tfr.LbaMid        = UINT8_C(0);
+        nodata.tfr.LbaHi         = UINT8_C(0);
+        nodata.tfr.DeviceHead    = UINT8_C(0);
+        nodata.tfr.LbaLow48      = UINT8_C(0);
+        nodata.tfr.LbaMid48      = UINT8_C(0);
+        nodata.tfr.LbaHi48       = UINT8_C(0);
+        nodata.tfr.Feature48     = UINT8_C(0);
+        nodata.tfr.SectorCount   = UINT8_C(0);
+        nodata.tfr.SectorCount48 = UINT8_C(0);
+        nodata.tfr.icc           = UINT8_C(0);
+        nodata.tfr.DeviceControl = UINT8_C(0);
+        nodata.tfr.aux1          = UINT8_C(0);
+        nodata.tfr.aux2          = UINT8_C(0);
+        nodata.tfr.aux3          = UINT8_C(0);
+        nodata.tfr.aux4          = UINT8_C(0);
+        nodata.rtfr.error        = UINT8_C(0);
+        nodata.rtfr.secCntExt    = UINT8_C(0);
+        nodata.rtfr.secCnt       = UINT8_C(0);
+        nodata.rtfr.lbaLowExt    = UINT8_C(0);
+        nodata.rtfr.lbaLow       = UINT8_C(0);
+        nodata.rtfr.lbaMidExt    = UINT8_C(0);
+        nodata.rtfr.lbaMid       = UINT8_C(0);
+        nodata.rtfr.lbaHiExt     = UINT8_C(0);
+        nodata.rtfr.lbaHi        = UINT8_C(0);
+        nodata.rtfr.device       = UINT8_C(0);
+        nodata.rtfr.status       = UINT8_C(0);
+        nodata.ptrData           = M_NULLPTR;
+        nodata.dataSize          = UINT32_C(0);
+        nodata.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;   /* NOTE: This is most common, but may need adjusting
+                                                           depending   on the command */
+        nodata.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA; /* NOTE: Unlikely this needs change, but may need
+                                                                changing in certain situations */
+        nodata.multipleCount          = 0;
+        nodata.forceCheckConditionBit = false;
+        nodata.forceCDBSize           = 0;
+        nodata.fwdlFirstSegment       = false;
+        nodata.fwdlLastSegment        = false;
         set_ata_pt_device_bits(&nodata, device);
         return nodata;
     }
@@ -1144,47 +1155,48 @@ extern "C"
                                                                     uint8_t*               ptrdata,
                                                                     uint32_t               dataSize)
     {
-        ataPassthroughCommand dmaq = {.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-                                      .commandDirection  = direction,
-                                      .commadProtocol    = ncq ? ATA_PROTOCOL_DMA_FPDMA : ATA_PROTOCOL_DMA_QUE,
-                                      .tfr.CommandStatus = opcode,
-                                      .tfr.ErrorFeature  = M_Byte0(sectorCount),
-                                      .tfr.LbaLow        = M_Byte0(lba),
-                                      .tfr.LbaMid        = M_Byte1(lba),
-                                      .tfr.LbaHi         = M_Byte2(lba),
-                                      .tfr.DeviceHead    = LBA_MODE_BIT | (ext ? UINT8_C(0) : M_Nibble6(lba)),
-                                      .tfr.LbaLow48      = ext ? M_Byte3(lba) : UINT8_C(0),
-                                      .tfr.LbaMid48      = ext ? M_Byte4(lba) : UINT8_C(0),
-                                      .tfr.LbaHi48       = ext ? M_Byte5(lba) : UINT8_C(0),
-                                      .tfr.Feature48     = M_Byte1(sectorCount),
-                                      .tfr.SectorCount   = M_STATIC_CAST(uint8_t, tag << 3),
-                                      .tfr.SectorCount48 = UINT8_C(0),
-                                      .tfr.icc           = UINT8_C(0),
-                                      .tfr.DeviceControl = UINT8_C(0),
-                                      .tfr.aux1          = UINT8_C(0),
-                                      .tfr.aux2          = UINT8_C(0),
-                                      .tfr.aux3          = UINT8_C(0),
-                                      .tfr.aux4          = UINT8_C(0),
-                                      .rtfr.error        = UINT8_C(0),
-                                      .rtfr.secCntExt    = UINT8_C(0),
-                                      .rtfr.secCnt       = UINT8_C(0),
-                                      .rtfr.lbaLowExt    = UINT8_C(0),
-                                      .rtfr.lbaLow       = UINT8_C(0),
-                                      .rtfr.lbaMidExt    = UINT8_C(0),
-                                      .rtfr.lbaMid       = UINT8_C(0),
-                                      .rtfr.lbaHiExt     = UINT8_C(0),
-                                      .rtfr.lbaHi        = UINT8_C(0),
-                                      .rtfr.device       = UINT8_C(0),
-                                      .rtfr.status       = UINT8_C(0),
-                                      .ptrData           = ptrdata,
-                                      .dataSize          = dataSize,
-                                      .ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE,
-                                      .ataCommandLengthLocation = ATA_PT_LEN_FEATURES_REGISTER,
-                                      .multipleCount            = 0,
-                                      .forceCheckConditionBit   = false,
-                                      .forceCDBSize             = 0,
-                                      .fwdlFirstSegment         = false,
-                                      .fwdlLastSegment          = false};
+        ataPassthroughCommand dmaq;
+        dmaq.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        dmaq.commandDirection         = direction;
+        dmaq.commadProtocol           = ncq ? ATA_PROTOCOL_DMA_FPDMA : ATA_PROTOCOL_DMA_QUE;
+        dmaq.tfr.CommandStatus        = opcode;
+        dmaq.tfr.ErrorFeature         = M_Byte0(sectorCount);
+        dmaq.tfr.LbaLow               = M_Byte0(lba);
+        dmaq.tfr.LbaMid               = M_Byte1(lba);
+        dmaq.tfr.LbaHi                = M_Byte2(lba);
+        dmaq.tfr.DeviceHead           = LBA_MODE_BIT | (ext ? UINT8_C(0) : M_Nibble6(lba));
+        dmaq.tfr.LbaLow48             = ext ? M_Byte3(lba) : UINT8_C(0);
+        dmaq.tfr.LbaMid48             = ext ? M_Byte4(lba) : UINT8_C(0);
+        dmaq.tfr.LbaHi48              = ext ? M_Byte5(lba) : UINT8_C(0);
+        dmaq.tfr.Feature48            = M_Byte1(sectorCount);
+        dmaq.tfr.SectorCount          = M_STATIC_CAST(uint8_t, tag << 3);
+        dmaq.tfr.SectorCount48        = UINT8_C(0);
+        dmaq.tfr.icc                  = UINT8_C(0);
+        dmaq.tfr.DeviceControl        = UINT8_C(0);
+        dmaq.tfr.aux1                 = UINT8_C(0);
+        dmaq.tfr.aux2                 = UINT8_C(0);
+        dmaq.tfr.aux3                 = UINT8_C(0);
+        dmaq.tfr.aux4                 = UINT8_C(0);
+        dmaq.rtfr.error               = UINT8_C(0);
+        dmaq.rtfr.secCntExt           = UINT8_C(0);
+        dmaq.rtfr.secCnt              = UINT8_C(0);
+        dmaq.rtfr.lbaLowExt           = UINT8_C(0);
+        dmaq.rtfr.lbaLow              = UINT8_C(0);
+        dmaq.rtfr.lbaMidExt           = UINT8_C(0);
+        dmaq.rtfr.lbaMid              = UINT8_C(0);
+        dmaq.rtfr.lbaHiExt            = UINT8_C(0);
+        dmaq.rtfr.lbaHi               = UINT8_C(0);
+        dmaq.rtfr.device              = UINT8_C(0);
+        dmaq.rtfr.status              = UINT8_C(0);
+        dmaq.ptrData                  = ptrdata;
+        dmaq.dataSize                 = dataSize;
+        dmaq.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
+        dmaq.ataCommandLengthLocation = ATA_PT_LEN_FEATURES_REGISTER;
+        dmaq.multipleCount            = 0;
+        dmaq.forceCheckConditionBit   = false;
+        dmaq.forceCDBSize             = 0;
+        dmaq.fwdlFirstSegment         = false;
+        dmaq.fwdlLastSegment          = false;
         set_ata_pt_device_bits(&dmaq, device);
         if (sectorCount == UINT16_MAX)
         {
@@ -1206,47 +1218,48 @@ extern "C"
                                                                 uint8_t*               ptrdata,
                                                                 uint32_t               dataSize)
     {
-        ataPassthroughCommand dmaq = {.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-                                      .commandDirection  = direction,
-                                      .commadProtocol    = ncq ? ATA_PROTOCOL_DMA_FPDMA : ATA_PROTOCOL_DMA_QUE,
-                                      .tfr.CommandStatus = opcode,
-                                      .tfr.ErrorFeature  = M_Byte0(sectorCount),
-                                      .tfr.LbaLow        = UINT8_C(0),
-                                      .tfr.LbaMid        = UINT8_C(0),
-                                      .tfr.LbaHi         = UINT8_C(0),
-                                      .tfr.DeviceHead    = UINT8_C(0),
-                                      .tfr.LbaLow48      = UINT8_C(0),
-                                      .tfr.LbaMid48      = UINT8_C(0),
-                                      .tfr.LbaHi48       = UINT8_C(0),
-                                      .tfr.Feature48     = M_Byte1(sectorCount),
-                                      .tfr.SectorCount   = M_STATIC_CAST(uint8_t, tag << 3),
-                                      .tfr.SectorCount48 = UINT8_C(0),
-                                      .tfr.icc           = UINT8_C(0),
-                                      .tfr.DeviceControl = UINT8_C(0),
-                                      .tfr.aux1          = UINT8_C(0),
-                                      .tfr.aux2          = UINT8_C(0),
-                                      .tfr.aux3          = UINT8_C(0),
-                                      .tfr.aux4          = UINT8_C(0),
-                                      .rtfr.error        = UINT8_C(0),
-                                      .rtfr.secCntExt    = UINT8_C(0),
-                                      .rtfr.secCnt       = UINT8_C(0),
-                                      .rtfr.lbaLowExt    = UINT8_C(0),
-                                      .rtfr.lbaLow       = UINT8_C(0),
-                                      .rtfr.lbaMidExt    = UINT8_C(0),
-                                      .rtfr.lbaMid       = UINT8_C(0),
-                                      .rtfr.lbaHiExt     = UINT8_C(0),
-                                      .rtfr.lbaHi        = UINT8_C(0),
-                                      .rtfr.device       = UINT8_C(0),
-                                      .rtfr.status       = UINT8_C(0),
-                                      .ptrData           = ptrdata,
-                                      .dataSize          = dataSize,
-                                      .ataTransferBlocks = ATA_PT_512B_BLOCKS,
-                                      .ataCommandLengthLocation = ATA_PT_LEN_FEATURES_REGISTER,
-                                      .multipleCount            = 0,
-                                      .forceCheckConditionBit   = false,
-                                      .forceCDBSize             = 0,
-                                      .fwdlFirstSegment         = false,
-                                      .fwdlLastSegment          = false};
+        ataPassthroughCommand dmaq;
+        dmaq.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        dmaq.commandDirection         = direction;
+        dmaq.commadProtocol           = ncq ? ATA_PROTOCOL_DMA_FPDMA : ATA_PROTOCOL_DMA_QUE;
+        dmaq.tfr.CommandStatus        = opcode;
+        dmaq.tfr.ErrorFeature         = M_Byte0(sectorCount);
+        dmaq.tfr.LbaLow               = UINT8_C(0);
+        dmaq.tfr.LbaMid               = UINT8_C(0);
+        dmaq.tfr.LbaHi                = UINT8_C(0);
+        dmaq.tfr.DeviceHead           = UINT8_C(0);
+        dmaq.tfr.LbaLow48             = UINT8_C(0);
+        dmaq.tfr.LbaMid48             = UINT8_C(0);
+        dmaq.tfr.LbaHi48              = UINT8_C(0);
+        dmaq.tfr.Feature48            = M_Byte1(sectorCount);
+        dmaq.tfr.SectorCount          = M_STATIC_CAST(uint8_t, tag << 3);
+        dmaq.tfr.SectorCount48        = UINT8_C(0);
+        dmaq.tfr.icc                  = UINT8_C(0);
+        dmaq.tfr.DeviceControl        = UINT8_C(0);
+        dmaq.tfr.aux1                 = UINT8_C(0);
+        dmaq.tfr.aux2                 = UINT8_C(0);
+        dmaq.tfr.aux3                 = UINT8_C(0);
+        dmaq.tfr.aux4                 = UINT8_C(0);
+        dmaq.rtfr.error               = UINT8_C(0);
+        dmaq.rtfr.secCntExt           = UINT8_C(0);
+        dmaq.rtfr.secCnt              = UINT8_C(0);
+        dmaq.rtfr.lbaLowExt           = UINT8_C(0);
+        dmaq.rtfr.lbaLow              = UINT8_C(0);
+        dmaq.rtfr.lbaMidExt           = UINT8_C(0);
+        dmaq.rtfr.lbaMid              = UINT8_C(0);
+        dmaq.rtfr.lbaHiExt            = UINT8_C(0);
+        dmaq.rtfr.lbaHi               = UINT8_C(0);
+        dmaq.rtfr.device              = UINT8_C(0);
+        dmaq.rtfr.status              = UINT8_C(0);
+        dmaq.ptrData                  = ptrdata;
+        dmaq.dataSize                 = dataSize;
+        dmaq.ataTransferBlocks        = ATA_PT_512B_BLOCKS;
+        dmaq.ataCommandLengthLocation = ATA_PT_LEN_FEATURES_REGISTER;
+        dmaq.multipleCount            = 0;
+        dmaq.forceCheckConditionBit   = false;
+        dmaq.forceCDBSize             = 0;
+        dmaq.fwdlFirstSegment         = false;
+        dmaq.fwdlLastSegment          = false;
         set_ata_pt_device_bits(&dmaq, device);
         if (sectorCount == UINT16_MAX)
         {
