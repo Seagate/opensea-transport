@@ -652,6 +652,47 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_16(tDevice* device, uint8_t* pdata, uint32_t dataSize);
 
+    OPENSEA_TRANSPORT_API void get_mode_param_header_6_fields(uint8_t* ptrMP,
+                                                              uint32_t mpHeaderLen,
+                                                              uint8_t* modeDataLength,
+                                                              uint8_t* mediumType,
+                                                              uint8_t* devSpecific,
+                                                              uint8_t* blockDescriptorLenth);
+
+    OPENSEA_TRANSPORT_API void get_mode_param_header_10_fields(uint8_t*  ptrMP,
+                                                               uint32_t  mpHeaderLen,
+                                                               uint16_t* modeDataLength,
+                                                               uint8_t*  mediumType,
+                                                               uint8_t*  devSpecific,
+                                                               bool*     longLBA,
+                                                               uint16_t* blockDescriptorLenth);
+
+    // All but direct access block devices
+    OPENSEA_TRANSPORT_API void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
+                                                                        uint32_t  mpBlkDescLen,
+                                                                        uint8_t*  densityCode,
+                                                                        uint32_t* numberOfBlocks,
+                                                                        uint32_t* blockLength);
+    // direct access block devices
+    OPENSEA_TRANSPORT_API void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
+                                                                      uint32_t  mpBlkDescLen,
+                                                                      uint32_t* numberOfBlocks,
+                                                                      uint32_t* blockLength);
+    OPENSEA_TRANSPORT_API void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
+                                                                     uint32_t  mpBlkDescLen,
+                                                                     uint64_t* numberOfBlocks,
+                                                                     uint64_t* blockLength);
+    OPENSEA_TRANSPORT_API void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
+                                                                   uint8_t*  ptr,
+                                                                   uint32_t  totalDataLen,
+                                                                   uint16_t* modeDataLength,
+                                                                   uint8_t*  mediumType,
+                                                                   uint8_t*  devSpecific,
+                                                                   bool*     longLBA,
+                                                                   uint16_t* blockDescriptorLenth,
+                                                                   uint64_t* numberOfBlocks,
+                                                                   uint64_t* blockLength);
+
     //-----------------------------------------------------------------------------
     //
     //  scsi_modesense10()

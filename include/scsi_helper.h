@@ -710,23 +710,40 @@ extern "C"
 #define MODE_PARAMETER_HEADER_6_LEN       UINT8_C(4)
 #define MODE_PARAMETER_HEADER_10_LEN      UINT8_C(8)
 
-#define MODE_HEADER_6_MP_LEN_OFFSET       0
-#define MODE_HEADER_6_MEDIUM_TYPE_OFFSET  1
-#define MODE_HEADER_6_DEV_SPECIFIC        2
-#define MODE_HEADER_6_BLK_DESC_OFFSET     3
+#define MODE_HEADER_6_MP_LEN_OFFSET       (0)
+#define MODE_HEADER_6_MEDIUM_TYPE_OFFSET  (1)
+#define MODE_HEADER_6_DEV_SPECIFIC        (2)
+#define MODE_HEADER_6_BLK_DESC_OFFSET     (3)
 
-#define MODE_HEADER_10_MP_LEN_OFFSET      0
-#define MODE_HEADER_10_MEDIUM_TYPE_OFFSET 2
-#define MODE_HEADER_10_DEV_SPECIFIC       3
-#define MODE_HEADER_10_BLK_DESC_OFFSET    6
+#define MODE_HEADER_10_MP_LEN_OFFSET      (0)
+#define MODE_HEADER_10_MEDIUM_TYPE_OFFSET (2)
+#define MODE_HEADER_10_DEV_SPECIFIC       (3)
+#define MODE_HEADER_10_BLK_DESC_OFFSET    (6)
 
-#define SHORT_LBA_BLOCK_DESCRIPTOR_LEN    UINT8_C(8)  // for mode sense/select 6
-#define LONG_LBA_BLOCK_DESCRIPTOR_LEN     UINT8_C(16) // for mode sense/select 10
+#define GENERAL_BLOCK_DESCRIPTOR_LEN                                                                                   \
+    UINT8_C(8) // for all devices without longLBA set and NOT direct access block devices
+#define GEN_BLK_DESC_DENSITY_CODE_OFFSET         (0)
+#define GEN_BLK_DESC_NUM_BLOCKS_MSB_OFFSET       (1)
+#define GEN_BLK_DESC_NUM_BLOCKS_LSB_OFFSET       (3)
+#define GEN_BLK_DESC_BLOCK_LEN_MSB_OFFSET        (5)
+#define GEN_BLK_DESC_BLOCK_LEN_LSB_OFFSET        (7)
 
-#define LOG_PAGE_HEADER_LENGTH            UINT8_C(4)
+#define SHORT_LBA_BLOCK_DESCRIPTOR_LEN           UINT8_C(8) // for mode sense/select 6
+#define SHORT_LBA_BLK_DESC_NUM_BLOCKS_MSB_OFFSET (0)
+#define SHORT_LBA_BLK_DESC_NUM_BLOCKS_LSB_OFFSET (3)
+#define SHORT_LBA_BLK_DESC_BLOCK_LEN_MSB_OFFSET  (5)
+#define SHORT_LBA_BLK_DESC_BLOCK_LEN_LSB_OFFSET  (7)
 
-#define READ_CAPACITY_10_LEN              UINT8_C(8)
-#define READ_CAPACITY_16_LEN              UINT8_C(32)
+#define LONG_LBA_BLOCK_DESCRIPTOR_LEN            UINT8_C(16) // for mode sense/select 10
+#define LONG_LBA_BLK_DESC_NUM_BLOCKS_MSB_OFFSET  (0)
+#define LONG_LBA_BLK_DESC_NUM_BLOCKS_LSB_OFFSET  (7)
+#define LONG_LBA_BLK_DESC_BLOCK_LEN_MSB_OFFSET   (12)
+#define LONG_LBA_BLK_DESC_BLOCK_LEN_LSB_OFFSET   (15)
+
+#define LOG_PAGE_HEADER_LENGTH                   UINT8_C(4)
+
+#define READ_CAPACITY_10_LEN                     UINT8_C(8)
+#define READ_CAPACITY_16_LEN                     UINT8_C(32)
 
     typedef enum eSCSIPeripheralQualifierEnum
     {

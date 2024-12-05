@@ -4969,3 +4969,233 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
         }
     }
 }
+
+void get_mode_param_header_6_fields(uint8_t* ptrMP,
+                                    uint32_t mpHeaderLen,
+                                    uint8_t* modeDataLength,
+                                    uint8_t* mediumType,
+                                    uint8_t* devSpecific,
+                                    uint8_t* blockDescriptorLenth)
+{
+    if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_6_LEN)
+    {
+        if (modeDataLength != M_NULLPTR)
+        {
+            *modeDataLength = ptrMP[MODE_HEADER_6_MP_LEN_OFFSET];
+        }
+        if (mediumType != M_NULLPTR)
+        {
+            *mediumType = ptrMP[MODE_HEADER_6_MEDIUM_TYPE_OFFSET];
+        }
+        if (devSpecific != M_NULLPTR)
+        {
+            *devSpecific = ptrMP[MODE_HEADER_6_DEV_SPECIFIC];
+        }
+        if (blockDescriptorLenth != M_NULLPTR)
+        {
+            *blockDescriptorLenth = ptrMP[MODE_HEADER_6_BLK_DESC_OFFSET];
+        }
+    }
+}
+
+void get_mode_param_header_10_fields(uint8_t*  ptrMP,
+                                     uint32_t  mpHeaderLen,
+                                     uint16_t* modeDataLength,
+                                     uint8_t*  mediumType,
+                                     uint8_t*  devSpecific,
+                                     bool*     longLBA,
+                                     uint16_t* blockDescriptorLenth)
+{
+    if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_10_LEN)
+    {
+        if (modeDataLength != M_NULLPTR)
+        {
+            *modeDataLength =
+                M_BytesTo2ByteValue(ptrMP[MODE_HEADER_10_MP_LEN_OFFSET], ptrMP[MODE_HEADER_10_MP_LEN_OFFSET + 1]);
+        }
+        if (mediumType != M_NULLPTR)
+        {
+            *mediumType = ptrMP[MODE_HEADER_10_MEDIUM_TYPE_OFFSET];
+        }
+        if (devSpecific != M_NULLPTR)
+        {
+            *devSpecific = ptrMP[MODE_HEADER_10_DEV_SPECIFIC];
+        }
+        if (blockDescriptorLenth != M_NULLPTR)
+        {
+            *blockDescriptorLenth =
+                M_BytesTo2ByteValue(ptrMP[MODE_HEADER_10_BLK_DESC_OFFSET], ptrMP[MODE_HEADER_10_BLK_DESC_OFFSET + 1]);
+        }
+        if (longLBA != M_NULLPTR)
+        {
+            *longLBA = M_ToBool(ptrMP[MODE_HEADER_10_DEV_SPECIFIC + 1] & BIT0);
+        }
+    }
+}
+
+void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
+                                              uint32_t  mpBlkDescLen,
+                                              uint8_t*  densityCode,
+                                              uint32_t* numberOfBlocks,
+                                              uint32_t* blockLength)
+{
+    if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= GENERAL_BLOCK_DESCRIPTOR_LEN)
+    {
+        if (densityCode != M_NULLPTR)
+        {
+            *densityCode = ptrMPblkDesk[GEN_BLK_DESC_DENSITY_CODE_OFFSET];
+        }
+        if (numberOfBlocks != M_NULLPTR)
+        {
+            if (!get_Bytes_To_32(ptrMPblkDesk, mpBlkDescLen, GEN_BLK_DESC_NUM_BLOCKS_MSB_OFFSET,
+                                 GEN_BLK_DESC_NUM_BLOCKS_LSB_OFFSET, numberOfBlocks))
+            {
+                *numberOfBlocks = UINT32_C(0);
+            }
+        }
+        if (blockLength != M_NULLPTR)
+        {
+            if (!get_Bytes_To_32(ptrMPblkDesk, mpBlkDescLen, GEN_BLK_DESC_BLOCK_LEN_MSB_OFFSET,
+                                 GEN_BLK_DESC_BLOCK_LEN_LSB_OFFSET, blockLength))
+            {
+                *blockLength = UINT32_C(0);
+            }
+        }
+    }
+}
+
+void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
+                                            uint32_t  mpBlkDescLen,
+                                            uint32_t* numberOfBlocks,
+                                            uint32_t* blockLength)
+{
+    if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= SHORT_LBA_BLOCK_DESCRIPTOR_LEN)
+    {
+        if (numberOfBlocks != M_NULLPTR)
+        {
+            if (!get_Bytes_To_32(ptrMPblkDesk, mpBlkDescLen, SHORT_LBA_BLK_DESC_NUM_BLOCKS_MSB_OFFSET,
+                                 SHORT_LBA_BLK_DESC_NUM_BLOCKS_LSB_OFFSET, numberOfBlocks))
+            {
+                *numberOfBlocks = UINT32_C(0);
+            }
+        }
+        if (blockLength != M_NULLPTR)
+        {
+            if (!get_Bytes_To_32(ptrMPblkDesk, mpBlkDescLen, SHORT_LBA_BLK_DESC_BLOCK_LEN_MSB_OFFSET,
+                                 SHORT_LBA_BLK_DESC_BLOCK_LEN_LSB_OFFSET, blockLength))
+            {
+                *blockLength = UINT32_C(0);
+            }
+        }
+    }
+}
+
+void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
+                                           uint32_t  mpBlkDescLen,
+                                           uint64_t* numberOfBlocks,
+                                           uint64_t* blockLength)
+{
+    if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= LONG_LBA_BLOCK_DESCRIPTOR_LEN)
+    {
+        if (numberOfBlocks != M_NULLPTR)
+        {
+            if (!get_Bytes_To_64(ptrMPblkDesk, mpBlkDescLen, LONG_LBA_BLK_DESC_NUM_BLOCKS_MSB_OFFSET,
+                                 LONG_LBA_BLK_DESC_NUM_BLOCKS_LSB_OFFSET, numberOfBlocks))
+            {
+                *numberOfBlocks = UINT64_C(0);
+            }
+        }
+        if (blockLength != M_NULLPTR)
+        {
+            if (!get_Bytes_To_64(ptrMPblkDesk, mpBlkDescLen, LONG_LBA_BLK_DESC_BLOCK_LEN_MSB_OFFSET,
+                                 LONG_LBA_BLK_DESC_BLOCK_LEN_LSB_OFFSET, blockLength))
+            {
+                *blockLength = UINT64_C(0);
+            }
+        }
+    }
+}
+
+void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
+                                         uint8_t*  ptr,
+                                         uint32_t  totalDataLen,
+                                         uint16_t* modeDataLength,
+                                         uint8_t*  mediumType,
+                                         uint8_t*  devSpecific,
+                                         bool*     longLBA,
+                                         uint16_t* blockDescriptorLenth,
+                                         uint64_t* numberOfBlocks,
+                                         uint64_t* blockLength)
+{
+    if (ptr != M_NULLPTR)
+    {
+        if (sixByteCmd)
+        {
+            uint8_t tempModeDataLen           = UINT8_C(0);
+            uint8_t tempBlockDescriptorLength = UINT8_C(0);
+            get_mode_param_header_6_fields(ptr, totalDataLen, &tempModeDataLen, mediumType, devSpecific,
+                                           &tempBlockDescriptorLength);
+            if (modeDataLength != M_NULLPTR)
+            {
+                *modeDataLength = tempModeDataLen;
+            }
+            if (blockDescriptorLenth != M_NULLPTR)
+            {
+                *blockDescriptorLenth = tempBlockDescriptorLength;
+            }
+            if (tempBlockDescriptorLength > UINT8_C(0))
+            {
+                uint32_t tempNumBlocks = UINT32_C(0);
+                uint32_t tempBlockLen  = UINT32_C(0);
+                get_mode_short_block_descriptor_fields(ptr + MODE_PARAMETER_HEADER_10_LEN, tempBlockDescriptorLength,
+                                                       &tempNumBlocks, &tempBlockLen);
+                if (numberOfBlocks != M_NULLPTR)
+                {
+                    *numberOfBlocks = tempNumBlocks;
+                }
+                if (blockLength != M_NULLPTR)
+                {
+                    *blockLength = tempBlockLen;
+                }
+            }
+        }
+        else
+        {
+            bool     tempLLBA                  = false;
+            uint16_t tempBlockDescriptorLength = UINT16_C(0);
+            get_mode_param_header_10_fields(ptr, totalDataLen, modeDataLength, mediumType, devSpecific, &tempLLBA,
+                                            &tempBlockDescriptorLength);
+            if (longLBA != M_NULLPTR)
+            {
+                *longLBA = tempLLBA;
+            }
+            if (blockDescriptorLenth != M_NULLPTR)
+            {
+                *blockDescriptorLenth = tempBlockDescriptorLength;
+            }
+            if (tempBlockDescriptorLength > UINT16_C(0))
+            {
+                if (tempLLBA)
+                {
+                    get_mode_long_block_descriptor_fields(ptr + MODE_PARAMETER_HEADER_10_LEN, tempBlockDescriptorLength,
+                                                          numberOfBlocks, blockLength);
+                }
+                else
+                {
+                    uint32_t tempNumBlocks = UINT32_C(0);
+                    uint32_t tempBlockLen  = UINT32_C(0);
+                    get_mode_short_block_descriptor_fields(ptr + MODE_PARAMETER_HEADER_10_LEN,
+                                                           tempBlockDescriptorLength, &tempNumBlocks, &tempBlockLen);
+                    if (numberOfBlocks != M_NULLPTR)
+                    {
+                        *numberOfBlocks = tempNumBlocks;
+                    }
+                    if (blockLength != M_NULLPTR)
+                    {
+                        *blockLength = tempBlockLen;
+                    }
+                }
+            }
+        }
+    }
+}
