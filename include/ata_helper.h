@@ -586,8 +586,8 @@ extern "C"
         uint64_t outlba = UINT64_C(0);
         if (rtfr != M_NULLPTR)
         {
-            outlba = M_BytesTo8ByteValue(0, 0, rtfr->lbaHiExt, rtfr->lbaMidExt, rtfr->lbaLowExt, rtfr->lbaHi,
-                                         rtfr->lbaMid, rtfr->lbaLow);
+            outlba = M_BytesTo8ByteValue(UINT8_C(0), UINT8_C(0), rtfr->lbaHiExt, rtfr->lbaMidExt, rtfr->lbaLowExt,
+                                         rtfr->lbaHi, rtfr->lbaMid, rtfr->lbaLow);
         }
         return outlba;
     }
@@ -651,28 +651,28 @@ extern "C"
         {
             switch (device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock)
             {
-            case 1:
+            case UINT8_C(1):
                 cmd->multipleCount = UINT8_C(0);
                 break;
-            case 2:
+            case UINT8_C(2):
                 cmd->multipleCount = UINT8_C(1);
                 break;
-            case 4:
+            case UINT8_C(4):
                 cmd->multipleCount = UINT8_C(2);
                 break;
-            case 8:
+            case UINT8_C(8):
                 cmd->multipleCount = UINT8_C(3);
                 break;
-            case 16:
+            case UINT8_C(16):
                 cmd->multipleCount = UINT8_C(4);
                 break;
-            case 32:
+            case UINT8_C(32):
                 cmd->multipleCount = UINT8_C(5);
                 break;
-            case 64:
+            case UINT8_C(64):
                 cmd->multipleCount = UINT8_C(6);
                 break;
-            case 128:
+            case UINT8_C(128):
                 cmd->multipleCount = UINT8_C(7);
                 break;
             }
@@ -722,15 +722,17 @@ extern "C"
         pio.rtfr.status       = UINT8_C(0);
         pio.ptrData           = ptrdata;
         pio.dataSize          = dataSize;
+        pio.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        pio.senseDataSize     = SPC3_SENSE_LEN;
         pio.ataTransferBlocks = M_ACCESS_ENUM(
             eATAPassthroughTransferBlocks,
             ATA_PT_512B_BLOCKS); /* NOTE: This is most common, but may need adjusting depending on the command */
         pio.ataCommandLengthLocation =
             M_ACCESS_ENUM(eATAPassthroughLength, ATA_PT_LEN_SECTOR_COUNT); /* NOTE: Unlikely this needs change, but may
                                      need changing in certain situations */
-        pio.multipleCount          = 0;
+        pio.multipleCount          = UINT8_C(0);
         pio.forceCheckConditionBit = false;
-        pio.forceCDBSize           = 0;
+        pio.forceCDBSize           = UINT8_C(0);
         pio.fwdlFirstSegment       = false;
         pio.fwdlLastSegment        = false;
         set_ata_pt_device_bits(&pio, device);
@@ -803,12 +805,14 @@ extern "C"
         pio.rtfr.status              = UINT8_C(0);
         pio.ptrData                  = ptrdata;
         pio.dataSize                 = dataSize;
+        pio.ptrSenseData             = device->drive_info.lastCommandSenseData;
+        pio.senseDataSize            = SPC3_SENSE_LEN;
         pio.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
         pio.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT; /* NOTE: Unlikely this needs change, but may need
                                                                    changing in certain situations */
-        pio.multipleCount          = 0;
+        pio.multipleCount          = UINT8_C(0);
         pio.forceCheckConditionBit = false;
-        pio.forceCDBSize           = 0;
+        pio.forceCDBSize           = UINT8_C(0);
         pio.fwdlFirstSegment       = false;
         pio.fwdlLastSegment        = false;
         set_ata_pt_device_bits(&pio, device);
@@ -911,13 +915,15 @@ extern "C"
         dma.rtfr.status       = UINT8_C(0);
         dma.ptrData           = ptrdata;
         dma.dataSize          = dataSize;
+        dma.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        dma.senseDataSize     = SPC3_SENSE_LEN;
         dma.ataTransferBlocks =
             ATA_PT_512B_BLOCKS; /* NOTE: This is most common, but may need adjusting depending on the command */
         dma.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT; /* NOTE: Unlikely this needs change, but may need
                                                                 changing in certain situations */
-        dma.multipleCount          = 0;
+        dma.multipleCount          = UINT8_C(0);
         dma.forceCheckConditionBit = false;
-        dma.forceCDBSize           = 0;
+        dma.forceCDBSize           = UINT8_C(0);
         dma.fwdlFirstSegment       = false;
         dma.fwdlLastSegment        = false;
         set_ata_pt_device_bits(&dma, device);
@@ -968,11 +974,13 @@ extern "C"
         dma.rtfr.status              = UINT8_C(0);
         dma.ptrData                  = ptrdata;
         dma.dataSize                 = dataSize;
+        dma.ptrSenseData             = device->drive_info.lastCommandSenseData;
+        dma.senseDataSize            = SPC3_SENSE_LEN;
         dma.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
         dma.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
-        dma.multipleCount            = 0;
+        dma.multipleCount            = UINT8_C(0);
         dma.forceCheckConditionBit   = false;
-        dma.forceCDBSize             = 0;
+        dma.forceCDBSize             = UINT8_C(0);
         dma.fwdlFirstSegment         = false;
         dma.fwdlLastSegment          = false;
         set_ata_pt_device_bits(&dma, device);
@@ -1081,13 +1089,15 @@ extern "C"
         nodata.rtfr.status       = UINT8_C(0);
         nodata.ptrData           = M_NULLPTR;
         nodata.dataSize          = UINT32_C(0);
+        nodata.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        nodata.senseDataSize     = SPC3_SENSE_LEN;
         nodata.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;   /* NOTE: This is most common, but may need adjusting
                                                            depending   on the command */
         nodata.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA; /* NOTE: Unlikely this needs change, but may need
                                                                 changing in certain situations */
-        nodata.multipleCount          = 0;
+        nodata.multipleCount          = UINT8_C(0);
         nodata.forceCheckConditionBit = false;
-        nodata.forceCDBSize           = 0;
+        nodata.forceCDBSize           = UINT8_C(0);
         nodata.fwdlFirstSegment       = false;
         nodata.fwdlLastSegment        = false;
         set_ata_pt_device_bits(&nodata, device);
@@ -1131,13 +1141,15 @@ extern "C"
         nodata.rtfr.status       = UINT8_C(0);
         nodata.ptrData           = M_NULLPTR;
         nodata.dataSize          = UINT32_C(0);
+        nodata.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        nodata.senseDataSize     = SPC3_SENSE_LEN;
         nodata.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;   /* NOTE: This is most common, but may need adjusting
                                                            depending   on the command */
         nodata.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA; /* NOTE: Unlikely this needs change, but may need
                                                                 changing in certain situations */
-        nodata.multipleCount          = 0;
+        nodata.multipleCount          = UINT8_C(0);
         nodata.forceCheckConditionBit = false;
-        nodata.forceCDBSize           = 0;
+        nodata.forceCDBSize           = UINT8_C(0);
         nodata.fwdlFirstSegment       = false;
         nodata.fwdlLastSegment        = false;
         set_ata_pt_device_bits(&nodata, device);
@@ -1190,11 +1202,13 @@ extern "C"
         dmaq.rtfr.status              = UINT8_C(0);
         dmaq.ptrData                  = ptrdata;
         dmaq.dataSize                 = dataSize;
+        dmaq.ptrSenseData             = device->drive_info.lastCommandSenseData;
+        dmaq.senseDataSize            = SPC3_SENSE_LEN;
         dmaq.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
         dmaq.ataCommandLengthLocation = ATA_PT_LEN_FEATURES_REGISTER;
-        dmaq.multipleCount            = 0;
+        dmaq.multipleCount            = UINT8_C(0);
         dmaq.forceCheckConditionBit   = false;
-        dmaq.forceCDBSize             = 0;
+        dmaq.forceCDBSize             = UINT8_C(0);
         dmaq.fwdlFirstSegment         = false;
         dmaq.fwdlLastSegment          = false;
         set_ata_pt_device_bits(&dmaq, device);
@@ -1253,11 +1267,13 @@ extern "C"
         dmaq.rtfr.status              = UINT8_C(0);
         dmaq.ptrData                  = ptrdata;
         dmaq.dataSize                 = dataSize;
+        dmaq.ptrSenseData             = device->drive_info.lastCommandSenseData;
+        dmaq.senseDataSize            = SPC3_SENSE_LEN;
         dmaq.ataTransferBlocks        = ATA_PT_512B_BLOCKS;
         dmaq.ataCommandLengthLocation = ATA_PT_LEN_FEATURES_REGISTER;
-        dmaq.multipleCount            = 0;
+        dmaq.multipleCount            = UINT8_C(0);
         dmaq.forceCheckConditionBit   = false;
-        dmaq.forceCDBSize             = 0;
+        dmaq.forceCDBSize             = UINT8_C(0);
         dmaq.fwdlFirstSegment         = false;
         dmaq.fwdlLastSegment          = false;
         set_ata_pt_device_bits(&dmaq, device);
