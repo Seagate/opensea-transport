@@ -1148,7 +1148,6 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
     //set scsi interface and scsi drive until we know otherwise
     sysFsInfo.drive_type = SCSI_DRIVE;
     sysFsInfo.interface_type = SCSI_INTERFACE;
-    sysFsInfo.media_type = MEDIA_HDD;
 
     get_Linux_SYS_FS_Info(handle, &sysFsInfo);
     //now copy the saved data to tDevice. -TJE
