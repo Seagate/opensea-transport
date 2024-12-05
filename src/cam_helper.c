@@ -1074,30 +1074,19 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
             if (((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_SCSI_STATUS_ERROR) &&
                 (ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND) && ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0))
             {
-                safe_memcpy(scsiIoCtx->psense, (scsiIoCtx->senseDataSize), &csio->sense_data.error_code, sizeof(uint8_t));
-                safe_memcpy(scsiIoCtx->psense + 1, (scsiIoCtx->senseDataSize) - 1, &csio->sense_data.sense_buf[0], (scsiIoCtx->senseDataSize) - 1);
-#if defined(_DEBUG)  
+                safe_memcpy(scsiIoCtx->psense, (scsiIoCtx->senseDataSize), &csio->sense_data.error_code,
+                            sizeof(uint8_t));
+                safe_memcpy(scsiIoCtx->psense + 1, (scsiIoCtx->senseDataSize) - 1, &csio->sense_data.sense_buf[0],
+                            (scsiIoCtx->senseDataSize) - 1);
+#if defined(_DEBUG)
                 printf("%s error code %d, sense [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
-                   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n", \
-                    __FUNCTION__, \
-                    csio->sense_data.error_code, \
-                    csio->sense_data.sense_buf[0], \
-                    csio->sense_data.sense_buf[1], \
-                    csio->sense_data.sense_buf[2], \
-                    csio->sense_data.sense_buf[3], \
-                    csio->sense_data.sense_buf[4], \
-                    csio->sense_data.sense_buf[5], \
-                    csio->sense_data.sense_buf[6], \
-                    csio->sense_data.sense_buf[7], \
-                    csio->sense_data.sense_buf[8], \
-                    csio->sense_data.sense_buf[9], \
-                    csio->sense_data.sense_buf[10], \
-                    csio->sense_data.sense_buf[11], \
-                    csio->sense_data.sense_buf[12], \
-                    csio->sense_data.sense_buf[13], \
-                    csio->sense_data.sense_buf[14], \
-                    csio->sense_data.sense_buf[15]
-                );
+                   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",
+                       __FUNCTION__, csio->sense_data.error_code, csio->sense_data.sense_buf[0],
+                       csio->sense_data.sense_buf[1], csio->sense_data.sense_buf[2], csio->sense_data.sense_buf[3],
+                       csio->sense_data.sense_buf[4], csio->sense_data.sense_buf[5], csio->sense_data.sense_buf[6],
+                       csio->sense_data.sense_buf[7], csio->sense_data.sense_buf[8], csio->sense_data.sense_buf[9],
+                       csio->sense_data.sense_buf[10], csio->sense_data.sense_buf[11], csio->sense_data.sense_buf[12],
+                       csio->sense_data.sense_buf[13], csio->sense_data.sense_buf[14], csio->sense_data.sense_buf[15]);
 #endif
             }
         }
