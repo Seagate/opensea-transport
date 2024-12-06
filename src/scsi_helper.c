@@ -2245,7 +2245,30 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
                 device->drive_info.interface_type = USB_INTERFACE;
             }
             // known device specific hacks
-            if (strcmp(productID, "BlackArmorDAS25") == 0)
+            if (strcmp(revision, "PMAP") == 0)
+            {
+                // Fairly common adapter with known way to work with it.
+                // Check condition is NOT supported AT ALL.
+                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available            = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength              = 524288;
+                device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = false;
+                device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly                  = true;
+                device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition         = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported               = true;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported   = false;
+                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR   = false;
+                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage                   = true;
+            }
+            else if (strcmp(productID, "BlackArmorDAS25") == 0)
             {
                 device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable = true;
             }

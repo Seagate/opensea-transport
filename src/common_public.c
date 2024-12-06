@@ -3697,6 +3697,26 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength =
                     262144; // 256KiB according to documentation.
                 break;
+            case 0x208E:
+                passthroughHacksSet                                                       = true;
+                device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+                device->drive_info.passThroughHacks.turfValue                             = 34;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages                 = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
+                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
+                // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+                device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly      = true;
+                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported   = true;
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 0;
+                break;
             case 0x2100: // FreeAgent Go
                 passthroughHacksSet                                                       = true;
                 device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
