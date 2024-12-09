@@ -6388,7 +6388,8 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
     }
     DECLARE_SEATIMER(commandTimer);
     safe_memset(sptdioEx, sizeof(scsiPassThroughEXIOStruct), 0, sizeof(scsiPassThroughEXIOStruct));
-    if (SUCCESS == convert_SCSI_CTX_To_SCSI_Pass_Through_EX(scsiIoCtx, sptdioEx))
+    ret = convert_SCSI_CTX_To_SCSI_Pass_Through_EX(scsiIoCtx, sptdioEx);
+    if (SUCCESS == ret)
     {
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         scsiIoCtx->device->os_info.last_error = 0;
@@ -6643,7 +6644,8 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
             }
         }
     }
-    if (SUCCESS == convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(scsiIoCtx, sptdio, alignedPointer))
+    ret = convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(scsiIoCtx, sptdio, alignedPointer);
+    if (SUCCESS == ret)
     {
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         scsiIoCtx->device->os_info.last_error = 0;
@@ -6911,7 +6913,8 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
     DECLARE_SEATIMER(commandTimer);
     safe_memset(sptdioDB, sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength, 0,
                 sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength);
-    if (SUCCESS == convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(scsiIoCtx, sptdioDB))
+    ret = convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(scsiIoCtx, sptdioDB);
+    if (SUCCESS == ret)
     {
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         scsiIoCtx->device->os_info.last_error = 0;
@@ -7076,7 +7079,8 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
             }
         }
     }
-    if (SUCCESS == convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(scsiIoCtx, &sptdio, alignedPointer))
+    ret = convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(scsiIoCtx, &sptdio, alignedPointer);
+    if (SUCCESS == ret)
     {
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         scsiIoCtx->device->os_info.last_error = 0;
