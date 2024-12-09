@@ -498,14 +498,7 @@ extern "C"
         bool fwdlLastSegment;  // firmware download unique flag to help low-level OSs (Windows)
     } ataPassthroughCommand;
 
-    // Idea: helper macros to set common fields.
-    //       Generic ones as well as some that are meant for user LBA values
-    //       user LBAs can be notes as RW and just call the other generics for that protocol
-    //       focus on common fields. May need helper functions (like DMA to select DMA or UDMA protocols)
-    //       all other fields will be zeroes as necessary
-    //       don't need every command handled, just common things to keep it easier and reduce change of errors.
-    //       Possible helper functions: DMA protocol selection, setting LBA fields (user LBAs), setting device/head
-    //       register fields
+    #define ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT UINT32_C(15)
 
     // Used for commands that set a "signature" in the LBA registers, but do not need the LBA mode bit
     static M_INLINE void set_ata_pt_LBA_28_sig(ataPassthroughCommand* cmd, uint32_t signature)
@@ -724,6 +717,7 @@ extern "C"
         pio.dataSize          = dataSize;
         pio.ptrSenseData      = device->drive_info.lastCommandSenseData;
         pio.senseDataSize     = SPC3_SENSE_LEN;
+        pio.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         pio.ataTransferBlocks = M_ACCESS_ENUM(
             eATAPassthroughTransferBlocks,
             ATA_PT_512B_BLOCKS); /* NOTE: This is most common, but may need adjusting depending on the command */
@@ -807,6 +801,7 @@ extern "C"
         pio.dataSize                 = dataSize;
         pio.ptrSenseData             = device->drive_info.lastCommandSenseData;
         pio.senseDataSize            = SPC3_SENSE_LEN;
+        pio.timeout                  = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         pio.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
         pio.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT; /* NOTE: Unlikely this needs change, but may need
                                                                    changing in certain situations */
@@ -917,6 +912,7 @@ extern "C"
         dma.dataSize          = dataSize;
         dma.ptrSenseData      = device->drive_info.lastCommandSenseData;
         dma.senseDataSize     = SPC3_SENSE_LEN;
+        dma.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         dma.ataTransferBlocks =
             ATA_PT_512B_BLOCKS; /* NOTE: This is most common, but may need adjusting depending on the command */
         dma.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT; /* NOTE: Unlikely this needs change, but may need
@@ -976,6 +972,7 @@ extern "C"
         dma.dataSize                 = dataSize;
         dma.ptrSenseData             = device->drive_info.lastCommandSenseData;
         dma.senseDataSize            = SPC3_SENSE_LEN;
+        dma.timeout                  = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         dma.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
         dma.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
         dma.multipleCount            = UINT8_C(0);
@@ -1091,6 +1088,7 @@ extern "C"
         nodata.dataSize          = UINT32_C(0);
         nodata.ptrSenseData      = device->drive_info.lastCommandSenseData;
         nodata.senseDataSize     = SPC3_SENSE_LEN;
+        nodata.timeout              = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         nodata.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;   /* NOTE: This is most common, but may need adjusting
                                                            depending   on the command */
         nodata.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA; /* NOTE: Unlikely this needs change, but may need
@@ -1143,6 +1141,7 @@ extern "C"
         nodata.dataSize          = UINT32_C(0);
         nodata.ptrSenseData      = device->drive_info.lastCommandSenseData;
         nodata.senseDataSize     = SPC3_SENSE_LEN;
+        nodata.timeout              = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         nodata.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;   /* NOTE: This is most common, but may need adjusting
                                                            depending   on the command */
         nodata.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA; /* NOTE: Unlikely this needs change, but may need
@@ -1204,6 +1203,7 @@ extern "C"
         dmaq.dataSize                 = dataSize;
         dmaq.ptrSenseData             = device->drive_info.lastCommandSenseData;
         dmaq.senseDataSize            = SPC3_SENSE_LEN;
+        dmaq.timeout                  = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         dmaq.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
         dmaq.ataCommandLengthLocation = ATA_PT_LEN_FEATURES_REGISTER;
         dmaq.multipleCount            = UINT8_C(0);
@@ -1269,6 +1269,7 @@ extern "C"
         dmaq.dataSize                 = dataSize;
         dmaq.ptrSenseData             = device->drive_info.lastCommandSenseData;
         dmaq.senseDataSize            = SPC3_SENSE_LEN;
+        dmaq.timeout                  = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         dmaq.ataTransferBlocks        = ATA_PT_512B_BLOCKS;
         dmaq.ataCommandLengthLocation = ATA_PT_LEN_FEATURES_REGISTER;
         dmaq.multipleCount            = UINT8_C(0);
