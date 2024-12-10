@@ -96,7 +96,7 @@ eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(tDevice*       device
                 ataRTFRs->device = sense70logBuffer[12 + LOG_PAGE_HEADER_LENGTH];
                 ataRTFRs->status = sense70logBuffer[13 + LOG_PAGE_HEADER_LENGTH];
                 // check the extend bit
-                if (sense70logBuffer[10] & BIT0)
+                if (sense70logBuffer[10] & BIT0 || device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit)
                 {
                     // copy back the extended registers
                     ataRTFRs->secCntExt = sense70logBuffer[4 + LOG_PAGE_HEADER_LENGTH];
@@ -470,99 +470,7 @@ bool get_Return_TFRs_From_Sense_Data(tDevice*               device,
         }
         if (!gotRTFRsFromSenseData && ioRet != OS_PASSTHROUGH_FAILURE)
         {
-            uint8_t senseKey = UINT8_C(0);
-            uint8_t asc      = UINT8_C(0);
-            uint8_t ascq     = UINT8_C(0);
-            uint8_t fru      = UINT8_C(0);
-            // check the sense data sense key, asc, ascq to dummy up the rtfrs
-            get_Sense_Key_ASC_ASCQ_FRU(ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, &senseKey,
-                                       &asc, &ascq, &fru);
-            switch (senseKey)
-            {
-            case SENSE_KEY_HARDWARE_ERROR:
-                if (asc == 0x44 && ascq == 0x00 && fru == 0)
-                {
-                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_DEVICE_FAULT;
-                    gotRTFRsFromSenseData          = true;
-                }
-                break;
-            case SENSE_KEY_NOT_READY:
-                if (asc == 0x3A && ascq == 0x00 && fru == 0)
-                {
-                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_NO_MEDIA; // nm bit
-                    gotRTFRsFromSenseData          = true;
-                }
-                break;
-            case SENSE_KEY_MEDIUM_ERROR:
-                if (asc == 0x11 && ascq == 0x00 && fru == 0)
-                {
-                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_UNCORRECTABLE_DATA; // unc bit
-                    gotRTFRsFromSenseData          = true;
-                }
-                else if (asc == 0x14 && ascq == 0x01 && fru == 0)
-                {
-                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_ID_NOT_FOUND; // idnf bit
-                    gotRTFRsFromSenseData          = true;
-                }
-                break;
-            case SENSE_KEY_DATA_PROTECT:
-                if (asc == 0x27 && ascq == 0x00 && fru == 0)
-                {
-                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_WRITE_PROTECTED; // wp bit
-                    gotRTFRsFromSenseData          = true;
-                }
-                break;
-            case SENSE_KEY_ILLEGAL_REQUEST:
-                if (asc == 0x21 && ascq == 0x00 && fru == 0)
-                {
-                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_ID_NOT_FOUND; // idnf bit
-                    gotRTFRsFromSenseData          = true;
-                }
-                break;
-            case SENSE_KEY_ABORTED_COMMAND:
-                if (asc == 0x47 && ascq == 0x03 && fru == 0)
-                {
-                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_INTERFACE_CRC; // icrc bit
-                    gotRTFRsFromSenseData          = true;
-                }
-                else
-                {
-                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_ABORT; // abort
-                    gotRTFRsFromSenseData          = true;
-                }
-                break;
-            case SENSE_KEY_UNIT_ATTENTION:
-                if (asc == 0x28 && ascq == 0x00 && fru == 0)
-                {
-                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_MEDIA_CHANGE; // mc bit
-                    gotRTFRsFromSenseData          = true;
-                }
-                else if (asc == 0x47 && ascq == 0x03 && fru == 0)
-                {
-                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
-                    ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST; // mcr bit
-                    gotRTFRsFromSenseData          = true;
-                }
-                break;
-            case SENSE_KEY_NO_ERROR:
-                // if no error is reported, then consider this a passing command.
-                ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY;
-                ataCommandOptions->rtfr.error  = 0;
-                gotRTFRsFromSenseData          = true;
-                break;
-            default:
-                // Don't do anything! We don't have enough information to decide what happened. The SATL be returning
-                // it's own error that is not related to the command being sent.
-                break;
-            }
+            
         }
     }
     return gotRTFRsFromSenseData;
@@ -656,7 +564,6 @@ eReturnValues set_Transfer_Bits(uint8_t*                      satCDB,
         break;
     case ATA_PT_LEN_FEATURES_REGISTER:
     case ATA_PT_LEN_SECTOR_COUNT:
-    case ATA_PT_LEN_TPSIU:
         // set t_dir flag (only needs to be set for DATAIN)
         if (dataDirection == XFER_DATA_IN)
         {
@@ -682,6 +589,12 @@ eReturnValues set_Transfer_Bits(uint8_t*                      satCDB,
             break;
         }
         break;
+    case ATA_PT_LEN_TPSIU:
+        if (dataDirection == XFER_DATA_IN)
+        {
+            satCDB[transferBitsOffset] |= SAT_T_DIR_DATA_IN;
+        }
+        break;
     }
     return ret;
 }
@@ -702,28 +615,28 @@ eReturnValues set_Multiple_Count(uint8_t* satCDB, uint8_t multipleCount, uint8_t
  */
 // Timeout should be set to 0, 2, 6, or 14 seconds when setting these bits.
 // This is different from the command's timeout to set for the OS.
-// eReturnValues set_Offline_Bits(uint8_t *satCDB, uint32_t timeout, uint8_t transferBitsOffset)
-//{
-//     uint8_t satTimeout = UINT8_C(0);
-//     switch (timeout)
-//     {
-//     case 0:
-//         break;
-//     case 2:
-//         satTimeout = BIT0;
-//         break;
-//     case 6:
-//         satTimeout = BIT1;
-//         break;
-//     case 14:
-//         satTimeout = BIT0 | BIT1;
-//         break;
-//     default:
-//         break;
-//     }
-//     satCDB[transferBitsOffset] |= (satTimeout << 6);
-//     return SUCCESS;
-// }
+ eReturnValues set_Offline_Bits(uint8_t *satCDB, uint32_t timeout, uint8_t transferBitsOffset)
+{
+     uint8_t satTimeout = UINT8_C(0);
+     switch (timeout)
+     {
+     case 0:
+         break;
+     case 2:
+         satTimeout = BIT0;
+         break;
+     case 6:
+         satTimeout = BIT1;
+         break;
+     case 14:
+         satTimeout = BIT0 | BIT1;
+         break;
+     default:
+         break;
+     }
+     satCDB[transferBitsOffset] |= (satTimeout << 6);
+     return SUCCESS;
+ }
 
 eReturnValues set_Check_Condition_Bit(uint8_t* satCDB, uint8_t transferBitsOffset)
 {
@@ -901,8 +814,8 @@ eReturnValues request_Return_TFRs_From_Device(tDevice* device, ataReturnTFRs* rt
         // Set the service action
         requestRTFRs[8]    = 0x1F;
         requestRTFRs[9]    = 0xF0;
-        protocolOffset     = 10;
-        transferBitsOffset = 11;
+        protocolOffset     = UINT8_C(10);
+        transferBitsOffset = UINT8_C(11);
     }
     else
     {
@@ -952,10 +865,10 @@ eReturnValues request_Return_TFRs_From_Device(tDevice* device, ataReturnTFRs* rt
             else
             {
                 // set the registers to zero
-                rtfr->secCntExt = 0;
-                rtfr->lbaLowExt = 0;
-                rtfr->lbaMidExt = 0;
-                rtfr->lbaHiExt  = 0;
+                rtfr->secCntExt = UINT8_C(0);
+                rtfr->lbaLowExt = UINT8_C(0);
+                rtfr->lbaMidExt = UINT8_C(0);
+                rtfr->lbaHiExt  = UINT8_C(0);
             }
         }
     }
@@ -1171,8 +1084,15 @@ eReturnValues build_SAT_CDB(tDevice*               device,
     // set protocol
     ret = set_Protocol_Field(*satCDB, ataCommandOptions->commadProtocol, ataCommandOptions->commandDirection,
                              protocolOffset);
-    if (ret != SUCCESS)
+    if (ret != SUCCESS ) //nothing else to setup for hardware reset
     {
+        return ret;
+    }
+    if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_SOFT_RESET ||
+        ataCommandOptions->commadProtocol == ATA_PROTOCOL_HARD_RESET)
+    {
+        // set offline field then return
+        set_Offline_Bits(*satCDB, ataCommandOptions->timeout, transferBitsOffset);
         return ret;
     }
     // set multiple count
@@ -1195,34 +1115,18 @@ eReturnValues build_SAT_CDB(tDevice*               device,
         // low level driver workaround
         set_Check_Condition_Bit(*satCDB, transferBitsOffset);
     }
-    else
+    else if (ataCommandOptions->needRTFRs)
     {
-        // only set this bit on NON-data transfers. Many HBAs don't like this always being set, but are OK with it for
-        // NON-data
-        switch (ataCommandOptions->commandDirection)
-        {
-        case XFER_NO_DATA:
-            if (!device->drive_info.passThroughHacks.ataPTHacks
-                     .disableCheckCondition) // don't set check condition if it will cause a problem with the adapter
-            {
-                set_Check_Condition_Bit(*satCDB, transferBitsOffset);
-            }
-            break;
-        default:
-            // don't set the bit...unless we're being forced to do so
-            if (ataCommandOptions->forceCheckConditionBit ||
-                (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable &&
-                 !((ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO &&
+        if (!((ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO &&
                     ataCommandOptions->commandDirection == XFER_DATA_IN) ||
-                   ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA_FPDMA)))
+                   ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA_FPDMA))
+        {
+            if ((!device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition ||
+                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable) &&
+                !device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty)
             {
-                // check condition is available by the translator for any command.
-                // So set it for all cases EXCEPT PIO-in and FPDMA. These will not return useful information when they
-                // pass. If these protocols fail, they WILL return useful completion, so check condition is not
-                // necessary.
                 set_Check_Condition_Bit(*satCDB, transferBitsOffset);
             }
-            break;
         }
     }
     return ret;
@@ -1231,11 +1135,11 @@ eReturnValues build_SAT_CDB(tDevice*               device,
 eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughCommand* ataCommandOptions)
 {
     eReturnValues ret            = UNKNOWN;
-    eReturnValues senseRet       = SUCCESS;
     uint8_t*      satCDB         = M_NULLPTR;
     eCDBLen       satCDBLength   = 0;
     uint8_t*      senseData      = M_NULLPTR; // only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool          localSenseData = false;
+    bool          dmaRetry       = false;
     if (!ataCommandOptions->ptrSenseData)
     {
         senseData = M_REINTERPRET_CAST(
@@ -1253,18 +1157,12 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
     {
         ataCommandOptions->timeout = M_Max(15, device->drive_info.defaultTimeoutSeconds);
     }
-    if (device->drive_info.passThroughHacks.ataPTHacks
-            .alwaysCheckConditionAvailable) // we want to always set this bit. May not work on all commands or all
-                                            // hbas/bridge chips. We typically only set this for Non-Data commands
-    {
-        ataCommandOptions->forceCheckConditionBit = true;
-    }
     // First build the CDB
     ret = build_SAT_CDB(device, &satCDB, &satCDBLength, ataCommandOptions);
     if (ret == SUCCESS)
     {
         ScsiIoCtx     scsiIoCtx;
-        eReturnValues sendIOret;
+        senseDataFields senseFields;
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             // Print out ATA Command Information in appropriate verbose mode.
@@ -1274,6 +1172,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
         safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
         safe_memcpy(scsiIoCtx.cdb, SCSI_IO_CTX_MAX_CDB_LEN, satCDB,
                     C_CAST(size_t, satCDBLength)); // should only ever be a known positive integer: 12, 16, or 32
+        safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
         scsiIoCtx.cdbLength     = C_CAST(uint8_t, satCDBLength);
         scsiIoCtx.dataLength    = ataCommandOptions->dataSize;
         scsiIoCtx.pdata         = ataCommandOptions->ptrData;
@@ -1285,60 +1184,264 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
         scsiIoCtx.timeout       = ataCommandOptions->timeout;
         // clear the last command sense data every single time before we issue any commands
         safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        device->drive_info.lastCommandTimeNanoSeconds = UINT64_C(0);
+
+        ret = private_SCSI_Send_CDB(&scsiIoCtx, &senseFields);
+
+        // Before attempting anything else to read RTFRs, send a follow up command, etc, check if the sense fields is already parsed with what we need. -TJE
+        bool gotRTFRs = false;
+        if (senseFields.validStructure && senseFields.ataStatusReturnDescriptor.valid)
         {
-            printf("\n  CDB:\n");
-            print_Data_Buffer(scsiIoCtx.cdb, scsiIoCtx.cdbLength, false);
-        }
-#if defined(_DEBUG)
-        // This is different for debug because sometimes we need to see if the data buffer actually changed after
-        // issuing a command. This was very important for debugging windows issues, which is why I have this ifdef in
-        // place for debug builds. - TJE
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ataCommandOptions->ptrData != M_NULLPTR)
-#else
-        // Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ataCommandOptions->ptrData != M_NULLPTR &&
-            ataCommandOptions->commandDirection == XFER_DATA_OUT)
-#endif
-        {
-            printf("\t  Data Buffer being sent:\n");
-            print_Data_Buffer(ataCommandOptions->ptrData, ataCommandOptions->dataSize, true);
-            printf("\n");
-        }
-        sendIOret = send_IO(&scsiIoCtx);
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity && scsiIoCtx.psense != M_NULLPTR)
-        {
-            printf("\n  Sense Data Buffer:\n");
-            print_Data_Buffer(scsiIoCtx.psense, get_Returned_Sense_Data_Length(scsiIoCtx.psense), false);
-            printf("\n");
-        }
-        get_Sense_Key_ASC_ASCQ_FRU(ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize,
-                                   &scsiIoCtx.returnStatus.senseKey, &scsiIoCtx.returnStatus.asc,
-                                   &scsiIoCtx.returnStatus.ascq, &scsiIoCtx.returnStatus.fru);
-        senseRet = check_Sense_Key_ASC_ASCQ_And_FRU(device, scsiIoCtx.returnStatus.senseKey, scsiIoCtx.returnStatus.asc,
-                                                    scsiIoCtx.returnStatus.ascq, scsiIoCtx.returnStatus.fru);
-        if (senseData != M_NULLPTR && ataCommandOptions->senseDataSize > 0 &&
-            senseData != device->drive_info.lastCommandSenseData)
-        {
-            safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, ataCommandOptions->ptrSenseData,
-                        ataCommandOptions->senseDataSize);
-        }
-        // Now get the RTFRs from the sense data or request them as necessary.
-        bool gotRTFRs = get_Return_TFRs_From_Sense_Data(device, ataCommandOptions, sendIOret, senseRet);
-        if (gotRTFRs)
-        {
-            // check if incomplete RTFRs
-            // Most likely case is RTFRs coming back all FF in ext
-            // The secCntExt == 0xFF may happen, but it's likely not common.
-            // NOTE: This is a workaround due to the bool above which is not ideal.
-            //       The SAT passthorugh probably needs refactoring to fix this better -TJE
-            if ((ataCommandOptions->rtfr.lbaLowExt == 0xFF && ataCommandOptions->rtfr.lbaMidExt == 0xFF &&
-                 ataCommandOptions->rtfr.lbaHiExt == 0xFF) ||
-                ataCommandOptions->rtfr.secCntExt == 0xFF)
+            gotRTFRs                          = true;
+            ataCommandOptions->rtfr.status    = senseFields.ataStatusReturnDescriptor.status;
+            ataCommandOptions->rtfr.error     = senseFields.ataStatusReturnDescriptor.error;
+            ataCommandOptions->rtfr.secCnt    = senseFields.ataStatusReturnDescriptor.sectorCount;
+            ataCommandOptions->rtfr.lbaLow    = senseFields.ataStatusReturnDescriptor.lbaLow;
+            ataCommandOptions->rtfr.lbaMid    = senseFields.ataStatusReturnDescriptor.lbaMid;
+            ataCommandOptions->rtfr.lbaHi     = senseFields.ataStatusReturnDescriptor.lbaHi;
+            ataCommandOptions->rtfr.device    = senseFields.ataStatusReturnDescriptor.device;
+            if (senseFields.ataStatusReturnDescriptor.extend || device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit)
             {
-                ret = WARN_INCOMPLETE_RFTRS;
+                ataCommandOptions->rtfr.secCntExt = senseFields.ataStatusReturnDescriptor.sectorCountExt;
+                ataCommandOptions->rtfr.lbaLowExt = senseFields.ataStatusReturnDescriptor.lbaLowExt;
+                ataCommandOptions->rtfr.lbaMidExt = senseFields.ataStatusReturnDescriptor.lbaMidExt;
+                ataCommandOptions->rtfr.lbaHiExt  = senseFields.ataStatusReturnDescriptor.lbaHiExt;
+            }
+            else
+            {
+                ataCommandOptions->rtfr.secCntExt = UINT8_C(0);
+                ataCommandOptions->rtfr.lbaLowExt = UINT8_C(0);
+                ataCommandOptions->rtfr.lbaMidExt = UINT8_C(0);
+                ataCommandOptions->rtfr.lbaHiExt  = UINT8_C(0);
             }
         }
+        else
+        {
+            // Before attempting anything else, check if sense data is fixed format
+            // If fixed format, parse information and command specific data out per SAT-2 and later
+            //     also check if ATA return descriptor is present in the vendor specific area of the sense data. - TJE
+            if (senseFields.validStructure && senseFields.fixedFormat)
+            {
+                // NOTE: Spec does not require this sense code to be reported, however it is the most reliable to use and most SATLs support it properly - TJE
+                if (senseFields.scsiStatusCodes.asc == 0x00 && senseFields.scsiStatusCodes.ascq == 0x1D)
+                {
+                    gotRTFRs = true;
+                    // this is set to "ATA Passthrough information available" so we can expect result registers in the correct place.
+                    // NOTE: The spec does not specify this must be set for ATA passthrough so other cases may also need to be handled. - TJE
+                    ataCommandOptions->rtfr.error  = M_Byte3(senseFields.fixedInformation);
+                    ataCommandOptions->rtfr.status = M_Byte2(senseFields.fixedInformation);
+                    ataCommandOptions->rtfr.device = M_Byte1(senseFields.fixedInformation);
+                    ataCommandOptions->rtfr.secCnt = M_Byte0(senseFields.fixedInformation);
+                    // now command specific information field
+                    if (M_Byte3(senseFields.fixedCommandSpecificInformation) & BIT7)
+                    {
+                        if (M_Byte3(senseFields.fixedCommandSpecificInformation) & BIT6)
+                        {
+                            ataCommandOptions->rtfr.secCntExt = UINT8_MAX;
+                            ret                               = WARN_INCOMPLETE_RFTRS;
+                        }
+                        if (M_Byte3(senseFields.fixedCommandSpecificInformation) & BIT5)
+                        {
+                            ataCommandOptions->rtfr.lbaLowExt = UINT8_MAX;
+                            ataCommandOptions->rtfr.lbaMidExt = UINT8_MAX;
+                            ataCommandOptions->rtfr.lbaHiExt  = UINT8_MAX;
+                            ret                               = WARN_INCOMPLETE_RFTRS;
+                        }
+                        // if a non-zero log index is available, then we can read that to get full result
+                        uint8_t resultsLogIndex = M_Nibble0(M_Byte3(senseFields.fixedCommandSpecificInformation));
+                        if (resultsLogIndex > UINT8_C(0))
+                        {
+                            // scsi log sense to passthrough results log page with the value in the log index
+                            ret = get_Return_TFRs_From_Passthrough_Results_Log(device, &ataCommandOptions->rtfr,
+                                                                               resultsLogIndex - UINT8_C(1));
+                        }
+                        else if (senseFields.additionalDataAvailable &&
+                                 scsiIoCtx.psense[senseFields.additionalDataOffset] == 0x09 &&
+                                 scsiIoCtx.psense[senseFields.additionalDataOffset + 1] == 0x0C)
+                        {
+                            // non-standard where the ATA status descriptor is reported in the vendor specific bytes of the fixed format sense data
+                            ret = SUCCESS;
+                            ataCommandOptions->rtfr.status = scsiIoCtx.psense[senseFields.additionalDataOffset + 13];
+                            ataCommandOptions->rtfr.error  = scsiIoCtx.psense[senseFields.additionalDataOffset + 3];
+                            ataCommandOptions->rtfr.secCnt = scsiIoCtx.psense[senseFields.additionalDataOffset + 5];
+                            ataCommandOptions->rtfr.lbaLow = scsiIoCtx.psense[senseFields.additionalDataOffset + 7];
+                            ataCommandOptions->rtfr.lbaMid = scsiIoCtx.psense[senseFields.additionalDataOffset + 9];
+                            ataCommandOptions->rtfr.lbaHi  = scsiIoCtx.psense[senseFields.additionalDataOffset + 11];
+                            ataCommandOptions->rtfr.device = scsiIoCtx.psense[senseFields.additionalDataOffset + 12];
+                            if (scsiIoCtx.psense[senseFields.additionalDataOffset + 2] & BIT0 ||
+                                device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit)
+                            {
+                                ataCommandOptions->rtfr.secCntExt =
+                                    scsiIoCtx.psense[senseFields.additionalDataOffset + 4];
+                                ataCommandOptions->rtfr.lbaLowExt = scsiIoCtx.psense[senseFields.additionalDataOffset + 6];
+                                ataCommandOptions->rtfr.lbaMidExt = scsiIoCtx.psense[senseFields.additionalDataOffset + 8];
+                                ataCommandOptions->rtfr.lbaHiExt  = scsiIoCtx.psense[senseFields.additionalDataOffset + 10];
+                            }
+                            else
+                            {
+                                ataCommandOptions->rtfr.secCntExt = UINT8_C(0);
+                                ataCommandOptions->rtfr.lbaLowExt = UINT8_C(0);
+                                ataCommandOptions->rtfr.lbaMidExt = UINT8_C(0);
+                                ataCommandOptions->rtfr.lbaHiExt  = UINT8_C(0);
+                            }
+                        }
+                        else if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
+                        {
+                            if (NOT_SUPPORTED == request_Return_TFRs_From_Device(device, &ataCommandOptions->rtfr))
+                            {
+                                device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = false;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ataCommandOptions->rtfr.secCntExt = UINT8_C(0);
+                        ataCommandOptions->rtfr.lbaLowExt = UINT8_C(0);
+                        ataCommandOptions->rtfr.lbaMidExt = UINT8_C(0);
+                        ataCommandOptions->rtfr.lbaHiExt  = UINT8_C(0);
+                    }
+                    ataCommandOptions->rtfr.lbaLow = M_Byte2(senseFields.fixedCommandSpecificInformation);
+                    ataCommandOptions->rtfr.lbaMid = M_Byte1(senseFields.fixedCommandSpecificInformation);
+                    ataCommandOptions->rtfr.lbaHi  = M_Byte0(senseFields.fixedCommandSpecificInformation);
+                }
+            }
+            else //translate the result to common rtfr responses
+            {
+                uint8_t senseKey = UINT8_C(0);
+                uint8_t asc      = UINT8_C(0);
+                uint8_t ascq     = UINT8_C(0);
+                uint8_t fru      = UINT8_C(0);
+                if (senseFields.validStructure)
+                {
+                    senseKey = senseFields.scsiStatusCodes.senseKey;
+                    asc = senseFields.scsiStatusCodes.asc;
+                    ascq = senseFields.scsiStatusCodes.ascq;
+                    fru = senseFields.scsiStatusCodes.fru;
+                }
+                switch (senseKey)
+                {
+                case SENSE_KEY_HARDWARE_ERROR:
+                    if (asc == 0x44 && ascq == 0x00 && fru == 0)
+                    {
+                        ataCommandOptions->rtfr.status = ATA_STATUS_BIT_DEVICE_FAULT;
+                    }
+                    break;
+                case SENSE_KEY_NOT_READY:
+                    if (asc == 0x3A && ascq == 0x00 && fru == 0)
+                    {
+                        ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                        ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_NO_MEDIA; // nm bit
+                    }
+                    break;
+                case SENSE_KEY_MEDIUM_ERROR:
+                    if (asc == 0x11 && ascq == 0x00 && fru == 0)
+                    {
+                        ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                        ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_UNCORRECTABLE_DATA; // unc bit
+                    }
+                    else if (asc == 0x14 && ascq == 0x01 && fru == 0)
+                    {
+                        ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                        ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_ID_NOT_FOUND; // idnf bit
+                    }
+                    break;
+                case SENSE_KEY_DATA_PROTECT:
+                    if (asc == 0x27 && ascq == 0x00 && fru == 0)
+                    {
+                        ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                        ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_WRITE_PROTECTED; // wp bit
+                    }
+                    break;
+                case SENSE_KEY_ILLEGAL_REQUEST:
+                    if (asc == 0x21 && ascq == 0x00 && fru == 0)
+                    {
+                        ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                        ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_ID_NOT_FOUND; // idnf bit
+                    }
+                    else if (asc == 0x24 && ascq == 0x00) // invalid field in CDB
+                    {
+                        if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA)
+                        {
+                            dmaRetry = true;
+                        }
+                        // TODO: Check condition bit check for retry with follow up command instead?
+                    }
+                    break;
+                case SENSE_KEY_ABORTED_COMMAND:
+                    if (asc == 0x47 && ascq == 0x03 && fru == 0)
+                    {
+                        ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                        ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_INTERFACE_CRC; // icrc bit
+                    }
+                    else
+                    {
+                        ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                        ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_ABORT; // abort
+                    }
+                    break;
+                case SENSE_KEY_UNIT_ATTENTION:
+                    if (asc == 0x28 && ascq == 0x00 && fru == 0)
+                    {
+                        ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                        ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_MEDIA_CHANGE; // mc bit
+                    }
+                    else if (asc == 0x47 && ascq == 0x03 && fru == 0)
+                    {
+                        ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
+                        ataCommandOptions->rtfr.error  = ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST; // mcr bit
+                    }
+                    break;
+                case SENSE_KEY_NO_ERROR:
+                    // if no error is reported, then consider this a passing command.
+                    ataCommandOptions->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY;
+                    ataCommandOptions->rtfr.error  = 0;
+                    break;
+                default:
+                    // Don't do anything! We don't have enough information to decide what happened. The SATL is
+                    // returning it's own error that is not related to the command being sent.
+                    break;
+                }
+            }
+        }
+
+        if (gotRTFRs)
+        {
+            // Check if they are empty because this is a device that may not truly support the check condition bit
+            // NOTE: Only checking status and error at this time since those should basically always have something in them when the RTFRs come back.
+            if (ataCommandOptions->rtfr.status == 0 || ((ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR) && ataCommandOptions->rtfr.error == 0))
+            {
+                device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;
+                if (!device->drive_info.passThroughHacks.hacksSetByReportedID &&
+                    !device->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible)
+                {
+                    // turn on return response info to try that since the check condition came back empty
+                    device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+                    device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+                }
+            }
+        }
+
+        if ((!gotRTFRs || device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty) &&
+            ataCommandOptions->needRTFRs &&
+            device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported &&
+            scsiIoCtx.psense[0] == SCSI_SENSE_NO_SENSE_DATA && ret != BAD_PARAMETER && ret != OS_PASSTHROUGH_FAILURE && ret != OS_COMMAND_NOT_AVAILABLE)
+        {
+            if (SUCCESS != request_Return_TFRs_From_Device(device, &ataCommandOptions->rtfr))
+            {
+                if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
+                {
+                    device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = false;
+                    if (device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty)
+                    {
+                        // Set this disable check condition because we already auto tried check condition and got an empty result
+                        // We are now here where the follow up command also failed. So to prevent future retries, also set this field.
+                        // Basically reusing an existing hack to determine when a retry has already been tested.
+                        device->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible = true;
+                    }
+                }
+            }
+        }
+        
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             // Print out the RTFRs that we got
@@ -1349,42 +1452,10 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
             // print command timing information
             print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
         }
-#if defined(_DEBUG)
-        // This is different for debug because sometimes we need to see if the data buffer actually changed after
-        // issuing a command. This was very important for debugging windows issues, which is why I have this ifdef in
-        // place for debug builds. - TJE
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ataCommandOptions->ptrData != M_NULLPTR)
-#else
-        // Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ataCommandOptions->ptrData != M_NULLPTR &&
-            ataCommandOptions->commandDirection == XFER_DATA_IN)
-#endif
-        {
-            printf("\t  Data Buffer being returned:\n");
-            print_Data_Buffer(ataCommandOptions->ptrData, ataCommandOptions->dataSize, true);
-            printf("\n");
-        }
+
         device->drive_info.ataSenseData.validData = false; // clear this everytime. will be changed if we got anything
-        if (sendIOret != OS_PASSTHROUGH_FAILURE &&
-            gotRTFRs) // If we got this error, then there's nothing we can do as far as judging command result since the
-                      // failure was an OS failure..so we just want to pass this up
+        if (gotRTFRs)
         {
-            // Determine the command completion status to set the error code.
-            // This is written after reviewing SAT, AAM, AST, APT, SATA Specs, and legacy drive specs.
-            // if ((ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO && ataCommandOptions->commandDirection ==
-            // XFER_DATA_IN)
-            //     ||
-            //     ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA_FPDMA)
-            //{
-            //     //If we get here, then the result register bits will be zero if the command completes successfully.
-            //     //If the command failed, then we should see the error bit in the error register set to 1.
-            //     //This was added in SAT3.
-            //     //TODO: separate error handling for these cases here!!! - TJE
-            // }
-            // else
-            //{
-            //     //Normal error handling for all other commands
-            // }
             // Check the status register to see if the busy bit is set
             bool          checkError          = false;
             bool          requestATASenseData = false;
@@ -1490,15 +1561,6 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
                 device->drive_info.lastCommandTimeNanoSeconds = commandTimeNanoseconds;
             }
         }
-        else if (sendIOret != OS_PASSTHROUGH_FAILURE && !gotRTFRs)
-        {
-            ret = senseRet; // We didn't get RTFRs to judge and there wasn't an issue sending the command through the OS
-                            // or driver...so go with what the sense data says
-        }
-        else
-        {
-            ret = sendIOret;
-        }
     }
     safe_free_aligned(&satCDB);
     if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
@@ -1513,29 +1575,18 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if (senseRet == NOT_SUPPORTED && ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA)
+    if (dmaRetry)
     {
-        uint8_t senseKey = UINT8_C(0);
-        uint8_t asc      = UINT8_C(0);
-        uint8_t ascq     = UINT8_C(0);
-        uint8_t fru      = UINT8_C(0);
-        get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq,
-                                   &fru);
-        // Checking for illegal request, invalid field in CDB since this is what we've seen reported when UDMA commands
-        // are not supported.
-        if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x24 && ascq == 0x00)
+        // if the sense data says "NOT_SUPPORTED", it's highly likely that the SATL didn't like something in the
+        // command. Local testing shows that sometimes a SATL likes the mode set to DMA instead of UDMA, so retry
+        // the command with the protocol set to DMA.
+        ataCommandOptions->commadProtocol = ATA_PROTOCOL_DMA;
+        ret                               = send_SAT_Passthrough_Command(device, ataCommandOptions);
+        if (ret == SUCCESS)
         {
-            // if the sense data says "NOT_SUPPORTED", it's highly likely that the SATL didn't like something in the
-            // command. Local testing shows that sometimes a SATL likes the mode set to DMA instead of UDMA, so retry
-            // the command with the protocol set to DMA.
-            ataCommandOptions->commadProtocol = ATA_PROTOCOL_DMA;
-            ret                               = send_SAT_Passthrough_Command(device, ataCommandOptions);
-            if (ret == SUCCESS)
-            {
-                // if changing back to DMA worked, then we're changing some flags in the ataOptions struct to make sure
-                // we have success with future commands.
-                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
-            }
+            // if changing back to DMA worked, then we're changing some flags in the ataOptions struct to make sure
+            // we have success with future commands.
+            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
         }
     }
     return ret;
@@ -1605,7 +1656,7 @@ static void set_Sense_Data_For_Translation(
     uint8_t additionalSenseLength = UINT8_C(0);
     if (descriptorFormat)
     {
-        senseData[0] = 0x72;
+        senseData[0] = SCSI_SENSE_CUR_INFO_DESC;
         // sense key
         senseData[1] |= M_Nibble0(senseKey);
         // asc
@@ -1641,7 +1692,7 @@ static void set_Sense_Data_For_Translation(
     }
     else
     {
-        senseData[0] = 0x70;
+        senseData[0] = SCSI_SENSE_CUR_INFO_FIXED;
         // sense key
         senseData[2] |= M_Nibble0(senseKey);
         // asc
@@ -1755,7 +1806,7 @@ static void set_Sense_Data_For_Translation(
                     if (descriptor[descriptorOffset + 10] || descriptor[descriptorOffset + 8] ||
                         descriptor[descriptorOffset + 6])
                     {
-                        // set uppder LBA non-zero bit
+                        // set upper LBA non-zero bit
                         senseData[8] |= BIT5;
                     }
                     if (descriptor[descriptorOffset + 4])
@@ -1789,7 +1840,7 @@ static void set_Sense_Data_For_Translation(
                         senseData[2] |= BIT5;
                     }
                     // bytes 4, 5 , and 6 for sense key specific information
-                    safe_memcpy(&senseData[15], SPC3_SENSE_LEN - 16, &descriptor[descriptorOffset + 4], 3);
+                    safe_memcpy(&senseData[15], SPC3_SENSE_LEN - 15, &descriptor[descriptorOffset + 4], 3);
                     // fru code
                     senseData[14] = descriptor[descriptorOffset + 7];
                     {
@@ -2586,7 +2637,7 @@ static eReturnValues translate_ATA_Information_VPD_Page_89h(tDevice* device, Scs
     if (scsiIoCtx->pdata)
     {
         safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, ataInformation,
-                    M_Min(SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL, scsiIoCtx->dataLength));
+                    M_Min(scsiIoCtx->dataLength, SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL));
     }
     return ret;
 }
@@ -7503,7 +7554,7 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(tDevice* device, ScsiIoC
                         if (scsiIoCtx->pdata)
                         {
                             safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readBufferData,
-                                        M_Min(LEGACY_DRIVE_SEC_SIZE, allocationLength));
+                                        M_Min(allocationLength, LEGACY_DRIVE_SEC_SIZE));
                         }
                     }
                 }
@@ -9560,7 +9611,7 @@ static eReturnValues translate_Supported_Log_Pages(tDevice* device, ScsiIoCtx* s
     {
         safe_memcpy(
             scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedPages,
-            M_Min(scsiIoCtx->dataLength, C_CAST(uint16_t, M_Min(LEGACY_DRIVE_SEC_SIZE, C_CAST(uint16_t, offset)))));
+            M_Min(scsiIoCtx->dataLength, C_CAST(uint16_t, M_Min(C_CAST(uint16_t, offset) , LEGACY_DRIVE_SEC_SIZE))));
     }
     return ret;
 }
@@ -9896,7 +9947,7 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(tDevice* device, ScsiI
             if (scsiIoCtx->pdata)
             {
                 safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, selfTestResults,
-                            M_Min(404U, scsiIoCtx->dataLength));
+                            M_Min(scsiIoCtx->dataLength, 404U));
             }
         }
     }

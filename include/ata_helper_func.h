@@ -1709,12 +1709,13 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
+    //!   \param timeout - time to wait for software reset. Should be 0, 2, 4, 6, or 14
     //
     //  Exit:
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    eReturnValues ata_Soft_Reset(tDevice* device);
+    eReturnValues ata_Soft_Reset(tDevice* device, uint8_t timeout);
 
     //-----------------------------------------------------------------------------
     //
@@ -1725,12 +1726,13 @@ extern "C"
     //
     //  Entry:
     //!   \param device - device handle
+    //!   \param timeout - time to wait for software reset. Should be 0, 2, 4, 6, or 14
     //
     //  Exit:
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    eReturnValues ata_Hard_Reset(tDevice* device);
+    eReturnValues ata_Hard_Reset(tDevice* device, uint8_t timeout);
 
     //-----------------------------------------------------------------------------
     //
@@ -2705,7 +2707,7 @@ extern "C"
                                                                   bool     fua,
                                                                   uint64_t lba,
                                                                   uint8_t* ptrData,
-                                                                  uint16_t sectorCount,
+                                                                  uint32_t dataSize,
                                                                   uint8_t  prio,
                                                                   uint8_t  ncqTag,
                                                                   uint8_t  icc);
@@ -2713,17 +2715,17 @@ extern "C"
                                                                    bool     fua,
                                                                    uint64_t lba,
                                                                    uint8_t* ptrData,
-                                                                   uint16_t sectorCount,
+                                                                   uint32_t dataSize,
                                                                    uint8_t  prio,
                                                                    uint8_t  ncqTag,
                                                                    uint8_t  icc);
 
     // Old TCG commands
     OPENSEA_TRANSPORT_API eReturnValues
-    ata_Read_DMA_Queued(tDevice* device, bool ext, uint64_t lba, uint8_t* ptrData, uint16_t sectorCount, uint8_t tag);
+    ata_Read_DMA_Queued(tDevice* device, bool ext, uint64_t lba, uint8_t* ptrData, uint32_t dataSize, uint8_t tag);
 
     OPENSEA_TRANSPORT_API eReturnValues
-    ata_Write_DMA_Queued(tDevice* device, bool ext, uint64_t lba, uint8_t* ptrData, uint16_t sectorCount, uint8_t tag);
+    ata_Write_DMA_Queued(tDevice* device, bool ext, uint64_t lba, uint8_t* ptrData, uint32_t dataSize, uint8_t tag);
 
 #if defined(__cplusplus)
 }

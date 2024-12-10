@@ -68,7 +68,7 @@ eReturnValues ata_Passthrough_Command(tDevice* device, ataPassthroughCommand* at
     return ret;
 }
 
-eReturnValues ata_Soft_Reset(tDevice* device)
+eReturnValues ata_Soft_Reset(tDevice* device, uint8_t timeout)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand softReset;
@@ -77,13 +77,18 @@ eReturnValues ata_Soft_Reset(tDevice* device)
     softReset.commandType      = ATA_CMD_TYPE_TASKFILE;
     softReset.commandDirection = XFER_NO_DATA;
     softReset.ptrData          = M_NULLPTR;
+    softReset.timeout          = timeout;
+    if (timeout > 14)
+    {
+        softReset.timeout = 14;
+    }
 
     ret = ata_Passthrough_Command(device, &softReset);
 
     return ret;
 }
 
-eReturnValues ata_Hard_Reset(tDevice* device)
+eReturnValues ata_Hard_Reset(tDevice* device, uint8_t timeout)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand hardReset;
@@ -92,6 +97,11 @@ eReturnValues ata_Hard_Reset(tDevice* device)
     hardReset.commandType      = ATA_CMD_TYPE_TASKFILE;
     hardReset.commandDirection = XFER_NO_DATA;
     hardReset.ptrData          = M_NULLPTR;
+    hardReset.timeout          = timeout;
+    if (timeout > 14)
+    {
+        hardReset.timeout = 14;
+    }
 
     ret = ata_Passthrough_Command(device, &hardReset);
 
@@ -156,12 +166,18 @@ eReturnValues ata_Sanitize_Command(tDevice*            device,
                                    uint16_t            sectorCount)
 {
     eReturnValues         ret            = UNKNOWN;
-    ataPassthroughCommand ataSanitizeCmd = create_ata_nondata_cmd(device, ATA_SANITIZE, true);
+    ataPassthroughCommand ataSanitizeCmd = create_ata_nondata_cmd(device, ATA_SANITIZE, true, false);
     ataSanitizeCmd.tfr.SectorCount       = M_Byte0(sectorCount);
     ataSanitizeCmd.tfr.SectorCount48     = M_Byte1(sectorCount);
     ataSanitizeCmd.tfr.ErrorFeature      = M_Byte0(M_STATIC_CAST(uint16_t, sanitizeFeature));
     ataSanitizeCmd.tfr.Feature48         = M_Byte1(M_STATIC_CAST(uint16_t, sanitizeFeature));
     set_ata_pt_LBA_48_sig(&ataSanitizeCmd, lba);
+    if (sanitizeFeature == ATA_SANITIZE_STATUS)
+    {
+        // We use the RTFRs from the status to decide what to do.
+        // For all others we do not need RTFRs. If an error occurs we should get them anyways -TJE
+        ataSanitizeCmd.needRTFRs = true;
+    }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -338,13 +354,14 @@ eReturnValues ata_Read_Log_Ext(tDevice* device,
     ataCommandOptions.ataTransferBlocks        = ATA_PT_512B_BLOCKS;
     if (useDMA)
     {
-        ataCommandOptions = create_ata_dma_in_cmd(device, ATA_READ_LOG_EXT_DMA, true, dataSize / LEGACY_DRIVE_SEC_SIZE,
+        ataCommandOptions = create_ata_dma_in_cmd(device, ATA_READ_LOG_EXT_DMA, true, M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE),
                                                   ptrData, dataSize);
     }
     else
     {
         ataCommandOptions =
-            create_ata_pio_in_cmd(device, ATA_READ_LOG_EXT, true, dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+            create_ata_pio_in_cmd(device, ATA_READ_LOG_EXT, true,
+                                  M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     }
     ataCommandOptions.tfr.LbaLow       = logAddress;
     ataCommandOptions.tfr.LbaMid       = M_Byte0(pageNumber);
@@ -426,14 +443,14 @@ eReturnValues ata_Write_Log_Ext(tDevice* device,
     if (useDMA)
     {
         ataCommandOptions = create_ata_dma_out_cmd(device, ATA_WRITE_LOG_EXT_DMA, true,
-                                                   dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+                                   M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     }
     else
     {
         ataCommandOptions = create_ata_pio_out_cmd(device, ATA_WRITE_LOG_EXT_CMD, true,
-                                                   dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+                                   M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     }
-    ataCommandOptions.forceCheckConditionBit = forceRTFRs;
+    ataCommandOptions.needRTFRs = forceRTFRs;
 
     // Will the ptrData be the correct size for the log?
     ataCommandOptions.tfr.LbaLow   = logAddress;
@@ -480,7 +497,6 @@ eReturnValues ata_SMART_Command(tDevice* device,
     }
     // zap it
     safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
-    ataCommandOptions.forceCheckConditionBit = forceRTFRs;
     switch (feature)
     {
     case ATA_SMART_READ_LOG:
@@ -500,16 +516,17 @@ eReturnValues ata_SMART_Command(tDevice* device,
         {
             printf("Read Data\n");
         }
-        ataCommandOptions =
-            create_ata_pio_in_cmd(device, ATA_SMART_CMD, false, dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+        ataCommandOptions = create_ata_pio_in_cmd(
+            device, ATA_SMART_CMD, false, M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
         break;
     case ATA_SMART_WRITE_LOG:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_WRITE_LOG)
         {
             printf("Write Log - Log %02" PRIX8 "h, Count %" PRIu32 "\n", lbaLo, (dataSize / LEGACY_DRIVE_SEC_SIZE));
         }
-        ataCommandOptions =
-            create_ata_pio_out_cmd(device, ATA_SMART_CMD, false, dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+        ataCommandOptions = create_ata_pio_out_cmd(
+            device, ATA_SMART_CMD, false, M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
+        ataCommandOptions.needRTFRs = forceRTFRs;
         break;
     case ATA_SMART_SW_AUTOSAVE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_SW_AUTOSAVE)
@@ -546,7 +563,7 @@ eReturnValues ata_SMART_Command(tDevice* device,
         {
             printf("Disable Operations\n");
         }
-        ataCommandOptions                 = create_ata_nondata_cmd(device, ATA_SMART_CMD, false);
+        ataCommandOptions                 = create_ata_nondata_cmd(device, ATA_SMART_CMD, false, forceRTFRs);
         ataCommandOptions.tfr.SectorCount = countReg;
         break;
     default:
@@ -556,17 +573,18 @@ eReturnValues ata_SMART_Command(tDevice* device,
             {
                 // assume data in (read)
                 ataCommandOptions = create_ata_pio_in_cmd(device, ATA_SMART_CMD, false,
-                                                          dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+                                          M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
             }
             else
             {
                 ataCommandOptions = create_ata_pio_out_cmd(device, ATA_SMART_CMD, false,
-                                                           dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+                                                           M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE),
+                                                           ptrData, dataSize);
             }
         }
         else
         {
-            ataCommandOptions                 = create_ata_nondata_cmd(device, ATA_SMART_CMD, false);
+            ataCommandOptions                 = create_ata_nondata_cmd(device, ATA_SMART_CMD, false, forceRTFRs);
             ataCommandOptions.tfr.SectorCount = countReg;
         }
         break;
@@ -788,7 +806,7 @@ eReturnValues ata_Security_Disable_Password(tDevice* device, uint8_t* ptrData)
 eReturnValues ata_Security_Erase_Prepare(tDevice* device)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SECURITY_ERASE_PREP, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SECURITY_ERASE_PREP, false, false);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -872,7 +890,7 @@ eReturnValues ata_Security_Unlock(tDevice* device, uint8_t* ptrData)
 eReturnValues ata_Security_Freeze_Lock(tDevice* device)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SECURITY_FREEZE_LOCK_CMD, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SECURITY_FREEZE_LOCK_CMD, false, false);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -896,12 +914,16 @@ eReturnValues ata_Accessible_Max_Address_Feature(tDevice*       device,
                                                  uint16_t       sectorCount)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_ACCESSABLE_MAX_ADDR, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_ACCESSABLE_MAX_ADDR, true, false);
     ataCommandOptions.tfr.ErrorFeature      = M_Byte0(feature);
     ataCommandOptions.tfr.Feature48         = M_Byte1(feature);
     set_ata_pt_LBA_48(&ataCommandOptions, lba);
     ataCommandOptions.tfr.SectorCount   = M_Byte0(sectorCount);
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(sectorCount);
+    if (feature == 0)
+    {
+        ataCommandOptions.needRTFRs = true;
+    }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -953,7 +975,7 @@ eReturnValues ata_Read_Native_Max_Address(tDevice* device, uint64_t* nativeMaxLB
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
-        create_ata_nondata_cmd(device, ext ? ATA_READ_MAX_ADDRESS_EXT : ATA_READ_MAX_ADDRESS, ext);
+        create_ata_nondata_cmd(device, ext ? ATA_READ_MAX_ADDRESS_EXT : ATA_READ_MAX_ADDRESS, ext, true);
     ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1007,7 +1029,7 @@ eReturnValues ata_Set_Max(tDevice*    device,
     case HPA_SET_MAX_ADDRESS:
     case HPA_SET_MAX_FREEZE_LOCK:
     case HPA_SET_MAX_LOCK:
-        ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_MAX, false);
+        ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_MAX, false, false);
         if (volatileValue)
         {
             ataCommandOptions.tfr.SectorCount |= BIT0;
@@ -1066,7 +1088,7 @@ eReturnValues ata_Set_Max_Freeze_Lock(tDevice* device)
 eReturnValues ata_Set_Max_Address_Ext(tDevice* device, uint64_t newMaxLBA, bool volatileValue)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_MAX_EXT, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_MAX_EXT, true, false);
     set_ata_pt_LBA_48(&ataCommandOptions, newMaxLBA);
     if (volatileValue)
     {
@@ -1103,7 +1125,8 @@ eReturnValues ata_Download_Microcode(tDevice*                   device,
     if (subCommand == ATA_DL_MICROCODE_ACTIVATE)
     {
         ataCommandOptions =
-            create_ata_nondata_cmd(device, useDMA ? ATA_DOWNLOAD_MICROCODE_DMA : ATA_DOWNLOAD_MICROCODE_CMD, false);
+            create_ata_nondata_cmd(device, useDMA ? ATA_DOWNLOAD_MICROCODE_DMA : ATA_DOWNLOAD_MICROCODE_CMD, false, true);
+        // Set need RTFRs because this can help us understand if the new microcode activated correctly - TJE
     }
     else
     {
@@ -1169,7 +1192,7 @@ eReturnValues ata_Download_Microcode(tDevice*                   device,
 eReturnValues ata_Check_Power_Mode(tDevice* device, uint8_t* powerMode)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_CHECK_POWER_MODE_CMD, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_CHECK_POWER_MODE_CMD, false, true);
 
     if (!powerMode)
     {
@@ -1203,7 +1226,7 @@ eReturnValues ata_Configure_Stream(tDevice* device,
                                    uint16_t allocationUnit)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_CONFIGURE_STREAM, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_CONFIGURE_STREAM, true, true);
     ataCommandOptions.tfr.SectorCount       = M_Byte0(allocationUnit);
     ataCommandOptions.tfr.SectorCount48     = M_Byte1(allocationUnit);
     // set default cctl
@@ -1239,7 +1262,7 @@ eReturnValues ata_Data_Set_Management(tDevice* device, bool trimBit, uint8_t* pt
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
         create_ata_dma_out_cmd(device, xl ? ATA_DATA_SET_MANAGEMENT_XL_CMD : ATA_DATA_SET_MANAGEMENT_CMD, true,
-                               dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+                               M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     // set the TRIM bit if asked
     if (trimBit)
     {
@@ -1306,7 +1329,7 @@ eReturnValues ata_Flush_Cache(tDevice* device, bool extendedCommand)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
-        create_ata_nondata_cmd(device, extendedCommand ? ATA_FLUSH_CACHE_EXT : ATA_FLUSH_CACHE_CMD, extendedCommand);
+        create_ata_nondata_cmd(device, extendedCommand ? ATA_FLUSH_CACHE_EXT : ATA_FLUSH_CACHE_CMD, extendedCommand, false);
     ataCommandOptions.timeout = MAX_CMD_TIMEOUT_SECONDS;
     // Changed from 45 seconds to max command timeout to make sure this has enough time to complete without the system
     // sending a reset. The spec mentions this can take up to 30 minutes, but that is likely a rare condition. It should
@@ -1343,7 +1366,7 @@ eReturnValues ata_Flush_Cache(tDevice* device, bool extendedCommand)
 eReturnValues ata_Idle(tDevice* device, uint8_t standbyTimerPeriod)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_IDLE_CMD, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_IDLE_CMD, false, false);
     ataCommandOptions.tfr.SectorCount       = standbyTimerPeriod;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1362,12 +1385,13 @@ eReturnValues ata_Idle(tDevice* device, uint8_t standbyTimerPeriod)
 eReturnValues ata_Idle_Immediate(tDevice* device, bool unloadFeature)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_IDLE_IMMEDIATE_CMD, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_IDLE_IMMEDIATE_CMD, false, false);
     if (unloadFeature)
     {
         ataCommandOptions.tfr.ErrorFeature = IDLE_IMMEDIATE_UNLOAD_FEATURE;
         ataCommandOptions.tfr.SectorCount  = 0x00;
         set_ata_pt_LBA_28_sig(&ataCommandOptions, IDLE_IMMEDIATE_UNLOAD_LBA);
+        // NOTE: RTFR's set C4h in LBA lo on success. Not currently looking for this -TJE
     }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1430,17 +1454,19 @@ eReturnValues ata_Read_Buffer(tDevice* device, uint8_t* ptrData, bool useDMA)
 
     return ret;
 }
+
 eReturnValues ata_Read_DMA(tDevice* device,
                            uint64_t LBA,
                            uint8_t* ptrData,
-                           uint16_t sectorCount,
+                           M_ATTR_UNUSED uint16_t sectorCount,
                            uint32_t dataSize,
                            bool     extendedCmd)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
         create_ata_dma_read_lba_cmd(device, extendedCmd ? ATA_READ_DMA_EXT : ATA_READ_DMA_RETRY_CMD, extendedCmd,
-                                    sectorCount, LBA, ptrData, dataSize);
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
+        ptrData, dataSize);
 
     if (!ptrData)
     {
@@ -1479,14 +1505,15 @@ eReturnValues ata_Read_DMA(tDevice* device,
 eReturnValues ata_Read_Multiple(tDevice* device,
                                 uint64_t LBA,
                                 uint8_t* ptrData,
-                                uint16_t sectorCount,
+                                M_ATTR_UNUSED uint16_t sectorCount,
                                 uint32_t dataSize,
                                 bool     extendedCmd)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
-        create_ata_pio_read_lba_cmd(device, extendedCmd ? ATA_READ_READ_MULTIPLE_EXT : ATA_READ_MULTIPLE_CMD,
-                                    extendedCmd, sectorCount, LBA, ptrData, dataSize);
+        create_ata_pio_read_lba_cmd(device, extendedCmd ? ATA_READ_READ_MULTIPLE_EXT : ATA_READ_MULTIPLE_CMD, extendedCmd,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
+        ptrData, dataSize);
     set_ata_pt_multipleCount(&ataCommandOptions, device);
 
     if (ptrData == M_NULLPTR)
@@ -1526,13 +1553,15 @@ eReturnValues ata_Read_Multiple(tDevice* device,
 eReturnValues ata_Read_Sectors(tDevice* device,
                                uint64_t LBA,
                                uint8_t* ptrData,
-                               uint16_t sectorCount,
+                               M_ATTR_UNUSED uint16_t sectorCount,
                                uint32_t dataSize,
                                bool     extendedCmd)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_read_lba_cmd(
-        device, extendedCmd ? ATA_READ_SECT_EXT : ATA_READ_SECT, extendedCmd, sectorCount, LBA, ptrData, dataSize);
+        device, extendedCmd ? ATA_READ_SECT_EXT : ATA_READ_SECT, extendedCmd,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
+        ptrData, dataSize);
 
     if (!ptrData)
     {
@@ -1613,12 +1642,14 @@ eReturnValues ata_Read_Stream_Ext(tDevice* device,
     if (useDMA)
     {
         ataCommandOptions = create_ata_dma_in_cmd(device, ATA_READ_STREAM_DMA_EXT, true,
-                                                  dataSize / device->drive_info.deviceBlockSize, ptrData, dataSize);
+            get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, true),
+                                  ptrData, dataSize);
     }
     else
     {
         ataCommandOptions = create_ata_dma_in_cmd(device, ATA_READ_STREAM_EXT, true,
-                                                  dataSize / device->drive_info.deviceBlockSize, ptrData, dataSize);
+            get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, true),
+                                  ptrData, dataSize);
     }
     set_ata_pt_LBA_48(&ataCommandOptions, LBA);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -1675,7 +1706,7 @@ eReturnValues ata_Read_Verify_Sectors(tDevice* device, bool extendedCmd, uint16_
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
-        create_ata_nondata_cmd(device, extendedCmd ? ATA_READ_VERIFY_EXT : ATA_READ_VERIFY_RETRY, extendedCmd);
+        create_ata_nondata_cmd(device, extendedCmd ? ATA_READ_VERIFY_EXT : ATA_READ_VERIFY_RETRY, extendedCmd, false);
     if (extendedCmd)
     {
         set_ata_pt_LBA_48(&ataCommandOptions, LBA);
@@ -1722,7 +1753,7 @@ eReturnValues ata_Request_Sense_Data(tDevice* device,
                                      uint8_t* additionalSenseCodeQualifier)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_REQUEST_SENSE_DATA, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_REQUEST_SENSE_DATA, true, true);
     if (!senseKey || !additionalSenseCode || !additionalSenseCodeQualifier)
     {
         return BAD_PARAMETER;
@@ -1753,7 +1784,7 @@ eReturnValues ata_Request_Sense_Data(tDevice* device,
 eReturnValues ata_Set_Date_And_Time(tDevice* device, uint64_t timeStamp)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_DATE_AND_TIME_EXT, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_DATE_AND_TIME_EXT, true, false);
     set_ata_pt_LBA_48_sig(&ataCommandOptions, timeStamp);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1774,7 +1805,7 @@ eReturnValues ata_Set_Date_And_Time(tDevice* device, uint64_t timeStamp)
 eReturnValues ata_Set_Multiple_Mode(tDevice* device, uint8_t drqDataBlockCount)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_MULTIPLE, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_MULTIPLE, false, false);
     ataCommandOptions.tfr.SectorCount       = drqDataBlockCount;
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1791,10 +1822,11 @@ eReturnValues ata_Set_Multiple_Mode(tDevice* device, uint8_t drqDataBlockCount)
 
     return ret;
 }
+
 eReturnValues ata_Sleep(tDevice* device)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SLEEP_CMD, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SLEEP_CMD, false, false);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1814,7 +1846,7 @@ eReturnValues ata_Sleep(tDevice* device)
 eReturnValues ata_Standby(tDevice* device, uint8_t standbyTimerPeriod)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_STANDBY_CMD, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_STANDBY_CMD, false, false);
     ataCommandOptions.tfr.SectorCount       = standbyTimerPeriod;
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1835,7 +1867,7 @@ eReturnValues ata_Standby(tDevice* device, uint8_t standbyTimerPeriod)
 eReturnValues ata_Standby_Immediate(tDevice* device)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_STANDBY_IMMD, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_STANDBY_IMMD, false, false);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1858,7 +1890,7 @@ eReturnValues ata_Trusted_Non_Data(tDevice* device,
                                    uint16_t securityProtocolSpecific)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_TRUSTED_NON_DATA, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_TRUSTED_NON_DATA, false, false);
     ataCommandOptions.tfr.ErrorFeature      = securityProtocol;
     ataCommandOptions.tfr.LbaMid            = M_Byte0(securityProtocolSpecific);
     ataCommandOptions.tfr.LbaHi             = M_Byte1(securityProtocolSpecific);
@@ -1896,12 +1928,12 @@ eReturnValues ata_Trusted_Receive(tDevice* device,
     if (useDMA)
     {
         ataCommandOptions = create_ata_dma_in_cmd(device, ATA_TRUSTED_RECEIVE_DMA, false,
-                                                  dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+                                                  M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     }
     else
     {
         ataCommandOptions =
-            create_ata_pio_in_cmd(device, ATA_PROTOCOL_PIO, false, dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+            create_ata_pio_in_cmd(device, ATA_PROTOCOL_PIO, false, M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     }
     ataCommandOptions.tfr.ErrorFeature = securityProtocol;
     ataCommandOptions.tfr.LbaLow       = M_Byte1(dataSize / LEGACY_DRIVE_SEC_SIZE);
@@ -1945,6 +1977,7 @@ eReturnValues ata_Trusted_Receive(tDevice* device,
 
     return ret;
 }
+
 eReturnValues ata_Trusted_Send(tDevice* device,
                                bool     useDMA,
                                uint8_t  securityProtocol,
@@ -1954,21 +1987,14 @@ eReturnValues ata_Trusted_Send(tDevice* device,
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
-    ataCommandOptions.commandDirection         = XFER_DATA_OUT;
-    ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
-    ataCommandOptions.ataTransferBlocks        = ATA_PT_512B_BLOCKS;
-    ataCommandOptions.ptrData                  = ptrData;
-    ataCommandOptions.dataSize                 = dataSize;
-    ataCommandOptions.commandType              = ATA_CMD_TYPE_TASKFILE;
     if (useDMA)
     {
         ataCommandOptions = create_ata_dma_out_cmd(device, ATA_TRUSTED_SEND_DMA, false,
-                                                   dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+                                                   M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     }
     else
     {
-        ataCommandOptions = create_ata_pio_out_cmd(device, ATA_TRUSTED_SEND, false, dataSize / LEGACY_DRIVE_SEC_SIZE,
+        ataCommandOptions = create_ata_pio_out_cmd(device, ATA_TRUSTED_SEND, false, M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE),
                                                    ptrData, dataSize);
     }
     ataCommandOptions.tfr.ErrorFeature = securityProtocol;
@@ -2071,7 +2097,7 @@ eReturnValues ata_Write_DMA(tDevice* device,
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_dma_write_lba_cmd(
         device, extendedCmd ? (fua ? ATA_WRITE_DMA_FUA_EXT : ATA_WRITE_DMA_EXT) : ATA_WRITE_DMA_RETRY_CMD, extendedCmd,
-        dataSize / device->drive_info.deviceBlockSize, LBA, ptrData, dataSize);
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA, ptrData, dataSize);
 
     if (!ptrData)
     {
@@ -2117,7 +2143,9 @@ eReturnValues ata_Write_Multiple(tDevice* device,
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_read_lba_cmd(
         device, extendedCmd ? (fua ? ATA_WRITE_MULTIPLE_FUA_EXT : ATA_WRITE_MULTIPLE_EXT) : ATA_WRITE_MULTIPLE_CMD,
-        extendedCmd, dataSize / device->drive_info.deviceBlockSize, LBA, ptrData, dataSize);
+        extendedCmd,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
+        ptrData, dataSize);
     set_ata_pt_multipleCount(&ataCommandOptions, device);
 
     if (!ptrData)
@@ -2159,7 +2187,8 @@ eReturnValues ata_Write_Sectors(tDevice* device, uint64_t LBA, uint8_t* ptrData,
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
         create_ata_pio_write_lba_cmd(device, extendedCmd ? ATA_WRITE_SECT_EXT : ATA_WRITE_SECT, extendedCmd,
-                                     dataSize / device->drive_info.deviceBlockSize, LBA, ptrData, dataSize);
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
+        ptrData, dataSize);
 
     if (!ptrData)
     {
@@ -2199,7 +2228,9 @@ eReturnValues ata_Write_Sectors_No_Retry(tDevice* device, uint64_t LBA, uint8_t*
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_write_lba_cmd(
-        device, ATA_WRITE_SECT_NORETRY, false, dataSize / device->drive_info.deviceBlockSize, LBA, ptrData, dataSize);
+        device, ATA_WRITE_SECT_NORETRY, false,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), LBA,
+        ptrData, dataSize);
 
     if (!ptrData)
     {
@@ -2237,12 +2268,14 @@ eReturnValues ata_Write_Stream_Ext(tDevice* device,
     if (useDMA)
     {
         ataCommandOptions = create_ata_dma_out_cmd(device, ATA_WRITE_STREAM_DMA_EXT, true,
-                                                   dataSize / device->drive_info.deviceBlockSize, ptrData, dataSize);
+            get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, true),
+            ptrData, dataSize);
     }
     else
     {
         ataCommandOptions = create_ata_pio_out_cmd(device, ATA_WRITE_STREAM_EXT, true,
-                                                   dataSize / device->drive_info.deviceBlockSize, ptrData, dataSize);
+            get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, true),
+            ptrData, dataSize);
     }
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_LBA_48(&ataCommandOptions, LBA);
@@ -2301,7 +2334,7 @@ eReturnValues ata_Write_Uncorrectable(tDevice* device,
                                       uint64_t LBA)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_WRITE_UNCORRECTABLE_EXT, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_WRITE_UNCORRECTABLE_EXT, true, false);
     set_ata_pt_LBA_48(&ataCommandOptions, LBA);
     ataCommandOptions.tfr.SectorCount   = M_Byte0(numberOfSectors);
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(numberOfSectors);
@@ -2345,11 +2378,11 @@ eReturnValues ata_NV_Cache_Feature(tDevice*         device,
     {
     case NV_SET_NV_CACHE_POWER_MODE:
         nvCacheFeature    = "Set NV Cache Power Mode";
-        ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true);
+        ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true, false);
         break;
     case NV_RETURN_FROM_NV_CACHE_POWER_MODE:
         nvCacheFeature    = "Return from NV Cache Power Mode";
-        ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true);
+        ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true, false);
         break;
     case NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET:
         nvCacheFeature    = "Add LBA(s) to NV Cache Pinned Set";
@@ -2359,7 +2392,8 @@ eReturnValues ata_NV_Cache_Feature(tDevice*         device,
         nvCacheFeature = "Remove LBA(s) from NV Cache Pinned Set";
         if (LBA & BIT0)
         {
-            ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true);
+            // NOTE: If we need "Number unpinned remaining" change to needing RTFRs
+            ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true, false);
         }
         else
         {
@@ -2375,16 +2409,17 @@ eReturnValues ata_NV_Cache_Feature(tDevice*         device,
         ataCommandOptions = create_ata_dma_in_cmd(device, ATA_NV_CACHE, true, count, ptrData, dataSize);
         break;
     case NV_FLUSH_NV_CACHE:
+        // NOTE: If we need "Number unpinned remaining" change to needing RTFRs
         nvCacheFeature    = "Flush NV Cache";
-        ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true);
+        ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true, false);
         break;
     case NV_CACHE_ENABLE:
         nvCacheFeature    = "NV Cache Enable";
-        ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true);
+        ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true, false);
         break;
     case NV_CACHE_DISABLE:
         nvCacheFeature    = "NV Cache Disable";
-        ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true);
+        ataCommandOptions = create_ata_nondata_cmd(device, ATA_NV_CACHE, true, false);
         break;
     default:
         nvCacheFeature = "Unknown NV Cache feature";
@@ -2511,7 +2546,8 @@ eReturnValues ata_Set_Features(tDevice* device,
                                uint16_t subcommandLBAHi)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_FEATURE, false);
+    // NOTE: Set need RTFRs to true for now since it is not clear which feature may or may not need them...generally this is probably not needed-TJE
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_FEATURE, false, true);
     ataCommandOptions.tfr.LbaLow            = subcommandLBALo;
     ataCommandOptions.tfr.LbaMid            = subcommandLBAMid;
     ataCommandOptions.tfr.LbaHi             = M_Byte0(subcommandLBAHi);
@@ -2692,11 +2728,11 @@ eReturnValues ata_Device_Configuration_Overlay_Feature(tDevice*     device,
     {
     case DCO_RESTORE:
         dcoFeatureString  = "Restore";
-        ataCommandOptions = create_ata_nondata_cmd(device, ATA_DCO, false);
+        ataCommandOptions = create_ata_nondata_cmd(device, ATA_DCO, false, false);
         break;
     case DCO_FREEZE_LOCK:
         dcoFeatureString  = "Freeze Lock";
-        ataCommandOptions = create_ata_nondata_cmd(device, ATA_DCO, false);
+        ataCommandOptions = create_ata_nondata_cmd(device, ATA_DCO, false, false);
         break;
     case DCO_IDENTIFY:
         dcoFeatureString  = "Identify";
@@ -2881,7 +2917,7 @@ eReturnValues ata_ZAC_Management_Out(tDevice*  device,
     case ZM_ACTION_OPEN_ZONE:
     case ZM_ACTION_RESET_WRITE_POINTERS:
     case ZM_ACTION_SEQUENTIALIZE_ZONE:
-        ataCommandOptions = create_ata_nondata_cmd(device, ATA_ZONE_MANAGEMENT_OUT, true);
+        ataCommandOptions = create_ata_nondata_cmd(device, ATA_ZONE_MANAGEMENT_OUT, true, false);
         break;
     default: // Need to add new zm actions as they are defined in the spec
         if (ptrData && dataSize > 0)
@@ -2891,7 +2927,7 @@ eReturnValues ata_ZAC_Management_Out(tDevice*  device,
         }
         else
         {
-            ataCommandOptions = create_ata_nondata_cmd(device, ATA_ZONE_MANAGEMENT_OUT, true);
+            ataCommandOptions = create_ata_nondata_cmd(device, ATA_ZONE_MANAGEMENT_OUT, true, false);
         }
         break;
     }
@@ -3084,7 +3120,7 @@ eReturnValues ata_Zone_Query_Ext(tDevice* device,
 eReturnValues ata_Media_Eject(tDevice* device)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_MEDIA_EJECT, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_MEDIA_EJECT, false, false);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3104,7 +3140,7 @@ eReturnValues ata_Media_Eject(tDevice* device)
 eReturnValues ata_Get_Media_Status(tDevice* device)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_GET_MEDIA_STATUS, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_GET_MEDIA_STATUS, false, false);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3124,7 +3160,7 @@ eReturnValues ata_Get_Media_Status(tDevice* device)
 eReturnValues ata_Media_Lock(tDevice* device)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_DOOR_LOCK_CMD, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_DOOR_LOCK_CMD, false, false);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3144,7 +3180,7 @@ eReturnValues ata_Media_Lock(tDevice* device)
 eReturnValues ata_Media_Unlock(tDevice* device)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_DOOR_UNLOCK_CMD, false);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_DOOR_UNLOCK_CMD, false, false);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3164,7 +3200,7 @@ eReturnValues ata_Media_Unlock(tDevice* device)
 eReturnValues ata_Zeros_Ext(tDevice* device, uint16_t numberOfLogicalSectors, uint64_t lba, bool trim)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_ZEROS_EXT, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_ZEROS_EXT, true, false);
     ataCommandOptions.tfr.SectorCount       = M_Byte0(numberOfLogicalSectors);
     ataCommandOptions.tfr.SectorCount48     = M_Byte1(numberOfLogicalSectors);
     set_ata_pt_LBA_48(&ataCommandOptions, lba);
@@ -3195,7 +3231,7 @@ eReturnValues ata_Set_Sector_Configuration_Ext(tDevice* device,
                                                uint8_t  sectorConfigurationDescriptorIndex)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_SECTOR_CONFIG_EXT, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_SECTOR_CONFIG_EXT, true, false);
     ataCommandOptions.tfr.SectorCount       = sectorConfigurationDescriptorIndex & 0x07;
     ataCommandOptions.tfr.Feature48         = M_Byte1(commandCheck);
     ataCommandOptions.tfr.ErrorFeature      = M_Byte0(commandCheck);
@@ -3228,7 +3264,7 @@ eReturnValues ata_Get_Physical_Element_Status(tDevice* device,
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_dma_in_cmd(
-        device, ATA_GET_PHYSICAL_ELEMENT_STATUS, true, dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+        device, ATA_GET_PHYSICAL_ELEMENT_STATUS, true, M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     ataCommandOptions.tfr.Feature48 =
         C_CAST(uint8_t,
                (filter << 6) | (reportType & 0x0F)); // filter is 2 bits, report type is 4 bits. All others are reserved
@@ -3253,7 +3289,7 @@ eReturnValues ata_Get_Physical_Element_Status(tDevice* device,
 eReturnValues ata_Remove_Element_And_Truncate(tDevice* device, uint32_t elementIdentifier, uint64_t requestedMaxLBA)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_REMOVE_AND_TRUNCATE, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_REMOVE_AND_TRUNCATE, true, false);
     ataCommandOptions.tfr.SectorCount       = M_Byte0(elementIdentifier);
     ataCommandOptions.tfr.SectorCount48     = M_Byte1(elementIdentifier);
     ataCommandOptions.tfr.ErrorFeature      = M_Byte2(elementIdentifier);
@@ -3285,7 +3321,7 @@ eReturnValues ata_Remove_Element_And_Truncate(tDevice* device, uint32_t elementI
 eReturnValues ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_REMOVE_ELEMENT_AND_MODIFY_ZONES, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_REMOVE_ELEMENT_AND_MODIFY_ZONES, true, false);
     ataCommandOptions.tfr.SectorCount       = M_Byte0(elementIdentifier);
     ataCommandOptions.tfr.SectorCount48     = M_Byte1(elementIdentifier);
     ataCommandOptions.tfr.ErrorFeature      = M_Byte2(elementIdentifier);
@@ -3316,7 +3352,7 @@ eReturnValues ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elem
 eReturnValues ata_Restore_Elements_And_Rebuild(tDevice* device)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_RESTORE_AND_REBUILD, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_RESTORE_AND_REBUILD, true, false);
     if (os_Is_Infinite_Timeout_Supported())
     {
         ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;
@@ -3343,7 +3379,7 @@ eReturnValues ata_Restore_Elements_And_Rebuild(tDevice* device)
 eReturnValues ata_Mutate_Ext(tDevice* device, bool requestMaximumAccessibleCapacity, uint32_t requestedConfigurationID)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_MUTATE_EXT, true);
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_MUTATE_EXT, true, false);
     if (requestMaximumAccessibleCapacity)
     {
         ataCommandOptions.tfr.ErrorFeature |= BIT0;
@@ -3389,7 +3425,8 @@ eReturnValues ata_NCQ_Non_Data(tDevice* device,
                                uint32_t auxilary)
 {
     eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_FPDMA_NON_DATA, true);
+    // needing RTFRs is subcommand specific. Setting to true for now-TJE
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_FPDMA_NON_DATA, true, true);
     ataCommandOptions.commadProtocol = ATA_PROTOCOL_DMA_FPDMA; // this is a non-data NCQ command...due to how SAT CDB
                                                                // builder interprets this, set this value here!
     set_ata_pt_LBA_48(&ataCommandOptions, lba);
@@ -3590,15 +3627,16 @@ eReturnValues ata_NCQ_Read_FPDMA_Queued(tDevice* device,
                                         bool     fua,
                                         uint64_t lba,
                                         uint8_t* ptrData,
-                                        uint16_t sectorCount,
+                                        uint32_t dataSize,
                                         uint8_t  prio,
                                         uint8_t  ncqTag,
                                         uint8_t  icc)
 {
     eReturnValues         ret = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions =
-        create_ata_queued_lba_cmd(device, ATA_READ_FPDMA_QUEUED_CMD, true, true, ncqTag, XFER_DATA_IN, sectorCount, lba,
-                                  ptrData, sectorCount * device->drive_info.deviceBlockSize);
+    ataPassthroughCommand ataCommandOptions = create_ata_queued_lba_cmd(
+        device, ATA_READ_FPDMA_QUEUED_CMD, true, true, ncqTag, XFER_DATA_IN,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, true), lba,
+                                  ptrData, dataSize);
     set_ata_pt_prio_subcmd(&ataCommandOptions, prio, 0);
     ataCommandOptions.tfr.DeviceHead =
         clear_uint8_bit(ataCommandOptions.tfr.DeviceHead, 4); // spec says this must be zero
@@ -3628,15 +3666,16 @@ eReturnValues ata_NCQ_Write_FPDMA_Queued(tDevice* device,
                                          bool     fua,
                                          uint64_t lba,
                                          uint8_t* ptrData,
-                                         uint16_t sectorCount,
+                                         uint32_t dataSize,
                                          uint8_t  prio,
                                          uint8_t  ncqTag,
                                          uint8_t  icc)
 {
     eReturnValues         ret = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions =
-        create_ata_queued_lba_cmd(device, ATA_WRITE_FPDMA_QUEUED_CMD, true, true, ncqTag, XFER_DATA_OUT, sectorCount,
-                                  lba, ptrData, sectorCount * device->drive_info.deviceBlockSize);
+    ataPassthroughCommand ataCommandOptions = create_ata_queued_lba_cmd(
+        device, ATA_WRITE_FPDMA_QUEUED_CMD, true, true, ncqTag, XFER_DATA_OUT,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, true),
+                                  lba, ptrData, dataSize);
     set_ata_pt_prio_subcmd(&ataCommandOptions, prio, 0);
     ataCommandOptions.tfr.DeviceHead =
         clear_uint8_bit(ataCommandOptions.tfr.DeviceHead, 4); // spec says this must be zero
@@ -3667,13 +3706,14 @@ eReturnValues ata_Read_DMA_Queued(tDevice* device,
                                   bool     ext,
                                   uint64_t lba,
                                   uint8_t* ptrData,
-                                  uint16_t sectorCount,
+                                  uint32_t dataSize,
                                   uint8_t  tag)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_queued_lba_cmd(
-        device, ext ? ATA_READ_DMA_QUE_EXT : ATA_READ_DMA_QUEUED_CMD, ext, false, tag, XFER_DATA_IN, sectorCount, lba,
-        ptrData, sectorCount * device->drive_info.deviceBlockSize);
+        device, ext ? ATA_READ_DMA_QUE_EXT : ATA_READ_DMA_QUEUED_CMD, ext, false, tag, XFER_DATA_IN,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, ext), lba,
+        ptrData, dataSize);
     ataCommandOptions.tfr.DeviceHead =
         clear_uint8_bit(ataCommandOptions.tfr.DeviceHead, 4); // spec says this must be zero
 
@@ -3703,13 +3743,14 @@ eReturnValues ata_Write_DMA_Queued(tDevice* device,
                                    bool     ext,
                                    uint64_t lba,
                                    uint8_t* ptrData,
-                                   uint16_t sectorCount,
+                                   uint32_t dataSize,
                                    uint8_t  tag)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_queued_lba_cmd(
-        device, ext ? ATA_WRITE_DMA_QUE_EXT : ATA_WRITE_DMA_QUEUED_CMD, ext, false, tag, XFER_DATA_OUT, sectorCount,
-        lba, ptrData, sectorCount * device->drive_info.deviceBlockSize);
+        device, ext ? ATA_WRITE_DMA_QUE_EXT : ATA_WRITE_DMA_QUEUED_CMD, ext, false, tag, XFER_DATA_OUT,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, ext),
+        lba, ptrData, dataSize);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
