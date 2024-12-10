@@ -1761,17 +1761,17 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
                 {
                     printf("false\n");
                 }
-                printf("\tError:            %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.error);
-                printf("\tSector Count Ext: %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCountExt);
-                printf("\tSector Count:     %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCount);
-                printf("\tLBA Low Ext:      %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaLowExt);
-                printf("\tLBA Low:          %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaLow);
-                printf("\tLBA Mid Ext:      %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaMidExt);
-                printf("\tLBA Mid:          %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaMid);
-                printf("\tLBA Hi Ext:       %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaHiExt);
-                printf("\tLBA Hi:           %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaHi);
-                printf("\tDevice:           %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.device);
-                printf("\tStatus:           %" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.status);
+                printf("\tError:            %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.error);
+                printf("\tSector Count Ext: %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCountExt);
+                printf("\tSector Count:     %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCount);
+                printf("\tLBA Low Ext:      %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaLowExt);
+                printf("\tLBA Low:          %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaLow);
+                printf("\tLBA Mid Ext:      %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaMidExt);
+                printf("\tLBA Mid:          %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaMid);
+                printf("\tLBA Hi Ext:       %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaHiExt);
+                printf("\tLBA Hi:           %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaHi);
+                printf("\tDevice:           %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.device);
+                printf("\tStatus:           %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.status);
             }
             // TODO: go through the other progress indications?
             if (senseFields->microCodeActivation.valid)
