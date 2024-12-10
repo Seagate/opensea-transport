@@ -74,7 +74,6 @@ extern "C"
         SCSI_SENSE_CUR_INFO_DESC   = 0x72,
         SCSI_SENSE_DEFER_ERR_DESC  = 0x73,
         SCSI_SENSE_VENDOR_SPECIFIC = 0x7F,
-        SCSI_SENSE_UNKNOWN_FORMAT
     } eSenseFormat;
 
     typedef enum eSenseKeyValuesEnum
