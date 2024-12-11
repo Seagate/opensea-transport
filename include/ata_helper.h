@@ -489,7 +489,7 @@ extern "C"
                                // matters on read/write multiple commands, if this is nonzero on any other command, it
                                // will fail. Only bits 0:2 are valid (SAT limitation)
         bool needRTFRs; // need RTFRs is used for commands that return information necessary to understand the result.
-                               // Example: SMART, SCT commands, read native max address
+                        // Example: SMART, SCT commands, read native max address
         uint8_t forceCDBSize;  // only set this if you want to force a specific SAT passthrough CDB size (12B, 16B, or
                                // 32B). Bad parameter may be returned if setting registers in a command that cannot be
                                // set in the specified SAT CDB
@@ -497,12 +497,12 @@ extern "C"
         bool fwdlLastSegment;  // firmware download unique flag to help low-level OSs (Windows)
     } ataPassthroughCommand;
 
-    #define ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT UINT32_C(15)
+#define ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT UINT32_C(15)
 
-    // When a transfer length is set to this in ATA, the sector count gets set to zero.
-    // It is recommended to avoid setting zero in sector count since it can confuse some translators
-    #define ATA_MAX_READ_WRITE_EXT_XFER_LEN                 UINT32_C(65536)
-    #define ATA_MAX_READ_WRITE_XFER_LEN UINT32_C(256)
+// When a transfer length is set to this in ATA, the sector count gets set to zero.
+// It is recommended to avoid setting zero in sector count since it can confuse some translators
+#define ATA_MAX_READ_WRITE_EXT_XFER_LEN UINT32_C(65536)
+#define ATA_MAX_READ_WRITE_XFER_LEN     UINT32_C(256)
 
     // This helps set the sector count register for ATA read/write commands
     static M_INLINE uint16_t get_Sector_Count_From_Buffer_Size_For_RW(uint32_t bufferSize,
@@ -749,11 +749,11 @@ extern "C"
         pio.ataCommandLengthLocation =
             M_ACCESS_ENUM(eATAPassthroughLength, ATA_PT_LEN_SECTOR_COUNT); /* NOTE: Unlikely this needs change, but may
                                      need changing in certain situations */
-        pio.multipleCount          = UINT8_C(0);
-        pio.needRTFRs              = false;
-        pio.forceCDBSize           = UINT8_C(0);
-        pio.fwdlFirstSegment       = false;
-        pio.fwdlLastSegment        = false;
+        pio.multipleCount    = UINT8_C(0);
+        pio.needRTFRs        = false;
+        pio.forceCDBSize     = UINT8_C(0);
+        pio.fwdlFirstSegment = false;
+        pio.fwdlLastSegment  = false;
         set_ata_pt_device_bits(&pio, device);
         return pio;
     }
@@ -830,11 +830,11 @@ extern "C"
         pio.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
         pio.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT; /* NOTE: Unlikely this needs change, but may need
                                                                    changing in certain situations */
-        pio.multipleCount          = UINT8_C(0);
-        pio.needRTFRs                = false;
-        pio.forceCDBSize           = UINT8_C(0);
-        pio.fwdlFirstSegment       = false;
-        pio.fwdlLastSegment        = false;
+        pio.multipleCount    = UINT8_C(0);
+        pio.needRTFRs        = false;
+        pio.forceCDBSize     = UINT8_C(0);
+        pio.fwdlFirstSegment = false;
+        pio.fwdlLastSegment  = false;
         set_ata_pt_device_bits(&pio, device);
         if (sectorCount == 0)
         {
@@ -928,11 +928,11 @@ extern "C"
             ATA_PT_512B_BLOCKS; /* NOTE: This is most common, but may need adjusting depending on the command */
         dma.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT; /* NOTE: Unlikely this needs change, but may need
                                                                 changing in certain situations */
-        dma.multipleCount          = UINT8_C(0);
-        dma.needRTFRs                = false;
-        dma.forceCDBSize           = UINT8_C(0);
-        dma.fwdlFirstSegment       = false;
-        dma.fwdlLastSegment        = false;
+        dma.multipleCount    = UINT8_C(0);
+        dma.needRTFRs        = false;
+        dma.forceCDBSize     = UINT8_C(0);
+        dma.fwdlFirstSegment = false;
+        dma.fwdlLastSegment  = false;
         set_ata_pt_device_bits(&dma, device);
         return dma;
     }
@@ -1046,7 +1046,10 @@ extern "C"
                                       sectorCount, lba, ptrdata, dataSize);
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_nondata_cmd(tDevice* device, uint8_t opcode, bool ext, bool needRTFRs)
+    static M_INLINE ataPassthroughCommand create_ata_nondata_cmd(tDevice* device,
+                                                                 uint8_t  opcode,
+                                                                 bool     ext,
+                                                                 bool     needRTFRs)
     {
         ataPassthroughCommand nodata;
         nodata.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
@@ -1085,16 +1088,16 @@ extern "C"
         nodata.dataSize          = UINT32_C(0);
         nodata.ptrSenseData      = device->drive_info.lastCommandSenseData;
         nodata.senseDataSize     = SPC3_SENSE_LEN;
-        nodata.timeout              = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
+        nodata.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         nodata.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;   /* NOTE: This is most common, but may need adjusting
                                                            depending   on the command */
         nodata.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA; /* NOTE: Unlikely this needs change, but may need
                                                                 changing in certain situations */
-        nodata.multipleCount          = UINT8_C(0);
-        nodata.needRTFRs              = needRTFRs;
-        nodata.forceCDBSize           = UINT8_C(0);
-        nodata.fwdlFirstSegment       = false;
-        nodata.fwdlLastSegment        = false;
+        nodata.multipleCount    = UINT8_C(0);
+        nodata.needRTFRs        = needRTFRs;
+        nodata.forceCDBSize     = UINT8_C(0);
+        nodata.fwdlFirstSegment = false;
+        nodata.fwdlLastSegment  = false;
         set_ata_pt_device_bits(&nodata, device);
         return nodata;
     }
@@ -1138,16 +1141,16 @@ extern "C"
         nodata.dataSize          = UINT32_C(0);
         nodata.ptrSenseData      = device->drive_info.lastCommandSenseData;
         nodata.senseDataSize     = SPC3_SENSE_LEN;
-        nodata.timeout              = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
+        nodata.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         nodata.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;   /* NOTE: This is most common, but may need adjusting
                                                            depending   on the command */
         nodata.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA; /* NOTE: Unlikely this needs change, but may need
                                                                 changing in certain situations */
-        nodata.multipleCount          = UINT8_C(0);
-        nodata.needRTFRs              = true;
-        nodata.forceCDBSize           = UINT8_C(0);
-        nodata.fwdlFirstSegment       = false;
-        nodata.fwdlLastSegment        = false;
+        nodata.multipleCount    = UINT8_C(0);
+        nodata.needRTFRs        = true;
+        nodata.forceCDBSize     = UINT8_C(0);
+        nodata.fwdlFirstSegment = false;
+        nodata.fwdlLastSegment  = false;
         set_ata_pt_device_bits(&nodata, device);
         return nodata;
     }

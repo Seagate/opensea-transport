@@ -74,7 +74,7 @@ eReturnValues ata_Legacy_Format_Track(tDevice*     device,
     ataCommandOptions.tfr.ErrorFeature  = feature;
     ataCommandOptions.commadProtocol    = protocol;
     ataCommandOptions.tfr.CommandStatus = ATA_FORMAT_TRACK_CMD;
-    ataCommandOptions.needRTFRs         = true;//vendor specific, but better to have it than not have it.
+    ataCommandOptions.needRTFRs         = true; // vendor specific, but better to have it than not have it.
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -146,14 +146,14 @@ eReturnValues ata_Legacy_Recalibrate(tDevice* device, uint8_t lowCmdNibble, bool
     return ret;
 }
 
-eReturnValues ata_Legacy_Read_DMA_CHS(tDevice* device,
-                                      uint16_t cylinder,
-                                      uint8_t  head,
-                                      uint8_t  sector,
-                                      uint8_t* ptrData,
+eReturnValues ata_Legacy_Read_DMA_CHS(tDevice*               device,
+                                      uint16_t               cylinder,
+                                      uint8_t                head,
+                                      uint8_t                sector,
+                                      uint8_t*               ptrData,
                                       M_ATTR_UNUSED uint16_t sectorCount,
-                                      uint32_t dataSize,
-                                      bool     extendedCmd)
+                                      uint32_t               dataSize,
+                                      bool                   extendedCmd)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_dma_in_cmd(
@@ -197,18 +197,18 @@ eReturnValues ata_Legacy_Read_DMA_CHS(tDevice* device,
     return ret;
 }
 
-eReturnValues ata_Legacy_Read_Multiple_CHS(tDevice* device,
-                                           uint16_t cylinder,
-                                           uint8_t  head,
-                                           uint8_t  sector,
-                                           uint8_t* ptrData,
+eReturnValues ata_Legacy_Read_Multiple_CHS(tDevice*               device,
+                                           uint16_t               cylinder,
+                                           uint8_t                head,
+                                           uint8_t                sector,
+                                           uint8_t*               ptrData,
                                            M_ATTR_UNUSED uint16_t sectorCount,
-                                           uint32_t dataSize,
-                                           bool     extendedCmd)
+                                           uint32_t               dataSize,
+                                           bool                   extendedCmd)
 {
-    eReturnValues         ret = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions =
-        create_ata_pio_in_cmd(device, extendedCmd ? ATA_READ_READ_MULTIPLE_EXT : ATA_READ_MULTIPLE_CMD, extendedCmd,
+    eReturnValues         ret               = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions = create_ata_pio_in_cmd(
+        device, extendedCmd ? ATA_READ_READ_MULTIPLE_EXT : ATA_READ_MULTIPLE_CMD, extendedCmd,
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -303,14 +303,14 @@ eReturnValues ata_Legacy_Set_Max_Address_Ext_CHS(tDevice* device,
     return ret;
 }
 
-eReturnValues ata_Legacy_Read_Sectors_CHS(tDevice* device,
-                                          uint16_t cylinder,
-                                          uint8_t  head,
-                                          uint8_t  sector,
-                                          uint8_t* ptrData,
+eReturnValues ata_Legacy_Read_Sectors_CHS(tDevice*               device,
+                                          uint16_t               cylinder,
+                                          uint8_t                head,
+                                          uint8_t                sector,
+                                          uint8_t*               ptrData,
                                           M_ATTR_UNUSED uint16_t sectorCount,
-                                          uint32_t dataSize,
-                                          bool     extendedCmd)
+                                          uint32_t               dataSize,
+                                          bool                   extendedCmd)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_in_cmd(
@@ -556,9 +556,9 @@ eReturnValues ata_Legacy_Write_Sectors_CHS(tDevice* device,
                                            uint32_t dataSize,
                                            bool     extendedCmd)
 {
-    eReturnValues         ret = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions =
-        create_ata_pio_out_cmd(device, extendedCmd ? ATA_WRITE_SECT_EXT : ATA_WRITE_SECT, extendedCmd,
+    eReturnValues         ret               = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
+        device, extendedCmd ? ATA_WRITE_SECT_EXT : ATA_WRITE_SECT, extendedCmd,
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -940,8 +940,8 @@ eReturnValues ata_Legacy_Write_Verify(tDevice* device, uint32_t lba, uint8_t* pt
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_write_lba_cmd(
         device, ATA_WRITE_SECTV_RETRY, false,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), lba,
-        ptrData, dataSize);
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), lba, ptrData,
+        dataSize);
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
@@ -979,7 +979,7 @@ eReturnValues ata_Legacy_Identify_Device_DMA(tDevice* device, uint8_t* ptrData, 
         safe_memcpy(&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData), ptrData, 512);
     }
 
-#if defined(__BIG_ENDIAN__)
+#if defined(ENV_BIG_ENDIAN)
     if (ptrData == C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
     {
         byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000);
@@ -1012,8 +1012,9 @@ eReturnValues ata_Legacy_Identify_Device_DMA(tDevice* device, uint8_t* ptrData, 
 
 eReturnValues ata_Legacy_Check_Power_Mode(tDevice* device, uint8_t* powerMode)
 {
-    eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_LEGACY_ALT_CHECK_POWER_MODE, false, true);
+    eReturnValues         ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions =
+        create_ata_nondata_cmd(device, ATA_LEGACY_ALT_CHECK_POWER_MODE, false, true);
 
     if (powerMode == M_NULLPTR)
     {

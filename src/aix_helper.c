@@ -1145,7 +1145,7 @@ static int get_Adapter_IDs(tDevice* device, char* name)
                 }
                 else
                 {
-#if defined(__BIG_ENDIAN__) || defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if defined(ENV_BIG_ENDIAN)
                     // wrapping this as if there was little endian AIX, I doubt it would exhibit the same issue
                     byte_Swap_32(&idCombo);
                     word_Swap_32(&idCombo); // This is done after the byte swap since it will change the order of VID

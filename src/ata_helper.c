@@ -1002,30 +1002,14 @@ void byte_Swap_ID_Data_Buffer(uint16_t* idData)
     }
 }
 
-// This is a quick check to assist with the fill in ATA drive info function to be more efficient
-static bool is_SAT_Invalid_Operation_Code(tDevice* device)
-{
-    bool    invalidOP = false;
-    uint8_t senseKey  = UINT8_C(0);
-    uint8_t asc       = UINT8_C(0);
-    uint8_t ascq      = UINT8_C(0);
-    uint8_t fru       = UINT8_C(0);
-    get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq, &fru);
-    if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x20 && ascq == 0x00)
-    {
-        invalidOP = true;
-    }
-    return invalidOP;
-}
-
 void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
-    char     ataMN[ATA_IDENTIFY_MN_LENGTH + 1],
-    char     ataSN[ATA_IDENTIFY_SN_LENGTH + 1],
-    char     ataFW[ATA_IDENTIFY_FW_LENGTH + 1])
+                                         char     ataMN[ATA_IDENTIFY_MN_LENGTH + 1],
+                                         char     ataSN[ATA_IDENTIFY_SN_LENGTH + 1],
+                                         char     ataFW[ATA_IDENTIFY_FW_LENGTH + 1])
 {
     if (ptrIdentifyData)
     {
-        ptAtaIdentifyData idData = C_CAST(ptAtaIdentifyData, ptrIdentifyData);
+        ptAtaIdentifyData idData  = C_CAST(ptAtaIdentifyData, ptrIdentifyData);
         bool              validSN = true;
         bool              validMN = true;
         bool              validFW = true;
@@ -1059,7 +1043,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
                     ataSN[iter] = ' '; // replace with a space
                 }
             }
-#if !defined(__BIG_ENDIAN__)
+#if !defined(ENV_BIG_ENDIAN)
             byte_Swap_String_Len(ataSN, snLimit);
 #endif
             remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
@@ -1080,7 +1064,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
                     ataFW[iter] = ' '; // replace with a space
                 }
             }
-#if !defined(__BIG_ENDIAN__)
+#if !defined(ENV_BIG_ENDIAN)
             byte_Swap_String_Len(ataFW, fwLimit);
 #endif
             remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
@@ -1101,7 +1085,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
                     ataMN[iter] = ' '; // replace with a space
                 }
             }
-#if !defined(__BIG_ENDIAN__)
+#if !defined(ENV_BIG_ENDIAN)
             byte_Swap_String_Len(ataMN, mnLimit);
 #endif
             remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
@@ -1109,7 +1093,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
     }
 }
 
-static eReturnValues get_Identify_Data(tDevice* device, uint8_t *ptrData, uint32_t dataSize)
+static eReturnValues get_Identify_Data(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues ret = FAILURE;
 
@@ -1132,7 +1116,7 @@ static eReturnValues get_Identify_Data(tDevice* device, uint8_t *ptrData, uint32
                 is_Buffer_Non_Zero(ptrData, dataSize))
             {
                 ret = SUCCESS;
-                device->drive_info.drive_type == ATAPI_DRIVE;
+                device->drive_info.drive_type = ATAPI_DRIVE;
             }
         }
     }
@@ -1142,7 +1126,7 @@ static eReturnValues get_Identify_Data(tDevice* device, uint8_t *ptrData, uint32
 // This function attempts numerous workarounds to get working identify data (to work around SAT issues)
 static eReturnValues initial_Identify_Device(tDevice* device)
 {
-    eReturnValues ret = NOT_SUPPORTED;
+    eReturnValues ret           = NOT_SUPPORTED;
     bool          noMoreRetries = false;
     if ((device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE ||
          device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE) &&
@@ -1155,7 +1139,7 @@ static eReturnValues initial_Identify_Device(tDevice* device)
     }
     do
     {
-        noMoreRetries = true; //start with this to force exit in case of missing error handling
+        noMoreRetries = true; // start with this to force exit in case of missing error handling
         ret = get_Identify_Data(device, M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
                                 LEGACY_DRIVE_SEC_SIZE);
         if (ret != SUCCESS)
@@ -1219,9 +1203,10 @@ static eReturnValues initial_Identify_Device(tDevice* device)
             }
             if (device->drive_info.interface_type != IDE_INTERFACE)
             {
-                // This can help prevent overwhelming some adapters when multiple commands fail causing unnecessary delays
-                // Only when not IDE Interface since that is only set at the low-level when using a native ATA passthrough.
-                // When in that situation, this would just cause a loop since we use the opensea software translation
+                // This can help prevent overwhelming some adapters when multiple commands fail causing unnecessary
+                // delays Only when not IDE Interface since that is only set at the low-level when using a native ATA
+                // passthrough. When in that situation, this would just cause a loop since we use the opensea software
+                // translation
                 scsi_Test_Unit_Ready(device, M_NULLPTR);
             }
         }

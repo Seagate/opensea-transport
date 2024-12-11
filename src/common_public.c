@@ -3408,7 +3408,7 @@ bool is_Removable_Media(tDevice* device)
 
 static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
 {
-    bool passthroughHacksSet = false;
+    bool passthroughHacksSet                                   = false;
     device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
     switch (device->drive_info.adapter_info.productID)
     {
@@ -3715,10 +3715,10 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
         device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported     = true;
-        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR     = true;
-        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable   = true;
-        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength               = 130560;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 130560;
         break;
     case 0x2100: // FreeAgent Go
         passthroughHacksSet                                                       = true;

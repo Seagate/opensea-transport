@@ -2249,16 +2249,16 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
             {
                 // Fairly common adapter with known way to work with it.
                 // Check condition is NOT supported AT ALL.
-                device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
-                device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
-                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
-                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
+                device->drive_info.passThroughHacks.passthroughType                          = ATA_PASSTHROUGH_SAT;
+                device->drive_info.passThroughHacks.scsiHacks.noModePages                    = true;
+                device->drive_info.passThroughHacks.scsiHacks.noLogPages                     = true;
+                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations    = true;
+                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported      = true;
                 device->drive_info.passThroughHacks.scsiHacks.readWrite.available            = true;
-                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
-                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
-                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
-                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6                  = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10                 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12                 = true;
+                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16                 = true;
                 device->drive_info.passThroughHacks.scsiHacks.maxTransferLength              = 524288;
                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = false;
                 device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly                  = true;
