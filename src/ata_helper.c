@@ -27,6 +27,58 @@
 #include "scsi_helper_func.h"
 #include <ctype.h> //for isprint
 
+typedef enum eATADeviceTypeEnum
+{
+    ATA_DEVICE_TYPE_NONE,
+    ATA_DEVICE_TYPE_ATA,
+    ATA_DEVICE_TYPE_ATAPI,
+    ATA_DEVICE_TYPE_SATA_RESERVED_1,
+    ATA_DEVICE_TYPE_SATA_RESERVED_2,
+    ATA_DEVICE_TYPE_CE_ATA,
+    ATA_DEVICE_TYPE_HOST_MANGED_ZONED
+} eATADeviceType;
+
+static eATADeviceType get_ATA_Device_Type_From_Signature(ataReturnTFRs* rtfrs)
+{
+    eATADeviceType type = ATA_DEVICE_TYPE_NONE;
+    if (rtfrs)
+    {
+        if (rtfrs->secCnt == 0x01 && rtfrs->lbaLow == 0x01)
+        {
+            if (rtfrs->lbaMid == 0x00 && rtfrs->lbaHi == 0x00)
+            {
+                type = ATA_DEVICE_TYPE_ATA;
+            }
+            else if (rtfrs->lbaMid == 0xCD && rtfrs->lbaHi == 0xAB)
+            {
+                type = ATA_DEVICE_TYPE_HOST_MANGED_ZONED;
+            }
+            else if (rtfrs->lbaMid == 0x14 && rtfrs->lbaHi == 0xEB)
+            {
+                type = ATA_DEVICE_TYPE_ATAPI;
+            }
+            else if (rtfrs->lbaMid == 0xCE && rtfrs->lbaHi == 0xAA)
+            {
+                type = ATA_DEVICE_TYPE_CE_ATA;
+            }
+            else if (rtfrs->lbaMid == 0x3C && rtfrs->lbaHi == 0xC3)
+            {
+                type = ATA_DEVICE_TYPE_SATA_RESERVED_1;
+            }
+            else if (rtfrs->lbaMid == 0x69 && rtfrs->lbaHi == 0x96)
+            {
+                type = ATA_DEVICE_TYPE_SATA_RESERVED_2;
+            }
+        }
+        else if (rtfrs->lbaMid == 0xCE && rtfrs->lbaHi == 0xAA)
+        {
+            // CE ATA does not require sector count and lba low set to 1
+            type = ATA_DEVICE_TYPE_CE_ATA;
+        }
+    }
+    return type;
+}
+
 // This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
 bool is_ATA_Identify_Word_Valid(uint16_t word)
 {
@@ -967,13 +1019,13 @@ static bool is_SAT_Invalid_Operation_Code(tDevice* device)
 }
 
 void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
-                                         char     ataMN[ATA_IDENTIFY_MN_LENGTH + 1],
-                                         char     ataSN[ATA_IDENTIFY_SN_LENGTH + 1],
-                                         char     ataFW[ATA_IDENTIFY_FW_LENGTH + 1])
+    char     ataMN[ATA_IDENTIFY_MN_LENGTH + 1],
+    char     ataSN[ATA_IDENTIFY_SN_LENGTH + 1],
+    char     ataFW[ATA_IDENTIFY_FW_LENGTH + 1])
 {
     if (ptrIdentifyData)
     {
-        ptAtaIdentifyData idData  = C_CAST(ptAtaIdentifyData, ptrIdentifyData);
+        ptAtaIdentifyData idData = C_CAST(ptAtaIdentifyData, ptrIdentifyData);
         bool              validSN = true;
         bool              validMN = true;
         bool              validFW = true;
@@ -1057,6 +1109,126 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
     }
 }
 
+static eReturnValues get_Identify_Data(tDevice* device, uint8_t *ptrData, uint32_t dataSize)
+{
+    eReturnValues ret = FAILURE;
+
+    if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE)
+    {
+        if (SUCCESS == ata_Identify_Packet_Device(device, ptrData, dataSize) && is_Buffer_Non_Zero(ptrData, dataSize))
+        {
+            ret = SUCCESS;
+        }
+    }
+    else
+    {
+        if (SUCCESS == ata_Identify(device, ptrData, dataSize) && is_Buffer_Non_Zero(ptrData, dataSize))
+        {
+            ret = SUCCESS;
+        }
+        else if (ATA_DEVICE_TYPE_ATAPI == get_ATA_Device_Type_From_Signature(&device->drive_info.lastCommandRTFRs))
+        {
+            if (SUCCESS == ata_Identify_Packet_Device(device, ptrData, dataSize) &&
+                is_Buffer_Non_Zero(ptrData, dataSize))
+            {
+                ret = SUCCESS;
+                device->drive_info.drive_type == ATAPI_DRIVE;
+            }
+        }
+    }
+    return ret;
+}
+
+// This function attempts numerous workarounds to get working identify data (to work around SAT issues)
+static eReturnValues initial_Identify_Device(tDevice* device)
+{
+    eReturnValues ret = NOT_SUPPORTED;
+    bool          noMoreRetries = false;
+    if ((device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE ||
+         device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE) &&
+        !(device->drive_info.passThroughHacks.hacksSetByReportedID ||
+          device->drive_info.passThroughHacks.someHacksSetByOSDiscovery))
+    {
+        // make sure we disable sending the A1h SAT CDB or we could accidentally send a "blank" command due to how most
+        // of these devices receive commands under different OSs or through translators.
+        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+    }
+    do
+    {
+        noMoreRetries = true; //start with this to force exit in case of missing error handling
+        ret = get_Identify_Data(device, M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
+                                LEGACY_DRIVE_SEC_SIZE);
+        if (ret != SUCCESS)
+        {
+            // First check the sense data to see if we got invalid operation code or invalid field in CDB before we
+            // continue. If invalid field in CDB, then the opcode is supported, so try changing to TPSIU. Also try
+            // turning check condition off if it is enabled. If invalid operation code try 16B command (if not already)
+            //    If still invalid operation code AND is a USB interface it could be returning an incorrect sense code
+            //    so try tpsiu to see if that works.
+            senseDataFields senseFields;
+            safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+            get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseFields);
+            if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST)
+            {
+                if (senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
+                {
+                    // Invalid Field in CDB
+                    // Most likely check condition, so check that first.
+                    // Then try TPSIU
+                    if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
+                    {
+                        if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
+                        {
+                            device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = false;
+                            noMoreRetries                                                                = false;
+                        }
+                        else if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
+                        {
+                            device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+                            noMoreRetries                                                   = false;
+                        }
+                        else if (!device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough)
+                        {
+                            device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                            noMoreRetries                                                                  = false;
+                        }
+                    }
+                }
+                else if (senseFields.scsiStatusCodes.asc == 0x20 && senseFields.scsiStatusCodes.ascq == 0x00)
+                {
+                    // Invalid operation code.
+                    // This means CDB byte 0 is wrong, however a lot of USB adapters seem to do this when they just
+                    // don't like a field in the CDB. In this case first try the 16B command if we have not already.
+                    // Otherwise check if the check condition bit is set to remove. If not, just exit
+                    if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
+                    {
+                        if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
+                        {
+                            device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+                            noMoreRetries                                                   = false;
+                        }
+                        else if (device->drive_info.interface_type == USB_INTERFACE &&
+                                 !device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition &&
+                                 device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
+                        {
+                            device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = false;
+                            noMoreRetries                                                                = false;
+                        }
+                    }
+                }
+            }
+            if (device->drive_info.interface_type != IDE_INTERFACE)
+            {
+                // This can help prevent overwhelming some adapters when multiple commands fail causing unnecessary delays
+                // Only when not IDE Interface since that is only set at the low-level when using a native ATA passthrough.
+                // When in that situation, this would just cause a loop since we use the opensea software translation
+                scsi_Test_Unit_Ready(device, M_NULLPTR);
+            }
+        }
+    } while (ret != SUCCESS && noMoreRetries == false);
+    return ret;
+}
+
 eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
 {
     eReturnValues ret = UNKNOWN;
@@ -1067,58 +1239,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
     printf("%s -->\n", __FUNCTION__);
 #endif
 
-    bool retrievedIdentifyData = false;
-    // try an identify command, then also try an identify packet device command. The data we care about parsing will be
-    // in the same location so everything inside this if should work as expected Note: if this is NOT an ATA HDD or SSD,
-    // then this code will only try one command: 85h SAT CDB since most ATAPI devices do not properly validate all
-    // fields of A1h and often receive it as a packet passthrough command for "blank"
-    if ((device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE ||
-         device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE) &&
-        !(device->drive_info.passThroughHacks.hacksSetByReportedID ||
-          device->drive_info.passThroughHacks.someHacksSetByOSDiscovery))
-    {
-        // make sure we disable sending the A1h SAT CDB or we could accidentally send a "blank" command due to how most
-        // of these devices receive commands under different OSs or through translators.
-        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
-    }
-    if ((SUCCESS == ata_Identify(device, C_CAST(uint8_t*, ident_word), sizeof(tAtaIdentifyData)) &&
-         is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)) ||
-        (!is_SAT_Invalid_Operation_Code(device) &&
-         SUCCESS == ata_Identify_Packet_Device(device, C_CAST(uint8_t*, ident_word), sizeof(tAtaIdentifyData)) &&
-         is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)))
-    {
-        retrievedIdentifyData = true;
-    }
-    else if (!device->drive_info.passThroughHacks.ataPTHacks
-                  .a1NeverSupported) // retry only if this is not already set to true since the above commands would
-                                     // have been sent with 85h already
-    {
-        // TODO: Check the sense data to see if it was invalid operation code. If so, then the device does not support
-        // the A1h command. If this failed, issue a test unit ready command, followed by switching to 16B sat commands.
-        // Most devices tested will support A1h and very few will not if they support SAT at all.
-        if (device->drive_info.passThroughHacks.passthroughType == ATA_PASSTHROUGH_SAT)
-        {
-            // If IDE_INTERFACE, do not attempt the test unit ready, since this will go through softwareSAT translation
-            // and fail/get hung in an infinite loop. This test unit ready exists to help clear out stuck bad status for
-            // other devices (such as USB) where this can help work around limitations. - TJE
-            if (device->drive_info.interface_type != IDE_INTERFACE)
-            {
-                scsi_Test_Unit_Ready(device, M_NULLPTR);
-            }
-            safe_memset(identifyData, 512, 0, 512);
-            device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
-            if ((SUCCESS == ata_Identify(device, C_CAST(uint8_t*, ident_word), sizeof(tAtaIdentifyData)) &&
-                 is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)) ||
-                (!is_SAT_Invalid_Operation_Code(device) &&
-                 SUCCESS ==
-                     ata_Identify_Packet_Device(device, C_CAST(uint8_t*, ident_word), sizeof(tAtaIdentifyData)) &&
-                 is_Buffer_Non_Zero(C_CAST(uint8_t*, ident_word), 512)))
-            {
-                retrievedIdentifyData = true;
-            }
-        }
-    }
-    if (retrievedIdentifyData)
+    ret = initial_Identify_Device(device);
+    if (ret == SUCCESS)
     {
         bool     lbaModeSupported = false;
         uint16_t cylinder         = UINT16_C(0);
@@ -1674,7 +1796,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
     // device->drive_info.softSATFlags.senseDataDescriptorFormat = true;//by default software SAT will set this to
     // descriptor format so that ATA pass-through works as expected with RTFRs. only bother reading logs if GPL is
     // supported...not going to bother with SMART even though some of the things we are looking for are in SMART - TJE
-    if (retrievedIdentifyData && device->drive_info.ata_Options.generalPurposeLoggingSupported)
+    if (ret == SUCCESS && device->drive_info.ata_Options.generalPurposeLoggingSupported)
     {
         DECLARE_ZERO_INIT_ARRAY(uint8_t, logBuffer, ATA_LOG_PAGE_LEN_BYTES);
         if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DIRECTORY, 0, logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
@@ -2243,7 +2365,7 @@ static bool is_Streaming_Command(ataPassthroughCommand* ataCommandOptions)
 //       ex: bad block for ATA1, corr for up to ata 3 (or so), etc
 void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataCommandOptions, tDevice* device)
 {
-    printf("\tReturn Task File Registers:\n");
+    printf("Return Task File Registers:\n");
     printf("\t[Error] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.error);
     if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR) // assuming NOT a packet command
     {
