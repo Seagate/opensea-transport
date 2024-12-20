@@ -166,7 +166,15 @@ eReturnValues nvme_Cmd(tDevice* device, nvmeCmdCtx* cmdCtx)
         device->drive_info.lastNVMeResult.lastNVMeStatus = cmdCtx->commandCompletionData.statusAndCID;
         if (ret != OS_PASSTHROUGH_FAILURE && ret != OS_COMMAND_NOT_AVAILABLE && ret != OS_COMMAND_BLOCKED)
         {
-            ret = check_NVMe_Status(cmdCtx->commandCompletionData.statusAndCID);
+            const nvmeStatus* stat = get_NVMe_Status(cmdCtx->commandCompletionData.statusAndCID);
+            if (stat)
+            {
+                ret = stat->ret;
+            }
+            else
+            {
+                ret = UNKNOWN;
+            }
         }
     }
     else

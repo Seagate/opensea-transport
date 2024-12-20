@@ -600,6 +600,16 @@ extern "C"
     } nvmeFormatCMD;
 #endif
 
+    typedef struct s_nvmeStatus
+    {
+        uint8_t       statusCodeType;
+        uint8_t       statusCode;
+        eReturnValues ret;
+        const char*   description;
+    } nvmeStatus;
+
+    const nvmeStatus* get_NVMe_Status(uint32_t nvmeStatusDWord);
+
     typedef enum eNvmeStatusCodeTypeEnum
     {
         NVME_SCT_GENERIC_COMMAND_STATUS          = 0,
