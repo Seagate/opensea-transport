@@ -202,6 +202,178 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf);
 
+#define NO_SERVICE_ACTION UINT8_C(0)
+
+    // length can be transfer length, parameter list length, or allocation length
+    static M_INLINE uint8_t* set_Typical_SCSI_6B_CDB_Fields(uint8_t* cdb,
+                                                            uint8_t  operationCode,
+                                                            uint32_t lba, /*21 bits total*/
+                                                            uint8_t  length,
+                                                            uint8_t  controlByte)
+    {
+        cdb[OPERATION_CODE] = operationCode;
+        cdb[1]              = M_Byte2(lba) & UINT8_C(0x1F);
+        cdb[2]              = M_Byte1(lba);
+        cdb[3]              = M_Byte0(lba);
+        cdb[4]              = length;
+        cdb[5]              = controlByte;
+        return cdb;
+    }
+
+    static M_INLINE uint8_t* set_Typical_SCSI_10B_CDB_Fields(uint8_t* cdb,
+                                                             uint8_t  operationCode,
+                                                             uint8_t  serviceAction, /* optional */
+                                                             uint32_t lba,
+                                                             uint16_t length,
+                                                             uint8_t  controlByte)
+    {
+        cdb[OPERATION_CODE] = operationCode;
+        cdb[1]              = serviceAction;
+        cdb[2]              = M_Byte3(lba);
+        cdb[3]              = M_Byte2(lba);
+        cdb[4]              = M_Byte1(lba);
+        cdb[5]              = M_Byte0(lba);
+        // bytes 6 is misc
+        cdb[7] = M_Byte1(length);
+        cdb[8] = M_Byte0(length);
+        cdb[9] = controlByte;
+        return cdb;
+    }
+
+    static M_INLINE uint8_t* set_Typical_SCSI_12B_CDB_Fields(uint8_t* cdb,
+                                                             uint8_t  operationCode,
+                                                             uint8_t  serviceAction, /* optional */
+                                                             uint32_t lba,
+                                                             uint32_t length,
+                                                             uint8_t  controlByte)
+    {
+        cdb[OPERATION_CODE] = operationCode;
+        cdb[1]              = serviceAction;
+        cdb[2]              = M_Byte3(lba);
+        cdb[3]              = M_Byte2(lba);
+        cdb[4]              = M_Byte1(lba);
+        cdb[5]              = M_Byte0(lba);
+        cdb[6]              = M_Byte3(length);
+        cdb[7]              = M_Byte2(length);
+        cdb[8]              = M_Byte1(length);
+        cdb[9]              = M_Byte0(length);
+        // 10 is misc
+        cdb[11] = controlByte;
+        return cdb;
+    }
+
+    static M_INLINE uint8_t* set_Typical_SCSI_16B_CDB_Fields_32Bit_LBA(uint8_t* cdb,
+                                                                       uint8_t  operationCode,
+                                                                       uint8_t  serviceAction, /* optional */
+                                                                       uint32_t lba,
+                                                                       uint32_t length,
+                                                                       uint8_t  controlByte)
+    {
+        cdb[OPERATION_CODE] = operationCode;
+        cdb[1]              = serviceAction;
+        cdb[2]              = M_Byte3(lba);
+        cdb[3]              = M_Byte2(lba);
+        cdb[4]              = M_Byte1(lba);
+        cdb[5]              = M_Byte0(lba);
+        // 6 - 9 is misc
+        cdb[10] = M_Byte3(length);
+        cdb[11] = M_Byte2(length);
+        cdb[12] = M_Byte1(length);
+        cdb[13] = M_Byte0(length);
+        // 14 is misc
+        cdb[15] = controlByte;
+        return cdb;
+    }
+
+    static M_INLINE uint8_t* set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(uint8_t* cdb,
+                                                                       uint8_t  operationCode,
+                                                                       uint8_t  serviceAction, /* optional */
+                                                                       uint64_t lba,
+                                                                       uint32_t length,
+                                                                       uint8_t  controlByte)
+    {
+        cdb[OPERATION_CODE] = operationCode;
+        cdb[1]              = serviceAction;
+        cdb[2]              = M_Byte7(lba);
+        cdb[3]              = M_Byte6(lba);
+        cdb[4]              = M_Byte5(lba);
+        cdb[5]              = M_Byte4(lba);
+        cdb[6]              = M_Byte3(lba);
+        cdb[7]              = M_Byte2(lba);
+        cdb[8]              = M_Byte1(lba);
+        cdb[9]              = M_Byte0(lba);
+        cdb[10]             = M_Byte3(length);
+        cdb[11]             = M_Byte2(length);
+        cdb[12]             = M_Byte1(length);
+        cdb[13]             = M_Byte0(length);
+        // 14 is misc
+        cdb[15] = controlByte;
+        return cdb;
+    }
+
+    static M_INLINE uint8_t* set_Typical_SCSI_32_CDB_Fields(uint8_t* cdb,
+                                                            uint8_t  operationCode,
+                                                            uint16_t serviceAction,
+                                                            uint64_t lba,
+                                                            uint32_t length,
+                                                            uint8_t  controlByte)
+    {
+        cdb[OPERATION_CODE] = operationCode;
+        cdb[1]              = controlByte;
+        // skip misc
+        cdb[7] = UINT8_C(0x18);
+        cdb[8] = M_Byte1(serviceAction);
+        cdb[9] = M_Byte0(serviceAction);
+        // skip misc
+        cdb[12] = M_Byte7(lba);
+        cdb[13] = M_Byte6(lba);
+        cdb[14] = M_Byte5(lba);
+        cdb[15] = M_Byte4(lba);
+        cdb[16] = M_Byte3(lba);
+        cdb[17] = M_Byte2(lba);
+        cdb[18] = M_Byte1(lba);
+        cdb[19] = M_Byte0(lba);
+        // skip misc
+        cdb[28] = M_Byte3(length);
+        cdb[29] = M_Byte2(length);
+        cdb[30] = M_Byte1(length);
+        cdb[31] = M_Byte0(length);
+        return cdb;
+    }
+
+    static M_INLINE uint8_t get_Group_Number(uint8_t group)
+    {
+        return (M_STATIC_CAST(uint8_t, group & UINT8_C(0x1F)));
+    }
+
+#define GET_GROUP_CODE(groupNumber) get_Group_Number(groupNumber)
+
+    static M_INLINE uint8_t get_Protect(uint8_t protect)
+    {
+        return (M_STATIC_CAST(uint8_t, (protect & 0x07) << 5));
+    }
+
+#define GET_PROTECT_VAL(protect) get_Protect(protect)
+
+    static M_INLINE void set_SCSI_32B_PI_Fields(uint8_t* cdb,
+                                                uint8_t  groupNumber,
+                                                uint8_t  protect,
+                                                uint32_t expectedInitialLogicalBlockRefTag,
+                                                uint16_t expectedLogicalBlockAppTag,
+                                                uint16_t logicalBlockAppTagMask)
+    {
+        cdb[6]  = GET_GROUP_CODE(groupNumber);
+        cdb[10] = GET_PROTECT_VAL(protect);
+        cdb[20] = M_Byte3(expectedInitialLogicalBlockRefTag);
+        cdb[21] = M_Byte2(expectedInitialLogicalBlockRefTag);
+        cdb[22] = M_Byte1(expectedInitialLogicalBlockRefTag);
+        cdb[23] = M_Byte0(expectedInitialLogicalBlockRefTag);
+        cdb[24] = M_Byte1(expectedLogicalBlockAppTag);
+        cdb[25] = M_Byte0(expectedLogicalBlockAppTag);
+        cdb[26] = M_Byte1(logicalBlockAppTagMask);
+        cdb[27] = M_Byte0(logicalBlockAppTagMask);
+    }
+
     //-----------------------------------------------------------------------------
     //
     //  scsi_Inquiry()

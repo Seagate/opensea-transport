@@ -283,12 +283,12 @@ eReturnValues scsi_SecurityProtocol_In(tDevice* device,
 
     if (ptrData && allocationLength)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -335,12 +335,12 @@ eReturnValues scsi_Report_Supported_Operation_Codes(tDevice* device,
 
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -643,7 +643,7 @@ eReturnValues scsi_Sanitize_Cmd(tDevice*             device,
         break;
     }
 
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, parameterListLength, dataDir,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, parameterListLength, dataDir,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -742,7 +742,7 @@ eReturnValues scsi_Request_Sense_Cmd(tDevice* device, bool descriptorBit, uint8_
         cdb[4] = M_Byte0(dataSize);
     }
 
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), pdata, dataSize, XFER_DATA_IN,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), pdata, dataSize, XFER_DATA_IN,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -786,12 +786,12 @@ eReturnValues scsi_Log_Sense_Cmd(tDevice* device,
 
     if (dataSize > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -906,12 +906,12 @@ eReturnValues scsi_Log_Select_Cmd(tDevice* device,
     // send the command
     if (parameterListLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -950,12 +950,12 @@ eReturnValues scsi_Send_Diagnostic(tDevice* device,
     // send the command
     if (!pdata)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), pdata, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), pdata, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -980,12 +980,12 @@ eReturnValues scsi_Read_Capacity_10(tDevice* device, uint8_t* pdata, uint16_t da
     // send the command
     if (dataSize > 0 && pdata)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), pdata, dataSize, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), pdata, dataSize, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1015,12 +1015,12 @@ eReturnValues scsi_Read_Capacity_16(tDevice* device, uint8_t* pdata, uint32_t da
     // send the command
     if (dataSize > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), pdata, dataSize, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), pdata, dataSize, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1060,12 +1060,12 @@ eReturnValues scsi_Mode_Sense_6(tDevice*             device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1182,12 +1182,12 @@ eReturnValues scsi_Mode_Sense_10(tDevice*             device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1307,12 +1307,12 @@ eReturnValues scsi_Mode_Select_6(tDevice* device,
     // send the command
     if (parameterListLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1364,12 +1364,12 @@ eReturnValues scsi_Mode_Select_10(tDevice* device,
     // send the command
     if (parameterListLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1420,13 +1420,13 @@ eReturnValues scsi_Write_Buffer(tDevice*         device,
     // send the command
     if (ptrData && parameterListLength != 0)
     {
-        ret = scsi_Send_Cdb_Int(device, &cdb[0], sizeof(cdb), ptrData, parameterListLength, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb_Int(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, parameterListLength, XFER_DATA_OUT,
                                 device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, writeBufferTimeout,
                                 firstSegment, lastSegment);
     }
     else
     {
-        ret = scsi_Send_Cdb_Int(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb_Int(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                                 device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, writeBufferTimeout,
                                 firstSegment, lastSegment);
     }
@@ -1480,7 +1480,7 @@ eReturnValues scsi_Inquiry(tDevice* device,
     // send the command
     if (dataLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), pdata, dataLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), pdata, dataLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
         if (ret == SUCCESS && !evpd && !cmdDt && pageCode == 0)
         {
@@ -1527,7 +1527,7 @@ eReturnValues scsi_Inquiry(tDevice* device,
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1629,12 +1629,12 @@ eReturnValues scsi_Read_Media_Serial_Number(tDevice* device, uint32_t allocation
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1687,12 +1687,12 @@ eReturnValues scsi_Read_Attribute(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1735,12 +1735,12 @@ eReturnValues scsi_Read_Buffer(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1791,12 +1791,12 @@ eReturnValues scsi_Read_Buffer_16(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1835,12 +1835,12 @@ eReturnValues scsi_Receive_Diagnostic_Results(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1877,12 +1877,12 @@ eReturnValues scsi_Remove_I_T_Nexus(tDevice* device, uint32_t parameterListLengt
     // send the command
     if (parameterListLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1919,12 +1919,12 @@ eReturnValues scsi_Report_Aliases(tDevice* device, uint32_t allocationLength, ui
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1965,12 +1965,12 @@ eReturnValues scsi_Report_Identifying_Information(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2007,12 +2007,12 @@ eReturnValues scsi_Report_Luns(tDevice* device, uint8_t selectReport, uint32_t a
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2052,12 +2052,12 @@ eReturnValues scsi_Report_Priority(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2100,12 +2100,12 @@ eReturnValues scsi_Report_Supported_Task_Management_Functions(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2144,12 +2144,12 @@ eReturnValues scsi_Report_Timestamp(tDevice* device, uint32_t allocationLength, 
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2196,12 +2196,12 @@ eReturnValues scsi_SecurityProtocol_Out(tDevice* device,
     // send the command
     if (ptrData && transferLength)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataLength, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataLength, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2243,12 +2243,12 @@ eReturnValues scsi_Set_Identifying_Information(tDevice* device,
     // send the command
     if (parameterListLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2288,12 +2288,12 @@ eReturnValues scsi_Set_Priority(tDevice* device,
     // send the command
     if (parameterListLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2332,12 +2332,12 @@ eReturnValues scsi_Set_Target_Port_Groups(tDevice* device,
     // send the command
     if (parameterListLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2373,12 +2373,12 @@ eReturnValues scsi_Set_Timestamp(tDevice* device, uint32_t parameterListLength, 
     // send the command
     if (parameterListLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, parameterListLength, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, parameterListLength, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2406,7 +2406,7 @@ eReturnValues scsi_Test_Unit_Ready(tDevice* device, scsiStatus* pReturnStatus)
     cdb[5]              = 0; // control
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (pReturnStatus)
     {
@@ -2461,12 +2461,12 @@ eReturnValues scsi_Write_Attribute(tDevice* device,
     // send the command
     if (parameterListLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, parameterListLength, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, parameterListLength, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2522,12 +2522,12 @@ eReturnValues scsi_Compare_And_Write(tDevice* device,
     // send the command
     if (numberOfLogicalBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2585,12 +2585,12 @@ eReturnValues scsi_Format_Unit(tDevice* device,
     // send the command
     if (fmtData)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2632,7 +2632,7 @@ eReturnValues scsi_Format_With_Preset(tDevice* device,
     cdb[8] = RESERVED;
     cdb[9] = 0; // control byte
 
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeoutSeconds);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2674,12 +2674,12 @@ eReturnValues scsi_Get_Lba_Status(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2735,12 +2735,12 @@ eReturnValues scsi_Orwrite_16(tDevice* device,
     // send the command
     if (transferLengthBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2772,17 +2772,11 @@ eReturnValues scsi_Orwrite_32(tDevice* device,
         printf("Sending SCSI ORWrite 32\n");
     }
 
-    cdb[OPERATION_CODE] = ORWRITE_32;
-    cdb[1]              = 0; // control
-    cdb[2]              = bmop & 0x07;
-    cdb[3]              = previousGenProcessing & 0x0F;
-    cdb[4]              = RESERVED;
-    cdb[5]              = RESERVED;
-    cdb[6]              = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[7]              = 0x18; // additional CDB length. This is defined as this value in the spec
-    cdb[8]              = 0x00; // service action
-    cdb[9]              = 0x0E; // service action
-    cdb[10]             = C_CAST(uint8_t, (orProtect & 0x07) << 5);
+    set_Typical_SCSI_32_CDB_Fields(cdb, ORWRITE_32, 0x000E, logicalBlockAddress, transferLengthBlocks, 0);
+    set_SCSI_32B_PI_Fields(cdb, groupNumber, orProtect, 0, 0, 0);
+
+    cdb[2] = bmop & 0x07;
+    cdb[3] = previousGenProcessing & 0x0F;
     if (dpo)
     {
         cdb[10] |= BIT4;
@@ -2792,14 +2786,6 @@ eReturnValues scsi_Orwrite_32(tDevice* device,
         cdb[10] |= BIT3;
     }
     cdb[11] = RESERVED;
-    cdb[12] = M_Byte7(logicalBlockAddress);
-    cdb[13] = M_Byte6(logicalBlockAddress);
-    cdb[14] = M_Byte5(logicalBlockAddress);
-    cdb[15] = M_Byte4(logicalBlockAddress);
-    cdb[16] = M_Byte3(logicalBlockAddress);
-    cdb[17] = M_Byte2(logicalBlockAddress);
-    cdb[18] = M_Byte1(logicalBlockAddress);
-    cdb[19] = M_Byte0(logicalBlockAddress);
     cdb[20] = M_Byte3(expectedORWgen);
     cdb[21] = M_Byte2(expectedORWgen);
     cdb[22] = M_Byte1(expectedORWgen);
@@ -2808,20 +2794,16 @@ eReturnValues scsi_Orwrite_32(tDevice* device,
     cdb[25] = M_Byte2(newORWgen);
     cdb[26] = M_Byte1(newORWgen);
     cdb[27] = M_Byte0(newORWgen);
-    cdb[28] = M_Byte3(transferLengthBlocks);
-    cdb[29] = M_Byte2(transferLengthBlocks);
-    cdb[30] = M_Byte1(transferLengthBlocks);
-    cdb[31] = M_Byte0(transferLengthBlocks);
 
     // send the command
     if (transferLengthBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2860,7 +2842,7 @@ eReturnValues scsi_Prefetch_10(tDevice* device,
     cdb[9] = 0; // control
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2904,7 +2886,7 @@ eReturnValues scsi_Prefetch_16(tDevice* device,
     cdb[15] = 0; // control
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2931,7 +2913,7 @@ eReturnValues scsi_Prevent_Allow_Medium_Removal(tDevice* device, uint8_t prevent
     cdb[5]              = 0; // control
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2961,15 +2943,10 @@ eReturnValues scsi_Read_6(tDevice* device,
         printf("Sending SCSI Read 6\n");
     }
 
-    cdb[OPERATION_CODE] = READ6;
-    cdb[1]              = M_Byte2(logicalBlockAddress) & 0x1F;
-    cdb[2]              = M_Byte1(logicalBlockAddress);
-    cdb[3]              = M_Byte0(logicalBlockAddress);
-    cdb[4]              = transferLengthBlocks;
-    cdb[5]              = 0; // control
+    set_Typical_SCSI_6B_CDB_Fields(cdb, READ6, logicalBlockAddress, transferLengthBlocks, 0);
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_IN,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_IN,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3023,12 +3000,12 @@ eReturnValues scsi_Read_10(tDevice* device,
     // send the command
     if (transferLengthBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3085,12 +3062,12 @@ eReturnValues scsi_Read_12(tDevice* device,
     // send the command
     if (transferLengthBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3151,12 +3128,12 @@ eReturnValues scsi_Read_16(tDevice* device,
     // send the command
     if (transferLengthBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3188,17 +3165,10 @@ eReturnValues scsi_Read_32(tDevice* device,
         printf("Sending SCSI Read 32\n");
     }
 
-    cdb[OPERATION_CODE] = READ32;
-    cdb[1]              = 0; // control
-    cdb[2]              = RESERVED;
-    cdb[3]              = RESERVED;
-    cdb[4]              = RESERVED;
-    cdb[5]              = RESERVED;
-    cdb[6]              = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[7]              = 0x18; // additional cdb length
-    cdb[8]              = 0x00; // service action MSB
-    cdb[9]              = 0x09; // service action LSB
-    cdb[10]             = C_CAST(uint8_t, (rdProtect & 0x07) << 5);
+    set_Typical_SCSI_32_CDB_Fields(cdb, READ32, 0x0009, logicalBlockAddress, transferLengthBlocks, 0);
+    set_SCSI_32B_PI_Fields(cdb, groupNumber, rdProtect, expectedInitialLogicalBlockRefTag, expectedLogicalBlockAppTag,
+                           logicalBlockAppTagMask);
+
     if (dpo)
     {
         cdb[10] |= BIT4;
@@ -3211,37 +3181,16 @@ eReturnValues scsi_Read_32(tDevice* device,
     {
         cdb[10] |= BIT2;
     }
-    cdb[11] = RESERVED;
-    cdb[12] = M_Byte7(logicalBlockAddress);
-    cdb[13] = M_Byte6(logicalBlockAddress);
-    cdb[14] = M_Byte5(logicalBlockAddress);
-    cdb[15] = M_Byte4(logicalBlockAddress);
-    cdb[16] = M_Byte3(logicalBlockAddress);
-    cdb[17] = M_Byte2(logicalBlockAddress);
-    cdb[18] = M_Byte1(logicalBlockAddress);
-    cdb[19] = M_Byte0(logicalBlockAddress);
-    cdb[20] = M_Byte3(expectedInitialLogicalBlockRefTag);
-    cdb[21] = M_Byte2(expectedInitialLogicalBlockRefTag);
-    cdb[22] = M_Byte1(expectedInitialLogicalBlockRefTag);
-    cdb[23] = M_Byte0(expectedInitialLogicalBlockRefTag);
-    cdb[24] = M_Byte1(expectedLogicalBlockAppTag);
-    cdb[25] = M_Byte0(expectedLogicalBlockAppTag);
-    cdb[26] = M_Byte1(logicalBlockAppTagMask);
-    cdb[27] = M_Byte0(logicalBlockAppTagMask);
-    cdb[28] = M_Byte3(transferLengthBlocks);
-    cdb[29] = M_Byte2(transferLengthBlocks);
-    cdb[30] = M_Byte1(transferLengthBlocks);
-    cdb[31] = M_Byte0(transferLengthBlocks);
 
     // send the command
     if (transferLengthBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3288,12 +3237,12 @@ eReturnValues scsi_Read_Defect_Data_10(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3343,12 +3292,12 @@ eReturnValues scsi_Read_Defect_Data_12(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3394,12 +3343,12 @@ eReturnValues scsi_Read_Long_10(tDevice* device,
     // send the command
     if (byteTransferLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, byteTransferLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, byteTransferLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3451,12 +3400,12 @@ eReturnValues scsi_Read_Long_16(tDevice* device,
     // send the command
     if (byteTransferLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, byteTransferLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, byteTransferLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3496,7 +3445,7 @@ eReturnValues scsi_Reassign_Blocks(tDevice* device, bool longLBA, bool longList,
     cdb[5] = 0; // control
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3542,12 +3491,12 @@ eReturnValues scsi_Report_Referrals(tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3596,7 +3545,7 @@ eReturnValues scsi_Start_Stop_Unit(tDevice* device,
     cdb[5] = 0; // control
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 30);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3634,7 +3583,7 @@ eReturnValues scsi_Synchronize_Cache_10(tDevice* device,
     cdb[9] = 0; // control
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3678,7 +3627,7 @@ eReturnValues scsi_Synchronize_Cache_16(tDevice* device,
     cdb[15] = 0; // control
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3718,12 +3667,12 @@ eReturnValues scsi_Unmap(tDevice* device,
     // send the command
     if (parameterListLength > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, parameterListLength, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, parameterListLength, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3772,13 +3721,13 @@ eReturnValues scsi_Verify_10(tDevice* device,
     if (((byteCheck & 0x03) == 0 || (byteCheck & 0x03) == 0x02) || verificationLength == 0)
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3829,13 +3778,13 @@ eReturnValues scsi_Verify_12(tDevice* device,
     if (((byteCheck & 0x03) == 0 || (byteCheck & 0x03) == 0x02) || verificationLength == 0)
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3890,13 +3839,13 @@ eReturnValues scsi_Verify_16(tDevice* device,
     if (((byteCheck & 0x03) == 0 || (byteCheck & 0x03) == 0x02) || verificationLength == 0)
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3927,56 +3876,29 @@ eReturnValues scsi_Verify_32(tDevice* device,
         printf("Sending Verify 32\n");
     }
 
-    cdb[OPERATION_CODE] = VERIFY32;
-    cdb[1]              = 0; // control
-    cdb[2]              = RESERVED;
-    cdb[3]              = RESERVED;
-    cdb[4]              = RESERVED;
-    cdb[5]              = RESERVED;
-    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[7] = 0x18; // additional CDB length
-    cdb[8] = 0x00; // service action MSB
-    cdb[9] = 0x0A; // service action LSB
-    cdb[10] |= C_CAST(uint8_t, (vrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_32_CDB_Fields(cdb, VERIFY32, 0x000A, logicalBlockAddress, verificationLength, 0);
+    set_SCSI_32B_PI_Fields(cdb, groupNumber, vrprotect, expectedInitialLogicalBlockRefTag, expectedLogicalBlockAppTag,
+                           logicalBlockAppTagMask);
+
     if (dpo)
     {
         cdb[10] |= BIT4;
     }
     cdb[10] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
     cdb[11] = RESERVED;
-    cdb[12] = M_Byte7(logicalBlockAddress);
-    cdb[13] = M_Byte6(logicalBlockAddress);
-    cdb[14] = M_Byte5(logicalBlockAddress);
-    cdb[15] = M_Byte4(logicalBlockAddress);
-    cdb[16] = M_Byte3(logicalBlockAddress);
-    cdb[17] = M_Byte2(logicalBlockAddress);
-    cdb[18] = M_Byte1(logicalBlockAddress);
-    cdb[19] = M_Byte0(logicalBlockAddress);
-    cdb[20] = M_Byte3(expectedInitialLogicalBlockRefTag);
-    cdb[21] = M_Byte2(expectedInitialLogicalBlockRefTag);
-    cdb[22] = M_Byte1(expectedInitialLogicalBlockRefTag);
-    cdb[23] = M_Byte0(expectedInitialLogicalBlockRefTag);
-    cdb[24] = M_Byte1(expectedLogicalBlockAppTag);
-    cdb[25] = M_Byte0(expectedLogicalBlockAppTag);
-    cdb[26] = M_Byte1(logicalBlockAppTagMask);
-    cdb[27] = M_Byte0(logicalBlockAppTagMask);
-    cdb[28] = M_Byte3(verificationLength);
-    cdb[29] = M_Byte2(verificationLength);
-    cdb[30] = M_Byte1(verificationLength);
-    cdb[31] = M_Byte0(verificationLength);
 
     // if byteCheck is set to 00b or 10b, then no data is transfered according to spec....not sure if this check should
     // be here of it should always say data out even when the transfer wont occur-TJE
     if (((byteCheck & 0x03) == 0 || (byteCheck & 0x03) == 0x02) || verificationLength == 0)
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, dataSize, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4007,15 +3929,10 @@ eReturnValues scsi_Write_6(tDevice* device,
         printf("Sending SCSI Write 6\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE6;
-    cdb[1]              = M_Byte2(logicalBlockAddress) & 0x1F;
-    cdb[2]              = M_Byte1(logicalBlockAddress);
-    cdb[3]              = M_Byte0(logicalBlockAddress);
-    cdb[4]              = transferLengthBlocks;
-    cdb[5]              = 0; // control
+    set_Typical_SCSI_6B_CDB_Fields(cdb, WRITE6, logicalBlockAddress, transferLengthBlocks, 0);
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -4042,8 +3959,9 @@ eReturnValues scsi_Write_10(tDevice* device,
         printf("Write 10\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE10;
-    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE10, NO_SERVICE_ACTION, logicalBlockAddress, transferLengthBlocks, 0);
+
+    cdb[1] = GET_PROTECT_VAL(wrprotect);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -4052,24 +3970,17 @@ eReturnValues scsi_Write_10(tDevice* device,
     {
         cdb[1] |= BIT3;
     }
-    cdb[2] = M_Byte3(logicalBlockAddress);
-    cdb[3] = M_Byte2(logicalBlockAddress);
-    cdb[4] = M_Byte1(logicalBlockAddress);
-    cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[7] = M_Byte1(transferLengthBlocks);
-    cdb[8] = M_Byte0(transferLengthBlocks);
-    cdb[9] = 0; // control
+    cdb[6] = GET_GROUP_CODE(groupNumber);
 
     // send the command
     if (transferLengthBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4097,8 +4008,9 @@ eReturnValues scsi_Write_12(tDevice* device,
         printf("Write 12\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE12;
-    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_12B_CDB_Fields(cdb, WRITE12, NO_SERVICE_ACTION, logicalBlockAddress, transferLengthBlocks, 0);
+
+    cdb[1] = GET_PROTECT_VAL(wrprotect);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -4107,26 +4019,17 @@ eReturnValues scsi_Write_12(tDevice* device,
     {
         cdb[1] |= BIT3;
     }
-    cdb[2] = M_Byte3(logicalBlockAddress);
-    cdb[3] = M_Byte2(logicalBlockAddress);
-    cdb[4] = M_Byte1(logicalBlockAddress);
-    cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] = M_Byte3(transferLengthBlocks);
-    cdb[7] = M_Byte2(transferLengthBlocks);
-    cdb[8] = M_Byte1(transferLengthBlocks);
-    cdb[9] = M_Byte0(transferLengthBlocks);
-    cdb[10] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[11] = 0; // control
+    cdb[10] = GET_GROUP_CODE(groupNumber);
 
     // send the command
     if (transferLengthBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4154,8 +4057,10 @@ eReturnValues scsi_Write_16(tDevice* device,
         printf("Write 16\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE16;
-    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE16, NO_SERVICE_ACTION, logicalBlockAddress,
+                                              transferLengthBlocks, 0);
+
+    cdb[1] = GET_PROTECT_VAL(wrprotect);
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -4164,30 +4069,17 @@ eReturnValues scsi_Write_16(tDevice* device,
     {
         cdb[1] |= BIT3;
     }
-    cdb[2]  = M_Byte7(logicalBlockAddress);
-    cdb[3]  = M_Byte6(logicalBlockAddress);
-    cdb[4]  = M_Byte5(logicalBlockAddress);
-    cdb[5]  = M_Byte4(logicalBlockAddress);
-    cdb[6]  = M_Byte3(logicalBlockAddress);
-    cdb[7]  = M_Byte2(logicalBlockAddress);
-    cdb[8]  = M_Byte1(logicalBlockAddress);
-    cdb[9]  = M_Byte0(logicalBlockAddress);
-    cdb[10] = M_Byte3(transferLengthBlocks);
-    cdb[11] = M_Byte2(transferLengthBlocks);
-    cdb[12] = M_Byte1(transferLengthBlocks);
-    cdb[13] = M_Byte0(transferLengthBlocks);
-    cdb[14] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[15] = 0; // control
+    cdb[14] = GET_GROUP_CODE(groupNumber);
 
     // send the command
     if (transferLengthBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4218,17 +4110,10 @@ eReturnValues scsi_Write_32(tDevice* device,
         printf("Sending Write 32\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE32;
-    cdb[1]              = 0; // control
-    cdb[2]              = RESERVED;
-    cdb[3]              = RESERVED;
-    cdb[4]              = RESERVED;
-    cdb[5]              = RESERVED;
-    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[7] = 0x18; // additional CDB length
-    cdb[8] = 0x00; // service action MSB
-    cdb[9] = 0x0B; // service action LSB
-    cdb[10] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_32_CDB_Fields(cdb, WRITE32, 0x000B, logicalBlockAddress, transferLengthBlocks, 0);
+    set_SCSI_32B_PI_Fields(cdb, groupNumber, wrprotect, expectedInitialLogicalBlockRefTag, expectedLogicalBlockAppTag,
+                           logicalBlockAppTagMask);
+
     if (dpo)
     {
         cdb[10] |= BIT4;
@@ -4238,36 +4123,16 @@ eReturnValues scsi_Write_32(tDevice* device,
         cdb[10] |= BIT3;
     }
     cdb[11] = RESERVED;
-    cdb[12] = M_Byte7(logicalBlockAddress);
-    cdb[13] = M_Byte6(logicalBlockAddress);
-    cdb[14] = M_Byte5(logicalBlockAddress);
-    cdb[15] = M_Byte4(logicalBlockAddress);
-    cdb[16] = M_Byte3(logicalBlockAddress);
-    cdb[17] = M_Byte2(logicalBlockAddress);
-    cdb[18] = M_Byte1(logicalBlockAddress);
-    cdb[19] = M_Byte0(logicalBlockAddress);
-    cdb[20] = M_Byte3(expectedInitialLogicalBlockRefTag);
-    cdb[21] = M_Byte2(expectedInitialLogicalBlockRefTag);
-    cdb[22] = M_Byte1(expectedInitialLogicalBlockRefTag);
-    cdb[23] = M_Byte0(expectedInitialLogicalBlockRefTag);
-    cdb[24] = M_Byte1(expectedLogicalBlockAppTag);
-    cdb[25] = M_Byte0(expectedLogicalBlockAppTag);
-    cdb[26] = M_Byte1(logicalBlockAppTagMask);
-    cdb[27] = M_Byte0(logicalBlockAppTagMask);
-    cdb[28] = M_Byte3(transferLengthBlocks);
-    cdb[29] = M_Byte2(transferLengthBlocks);
-    cdb[30] = M_Byte1(transferLengthBlocks);
-    cdb[31] = M_Byte0(transferLengthBlocks);
 
     // send the command
     if (transferLengthBlocks > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4295,31 +4160,26 @@ eReturnValues scsi_Write_And_Verify_10(tDevice* device,
         printf("Write and Verify 10\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE_AND_VERIFY_10;
-    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE_AND_VERIFY_10, NO_SERVICE_ACTION, logicalBlockAddress,
+                                    transferLengthBlocks, 0);
+
+    cdb[1] = GET_PROTECT_VAL(wrprotect);
     if (dpo)
     {
         cdb[1] |= BIT4;
     }
     cdb[1] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
-    cdb[2] = M_Byte3(logicalBlockAddress);
-    cdb[3] = M_Byte2(logicalBlockAddress);
-    cdb[4] = M_Byte1(logicalBlockAddress);
-    cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[7] = M_Byte1(transferLengthBlocks);
-    cdb[8] = M_Byte0(transferLengthBlocks);
-    cdb[9] = 0; // control
+    cdb[6] = GET_GROUP_CODE(groupNumber);
 
     // send the command
     if (transferLengthBytes > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4347,33 +4207,26 @@ eReturnValues scsi_Write_And_Verify_12(tDevice* device,
         printf("Write and Verify 12\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE_AND_VERIFY_12;
-    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_12B_CDB_Fields(cdb, WRITE_AND_VERIFY_12, NO_SERVICE_ACTION, logicalBlockAddress,
+                                    transferLengthBlocks, 0);
+
+    cdb[1] = GET_PROTECT_VAL(wrprotect);
     if (dpo)
     {
         cdb[1] |= BIT4;
     }
     cdb[1] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
-    cdb[2] = M_Byte3(logicalBlockAddress);
-    cdb[3] = M_Byte2(logicalBlockAddress);
-    cdb[4] = M_Byte1(logicalBlockAddress);
-    cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] = M_Byte3(transferLengthBlocks);
-    cdb[7] = M_Byte2(transferLengthBlocks);
-    cdb[8] = M_Byte1(transferLengthBlocks);
-    cdb[9] = M_Byte0(transferLengthBlocks);
-    cdb[10] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[11] = 0; // control
+    cdb[10] = GET_GROUP_CODE(groupNumber);
 
     // send the command
     if (transferLengthBytes > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4401,37 +4254,26 @@ eReturnValues scsi_Write_And_Verify_16(tDevice* device,
         printf("Write and Verify 16\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE_AND_VERIFY_16;
-    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE_AND_VERIFY_16, NO_SERVICE_ACTION, logicalBlockAddress,
+                                              transferLengthBlocks, 0);
+
+    cdb[1] = GET_PROTECT_VAL(wrprotect);
     if (dpo)
     {
         cdb[1] |= BIT4;
     }
     cdb[1] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
-    cdb[2]  = M_Byte7(logicalBlockAddress);
-    cdb[3]  = M_Byte6(logicalBlockAddress);
-    cdb[4]  = M_Byte5(logicalBlockAddress);
-    cdb[5]  = M_Byte4(logicalBlockAddress);
-    cdb[6]  = M_Byte3(logicalBlockAddress);
-    cdb[7]  = M_Byte2(logicalBlockAddress);
-    cdb[8]  = M_Byte1(logicalBlockAddress);
-    cdb[9]  = M_Byte0(logicalBlockAddress);
-    cdb[10] = M_Byte3(transferLengthBlocks);
-    cdb[11] = M_Byte2(transferLengthBlocks);
-    cdb[12] = M_Byte1(transferLengthBlocks);
-    cdb[13] = M_Byte0(transferLengthBlocks);
-    cdb[14] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[15] = 0; // control
+    cdb[14] |= GET_GROUP_CODE(groupNumber);
 
     // send the command
     if (transferLengthBytes > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4462,53 +4304,26 @@ eReturnValues scsi_Write_And_Verify_32(tDevice* device,
         printf("Sending Write and Verify 32\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE_AND_VERIFY_32;
-    cdb[1]              = 0; // control
-    cdb[2]              = RESERVED;
-    cdb[3]              = RESERVED;
-    cdb[4]              = RESERVED;
-    cdb[5]              = RESERVED;
-    cdb[6] |= C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[7] = 0x18; // additional CDB length
-    cdb[8] = 0x00; // service action MSB
-    cdb[9] = 0x0C; // service action LSB
-    cdb[10] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_32_CDB_Fields(cdb, WRITE_AND_VERIFY_32, 0x000C, logicalBlockAddress, transferLengthBlocks, 0);
+    set_SCSI_32B_PI_Fields(cdb, groupNumber, wrprotect, expectedInitialLogicalBlockRefTag, expectedLogicalBlockAppTag,
+                           logicalBlockAppTagMask);
+
     if (dpo)
     {
         cdb[10] |= BIT4;
     }
     cdb[10] |= C_CAST(uint8_t, (byteCheck & UINT8_C(0x03)) << 1);
     cdb[11] = RESERVED;
-    cdb[12] = M_Byte7(logicalBlockAddress);
-    cdb[13] = M_Byte6(logicalBlockAddress);
-    cdb[14] = M_Byte5(logicalBlockAddress);
-    cdb[15] = M_Byte4(logicalBlockAddress);
-    cdb[16] = M_Byte3(logicalBlockAddress);
-    cdb[17] = M_Byte2(logicalBlockAddress);
-    cdb[18] = M_Byte1(logicalBlockAddress);
-    cdb[19] = M_Byte0(logicalBlockAddress);
-    cdb[20] = M_Byte3(expectedInitialLogicalBlockRefTag);
-    cdb[21] = M_Byte2(expectedInitialLogicalBlockRefTag);
-    cdb[22] = M_Byte1(expectedInitialLogicalBlockRefTag);
-    cdb[23] = M_Byte0(expectedInitialLogicalBlockRefTag);
-    cdb[24] = M_Byte1(expectedLogicalBlockAppTag);
-    cdb[25] = M_Byte0(expectedLogicalBlockAppTag);
-    cdb[26] = M_Byte1(logicalBlockAppTagMask);
-    cdb[27] = M_Byte0(logicalBlockAppTagMask);
-    cdb[28] = M_Byte3(transferLengthBlocks);
-    cdb[29] = M_Byte2(transferLengthBlocks);
-    cdb[30] = M_Byte1(transferLengthBlocks);
-    cdb[31] = M_Byte0(transferLengthBlocks);
 
     // send the command
     if (transferLengthBytes > 0)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4534,7 +4349,9 @@ eReturnValues scsi_Write_Long_10(tDevice* device,
         printf("Sending SCSI Write Long 10\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE_LONG_10_CMD;
+    set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE_LONG_10_CMD, NO_SERVICE_ACTION, logicalBlockAddress, byteTransferLength,
+                                    0);
+
     if (correctionDisabled)
     {
         cdb[1] |= BIT7;
@@ -4547,24 +4364,17 @@ eReturnValues scsi_Write_Long_10(tDevice* device,
     {
         cdb[1] |= BIT5;
     }
-    cdb[2] = M_Byte3(logicalBlockAddress);
-    cdb[3] = M_Byte2(logicalBlockAddress);
-    cdb[4] = M_Byte1(logicalBlockAddress);
-    cdb[5] = M_Byte0(logicalBlockAddress);
     cdb[6] = RESERVED;
-    cdb[7] = M_Byte1(byteTransferLength);
-    cdb[8] = M_Byte0(byteTransferLength);
-    cdb[9] = 0; // control
 
     // send the command
     if (ptrData)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, byteTransferLength, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, byteTransferLength, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4590,7 +4400,8 @@ eReturnValues scsi_Write_Long_16(tDevice* device,
         printf("Sending SCSI Write Long 16\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE_LONG_16_CMD;
+    set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE_LONG_16_CMD, 0x11, logicalBlockAddress, byteTransferLength, 0);
+
     if (correctionDisabled)
     {
         cdb[1] |= BIT7;
@@ -4603,31 +4414,17 @@ eReturnValues scsi_Write_Long_16(tDevice* device,
     {
         cdb[1] |= BIT5;
     }
-    cdb[1] |= 0x11; // service action
-    cdb[2]  = M_Byte7(logicalBlockAddress);
-    cdb[3]  = M_Byte6(logicalBlockAddress);
-    cdb[4]  = M_Byte5(logicalBlockAddress);
-    cdb[5]  = M_Byte4(logicalBlockAddress);
-    cdb[6]  = M_Byte3(logicalBlockAddress);
-    cdb[7]  = M_Byte2(logicalBlockAddress);
-    cdb[8]  = M_Byte1(logicalBlockAddress);
-    cdb[9]  = M_Byte0(logicalBlockAddress);
-    cdb[10] = RESERVED;
-    cdb[11] = RESERVED;
-    cdb[12] = M_Byte1(byteTransferLength);
-    cdb[13] = M_Byte0(byteTransferLength);
     cdb[14] = RESERVED;
-    cdb[15] = 0; // control
 
     // send the command
     if (ptrData)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, byteTransferLength, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, byteTransferLength, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4670,8 +4467,9 @@ eReturnValues scsi_Write_Same_10(tDevice* device,
         printf("Sending SCSI Write Same 10\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE_SAME_10_CMD;
-    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE_SAME_10_CMD, NO_SERVICE_ACTION, logicalBlockAddress,
+                                    numberOfLogicalBlocks, 0);
+    cdb[1] |= GET_PROTECT_VAL(wrprotect);
     if (anchor)
     {
         cdb[1] |= BIT4;
@@ -4680,17 +4478,10 @@ eReturnValues scsi_Write_Same_10(tDevice* device,
     {
         cdb[1] |= BIT3;
     }
-    cdb[2] = M_Byte3(logicalBlockAddress);
-    cdb[3] = M_Byte2(logicalBlockAddress);
-    cdb[4] = M_Byte1(logicalBlockAddress);
-    cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] = groupNumber & 0x0F;
-    cdb[7] = M_Byte1(numberOfLogicalBlocks);
-    cdb[8] = M_Byte0(numberOfLogicalBlocks);
-    cdb[9] = 0; // control
+    cdb[6] = GET_GROUP_CODE(groupNumber);
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -4733,8 +4524,10 @@ eReturnValues scsi_Write_Same_16(tDevice* device,
         printf("Sending SCSI Write Same 16\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE_SAME_16_CMD;
-    cdb[1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE_SAME_16_CMD, NO_SERVICE_ACTION, logicalBlockAddress,
+                                              numberOfLogicalBlocks, 0);
+
+    cdb[1] |= GET_PROTECT_VAL(wrprotect);
     if (anchor)
     {
         cdb[1] |= BIT4;
@@ -4747,31 +4540,18 @@ eReturnValues scsi_Write_Same_16(tDevice* device,
     {
         cdb[1] |= BIT0;
     }
-    cdb[2]  = M_Byte7(logicalBlockAddress);
-    cdb[3]  = M_Byte6(logicalBlockAddress);
-    cdb[4]  = M_Byte5(logicalBlockAddress);
-    cdb[5]  = M_Byte4(logicalBlockAddress);
-    cdb[6]  = M_Byte3(logicalBlockAddress);
-    cdb[7]  = M_Byte2(logicalBlockAddress);
-    cdb[8]  = M_Byte1(logicalBlockAddress);
-    cdb[9]  = M_Byte0(logicalBlockAddress);
-    cdb[10] = M_Byte3(numberOfLogicalBlocks);
-    cdb[11] = M_Byte2(numberOfLogicalBlocks);
-    cdb[12] = M_Byte1(numberOfLogicalBlocks);
-    cdb[13] = M_Byte0(numberOfLogicalBlocks);
-    cdb[14] = groupNumber & 0x0F;
-    cdb[15] = 0; // control
+    cdb[14] = GET_GROUP_CODE(groupNumber);
 
     if (noDataOut)
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     else
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -4818,17 +4598,10 @@ eReturnValues scsi_Write_Same_32(tDevice* device,
         printf("Sending SCSI Write Same 32\n");
     }
 
-    cdb[OPERATION_CODE] = WRITE_SAME_32_CMD;
-    cdb[1]              = 0; // control
-    cdb[2]              = RESERVED;
-    cdb[3]              = RESERVED;
-    cdb[4]              = RESERVED;
-    cdb[5]              = RESERVED;
-    cdb[6]              = groupNumber & 0x0F;
-    cdb[7]              = 0x18; // additional cdb length
-    cdb[8]              = 0x00; // service action MSB
-    cdb[9]              = 0x0D; // service action LSB
-    cdb[10] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
+    set_Typical_SCSI_32_CDB_Fields(cdb, WRITE_SAME_32_CMD, 0x000D, logicalBlockAddress, numberOfLogicalBlocks, 0);
+    set_SCSI_32B_PI_Fields(cdb, groupNumber, wrprotect, expectedInitialLogicalBlockRefTag, expectedLogicalBlockAppTag,
+                           logicalBlockAppTagMask);
+
     if (anchor)
     {
         cdb[10] |= BIT4;
@@ -4842,37 +4615,17 @@ eReturnValues scsi_Write_Same_32(tDevice* device,
         cdb[10] |= BIT0;
     }
     cdb[11] = RESERVED;
-    cdb[12] = M_Byte7(logicalBlockAddress);
-    cdb[13] = M_Byte6(logicalBlockAddress);
-    cdb[14] = M_Byte5(logicalBlockAddress);
-    cdb[15] = M_Byte4(logicalBlockAddress);
-    cdb[16] = M_Byte3(logicalBlockAddress);
-    cdb[17] = M_Byte2(logicalBlockAddress);
-    cdb[18] = M_Byte1(logicalBlockAddress);
-    cdb[19] = M_Byte0(logicalBlockAddress);
-    cdb[20] = M_Byte3(expectedInitialLogicalBlockRefTag);
-    cdb[21] = M_Byte2(expectedInitialLogicalBlockRefTag);
-    cdb[22] = M_Byte1(expectedInitialLogicalBlockRefTag);
-    cdb[23] = M_Byte0(expectedInitialLogicalBlockRefTag);
-    cdb[24] = M_Byte1(expectedLogicalBlockAppTag);
-    cdb[25] = M_Byte0(expectedLogicalBlockAppTag);
-    cdb[26] = M_Byte1(logicalBlockAppTagMask);
-    cdb[27] = M_Byte0(logicalBlockAppTagMask);
-    cdb[28] = M_Byte3(numberOfLogicalBlocks);
-    cdb[29] = M_Byte2(numberOfLogicalBlocks);
-    cdb[30] = M_Byte1(numberOfLogicalBlocks);
-    cdb[31] = M_Byte0(numberOfLogicalBlocks);
 
     if (!noDataOut)
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     else
     {
         // send the command
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -5114,7 +4867,8 @@ eReturnValues scsi_xp_Write_10(tDevice* device,
         printf("Sending SCSI XP Write 10\n");
     }
 
-    cdb[OPERATION_CODE] = XPWRITE_10;
+    set_Typical_SCSI_10B_CDB_Fields(cdb, XPWRITE_10, NO_SERVICE_ACTION, logicalBlockAddress, transferLength, 0);
+
     if (dpo)
     {
         cdb[1] |= BIT4;
@@ -5127,18 +4881,12 @@ eReturnValues scsi_xp_Write_10(tDevice* device,
     {
         cdb[1] |= BIT0;
     }
-    cdb[2] = M_Byte3(logicalBlockAddress);
-    cdb[3] = M_Byte2(logicalBlockAddress);
-    cdb[4] = M_Byte1(logicalBlockAddress);
-    cdb[5] = M_Byte0(logicalBlockAddress);
-    cdb[6] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[7] = M_Byte1(transferLength);
-    cdb[8] = M_Byte0(transferLength);
-    cdb[9] = 0; // control
+    cdb[6] = GET_GROUP_CODE(groupNumber);
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLength * device->drive_info.deviceBlockSize,
-                        XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData,
+                        transferLength * device->drive_info.deviceBlockSize, XFER_DATA_OUT,
+                        device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("Write XD Write 10", ret);
@@ -5168,16 +4916,10 @@ eReturnValues scsi_xp_Write_32(tDevice* device,
         printf("Sending SCSI XP Write 32\n");
     }
 
-    cdb[OPERATION_CODE] = XPWRITE_32;
-    cdb[1]              = 0; // control
-    cdb[2]              = RESERVED;
-    cdb[3]              = RESERVED;
-    cdb[4]              = RESERVED;
-    cdb[5]              = RESERVED;
-    cdb[6]              = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
-    cdb[7]              = 0x18; // additional CDB length
-    cdb[8]              = 0x00; // service action MSB
-    cdb[9]              = 0x06; // service action LSB
+    set_Typical_SCSI_32_CDB_Fields(cdb, XPWRITE_32, 0x0006, logicalBlockAddress, transferLength, 0);
+    set_SCSI_32B_PI_Fields(cdb, groupNumber, 0, 0, 0, 0);
+
+    cdb[6] = C_CAST(uint8_t, groupNumber & UINT8_C(0x1F));
     if (dpo)
     {
         cdb[10] |= BIT4;
@@ -5190,31 +4932,11 @@ eReturnValues scsi_xp_Write_32(tDevice* device,
     {
         cdb[10] |= BIT0;
     }
-    cdb[11] = RESERVED;
-    cdb[12] = M_Byte7(logicalBlockAddress);
-    cdb[13] = M_Byte6(logicalBlockAddress);
-    cdb[14] = M_Byte5(logicalBlockAddress);
-    cdb[15] = M_Byte4(logicalBlockAddress);
-    cdb[16] = M_Byte3(logicalBlockAddress);
-    cdb[17] = M_Byte2(logicalBlockAddress);
-    cdb[18] = M_Byte1(logicalBlockAddress);
-    cdb[19] = M_Byte0(logicalBlockAddress);
-    cdb[20] = RESERVED;
-    cdb[21] = RESERVED;
-    cdb[22] = RESERVED;
-    cdb[23] = RESERVED;
-    cdb[24] = RESERVED;
-    cdb[25] = RESERVED;
-    cdb[26] = RESERVED;
-    cdb[27] = RESERVED;
-    cdb[28] = M_Byte3(transferLength);
-    cdb[29] = M_Byte2(transferLength);
-    cdb[30] = M_Byte1(transferLength);
-    cdb[31] = M_Byte0(transferLength);
 
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, transferLength * device->drive_info.deviceBlockSize,
-                        XFER_DATA_OUT, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData,
+                        transferLength * device->drive_info.deviceBlockSize, XFER_DATA_OUT,
+                        device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_Return_Enum("XP Write 32", ret);
@@ -5279,7 +5001,7 @@ eReturnValues scsi_Zone_Management_Out_Std_Format_CDB(tDevice*  device,
         printf("Sending SCSI Zone Management Out\n");
     }
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -5413,7 +5135,7 @@ eReturnValues scsi_Zone_Management_In_Report(tDevice*  device,
         printf("Sending SCSI Zone Management In\n");
     }
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, dataDir,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -5482,7 +5204,7 @@ eReturnValues scsi_Zone_Management_In_ZD(tDevice*  device,
         printf("Sending SCSI Zone Management In\n");
     }
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, dataDir,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -5589,7 +5311,7 @@ eReturnValues scsi_Get_Physical_Element_Status(tDevice* device,
     {
         dataDir = XFER_NO_DATA;
     }
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, dataDir,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -5613,32 +5335,14 @@ eReturnValues scsi_Remove_And_Truncate(tDevice* device, uint64_t requestedCapaci
         timeout = MAX_CMD_TIMEOUT_SECONDS;
     }
 
-    cdb[OPERATION_CODE] = 0x9E;
-    // set the service action
-    cdb[1] = 0x18;
-    // requested capacity
-    cdb[2] = M_Byte3(requestedCapacity);
-    cdb[3] = M_Byte3(requestedCapacity);
-    cdb[4] = M_Byte3(requestedCapacity);
-    cdb[5] = M_Byte3(requestedCapacity);
-    cdb[6] = M_Byte3(requestedCapacity);
-    cdb[7] = M_Byte2(requestedCapacity);
-    cdb[8] = M_Byte1(requestedCapacity);
-    cdb[9] = M_Byte0(requestedCapacity);
-    // allocation length
-    cdb[10] = M_Byte3(elementIdentifier);
-    cdb[11] = M_Byte2(elementIdentifier);
-    cdb[12] = M_Byte1(elementIdentifier);
-    cdb[13] = M_Byte0(elementIdentifier);
-    cdb[14] = RESERVED;
-    cdb[15] = 0; // control
+    set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, 0x9E, 0x18, requestedCapacity, elementIdentifier, 0);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending SCSI Remove And Truncate\n");
     }
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -5662,32 +5366,14 @@ eReturnValues scsi_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t ele
         timeout = MAX_CMD_TIMEOUT_SECONDS;
     }
 
-    cdb[OPERATION_CODE] = 0x9E;
-    // set the service action
-    cdb[1] = 0x1A;
-    // requested capacity
-    cdb[2] = RESERVED;
-    cdb[3] = RESERVED;
-    cdb[4] = RESERVED;
-    cdb[5] = RESERVED;
-    cdb[6] = RESERVED;
-    cdb[7] = RESERVED;
-    cdb[8] = RESERVED;
-    cdb[9] = RESERVED;
-    // allocation length
-    cdb[10] = M_Byte3(elementIdentifier);
-    cdb[11] = M_Byte2(elementIdentifier);
-    cdb[12] = M_Byte1(elementIdentifier);
-    cdb[13] = M_Byte0(elementIdentifier);
-    cdb[14] = RESERVED;
-    cdb[15] = 0; // control
+    set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, 0x9E, 0x1A, RESERVED, elementIdentifier, 0);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending SCSI Remove Element And Modify Zones\n");
     }
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -5711,30 +5397,14 @@ eReturnValues scsi_Restore_Elements_And_Rebuild(tDevice* device)
         timeout = MAX_CMD_TIMEOUT_SECONDS;
     }
 
-    cdb[OPERATION_CODE] = 0x9E;
-    // set the service action
-    cdb[1]  = 0x19;
-    cdb[2]  = RESERVED;
-    cdb[3]  = RESERVED;
-    cdb[4]  = RESERVED;
-    cdb[5]  = RESERVED;
-    cdb[6]  = RESERVED;
-    cdb[7]  = RESERVED;
-    cdb[8]  = RESERVED;
-    cdb[9]  = RESERVED;
-    cdb[10] = RESERVED;
-    cdb[11] = RESERVED;
-    cdb[12] = RESERVED;
-    cdb[13] = RESERVED;
-    cdb[14] = RESERVED;
-    cdb[15] = 0; // control
+    set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, 0x9E, 0x19, RESERVED, RESERVED, 0);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending SCSI Restore Elements and Rebuild\n");
     }
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, timeout);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -5773,12 +5443,12 @@ eReturnValues scsi_Persistent_Reserve_In(tDevice* device,
     // send the command
     if (ptrData && allocationLength)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, allocationLength, XFER_DATA_IN,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, XFER_DATA_IN,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -5821,12 +5491,12 @@ eReturnValues scsi_Persistent_Reserve_Out(tDevice* device,
     // send the command
     if (ptrData && parameterListLength)
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), ptrData, parameterListLength, XFER_DATA_OUT,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), ptrData, parameterListLength, XFER_DATA_OUT,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     else
     {
-        ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+        ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -5853,7 +5523,7 @@ eReturnValues scsi_Rezero_Unit(tDevice* device)
         printf("Sending SCSI Rezero Unit\n");
     }
     // send the command
-    ret = scsi_Send_Cdb(device, &cdb[0], sizeof(cdb), M_NULLPTR, 0, XFER_NO_DATA,
+    ret = scsi_Send_Cdb(device, &cdb[0], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {

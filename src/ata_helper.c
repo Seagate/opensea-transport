@@ -1115,7 +1115,7 @@ static eReturnValues get_Identify_Data(tDevice* device, uint8_t* ptrData, uint32
             if (SUCCESS == ata_Identify_Packet_Device(device, ptrData, dataSize) &&
                 is_Buffer_Non_Zero(ptrData, dataSize))
             {
-                ret = SUCCESS;
+                ret                           = SUCCESS;
                 device->drive_info.drive_type = ATAPI_DRIVE;
             }
         }

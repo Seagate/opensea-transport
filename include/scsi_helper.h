@@ -66,6 +66,33 @@ extern "C"
         CDB_LEN_UNKNOWN
     } eCDBLen;
 
+    // Defined in SPC standards. If a vendor uses an operation code for a vendor unique
+    // purpose, all bets are off.
+    static M_INLINE eCDBLen get_CDB_Len_From_Operation_Code(uint8_t operationCode)
+    {
+        eCDBLen len = CDB_LEN_UNKNOWN;
+        if (operationCode <= 0x1F)
+        {
+            len = CDB_LEN_6;
+        }
+        else if (operationCode >= 0x20 && operationCode <= 0x5F)
+        {
+            len = CDB_LEN_10;
+        }
+        else if (operationCode >= 0x80 && operationCode <= 0x9F)
+        {
+            len = CDB_LEN_12;
+        }
+        else if (operationCode >= 0xA0 && operationCode <= 0xBF)
+        {
+            len = CDB_LEN_16;
+        }
+        // 60h - 7Dh are reserved
+        // 7E and 7F are variable length but commonly 32B at this time. Can possible add a lookup based on service
+        // action C0h - FFh are vendor unique.
+        return len;
+    }
+
     typedef enum eSenseFormatEnum
     {
         SCSI_SENSE_NO_SENSE_DATA   = 0,

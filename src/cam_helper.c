@@ -426,7 +426,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                 //       These should be saved later when we run into compatibility issues or need to
                                 //       make other improvements. For now, getting the interface is a huge help
 
-#if defined(__FreeBSD__) && __FreeBSD__ >= 9
+#if IS_FREEBSD_VERSION(9, 0, 0)
                                 if (device->drive_info.interface_type != USB_INTERFACE &&
                                     device->drive_info.interface_type != IEEE_1394_INTERFACE)
                                 {
@@ -1588,7 +1588,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         nvmeIoCtx->commandCompletionData.dw2 = M_WordsTo4ByteValue(pt.cpl.sqid, pt.cpl.sqhd);
         // NOTE: This ifdef may require more finite tuning using these version values:
         // https://docs.freebsd.org/en_US.ISO8859-1/books/porters-handbook/versions-11.html
-#    if defined(__FreeBSD_version) && (__FreeBSD_version >= 1200000)
+#    if IS_FREEBSD_VERSION(12, 0, 0)
         // FreeBSD 11.4 and later didn't use a structure for the status completion data, but a uint16 type which made
         // this easy
         nvmeIoCtx->commandCompletionData.dw3 = M_WordsTo4ByteValue(pt.cpl.status, pt.cpl.cid);
