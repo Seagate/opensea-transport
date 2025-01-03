@@ -2453,7 +2453,6 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataComm
                 printf("\t\tAttempted Partial Range Removal\n");
             }
             else if (is_User_Data_Access_Command(ataCommandOptions) &&
-                     ataCommandOptions->rtfr.error & ATA_ERROR_BIT_ID_NOT_FOUND &&
                      ataCommandOptions->tfr.CommandStatus != ATA_SEEK_CMD)
             {
                 // if this is also set, for a user data access, possibly the old address mark not found bit
