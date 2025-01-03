@@ -10,8 +10,8 @@
 //
 // ******************************************************************************************
 
-// \file ata_helper.h
-// \brief Defines the constants structures to help with ATA Specification
+//! \file ata_helper.h
+//! \brief Defines the constants structures to help with ATA Specification
 
 #pragma once
 
@@ -22,61 +22,201 @@ extern "C"
 {
 #endif
 
-#define ATA_STATUS_BIT_BUSY         BIT7 // if this is set, all other bits are invalid and not to be used
-#define ATA_STATUS_BIT_READY        BIT6
-#define ATA_STATUS_BIT_DEVICE_FAULT BIT5 // also called the write fault bit
+//! \def ATA_STATUS_BIT_BUSY
+//! \brief If this is set, all other bits are invalid and not to be used.
+#define ATA_STATUS_BIT_BUSY BIT7
+
+//! \def ATA_STATUS_BIT_READY
+//! \brief Device is ready and capable of accepting all commands.
+#define ATA_STATUS_BIT_READY BIT6
+
+//! \def ATA_STATUS_BIT_DEVICE_FAULT
+//! \brief Also called the write fault bit in ATA (ATA-1). If the device enters a condition where continued operation
+//! may affect user data integrity (e.g., failure to spin-up without error, or no spares remaining for reallocation.),
+//! then the device shall set the Device Fault bit to one and no longer accept commands. This condition is only cleared
+//! by power cycling the device. Once the Device Fault bit has been cleared to zero it may remain clear until a command
+//! that affects user data integrity is received by the device.
+#define ATA_STATUS_BIT_DEVICE_FAULT BIT5
+
+//! \def ATA_STATUS_BIT_STREAM_ERROR
+//! \brief The Stream Error bit shall be set to one if an error occurred during the processing of a command in the
+//! Streaming feature set and either the Read Continuous (RC) bit is set to one in a READ STREAM command or the
+//! Write Continuous (WC) bit is set to one in a WRITE STREAM command.
 #define ATA_STATUS_BIT_STREAM_ERROR BIT5
-#define ATA_STATUS_BIT_SEEK_COMPLETE                                                                                   \
-    BIT4                                         // old/obsolete and unused. Old drives still set it for backwards
-                                                 // compatability
-#define ATA_STATUS_BIT_SERVICE              BIT4 // DMA Queued commands. Tagged command queuing AFAIK
-#define ATA_STATUS_BIT_DEFERRED_WRITE_ERROR BIT4 // write stream commands
-#define ATA_STATUS_BIT_DATA_REQUEST         BIT3
-#define ATA_STATUS_BIT_CORRECTED_DATA       BIT2 // old/obsolete
-#define ATA_STATUS_BIT_ALIGNMENT_ERROR      BIT2
-#define ATA_STATUS_BIT_INDEX                BIT1 // old/obsolete. flips state with each drive revolution
-#define ATA_STATUS_BIT_SENSE_DATA_AVAILABLE BIT1 // set when sense data is available for the command
-#define ATA_STATUS_BIT_CHECK_CONDITION      BIT0 // ATAPI
-#define ATA_STATUS_BIT_ERROR                BIT0 // an error occured
 
-#define ATA_ERROR_BIT_BAD_BLOCK             BIT7 // old/obsolete - ATA-1
-#define ATA_ERROR_BIT_INTERFACE_CRC         BIT7
-#define ATA_ERROR_BIT_UNCORRECTABLE_DATA    BIT6
-#define ATA_ERROR_BIT_WRITE_PROTECTED       BIT6 // old/obsolete - removable medium
-#define ATA_ERROR_BIT_MEDIA_CHANGE          BIT5
-#define ATA_ERROR_BIT_ID_NOT_FOUND          BIT4
-#define ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST  BIT3
-#define ATA_ERROR_BIT_ABORT                 BIT2
-#define ATA_ERROR_BIT_TRACK_ZERO_NOT_FOUND  BIT1 // old/obsolete
-#define ATA_ERROR_BIT_END_OF_MEDIA          BIT1 // ATAPI
-#define ATA_ERROR_BIT_NO_MEDIA              BIT1 // old/obsolete - removable medium
-#define ATA_ERROR_BIT_INSUFFICIENT_LBA_RANGE_ENTRIES_REMAINING                                                         \
-    BIT1                                                   // add LBAs to NV cache pinned set command only - ranges
-#define ATA_ERROR_BIT_ADDRESS_MARK_NOT_FOUND          BIT0 // old/obsolete
-#define ATA_ERROR_BIT_COMMAND_COMPLETION_TIME_OUT     BIT0 // streaming feature
-#define ATAPI_ERROR_BIT_ILLEGAL_LENGTH_INDICATOR      BIT0
-#define ATAPI_ERROR_BIT_MEDIA_ERROR                   BIT0
-#define ATA_ERROR_BIT_ATTEMPTED_PARTIAL_RANGE_REMOVAL BIT0 // remove LBAs from NV cache pinned set command only
-#define ATA_ERROR_BIT_INSUFFICIENT_NV_CACHE_SPACE     BIT0 // add LBAs to NV cache pinned set command only
+//! \def ATA_STATUS_BIT_SEEK_COMPLETE
+//! \brief Indicates the device heads are settled over a track. Obsolete bit last described in ATA-3. Often set by the
+//! device for backwards compatibility.
+#define ATA_STATUS_BIT_SEEK_COMPLETE BIT4
 
-#define ATA_DL_MICROCODE_OFFSET_SAVE                  (0x03)
-#define ATA_DL_MICROCODE_SAVE                         (0x07)
+//! \def ATA_STATUS_BIT_SERVICE
+//! \brief The Service bit shall be cleared to zero in the Status field for a TCQ command when no other TCQ command is
+//! ready for service. The Service bit shall be set to one in the Status field for a TCQ command when another TCQ
+//! command is ready for service (i.e., the Service bit shall be set to one when the device has prepared the other TCQ
+//! command for service).
+#define ATA_STATUS_BIT_SERVICE BIT4
 
-#define MAX_28BIT                                     UINT32_C(0xFFFFFFF)
+//! \def ATA_STATUS_BIT_DEFERRED_WRITE_ERROR
+//! \brief The Deferred Write Error bit shall be set to one if an error was detected in a deferred write to the media
+//! for a previous WRITE STREAM DMA EXT command or WRITE STREAM EXT command. If the Deferred Write Error bit is set to
+//! one, the location of the deferred error is only reported in the Write Stream Error Log.
+#define ATA_STATUS_BIT_DEFERRED_WRITE_ERROR BIT4
 
-#define LBA_MODE_BIT                                  BIT6 // Set this in the device/head register to set LBA mode.
-#define DEVICE_SELECT_BIT                             BIT4 // On PATA, this is to select drive 1. Device/Head register
-#define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS          0xA0
-    // device/head in ATA & ATA3 say bits 7&5 should be set on every command.
-    // New specs mark these obsolete in commands that are from old specs.
-    // New commands may use these for other purposes.
-    // Device/Head pre-ATA standardization called this the Sector Size, Device, Head register
-    // bit7 was defined as the ECC bit. With this set to zero it used CRC
-    // bits 6:5 were the sector size. 11b=128B, 00b=256B, 01b=512B, 10b=1024B.
-    // With standardization forcing these bits to A0 sets ECC and 512B sector size, which is all that was likely used in
-    // the real-world For backwards compatibility with these really old devices, it is recommended to set this register
-    // to these values. This is not necessary for SATA drives unless they are aborting commands for no other reason.
-    // Setting these bits may not be necessary for most PATA devices that conform to ATA standards
+//! \def ATA_STATUS_BIT_DATA_REQUEST
+//! \brief Indicates that the device is ready to transfer a word or byte of data between the host and the device.
+#define ATA_STATUS_BIT_DATA_REQUEST BIT3
+
+//! \def ATA_STATUS_BIT_CORRECTED_DATA
+//! \brief Used to indicate a correctable data error. Obsolete and last described in ATA-3.
+#define ATA_STATUS_BIT_CORRECTED_DATA BIT2
+
+//! \def ATA_STATUS_BIT_ALIGNMENT_ERROR
+//! \brief The Alignment Error bit shall be set to one if:
+//!
+//! a. IDENTIFY DEVICE data word 106 bit 13 is set to one;
+//!
+//! b. IDENTIFY DEVICE data word 69 bit 13 is set to one;
+//!
+//! c. IDENTIFY DEVICE data word 49 bits (1:0) are 01b or 10b; and
+//!
+//! d. the device successfully processes a write command where:
+//!
+//!   d.A. the first byte of data transfer does not begin at the first byte of a physical sector (see IDENTIFY
+//!   DEVICE data word 209 bits (13:0)); or
+//!
+//!   d.B. the last byte of data transfer does not end at the last byte of a physical sector (see IDENTIFY
+//!   DEVICE data word 209 bits (13:0)).
+//!
+//! If an Alignment Error and another error occur during the processing of a write command, then the error is returned
+//! and the Alignment Error is not reported in the Status field. If an Alignment Error occurs, even if it is not
+//! reported in the Status field and there is space remaining in the LPS Mis-alignment log, then an entry shall be made
+//! in the log.
+#define ATA_STATUS_BIT_ALIGNMENT_ERROR BIT2
+
+//! \def ATA_STATUS_BIT_INDEX
+//! \brief Flips state with each drive revolution according to ATA (ATA-1). Vendor specific in ATA-2 and obsolete in
+//! ATA/ATAPI-4.
+#define ATA_STATUS_BIT_INDEX BIT1
+
+//! \def ATA_STATUS_BIT_SENSE_DATA_AVAILABLE
+//! \brief Set when sense data is available for the command.
+#define ATA_STATUS_BIT_SENSE_DATA_AVAILABLE BIT1
+
+//! \def ATA_STATUS_BIT_CHECK_CONDITION
+//! \brief ATAPI - The Check Condition bit shall be set to one if an Error sense key is greater than zero or any Error
+//! bit is set to one.
+#define ATA_STATUS_BIT_CHECK_CONDITION BIT0
+
+//! \def ATA_STATUS_BIT_ERROR
+//! \brief An error occurred. See error register for more information.
+#define ATA_STATUS_BIT_ERROR BIT0
+
+//! \def ATA_ERROR_BIT_BAD_BLOCK
+//! \brief Indicates a bad block mark was detected in the requested sector's ID field. Obsolete until interface CRC was
+//! defined in its place.
+#define ATA_ERROR_BIT_BAD_BLOCK BIT7
+
+//! \def ATA_ERROR_BIT_INTERFACE_CRC
+//! \brief The Interface CRC bit shall be set to one if an interface CRC error has occurred during an Ultra DMA data
+//! transfer. The content of the Interface CRC bit may be applicable to Multiword DMA and PIO data transfers. If the
+//! Interface CRC is set to one, the Abort bit shall be set to one.
+#define ATA_ERROR_BIT_INTERFACE_CRC BIT7
+
+//! \def ATA_ERROR_BIT_UNCORRECTABLE_DATA
+//! \brief The Uncorrectable Error bit shall be set to one if the data contains an uncorrectable error.
+#define ATA_ERROR_BIT_UNCORRECTABLE_DATA BIT6
+
+//! \def ATA_ERROR_BIT_WRITE_PROTECTED
+//! \brief Old/obsolete - removable medium.
+#define ATA_ERROR_BIT_WRITE_PROTECTED BIT6
+
+//! \def ATA_ERROR_BIT_MEDIA_CHANGE
+//! \brief Used by removable media devices and indicates that new media is available to the operating system.
+#define ATA_ERROR_BIT_MEDIA_CHANGE BIT5
+
+//! \def ATA_ERROR_BIT_ID_NOT_FOUND
+//! \brief Indicates the requested sector's ID field could not be found.
+#define ATA_ERROR_BIT_ID_NOT_FOUND BIT4
+
+//! \def ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST
+//! \brief Used by removable media devices and indicates that a request for media removal has been detected by the
+//! device.
+#define ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST BIT3
+
+//! \def ATA_ERROR_BIT_ABORT
+//! \brief Indicates the requested command has been aborted because the command code or a command parameter is invalid
+//! or some other error has occurred. The device may complete some portion of the command prior to setting abort and
+//! terminating the command. If the command was a data transfer command, the data transferred is indeterminate.
+#define ATA_ERROR_BIT_ABORT BIT2
+
+//! \def ATA_ERROR_BIT_TRACK_ZERO_NOT_FOUND
+//! \brief Indicates track 0 has not been found during a RECALIBRATE command. Obsolete starting ATA/ATAPI-4.
+#define ATA_ERROR_BIT_TRACK_ZERO_NOT_FOUND BIT1
+
+//! \def ATA_ERROR_BIT_END_OF_MEDIA
+//! \brief ATAPI.
+#define ATA_ERROR_BIT_END_OF_MEDIA BIT1
+
+//! \def ATA_ERROR_BIT_NO_MEDIA
+//! \brief Old/obsolete - removable medium.
+#define ATA_ERROR_BIT_NO_MEDIA BIT1
+
+//! \def ATA_ERROR_BIT_INSUFFICIENT_LBA_RANGE_ENTRIES_REMAINING
+//! \brief Add LBAs to NV cache pinned set command only - ranges.
+#define ATA_ERROR_BIT_INSUFFICIENT_LBA_RANGE_ENTRIES_REMAINING BIT1
+
+//! \def ATA_ERROR_BIT_ADDRESS_MARK_NOT_FOUND
+//! \brief Indicates the data address mark has not been found after finding the correct ID field. Obsolete starting
+//! ATA/ATAPI-4.
+#define ATA_ERROR_BIT_ADDRESS_MARK_NOT_FOUND BIT0
+
+//! \def ATA_ERROR_BIT_COMMAND_COMPLETION_TIME_OUT
+//! \brief Streaming feature.
+#define ATA_ERROR_BIT_COMMAND_COMPLETION_TIME_OUT BIT0
+
+//! \def ATAPI_ERROR_BIT_ILLEGAL_LENGTH_INDICATOR
+#define ATAPI_ERROR_BIT_ILLEGAL_LENGTH_INDICATOR BIT0
+
+//! \def ATAPI_ERROR_BIT_MEDIA_ERROR
+#define ATAPI_ERROR_BIT_MEDIA_ERROR BIT0
+
+//! \def ATA_ERROR_BIT_ATTEMPTED_PARTIAL_RANGE_REMOVAL
+//! \brief Remove LBAs from NV cache pinned set command only.
+#define ATA_ERROR_BIT_ATTEMPTED_PARTIAL_RANGE_REMOVAL BIT0
+
+//! \def ATA_ERROR_BIT_INSUFFICIENT_NV_CACHE_SPACE
+//! \brief Add LBAs to NV cache pinned set command only.
+#define ATA_ERROR_BIT_INSUFFICIENT_NV_CACHE_SPACE BIT0
+
+//! \def ATA_DL_MICROCODE_OFFSET_SAVE
+#define ATA_DL_MICROCODE_OFFSET_SAVE (0x03)
+
+//! \def ATA_DL_MICROCODE_SAVE
+#define ATA_DL_MICROCODE_SAVE (0x07)
+
+//! \def MAX_28BIT
+//! \brief Maximum value for 28bit LBA space.
+#define MAX_28BIT UINT32_C(0xFFFFFFF)
+
+//! \def LBA_MODE_BIT
+//! \brief Set this in the device/head register to set LBA mode.
+#define LBA_MODE_BIT BIT6
+
+//! \def DEVICE_SELECT_BIT
+//! \brief On PATA, this is to select drive 1. Device/Head register.
+#define DEVICE_SELECT_BIT BIT4
+
+//! \def DEVICE_REG_BACKWARDS_COMPATIBLE_BITS
+//! \brief Device/head in ATA & ATA3 say bits 7&5 should be set on every command.
+//! New specs mark these obsolete in commands that are from old specs. New commands may use these for other purposes.
+//! \details Device/Head pre-ATA standardization called this the Sector Size, Device, Head register.
+//! Bit7 was defined as the ECC bit. With this set to zero it used CRC.
+//! Bits 6:5 were the sector size. 11b=128B, 00b=256B, 01b=512B, 10b=1024B.
+//! With standardization forcing these bits to A0 sets ECC and 512B sector size, which is all that was likely used in
+//! old devices. For backwards compatibility with these really old devices, it is recommended to set this register to
+//! these values. This is not necessary for SATA drives unless they are aborting commands for no other reason.
+//!  Setting these bits may not be necessary for most PATA devices that conform to ATA standards.
+#define DEVICE_REG_BACKWARDS_COMPATIBLE_BITS 0xA0
 
     // This is a basic validity indicator for a given ATA identify word. Checks that it is non-zero and not FFFFh
     OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid(uint16_t word);
@@ -86,9 +226,14 @@ extern "C"
     // checks same as is_ATA_Identify_Word_Valid and that bit 0 is cleared to zero in the SATA words (76 - 79)
     OPENSEA_TRANSPORT_API bool is_ATA_Identify_Word_Valid_SATA(uint16_t word);
 
+//! \def ATA_CHECKSUM_VALIDITY_INDICATOR
+//! \brief Used to indicate when a standardized checksum is supported
+//! in data such as identify data.
+//! Prior to standardization this indicator byte may have a different value, indicating
+//! that the ATA checksum routine may not be applicable.
 #define ATA_CHECKSUM_VALIDITY_INDICATOR                       0xA5
 
-#define IDLE_IMMEDIATE_UNLOAD_LBA                             0x0554E4C
+#define IDLE_IMMEDIATE_UNLOAD_LBA                             UINT32_C(0x0554E4C)
 #define IDLE_IMMEDIATE_UNLOAD_FEATURE                         0x44
 
 #define WRITE_UNCORRECTABLE_PSEUDO_UNCORRECTABLE_WITH_LOGGING 0x55
