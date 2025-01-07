@@ -72,7 +72,7 @@ static bool is_NVMe_Handle(char* handle)
 
 static M_INLINE void safe_free_statfs(struct statfs** fs)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, fs));
+    safe_free_core(M_REINTERPRET_CAST(void**, fs));
 }
 
 static int get_Partition_Count(const char* blockDeviceName)
@@ -108,7 +108,7 @@ typedef struct s_spartitionInfo
 
 static M_INLINE void safe_free_spartioninfo(spartitionInfo** partinfo)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, partinfo));
+    safe_free_core(M_REINTERPRET_CAST(void**, partinfo));
 }
 
 // partitionInfoList is a pointer to the beginning of the list

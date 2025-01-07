@@ -89,7 +89,7 @@ ptrRaidHandleToScan add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan listBegin
 
 static M_INLINE void free_RaidHandleToScan(ptrRaidHandleToScan* handle)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, handle));
+    safe_free_core(M_REINTERPRET_CAST(void**, handle));
 }
 
 // Make it easier to remove an item. Useful when scanning multiple RAID libs because the first RAID lib can remove

@@ -3156,13 +3156,13 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
 #    if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
 static M_INLINE void safe_free_firmwareinfov2(PSTORAGE_FIRMWARE_INFO_V2* info)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, info));
+    safe_free_core(M_REINTERPRET_CAST(void**, info));
 }
 #    endif
 
 static M_INLINE void safe_free_firmwareinfo(PSTORAGE_FIRMWARE_INFO* info)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, info));
+    safe_free_core(M_REINTERPRET_CAST(void**, info));
 }
 
 static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool controllerRequest)
@@ -3741,13 +3741,13 @@ static eReturnValues dummy_Up_SCSI_Sense_FWDL(ScsiIoCtx* scsiIoCtx, ULONG return
 #    if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
 static M_INLINE void safe_free_firmwaredownloadv2(PSTORAGE_FIRMWARE_DOWNLOAD_V2* fwdl)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, fwdl));
+    safe_free_core(M_REINTERPRET_CAST(void**, fwdl));
 }
 #    endif
 
 static M_INLINE void safe_free_firmwaredownload(PSTORAGE_FIRMWARE_DOWNLOAD* fwdl)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, fwdl));
+    safe_free_core(M_REINTERPRET_CAST(void**, fwdl));
 }
 
 static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
@@ -3902,7 +3902,7 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
 
 static M_INLINE void safe_free_firmwareactivate(PSTORAGE_FIRMWARE_ACTIVATE* activate)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, activate));
+    safe_free_core(M_REINTERPRET_CAST(void**, activate));
 }
 
 static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
@@ -4435,7 +4435,7 @@ static eReturnValues check_And_Get_Storage_Property(HANDLE              deviceHa
 
 static M_INLINE void safe_free_device_descriptor(STORAGE_DEVICE_DESCRIPTOR** devdesc)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, devdesc));
+    safe_free_core(M_REINTERPRET_CAST(void**, devdesc));
 }
 
 static eReturnValues win_Get_Device_Descriptor(HANDLE deviceHandle, PSTORAGE_DEVICE_DESCRIPTOR* deviceData)
@@ -4446,7 +4446,7 @@ static eReturnValues win_Get_Device_Descriptor(HANDLE deviceHandle, PSTORAGE_DEV
 
 static M_INLINE void safe_free_adapter_descriptor(STORAGE_ADAPTER_DESCRIPTOR** adapterdesc)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, adapterdesc));
+    safe_free_core(M_REINTERPRET_CAST(void**, adapterdesc));
 }
 
 static eReturnValues win_Get_Adapter_Descriptor(HANDLE deviceHandle, PSTORAGE_ADAPTER_DESCRIPTOR* adapterData)
@@ -4471,7 +4471,7 @@ static eReturnValues win_Get_Adapter_Descriptor(HANDLE deviceHandle, PSTORAGE_AD
 
 static M_INLINE void safe_free_storage_access_alignment(STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR** accessalignment)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, accessalignment));
+    safe_free_core(M_REINTERPRET_CAST(void**, accessalignment));
 }
 
 static eReturnValues win_Get_Access_Alignment_Descriptor(HANDLE*                               deviceHandle,
@@ -4729,7 +4729,7 @@ eReturnValues os_Erase_Boot_Sectors(tDevice* device)
 
 static M_INLINE void safe_free_disk_geometry(DISK_GEOMETRY** geom)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, geom));
+    safe_free_core(M_REINTERPRET_CAST(void**, geom));
 }
 
 // WinVer not wrapping this IOCTL...so it's probably old enough not to need it - TJE
@@ -4799,7 +4799,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY* ge
 #if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN2K
 // static M_INLINE void safe_free_disk_controller_number(DISK_CONTROLLER_NUMBER **ctrlnum)
 // {
-//     safe_Free(M_REINTERPRET_CAST(void**, ctrlnum));
+//     safe_free_core(M_REINTERPRET_CAST(void**, ctrlnum));
 // }
 //
 // static eReturnValues win_Get_IDE_Disk_Controller_Number_And_Disk_Number(HANDLE *devHandle, PDISK_CONTROLLER_NUMBER
@@ -4856,7 +4856,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY* ge
 
 static M_INLINE void safe_free_disk_geometry_ex(DISK_GEOMETRY_EX** geom)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, geom));
+    safe_free_core(M_REINTERPRET_CAST(void**, geom));
 }
 
 static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
@@ -4923,7 +4923,7 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
 
 // static M_INLINE void safe_free_len_info(GET_LENGTH_INFORMATION **length)
 // {
-//     safe_Free(M_REINTERPRET_CAST(void**, length));
+//     safe_free_core(M_REINTERPRET_CAST(void**, length));
 // }
 // static eReturnValues win_Get_Length_Information(HANDLE *devHandle, PGET_LENGTH_INFORMATION *length)
 //{
@@ -6372,7 +6372,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoC
 
 static M_INLINE void safe_free_SCSIPassthroughEx(ptrSCSIPassThroughEXIOStruct* scsipt)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, scsipt));
+    safe_free_core(M_REINTERPRET_CAST(void**, scsipt));
 }
 
 static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
@@ -6759,7 +6759,7 @@ typedef struct s_scsiPassThroughIOStruct
 
 static M_INLINE void safe_free_scsi_pt_io(scsiPassThroughIOStruct** scsipt)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, scsipt));
+    safe_free_core(M_REINTERPRET_CAST(void**, scsipt));
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -7565,7 +7565,7 @@ typedef struct s_ATADoubleBufferedIO
 
 static M_INLINE void safe_free_ata_db_io(ATADoubleBufferedIO** atadbio)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, atadbio));
+    safe_free_core(M_REINTERPRET_CAST(void**, atadbio));
 }
 
 static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrATADoubleBufferedIO p_t_ata_pt)
@@ -7915,7 +7915,7 @@ typedef struct s_IDEDoubleBufferedIO
 
 static M_INLINE void safe_free_ide_db_io(IDEDoubleBufferedIO** idedbio)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, idedbio));
+    safe_free_core(M_REINTERPRET_CAST(void**, idedbio));
 }
 
 static eReturnValues convert_SCSI_CTX_To_IDE_PT(ScsiIoCtx* p_scsiIoCtx, ptrIDEDoubleBufferedIO p_t_ide_pt)
@@ -8438,7 +8438,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
 
 static M_INLINE void safe_free_hwfwdl(PSTORAGE_HW_FIRMWARE_DOWNLOAD* dl)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, dl));
+    safe_free_core(M_REINTERPRET_CAST(void**, dl));
 }
 
 static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
@@ -8907,12 +8907,12 @@ static eReturnValues convert_SCSI_CTX_To_ATA_SMART_Cmd(ScsiIoCtx* scsiIoCtx, PSE
 
 static M_INLINE void safe_free_smart_send_cmd_in(SENDCMDINPARAMS** cmd)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, cmd));
+    safe_free_core(M_REINTERPRET_CAST(void**, cmd));
 }
 
 static M_INLINE void safe_free_smart_send_cmd_out(SENDCMDOUTPARAMS** cmd)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, cmd));
+    safe_free_core(M_REINTERPRET_CAST(void**, cmd));
 }
 
 static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)

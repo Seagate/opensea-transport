@@ -60,7 +60,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
 
 static M_INLINE void safe_free_dev_path_protocol(EFI_DEVICE_PATH_PROTOCOL** path)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, path));
+    safe_free_core(M_REINTERPRET_CAST(void**, path));
 }
 
 #define UEFI_HANDLE_STRING_LENGTH 64
@@ -1020,7 +1020,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
         safe_free_aligned(&localBuffer);
         safe_free_aligned(&localCDB);
         safe_free_aligned(&localSensePtr);
-        safe_Free_aligned(C_CAST(void**, &srp));
+        safe_free_aligned_core(C_CAST(void**, &srp));
         close_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -1381,7 +1381,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
         safe_free_aligned(&localBuffer);
         safe_free_aligned(&localCDB);
         safe_free_aligned(&localSensePtr);
-        safe_Free_aligned(C_CAST(void**, &srp));
+        safe_free_aligned_core(C_CAST(void**, &srp));
         close_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -1727,10 +1727,10 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(C_CAST(void**, &ataPacket));
+        safe_free_aligned_core(C_CAST(void**, &ataPacket));
         safe_free_aligned(&localBuffer);
-        safe_Free_aligned(C_CAST(void**, &ataStatus));
-        safe_Free_aligned(C_CAST(void**, &ataCommand));
+        safe_free_aligned_core(C_CAST(void**, &ataStatus));
+        safe_free_aligned_core(C_CAST(void**, &ataCommand));
         close_ATA_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum);
     }
     else
@@ -2131,10 +2131,10 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-        safe_Free_aligned(nrp->MetadataBuffer) safe_Free_aligned(C_CAST(void**, &nrp));
+        safe_free_aligned_core(nrp->MetadataBuffer) safe_free_aligned_core(C_CAST(void**, &nrp));
         safe_free_aligned(&localBuffer);
-        safe_Free_aligned(C_CAST(void**, &nvmCommand));
-        safe_Free_aligned(C_CAST(void**, &nvmCompletion));
+        safe_free_aligned_core(C_CAST(void**, &nvmCommand));
+        safe_free_aligned_core(C_CAST(void**, &nvmCompletion));
         close_NVMe_Passthru_Protocol_Ptr(&pPassthru, nvmeIoCtx->device->os_info.controllerNum);
     }
     else

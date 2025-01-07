@@ -60,7 +60,7 @@ extern bool validate_Device_Struct(versionBlock);
 // functions to assist freeing csmi structures easily/safely
 static M_INLINE void safe_free_csmi_raid_config(CSMI_SAS_RAID_CONFIG_BUFFER** raidconfig)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, raidconfig));
+    safe_free_core(M_REINTERPRET_CAST(void**, raidconfig));
 }
 
 #    if defined(_WIN32)
@@ -2501,7 +2501,7 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               deviceHandle,
     {
         print_Return_Enum("CSMI Get Phy Info\n", ret);
     }
-    safe_Free(M_REINTERPRET_CAST(
+    safe_free_core(M_REINTERPRET_CAST(
         void**, &temp)); // temp holds the passed in phyInfoBuffer and that has already been updated when this succeeds
 
     return ret;
@@ -2685,7 +2685,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE      deviceHandle,
     {
         if (sspInputs->cdbLength > 40)
         {
-            safe_Free_aligned(C_CAST(void**, &sspPassthrough));
+            safe_free_aligned_core(C_CAST(void**, &sspPassthrough));
             return OS_COMMAND_NOT_AVAILABLE;
         }
         // copy to cdb, then additional CDB
@@ -2718,7 +2718,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE      deviceHandle,
         }
         else
         {
-            safe_Free_aligned(C_CAST(void**, &sspPassthrough));
+            safe_free_aligned_core(C_CAST(void**, &sspPassthrough));
             return BAD_PARAMETER;
         }
     }
@@ -2788,7 +2788,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE      deviceHandle,
         print_Return_Enum("CSMI SSP Passthrough\n", ret);
     }
 
-    safe_Free_aligned(C_CAST(void**, &sspPassthrough));
+    safe_free_aligned_core(C_CAST(void**, &sspPassthrough));
 
     return ret;
 }
@@ -2885,7 +2885,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE      deviceHandle,
         }
         else
         {
-            safe_Free_aligned(C_CAST(void**, &stpPassthrough));
+            safe_free_aligned_core(C_CAST(void**, &stpPassthrough));
             return BAD_PARAMETER;
         }
     }
@@ -2943,7 +2943,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE      deviceHandle,
         print_Return_Enum("CSMI STP Passthrough\n", ret);
     }
 
-    safe_Free_aligned(C_CAST(void**, &stpPassthrough));
+    safe_free_aligned_core(C_CAST(void**, &stpPassthrough));
 
     return ret;
 }

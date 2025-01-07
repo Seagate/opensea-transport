@@ -15458,7 +15458,7 @@ static eReturnValues translate_SCSI_Zone_Management_Out_Command(tDevice* device,
     //     //copy the data based on allocation length
     //     safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, dataBuf, M_Min(scsiIoCtx->dataLength, dataBufLength));
     // }
-    // safe_Free_aligned(C_CAST(void**, &dataBuf));
+    // safe_free_aligned_core(C_CAST(void**, &dataBuf));
     return ret;
 }
 

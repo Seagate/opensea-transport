@@ -207,7 +207,7 @@ static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
 
 static M_INLINE void safe_free_irst_raid_fw_buffer(IOCTL_RAID_FIRMWARE_BUFFER** buf)
 {
-    safe_Free_aligned(M_REINTERPRET_CAST(void**, buf));
+    safe_free_aligned_core(M_REINTERPRET_CAST(void**, buf));
 }
 
 // generic function to handle taking in the various RAID FW Requests to keep code from being dumplicated
@@ -402,7 +402,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
 
 static M_INLINE void safe_free_irst_fw_info(INTEL_STORAGE_FIRMWARE_INFO_V2** info)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, info));
+    safe_free_core(M_REINTERPRET_CAST(void**, info));
 }
 
 bool supports_Intel_Firmware_Download(tDevice* device)
@@ -471,7 +471,7 @@ bool supports_Intel_Firmware_Download(tDevice* device)
 
 static M_INLINE void safe_free_irst_fwdl(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2** fwdl)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, fwdl));
+    safe_free_core(M_REINTERPRET_CAST(void**, fwdl));
 }
 
 // The idea with this function is that it can handle NVMe or SCSI with generic inputs that will work to reduce code
@@ -521,7 +521,7 @@ static eReturnValues internal_Intel_FWDL_Function_Download(tDevice*  device,
 
 static M_INLINE void safe_free_irst_fw_activate(INTEL_STORAGE_FIRMWARE_ACTIVATE** activate)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, activate));
+    safe_free_core(M_REINTERPRET_CAST(void**, activate));
 }
 
 static eReturnValues internal_Intel_FWDL_Function_Activate(tDevice*  device,
@@ -694,7 +694,7 @@ eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* scsiIoCtx)
 
 static M_INLINE void safe_free_irst_nvme_passthrough(NVME_IOCTL_PASS_THROUGH** nvmcmd)
 {
-    safe_Free_aligned(M_REINTERPRET_CAST(void**, nvmcmd));
+    safe_free_aligned_core(M_REINTERPRET_CAST(void**, nvmcmd));
 }
 
 // NOTE: This function will handle calling appropriate NVMe firmware update function as well

@@ -303,7 +303,7 @@ extern "C"
 
     static M_INLINE void safe_free_sensefields(senseDataFields** sensefields)
     {
-        safe_Free(M_REINTERPRET_CAST(void**, sensefields));
+        safe_free_core(M_REINTERPRET_CAST(void**, sensefields));
     }
 
     typedef struct s_biDirectionalCommandBuffers

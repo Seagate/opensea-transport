@@ -1275,7 +1275,7 @@ extern "C"
 
     static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo** csmidevinfo)
     {
-        safe_Free(M_REINTERPRET_CAST(void**, csmidevinfo));
+        safe_free_core(M_REINTERPRET_CAST(void**, csmidevinfo));
     }
 
     // forward declare cciss device
@@ -1283,7 +1283,7 @@ extern "C"
 
     static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo** cissdevinfo)
     {
-        safe_Free(M_REINTERPRET_CAST(void**, cissdevinfo));
+        safe_free_core(M_REINTERPRET_CAST(void**, cissdevinfo));
     }
 
 #define OS_HANDLE_NAME_MAX_LENGTH          256

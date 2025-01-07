@@ -1394,7 +1394,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                     close_Device(&deviceList[deviceIter]);
                 }
             }
-            safe_Free_aligned(C_CAST(void**, &deviceList));
+            safe_free_aligned_core(C_CAST(void**, &deviceList));
         }
         else
         {

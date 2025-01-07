@@ -299,7 +299,7 @@ typedef struct s_spartitionInfo
 
 static M_INLINE void safe_free_spartition_info(spartitionInfo** partinfo)
 {
-    safe_Free(M_REINTERPRET_CAST(void**, partinfo));
+    safe_free_core(M_REINTERPRET_CAST(void**, partinfo));
 }
 
 // partitionInfoList is a pointer to the beginning of the list
