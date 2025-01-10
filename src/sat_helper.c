@@ -1685,7 +1685,8 @@ static void set_Sense_Data_For_Translation(
             while (counter < descriptorCount)
             {
                 descriptorLength = descriptor[descriptorOffset + 1] + 1;
-                safe_memcpy(&senseData[senseDataOffset], SPC3_SENSE_LEN, descriptor, descriptorLength);
+                safe_memcpy(&senseData[senseDataOffset], SPC3_SENSE_LEN - senseDataOffset, descriptor,
+                            descriptorLength);
                 additionalSenseLength += descriptorLength;
                 ++counter;
                 descriptorOffset += descriptorLength;
@@ -2428,18 +2429,17 @@ static eReturnValues translate_ATA_Information_VPD_Page_89h(tDevice* device, Scs
     eReturnValues ret              = SUCCESS;
     uint8_t       peripheralDevice = UINT8_C(0);
     uint8_t       commandCode      = ATA_IDENTIFY;
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyDriveData, 512);
 #define SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL (572)
     DECLARE_ZERO_INIT_ARRAY(uint8_t, ataInformation, SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL);
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
     if (device->drive_info.softSATFlags.identifyDeviceDataLogSupported)
     {
         if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_IDENTIFY_DEVICE_DATA, ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA,
-                                        C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
-                                        LEGACY_DRIVE_SEC_SIZE,
+                                        identifyDriveData, LEGACY_DRIVE_SEC_SIZE,
                                         device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
         {
-            if (SUCCESS != ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
-                                        LEGACY_DRIVE_SEC_SIZE))
+            if (SUCCESS != ata_Identify(device, identifyDriveData, LEGACY_DRIVE_SEC_SIZE))
             {
                 return FAILURE;
             }
@@ -2458,13 +2458,10 @@ static eReturnValues translate_ATA_Information_VPD_Page_89h(tDevice* device, Scs
     }
     else
 #endif // SAT_SPEC_SUPPORTED
-        if (SUCCESS !=
-            ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
+        if (SUCCESS != ata_Identify(device, identifyDriveData, LEGACY_DRIVE_SEC_SIZE))
         {
             // that failed, so try an identify packet device
-            if (SUCCESS != ata_Identify_Packet_Device(device,
-                                                      C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
-                                                      LEGACY_DRIVE_SEC_SIZE))
+            if (SUCCESS != ata_Identify_Packet_Device(device, identifyDriveData, LEGACY_DRIVE_SEC_SIZE))
             {
                 // if we still didn't get anything, then it's time to return a failure
                 return FAILURE;
@@ -2643,8 +2640,8 @@ static eReturnValues translate_ATA_Information_VPD_Page_89h(tDevice* device, Scs
     ataInformation[58] = RESERVED;
     ataInformation[59] = RESERVED;
     // identify device data
-    safe_memcpy(&ataInformation[60], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 60, &device->drive_info.IdentifyData.ata,
-                LEGACY_DRIVE_SEC_SIZE);
+    safe_memcpy(&ataInformation[60], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 60,
+                identifyDriveData, LEGACY_DRIVE_SEC_SIZE);
     // now copy all the data we set up back to the scsi io ctx
     if (scsiIoCtx->pdata)
     {
@@ -2767,7 +2764,7 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice* devic
     safe_memcpy(ataModelNumber, ATA_IDENTIFY_MN_LENGTH + 1, device->drive_info.IdentifyData.ata.ModelNum,
                 ATA_IDENTIFY_MN_LENGTH);
     byte_Swap_String_Len(ataModelNumber, ATA_IDENTIFY_MN_LENGTH);
-    safe_memcpy(&t10VendorIdDesignator[12], SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN, ataModelNumber,
+    safe_memcpy(&t10VendorIdDesignator[12], SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN - 12, ataModelNumber,
                 ATA_IDENTIFY_MN_LENGTH);
     // now set SN
     safe_memcpy(ataSerialNumber, ATA_IDENTIFY_SN_LENGTH + 1, device->drive_info.IdentifyData.ata.SerNum,
@@ -15595,6 +15592,7 @@ static eReturnValues translate_SCSI_Read_Media_Serial_Number_Command(tDevice* de
     eReturnValues ret          = SUCCESS;
     uint8_t       bitPointer   = UINT8_C(0);
     uint16_t      fieldPointer = UINT16_C(0);
+    uint8_t*      iddataPtr    = M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.ata);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, mediaSerialNumberPage, 65);
     uint32_t allocationLength =
@@ -15629,14 +15627,14 @@ static eReturnValues translate_SCSI_Read_Media_Serial_Number_Command(tDevice* de
          device->drive_info.IdentifyData.ata.Word087 & BIT2))
     {
         DECLARE_ZERO_INIT_ARRAY(char, ataMediaSN, 61);
-        safe_memcpy(ataMediaSN, 61, &device->drive_info.IdentifyData.ata.Word176, 60);
+        safe_memcpy(ataMediaSN, 61, iddataPtr + 352, 60);
         byte_Swap_String_Len(ataMediaSN, 60);
         mediaSerialNumberPage[0] = 0;
         mediaSerialNumberPage[1] = 0;
         mediaSerialNumberPage[2] = 0;
         mediaSerialNumberPage[3] = 15; // length
         // now set the media serial number
-        safe_memcpy(&mediaSerialNumberPage[4], 65, ataMediaSN, 60);
+        safe_memcpy(&mediaSerialNumberPage[4], 61, ataMediaSN, 60);
     }
     if (scsiIoCtx->pdata)
     {

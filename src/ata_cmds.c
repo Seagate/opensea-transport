@@ -119,10 +119,10 @@ eReturnValues ata_Identify(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
     }
     ret = ata_Passthrough_Command(device, &identify);
 
-    if (ret == SUCCESS && ptrData != C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
+    if (ret == SUCCESS)
     {
         // copy the data to the device structure so that it's not (as) stale
-        safe_memcpy(&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData), ptrData, 512);
+        copy_ata_identify_to_tdevice(device, ptrData);
     }
 
 #if defined(ENV_BIG_ENDIAN)
@@ -2693,10 +2693,10 @@ eReturnValues ata_Identify_Packet_Device(tDevice* device, uint8_t* ptrData, uint
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (ret == SUCCESS && ptrData != C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
+    if (ret == SUCCESS)
     {
         // copy the data to the device structure so that it's not (as) stale
-        safe_memcpy(&device->drive_info.IdentifyData.ata.Word000, sizeof(tAtaIdentifyData), ptrData, 512);
+        copy_ata_identify_to_tdevice(device, ptrData);
     }
 
 #if defined(ENV_BIG_ENDIAN)

@@ -841,8 +841,9 @@ static void print_CSMI_RAID_Info(PCSMI_SAS_RAID_INFO raidInfo)
         printf("\tMaximum # of drives per set: %" CPRIu32 "\n", raidInfo->uMaxDrivesPerSet);
         // Check if remaining bytes are zeros. This helps track differences between original CSMI spec and some drivers
         // that added onto it.
-        if (!is_Empty(&raidInfo->uMaxRaidSets, 92)) // 92 is original reserved length from original documentation...can
-                                                    // change to something else based on actual structure size if needed
+        if (!is_Empty(M_REINTERPRET_CAST(void*, raidInfo),
+                      92)) // 92 is original reserved length from original documentation...can
+                           // change to something else based on actual structure size if needed
         {
             printf("\tMaximum # of RAID Sets: %" CPRIu32 "\n", raidInfo->uMaxRaidSets);
             printf("\tMaximum # of RAID Types: %" CPRIu8 "\n", raidInfo->bMaxRaidTypes);
@@ -1117,8 +1118,8 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
             printf("%" CPRIu8 "\n", config->bDriveCount);
         }
         // Use DataType to switch between what was reported back
-        if (!is_Empty(&config->bDataType,
-                      20)) // this is being checked since failure code and change count were added later
+        // this is being checked since failure code and change count were added later
+        if (!is_Empty(config, 20))
         {
             printf("\tFailure Code: ");
             print_CSMI_RAID_Failure_Code(config->uFailureCode);

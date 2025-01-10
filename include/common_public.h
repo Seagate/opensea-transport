@@ -137,9 +137,9 @@ extern "C"
                 uint16_t Word017;
                 uint16_t Word018;
                 uint16_t Word019;
-            }; // annonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
+            }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idSNwords or something-TJE
-        };     // annonymous to make access to SN or SN words easier
+        };     // anonymous to make access to SN or SN words easier
         uint16_t Word020;
         uint16_t Word021;
         uint16_t Word022;
@@ -152,9 +152,9 @@ extern "C"
                 uint16_t Word024;
                 uint16_t Word025;
                 uint16_t Word026;
-            }; // annonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
+            }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idFWwords or something-TJE
-        };     // annonymous to make access to FW or FW words easier
+        };     // anonymous to make access to FW or FW words easier
         union
         {
             uint8_t ModelNum[ATA_IDENTIFY_MN_LENGTH]; // 27 ... 46
@@ -180,9 +180,9 @@ extern "C"
                 uint16_t Word044;
                 uint16_t Word045;
                 uint16_t Word046;
-            }; // annonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
+            }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idMNwords or something-TJE
-        };     // annonymous to make access to MN or MN words easier
+        };     // anonymous to make access to MN or MN words easier
         uint16_t Word047;
         uint16_t Word048;
         uint16_t Word049;
@@ -415,6 +415,8 @@ extern "C"
         uint16_t Word255;
     } tAtaIdentifyData, *ptAtaIdentifyData;
 
+    M_STATIC_ASSERT(sizeof(tAtaIdentifyData) == 512, ata_identify_must_be_512_bytes);
+
     // All of the NVME structs in here were moved here to fix a circular include issue
     typedef struct s_nvmeIDPowerState
     {
@@ -536,6 +538,8 @@ extern "C"
         uint8_t          vs[1024];
     } nvmeIDCtrl;
 
+    M_STATIC_ASSERT(sizeof(nvmeIDCtrl) == 4096, nvme_ctrl_identify_must_be_4096_bytes);
+
     typedef struct s_nvmeLBAF
     {
         uint16_t ms;
@@ -585,6 +589,8 @@ extern "C"
         nvmeLBAF lbaf[64];
         uint8_t  vs[3712];
     } nvmeIDNameSpaces;
+
+    M_STATIC_ASSERT(sizeof(nvmeIDNameSpaces) == 4096, nvme_namespace_identify_must_be_4096_bytes);
 
     typedef struct s_nvmeIdentifyData
     {
@@ -699,7 +705,7 @@ extern "C"
         bool             specifierIDValid;
         eAdapterInfoType infoType;
         // USB and PCI devices use uint16's for vendor product and revision. IEEE1394 uses uint32's since most of these
-        // are 24bit numbers Would an annonymous union for different types be easier??? USB  vs PCI vs IEEE1394???
+        // are 24bit numbers Would an anonymous union for different types be easier??? USB  vs PCI vs IEEE1394???
         uint32_t vendorID;
         uint32_t productID;
         uint32_t revision;
@@ -1129,6 +1135,7 @@ extern "C"
         uint64_t worldWideName;
         union
         {
+            uint8_t raw[8192];
             tAtaIdentifyData
                 ata; // NOTE: This will automatically be byte swapped when saved here on big-endian systems for
                      // compatibility will all kinds of bit checks of the data throughout the code at this time. Use a
@@ -1548,6 +1555,16 @@ extern "C"
         eVerbosityLevels deviceVerbosity;
         uint32_t         delay_io;
     } tDevice;
+
+    static M_INLINE void copy_ata_identify_to_tdevice(tDevice* device, uint8_t* identifyData)
+    {
+        if (device != M_NULLPTR && identifyData != M_NULLPTR &&
+            M_REINTERPRET_CAST(uintptr_t, &device->drive_info.IdentifyData.ata) !=
+                M_REINTERPRET_CAST(uintptr_t, identifyData))
+        {
+            safe_memcpy(M_REINTERPRET_CAST(void*, &device->drive_info.IdentifyData.ata), 512, identifyData, 512);
+        }
+    }
 
     // Common enum for getting/setting power states.
     // This enum encompasses Mode Sense/Select commands for SCSI, Set Features for ATA
