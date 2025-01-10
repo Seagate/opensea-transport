@@ -7272,7 +7272,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
         ptrATAPassThroughDirect->DataTransferLength = ULONG_C(0);
         ptrATAPassThroughDirect->DataBuffer         = M_NULLPTR;
 #if WINVER >= SEA_WIN32_WINNT_VISTA
-        ptrATAPassThroughDirect->AtaFlags = ptrATAPassThroughDirect->AtaFlags & ~(ATA_FLAGS_NO_MULTIPLE);
+        ptrATAPassThroughDirect->AtaFlags = ptrATAPassThroughDirect->AtaFlags & M_STATIC_CAST(USHORT, ~(ATA_FLAGS_NO_MULTIPLE));
 #endif // WIN_VISTA
        // NOLINTEND(bugprone-branch-clone)
         break;
@@ -7602,7 +7602,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
         // p_t_ata_pt->ataPTCommand.DataBufferOffset   = offsetof(ATADoubleBufferedIO, dataBuffer);
 #if WINVER >= SEA_WIN32_WINNT_VISTA
         // Turn this bit off in case it was set
-        p_t_ata_pt->ataPTCommand.AtaFlags = p_t_ata_pt->ataPTCommand.AtaFlags & ~(ATA_FLAGS_NO_MULTIPLE);
+        p_t_ata_pt->ataPTCommand.AtaFlags = p_t_ata_pt->ataPTCommand.AtaFlags & M_STATIC_CAST(USHORT, ~(ATA_FLAGS_NO_MULTIPLE));
 #endif // WIN VISTA
         break;
     default:

@@ -1236,9 +1236,8 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
                     // end of original RAID drive data in spec. Check if empty
                     size_t previouslyReservedBytes =
                         sizeof(CSMI_SAS_RAID_DRIVES) - offsetof(CSMI_SAS_RAID_DRIVES, usBlockSize);
-                    if (!is_Empty(&config->Drives[iter].usBlockSize,
-                                  previouslyReservedBytes)) // original spec says 22 reserved bytes, however I count 30
-                                                            // more bytes to check...-TJE
+                    // original spec says 22 reserved bytes, however I count 30 more bytes to check...-TJE
+                    if (!is_Empty(&config->Drives[iter], previouslyReservedBytes))
                     {
                         printf("\t\tBlock Size: %" CPRIu16 "\n", config->Drives[iter].usBlockSize);
                         printf("\t\tDrive Type: ");
