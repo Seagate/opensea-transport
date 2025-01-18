@@ -29,7 +29,8 @@
 
 void print_Low_Level_Info(tDevice* device)
 {
-    if (device)
+    DISABLE_NONNULL_COMPARE
+    if (device != M_NULLPTR)
     {
         int adapterIDWidthSpec;
         // Print out things useful for low-level debugging of the tDevice.
@@ -1050,6 +1051,7 @@ void print_Low_Level_Info(tDevice* device)
 #endif // ENABLE_CSMI
         printf("\n");
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 size_t load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize)
@@ -1424,7 +1426,8 @@ bool validate_Device_Struct(versionBlock sanity)
 
 eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver)
 {
-    if (ver)
+    DISABLE_NONNULL_COMPARE
+    if (ver != M_NULLPTR)
     {
         ver->majorVersion = OPENSEA_TRANSPORT_MAJOR_VERSION;
         ver->minorVersion = OPENSEA_TRANSPORT_MINOR_VERSION;
@@ -1435,11 +1438,13 @@ eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver)
     {
         return MEMORY_FAILURE;
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 eReturnValues get_Version_Block(versionBlock* ver)
 {
-    if (ver)
+    DISABLE_NONNULL_COMPARE
+    if (ver != M_NULLPTR)
     {
         ver->size    = sizeof(tDevice);
         ver->version = DEVICE_BLOCK_VERSION;
@@ -1449,6 +1454,7 @@ eReturnValues get_Version_Block(versionBlock* ver)
     {
         return MEMORY_FAILURE;
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 static void set_IEEE_OUI(uint32_t* ieeeOUI, tDevice* device, bool USBchildDrive)
@@ -1481,7 +1487,7 @@ static void set_IEEE_OUI(uint32_t* ieeeOUI, tDevice* device, bool USBchildDrive)
     }
 }
 
-bool is_Maxtor_String(char* string)
+bool is_Maxtor_String(const char* string)
 {
     bool   isMaxtor  = false;
     size_t maxtorLen = safe_strlen("MAXTOR");
@@ -1576,7 +1582,7 @@ bool is_Seagate_VendorID(tDevice* device)
     return isSeagate;
 }
 
-bool is_Seagate_MN(char* string)
+bool is_Seagate_MN(const char* string)
 {
     bool   isSeagate  = false;
     size_t seagateLen = safe_strlen("ST");
@@ -1669,7 +1675,7 @@ bool is_Seagate(tDevice* device, bool USBchildDrive)
     return isSeagate;
 }
 
-bool is_Conner_Model_Number(char* mn)
+bool is_Conner_Model_Number(const char* mn)
 {
     bool isConner = false;
     // found online. Not sure how accurate this will be
@@ -1835,7 +1841,7 @@ bool is_Quantum_VendorID(tDevice* device)
     return isQuantum;
 }
 
-bool is_Quantum_Model_Number(char* string)
+bool is_Quantum_Model_Number(const char* string)
 {
     bool   isQuantum  = false;
     size_t quantumLen = safe_strlen("Quantum");
@@ -1944,7 +1950,7 @@ bool is_LaCie(tDevice* device)
     return isLaCie;
 }
 
-bool is_Samsung_String(char* string)
+bool is_Samsung_String(const char* string)
 {
     bool   isSamsung  = false;
     size_t samsungLen = safe_strlen("SAMSUNG");
@@ -2891,14 +2897,16 @@ eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize)
     uint8_t  checksum = UINT8_C(0);
     uint32_t counter  = UINT32_C(0);
 
-    if ((blockSize > LEGACY_DRIVE_SEC_SIZE) || (blockSize == 0) || (pBuf == M_NULLPTR))
+    DISABLE_NONNULL_COMPARE
+    if ((blockSize > LEGACY_DRIVE_SEC_SIZE) || (blockSize == UINT32_C(0)) || (pBuf == M_NULLPTR))
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     printf("%s: blksize %d, pBuf %p\n", __FUNCTION__, blockSize, C_CAST(void*, pBuf));
 
-    for (counter = 0; counter < 511; counter++)
+    for (counter = UINT32_C(0); counter < UINT32_C(511); counter++)
     {
         checksum = checksum + pBuf[counter];
     }
@@ -3194,10 +3202,12 @@ eReturnValues remove_Duplicate_Devices(tDevice*                 deviceList,
     bool              sameSlNo = false;
     eReturnValues     ret      = UNKNOWN;
 
-    if (!deviceList || !numberOfDevices)
+    DISABLE_NONNULL_COMPARE
+    if (deviceList == M_NULLPTR || numberOfDevices == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
     /*
     Go through all the devices in the list.
     */

@@ -25,7 +25,8 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
                                                  eRealtekNVMCMDPhase     phase,
                                                  nvmeCmdCtx*             nvmCmd)
 {
-    if (!cdb)
+    DISABLE_NONNULL_COMPARE
+    if (cdb == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -36,7 +37,7 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
     {
     case REALTEK_PHASE_COMMAND:
         *cdbDataDirection = XFER_DATA_OUT;
-        if (!dataPtr || dataSize < REALTEK_NVME_CMD_PAYLOAD_LEN || !nvmCmd)
+        if (dataPtr == M_NULLPTR || dataSize < REALTEK_NVME_CMD_PAYLOAD_LEN || nvmCmd == M_NULLPTR)
         {
             return BAD_PARAMETER;
         }
@@ -144,7 +145,7 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
         }
         break;
     case REALTEK_PHASE_DATA:
-        if (!nvmCmd)
+        if (nvmCmd == M_NULLPTR)
         {
             return BAD_PARAMETER;
         }
@@ -168,7 +169,7 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
         cdb[2] = M_Byte1(nvmCmd->dataSize); // length
         cdb[4] = M_Byte2(nvmCmd->dataSize); // length
         cdb[5] = M_Byte3(nvmCmd->dataSize); // length
-        if (nvmCmd->dataSize == 0)
+        if (nvmCmd->dataSize == UINT32_C(0))
         {
             *cdbDataDirection = XFER_NO_DATA;
             cdb[6]            = M_Byte0(REALTEK_NO_DATA);
@@ -187,6 +188,7 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
     default:
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
     return SUCCESS;
 }
 
@@ -196,10 +198,12 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekCDB, REALTEK_NVME_CDB_SIZE);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekPayload, REALTEK_NVME_CMD_PAYLOAD_LEN);
     eDataTransferDirection realtekCDBDir = 0;
-    if (!nvmCmd)
+    DISABLE_NONNULL_COMPARE
+    if (nvmCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
     if (nvmCmd->dataSize > REALTEK_NVME_MAX_TRANSFER_SIZE_BYTES || nvmCmd->commandDirection == XFER_DATA_IN_OUT ||
         nvmCmd->commandDirection == XFER_DATA_OUT_IN)
     {

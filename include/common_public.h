@@ -1556,14 +1556,18 @@ extern "C"
         uint32_t         delay_io;
     } tDevice;
 
-    static M_INLINE void copy_ata_identify_to_tdevice(tDevice* device, uint8_t* identifyData)
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RW(1)
+    M_PARAM_RO(2) static M_INLINE void copy_ata_identify_to_tdevice(tDevice* device, uint8_t* identifyData)
     {
+        DISABLE_NONNULL_COMPARE
         if (device != M_NULLPTR && identifyData != M_NULLPTR &&
             M_REINTERPRET_CAST(uintptr_t, &device->drive_info.IdentifyData.ata) !=
                 M_REINTERPRET_CAST(uintptr_t, identifyData))
         {
             safe_memcpy(M_REINTERPRET_CAST(void*, &device->drive_info.IdentifyData.ata), 512, identifyData, 512);
         }
+        RESTORE_NONNULL_COMPARE
     }
 
     // Common enum for getting/setting power states.
@@ -1863,7 +1867,8 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1) OPENSEA_TRANSPORT_API eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver);
 
     //-----------------------------------------------------------------------------
     //
@@ -1878,7 +1883,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues get_Version_Block(versionBlock* ver);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_WO(1) OPENSEA_TRANSPORT_API eReturnValues get_Version_Block(versionBlock* ver);
 
     OPENSEA_TRANSPORT_API bool validate_Device_Struct(versionBlock sanity);
 
@@ -1898,7 +1903,10 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* filename, tDevice* device);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_NULL_TERM_STRING(1) M_PARAM_RW(2) OPENSEA_TRANSPORT_API eReturnValues
+        get_Device(const char* filename, tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1917,7 +1925,8 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags);
 
     //-----------------------------------------------------------------------------
     //
@@ -1944,10 +1953,10 @@ extern "C"
     //!   that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* const ptrToDeviceList,
-                                                        uint32_t       sizeInBytes,
-                                                        versionBlock   ver,
-                                                        uint64_t       flags);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API eReturnValues
+        get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
 
     //-----------------------------------------------------------------------------
     //
@@ -1962,7 +1971,7 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1996,7 +2005,10 @@ extern "C"
     //!   \return size_t bytes read
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API size_t load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_NULL_TERM_STRING(1) M_PARAM_WO_SIZE(2, 3) OPENSEA_TRANSPORT_API size_t
+        load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2012,7 +2024,7 @@ extern "C"
     //!   \return true = show drive, false = don't show drive
     //
     //-----------------------------------------------------------------------------
-    bool scan_Drive_Type_Filter(tDevice* device, uint32_t scanFlags);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) bool scan_Drive_Type_Filter(tDevice* device, uint32_t scanFlags);
 
     //-----------------------------------------------------------------------------
     //
@@ -2030,7 +2042,7 @@ extern "C"
     //!   \return true = show drive, false = don't show drive
     //
     //-----------------------------------------------------------------------------
-    bool scan_Interface_Type_Filter(tDevice* device, uint32_t scanFlags);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) bool scan_Interface_Type_Filter(tDevice* device, uint32_t scanFlags);
 
     //-----------------------------------------------------------------------------
     //
@@ -2046,7 +2058,7 @@ extern "C"
     //!   \return eSeagateFamily enum value. See enum for meanings
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eSeagateFamily is_Seagate_Family(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eSeagateFamily is_Seagate_Family(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2061,7 +2073,8 @@ extern "C"
     //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Seagate_MN(char* string);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Seagate_MN(const char* string);
 
     //-----------------------------------------------------------------------------
     //
@@ -2077,7 +2090,7 @@ extern "C"
     //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Seagate_VendorID(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_VendorID(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2094,7 +2107,7 @@ extern "C"
     //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Seagate(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate(tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2109,7 +2122,7 @@ extern "C"
     //!   \return 1 = It is a LaCie Drive, 0 - Not a LaCie Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_LaCie(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_LaCie(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2124,7 +2137,8 @@ extern "C"
     //!   \return 1 = It is a Samsung Drive, 0 - Not a Samsung Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Samsung_String(char* string);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Samsung_String(const char* string);
 
     //-----------------------------------------------------------------------------
     //
@@ -2141,7 +2155,8 @@ extern "C"
     //!   \return 1 = It is a Samsung Drive, 0 - Not a Samsung Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Samsung_HDD(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Samsung_HDD(tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2156,7 +2171,8 @@ extern "C"
     //!   \return 1 = It is a Maxtor Drive, 0 - Not a Maxtor Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Maxtor_String(char* string);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Maxtor_String(const char* string);
 
     //-----------------------------------------------------------------------------
     //
@@ -2173,7 +2189,7 @@ extern "C"
     //!   \return 1 = It is a Maxtor Drive, 0 - Not a Maxtor Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Maxtor(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Maxtor(tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2188,7 +2204,7 @@ extern "C"
     //!   \return 1 = It is a Seagate Partner Drive, 0 - Not a Seagate-Partner Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Vendor_A(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Vendor_A(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2205,28 +2221,55 @@ extern "C"
     //!   \return 1 = It is a Partner Drive, 0 - Not a Partner Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Vendor_A(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Vendor_A(tDevice* device, bool USBchildDrive);
 
-    OPENSEA_TRANSPORT_API bool is_Conner_Model_Number(char* mn);
-    OPENSEA_TRANSPORT_API bool is_Conner_VendorID(tDevice* device);
-    OPENSEA_TRANSPORT_API bool is_Connor(tDevice* device, bool USBchildDrive);
-    OPENSEA_TRANSPORT_API bool is_CDC_VendorID(tDevice* device);
-    OPENSEA_TRANSPORT_API bool is_DEC_VendorID(tDevice* device);
-    OPENSEA_TRANSPORT_API bool is_MiniScribe_VendorID(tDevice* device);
-    OPENSEA_TRANSPORT_API bool is_Quantum_VendorID(tDevice* device);
-    OPENSEA_TRANSPORT_API bool is_Quantum_Model_Number(char* string);
-    OPENSEA_TRANSPORT_API bool is_Quantum(tDevice* device, bool USBchildDrive);
-    OPENSEA_TRANSPORT_API bool is_PrarieTek_VendorID(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Conner_Model_Number(const char* mn);
 
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_B(tDevice* device, bool USBchildDrive);
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_C(tDevice* device, bool USBchildDrive);
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_D(tDevice* device, bool USBchildDrive);
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_E(tDevice* device, bool USBchildDrive);
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_SSD_PJ(tDevice* device, bool USBchildDrive);
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(tDevice* device, bool USBchildDrive);
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(tDevice* device, bool USBchildDrive);
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(tDevice* device, bool USBchildDrive);
-    OPENSEA_TRANSPORT_API bool is_Seagate_Vendor_K(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Conner_VendorID(tDevice* device);
+
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Connor(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CDC_VendorID(tDevice* device);
+
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_DEC_VendorID(tDevice* device);
+
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_MiniScribe_VendorID(tDevice* device);
+
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Quantum_VendorID(tDevice* device);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Quantum_Model_Number(const char* string);
+
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Quantum(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_PrarieTek_VendorID(tDevice* device);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_B(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_C(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_D(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_E(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_SSD_PJ(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Vendor_K(tDevice* device);
 
     typedef enum eIronwolf_NAS_DriveEnum
     {
@@ -2250,7 +2293,8 @@ extern "C"
     //!   \return 0 = Not a Ironwolf NAS Drive, 1 - a Ironwolf NAS Drive, 2 - a Ironwolf Pro NAS Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2267,7 +2311,8 @@ extern "C"
     //!   \return 1 = It is a Firecuda Drive, 0 - Not a Firecuda Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Firecuda_Drive(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Firecuda_Drive(tDevice* device, bool USBchildDrive);
 
     typedef enum eSkyhawk_DriveEnum
     {
@@ -2291,7 +2336,8 @@ extern "C"
     //!   \return 0 = Not a Skyhawk Drive, 1 - a Skyhawk Drive, 2 - a Skyhawk AI Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2308,7 +2354,8 @@ extern "C"
     //!   \return 1 = It is a Nytro Drive, 0 - Not a Nytro Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Nytro_Drive(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Nytro_Drive(tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2325,7 +2372,7 @@ extern "C"
     //!   \return 1 = It is a Exos Drive, 0 - Not a Exos Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Exos_Drive(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Exos_Drive(tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2342,7 +2389,8 @@ extern "C"
     //!   \return 1 = It is a Barracuda Drive, 0 - Not a Barracuda Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Barracuda_Drive(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Barracuda_Drive(tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2358,9 +2406,9 @@ extern "C"
     //!   \return 1 = It is a SSD Drive, 0 - Not a SSD Drive
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_SSD(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_SSD(tDevice* device);
 
-    OPENSEA_TRANSPORT_API bool is_SATA(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_SATA(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2379,7 +2427,7 @@ extern "C"
     //!   block size = device reported block size
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool is_Sector_Size_Emulation_Active(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Sector_Size_Emulation_Active(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2401,7 +2449,8 @@ extern "C"
     //!   \return int SUCCESS if passes !SUCCESS if fails for some reason.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW_SIZE(1, 2) OPENSEA_TRANSPORT_API eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2418,7 +2467,8 @@ extern "C"
     //!   \return uint32_t value to use for a sector count
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2435,7 +2485,8 @@ extern "C"
     //!   \return uint32_t value to use for a sector count
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2453,7 +2504,8 @@ extern "C"
     //!   \return uint32_t value to use for a sector count
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2470,7 +2522,7 @@ extern "C"
     //!   \return The aligned LBA
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint64_t align_LBA(tDevice* device, uint64_t LBA);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint64_t align_LBA(tDevice* device, uint64_t LBA);
 
     OPENSEA_TRANSPORT_API void print_Command_Time(uint64_t timeInNanoSeconds);
 
@@ -2484,18 +2536,22 @@ extern "C"
         uint8_t raid;
     } removeDuplicateDriveType;
 
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API eReturnValues remove_Duplicate_Devices(tDevice*                 deviceList,
                                                                  volatile uint32_t*       numberOfDevices,
                                                                  removeDuplicateDriveType rmvDevFlag);
 
-    OPENSEA_TRANSPORT_API eReturnValues remove_Device(tDevice*           deviceList,
-                                                      uint32_t           driveToRemoveIdx,
-                                                      volatile uint32_t* numberOfDevices);
+    M_NONNULL_PARAM_LIST(1, 3)
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API eReturnValues
+        remove_Device(tDevice* deviceList, uint32_t driveToRemoveIdx, volatile uint32_t* numberOfDevices);
 
-    OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice* device);
-    OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice* device);
 
-    bool setup_Passthrough_Hacks_By_ID(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice* device);
+
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) bool setup_Passthrough_Hacks_By_ID(tDevice* device);
 
 #if defined(_DEBUG)
     // This function is more for debugging than anything else!
@@ -2514,7 +2570,7 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void print_Low_Level_Info(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Low_Level_Info(tDevice* device);
 
 #if defined(__cplusplus)
 } // extern "C"

@@ -51,6 +51,9 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_WO(1)
+    M_PARAM_RO(2)
     eReturnValues build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand * ataCommandOptions, bool olderOpCode,
                                       bool forceMode, uint8_t modeValue);
 
@@ -69,6 +72,9 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_PARAM_RW(2)
     eReturnValues send_TI_Legacy_Passthrough_Command(tDevice * device, ataPassthroughCommand * ataCommandOptions);
 
 #if defined(__cplusplus)

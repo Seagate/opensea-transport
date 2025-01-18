@@ -486,10 +486,12 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     uint8_t* dataPhasePtr  = M_NULLPTR;
     uint32_t dataPhaseSize = UINT32_C(0);
     bool     localMemory   = false;
-    if (!nvmCmd)
+    DISABLE_NONNULL_COMPARE
+    if (nvmCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
     dataPhasePtr  = nvmCmd->ptrData;
     dataPhaseSize = nvmCmd->dataSize;
     if (nvmCmd->ptrData && nvmCmd->dataSize > 0 && nvmCmd->dataSize % UINT32_C(512))
@@ -497,7 +499,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
         dataPhaseSize = uint32_round_up_power2(nvmCmd->dataSize, UINT32_C(512));
         dataPhasePtr  = C_CAST(
              uint8_t*, safe_calloc_aligned(dataPhaseSize, sizeof(uint8_t), nvmCmd->device->os_info.minimumAlignment));
-        if (!dataPhasePtr)
+        if (dataPhasePtr == M_NULLPTR)
         {
             return MEMORY_FAILURE;
         }

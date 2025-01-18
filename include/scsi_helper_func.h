@@ -27,7 +27,9 @@ extern "C"
     // This is a private function that is used by the send CDB function below in order to contain printing debug output
     // in one location instead of multiple so that the ATA layer can also call this. Do not use this directly to send a
     // CDB. Use the scsi_Send_Cdb function instead.
-    eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSenseFields);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1)
+    M_PARAM_WO(2) eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSenseFields);
 
     //-----------------------------------------------------------------------------
     //
@@ -53,15 +55,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Cdb(tDevice*               device,
-                                                      uint8_t*               cdb,
-                                                      eCDBLen                cdbLen,
-                                                      uint8_t*               pdata,
-                                                      uint32_t               dataLen,
-                                                      eDataTransferDirection dataDirection,
-                                                      uint8_t*               senseData,
-                                                      uint32_t               senseDataLen,
-                                                      uint32_t               timeoutSeconds);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(2, 3) M_NONNULL_IF_NONZERO_PARAM(4, 5) M_PARAM_RW_SIZE(4, 5) M_NONNULL_IF_NONZERO_PARAM(7, 8)
+        M_PARAM_WO_SIZE(7, 8) OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Cdb(tDevice*               device,
+                                                                                uint8_t*               cdb,
+                                                                                eCDBLen                cdbLen,
+                                                                                uint8_t*               pdata,
+                                                                                uint32_t               dataLen,
+                                                                                eDataTransferDirection dataDirection,
+                                                                                uint8_t*               senseData,
+                                                                                uint32_t               senseDataLen,
+                                                                                uint32_t               timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -80,9 +85,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint16_t calculate_Logical_Block_Guard(uint8_t* buffer,
-                                                                 uint32_t userDataLength,
-                                                                 uint32_t totalDataLength);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 3)
+    OPENSEA_TRANSPORT_API uint16_t
+        calculate_Logical_Block_Guard(const uint8_t* buffer, uint32_t userDataLength, uint32_t totalDataLength);
 
     //-----------------------------------------------------------------------------
     //
@@ -103,19 +109,27 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues
-    check_Sense_Key_ASC_ASCQ_And_FRU(tDevice* device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru);
+        check_Sense_Key_ASC_ASCQ_And_FRU(tDevice* device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru);
 
     // this is meant to only be called by check_Sense_Key_asc_And_ascq()
-    OPENSEA_TRANSPORT_API void print_Field_Replacable_Unit_Code(tDevice*    device,
-                                                                const char* fruMessage,
-                                                                uint8_t     fruCode);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_NULL_TERM_STRING(2) M_PARAM_RO(2) OPENSEA_TRANSPORT_API
+        void print_Field_Replacable_Unit_Code(tDevice* device, const char* fruMessage, uint8_t fruCode);
 
     // this is meant to only be called by check_Sense_Key_asc_And_ascq()
-    OPENSEA_TRANSPORT_API void print_acs_ascq(const char* acsAndascqStringToPrint, uint8_t ascValue, uint8_t ascqValue);
+    M_NONNULL_PARAM_LIST(1)
+    M_NULL_TERM_STRING(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API
+        void print_acs_ascq(const char* acsAndascqStringToPrint, uint8_t ascValue, uint8_t ascqValue);
 
     // this is mean to only be called by check_Sense_Key_asc_And_ascq()
-    OPENSEA_TRANSPORT_API void print_sense_key(const char* senseKeyToPrint, uint8_t senseKeyValue);
+    M_NONNULL_PARAM_LIST(1)
+    M_NULL_TERM_STRING(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_sense_key(const char* senseKeyToPrint, uint8_t senseKeyValue);
 
     //-----------------------------------------------------------------------------
     //
@@ -135,18 +149,24 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* pbuf,
-                                                          uint32_t       pbufSize,
-                                                          uint8_t*       senseKey,
-                                                          uint8_t*       asc,
-                                                          uint8_t*       ascq,
-                                                          uint8_t*       fru);
+    M_NONNULL_PARAM_LIST(1, 3, 4, 5, 6)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) M_PARAM_WO(4) M_PARAM_WO(5) M_PARAM_WO(6) OPENSEA_TRANSPORT_API
+        void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* pbuf,
+                                        uint32_t       pbufSize,
+                                        uint8_t*       senseKey,
+                                        uint8_t*       asc,
+                                        uint8_t*       ascq,
+                                        uint8_t*       fru);
 
-    OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(const uint8_t*     ptrSenseData,
-                                                     uint32_t           senseDataLength,
-                                                     ptrSenseDataFields senseFields);
+    M_NONNULL_PARAM_LIST(1, 3)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(const uint8_t*     ptrSenseData,
+                                                                   uint32_t           senseDataLength,
+                                                                   ptrSenseDataFields senseFields);
 
-    OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields senseFields);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields senseFields);
 
     //-----------------------------------------------------------------------------
     //
@@ -163,28 +183,40 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(const uint8_t*      ptrSenseData,
-                                                                  uint32_t            senseDataLength,
-                                                                  ptrSenseKeySpecific sksp);
+    M_NONNULL_PARAM_LIST(1, 3)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(const uint8_t*      ptrSenseData,
+                                                                                uint32_t            senseDataLength,
+                                                                                ptrSenseKeySpecific sksp);
 
-    OPENSEA_TRANSPORT_API void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
-                                                               uint32_t       senseDataLength,
-                                                               bool*          valid,
-                                                               uint64_t*      information);
+    M_NONNULL_PARAM_LIST(1, 3, 4)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) M_PARAM_WO(4) OPENSEA_TRANSPORT_API void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
+                                                                                           uint32_t  senseDataLength,
+                                                                                           bool*     valid,
+                                                                                           uint64_t* information);
 
-    OPENSEA_TRANSPORT_API void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
-                                                                            uint32_t       senseDataLength,
-                                                                            bool*          illegalLengthIndicator);
+    M_NONNULL_PARAM_LIST(1, 3)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) OPENSEA_TRANSPORT_API void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
+                                                                                          uint32_t senseDataLength,
+                                                                                          bool* illegalLengthIndicator);
 
-    OPENSEA_TRANSPORT_API void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
-                                                                       uint32_t       senseDataLength,
-                                                                       bool*          filemark,
-                                                                       bool*          endOfMedia,
-                                                                       bool*          illegalLengthIndicator);
+    M_NONNULL_PARAM_LIST(1, 3, 4, 5)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) M_PARAM_WO(4) M_PARAM_WO(5) OPENSEA_TRANSPORT_API
+        void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
+                                                     uint32_t       senseDataLength,
+                                                     bool*          filemark,
+                                                     bool*          endOfMedia,
+                                                     bool*          illegalLengthIndicator);
 
-    OPENSEA_TRANSPORT_API void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseData,
-                                                                                uint32_t       senseDataLength,
-                                                                                uint64_t* commandSpecificInformation);
+    M_NONNULL_PARAM_LIST(1, 3)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) OPENSEA_TRANSPORT_API
+        void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseData,
+                                                              uint32_t       senseDataLength,
+                                                              uint64_t*      commandSpecificInformation);
     //-----------------------------------------------------------------------------
     //
     //  uint16_t get_Returned_Sense_Data_Length(uint8_t *pbuf)
@@ -200,11 +232,14 @@ extern "C"
     //!   \return none
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf);
 
 #define NO_SERVICE_ACTION UINT8_C(0)
 
     // length can be transfer length, parameter list length, or allocation length
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     static M_INLINE uint8_t* set_Typical_SCSI_6B_CDB_Fields(uint8_t* cdb,
                                                             uint8_t  operationCode,
                                                             uint32_t lba, /*21 bits total*/
@@ -220,6 +255,8 @@ extern "C"
         return cdb;
     }
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     static M_INLINE uint8_t* set_Typical_SCSI_10B_CDB_Fields(uint8_t* cdb,
                                                              uint8_t  operationCode,
                                                              uint8_t  serviceAction, /* optional */
@@ -240,6 +277,8 @@ extern "C"
         return cdb;
     }
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     static M_INLINE uint8_t* set_Typical_SCSI_12B_CDB_Fields(uint8_t* cdb,
                                                              uint8_t  operationCode,
                                                              uint8_t  serviceAction, /* optional */
@@ -262,6 +301,8 @@ extern "C"
         return cdb;
     }
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     static M_INLINE uint8_t* set_Typical_SCSI_16B_CDB_Fields_32Bit_LBA(uint8_t* cdb,
                                                                        uint8_t  operationCode,
                                                                        uint8_t  serviceAction, /* optional */
@@ -285,6 +326,8 @@ extern "C"
         return cdb;
     }
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     static M_INLINE uint8_t* set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(uint8_t* cdb,
                                                                        uint8_t  operationCode,
                                                                        uint8_t  serviceAction, /* optional */
@@ -311,6 +354,8 @@ extern "C"
         return cdb;
     }
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     static M_INLINE uint8_t* set_Typical_SCSI_32_CDB_Fields(uint8_t* cdb,
                                                             uint8_t  operationCode,
                                                             uint16_t serviceAction,
@@ -355,6 +400,8 @@ extern "C"
 
 #define GET_PROTECT_VAL(protect) get_Protect(protect)
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     static M_INLINE void set_SCSI_32B_PI_Fields(uint8_t* cdb,
                                                 uint8_t  groupNumber,
                                                 uint8_t  protect,
@@ -392,8 +439,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues
-    scsi_Inquiry(tDevice* device, uint8_t* pdata, uint32_t dataLength, uint8_t pageCode, bool evpd, bool cmdDt);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1)
+    M_NONNULL_IF_NONZERO_PARAM(2, 3) M_PARAM_WO_SIZE(2, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Inquiry(tDevice* device, uint8_t* pdata, uint32_t dataLength, uint8_t pageCode, bool evpd, bool cmdDt);
 
     //-----------------------------------------------------------------------------
     //
@@ -408,7 +457,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -423,7 +472,7 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    void copy_Inquiry_Data(uint8_t* pbuf, driveInfo* info);
+    M_NONNULL_PARAM_LIST(1, 2) M_PARAM_RO(1) M_PARAM_WO(2) void copy_Inquiry_Data(uint8_t* pbuf, driveInfo* info);
 
     //-----------------------------------------------------------------------------
     //
@@ -440,7 +489,12 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    void copy_Serial_Number(uint8_t* pbuf, size_t bufferlen, char* serialNumber, size_t serialNumberMemLen);
+    M_NONNULL_PARAM_LIST(1, 3)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO_SIZE(3, 4) void copy_Serial_Number(uint8_t* pbuf,
+                                                  size_t   bufferlen,
+                                                  char*    serialNumber,
+                                                  size_t   serialNumberMemLen);
 
     //-----------------------------------------------------------------------------
     //
@@ -461,12 +515,15 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
-                                                       uint32_t* physicalBlockSize,
-                                                       uint64_t* maxLBA,
-                                                       uint16_t* sectorAlignment,
-                                                       uint8_t*  ptrBuf,
-                                                       bool      readCap16);
+    M_NONNULL_PARAM_LIST(1, 2, 3, 4, 5)
+    M_PARAM_WO(1)
+    M_PARAM_WO(2) M_PARAM_WO(3) M_PARAM_WO(4) M_PARAM_RO(5) OPENSEA_TRANSPORT_API
+        void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
+                                     uint32_t* physicalBlockSize,
+                                     uint64_t* maxLBA,
+                                     uint16_t* sectorAlignment,
+                                     uint8_t*  ptrBuf,
+                                     bool      readCap16);
 
     //-----------------------------------------------------------------------------
     //
@@ -481,7 +538,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = not an ATA device, or SAT not supported
     //
     //-----------------------------------------------------------------------------
-    eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -503,13 +560,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Cmd(tDevice*             device,
-                                                          eScsiSanitizeFeature sanitizeFeature,
-                                                          bool                 immediate,
-                                                          bool                 znr,
-                                                          bool                 ause,
-                                                          uint16_t             parameterListLength,
-                                                          uint8_t*             ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(7, 6) M_PARAM_RO_SIZE(7, 6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Sanitize_Cmd(tDevice*             device,
+                          eScsiSanitizeFeature sanitizeFeature,
+                          bool                 immediate,
+                          bool                 znr,
+                          bool                 ause,
+                          uint16_t             parameterListLength,
+                          uint8_t*             ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -535,15 +595,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Overwrite(tDevice* device,
-                                                                bool     allowUnrestrictedSanitizeExit,
-                                                                bool     znr,
-                                                                bool     immediate,
-                                                                bool     invertBetweenPasses,
-                                                                eScsiSanitizeOverwriteTest test,
-                                                                uint8_t                    overwritePasses,
-                                                                uint8_t*                   pattern,
-                                                                uint16_t                   patternLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Sanitize_Overwrite(tDevice*                   device,
+                                bool                       allowUnrestrictedSanitizeExit,
+                                bool                       znr,
+                                bool                       immediate,
+                                bool                       invertBetweenPasses,
+                                eScsiSanitizeOverwriteTest test,
+                                uint8_t                    overwritePasses,
+                                uint8_t*                   pattern,
+                                uint16_t                   patternLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -558,7 +621,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Exit_Failure_Mode(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Exit_Failure_Mode(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -577,6 +641,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Cryptographic_Erase(tDevice* device,
                                                                           bool     allowUnrestrictedSanitizeExit,
                                                                           bool     immediate,
@@ -599,10 +665,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Block_Erase(tDevice* device,
-                                                                  bool     allowUnrestrictedSanitizeExit,
-                                                                  bool     immediate,
-                                                                  bool     znr);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Sanitize_Block_Erase(tDevice* device, bool allowUnrestrictedSanitizeExit, bool immediate, bool znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -620,10 +686,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Request_Sense_Cmd(tDevice* device,
-                                                               bool     descriptorBit,
-                                                               uint8_t* pdata,
-                                                               uint16_t dataSize);
+    M_NONNULL_PARAM_LIST(1, 3)
+    M_PARAM_RO(1)
+    M_PARAM_WO_SIZE(3, 4) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Request_Sense_Cmd(tDevice* device, bool descriptorBit, uint8_t* pdata, uint16_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -644,13 +710,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Operation_Codes(tDevice* device,
-                                                                              bool     rctd,
-                                                                              uint8_t  reportingOptions,
-                                                                              uint8_t  requestedOperationCode,
-                                                                              uint16_t reequestedServiceAction,
-                                                                              uint32_t allocationLength,
-                                                                              uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1, 7)
+    M_PARAM_RO(1)
+    M_PARAM_WO_SIZE(7, 6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Report_Supported_Operation_Codes(tDevice* device,
+                                              bool     rctd,
+                                              uint8_t  reportingOptions,
+                                              uint8_t  requestedOperationCode,
+                                              uint16_t reequestedServiceAction,
+                                              uint32_t allocationLength,
+                                              uint8_t* ptrData);
 
     typedef enum eSCSICmdSupportEnum
     {
@@ -694,8 +763,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eSCSICmdSupport is_SCSI_Operation_Code_Supported(tDevice*                        device,
-                                                                           ptrScsiOperationCodeInfoRequest request);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_PARAM_RW(2) OPENSEA_TRANSPORT_API eSCSICmdSupport
+        is_SCSI_Operation_Code_Supported(tDevice* device, ptrScsiOperationCodeInfoRequest request);
 
     //-----------------------------------------------------------------------------
     //
@@ -717,14 +788,17 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Sense_Cmd(tDevice* device,
-                                                           bool     saveParameters,
-                                                           uint8_t  pageControl,
-                                                           uint8_t  pageCode,
-                                                           uint8_t  subpageCode,
-                                                           uint16_t paramPointer,
-                                                           uint8_t* ptrData,
-                                                           uint16_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(7, 8) M_PARAM_WO_SIZE(7, 8) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Log_Sense_Cmd(tDevice* device,
+                           bool     saveParameters,
+                           uint8_t  pageControl,
+                           uint8_t  pageCode,
+                           uint8_t  subpageCode,
+                           uint16_t paramPointer,
+                           uint8_t* ptrData,
+                           uint16_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -747,15 +821,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Select_Cmd(tDevice* device,
-                                                            bool     pcr,
-                                                            bool     sp,
-                                                            uint8_t  pageControl,
-                                                            uint8_t  pageCode,
-                                                            uint8_t  subpageCode,
-                                                            uint16_t parameterListLength,
-                                                            uint8_t* ptrData,
-                                                            uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Log_Select_Cmd(tDevice* device,
+                            bool     pcr,
+                            bool     sp,
+                            uint8_t  pageControl,
+                            uint8_t  pageCode,
+                            uint8_t  subpageCode,
+                            uint16_t parameterListLength,
+                            uint8_t* ptrData,
+                            uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -779,16 +856,19 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Diagnostic(tDevice* device,
-                                                             uint8_t  selfTestCode,
-                                                             uint8_t  pageFormat,
-                                                             uint8_t  selfTestBit,
-                                                             uint8_t  deviceOffLIne,
-                                                             uint8_t  unitOffLine,
-                                                             uint16_t parameterListLength,
-                                                             uint8_t* pdata,
-                                                             uint16_t dataSize,
-                                                             uint32_t timeoutSeconds);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Send_Diagnostic(tDevice* device,
+                             uint8_t  selfTestCode,
+                             uint8_t  pageFormat,
+                             uint8_t  selfTestBit,
+                             uint8_t  deviceOffLIne,
+                             uint8_t  unitOffLine,
+                             uint16_t parameterListLength,
+                             uint8_t* pdata,
+                             uint16_t dataSize,
+                             uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -805,7 +885,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_10(tDevice* device, uint8_t* pdata, uint16_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(2, 3) M_PARAM_WO_SIZE(2, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_Capacity_10(tDevice* device, uint8_t* pdata, uint16_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -822,48 +905,71 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_16(tDevice* device, uint8_t* pdata, uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(2, 3) M_PARAM_WO_SIZE(2, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_Capacity_16(tDevice* device, uint8_t* pdata, uint32_t dataSize);
 
-    OPENSEA_TRANSPORT_API void get_mode_param_header_6_fields(uint8_t* ptrMP,
-                                                              uint32_t mpHeaderLen,
-                                                              uint8_t* modeDataLength,
-                                                              uint8_t* mediumType,
-                                                              uint8_t* devSpecific,
-                                                              uint8_t* blockDescriptorLenth);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) M_PARAM_WO(4) M_PARAM_WO(5) M_PARAM_WO(6) OPENSEA_TRANSPORT_API
+        void get_mode_param_header_6_fields(uint8_t* ptrMP,
+                                            uint32_t mpHeaderLen,
+                                            uint8_t* modeDataLength,
+                                            uint8_t* mediumType,
+                                            uint8_t* devSpecific,
+                                            uint8_t* blockDescriptorLenth);
 
-    OPENSEA_TRANSPORT_API void get_mode_param_header_10_fields(uint8_t*  ptrMP,
-                                                               uint32_t  mpHeaderLen,
-                                                               uint16_t* modeDataLength,
-                                                               uint8_t*  mediumType,
-                                                               uint8_t*  devSpecific,
-                                                               bool*     longLBA,
-                                                               uint16_t* blockDescriptorLenth);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) M_PARAM_WO(4) M_PARAM_WO(5) M_PARAM_WO(6) OPENSEA_TRANSPORT_API
+        void get_mode_param_header_10_fields(uint8_t*  ptrMP,
+                                             uint32_t  mpHeaderLen,
+                                             uint16_t* modeDataLength,
+                                             uint8_t*  mediumType,
+                                             uint8_t*  devSpecific,
+                                             bool*     longLBA,
+                                             uint16_t* blockDescriptorLenth);
 
     // All but direct access block devices
-    OPENSEA_TRANSPORT_API void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
-                                                                        uint32_t  mpBlkDescLen,
-                                                                        uint8_t*  densityCode,
-                                                                        uint32_t* numberOfBlocks,
-                                                                        uint32_t* blockLength);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) M_PARAM_WO(4) M_PARAM_WO(5) OPENSEA_TRANSPORT_API
+        void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
+                                                      uint32_t  mpBlkDescLen,
+                                                      uint8_t*  densityCode,
+                                                      uint32_t* numberOfBlocks,
+                                                      uint32_t* blockLength);
     // direct access block devices
-    OPENSEA_TRANSPORT_API void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
-                                                                      uint32_t  mpBlkDescLen,
-                                                                      uint32_t* numberOfBlocks,
-                                                                      uint32_t* blockLength);
-    OPENSEA_TRANSPORT_API void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
-                                                                     uint32_t  mpBlkDescLen,
-                                                                     uint64_t* numberOfBlocks,
-                                                                     uint64_t* blockLength);
-    OPENSEA_TRANSPORT_API void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
-                                                                   uint8_t*  ptr,
-                                                                   uint32_t  totalDataLen,
-                                                                   uint16_t* modeDataLength,
-                                                                   uint8_t*  mediumType,
-                                                                   uint8_t*  devSpecific,
-                                                                   bool*     longLBA,
-                                                                   uint16_t* blockDescriptorLenth,
-                                                                   uint64_t* numberOfBlocks,
-                                                                   uint64_t* blockLength);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) M_PARAM_WO(4) OPENSEA_TRANSPORT_API
+        void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
+                                                    uint32_t  mpBlkDescLen,
+                                                    uint32_t* numberOfBlocks,
+                                                    uint32_t* blockLength);
+
+    M_NONNULL_PARAM_LIST(1, 3, 4)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) M_PARAM_WO(4) OPENSEA_TRANSPORT_API
+        void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
+                                                   uint32_t  mpBlkDescLen,
+                                                   uint64_t* numberOfBlocks,
+                                                   uint64_t* blockLength);
+
+    M_NONNULL_PARAM_LIST(2)
+    M_PARAM_RO_SIZE(2, 3)
+    M_PARAM_WO(4) M_PARAM_WO(5) M_PARAM_WO(6) M_PARAM_WO(7) M_PARAM_WO(8) M_PARAM_WO(9)
+        M_PARAM_WO(10) OPENSEA_TRANSPORT_API void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
+                                                                                      uint8_t*  ptr,
+                                                                                      uint32_t  totalDataLen,
+                                                                                      uint16_t* modeDataLength,
+                                                                                      uint8_t*  mediumType,
+                                                                                      uint8_t*  devSpecific,
+                                                                                      bool*     longLBA,
+                                                                                      uint16_t* blockDescriptorLenth,
+                                                                                      uint64_t* numberOfBlocks,
+                                                                                      uint64_t* blockLength);
 
     //-----------------------------------------------------------------------------
     //
@@ -885,14 +991,17 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_10(tDevice*             device,
-                                                           uint8_t              pageCode,
-                                                           uint32_t             allocationLength,
-                                                           uint8_t              subPageCode,
-                                                           bool                 DBD,
-                                                           bool                 LLBAA,
-                                                           eScsiModePageControl pageControl,
-                                                           uint8_t*             ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 3) M_PARAM_WO_SIZE(8, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Mode_Sense_10(tDevice*             device,
+                           uint8_t              pageCode,
+                           uint32_t             allocationLength,
+                           uint8_t              subPageCode,
+                           bool                 DBD,
+                           bool                 LLBAA,
+                           eScsiModePageControl pageControl,
+                           uint8_t*             ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -913,13 +1022,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_6(tDevice*             device,
-                                                          uint8_t              pageCode,
-                                                          uint8_t              allocationLength,
-                                                          uint8_t              subPageCode,
-                                                          bool                 DBD,
-                                                          eScsiModePageControl pageControl,
-                                                          uint8_t*             ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(7, 3) M_PARAM_WO_SIZE(7, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Mode_Sense_6(tDevice*             device,
+                          uint8_t              pageCode,
+                          uint8_t              allocationLength,
+                          uint8_t              subPageCode,
+                          bool                 DBD,
+                          eScsiModePageControl pageControl,
+                          uint8_t*             ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -941,13 +1053,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_10(tDevice* device,
-                                                            uint16_t parameterListLength,
-                                                            bool     pageFormat,
-                                                            bool     savePages,
-                                                            bool     resetToDefaults,
-                                                            uint8_t* ptrData,
-                                                            uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(6, 7) M_PARAM_WO_SIZE(6, 7) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Mode_Select_10(tDevice* device,
+                            uint16_t parameterListLength,
+                            bool     pageFormat,
+                            bool     savePages,
+                            bool     resetToDefaults,
+                            uint8_t* ptrData,
+                            uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -969,13 +1084,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_6(tDevice* device,
-                                                           uint8_t  parameterListLength,
-                                                           bool     pageFormat,
-                                                           bool     savePages,
-                                                           bool     resetToDefaults,
-                                                           uint8_t* ptrData,
-                                                           uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(6, 7) M_PARAM_WO_SIZE(6, 7) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Mode_Select_6(tDevice* device,
+                           uint8_t  parameterListLength,
+                           bool     pageFormat,
+                           bool     savePages,
+                           bool     resetToDefaults,
+                           uint8_t* ptrData,
+                           uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1001,16 +1119,19 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Buffer(tDevice*         device,
-                                                          eWriteBufferMode mode,
-                                                          uint8_t          modeSpecific,
-                                                          uint8_t          bufferID,
-                                                          uint32_t         bufferOffset,
-                                                          uint32_t         parameterListLength,
-                                                          uint8_t*         ptrData,
-                                                          bool             firstSegment,
-                                                          bool             lastSegment,
-                                                          uint32_t         timeoutSeconds);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(7, 6) M_PARAM_RO_SIZE(7, 6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_Buffer(tDevice*         device,
+                          eWriteBufferMode mode,
+                          uint8_t          modeSpecific,
+                          uint8_t          bufferID,
+                          uint32_t         bufferOffset,
+                          uint32_t         parameterListLength,
+                          uint8_t*         ptrData,
+                          bool             firstSegment,
+                          bool             lastSegment,
+                          uint32_t         timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -1028,9 +1149,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Media_Serial_Number(tDevice* device,
-                                                                      uint32_t allocationLength,
-                                                                      uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(3, 2) M_PARAM_WO_SIZE(3, 2) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_Media_Serial_Number(tDevice* device, uint32_t allocationLength, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1053,15 +1175,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Attribute(tDevice* device,
-                                                            uint8_t  serviceAction,
-                                                            uint32_t restricted,
-                                                            uint8_t  logicalVolumeNumber,
-                                                            uint8_t  partitionNumber,
-                                                            uint16_t firstAttributeIdentifier,
-                                                            uint32_t allocationLength,
-                                                            bool     cacheBit,
-                                                            uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(9, 7) M_PARAM_WO_SIZE(9, 7) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_Attribute(tDevice* device,
+                            uint8_t  serviceAction,
+                            uint32_t restricted,
+                            uint8_t  logicalVolumeNumber,
+                            uint8_t  partitionNumber,
+                            uint16_t firstAttributeIdentifier,
+                            uint32_t allocationLength,
+                            bool     cacheBit,
+                            uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1081,12 +1206,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Buffer(tDevice* device,
-                                                         uint8_t  mode,
-                                                         uint8_t  bufferID,
-                                                         uint32_t bufferOffset,
-                                                         uint32_t allocationLength,
-                                                         uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(6, 5) M_PARAM_WO_SIZE(6, 5) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_Buffer(tDevice* device,
+                         uint8_t  mode,
+                         uint8_t  bufferID,
+                         uint32_t bufferOffset,
+                         uint32_t allocationLength,
+                         uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1107,13 +1235,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Buffer_16(tDevice* device,
-                                                            uint8_t  mode,
-                                                            uint8_t  modeSpecific,
-                                                            uint8_t  bufferID,
-                                                            uint64_t bufferOffset,
-                                                            uint32_t allocationLength,
-                                                            uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(7, 6) M_PARAM_WO_SIZE(7, 6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_Buffer_16(tDevice* device,
+                            uint8_t  mode,
+                            uint8_t  modeSpecific,
+                            uint8_t  bufferID,
+                            uint64_t bufferOffset,
+                            uint32_t allocationLength,
+                            uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1134,12 +1265,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Receive_Diagnostic_Results(tDevice* device,
-                                                                        bool     pcv,
-                                                                        uint8_t  pageCode,
-                                                                        uint16_t allocationLength,
-                                                                        uint8_t* ptrData,
-                                                                        uint32_t timeoutSeconds);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(5, 4) M_PARAM_WO_SIZE(5, 4) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Receive_Diagnostic_Results(tDevice* device,
+                                        bool     pcv,
+                                        uint8_t  pageCode,
+                                        uint16_t allocationLength,
+                                        uint8_t* ptrData,
+                                        uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -1157,10 +1291,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_I_T_Nexus(tDevice* device,
-                                                              uint32_t parameterListLength,
-                                                              uint8_t* ptrData,
-                                                              uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(3, 4) M_PARAM_RO_SIZE(3, 4) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Remove_I_T_Nexus(tDevice* device, uint32_t parameterListLength, uint8_t* ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1177,9 +1311,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Aliases(tDevice* device,
-                                                            uint32_t allocationLength,
-                                                            uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(3, 2) M_PARAM_WO_SIZE(3, 2) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Report_Aliases(tDevice* device, uint32_t allocationLength, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1199,11 +1334,14 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Identifying_Information(tDevice* device,
-                                                                            uint16_t restricted,
-                                                                            uint32_t allocationLength,
-                                                                            uint8_t  identifyingInformationType,
-                                                                            uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(5, 3) M_PARAM_WO_SIZE(5, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Report_Identifying_Information(tDevice* device,
+                                            uint16_t restricted,
+                                            uint32_t allocationLength,
+                                            uint8_t  identifyingInformationType,
+                                            uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1221,10 +1359,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Luns(tDevice* device,
-                                                         uint8_t  selectReport,
-                                                         uint32_t allocationLength,
-                                                         uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(4, 3) M_PARAM_WO_SIZE(4, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Report_Luns(tDevice* device, uint8_t selectReport, uint32_t allocationLength, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1242,10 +1380,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Priority(tDevice* device,
-                                                             uint8_t  priorityReported,
-                                                             uint32_t allocationLength,
-                                                             uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(4, 3) M_PARAM_WO_SIZE(4, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Report_Priority(tDevice* device, uint8_t priorityReported, uint32_t allocationLength, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1263,10 +1401,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Task_Management_Functions(tDevice* device,
-                                                                                        bool     repd,
-                                                                                        uint32_t allocationLength,
-                                                                                        uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(4, 3) M_PARAM_WO_SIZE(4, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Report_Supported_Task_Management_Functions(tDevice* device,
+                                                        bool     repd,
+                                                        uint32_t allocationLength,
+                                                        uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1283,9 +1424,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Timestamp(tDevice* device,
-                                                              uint32_t allocationLength,
-                                                              uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(3, 2) M_PARAM_WO_SIZE(3, 2) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Report_Timestamp(tDevice* device, uint32_t allocationLength, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1304,12 +1446,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_SecurityProtocol_In(tDevice* device,
-                                                                 uint8_t  securityProtocol,
-                                                                 uint16_t securityProtocolSpecific,
-                                                                 bool     inc512,
-                                                                 uint32_t allocationLength,
-                                                                 uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(6, 5) M_PARAM_WO(6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_SecurityProtocol_In(tDevice* device,
+                                 uint8_t  securityProtocol,
+                                 uint16_t securityProtocolSpecific,
+                                 bool     inc512,
+                                 uint32_t allocationLength,
+                                 uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1329,13 +1474,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_SecurityProtocol_Out(tDevice* device,
-                                                                  uint8_t  securityProtocol,
-                                                                  uint16_t securityProtocolSpecific,
-                                                                  bool     inc512,
-                                                                  uint32_t transferLength,
-                                                                  uint8_t* ptrData,
-                                                                  uint32_t timeout);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(6, 5) M_PARAM_RO(6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_SecurityProtocol_Out(tDevice* device,
+                                  uint8_t  securityProtocol,
+                                  uint16_t securityProtocolSpecific,
+                                  bool     inc512,
+                                  uint32_t transferLength,
+                                  uint8_t* ptrData,
+                                  uint32_t timeout);
 
     //-----------------------------------------------------------------------------
     //
@@ -1355,12 +1503,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Identifying_Information(tDevice* device,
-                                                                         uint16_t restricted,
-                                                                         uint32_t parameterListLength,
-                                                                         uint8_t  identifyingInformationType,
-                                                                         uint8_t* ptrData,
-                                                                         uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(5, 6) M_PARAM_RO_SIZE(5, 6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Set_Identifying_Information(tDevice* device,
+                                         uint16_t restricted,
+                                         uint32_t parameterListLength,
+                                         uint8_t  identifyingInformationType,
+                                         uint8_t* ptrData,
+                                         uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1379,11 +1530,14 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Priority(tDevice* device,
-                                                          uint8_t  I_T_L_NexusToSet,
-                                                          uint32_t parameterListLength,
-                                                          uint8_t* ptrData,
-                                                          uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(4, 5) M_PARAM_RO_SIZE(4, 5) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Set_Priority(tDevice* device,
+                          uint8_t  I_T_L_NexusToSet,
+                          uint32_t parameterListLength,
+                          uint8_t* ptrData,
+                          uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1401,10 +1555,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Target_Port_Groups(tDevice* device,
-                                                                    uint32_t parameterListLength,
-                                                                    uint8_t* ptrData,
-                                                                    uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(3, 4) M_PARAM_RO_SIZE(3, 4) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Set_Target_Port_Groups(tDevice* device, uint32_t parameterListLength, uint8_t* ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1421,9 +1575,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Timestamp(tDevice* device,
-                                                           uint32_t parameterListLength,
-                                                           uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(3, 2) M_PARAM_RO_SIZE(3, 2) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Set_Timestamp(tDevice* device, uint32_t parameterListLength, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1440,7 +1595,9 @@ extern "C"
     //!           tDevice.drive_info.lastCommandSenseData has the sense code.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Test_Unit_Ready(tDevice* device, scsiStatus* pReturnStatus);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_PARAM_WO(2) OPENSEA_TRANSPORT_API eReturnValues scsi_Test_Unit_Ready(tDevice* device, scsiStatus* pReturnStatus);
 
     //-----------------------------------------------------------------------------
     //
@@ -1461,13 +1618,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Attribute(tDevice* device,
-                                                             bool     wtc,
-                                                             uint32_t restricted,
-                                                             uint8_t  logicalVolumeNumber,
-                                                             uint8_t  partitionNumber,
-                                                             uint32_t parameterListLength,
-                                                             uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(7, 6) M_PARAM_RO_SIZE(7, 6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_Attribute(tDevice* device,
+                             bool     wtc,
+                             uint32_t restricted,
+                             uint8_t  logicalVolumeNumber,
+                             uint8_t  partitionNumber,
+                             uint32_t parameterListLength,
+                             uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1490,15 +1650,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Compare_And_Write(tDevice* device,
-                                                               uint8_t  wrprotect,
-                                                               bool     dpo,
-                                                               bool     fua,
-                                                               uint64_t logicalBlockAddress,
-                                                               uint8_t  numberOfLogicalBlocks,
-                                                               uint8_t  groupNumber,
-                                                               uint8_t* ptrData,
-                                                               uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Compare_And_Write(tDevice* device,
+                               uint8_t  wrprotect,
+                               bool     dpo,
+                               bool     fua,
+                               uint64_t logicalBlockAddress,
+                               uint8_t  numberOfLogicalBlocks,
+                               uint8_t  groupNumber,
+                               uint8_t* ptrData,
+                               uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1524,20 +1687,28 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Format_Unit(tDevice* device,
-                                                         uint8_t  fmtpInfo,
-                                                         bool     longList,
-                                                         bool     fmtData,
-                                                         bool     cmplst,
-                                                         uint8_t  defectListFormat,
-                                                         uint8_t  vendorSpecific,
-                                                         uint8_t* ptrData,
-                                                         uint32_t dataSize,
-                                                         uint8_t  ffmt,
-                                                         uint32_t timeoutSeconds);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Format_Unit(tDevice* device,
+                         uint8_t  fmtpInfo,
+                         bool     longList,
+                         bool     fmtData,
+                         bool     cmplst,
+                         uint8_t  defectListFormat,
+                         uint8_t  vendorSpecific,
+                         uint8_t* ptrData,
+                         uint32_t dataSize,
+                         uint8_t  ffmt,
+                         uint32_t timeoutSeconds);
 
-    OPENSEA_TRANSPORT_API eReturnValues
-    scsi_Format_With_Preset(tDevice* device, bool immed, bool fmtmaxlba, uint32_t presetID, uint32_t timeoutSeconds);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Format_With_Preset(tDevice* device,
+                                                                bool     immed,
+                                                                bool     fmtmaxlba,
+                                                                uint32_t presetID,
+                                                                uint32_t timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -1555,10 +1726,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Lba_Status(tDevice* device,
-                                                            uint64_t logicalBlockAddress,
-                                                            uint32_t allocationLength,
-                                                            uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(4, 3) M_PARAM_WO_SIZE(4, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Get_Lba_Status(tDevice* device, uint64_t logicalBlockAddress, uint32_t allocationLength, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1581,15 +1752,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Orwrite_16(tDevice* device,
-                                                        uint8_t  orProtect,
-                                                        bool     dpo,
-                                                        bool     fua,
-                                                        uint64_t logicalBlockAddress,
-                                                        uint32_t transferLengthBlocks,
-                                                        uint8_t  groupNumber,
-                                                        uint8_t* ptrData,
-                                                        uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Orwrite_16(tDevice* device,
+                        uint8_t  orProtect,
+                        bool     dpo,
+                        bool     fua,
+                        uint64_t logicalBlockAddress,
+                        uint32_t transferLengthBlocks,
+                        uint8_t  groupNumber,
+                        uint8_t* ptrData,
+                        uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1616,19 +1790,22 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Orwrite_32(tDevice* device,
-                                                        uint8_t  bmop,
-                                                        uint8_t  previousGenProcessing,
-                                                        uint8_t  groupNumber,
-                                                        uint8_t  orProtect,
-                                                        bool     dpo,
-                                                        bool     fua,
-                                                        uint64_t logicalBlockAddress,
-                                                        uint32_t expectedORWgen,
-                                                        uint32_t newORWgen,
-                                                        uint32_t transferLengthBlocks,
-                                                        uint8_t* ptrData,
-                                                        uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(12, 13) M_PARAM_RO_SIZE(12, 13) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Orwrite_32(tDevice* device,
+                        uint8_t  bmop,
+                        uint8_t  previousGenProcessing,
+                        uint8_t  groupNumber,
+                        uint8_t  orProtect,
+                        bool     dpo,
+                        bool     fua,
+                        uint64_t logicalBlockAddress,
+                        uint32_t expectedORWgen,
+                        uint32_t newORWgen,
+                        uint32_t transferLengthBlocks,
+                        uint8_t* ptrData,
+                        uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1647,6 +1824,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Prefetch_10(tDevice* device,
                                                          bool     immediate,
                                                          uint32_t logicalBlockAddress,
@@ -1670,6 +1849,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Prefetch_16(tDevice* device,
                                                          bool     immediate,
                                                          uint64_t logicalBlockAddress,
@@ -1690,6 +1871,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Prevent_Allow_Medium_Removal(tDevice* device, uint8_t prevent);
 
     //-----------------------------------------------------------------------------
@@ -1711,11 +1894,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_6(tDevice* device,
-                                                    uint32_t logicalBlockAddress,
-                                                    uint8_t  transferLengthBlocks,
-                                                    uint8_t* ptrData,
-                                                    uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1, 4)
+    M_PARAM_RO(1)
+    M_PARAM_WO_SIZE(4, 5) OPENSEA_TRANSPORT_API eReturnValues scsi_Read_6(tDevice* device,
+                                                                          uint32_t logicalBlockAddress,
+                                                                          uint8_t  transferLengthBlocks,
+                                                                          uint8_t* ptrData,
+                                                                          uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1740,16 +1925,19 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_10(tDevice* device,
-                                                     uint8_t  rdProtect,
-                                                     bool     dpo,
-                                                     bool     fua,
-                                                     bool     rarc,
-                                                     uint32_t logicalBlockAddress,
-                                                     uint8_t  groupNumber,
-                                                     uint16_t transferLengthBlocks,
-                                                     uint8_t* ptrData,
-                                                     uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(9, 10) M_PARAM_WO_SIZE(9, 10) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_10(tDevice* device,
+                     uint8_t  rdProtect,
+                     bool     dpo,
+                     bool     fua,
+                     bool     rarc,
+                     uint32_t logicalBlockAddress,
+                     uint8_t  groupNumber,
+                     uint16_t transferLengthBlocks,
+                     uint8_t* ptrData,
+                     uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1774,16 +1962,19 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_12(tDevice* device,
-                                                     uint8_t  rdProtect,
-                                                     bool     dpo,
-                                                     bool     fua,
-                                                     bool     rarc,
-                                                     uint32_t logicalBlockAddress,
-                                                     uint8_t  groupNumber,
-                                                     uint32_t transferLengthBlocks,
-                                                     uint8_t* ptrData,
-                                                     uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(9, 10) M_PARAM_WO_SIZE(9, 10) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_12(tDevice* device,
+                     uint8_t  rdProtect,
+                     bool     dpo,
+                     bool     fua,
+                     bool     rarc,
+                     uint32_t logicalBlockAddress,
+                     uint8_t  groupNumber,
+                     uint32_t transferLengthBlocks,
+                     uint8_t* ptrData,
+                     uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1808,16 +1999,19 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_16(tDevice* device,
-                                                     uint8_t  rdProtect,
-                                                     bool     dpo,
-                                                     bool     fua,
-                                                     bool     rarc,
-                                                     uint64_t logicalBlockAddress,
-                                                     uint8_t  groupNumber,
-                                                     uint32_t transferLengthBlocks,
-                                                     uint8_t* ptrData,
-                                                     uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(9, 10) M_PARAM_WO_SIZE(9, 10) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_16(tDevice* device,
+                     uint8_t  rdProtect,
+                     bool     dpo,
+                     bool     fua,
+                     bool     rarc,
+                     uint64_t logicalBlockAddress,
+                     uint8_t  groupNumber,
+                     uint32_t transferLengthBlocks,
+                     uint8_t* ptrData,
+                     uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1844,19 +2038,22 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_32(tDevice* device,
-                                                     uint8_t  rdProtect,
-                                                     bool     dpo,
-                                                     bool     fua,
-                                                     bool     rarc,
-                                                     uint64_t logicalBlockAddress,
-                                                     uint8_t  groupNumber,
-                                                     uint32_t transferLengthBlocks,
-                                                     uint8_t* ptrData,
-                                                     uint32_t expectedInitialLogicalBlockRefTag,
-                                                     uint16_t expectedLogicalBlockAppTag,
-                                                     uint16_t logicalBlockAppTagMask,
-                                                     uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(9, 13) M_PARAM_WO_SIZE(9, 13) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_32(tDevice* device,
+                     uint8_t  rdProtect,
+                     bool     dpo,
+                     bool     fua,
+                     bool     rarc,
+                     uint64_t logicalBlockAddress,
+                     uint8_t  groupNumber,
+                     uint32_t transferLengthBlocks,
+                     uint8_t* ptrData,
+                     uint32_t expectedInitialLogicalBlockRefTag,
+                     uint16_t expectedLogicalBlockAppTag,
+                     uint16_t logicalBlockAppTagMask,
+                     uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1877,12 +2074,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Defect_Data_10(tDevice* device,
-                                                                 bool     requestPList,
-                                                                 bool     requestGList,
-                                                                 uint8_t  defectListFormat,
-                                                                 uint16_t allocationLength,
-                                                                 uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(6, 5) M_PARAM_WO_SIZE(6, 5) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_Defect_Data_10(tDevice* device,
+                                 bool     requestPList,
+                                 bool     requestGList,
+                                 uint8_t  defectListFormat,
+                                 uint16_t allocationLength,
+                                 uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1903,13 +2103,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Defect_Data_12(tDevice* device,
-                                                                 bool     requestPList,
-                                                                 bool     requestGList,
-                                                                 uint8_t  defectListFormat,
-                                                                 uint32_t addressDescriptorIndex,
-                                                                 uint32_t allocationLength,
-                                                                 uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(7, 6) M_PARAM_WO_SIZE(7, 6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_Defect_Data_12(tDevice* device,
+                                 bool     requestPList,
+                                 bool     requestGList,
+                                 uint8_t  defectListFormat,
+                                 uint32_t addressDescriptorIndex,
+                                 uint32_t allocationLength,
+                                 uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1929,12 +2132,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Long_10(tDevice* device,
-                                                          bool     physicalBlock,
-                                                          bool     correctBit,
-                                                          uint32_t logicalBlockAddress,
-                                                          uint16_t byteTransferLength,
-                                                          uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(6, 5) M_PARAM_WO_SIZE(6, 5) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_Long_10(tDevice* device,
+                          bool     physicalBlock,
+                          bool     correctBit,
+                          uint32_t logicalBlockAddress,
+                          uint16_t byteTransferLength,
+                          uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1954,12 +2160,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Long_16(tDevice* device,
-                                                          bool     physicalBlock,
-                                                          bool     correctBit,
-                                                          uint64_t logicalBlockAddress,
-                                                          uint16_t byteTransferLength,
-                                                          uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(6, 5) M_PARAM_WO_SIZE(6, 5) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Read_Long_16(tDevice* device,
+                          bool     physicalBlock,
+                          bool     correctBit,
+                          uint64_t logicalBlockAddress,
+                          uint16_t byteTransferLength,
+                          uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1979,8 +2188,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues
-    scsi_Reassign_Blocks(tDevice* device, bool longLBA, bool longList, uint32_t dataSize, uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1, 5)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(5, 4) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Reassign_Blocks(tDevice* device, bool longLBA, bool longList, uint32_t dataSize, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1999,11 +2210,14 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Referrals(tDevice* device,
-                                                              uint64_t logicalBlockAddress,
-                                                              uint32_t allocationLength,
-                                                              bool     one_seg,
-                                                              uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(5 -, 3) M_PARAM_WO_SIZE(5, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Report_Referrals(tDevice* device,
+                              uint64_t logicalBlockAddress,
+                              uint32_t allocationLength,
+                              bool     one_seg,
+                              uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2023,6 +2237,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Start_Stop_Unit(tDevice* device,
                                                              bool     immediate,
                                                              uint8_t  powerConditionModifier,
@@ -2049,6 +2265,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_10(tDevice* device,
                                                                   bool     immediate,
                                                                   uint32_t logicalBlockAddress,
@@ -2073,6 +2291,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_16(tDevice* device,
                                                                   bool     immediate,
                                                                   uint64_t logicalBlockAddress,
@@ -2096,8 +2316,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues
-    scsi_Unmap(tDevice* device, bool anchor, uint8_t groupNumber, uint16_t parameterListLength, uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(5, 4) M_PARAM_WO_SIZE(5, 4) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Unmap(tDevice* device, bool anchor, uint8_t groupNumber, uint16_t parameterListLength, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2120,15 +2342,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_10(tDevice* device,
-                                                       uint8_t  vrprotect,
-                                                       bool     dpo,
-                                                       uint8_t  byteCheck,
-                                                       uint32_t logicalBlockAddress,
-                                                       uint8_t  groupNumber,
-                                                       uint16_t verificationLength,
-                                                       uint8_t* ptrData,
-                                                       uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Verify_10(tDevice* device,
+                       uint8_t  vrprotect,
+                       bool     dpo,
+                       uint8_t  byteCheck,
+                       uint32_t logicalBlockAddress,
+                       uint8_t  groupNumber,
+                       uint16_t verificationLength,
+                       uint8_t* ptrData,
+                       uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2151,15 +2376,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_12(tDevice* device,
-                                                       uint8_t  vrprotect,
-                                                       bool     dpo,
-                                                       uint8_t  byteCheck,
-                                                       uint32_t logicalBlockAddress,
-                                                       uint8_t  groupNumber,
-                                                       uint32_t verificationLength,
-                                                       uint8_t* ptrData,
-                                                       uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Verify_12(tDevice* device,
+                       uint8_t  vrprotect,
+                       bool     dpo,
+                       uint8_t  byteCheck,
+                       uint32_t logicalBlockAddress,
+                       uint8_t  groupNumber,
+                       uint32_t verificationLength,
+                       uint8_t* ptrData,
+                       uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2182,15 +2410,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_16(tDevice* device,
-                                                       uint8_t  vrprotect,
-                                                       bool     dpo,
-                                                       uint8_t  byteCheck,
-                                                       uint64_t logicalBlockAddress,
-                                                       uint8_t  groupNumber,
-                                                       uint32_t verificationLength,
-                                                       uint8_t* ptrData,
-                                                       uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Verify_16(tDevice* device,
+                       uint8_t  vrprotect,
+                       bool     dpo,
+                       uint8_t  byteCheck,
+                       uint64_t logicalBlockAddress,
+                       uint8_t  groupNumber,
+                       uint32_t verificationLength,
+                       uint8_t* ptrData,
+                       uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2214,18 +2445,21 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_32(tDevice* device,
-                                                       uint8_t  vrprotect,
-                                                       bool     dpo,
-                                                       uint8_t  byteCheck,
-                                                       uint64_t logicalBlockAddress,
-                                                       uint8_t  groupNumber,
-                                                       uint32_t verificationLength,
-                                                       uint8_t* ptrData,
-                                                       uint32_t dataSize,
-                                                       uint32_t expectedInitialLogicalBlockRefTag,
-                                                       uint16_t expectedLogicalBlockAppTag,
-                                                       uint16_t logicalBlockAppTagMask);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Verify_32(tDevice* device,
+                       uint8_t  vrprotect,
+                       bool     dpo,
+                       uint8_t  byteCheck,
+                       uint64_t logicalBlockAddress,
+                       uint8_t  groupNumber,
+                       uint32_t verificationLength,
+                       uint8_t* ptrData,
+                       uint32_t dataSize,
+                       uint32_t expectedInitialLogicalBlockRefTag,
+                       uint16_t expectedLogicalBlockAppTag,
+                       uint16_t logicalBlockAppTagMask);
 
     //-----------------------------------------------------------------------------
     //
@@ -2245,11 +2479,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_6(tDevice* device,
-                                                     uint32_t logicalBlockAddress,
-                                                     uint8_t  transferLengthBlocks,
-                                                     uint8_t* ptrData,
-                                                     uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1, 4)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(4, 5) OPENSEA_TRANSPORT_API eReturnValues scsi_Write_6(tDevice* device,
+                                                                           uint32_t logicalBlockAddress,
+                                                                           uint8_t  transferLengthBlocks,
+                                                                           uint8_t* ptrData,
+                                                                           uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2273,15 +2509,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_10(tDevice* device,
-                                                      uint8_t  wrprotect,
-                                                      bool     dpo,
-                                                      bool     fua,
-                                                      uint32_t logicalBlockAddress,
-                                                      uint8_t  groupNumber,
-                                                      uint16_t transferLengthBlocks,
-                                                      uint8_t* ptrData,
-                                                      uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_10(tDevice* device,
+                      uint8_t  wrprotect,
+                      bool     dpo,
+                      bool     fua,
+                      uint32_t logicalBlockAddress,
+                      uint8_t  groupNumber,
+                      uint16_t transferLengthBlocks,
+                      uint8_t* ptrData,
+                      uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2305,15 +2544,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_12(tDevice* device,
-                                                      uint8_t  wrprotect,
-                                                      bool     dpo,
-                                                      bool     fua,
-                                                      uint32_t logicalBlockAddress,
-                                                      uint8_t  groupNumber,
-                                                      uint32_t transferLengthBlocks,
-                                                      uint8_t* ptrData,
-                                                      uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_12(tDevice* device,
+                      uint8_t  wrprotect,
+                      bool     dpo,
+                      bool     fua,
+                      uint32_t logicalBlockAddress,
+                      uint8_t  groupNumber,
+                      uint32_t transferLengthBlocks,
+                      uint8_t* ptrData,
+                      uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2337,15 +2579,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_16(tDevice* device,
-                                                      uint8_t  wrprotect,
-                                                      bool     dpo,
-                                                      bool     fua,
-                                                      uint64_t logicalBlockAddress,
-                                                      uint8_t  groupNumber,
-                                                      uint32_t transferLengthBlocks,
-                                                      uint8_t* ptrData,
-                                                      uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_16(tDevice* device,
+                      uint8_t  wrprotect,
+                      bool     dpo,
+                      bool     fua,
+                      uint64_t logicalBlockAddress,
+                      uint8_t  groupNumber,
+                      uint32_t transferLengthBlocks,
+                      uint8_t* ptrData,
+                      uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2372,18 +2617,21 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_32(tDevice* device,
-                                                      uint8_t  wrprotect,
-                                                      bool     dpo,
-                                                      bool     fua,
-                                                      uint64_t logicalBlockAddress,
-                                                      uint8_t  groupNumber,
-                                                      uint32_t transferLengthBlocks,
-                                                      uint8_t* ptrData,
-                                                      uint32_t expectedInitialLogicalBlockRefTag,
-                                                      uint16_t expectedLogicalBlockAppTag,
-                                                      uint16_t logicalBlockAppTagMask,
-                                                      uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 12) M_PARAM_RO_SIZE(8, 12) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_32(tDevice* device,
+                      uint8_t  wrprotect,
+                      bool     dpo,
+                      bool     fua,
+                      uint64_t logicalBlockAddress,
+                      uint8_t  groupNumber,
+                      uint32_t transferLengthBlocks,
+                      uint8_t* ptrData,
+                      uint32_t expectedInitialLogicalBlockRefTag,
+                      uint16_t expectedLogicalBlockAppTag,
+                      uint16_t logicalBlockAppTagMask,
+                      uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2406,15 +2654,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_10(tDevice* device,
-                                                                 uint8_t  wrprotect,
-                                                                 bool     dpo,
-                                                                 uint8_t  byteCheck,
-                                                                 uint32_t logicalBlockAddress,
-                                                                 uint8_t  groupNumber,
-                                                                 uint16_t transferLengthBlocks,
-                                                                 uint8_t* ptrData,
-                                                                 uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_And_Verify_10(tDevice* device,
+                                 uint8_t  wrprotect,
+                                 bool     dpo,
+                                 uint8_t  byteCheck,
+                                 uint32_t logicalBlockAddress,
+                                 uint8_t  groupNumber,
+                                 uint16_t transferLengthBlocks,
+                                 uint8_t* ptrData,
+                                 uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2437,15 +2688,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_12(tDevice* device,
-                                                                 uint8_t  wrprotect,
-                                                                 bool     dpo,
-                                                                 uint8_t  byteCheck,
-                                                                 uint32_t logicalBlockAddress,
-                                                                 uint8_t  groupNumber,
-                                                                 uint32_t transferLengthBlocks,
-                                                                 uint8_t* ptrData,
-                                                                 uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_And_Verify_12(tDevice* device,
+                                 uint8_t  wrprotect,
+                                 bool     dpo,
+                                 uint8_t  byteCheck,
+                                 uint32_t logicalBlockAddress,
+                                 uint8_t  groupNumber,
+                                 uint32_t transferLengthBlocks,
+                                 uint8_t* ptrData,
+                                 uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2468,15 +2722,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_16(tDevice* device,
-                                                                 uint8_t  wrprotect,
-                                                                 bool     dpo,
-                                                                 uint8_t  byteCheck,
-                                                                 uint64_t logicalBlockAddress,
-                                                                 uint8_t  groupNumber,
-                                                                 uint32_t transferLengthBlocks,
-                                                                 uint8_t* ptrData,
-                                                                 uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_And_Verify_16(tDevice* device,
+                                 uint8_t  wrprotect,
+                                 bool     dpo,
+                                 uint8_t  byteCheck,
+                                 uint64_t logicalBlockAddress,
+                                 uint8_t  groupNumber,
+                                 uint32_t transferLengthBlocks,
+                                 uint8_t* ptrData,
+                                 uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2502,18 +2759,21 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_32(tDevice* device,
-                                                                 uint8_t  wrprotect,
-                                                                 bool     dpo,
-                                                                 uint8_t  byteCheck,
-                                                                 uint64_t logicalBlockAddress,
-                                                                 uint8_t  groupNumber,
-                                                                 uint32_t transferLengthBlocks,
-                                                                 uint8_t* ptrData,
-                                                                 uint32_t expectedInitialLogicalBlockRefTag,
-                                                                 uint16_t expectedLogicalBlockAppTag,
-                                                                 uint16_t logicalBlockAppTagMask,
-                                                                 uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 12) M_PARAM_RO_SIZE(8, 12) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_And_Verify_32(tDevice* device,
+                                 uint8_t  wrprotect,
+                                 bool     dpo,
+                                 uint8_t  byteCheck,
+                                 uint64_t logicalBlockAddress,
+                                 uint8_t  groupNumber,
+                                 uint32_t transferLengthBlocks,
+                                 uint8_t* ptrData,
+                                 uint32_t expectedInitialLogicalBlockRefTag,
+                                 uint16_t expectedLogicalBlockAppTag,
+                                 uint16_t logicalBlockAppTagMask,
+                                 uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2534,13 +2794,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Long_10(tDevice* device,
-                                                           bool     correctionDisabled,
-                                                           bool     writeUncorrectable,
-                                                           bool     physicalBlock,
-                                                           uint32_t logicalBlockAddress,
-                                                           uint16_t byteTransferLength,
-                                                           uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(7, 6) M_PARAM_RO_SIZE(7, 6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_Long_10(tDevice* device,
+                           bool     correctionDisabled,
+                           bool     writeUncorrectable,
+                           bool     physicalBlock,
+                           uint32_t logicalBlockAddress,
+                           uint16_t byteTransferLength,
+                           uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2561,13 +2824,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Long_16(tDevice* device,
-                                                           bool     correctionDisabled,
-                                                           bool     writeUncorrectable,
-                                                           bool     physicalBlock,
-                                                           uint64_t logicalBlockAddress,
-                                                           uint16_t byteTransferLength,
-                                                           uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(7, 6) M_PARAM_RO_SIZE(7, 6) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_Long_16(tDevice* device,
+                           bool     correctionDisabled,
+                           bool     writeUncorrectable,
+                           bool     physicalBlock,
+                           uint64_t logicalBlockAddress,
+                           uint16_t byteTransferLength,
+                           uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2591,15 +2857,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_10(tDevice* device,
-                                                           uint8_t  wrprotect,
-                                                           bool     anchor,
-                                                           bool     unmap,
-                                                           uint32_t logicalBlockAddress,
-                                                           uint8_t  groupNumber,
-                                                           uint16_t numberOfLogicalBlocks,
-                                                           uint8_t* ptrData,
-                                                           uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 9) M_PARAM_RO_SIZE(8, 9) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_Same_10(tDevice* device,
+                           uint8_t  wrprotect,
+                           bool     anchor,
+                           bool     unmap,
+                           uint32_t logicalBlockAddress,
+                           uint8_t  groupNumber,
+                           uint16_t numberOfLogicalBlocks,
+                           uint8_t* ptrData,
+                           uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2624,16 +2893,19 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_16(tDevice* device,
-                                                           uint8_t  wrprotect,
-                                                           bool     anchor,
-                                                           bool     unmap,
-                                                           bool     noDataOut,
-                                                           uint64_t logicalBlockAddress,
-                                                           uint8_t  groupNumber,
-                                                           uint32_t numberOfLogicalBlocks,
-                                                           uint8_t* ptrData,
-                                                           uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(9, 10) M_PARAM_RO_SIZE(9, 10) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_Same_16(tDevice* device,
+                           uint8_t  wrprotect,
+                           bool     anchor,
+                           bool     unmap,
+                           bool     noDataOut,
+                           uint64_t logicalBlockAddress,
+                           uint8_t  groupNumber,
+                           uint32_t numberOfLogicalBlocks,
+                           uint8_t* ptrData,
+                           uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2659,19 +2931,22 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_32(tDevice* device,
-                                                           uint8_t  wrprotect,
-                                                           bool     anchor,
-                                                           bool     unmap,
-                                                           bool     noDataOut,
-                                                           uint64_t logicalBlockAddress,
-                                                           uint8_t  groupNumber,
-                                                           uint32_t numberOfLogicalBlocks,
-                                                           uint8_t* ptrData,
-                                                           uint32_t expectedInitialLogicalBlockRefTag,
-                                                           uint16_t expectedLogicalBlockAppTag,
-                                                           uint16_t logicalBlockAppTagMask,
-                                                           uint32_t transferLengthBytes);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(9, 13) M_PARAM_RO_SIZE(9, 13) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Write_Same_32(tDevice* device,
+                           uint8_t  wrprotect,
+                           bool     anchor,
+                           bool     unmap,
+                           bool     noDataOut,
+                           uint64_t logicalBlockAddress,
+                           uint8_t  groupNumber,
+                           uint32_t numberOfLogicalBlocks,
+                           uint8_t* ptrData,
+                           uint32_t expectedInitialLogicalBlockRefTag,
+                           uint16_t expectedLogicalBlockAppTag,
+                           uint16_t logicalBlockAppTagMask,
+                           uint32_t transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2693,14 +2968,17 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_xp_Write_10(tDevice* device,
-                                                         bool     dpo,
-                                                         bool     fua,
-                                                         bool     xoprinfo,
-                                                         uint32_t logicalBlockAddress,
-                                                         uint8_t  groupNumber,
-                                                         uint16_t transferLength,
-                                                         uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 7) M_PARAM_RO_SIZE(8, 7) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_xp_Write_10(tDevice* device,
+                         bool     dpo,
+                         bool     fua,
+                         bool     xoprinfo,
+                         uint32_t logicalBlockAddress,
+                         uint8_t  groupNumber,
+                         uint16_t transferLength,
+                         uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2722,14 +3000,17 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_xp_Write_32(tDevice* device,
-                                                         bool     dpo,
-                                                         bool     fua,
-                                                         bool     xoprinfo,
-                                                         uint64_t logicalBlockAddress,
-                                                         uint8_t  groupNumber,
-                                                         uint32_t transferLength,
-                                                         uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 7) M_PARAM_RO_SIZE(8, 7) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_xp_Write_32(tDevice* device,
+                         bool     dpo,
+                         bool     fua,
+                         bool     xoprinfo,
+                         uint64_t logicalBlockAddress,
+                         uint8_t  groupNumber,
+                         uint32_t transferLength,
+                         uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2754,25 +3035,31 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_In_Report(tDevice*  device,
-                                                                       eZMAction action,
-                                                                       uint8_t   actionSpecific1,
-                                                                       uint64_t  location,
-                                                                       bool      partial,
-                                                                       uint8_t   reportingOptions,
-                                                                       uint32_t  allocationLength,
-                                                                       uint8_t*  ptrData); // 95h
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 7) M_PARAM_WO_SIZE(8, 7) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Zone_Management_In_Report(tDevice*  device,
+                                       eZMAction action,
+                                       uint8_t   actionSpecific1,
+                                       uint64_t  location,
+                                       bool      partial,
+                                       uint8_t   reportingOptions,
+                                       uint32_t  allocationLength,
+                                       uint8_t*  ptrData); // 95h
 
     // Command to help with zone activate and zone query since they have mostly common formatting. Recommend using
     // helper function below
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_In_ZD(tDevice*  device,
-                                                                   eZMAction action,
-                                                                   bool      all,
-                                                                   uint64_t  zoneID,
-                                                                   uint16_t  numberOfZones,
-                                                                   uint8_t   otherZoneDomainID,
-                                                                   uint16_t  allocationLength,
-                                                                   uint8_t*  ptrData); // 95h
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(8, 7) M_PARAM_RO_SIZE(8, 7) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Zone_Management_In_ZD(tDevice*  device,
+                                   eZMAction action,
+                                   bool      all,
+                                   uint64_t  zoneID,
+                                   uint16_t  numberOfZones,
+                                   uint8_t   otherZoneDomainID,
+                                   uint16_t  allocationLength,
+                                   uint8_t*  ptrData); // 95h
 
     //-----------------------------------------------------------------------------
     //
@@ -2799,6 +3086,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_Out_Std_Format_CDB(tDevice*  device,
                                                                                 eZMAction action,
                                                                                 uint64_t  zoneID,
@@ -2825,10 +3114,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Close_Zone(tDevice* device,
-                                                        bool     closeAll,
-                                                        uint64_t zoneID,
-                                                        uint16_t zoneCount);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Close_Zone(tDevice* device, bool closeAll, uint64_t zoneID, uint16_t zoneCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -2847,10 +3136,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Finish_Zone(tDevice* device,
-                                                         bool     finishAll,
-                                                         uint64_t zoneID,
-                                                         uint16_t zoneCount);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Finish_Zone(tDevice* device, bool finishAll, uint64_t zoneID, uint16_t zoneCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -2869,15 +3158,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Open_Zone(tDevice* device,
-                                                       bool     openAll,
-                                                       uint64_t zoneID,
-                                                       uint16_t zoneCount);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Open_Zone(tDevice* device, bool openAll, uint64_t zoneID, uint16_t zoneCount);
 
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Sequentialize_Zone(tDevice* device,
-                                                                bool     all,
-                                                                uint64_t zoneID,
-                                                                uint16_t zoneCount);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Sequentialize_Zone(tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount);
 
     //-----------------------------------------------------------------------------
     //
@@ -2897,40 +3186,52 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Zones(tDevice*              device,
-                                                          eZoneReportingOptions reportingOptions,
-                                                          bool                  partial,
-                                                          uint32_t              allocationLength,
-                                                          uint64_t              zoneStartLBA,
-                                                          uint8_t*              ptrData);
+    M_NONNULL_PARAM_LIST(1, 6)
+    M_PARAM_RO(1)
+    M_PARAM_WO_SIZE(6, 4) OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Zones(tDevice*              device,
+                                                                                eZoneReportingOptions reportingOptions,
+                                                                                bool                  partial,
+                                                                                uint32_t              allocationLength,
+                                                                                uint64_t              zoneStartLBA,
+                                                                                uint8_t*              ptrData);
 
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Realms(tDevice*                device,
-                                                           eRealmsReportingOptions reportingOptions,
-                                                           uint32_t                allocationLength,
-                                                           uint64_t                realmLocator,
-                                                           uint8_t*                ptrData);
+    M_NONNULL_PARAM_LIST(1, 5)
+    M_PARAM_RO(1)
+    M_PARAM_WO_SIZE(5, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Report_Realms(tDevice*                device,
+                           eRealmsReportingOptions reportingOptions,
+                           uint32_t                allocationLength,
+                           uint64_t                realmLocator,
+                           uint8_t*                ptrData);
 
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Zone_Domains(tDevice*                    device,
-                                                                 eZoneDomainReportingOptions reportingOptions,
-                                                                 uint32_t                    allocationLength,
-                                                                 uint64_t                    zoneDomainLocator,
-                                                                 uint8_t*                    ptrData);
+    M_NONNULL_PARAM_LIST(1, 5)
+    M_PARAM_RO(1)
+    M_PARAM_WO_SIZE(5, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Report_Zone_Domains(tDevice*                    device,
+                                 eZoneDomainReportingOptions reportingOptions,
+                                 uint32_t                    allocationLength,
+                                 uint64_t                    zoneDomainLocator,
+                                 uint8_t*                    ptrData);
 
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Query(tDevice* device,
-                                                        bool     all,
-                                                        uint64_t zoneID,
-                                                        uint16_t numberOfZones,
-                                                        uint8_t  otherZoneDomainID,
-                                                        uint16_t allocationLength,
-                                                        uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1, 7)
+    M_PARAM_RO(1)
+    M_PARAM_WO_SIZE(7, 6) OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Query(tDevice* device,
+                                                                              bool     all,
+                                                                              uint64_t zoneID,
+                                                                              uint16_t numberOfZones,
+                                                                              uint8_t  otherZoneDomainID,
+                                                                              uint16_t allocationLength,
+                                                                              uint8_t* ptrData);
 
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Activate(tDevice* device,
-                                                           bool     all,
-                                                           uint64_t zoneID,
-                                                           uint16_t numberOfZones,
-                                                           uint8_t  otherZoneDomainID,
-                                                           uint16_t allocationLength,
-                                                           uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1, 7)
+    M_PARAM_RO(1)
+    M_PARAM_WO_SIZE(7, 6) OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Activate(tDevice* device,
+                                                                                 bool     all,
+                                                                                 uint64_t zoneID,
+                                                                                 uint16_t numberOfZones,
+                                                                                 uint8_t  otherZoneDomainID,
+                                                                                 uint16_t allocationLength,
+                                                                                 uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2949,10 +3250,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Reset_Write_Pointers(tDevice* device,
-                                                                  bool     resetAll,
-                                                                  uint64_t zoneID,
-                                                                  uint16_t zoneCount);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Reset_Write_Pointers(tDevice* device, bool resetAll, uint64_t zoneID, uint16_t zoneCount);
 
 #define MAX_VERSION_DESCRIPTOR_STRING_LENGTH 65
     //-----------------------------------------------------------------------------
@@ -2971,6 +3272,8 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(2)
+    M_PARAM_WO(2)
     OPENSEA_TRANSPORT_API void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* versionString);
 
     //-----------------------------------------------------------------------------
@@ -3010,12 +3313,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Physical_Element_Status(tDevice* device,
-                                                                         uint32_t startingElement,
-                                                                         uint32_t allocationLength,
-                                                                         uint8_t  filter,
-                                                                         uint8_t  reportType,
-                                                                         uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(6, 3) M_PARAM_WO_SIZE(6, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Get_Physical_Element_Status(tDevice* device,
+                                         uint32_t startingElement,
+                                         uint32_t allocationLength,
+                                         uint8_t  filter,
+                                         uint8_t  reportType,
+                                         uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -3032,12 +3338,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_And_Truncate(tDevice* device,
-                                                                 uint64_t requestedCapacity,
-                                                                 uint32_t elementIdentifier);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Remove_And_Truncate(tDevice* device, uint64_t requestedCapacity, uint32_t elementIdentifier);
 
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_Element_And_Modify_Zones(tDevice* device,
-                                                                             uint32_t elementIdentifier);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elementIdentifier);
 
     //-----------------------------------------------------------------------------
     //
@@ -3052,7 +3361,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Restore_Elements_And_Rebuild(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Restore_Elements_And_Rebuild(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3069,10 +3379,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_In(tDevice* device,
-                                                                   uint8_t  serviceAction,
-                                                                   uint16_t allocationLength,
-                                                                   uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(4, 3) M_PARAM_WO_SIZE(4, 3) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Persistent_Reserve_In(tDevice* device, uint8_t serviceAction, uint16_t allocationLength, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -3093,12 +3403,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_Out(tDevice* device,
-                                                                    uint8_t  serviceAction,
-                                                                    uint8_t  scope,
-                                                                    uint8_t  type,
-                                                                    uint32_t parameterListLength,
-                                                                    uint8_t* ptrData);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(6, 5) M_PARAM_RO_SIZE(6, 5) OPENSEA_TRANSPORT_API eReturnValues
+        scsi_Persistent_Reserve_Out(tDevice* device,
+                                    uint8_t  serviceAction,
+                                    uint8_t  scope,
+                                    uint8_t  type,
+                                    uint32_t parameterListLength,
+                                    uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -3114,7 +3427,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Rezero_Unit(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Rezero_Unit(tDevice* device);
 
 #if defined(__cplusplus)
 }

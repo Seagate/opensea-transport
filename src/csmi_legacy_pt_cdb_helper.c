@@ -45,7 +45,8 @@
 eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH], ataPassthroughCommand* ataPtCmd)
 {
     eReturnValues ret = BAD_PARAMETER;
-    if (cdb && ataPtCmd)
+    DISABLE_NONNULL_COMPARE
+    if (cdb != M_NULLPTR && ataPtCmd != M_NULLPTR)
     {
         ret                 = SUCCESS;
         cdb[OPERATION_CODE] = CSMI_ATA_PASSTHROUGH_OP_CODE;
@@ -156,6 +157,7 @@ eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH
         cdb[12] = ataPtCmd->tfr.LbaLow;
         cdb[13] = ataPtCmd->tfr.DeviceHead;
     }
+    RESTORE_NONNULL_COMPARE
     return ret;
 }
 
@@ -175,7 +177,7 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(tDevice* device, ataPassthroughCo
     DECLARE_ZERO_INIT_ARRAY(uint8_t, csmiCDB, CSMI_PASSTHROUGH_CDB_LENGTH);
     uint8_t* senseData      = M_NULLPTR; // only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool     localSenseData = false;
-    if (!ataCommandOptions->ptrSenseData)
+    if (ataCommandOptions->ptrSenseData == M_NULLPTR)
     {
         senseData = M_REINTERPRET_CAST(
             uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));

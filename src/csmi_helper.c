@@ -3905,7 +3905,8 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
 //-----------------------------------------------------------------------------
 eReturnValues close_CSMI_RAID_Device(tDevice* device)
 {
-    if (device)
+    DISABLE_NONNULL_COMPARE
+    if (device != M_NULLPTR)
     {
 #    if defined(_WIN32)
         CloseHandle(device->os_info.fd);
@@ -3932,6 +3933,7 @@ eReturnValues close_CSMI_RAID_Device(tDevice* device)
     {
         return MEMORY_FAILURE;
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 static bool get_CSMI_Handle_Fields_From_Input(const char* filename,
@@ -5229,8 +5231,8 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
 #    endif // CSMI_DEBUG
         return SUCCESS;
     }
-
-    if (!(ptrToDeviceList) || (!sizeInBytes))
+    DISABLE_NONNULL_COMPARE
+    if (ptrToDeviceList == M_NULLPTR || sizeInBytes == 0)
     {
 #    if defined(CSMI_DEBUG)
         printf("GDL: Invalid size for list\n");
@@ -6339,6 +6341,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
 #    endif // CSMI_DEBUG
         }
     }
+    RESTORE_NONNULL_COMPARE
     return returnValue;
 }
 

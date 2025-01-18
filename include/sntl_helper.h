@@ -40,7 +40,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1) M_PARAM_RW(2) eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx);
 
 #if defined(__cplusplus)
 }

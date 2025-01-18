@@ -926,15 +926,17 @@ static ascAscqRetDesc ascAscqLookUp[] = {
     {0x74, 0x71, C_CAST(int, FAILURE), "Logical Unit Access Not Authorized"},
     {0x74, 0x79, C_CAST(int, FAILURE), "Security Conflict In Translated Device"}};
 
-uint16_t calculate_Logical_Block_Guard(uint8_t* buffer, uint32_t userDataLength, uint32_t totalDataLength)
+uint16_t calculate_Logical_Block_Guard(const uint8_t* buffer, uint32_t userDataLength, uint32_t totalDataLength)
 {
-    uint16_t crc =
-        0; // Can also be all F's to invert it. TODO: should invert be a boolean option to this function? - TJE
-    uint16_t const polynomial = 0x8BB7L;
-    if (!buffer)
+    // Can also be all F's to invert it. TODO: should invert be a boolean option to this function? - TJE
+    uint16_t       crc        = UINT16_C(0);
+    uint16_t const polynomial = UINT16_C(0x8BB7);
+    DISABLE_NONNULL_COMPARE
+    if (buffer == M_NULLPTR)
     {
         return 0;
     }
+    RESTORE_NONNULL_COMPARE
     for (uint32_t iter = UINT32_C(0); iter < userDataLength && iter < totalDataLength; iter += 2)
     {
         uint16_t x = M_BytesTo2ByteValue(buffer[iter], buffer[iter + 1]);
@@ -969,10 +971,11 @@ void print_acs_ascq(const char* acsAndascqStringToPrint, uint8_t ascValue, uint8
 void print_Field_Replacable_Unit_Code(tDevice* device, const char* fruMessage, uint8_t fruCode)
 {
     // we'll only print out a translatable string for seagate drives since fru is vendor specific
-    if (is_Seagate(device, false) == true && fruMessage && device->drive_info.interface_type == SCSI_INTERFACE)
+    DISABLE_NONNULL_COMPARE
+    if (is_Seagate(device, false) == true && fruMessage != M_NULLPTR && strlen(fruMessage) > 0 &&
+        device->drive_info.interface_type == SCSI_INTERFACE)
     {
         printf("FRU: %" PRIX8 "h = %s\n", fruCode, fruMessage);
-        flush_stdout();
     }
     else
     {
@@ -984,8 +987,9 @@ void print_Field_Replacable_Unit_Code(tDevice* device, const char* fruMessage, u
         {
             printf("FRU: %" PRIX8 "h = Vendor Specific\n", fruCode);
         }
-        flush_stdout();
     }
+    flush_stdout();
+    RESTORE_NONNULL_COMPARE
 }
 
 // Used with bsearch
@@ -993,7 +997,7 @@ static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
 {
     // compare ASC, if they are same, compare ASCQ
     int ret = a->asc - b->asc;
-    if (ret)
+    if (ret != 0)
     {
         return ret;
     }
@@ -1134,7 +1138,7 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice* device,
     }
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
-        print_Field_Replacable_Unit_Code(device, M_NULLPTR, fru);
+        print_Field_Replacable_Unit_Code(device, "", fru);
     }
     return ret;
 }
@@ -1167,14 +1171,16 @@ void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
-    if (valid)
+    DISABLE_NONNULL_COMPARE
+    if (valid != M_NULLPTR)
     {
         *valid = senseFields.valid;
     }
-    if (information)
+    if (information != M_NULLPTR)
     {
         *information = senseFields.descriptorInformation;
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
@@ -1186,10 +1192,12 @@ void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
-    if (illegalLengthIndicator)
+    DISABLE_NONNULL_COMPARE
+    if (illegalLengthIndicator != M_NULLPTR)
     {
         *illegalLengthIndicator = senseFields.illegalLengthIndication;
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
@@ -1203,18 +1211,20 @@ void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
-    if (filemark)
+    DISABLE_NONNULL_COMPARE
+    if (filemark != M_NULLPTR)
     {
         *filemark = senseFields.filemark;
     }
-    if (endOfMedia)
+    if (endOfMedia != M_NULLPTR)
     {
         *endOfMedia = senseFields.endOfMedia;
     }
-    if (illegalLengthIndicator)
+    if (illegalLengthIndicator != M_NULLPTR)
     {
         *illegalLengthIndicator = senseFields.illegalLengthIndication;
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseData,
@@ -1226,10 +1236,12 @@ void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseDat
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
-    if (commandSpecificInformation)
+    DISABLE_NONNULL_COMPARE
+    if (commandSpecificInformation != M_NULLPTR)
     {
         *commandSpecificInformation = senseFields.descriptorCommandSpecificInformation;
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
@@ -1239,15 +1251,18 @@ void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t se
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
-    if (sksp)
+    DISABLE_NONNULL_COMPARE
+    if (sksp != M_NULLPTR)
     {
         safe_memcpy(sksp, sizeof(senseKeySpecific), &senseFields.senseKeySpecificInformation, sizeof(senseKeySpecific));
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields)
 {
-    if (ptrSenseData && senseDataLength > 0 && senseFields)
+    DISABLE_NONNULL_COMPARE
+    if (ptrSenseData != M_NULLPTR && senseDataLength > 0 && senseFields != M_NULLPTR)
     {
         uint8_t  format = ptrSenseData[0] & 0x7F; // Stripping the last bit so we just get the format
         uint16_t returnedLength =
@@ -1600,11 +1615,13 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
             break;
         }
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void print_Sense_Fields(constPtrSenseDataFields senseFields)
 {
-    if (senseFields && senseFields->validStructure)
+    DISABLE_NONNULL_COMPARE
+    if (senseFields != M_NULLPTR && senseFields->validStructure)
     {
         // This function assumes that the "check_Sense_Key_ASC_ASCQ_FRU" function was called before hand to print out
         // its fields
@@ -1794,6 +1811,7 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
             }
         }
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf)
@@ -1801,10 +1819,12 @@ uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf)
     uint16_t length = UINT16_C(8);
     uint8_t  format;
 
-    if (!pbuf)
+    DISABLE_NONNULL_COMPARE
+    if (pbuf == M_NULLPTR)
     {
         return 0;
     }
+    RESTORE_NONNULL_COMPARE
     format = pbuf[0] & 0x7F; // Stripping the last bit so we just get the format
 
     switch (format)
@@ -1867,6 +1887,7 @@ void copy_Inquiry_Data(uint8_t* pbuf, driveInfo* info)
 // \brief copy the serial number off of 0x80 VPD page data.
 void copy_Serial_Number(uint8_t* pbuf, size_t bufferlen, char* serialNumber, size_t serialNumberMemLen)
 {
+    DISABLE_NONNULL_COMPARE
     if (pbuf != M_NULLPTR && serialNumber != M_NULLPTR && bufferlen >= 4 && serialNumberMemLen > 0)
     {
         uint16_t snLen = M_BytesTo2ByteValue(pbuf[2], pbuf[3]);
@@ -1881,6 +1902,7 @@ void copy_Serial_Number(uint8_t* pbuf, size_t bufferlen, char* serialNumber, siz
         }
         remove_Leading_And_Trailing_Whitespace(serialNumber);
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
@@ -3701,9 +3723,9 @@ eReturnValues fill_In_Device_Info(tDevice* device)
 
             // send a read capacity command to get the device's logical block size...read capacity 10 should be enough
             // for this
-            uint8_t* readCapBuf = C_CAST(
+            uint8_t* readCapBuf = M_REINTERPRET_CAST(
                 uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
-            if (!readCapBuf)
+            if (readCapBuf == M_NULLPTR)
             {
                 safe_free_aligned(&inq_buf);
                 return MEMORY_FAILURE;
@@ -3720,7 +3742,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                     uint8_t* temp = M_REINTERPRET_CAST(
                         uint8_t*, safe_realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN,
                                                        device->os_info.minimumAlignment));
-                    if (!temp)
+                    if (temp == M_NULLPTR)
                     {
                         safe_free_aligned(&readCapBuf);
                         safe_free_aligned(&inq_buf);
@@ -3894,7 +3916,7 @@ bool is_Standard_Supported(uint16_t versionDescriptor, eStandardCode standardCod
 {
     // SPC defines the version descriptor codes.
     // To convert it to a standard, divide it by 32 as indicated in the formula in the annex-TJE
-    if ((eStandardCode)(versionDescriptor / UINT16_C(32)) == standardCode)
+    if (M_STATIC_CAST(eStandardCode, versionDescriptor / UINT16_C(32)) == standardCode)
     {
         return true;
     }
@@ -5000,6 +5022,7 @@ void get_mode_param_header_6_fields(uint8_t* ptrMP,
                                     uint8_t* devSpecific,
                                     uint8_t* blockDescriptorLenth)
 {
+    DISABLE_NONNULL_COMPARE
     if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_6_LEN)
     {
         if (modeDataLength != M_NULLPTR)
@@ -5019,6 +5042,7 @@ void get_mode_param_header_6_fields(uint8_t* ptrMP,
             *blockDescriptorLenth = ptrMP[MODE_HEADER_6_BLK_DESC_OFFSET];
         }
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void get_mode_param_header_10_fields(uint8_t*  ptrMP,
@@ -5029,6 +5053,7 @@ void get_mode_param_header_10_fields(uint8_t*  ptrMP,
                                      bool*     longLBA,
                                      uint16_t* blockDescriptorLenth)
 {
+    DISABLE_NONNULL_COMPARE
     if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_10_LEN)
     {
         if (modeDataLength != M_NULLPTR)
@@ -5054,6 +5079,7 @@ void get_mode_param_header_10_fields(uint8_t*  ptrMP,
             *longLBA = M_ToBool(ptrMP[MODE_HEADER_10_DEV_SPECIFIC + 1] & BIT0);
         }
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
@@ -5062,6 +5088,7 @@ void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
                                               uint32_t* numberOfBlocks,
                                               uint32_t* blockLength)
 {
+    DISABLE_NONNULL_COMPARE
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= GENERAL_BLOCK_DESCRIPTOR_LEN)
     {
         if (densityCode != M_NULLPTR)
@@ -5085,6 +5112,7 @@ void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
             }
         }
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
@@ -5092,6 +5120,7 @@ void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
                                             uint32_t* numberOfBlocks,
                                             uint32_t* blockLength)
 {
+    DISABLE_NONNULL_COMPARE
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= SHORT_LBA_BLOCK_DESCRIPTOR_LEN)
     {
         if (numberOfBlocks != M_NULLPTR)
@@ -5111,6 +5140,7 @@ void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
             }
         }
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
@@ -5118,6 +5148,7 @@ void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
                                            uint64_t* numberOfBlocks,
                                            uint64_t* blockLength)
 {
+    DISABLE_NONNULL_COMPARE
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= LONG_LBA_BLOCK_DESCRIPTOR_LEN)
     {
         if (numberOfBlocks != M_NULLPTR)
@@ -5137,6 +5168,7 @@ void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
             }
         }
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
@@ -5150,6 +5182,7 @@ void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
                                          uint64_t* numberOfBlocks,
                                          uint64_t* blockLength)
 {
+    DISABLE_NONNULL_COMPARE
     if (ptr != M_NULLPTR)
     {
         if (sixByteCmd)
@@ -5221,4 +5254,5 @@ void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
             }
         }
     }
+    RESTORE_NONNULL_COMPARE
 }

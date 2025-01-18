@@ -605,9 +605,9 @@ extern "C"
     typedef enum eATAPassthroughLengthEnum
     {
         ATA_PT_LEN_NO_DATA,
-        ATA_PT_LEN_FEATURES_REGISTER, // bits 7:0
-        ATA_PT_LEN_SECTOR_COUNT,      // bits 7:0
-        ATA_PT_LEN_TPSIU
+        ATA_PT_LEN_FEATURES_REGISTER,
+        ATA_PT_LEN_SECTOR_COUNT,
+        ATA_PT_LEN_TPSIU // Transport specific informational unit
     } eATAPassthroughLength;
 
     // \struct typedef struct s_ataPassthroughCommand
@@ -671,8 +671,10 @@ extern "C"
     }
 
     // Used for commands that set a "signature" in the LBA registers, but do not need the LBA mode bit
-    static M_INLINE void set_ata_pt_LBA_28_sig(ataPassthroughCommand* cmd, uint32_t signature)
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1) static M_INLINE void set_ata_pt_LBA_28_sig(ataPassthroughCommand* cmd, uint32_t signature)
     {
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
         {
             cmd->tfr.LbaLow = M_Byte0(signature);
@@ -680,19 +682,26 @@ extern "C"
             cmd->tfr.LbaHi  = M_Byte2(signature);
             cmd->tfr.DeviceHead |= M_Nibble6(signature);
         }
+        RESTORE_NONNULL_COMPARE
     }
 
-    static M_INLINE void set_ata_pt_LBA_28(ataPassthroughCommand* cmd, uint32_t lba)
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1) static M_INLINE void set_ata_pt_LBA_28(ataPassthroughCommand* cmd, uint32_t lba)
     {
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
         {
             set_ata_pt_LBA_28_sig(cmd, lba);
             cmd->tfr.DeviceHead |= LBA_MODE_BIT;
         }
+        RESTORE_NONNULL_COMPARE
     }
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     static M_INLINE void set_ata_pt_CHS(ataPassthroughCommand* cmd, uint16_t cylinder, uint8_t head, uint8_t sector)
     {
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
         {
             cmd->tfr.SectorNumber = sector;
@@ -700,30 +709,37 @@ extern "C"
             cmd->tfr.CylinderHigh = M_Byte1(cylinder);
             cmd->tfr.DeviceHead |= M_Nibble0(head);
         }
+        RESTORE_NONNULL_COMPARE
     }
 
-    static M_INLINE uint32_t get_ata_pt_LBA_28_from_rtfr(ataReturnTFRs* rtfr)
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) static M_INLINE uint32_t get_ata_pt_LBA_28_from_rtfr(ataReturnTFRs* rtfr)
     {
         uint32_t outlba = UINT32_C(0);
+        DISABLE_NONNULL_COMPARE
         if (rtfr != M_NULLPTR)
         {
             outlba = M_BytesTo4ByteValue(M_Nibble0(rtfr->device), rtfr->lbaHi, rtfr->lbaMid, rtfr->lbaLow);
         }
+        RESTORE_NONNULL_COMPARE
         return outlba;
     }
 
-    static M_INLINE uint32_t get_ata_pt_LBA_28(ataPassthroughCommand* cmd)
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) static M_INLINE uint32_t get_ata_pt_LBA_28(ataPassthroughCommand* cmd)
     {
         uint32_t outlba = UINT32_C(0);
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
         {
             outlba = get_ata_pt_LBA_28_from_rtfr(&cmd->rtfr);
         }
+        RESTORE_NONNULL_COMPARE
         return outlba;
     }
 
-    static M_INLINE void set_ata_pt_LBA_48_sig(ataPassthroughCommand* cmd, uint64_t signature)
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1) static M_INLINE void set_ata_pt_LBA_48_sig(ataPassthroughCommand* cmd, uint64_t signature)
     {
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
         {
             cmd->tfr.LbaLow   = M_Byte0(signature);
@@ -733,40 +749,50 @@ extern "C"
             cmd->tfr.LbaMid48 = M_Byte4(signature);
             cmd->tfr.LbaHi48  = M_Byte5(signature);
         }
+        RESTORE_NONNULL_COMPARE
     }
 
-    static M_INLINE void set_ata_pt_LBA_48(ataPassthroughCommand* cmd, uint64_t lba)
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1) static M_INLINE void set_ata_pt_LBA_48(ataPassthroughCommand* cmd, uint64_t lba)
     {
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
         {
             set_ata_pt_LBA_48_sig(cmd, lba);
             cmd->tfr.DeviceHead |= LBA_MODE_BIT;
         }
+        RESTORE_NONNULL_COMPARE
     }
 
-    static M_INLINE uint64_t get_ata_pt_LBA_48_from_rtfr(ataReturnTFRs* rtfr)
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) static M_INLINE uint64_t get_ata_pt_LBA_48_from_rtfr(ataReturnTFRs* rtfr)
     {
         uint64_t outlba = UINT64_C(0);
+        DISABLE_NONNULL_COMPARE
         if (rtfr != M_NULLPTR)
         {
             outlba = M_BytesTo8ByteValue(UINT8_C(0), UINT8_C(0), rtfr->lbaHiExt, rtfr->lbaMidExt, rtfr->lbaLowExt,
                                          rtfr->lbaHi, rtfr->lbaMid, rtfr->lbaLow);
         }
+        RESTORE_NONNULL_COMPARE
         return outlba;
     }
 
-    static M_INLINE uint64_t get_ata_pt_LBA_48(ataPassthroughCommand* cmd)
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) static M_INLINE uint64_t get_ata_pt_LBA_48(ataPassthroughCommand* cmd)
     {
         uint64_t outlba = UINT64_C(0);
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
         {
             outlba = get_ata_pt_LBA_48_from_rtfr(&cmd->rtfr);
         }
+        RESTORE_NONNULL_COMPARE
         return outlba;
     }
 
-    static M_INLINE void set_ata_pt_device_bits(ataPassthroughCommand* cmd, tDevice* device)
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_WO(1) M_PARAM_RO(2) static M_INLINE void set_ata_pt_device_bits(ataPassthroughCommand* cmd, tDevice* device)
     {
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR && device != M_NULLPTR)
         {
             if (!device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits)
@@ -778,19 +804,26 @@ extern "C"
                 cmd->tfr.DeviceHead |= DEVICE_SELECT_BIT;
             }
         }
+        RESTORE_NONNULL_COMPARE
     }
 
     // for send/recieve FPDMA
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     static M_INLINE void set_ata_pt_prio_subcmd(ataPassthroughCommand* cmd, uint8_t prio, uint8_t subcommand)
     {
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
         {
             cmd->tfr.SectorCount48 = M_STATIC_CAST(uint8_t, (subcommand & 0x1F) | ((prio & 0x03) << 6));
         }
+        RESTORE_NONNULL_COMPARE
     }
 
-    static M_INLINE void set_ata_pt_aux_icc(ataPassthroughCommand* cmd, uint32_t aux, uint8_t icc)
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1) static M_INLINE void set_ata_pt_aux_icc(ataPassthroughCommand* cmd, uint32_t aux, uint8_t icc)
     {
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
         {
             cmd->tfr.aux1 = M_Byte0(aux);
@@ -803,13 +836,17 @@ extern "C"
                 cmd->commandType = M_ACCESS_ENUM(eAtaCmdType, ATA_CMD_TYPE_COMPLETE_TASKFILE);
             }
         }
+        RESTORE_NONNULL_COMPARE
     }
 
-    static M_INLINE void set_ata_pt_multipleCount(ataPassthroughCommand* cmd, tDevice* device)
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_WO(1)
+    M_PARAM_RO(2) static M_INLINE void set_ata_pt_multipleCount(ataPassthroughCommand* cmd, tDevice* device)
     {
         // multipleLogicalSectors should be greater than 1 so that we get the proper 2^X
         // power value for the SAT command.
         // if not set or not set to one of these values, then this will not modify multiple count - TJE
+        DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR && device != M_NULLPTR)
         {
             switch (device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock)
@@ -840,15 +877,18 @@ extern "C"
                 break;
             }
         }
+        RESTORE_NONNULL_COMPARE
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_pio_cmd(tDevice*               device,
-                                                             uint8_t                opcode,
-                                                             bool                   ext,
-                                                             eDataTransferDirection direction,
-                                                             uint16_t               sectorCount,
-                                                             uint8_t*               ptrdata,
-                                                             uint32_t               dataSize)
+    M_NONNULL_PARAM_LIST(1, 6)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(6, 7) static M_INLINE ataPassthroughCommand create_ata_pio_cmd(tDevice*               device,
+                                                                                   uint8_t                opcode,
+                                                                                   bool                   ext,
+                                                                                   eDataTransferDirection direction,
+                                                                                   uint16_t               sectorCount,
+                                                                                   const uint8_t*         ptrdata,
+                                                                                   uint32_t               dataSize)
     {
         ataPassthroughCommand pio;
         pio.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
@@ -883,7 +923,7 @@ extern "C"
         pio.rtfr.lbaHi        = UINT8_C(0);
         pio.rtfr.device       = UINT8_C(0);
         pio.rtfr.status       = UINT8_C(0);
-        pio.ptrData           = ptrdata;
+        pio.ptrData           = M_CONST_CAST(uint8_t*, ptrdata);
         pio.dataSize          = dataSize;
         pio.ptrSenseData      = device->drive_info.lastCommandSenseData;
         pio.senseDataSize     = SPC3_SENSE_LEN;
@@ -903,36 +943,42 @@ extern "C"
         return pio;
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_pio_in_cmd(tDevice* device,
-                                                                uint8_t  opcode,
-                                                                bool     ext,
-                                                                uint16_t sectorCount,
-                                                                uint8_t* ptrdata,
-                                                                uint32_t dataSize)
+    M_NONNULL_PARAM_LIST(1, 5)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(5, 6) static M_INLINE ataPassthroughCommand create_ata_pio_in_cmd(tDevice*       device,
+                                                                                      uint8_t        opcode,
+                                                                                      bool           ext,
+                                                                                      uint16_t       sectorCount,
+                                                                                      const uint8_t* ptrdata,
+                                                                                      uint32_t       dataSize)
     {
         return create_ata_pio_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_IN), sectorCount,
                                   ptrdata, dataSize);
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_pio_out_cmd(tDevice* device,
-                                                                 uint8_t  opcode,
-                                                                 bool     ext,
-                                                                 uint16_t sectorCount,
-                                                                 uint8_t* ptrdata,
-                                                                 uint32_t dataSize)
+    M_NONNULL_PARAM_LIST(1, 5)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(5, 6) static M_INLINE ataPassthroughCommand create_ata_pio_out_cmd(tDevice*       device,
+                                                                                       uint8_t        opcode,
+                                                                                       bool           ext,
+                                                                                       uint16_t       sectorCount,
+                                                                                       const uint8_t* ptrdata,
+                                                                                       uint32_t       dataSize)
     {
         return create_ata_pio_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_OUT),
                                   sectorCount, ptrdata, dataSize);
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_pio_lba_cmd(tDevice*               device,
-                                                                 uint8_t                opcode,
-                                                                 bool                   ext,
-                                                                 eDataTransferDirection direction,
-                                                                 uint16_t               sectorCount,
-                                                                 uint64_t               lba,
-                                                                 uint8_t*               ptrdata,
-                                                                 uint32_t               dataSize)
+    M_NONNULL_PARAM_LIST(1, 7)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(7, 8) static M_INLINE ataPassthroughCommand create_ata_pio_lba_cmd(tDevice*               device,
+                                                                                       uint8_t                opcode,
+                                                                                       bool                   ext,
+                                                                                       eDataTransferDirection direction,
+                                                                                       uint16_t       sectorCount,
+                                                                                       uint64_t       lba,
+                                                                                       const uint8_t* ptrdata,
+                                                                                       uint32_t       dataSize)
     {
         ataPassthroughCommand pio;
         pio.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
@@ -967,7 +1013,7 @@ extern "C"
         pio.rtfr.lbaHi               = UINT8_C(0);
         pio.rtfr.device              = UINT8_C(0);
         pio.rtfr.status              = UINT8_C(0);
-        pio.ptrData                  = ptrdata;
+        pio.ptrData                  = M_CONST_CAST(uint8_t*, ptrdata);
         pio.dataSize                 = dataSize;
         pio.ptrSenseData             = device->drive_info.lastCommandSenseData;
         pio.senseDataSize            = SPC3_SENSE_LEN;
@@ -981,7 +1027,7 @@ extern "C"
         pio.fwdlFirstSegment = false;
         pio.fwdlLastSegment  = false;
         set_ata_pt_device_bits(&pio, device);
-        if (sectorCount == 0)
+        if (sectorCount == UINT16_C(0))
         {
             pio.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
             pio.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
@@ -989,47 +1035,55 @@ extern "C"
         return pio;
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_pio_read_lba_cmd(tDevice* device,
-                                                                      uint8_t  opcode,
-                                                                      bool     ext,
-                                                                      uint16_t sectorCount,
-                                                                      uint64_t lba,
-                                                                      uint8_t* ptrdata,
-                                                                      uint32_t dataSize)
+    M_NONNULL_PARAM_LIST(1, 6)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(6, 7) static M_INLINE ataPassthroughCommand create_ata_pio_read_lba_cmd(tDevice*       device,
+                                                                                            uint8_t        opcode,
+                                                                                            bool           ext,
+                                                                                            uint16_t       sectorCount,
+                                                                                            uint64_t       lba,
+                                                                                            const uint8_t* ptrdata,
+                                                                                            uint32_t       dataSize)
     {
         return create_ata_pio_lba_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_IN),
                                       sectorCount, lba, ptrdata, dataSize);
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_pio_write_lba_cmd(tDevice* device,
-                                                                       uint8_t  opcode,
-                                                                       bool     ext,
-                                                                       uint16_t sectorCount,
-                                                                       uint64_t lba,
-                                                                       uint8_t* ptrdata,
-                                                                       uint32_t dataSize)
+    M_NONNULL_PARAM_LIST(1, 6)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(6, 7) static M_INLINE ataPassthroughCommand create_ata_pio_write_lba_cmd(tDevice*       device,
+                                                                                             uint8_t        opcode,
+                                                                                             bool           ext,
+                                                                                             uint16_t       sectorCount,
+                                                                                             uint64_t       lba,
+                                                                                             const uint8_t* ptrdata,
+                                                                                             uint32_t       dataSize)
     {
         return create_ata_pio_lba_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_OUT),
                                       sectorCount, lba, ptrdata, dataSize);
     }
 
-    static M_INLINE eAtaProtocol get_ata_pt_dma_protocol(tDevice* device)
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) static M_INLINE eAtaProtocol get_ata_pt_dma_protocol(tDevice* device)
     {
         eAtaProtocol dmaProtocol = ATA_PROTOCOL_DMA;
-        if (device && device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_UDMA)
+        DISABLE_NONNULL_COMPARE
+        if (device != M_NULLPTR && device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_UDMA)
         {
             dmaProtocol = ATA_PROTOCOL_UDMA;
         }
+        RESTORE_NONNULL_COMPARE
         return dmaProtocol;
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_dma_cmd(tDevice*               device,
-                                                             uint8_t                opcode,
-                                                             bool                   ext,
-                                                             eDataTransferDirection direction,
-                                                             uint16_t               sectorCount,
-                                                             uint8_t*               ptrdata,
-                                                             uint32_t               dataSize)
+    M_NONNULL_PARAM_LIST(1, 6)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(6, 7) static M_INLINE ataPassthroughCommand create_ata_dma_cmd(tDevice*               device,
+                                                                                   uint8_t                opcode,
+                                                                                   bool                   ext,
+                                                                                   eDataTransferDirection direction,
+                                                                                   uint16_t               sectorCount,
+                                                                                   const uint8_t*         ptrdata,
+                                                                                   uint32_t               dataSize)
     {
         ataPassthroughCommand dma;
         dma.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
@@ -1064,7 +1118,7 @@ extern "C"
         dma.rtfr.lbaHi        = UINT8_C(0);
         dma.rtfr.device       = UINT8_C(0);
         dma.rtfr.status       = UINT8_C(0);
-        dma.ptrData           = ptrdata;
+        dma.ptrData           = M_CONST_CAST(uint8_t*, ptrdata);
         dma.dataSize          = dataSize;
         dma.ptrSenseData      = device->drive_info.lastCommandSenseData;
         dma.senseDataSize     = SPC3_SENSE_LEN;
@@ -1082,14 +1136,16 @@ extern "C"
         return dma;
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_dma_lba_cmd(tDevice*               device,
-                                                                 uint8_t                opcode,
-                                                                 bool                   ext,
-                                                                 eDataTransferDirection direction,
-                                                                 uint16_t               sectorCount,
-                                                                 uint64_t               lba,
-                                                                 uint8_t*               ptrdata,
-                                                                 uint32_t               dataSize)
+    M_NONNULL_PARAM_LIST(1, 7)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(7, 8) static M_INLINE ataPassthroughCommand create_ata_dma_lba_cmd(tDevice*               device,
+                                                                                       uint8_t                opcode,
+                                                                                       bool                   ext,
+                                                                                       eDataTransferDirection direction,
+                                                                                       uint16_t       sectorCount,
+                                                                                       uint64_t       lba,
+                                                                                       const uint8_t* ptrdata,
+                                                                                       uint32_t       dataSize)
     {
         ataPassthroughCommand dma;
         dma.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
@@ -1124,7 +1180,7 @@ extern "C"
         dma.rtfr.lbaHi               = UINT8_C(0);
         dma.rtfr.device              = UINT8_C(0);
         dma.rtfr.status              = UINT8_C(0);
-        dma.ptrData                  = ptrdata;
+        dma.ptrData                  = M_CONST_CAST(uint8_t*, ptrdata);
         dma.dataSize                 = dataSize;
         dma.ptrSenseData             = device->drive_info.lastCommandSenseData;
         dma.senseDataSize            = SPC3_SENSE_LEN;
@@ -1137,7 +1193,7 @@ extern "C"
         dma.fwdlFirstSegment         = false;
         dma.fwdlLastSegment          = false;
         set_ata_pt_device_bits(&dma, device);
-        if (sectorCount == 0)
+        if (sectorCount == UINT16_C(0))
         {
             dma.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
             dma.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
@@ -1145,56 +1201,64 @@ extern "C"
         return dma;
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_dma_in_cmd(tDevice* device,
-                                                                uint8_t  opcode,
-                                                                bool     ext,
-                                                                uint16_t sectorCount,
-                                                                uint8_t* ptrdata,
-                                                                uint32_t dataSize)
+    M_NONNULL_PARAM_LIST(1, 5)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(5, 6) static M_INLINE ataPassthroughCommand create_ata_dma_in_cmd(tDevice*       device,
+                                                                                      uint8_t        opcode,
+                                                                                      bool           ext,
+                                                                                      uint16_t       sectorCount,
+                                                                                      const uint8_t* ptrdata,
+                                                                                      uint32_t       dataSize)
     {
         return create_ata_dma_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_IN), sectorCount,
                                   ptrdata, dataSize);
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_dma_out_cmd(tDevice* device,
-                                                                 uint8_t  opcode,
-                                                                 bool     ext,
-                                                                 uint16_t sectorCount,
-                                                                 uint8_t* ptrdata,
-                                                                 uint32_t dataSize)
+    M_NONNULL_PARAM_LIST(1, 5)
+    M_PARAM_RO(1)
+    static M_INLINE ataPassthroughCommand create_ata_dma_out_cmd(tDevice*       device,
+                                                                 uint8_t        opcode,
+                                                                 bool           ext,
+                                                                 uint16_t       sectorCount,
+                                                                 const uint8_t* ptrdata,
+                                                                 uint32_t       dataSize)
     {
         return create_ata_dma_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_OUT),
                                   sectorCount, ptrdata, dataSize);
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_dma_read_lba_cmd(tDevice* device,
-                                                                      uint8_t  opcode,
-                                                                      bool     ext,
-                                                                      uint16_t sectorCount,
-                                                                      uint64_t lba,
-                                                                      uint8_t* ptrdata,
-                                                                      uint32_t dataSize)
+    M_NONNULL_PARAM_LIST(1, 6)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(6, 7) static M_INLINE ataPassthroughCommand create_ata_dma_read_lba_cmd(tDevice*       device,
+                                                                                            uint8_t        opcode,
+                                                                                            bool           ext,
+                                                                                            uint16_t       sectorCount,
+                                                                                            uint64_t       lba,
+                                                                                            const uint8_t* ptrdata,
+                                                                                            uint32_t       dataSize)
     {
         return create_ata_dma_lba_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_IN),
                                       sectorCount, lba, ptrdata, dataSize);
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_dma_write_lba_cmd(tDevice* device,
-                                                                       uint8_t  opcode,
-                                                                       bool     ext,
-                                                                       uint16_t sectorCount,
-                                                                       uint64_t lba,
-                                                                       uint8_t* ptrdata,
-                                                                       uint32_t dataSize)
+    M_NONNULL_PARAM_LIST(1, 6)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(6, 7) static M_INLINE ataPassthroughCommand create_ata_dma_write_lba_cmd(tDevice* device,
+                                                                                             uint8_t  opcode,
+                                                                                             bool     ext,
+                                                                                             uint16_t sectorCount,
+                                                                                             uint64_t lba,
+                                                                                             uint8_t* ptrdata,
+                                                                                             uint32_t dataSize)
     {
         return create_ata_dma_lba_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_OUT),
                                       sectorCount, lba, ptrdata, dataSize);
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_nondata_cmd(tDevice* device,
-                                                                 uint8_t  opcode,
-                                                                 bool     ext,
-                                                                 bool     needRTFRs)
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    static M_INLINE ataPassthroughCommand
+        create_ata_nondata_cmd(tDevice* device, uint8_t opcode, bool ext, bool needRTFRs)
     {
         ataPassthroughCommand nodata;
         nodata.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
@@ -1247,6 +1311,8 @@ extern "C"
         return nodata;
     }
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     static M_INLINE ataPassthroughCommand create_ata_dev_diag_cmd(tDevice* device, uint8_t opcode, bool ext)
     {
         ataPassthroughCommand nodata;
@@ -1300,16 +1366,19 @@ extern "C"
         return nodata;
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_queued_lba_cmd(tDevice*               device,
-                                                                    uint8_t                opcode,
-                                                                    bool                   ext,
-                                                                    bool                   ncq,
-                                                                    uint8_t                tag,
-                                                                    eDataTransferDirection direction,
-                                                                    uint16_t               sectorCount,
-                                                                    uint64_t               lba,
-                                                                    uint8_t*               ptrdata,
-                                                                    uint32_t               dataSize)
+    M_NONNULL_PARAM_LIST(1, 9)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(9, 10) static M_INLINE ataPassthroughCommand
+        create_ata_queued_lba_cmd(tDevice*               device,
+                                  uint8_t                opcode,
+                                  bool                   ext,
+                                  bool                   ncq,
+                                  uint8_t                tag,
+                                  eDataTransferDirection direction,
+                                  uint16_t               sectorCount,
+                                  uint64_t               lba,
+                                  const uint8_t*         ptrdata,
+                                  uint32_t               dataSize)
     {
         ataPassthroughCommand dmaq;
         dmaq.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
@@ -1344,7 +1413,7 @@ extern "C"
         dmaq.rtfr.lbaHi               = UINT8_C(0);
         dmaq.rtfr.device              = UINT8_C(0);
         dmaq.rtfr.status              = UINT8_C(0);
-        dmaq.ptrData                  = ptrdata;
+        dmaq.ptrData                  = M_CONST_CAST(uint8_t*, ptrdata);
         dmaq.dataSize                 = dataSize;
         dmaq.ptrSenseData             = device->drive_info.lastCommandSenseData;
         dmaq.senseDataSize            = SPC3_SENSE_LEN;
@@ -1357,7 +1426,7 @@ extern "C"
         dmaq.fwdlFirstSegment         = false;
         dmaq.fwdlLastSegment          = false;
         set_ata_pt_device_bits(&dmaq, device);
-        if (sectorCount == 0)
+        if (sectorCount == UINT16_C(0))
         {
             dmaq.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
             dmaq.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
@@ -1365,15 +1434,17 @@ extern "C"
         return dmaq;
     }
 
-    static M_INLINE ataPassthroughCommand create_ata_queued_cmd(tDevice*               device,
-                                                                uint8_t                opcode,
-                                                                bool                   ext,
-                                                                bool                   ncq,
-                                                                uint8_t                tag,
-                                                                eDataTransferDirection direction,
-                                                                uint16_t               sectorCount,
-                                                                uint8_t*               ptrdata,
-                                                                uint32_t               dataSize)
+    M_NONNULL_PARAM_LIST(1, 8)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(8, 9) static M_INLINE ataPassthroughCommand create_ata_queued_cmd(tDevice*               device,
+                                                                                      uint8_t                opcode,
+                                                                                      bool                   ext,
+                                                                                      bool                   ncq,
+                                                                                      uint8_t                tag,
+                                                                                      eDataTransferDirection direction,
+                                                                                      uint16_t       sectorCount,
+                                                                                      const uint8_t* ptrdata,
+                                                                                      uint32_t       dataSize)
     {
         ataPassthroughCommand dmaq;
         dmaq.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
@@ -1408,7 +1479,7 @@ extern "C"
         dmaq.rtfr.lbaHi               = UINT8_C(0);
         dmaq.rtfr.device              = UINT8_C(0);
         dmaq.rtfr.status              = UINT8_C(0);
-        dmaq.ptrData                  = ptrdata;
+        dmaq.ptrData                  = M_CONST_CAST(uint8_t*, ptrdata);
         dmaq.dataSize                 = dataSize;
         dmaq.ptrSenseData             = device->drive_info.lastCommandSenseData;
         dmaq.senseDataSize            = SPC3_SENSE_LEN;
@@ -1421,7 +1492,7 @@ extern "C"
         dmaq.fwdlFirstSegment         = false;
         dmaq.fwdlLastSegment          = false;
         set_ata_pt_device_bits(&dmaq, device);
-        if (sectorCount == 0)
+        if (sectorCount == UINT16_C(0))
         {
             dmaq.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
             dmaq.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
@@ -1534,11 +1605,13 @@ extern "C"
     // again.
     M_STATIC_ASSERT(sizeof(ataLogDirectorySector) == ATA_LOG_PAGE_LEN_BYTES, ata_log_directory_is_not_512_bytes);
 
-    static M_INLINE uint32_t get_ATA_Log_Size_From_Directory(uint8_t* ptr,
-                                                             uint32_t datalen /*must be 512*/,
-                                                             uint8_t  logAddress)
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    static M_INLINE uint32_t
+        get_ATA_Log_Size_From_Directory(uint8_t* ptr, uint32_t datalen /*must be 512*/, uint8_t logAddress)
     {
         uint32_t length = UINT32_C(0);
+        DISABLE_NONNULL_COMPARE
         if (ptr != M_NULLPTR && datalen == ATA_LOG_PAGE_LEN_BYTES)
         {
             // NOTE: All the casts and conversions look messy, but it makes clang-tidy stop warning about implicit
@@ -1548,6 +1621,7 @@ extern "C"
                                 ptr[uint32_to_sizet(M_STATIC_CAST(uint32_t, logAddress) * UINT32_C(2))]) *
                 ATA_LOG_PAGE_LEN_BYTES;
         }
+        RESTORE_NONNULL_COMPARE
         return length;
     }
 

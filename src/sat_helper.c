@@ -2640,8 +2640,7 @@ static eReturnValues translate_ATA_Information_VPD_Page_89h(tDevice* device, Scs
     ataInformation[58] = RESERVED;
     ataInformation[59] = RESERVED;
     // identify device data
-    safe_memcpy(&ataInformation[60], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 60,
-                identifyDriveData, LEGACY_DRIVE_SEC_SIZE);
+    safe_memcpy(&ataInformation[60], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 60, identifyDriveData, LEGACY_DRIVE_SEC_SIZE);
     // now copy all the data we set up back to the scsi io ctx
     if (scsiIoCtx->pdata)
     {
@@ -3633,6 +3632,7 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice* device, ScsiIoCtx* 
         else
         {
             DECLARE_ZERO_INIT_ARRAY(uint8_t, inquiryData, INQ_RETURN_DATA_LENGTH);
+            DECLARE_ZERO_INIT_ARRAY(uint8_t, iddata, LEGACY_DRIVE_SEC_SIZE);
             // standard inquiry data
             // read identify data
             uint8_t peripheralDevice = UINT8_C(0);
@@ -3653,13 +3653,10 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice* device, ScsiIoCtx* 
                                                senseKeySpecificDescriptor, 1);
                 return NOT_SUPPORTED;
             }
-            if (SUCCESS != ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
-                                        LEGACY_DRIVE_SEC_SIZE))
+            if (SUCCESS != ata_Identify(device, iddata, LEGACY_DRIVE_SEC_SIZE))
             {
                 // that failed, so try an identify packet device
-                if (SUCCESS !=
-                    ata_Identify_Packet_Device(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
-                                               LEGACY_DRIVE_SEC_SIZE))
+                if (SUCCESS != ata_Identify_Packet_Device(device, iddata, LEGACY_DRIVE_SEC_SIZE))
                 {
                     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NOT_READY,
                                                    0x04, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat,
@@ -3937,11 +3934,10 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice* device, bool 
         }
     }
     // issue an identify command
-    if (SUCCESS ==
-        ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, LEGACY_DRIVE_SEC_SIZE);
+    if (SUCCESS == ata_Identify(device, identifyData, LEGACY_DRIVE_SEC_SIZE))
     {
-        uint8_t*  identifyData = C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata);
-        uint16_t* ident_word   = C_CAST(uint16_t*, &device->drive_info.IdentifyData.ata);
+        uint16_t* ident_word = C_CAST(uint16_t*, &device->drive_info.IdentifyData.ata);
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0,
                                        device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
         // get the MaxLBA
@@ -13128,7 +13124,7 @@ static eReturnValues translate_Mode_Sense_Caching_08h(tDevice*   device,
     }
     // now that we know how many bytes we need for this, allocate memory
     caching = M_REINTERPRET_CAST(uint8_t*, safe_calloc(pageLength, sizeof(uint8_t)));
-    if (!caching)
+    if (caching == M_NULLPTR)
     {
 
         return MEMORY_FAILURE;
@@ -13161,7 +13157,8 @@ static eReturnValues translate_Mode_Sense_Caching_08h(tDevice*   device,
     }
     else // saved, current, and default. TODO: Handle saving what the drive had when we started talking to it.
     {
-        ata_Identify(device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE);
+        DECLARE_ZERO_INIT_ARRAY(uint8_t, iddata, LEGACY_DRIVE_SEC_SIZE);
+        ata_Identify(device, iddata, LEGACY_DRIVE_SEC_SIZE);
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0,
                                        device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
         if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&

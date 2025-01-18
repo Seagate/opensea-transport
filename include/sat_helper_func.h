@@ -38,9 +38,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(tDevice*       device,
-                                                               ataReturnTFRs* ataRTFRs,
-                                                               uint16_t       parameterCode);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RW(1)
+    M_PARAM_WO(2) eReturnValues
+        get_Return_TFRs_From_Passthrough_Results_Log(tDevice* device, ataReturnTFRs* ataRTFRs, uint16_t parameterCode);
 
     //-----------------------------------------------------------------------------
     //
@@ -57,9 +58,11 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* ptrSenseData,
-                                                              uint32_t       senseDataSize,
-                                                              ataReturnTFRs* rtfr);
+    M_NONNULL_PARAM_LIST(1, 3)
+    M_PARAM_RO_SIZE(1, 2)
+    M_PARAM_WO(3) eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* ptrSenseData,
+                                                                            uint32_t       senseDataSize,
+                                                                            ataReturnTFRs* rtfr);
 
     //-----------------------------------------------------------------------------
     //
@@ -79,10 +82,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(tDevice*               device,
-                                                         const uint8_t*         ptrSenseData,
-                                                         uint32_t               senseDataSize,
-                                                         ataPassthroughCommand* ataCmd);
+    M_NONNULL_PARAM_LIST(1, 2, 4)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(2, 3) M_PARAM_RW(4) eReturnValues
+        get_RTFRs_From_Fixed_Format_Sense_Data(tDevice*               device,
+                                               const uint8_t*         ptrSenseData,
+                                               uint32_t               senseDataSize,
+                                               ataPassthroughCommand* ataCmd);
 
     //-----------------------------------------------------------------------------
     //
@@ -102,10 +108,12 @@ extern "C"
     //!   \return true = got RTFRs from the sense data, false = rtfrs not available
     //
     //-----------------------------------------------------------------------------
-    bool get_Return_TFRs_From_Sense_Data(tDevice*               device,
-                                         ataPassthroughCommand* ataCommandOptions,
-                                         eReturnValues          ioRet,
-                                         eReturnValues          senseRet);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_PARAM_RW(2) bool get_Return_TFRs_From_Sense_Data(tDevice*               device,
+                                                       ataPassthroughCommand* ataCommandOptions,
+                                                       eReturnValues          ioRet,
+                                                       eReturnValues          senseRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -122,6 +130,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     eReturnValues set_Protocol_Field(uint8_t*               satCDB,
                                      eAtaProtocol           commadProtocol,
                                      eDataTransferDirection dataDirection,
@@ -145,6 +155,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1)
     eReturnValues set_Transfer_Bits(uint8_t*                      satCDB,
                                     eATAPassthroughLength         tLength,
                                     eATAPassthroughTransferBlocks ttype,
@@ -167,7 +179,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues set_Multiple_Count(uint8_t* satCDB, uint8_t multipleCount, uint8_t protocolOffset);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1) eReturnValues set_Multiple_Count(uint8_t* satCDB, uint8_t multipleCount, uint8_t protocolOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -183,7 +196,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues set_Offline_Bits(uint8_t* satCDB, uint32_t timeout, uint8_t transferBitsOffset);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1) eReturnValues set_Offline_Bits(uint8_t* satCDB, uint32_t timeout, uint8_t transferBitsOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -198,7 +212,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues set_Check_Condition_Bit(uint8_t* satCDB, uint8_t transferBitsOffset);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_WO(1) eReturnValues set_Check_Condition_Bit(uint8_t* satCDB, uint8_t transferBitsOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -214,7 +229,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues set_Registers(uint8_t* satCDB, ataPassthroughCommand* ataCommandOptions);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_WO(1) M_PARAM_RO(2) eReturnValues set_Registers(uint8_t* satCDB, ataPassthroughCommand* ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -231,7 +247,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues request_Return_TFRs_From_Device(tDevice* device, ataReturnTFRs* rtfr);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1) M_PARAM_WO(2) eReturnValues request_Return_TFRs_From_Device(tDevice* device, ataReturnTFRs* rtfr);
 
     //-----------------------------------------------------------------------------
     //
@@ -249,10 +266,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues build_SAT_CDB(tDevice*               device,
-                                uint8_t**              satCDB,
-                                eCDBLen*               cdbLen,
-                                ataPassthroughCommand* ataCommandOptions);
+    M_NONNULL_PARAM_LIST(1, 2, 3, 4)
+    M_PARAM_RO(1)
+    M_PARAM_RW(2) M_PARAM_RW(3) M_PARAM_RO(4) eReturnValues
+        build_SAT_CDB(tDevice* device, uint8_t** satCDB, eCDBLen* cdbLen, ataPassthroughCommand* ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -269,7 +286,9 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughCommand* ataCommandOptions);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_PARAM_RW(2) eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughCommand* ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -289,7 +308,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1) M_PARAM_RW(2) eReturnValues translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx);
 
 #if defined(__cplusplus)
 }

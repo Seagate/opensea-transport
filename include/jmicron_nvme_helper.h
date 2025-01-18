@@ -63,18 +63,28 @@ extern "C"
         // All other values up to 255 are reserved
     } eJMNvmeVendorControl;
 
-    eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
-                                                eDataTransferDirection* cdbDataDirection,
-                                                uint8_t*                dataPtr,
-                                                uint32_t                dataSize,
-                                                eJMNvmeProtocol         jmProtocol,
-                                                eJMNvmeVendorControl    jmCtrl,
-                                                nvmeCmdCtx*             nvmCmd);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_WO(1)
+    M_PARAM_RO(2)
+    M_PARAM_WO_SIZE(3, 4)
+    M_PARAM_RO(7) eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
+                                                              eDataTransferDirection* cdbDataDirection,
+                                                              uint8_t*                dataPtr,
+                                                              uint32_t                dataSize,
+                                                              eJMNvmeProtocol         jmProtocol,
+                                                              eJMNvmeVendorControl    jmCtrl,
+                                                              nvmeCmdCtx*             nvmCmd);
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1)
     eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd);
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     eReturnValues jm_nvme_Reset(tDevice* device);
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     eReturnValues jm_nvme_Subsystem_Reset(tDevice* device);
 
 #if defined(__cplusplus)

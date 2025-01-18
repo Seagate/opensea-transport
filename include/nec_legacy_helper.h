@@ -62,7 +62,9 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand * ataCommandOptions);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_WO(1)
+    M_PARAM_RO(2) eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand * ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -80,8 +82,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues get_RTFRs_From_NEC_Legacy(tDevice * device, ataPassthroughCommand * ataCommandOptions,
-                                            eReturnValues commandRet);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_PARAM_RW(2) eReturnValues get_RTFRs_From_NEC_Legacy(tDevice * device, ataPassthroughCommand * ataCommandOptions,
+                                                          eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -98,7 +102,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice * device, ataPassthroughCommand * ataCommandOptions);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_PARAM_RW(2)
+        eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice * device, ataPassthroughCommand * ataCommandOptions);
 
 #if defined(__cplusplus)
 }

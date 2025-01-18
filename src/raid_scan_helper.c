@@ -28,11 +28,11 @@
 // Function to make it easy to add another entry to the list
 // Returns pointer to the added entry.
 // Entry is always added in currentPtr->next
-ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr, char* handleToScan, raidTypeHint raidHint)
+ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr, const char* handleToScan, raidTypeHint raidHint)
 {
     // first make sure the current pointer is valid, if not it is most likely the beginning of the list, so it needs to
     // be allocated
-    if (currentPtr)
+    if (currentPtr != M_NULLPTR)
     {
         currentPtr->next = M_REINTERPRET_CAST(ptrRaidHandleToScan, safe_calloc(1, sizeof(raidHandleToScan)));
         if (!currentPtr->next)
@@ -48,7 +48,7 @@ ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr, char* handle
         currentPtr = M_REINTERPRET_CAST(ptrRaidHandleToScan, safe_calloc(1, sizeof(raidHandleToScan)));
     }
     // make sure valid before filling in fields
-    if (currentPtr)
+    if (currentPtr != M_NULLPTR)
     {
         currentPtr->next = M_NULLPTR;
         snprintf(currentPtr->handle, RAID_HANDLE_STRING_MAX_LEN, "%s", handleToScan);
@@ -63,12 +63,12 @@ ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr, char* handle
 
 ptrRaidHandleToScan add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan listBegin,
                                                    ptrRaidHandleToScan currentPtr,
-                                                   char*               handleToScan,
+                                                   const char*         handleToScan,
                                                    raidTypeHint        raidHint)
 {
-    if (listBegin)
+    if (listBegin != M_NULLPTR)
     {
-        while (listBegin)
+        while (listBegin != M_NULLPTR)
         {
             if (strcmp(listBegin->handle, handleToScan) == 0)
             {
@@ -80,7 +80,7 @@ ptrRaidHandleToScan add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan listBegin
         // if we make it to here, the handle doesn't exist, so call the add function
         return add_RAID_Handle(currentPtr, handleToScan, raidHint);
     }
-    else if (!listBegin && !currentPtr) // creating new list, so no beginning is set yet
+    else if (listBegin == M_NULLPTR && currentPtr == M_NULLPTR) // creating new list, so no beginning is set yet
     {
         return add_RAID_Handle(currentPtr, handleToScan, raidHint);
     }
@@ -98,12 +98,13 @@ static M_INLINE void free_RaidHandleToScan(ptrRaidHandleToScan* handle)
 // is allowed. Previous is used to update the previous entry's next pointer to make sure the list is still functional
 ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHandleToScan previous)
 {
-    if (toRemove)
+    DISABLE_NONNULL_COMPARE
+    if (toRemove != M_NULLPTR)
     {
-        if (toRemove->next)
+        if (toRemove->next != M_NULLPTR)
         {
             ptrRaidHandleToScan returnMe = toRemove->next;
-            if (previous)
+            if (previous != M_NULLPTR)
             {
                 // If there was a previous entry, need to update it's next pointer
                 previous->next = returnMe;
@@ -114,7 +115,7 @@ ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHand
         else
         {
             // no next available. change previous->next to M_NULLPTR
-            if (previous)
+            if (previous != M_NULLPTR)
             {
                 previous->next = M_NULLPTR;
             }
@@ -122,15 +123,17 @@ ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHand
             return M_NULLPTR;
         }
     }
+    RESTORE_NONNULL_COMPARE
     return M_NULLPTR;
 }
 
 // Deletes everything in the list from pointer to the beginning of the list.
 void delete_RAID_List(ptrRaidHandleToScan listBegin)
 {
-    while (listBegin)
+    DISABLE_NONNULL_COMPARE
+    while (listBegin != M_NULLPTR)
     {
-        if (listBegin->next)
+        if (listBegin->next != M_NULLPTR)
         {
             ptrRaidHandleToScan nextDelete = listBegin->next;
             free_RaidHandleToScan(&listBegin);
@@ -142,4 +145,5 @@ void delete_RAID_List(ptrRaidHandleToScan listBegin)
             break;
         }
     }
+    RESTORE_NONNULL_COMPARE
 }

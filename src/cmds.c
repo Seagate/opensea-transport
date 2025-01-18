@@ -260,7 +260,8 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
 #ifdef _DEBUG
     printf("%s: -->\n", __FUNCTION__);
 #endif
-    if (device)
+    DISABLE_NONNULL_COMPARE
+    if (device != M_NULLPTR)
     {
         if (device->drive_info.interface_type == UNKNOWN_INTERFACE)
         {
@@ -327,7 +328,7 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
         status = BAD_PARAMETER;
     }
 #ifdef _DEBUG
-    if (device)
+    if (device != M_NULLPTR)
     {
         printf("Drive type: %d\n", device->drive_info.drive_type);
         printf("Interface type: %d\n", device->drive_info.interface_type);
@@ -335,6 +336,7 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
     }
     printf("%s: <--\n", __FUNCTION__);
 #endif
+    RESTORE_NONNULL_COMPARE
     return status;
 }
 

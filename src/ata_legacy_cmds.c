@@ -163,10 +163,12 @@ eReturnValues ata_Legacy_Read_DMA_CHS(tDevice*               device,
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -215,10 +217,12 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(tDevice*               device,
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
     set_ata_pt_multipleCount(&ataCommandOptions, device);
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -320,10 +324,12 @@ eReturnValues ata_Legacy_Read_Sectors_CHS(tDevice*               device,
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -461,10 +467,12 @@ eReturnValues ata_Legacy_Write_DMA_CHS(tDevice* device,
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -514,10 +522,12 @@ eReturnValues ata_Legacy_Write_Multiple_CHS(tDevice* device,
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_multipleCount(&ataCommandOptions, device);
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -564,10 +574,12 @@ eReturnValues ata_Legacy_Write_Sectors_CHS(tDevice* device,
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -661,10 +673,12 @@ eReturnValues ata_Legacy_Read_Long_CHS(tDevice* device,
     ataCommandOptions.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -691,10 +705,12 @@ eReturnValues ata_Legacy_Read_Long(tDevice* device, bool retries, uint32_t lba, 
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
     ataCommandOptions.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -727,10 +743,12 @@ eReturnValues ata_Legacy_Write_Long_CHS(tDevice* device,
     ataCommandOptions.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -756,10 +774,12 @@ eReturnValues ata_Legacy_Write_Long(tDevice* device, bool retries, uint32_t lba,
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
     ataCommandOptions.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -820,10 +840,12 @@ eReturnValues ata_Legacy_Write_Same_CHS(tDevice* device,
         return BAD_PARAMETER;
     }
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -882,10 +904,12 @@ eReturnValues ata_Legacy_Write_Same(tDevice* device,
         return BAD_PARAMETER;
     }
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -915,10 +939,13 @@ eReturnValues ata_Legacy_Write_Verify_CHS(tDevice* device,
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), ptrData,
         dataSize);
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
+
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -942,10 +969,13 @@ eReturnValues ata_Legacy_Write_Verify(tDevice* device, uint32_t lba, uint8_t* pt
         device, ATA_WRITE_SECTV_RETRY, false,
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), lba, ptrData,
         dataSize);
+
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -982,7 +1012,7 @@ eReturnValues ata_Legacy_Identify_Device_DMA(tDevice* device, uint8_t* ptrData, 
 #if defined(ENV_BIG_ENDIAN)
     if (ptrData == C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
     {
-        byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000);
+        byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000, 256);
     }
 #endif
 

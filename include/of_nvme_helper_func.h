@@ -30,7 +30,7 @@ extern "C"
 {
 #    endif
 
-    OPENSEA_TRANSPORT_API bool supports_OFNVME_IO(HANDLE deviceHandle);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool supports_OFNVME_IO(HANDLE deviceHandle);
 
     //-----------------------------------------------------------------------------
     //
@@ -45,13 +45,15 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx);
 
-    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(tDevice* device);
 
 #    if defined(__cplusplus)
 }

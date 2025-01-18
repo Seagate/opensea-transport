@@ -267,20 +267,22 @@ eReturnValues nvme_Asynchronous_Event_Request(tDevice* device,
     // Command specific return codes:
     //  5h = The number of concurrently outstanding Asynchronous Event Request commands has been exceeded.
 
-    if (logPageIdentifier)
+    DISABLE_NONNULL_COMPARE
+    if (logPageIdentifier != M_NULLPTR)
     {
         *logPageIdentifier = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 23, 16);
     }
 
-    if (asynchronousEventInformation)
+    if (asynchronousEventInformation != M_NULLPTR)
     {
         *asynchronousEventInformation = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 15, 8);
     }
 
-    if (asynchronousEventType)
+    if (asynchronousEventType != M_NULLPTR)
     {
         *asynchronousEventType = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 2, 0);
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {

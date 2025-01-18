@@ -44,6 +44,8 @@ extern "C"
 #define ASMEDIA_NVME_PT_NVME_OP_OFFSET    1
 #define ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE UINT8_C(16)
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1)
     eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx* nvmCmd);
 
     /////////////////////////////////////
@@ -109,10 +111,16 @@ extern "C"
 #define ASM_NVMP_DATA_IN  UINT8_C(1)
 #define ASM_NVMP_DATA_OUT UINT8_C(2)
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1)
     eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd);
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     eReturnValues asm_nvme_Reset(tDevice* device);
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     eReturnValues asm_nvme_Subsystem_Reset(tDevice* device);
 
 #if defined(__cplusplus)

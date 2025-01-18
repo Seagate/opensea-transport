@@ -33,7 +33,6 @@ extern "C"
 #include <stdlib.h> // for size_t types
 #include <string.h> // For memset
 #include <unistd.h>
-    // \todo Figure out which scsi.h & sg.h should we be including kernel specific or in /usr/..../include
 
 #define SG_PHYSICAL_DRIVE  "/dev/sg"   // followed by a number
 #define SD_PHYSICAL_DRIVE  "/dev/sd"   // followed by a letter
@@ -171,12 +170,12 @@ extern "C"
     // \fn send_sg_io(scsiIoCtx * scsiIoCtx)
     // \brief Function to send a SG_IO ioctl
     // \param scsiIoCtx
-    eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx);
 
     // \fn send_IO(scsiIoCtx * scsiIoCtx)
     // \brief Function to send IO to the device.
     // \param scsiIoCtx
-    eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -194,7 +193,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues os_Device_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Device_Reset(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -212,7 +211,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues os_Bus_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Bus_Reset(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -230,7 +229,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues os_Controller_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Controller_Reset(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -250,27 +249,33 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_PARAM_WO_SIZE(2, 3) eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSize);
 
-    eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx);
 
     // to be used with a deep scan???
     // eReturnValues nvme_Namespace_Rescan(int fd);//rescans a controller for namespaces. This must be a file descriptor
     // without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
 
-    OPENSEA_TRANSPORT_API eReturnValues os_nvme_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_nvme_Reset(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues os_nvme_Subsystem_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(tDevice* device);
 
 #endif
 
+    M_NONNULL_PARAM_LIST(1, 2, 3)
+    M_PARAM_RO(1)
+    M_PARAM_WO(2)
+    M_PARAM_WO(3)
     eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHandle, char** blockHandle);
 
-    eReturnValues device_Reset(int fd);
+    M_FILE_DESCRIPTOR(1) eReturnValues device_Reset(int fd);
 
-    eReturnValues bus_Reset(int fd);
+    M_FILE_DESCRIPTOR(1) eReturnValues bus_Reset(int fd);
 
-    eReturnValues host_Reset(int fd);
+    M_FILE_DESCRIPTOR(1) eReturnValues host_Reset(int fd);
 
     //-----------------------------------------------------------------------------
     //
@@ -286,7 +291,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues os_Lock_Device(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Lock_Device(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -302,13 +307,15 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues os_Unlock_Device(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Unlock_Device(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues os_Update_File_System_Cache(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues
+        os_Update_File_System_Cache(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues
+        os_Unmount_File_Systems_On_Device(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues os_Erase_Boot_Sectors(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(tDevice* device);
 
 #if defined(__cplusplus)
 }

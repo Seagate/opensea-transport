@@ -296,13 +296,15 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
                                        uint8_t* statusCodeType,
                                        uint8_t* statusCode)
 {
-    if (doNotRetry && more && statusCodeType && statusCode)
+    DISABLE_NONNULL_COMPARE
+    if (doNotRetry != M_NULLPTR && more != M_NULLPTR && statusCodeType != M_NULLPTR && statusCode != M_NULLPTR)
     {
         *doNotRetry     = nvmeStatusDWord & BIT31;
         *more           = nvmeStatusDWord & BIT30;
         *statusCodeType = get_8bit_range_uint32(nvmeStatusDWord, 27, 25);
         *statusCode     = get_8bit_range_uint32(nvmeStatusDWord, 24, 17);
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 // Status codes must be in numeric order!
@@ -739,10 +741,12 @@ eReturnValues nvme_Get_SMART_Log_Page(tDevice* device, uint32_t nsid, uint8_t* p
 #ifdef _DEBUG
     printf("-->%s\n", __FUNCTION__);
 #endif
-    if ((pData == M_NULLPTR) || (dataLen < NVME_SMART_HEALTH_LOG_LEN))
+    DISABLE_NONNULL_COMPARE
+    if (pData == M_NULLPTR || (dataLen < NVME_SMART_HEALTH_LOG_LEN))
     {
         return ret;
     }
+    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     smartLog = C_CAST(nvmeSmartLog*, pData);
@@ -768,10 +772,12 @@ eReturnValues nvme_Get_ERROR_Log_Page(tDevice* device, uint8_t* pData, uint32_t 
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    if ((pData == M_NULLPTR) || (dataLen < sizeof(nvmeErrLogEntry)))
+    DISABLE_NONNULL_COMPARE
+    if (pData == M_NULLPTR || (dataLen < sizeof(nvmeErrLogEntry)))
     {
         return ret;
     }
+    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
@@ -793,10 +799,12 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(tDevice* device, uint8_t* pData, uint32_
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    if ((pData == M_NULLPTR) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
+    DISABLE_NONNULL_COMPARE
+    if (pData == M_NULLPTR || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }
+    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
@@ -818,10 +826,12 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice* device, uint8_t* pData, uint
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    if ((pData == M_NULLPTR) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
+    DISABLE_NONNULL_COMPARE
+    if (pData == M_NULLPTR || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }
+    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
@@ -843,10 +853,12 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice* device, uint8_t* pData, uin
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    if ((pData == M_NULLPTR) || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
+    DISABLE_NONNULL_COMPARE
+    if (pData == M_NULLPTR || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }
+    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;

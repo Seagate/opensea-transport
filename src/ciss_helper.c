@@ -1515,7 +1515,8 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
 
 eReturnValues close_CISS_RAID_Device(tDevice* device)
 {
-    if (device && device->os_info.cissDeviceData)
+    DISABLE_NONNULL_COMPARE
+    if (device != M_NULLPTR && device->os_info.cissDeviceData)
     {
         if (close(device->os_info.cissDeviceData->cissHandle))
         {
@@ -1534,6 +1535,7 @@ eReturnValues close_CISS_RAID_Device(tDevice* device)
     {
         return MEMORY_FAILURE;
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t* count)
@@ -1655,7 +1657,7 @@ eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
     uint32_t            found                 = UINT32_C(0);
     DECLARE_ZERO_INIT_ARRAY(char, deviceName, CISS_HANDLE_MAX_LENGTH);
 
-    if (!beginningOfList || !*beginningOfList)
+    if (beginningOfList == M_NULLPTR || *beginningOfList == M_NULLPTR)
     {
         // don't do anything. Only scan when we get a list to use.
         // Each OS that want's to do this should generate a list of handles to look for.
@@ -1725,7 +1727,12 @@ eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
             raidList = raidList->next;
         }
     }
-    *numberOfDevices = found;
+    DISABLE_NONNULL_COMPARE
+    if (numberOfDevices != M_NULLPTR)
+    {
+        *numberOfDevices = found;
+    }
+    RESTORE_NONNULL_COMPARE
     return SUCCESS;
 }
 
@@ -1761,14 +1768,15 @@ eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                         ptrRaidHandleToScan* beginningOfList)
 {
     eReturnValues returnValue = SUCCESS;
-    if (!beginningOfList || !*beginningOfList)
+    if (beginningOfList == M_NULLPTR || *beginningOfList == M_NULLPTR)
     {
         // don't do anything. Only scan when we get a list to use.
         // Each OS that want's to do this should generate a list of handles to look for.
         return SUCCESS;
     }
 
-    if (!(ptrToDeviceList) || (!sizeInBytes))
+    DISABLE_NONNULL_COMPARE
+    if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         return BAD_PARAMETER;
     }
@@ -1873,6 +1881,7 @@ eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
+    RESTORE_NONNULL_COMPARE
     return returnValue;
 }
 #endif // ENABLE_CISS

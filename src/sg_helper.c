@@ -1334,8 +1334,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
 {
     sysFSLowLevelDeviceInfo sysFsInfo;
     safe_memset(&sysFsInfo, sizeof(sysFSLowLevelDeviceInfo), 0, sizeof(sysFSLowLevelDeviceInfo));
-    //set scsi interface and scsi drive until we know otherwise
-    sysFsInfo.drive_type = SCSI_DRIVE;
+    // set scsi interface and scsi drive until we know otherwise
+    sysFsInfo.drive_type     = SCSI_DRIVE;
     sysFsInfo.interface_type = SCSI_INTERFACE;
     get_Linux_SYS_FS_Info(handle, &sysFsInfo);
     // now copy the saved data to tDevice. -TJE
@@ -1366,10 +1366,12 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
 // This depends on mapping in the file system provided by 2.6 and later.
 eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHandle, char** blockHandle)
 {
+    DISABLE_NONNULL_COMPARE
     if (handle == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
     // if the handle passed in contains "nvme" then we know it's a device on the nvme interface
     if (strstr(handle, "nvme") != M_NULLPTR)
     {
@@ -2654,7 +2656,8 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
         safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &ccisslist));
     }
 
-    if (!(ptrToDeviceList) || (!sizeInBytes))
+    DISABLE_NONNULL_COMPARE
+    if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
     }
@@ -2784,6 +2787,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
+    RESTORE_NONNULL_COMPARE
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }
@@ -2804,7 +2808,8 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 eReturnValues close_Device(tDevice* dev)
 {
     int retValue = 0;
-    if (dev)
+    DISABLE_NONNULL_COMPARE
+    if (dev != M_NULLPTR)
     {
         if (dev->os_info.cissDeviceData)
         {
@@ -2838,6 +2843,7 @@ eReturnValues close_Device(tDevice* dev)
     {
         return MEMORY_FAILURE;
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
@@ -2857,10 +2863,12 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 
     int ioctlResult = 0;
 
-    if (!nvmeIoCtx)
+    DISABLE_NONNULL_COMPARE
+    if (nvmeIoCtx != M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     switch (nvmeIoCtx->commandType)
     {

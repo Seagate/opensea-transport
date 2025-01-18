@@ -128,7 +128,7 @@ eReturnValues ata_Identify(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 #if defined(ENV_BIG_ENDIAN)
     if (ptrData == C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
     {
-        byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000);
+        byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000, 256);
     }
 #endif
 
@@ -343,10 +343,12 @@ eReturnValues ata_Read_Log_Ext(tDevice* device,
                (dataSize / LEGACY_DRIVE_SEC_SIZE));
     }
 
-    if (!ptrData || dataSize < LEGACY_DRIVE_SEC_SIZE || dataSize % LEGACY_DRIVE_SEC_SIZE)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR || dataSize < LEGACY_DRIVE_SEC_SIZE || dataSize % LEGACY_DRIVE_SEC_SIZE)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     ataCommandOptions.commandDirection         = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
@@ -436,10 +438,12 @@ eReturnValues ata_Write_Log_Ext(tDevice* device,
                (dataSize / LEGACY_DRIVE_SEC_SIZE));
     }
 
-    if (!ptrData || dataSize < LEGACY_DRIVE_SEC_SIZE || dataSize % LEGACY_DRIVE_SEC_SIZE)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR || dataSize < LEGACY_DRIVE_SEC_SIZE || dataSize % LEGACY_DRIVE_SEC_SIZE)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (useDMA)
     {
@@ -939,10 +943,12 @@ eReturnValues ata_Accessible_Max_Address_Feature(tDevice*       device,
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
+    DISABLE_NONNULL_COMPARE
     if (rtfrs != M_NULLPTR)
     {
         safe_memcpy(rtfrs, sizeof(ataReturnTFRs), &(ataCommandOptions.rtfr), sizeof(ataReturnTFRs));
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -958,10 +964,12 @@ eReturnValues ata_Get_Native_Max_Address_Ext(tDevice* device, uint64_t* nativeMa
     ataReturnTFRs rtfrs;
     safe_memset(&rtfrs, sizeof(rtfrs), 0, sizeof(rtfrs));
     ret = ata_Accessible_Max_Address_Feature(device, AMAC_GET_NATIVE_MAX_ADDRESS, 0, &rtfrs, 0);
-    if (ret == SUCCESS && nativeMaxLBA)
+    DISABLE_NONNULL_COMPARE
+    if (ret == SUCCESS && nativeMaxLBA != M_NULLPTR)
     {
         *nativeMaxLBA = get_ata_pt_LBA_48_from_rtfr(&rtfrs);
     }
+    RESTORE_NONNULL_COMPARE
     return ret;
 }
 
@@ -995,7 +1003,8 @@ eReturnValues ata_Read_Native_Max_Address(tDevice* device, uint64_t* nativeMaxLB
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (ret == SUCCESS && nativeMaxLBA)
+    DISABLE_NONNULL_COMPARE
+    if (ret == SUCCESS && nativeMaxLBA != M_NULLPTR)
     {
         if (ext)
         {
@@ -1006,6 +1015,7 @@ eReturnValues ata_Read_Native_Max_Address(tDevice* device, uint64_t* nativeMaxLB
             *nativeMaxLBA = get_ata_pt_LBA_28(&ataCommandOptions);
         }
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1199,10 +1209,12 @@ eReturnValues ata_Check_Power_Mode(tDevice* device, uint8_t* powerMode)
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_CHECK_POWER_MODE_CMD, false, true);
 
-    if (!powerMode)
+    DISABLE_NONNULL_COMPARE
+    if (powerMode == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1274,10 +1286,12 @@ eReturnValues ata_Data_Set_Management(tDevice* device, bool trimBit, uint8_t* pt
         ataCommandOptions.tfr.ErrorFeature |= BIT0;
     }
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1426,10 +1440,12 @@ eReturnValues ata_Read_Buffer(tDevice* device, uint8_t* ptrData, bool useDMA)
         ataCommandOptions = create_ata_pio_in_cmd(device, ATA_READ_BUF, false, 1, ptrData, LEGACY_DRIVE_SEC_SIZE);
     }
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1473,10 +1489,12 @@ eReturnValues ata_Read_DMA(tDevice*               device,
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
         ptrData, dataSize);
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1521,10 +1539,12 @@ eReturnValues ata_Read_Multiple(tDevice*               device,
         ptrData, dataSize);
     set_ata_pt_multipleCount(&ataCommandOptions, device);
 
+    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1568,10 +1588,12 @@ eReturnValues ata_Read_Sectors(tDevice*               device,
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
         ptrData, dataSize);
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1612,10 +1634,12 @@ eReturnValues ata_Read_Sectors_No_Retry(tDevice* device,
     ataPassthroughCommand ataCommandOptions =
         create_ata_pio_read_lba_cmd(device, ATA_READ_SECT_NORETRY, false, sectorCount, LBA, ptrData, dataSize);
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1675,10 +1699,12 @@ eReturnValues ata_Read_Stream_Ext(tDevice* device,
 
     ataCommandOptions.tfr.Feature48 = commandCCTL;
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1761,10 +1787,12 @@ eReturnValues ata_Request_Sense_Data(tDevice* device,
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_REQUEST_SENSE_DATA, true, true);
-    if (!senseKey || !additionalSenseCode || !additionalSenseCodeQualifier)
+    DISABLE_NONNULL_COMPARE
+    if (senseKey == M_NULLPTR || additionalSenseCode == M_NULLPTR || additionalSenseCodeQualifier == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2064,10 +2092,12 @@ eReturnValues ata_Write_Buffer(tDevice* device, uint8_t* ptrData, bool useDMA)
         ataCommandOptions = create_ata_pio_out_cmd(device, ATA_WRITE_BUF, false, 1, ptrData, LEGACY_DRIVE_SEC_SIZE);
     }
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2111,10 +2141,12 @@ eReturnValues ata_Write_DMA(tDevice* device,
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
         ptrData, dataSize);
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2160,10 +2192,12 @@ eReturnValues ata_Write_Multiple(tDevice* device,
         ptrData, dataSize);
     set_ata_pt_multipleCount(&ataCommandOptions, device);
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2201,11 +2235,12 @@ eReturnValues ata_Write_Sectors(tDevice* device, uint64_t LBA, uint8_t* ptrData,
         device, extendedCmd ? ATA_WRITE_SECT_EXT : ATA_WRITE_SECT, extendedCmd,
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
         ptrData, dataSize);
-
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2244,10 +2279,12 @@ eReturnValues ata_Write_Sectors_No_Retry(tDevice* device, uint64_t LBA, uint8_t*
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), LBA, ptrData,
         dataSize);
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2308,10 +2345,12 @@ eReturnValues ata_Write_Stream_Ext(tDevice* device,
 
     ataCommandOptions.tfr.Feature48 = commandCCTL;
 
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2702,7 +2741,7 @@ eReturnValues ata_Identify_Packet_Device(tDevice* device, uint8_t* ptrData, uint
 #if defined(ENV_BIG_ENDIAN)
     if (ptrData == C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
     {
-        byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000);
+        byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000, 256);
     }
 #endif
 
@@ -3528,17 +3567,19 @@ eReturnValues ata_NCQ_Receive_FPDMA_Queued(tDevice* device,
                                            uint8_t  ncqTag,
                                            uint64_t lba,
                                            uint32_t auxilary,
-                                           uint8_t* ptrData)
+                                           uint8_t* ptrData,
+                                           uint32_t dataSize)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
-        create_ata_queued_cmd(device, ATA_RECEIVE_FPDMA, true, true, ncqTag, XFER_DATA_IN, sectorCount, ptrData,
-                              sectorCount * LEGACY_DRIVE_SEC_SIZE);
+        create_ata_queued_cmd(device, ATA_RECEIVE_FPDMA, true, true, ncqTag, XFER_DATA_IN,
+                              dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
     set_ata_pt_prio_subcmd(&ataCommandOptions, prio, subCommand);
     set_ata_pt_LBA_48(&ataCommandOptions, lba);
     ataCommandOptions.tfr.DeviceHead =
         clear_uint8_bit(ataCommandOptions.tfr.DeviceHead, 4); // spec says this must be zero
     set_ata_pt_aux_icc(&ataCommandOptions, auxilary, 0);
+    M_USE_UNUSED(sectorCount);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3568,7 +3609,7 @@ eReturnValues ata_NCQ_Read_Log_DMA_Ext(tDevice* device,
     uint64_t lba =
         M_BytesTo8ByteValue(0, 0, RESERVED, M_Byte1(pageNumber), RESERVED, RESERVED, M_Byte0(pageNumber), logAddress);
     return ata_NCQ_Receive_FPDMA_Queued(device, UINT8_C(1), C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), prio,
-                                        ncqTag, lba, featureRegister, ptrData);
+                                        ncqTag, lba, featureRegister, ptrData, dataSize);
 }
 
 // ncq ZAC management in
@@ -3579,17 +3620,18 @@ eReturnValues ata_NCQ_Send_FPDMA_Queued(tDevice* device,
                                         uint8_t  ncqTag,
                                         uint64_t lba,
                                         uint32_t auxilary,
-                                        uint8_t* ptrData)
+                                        uint8_t* ptrData,
+                                        uint32_t dataSize)
 {
-    eReturnValues         ret = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions =
-        create_ata_queued_cmd(device, ATA_SEND_FPDMA, true, true, ncqTag, XFER_DATA_OUT, sectorCount, ptrData,
-                              sectorCount * LEGACY_DRIVE_SEC_SIZE);
+    eReturnValues         ret               = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions = create_ata_queued_cmd(
+        device, ATA_SEND_FPDMA, true, true, ncqTag, XFER_DATA_OUT, dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
     set_ata_pt_prio_subcmd(&ataCommandOptions, prio, subCommand);
     set_ata_pt_LBA_48(&ataCommandOptions, lba);
     ataCommandOptions.tfr.DeviceHead =
         clear_uint8_bit(ataCommandOptions.tfr.DeviceHead, 4); // spec says this must be zero
     set_ata_pt_aux_icc(&ataCommandOptions, auxilary, 0);
+    M_USE_UNUSED(sectorCount);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3621,7 +3663,7 @@ eReturnValues ata_NCQ_Data_Set_Management(tDevice* device,
     }
     return ata_NCQ_Send_FPDMA_Queued(device, SEND_FPDMA_DATA_SET_MANAGEMENT,
                                      C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), prio, ncqTag, RESERVED, auxreg,
-                                     ptrData);
+                                     ptrData, dataSize);
 }
 
 // ncq write log DMA ext
@@ -3637,7 +3679,7 @@ eReturnValues ata_NCQ_Write_Log_DMA_Ext(tDevice* device,
         M_BytesTo8ByteValue(0, 0, RESERVED, M_Byte1(pageNumber), RESERVED, RESERVED, M_Byte0(pageNumber), logAddress);
     return ata_NCQ_Send_FPDMA_Queued(device, SEND_FPDMA_WRITE_LOG_DMA_EXT,
                                      C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), prio, ncqTag, lba, RESERVED,
-                                     ptrData);
+                                     ptrData, dataSize);
 }
 
 eReturnValues ata_NCQ_Read_FPDMA_Queued(tDevice* device,

@@ -79,7 +79,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -94,7 +94,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -109,7 +109,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -127,7 +127,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues os_Device_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Device_Reset(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -145,7 +145,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues os_Bus_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Bus_Reset(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -163,7 +163,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues os_Controller_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Controller_Reset(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -183,7 +183,9 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSize);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_PARAM_WO_SIZE(2, 3) eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -198,11 +200,11 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx);
 
-    OPENSEA_TRANSPORT_API eReturnValues os_nvme_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_nvme_Reset(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues os_nvme_Subsystem_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -219,7 +221,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues os_Lock_Device(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Lock_Device(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -236,13 +238,15 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues os_Unlock_Device(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Unlock_Device(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues os_Update_File_System_Cache(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues
+        os_Update_File_System_Cache(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues
+        os_Unmount_File_Systems_On_Device(tDevice* device);
 
-    OPENSEA_TRANSPORT_API eReturnValues os_Erase_Boot_Sectors(tDevice* device);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(tDevice* device);
 
 #if defined(__cplusplus)
 }

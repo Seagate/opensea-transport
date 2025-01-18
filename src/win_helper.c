@@ -4260,7 +4260,8 @@ static eReturnValues close_SCSI_SRB_Handle(tDevice* device)
 eReturnValues close_Device(tDevice* dev)
 {
     int retValue = 0;
-    if (dev)
+    DISABLE_NONNULL_COMPARE
+    if (dev != M_NULLPTR)
     {
 #if defined(ENABLE_CSMI)
         if (is_CSMI_Handle(dev->os_info.name))
@@ -4293,6 +4294,7 @@ eReturnValues close_Device(tDevice* dev)
     {
         return MEMORY_FAILURE;
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 // opens this handle, but does nothing else with it
@@ -5153,7 +5155,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     DWORD                diskExtentsSizeBytes =
                         M_STATIC_CAST(DWORD, sizeof(VOLUME_DISK_EXTENTS) + (sizeof(DISK_EXTENT) * maxExtents));
                     diskExtents = M_REINTERPRET_CAST(PVOLUME_DISK_EXTENTS, safe_malloc(diskExtentsSizeBytes));
-                    if (diskExtents)
+                    if (diskExtents != M_NULLPTR)
                     {
                         safe_memset(diskExtents, diskExtentsSizeBytes, 0, diskExtentsSizeBytes);
                         if (DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, M_NULLPTR, 0,
@@ -6116,8 +6118,8 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         winListVerbosity = VERBOSITY_BUFFERS;
     }
-
-    if (!(ptrToDeviceList) || (!sizeInBytes))
+    DISABLE_NONNULL_COMPARE
+    if (ptrToDeviceList == M_NULLPTR || sizeInBytes == 0)
     {
         returnValue = BAD_PARAMETER;
     }
@@ -6262,7 +6264,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         printf("Win get device list returning %d\n", returnValue);
     }
-
+    RESTORE_NONNULL_COMPARE
     return returnValue;
 }
 
@@ -7272,7 +7274,8 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
         ptrATAPassThroughDirect->DataTransferLength = ULONG_C(0);
         ptrATAPassThroughDirect->DataBuffer         = M_NULLPTR;
 #if WINVER >= SEA_WIN32_WINNT_VISTA
-        ptrATAPassThroughDirect->AtaFlags = ptrATAPassThroughDirect->AtaFlags & M_STATIC_CAST(USHORT, ~(ATA_FLAGS_NO_MULTIPLE));
+        ptrATAPassThroughDirect->AtaFlags =
+            ptrATAPassThroughDirect->AtaFlags & M_STATIC_CAST(USHORT, ~(ATA_FLAGS_NO_MULTIPLE));
 #endif // WIN_VISTA
        // NOLINTEND(bugprone-branch-clone)
         break;
@@ -7602,7 +7605,8 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
         // p_t_ata_pt->ataPTCommand.DataBufferOffset   = offsetof(ATADoubleBufferedIO, dataBuffer);
 #if WINVER >= SEA_WIN32_WINNT_VISTA
         // Turn this bit off in case it was set
-        p_t_ata_pt->ataPTCommand.AtaFlags = p_t_ata_pt->ataPTCommand.AtaFlags & M_STATIC_CAST(USHORT, ~(ATA_FLAGS_NO_MULTIPLE));
+        p_t_ata_pt->ataPTCommand.AtaFlags =
+            p_t_ata_pt->ataPTCommand.AtaFlags & M_STATIC_CAST(USHORT, ~(ATA_FLAGS_NO_MULTIPLE));
 #endif // WIN VISTA
         break;
     default:
@@ -8200,7 +8204,7 @@ eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busT
                                     // doesn't hurt sas/sata drives. - TJE
     uint32_t outputDataSize = sizeof(STORAGE_HW_FIRMWARE_INFO) + (sizeof(STORAGE_HW_FIRMWARE_SLOT_INFO) * slotCount);
     uint8_t* outputData     = M_REINTERPRET_CAST(uint8_t*, safe_malloc(outputDataSize));
-    if (!outputData)
+    if (outputData == M_NULLPTR)
     {
         return MEMORY_FAILURE;
     }
@@ -8461,7 +8465,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     DWORD                         downloadStructureSize = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD) + dataLength;
     PSTORAGE_HW_FIRMWARE_DOWNLOAD downloadIO =
         M_REINTERPRET_CAST(PSTORAGE_HW_FIRMWARE_DOWNLOAD, safe_malloc(downloadStructureSize));
-    if (!downloadIO)
+    if (downloadIO == M_NULLPTR)
     {
         return MEMORY_FAILURE;
     }
@@ -14787,12 +14791,14 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
     }
+    DISABLE_NONNULL_COMPARE
     if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != M_NULLPTR)
     {
         printf("\t  Data Buffer being returned:\n");
         print_Data_Buffer(ptrData, dataSize, true);
         printf("\n");
     }
+    RESTORE_NONNULL_COMPARE
 
     if (bytesReturned != C_CAST(DWORD, dataSize))
     {
@@ -14860,7 +14866,7 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     // set the offset here
     BOOL retStatus = SetFilePointerEx(handleToUse, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
-    if (!retStatus)
+    if (retStatus == FALSE)
     {
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
@@ -14878,12 +14884,14 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     overlappedStruct.Offset     = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
     overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
+    DISABLE_NONNULL_COMPARE
     if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != M_NULLPTR)
     {
         printf("\t  Data Buffer being sent:\n");
         print_Data_Buffer(ptrData, dataSize, true);
         printf("\n");
     }
+    RESTORE_NONNULL_COMPARE
     start_Timer(&commandTimer);
     retStatus                  = WriteFile(handleToUse, ptrData, dataSize, &bytesReturned, &overlappedStruct);
     device->os_info.last_error = GetLastError();
@@ -14911,7 +14919,7 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     overlappedStruct.hEvent                       = M_NULLPTR;
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
-    if (!retStatus) // not successful
+    if (retStatus == FALSE) // not successful
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {

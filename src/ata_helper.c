@@ -993,10 +993,10 @@ eReturnValues send_ATA_Write_Stream_Cmd(tDevice* device,
     return ret;
 }
 
-void byte_Swap_ID_Data_Buffer(uint16_t* idData)
+void byte_Swap_ID_Data_Buffer(uint16_t* idData, uint16_t dataSizeWords)
 {
     uint16_t idIter = UINT16_C(0);
-    for (idIter = 0; idIter < 256; ++idIter)
+    for (idIter = 0; idIter < 256 && idIter < dataSizeWords; ++idIter)
     {
         byte_Swap_16(&idData[idIter]);
     }
@@ -1007,27 +1007,28 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
                                          char     ataSN[ATA_IDENTIFY_SN_LENGTH + 1],
                                          char     ataFW[ATA_IDENTIFY_FW_LENGTH + 1])
 {
-    if (ptrIdentifyData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrIdentifyData != M_NULLPTR)
     {
         ptAtaIdentifyData idData  = C_CAST(ptAtaIdentifyData, ptrIdentifyData);
         bool              validSN = true;
         bool              validMN = true;
         bool              validFW = true;
         // check for valid strings (ATA-2 mentioned if these are set to zero, then they are not defined in the standards
-        if (idData->Word010 == 0)
+        if (idData->Word010 == UINT16_C(0))
         {
             validSN = false;
         }
-        if (idData->Word023 == 0)
+        if (idData->Word023 == UINT16_C(0))
         {
             validFW = false;
         }
-        if (idData->Word027 == 0)
+        if (idData->Word027 == UINT16_C(0))
         {
             validFW = false;
         }
         // fill each buffer with data from ATA ID data
-        if (validSN && ataSN)
+        if (validSN && ataSN != M_NULLPTR)
         {
 #if defined(SERIAL_NUM_LEN) && defined(ATA_IDENTIFY_SN_LENGTH) && ATA_IDENTIFY_SN_LENGTH == SERIAL_NUM_LEN
             uint16_t snLimit = SERIAL_NUM_LEN;
@@ -1048,7 +1049,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
 #endif
             remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
         }
-        if (validFW && ataFW)
+        if (validFW && ataFW != M_NULLPTR)
         {
 #if defined(FW_REV_LEN) && defined(ATA_IDENTIFY_FW_LENGTH) && ATA_IDENTIFY_FW_LENGTH == FW_REV_LEN
             uint16_t fwLimit = FW_REV_LEN;
@@ -1069,7 +1070,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
 #endif
             remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
         }
-        if (validMN && ataMN)
+        if (validMN && ataMN != M_NULLPTR)
         {
 #if defined(MODEL_NUM_LEN) && defined(ATA_IDENTIFY_MN_LENGTH) && ATA_IDENTIFY_MN_LENGTH == MODEL_NUM_LEN
             uint16_t mnLimit = MODEL_NUM_LEN;
@@ -1091,6 +1092,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
         }
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 static eReturnValues get_Identify_Data(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
@@ -1128,6 +1130,7 @@ static eReturnValues initial_Identify_Device(tDevice* device)
 {
     eReturnValues ret           = NOT_SUPPORTED;
     bool          noMoreRetries = false;
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, iddata, LEGACY_DRIVE_SEC_SIZE);
     if ((device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE ||
          device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE) &&
         !(device->drive_info.passThroughHacks.hacksSetByReportedID ||
@@ -1140,8 +1143,7 @@ static eReturnValues initial_Identify_Device(tDevice* device)
     do
     {
         noMoreRetries = true; // start with this to force exit in case of missing error handling
-        ret = get_Identify_Data(device, M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
-                                LEGACY_DRIVE_SEC_SIZE);
+        ret           = get_Identify_Data(device, iddata, LEGACY_DRIVE_SEC_SIZE);
         if (ret != SUCCESS)
         {
             // First check the sense data to see if we got invalid operation code or invalid field in CDB before we
@@ -1218,8 +1220,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
 {
     eReturnValues ret = UNKNOWN;
     // Both pointers pointing to the same data.
-    uint16_t* ident_word   = &device->drive_info.IdentifyData.ata.Word000;
-    uint8_t*  identifyData = C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, 512);
+    uint16_t* ident_word = &device->drive_info.IdentifyData.ata.Word000;
 #ifdef _DEBUG
     printf("%s -->\n", __FUNCTION__);
 #endif
@@ -1232,11 +1234,11 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         uint8_t  head             = UINT8_C(0);
         uint8_t  spt              = UINT8_C(0);
 
-        uint64_t* fillWWN;
-        uint32_t* fillLogicalSectorSize;
-        uint32_t* fillPhysicalSectorSize;
-        uint16_t* fillSectorAlignment;
-        uint64_t* fillMaxLba;
+        uint64_t* fillWWN                = M_NULLPTR;
+        uint32_t* fillLogicalSectorSize  = M_NULLPTR;
+        uint32_t* fillPhysicalSectorSize = M_NULLPTR;
+        uint16_t* fillSectorAlignment    = M_NULLPTR;
+        uint64_t* fillMaxLba             = M_NULLPTR;
 
         if (device->drive_info.interface_type == IDE_INTERFACE &&
             device->drive_info.scsiVersion == SCSI_VERSION_NO_STANDARD)
@@ -2593,10 +2595,13 @@ uint8_t calculate_ATA_Checksum(const uint8_t* ptrData)
 {
     uint32_t checksum = UINT32_C(0);
     uint32_t counter  = UINT32_C(0);
-    if (!ptrData)
+
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
-        return BAD_PARAMETER;
+        return UINT8_C(0);
     }
+    RESTORE_NONNULL_COMPARE
     for (counter = 0; counter < 511; ++counter)
     {
         checksum = checksum + ptrData[counter];
@@ -2606,13 +2611,14 @@ uint8_t calculate_ATA_Checksum(const uint8_t* ptrData)
 
 bool is_Checksum_Valid(const uint8_t* ptrData, uint32_t dataSize, uint32_t* firstInvalidSector)
 {
-    bool     isValid = false;
-    uint32_t checksumCalc;
-    if (!ptrData || !firstInvalidSector)
+    bool     isValid      = false;
+    uint32_t checksumCalc = UINT32_C(0);
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR || firstInvalidSector == M_NULLPTR)
     {
         return false;
     }
-    checksumCalc = 0;
+    RESTORE_NONNULL_COMPARE
     for (uint32_t blockIter = UINT32_C(0); blockIter < (dataSize / LEGACY_DRIVE_SEC_SIZE); ++blockIter)
     {
         for (uint32_t counter = UINT32_C(0); counter <= 511; ++counter)
@@ -2635,12 +2641,14 @@ bool is_Checksum_Valid(const uint8_t* ptrData, uint32_t dataSize, uint32_t* firs
 
 eReturnValues set_ATA_Checksum_Into_Data_Buffer(uint8_t* ptrData, uint32_t dataSize)
 {
-    eReturnValues ret = SUCCESS;
-    if (!ptrData)
+    eReturnValues ret      = SUCCESS;
+    uint32_t      checksum = UINT32_C(0);
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    uint32_t checksum = UINT32_C(0);
+    RESTORE_NONNULL_COMPARE
     for (uint32_t blockIter = UINT32_C(0); blockIter < (dataSize / LEGACY_DRIVE_SEC_SIZE); ++blockIter)
     {
         checksum                 = calculate_ATA_Checksum(&ptrData[blockIter]);
@@ -2737,7 +2745,8 @@ static bool is_Current_CHS_Info_Valid(tDevice* device)
 eReturnValues convert_CHS_To_LBA(tDevice* device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t* lba)
 {
     eReturnValues ret = SUCCESS;
-    if (lba)
+    DISABLE_NONNULL_COMPARE
+    if (lba != M_NULLPTR)
     {
         if (is_CHS_Mode_Supported(device))
         {
@@ -2757,6 +2766,7 @@ eReturnValues convert_CHS_To_LBA(tDevice* device, uint16_t cylinder, uint8_t hea
     {
         ret = BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
     return ret;
 }
 
@@ -2764,7 +2774,8 @@ eReturnValues convert_LBA_To_CHS(tDevice* device, uint32_t lba, uint16_t* cylind
 {
     eReturnValues ret = SUCCESS;
     lba &= MAX_28_BIT_LBA;
-    if (cylinder && head && sector)
+    DISABLE_NONNULL_COMPARE
+    if (cylinder != M_NULLPTR && head != M_NULLPTR && sector != M_NULLPTR)
     {
         uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
         // uint32_t lbaCapacity = M_BytesTo4ByteValue(identifyPtr[123], identifyPtr[122], identifyPtr[121],
@@ -2825,5 +2836,6 @@ eReturnValues convert_LBA_To_CHS(tDevice* device, uint32_t lba, uint16_t* cylind
     {
         ret = BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
     return ret;
 }

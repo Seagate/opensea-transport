@@ -23,9 +23,12 @@ extern "C"
 {
 #endif
 
-    void print_FIS(void* fis, uint32_t fisLengthBytes);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO_SIZE(1, 2) void print_FIS(void* fis, uint32_t fisLengthBytes);
 
-    eReturnValues build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBlock* ataPTCmd, uint8_t pmPort);
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RW(1)
+    M_PARAM_RO(2) eReturnValues
+        build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBlock* ataPTCmd, uint8_t pmPort);
 
 #if defined(__cplusplus)
 }

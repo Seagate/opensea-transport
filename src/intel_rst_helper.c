@@ -983,7 +983,8 @@ static void dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, uint32_t returnCode)
 eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
-    if (nvmeIoCtx)
+    DISABLE_NONNULL_COMPARE
+    if (nvmeIoCtx != M_NULLPTR)
     {
         if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
         {
@@ -1051,6 +1052,7 @@ eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx)
     {
         ret = BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
     return ret;
 }
 
@@ -1060,7 +1062,8 @@ eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx)
 #    if defined(INTRST_DEBUG)
     printf("Intel: NVM passthrough request\n");
 #    endif // INTRST_DEBUG
-    if (nvmeIoCtx)
+    DISABLE_NONNULL_COMPARE
+    if (nvmeIoCtx != M_NULLPTR)
     {
         if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
         {
@@ -1093,6 +1096,7 @@ eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx)
 #    if defined(INTRST_DEBUG)
     printf("Intel: NVM result: %d\n", ret);
 #    endif // INTRST_DEBUG
+    RESTORE_NONNULL_COMPARE
     return ret;
 }
 
@@ -1102,7 +1106,8 @@ eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx)
 #    if defined(INTRST_DEBUG)
     printf("Intel: Received SCSI command for translation\n");
 #    endif // INTRST_DEBUG
-    if (scsiIoCtx)
+    DISABLE_NONNULL_COMPARE
+    if (scsiIoCtx != M_NULLPTR)
     {
         ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
     }
@@ -1110,6 +1115,7 @@ eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx)
     {
         ret = BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 #    if defined(INTRST_DEBUG)
     printf("Intel: Translated command result: %d\n", ret);
 #    endif // INTRST_DEBUG

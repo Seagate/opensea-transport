@@ -38,6 +38,8 @@ extern "C"
     //!   \return VOID
     //
     //-----------------------------------------------------------------------------
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device);
 
 #if defined(__cplusplus)

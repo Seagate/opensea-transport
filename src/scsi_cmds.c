@@ -36,7 +36,7 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSe
     eReturnValues      ret                       = UNKNOWN;
     bool               localSenseFieldsAllocated = false;
     ptrSenseDataFields localSenseFields          = M_NULLPTR;
-    if (!pSenseFields)
+    if (pSenseFields == M_NULLPTR)
     {
         localSenseFields = M_REINTERPRET_CAST(ptrSenseDataFields, safe_calloc(1, sizeof(senseDataFields)));
         if (!localSenseFields)
@@ -172,7 +172,7 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice*               device,
     uint8_t*      senseBuffer = senseData;
     safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
 
-    if (!senseBuffer || senseDataLen == 0)
+    if (senseBuffer == M_NULLPTR || senseDataLen == UINT32_C(0))
     {
         senseBuffer  = device->drive_info.lastCommandSenseData;
         senseDataLen = SPC3_SENSE_LEN;
@@ -182,12 +182,12 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice*               device,
         safe_memset(senseBuffer, senseDataLen, 0, senseDataLen);
     }
     // check a couple of the parameters before continuing
-    if (!device)
+    if (device == M_NULLPTR)
     {
         perror("device struct is M_NULLPTR!");
         return BAD_PARAMETER;
     }
-    if (!cdb)
+    if (cdb == M_NULLPTR)
     {
         perror("cdb array is M_NULLPTR!");
         return BAD_PARAMETER;
@@ -197,7 +197,7 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice*               device,
         perror("Invalid CDB length specified!");
         return BAD_PARAMETER;
     }
-    if (!pdata && dataLen != 0)
+    if (pdata == M_NULLPTR && dataLen != UINT32_C(0))
     {
         perror("Datalen must be set to 0 when pdata is M_NULLPTR");
         return BAD_PARAMETER;
@@ -532,6 +532,7 @@ eSCSICmdSupport is_SCSI_Operation_Code_Supported(tDevice* device, ptrScsiOperati
     // Special cases to handle:
     //  Write buffer (firmware download) - may be reported in different ways depending on drive/standard. Sometimes
     //  service action applies, sometimes it doesn't
+    DISABLE_NONNULL_COMPARE
     if (device != M_NULLPTR && request != M_NULLPTR)
     {
         bool checkCmd = true;
@@ -588,6 +589,7 @@ eSCSICmdSupport is_SCSI_Operation_Code_Supported(tDevice* device, ptrScsiOperati
             }
         }
     }
+    RESTORE_NONNULL_COMPARE
     return cmdsupport;
 }
 
@@ -721,12 +723,12 @@ eReturnValues scsi_Request_Sense_Cmd(tDevice* device, bool descriptorBit, uint8_
     {
         printf("Sending SCSI Request Sense Command\n");
     }
-
+    DISABLE_NONNULL_COMPARE
     if (pdata == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-
+    RESTORE_NONNULL_COMPARE
     // Set up the CDB.
     cdb[OPERATION_CODE] = REQUEST_SENSE_CMD; // REQUEST_SENSE;
     if (descriptorBit)
@@ -2930,14 +2932,14 @@ eReturnValues scsi_Read_6(tDevice* device,
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
-
-    if (!ptrData && transferLengthBlocks == 0)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR && transferLengthBlocks == 0)
     {
         // In read 6, transferlengthBlocks is zero, then we are reading 256 sectors of data, so we need to say this is a
         // bad parameter combination!!!
         return BAD_PARAMETER;
     }
-
+    RESTORE_NONNULL_COMPARE
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending SCSI Read 6\n");
@@ -3419,11 +3421,12 @@ eReturnValues scsi_Reassign_Blocks(tDevice* device, bool longLBA, bool longList,
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
-
-    if (!ptrData)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -3916,14 +3919,14 @@ eReturnValues scsi_Write_6(tDevice* device,
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
-
-    if (!ptrData && transferLengthBlocks == 0)
+    DISABLE_NONNULL_COMPARE
+    if (ptrData == M_NULLPTR && transferLengthBlocks == 0)
     {
         // In write 6, transferlengthBlocks is zero, then we are reading 256 sectors of data, so we need to say this is
         // a bad parameter combination!!!
         return BAD_PARAMETER;
     }
-
+    RESTORE_NONNULL_COMPARE
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending SCSI Write 6\n");

@@ -45,7 +45,8 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -63,7 +64,8 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -81,7 +83,8 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -98,7 +101,7 @@ extern "C"
     //!   \return true = supports Intel RST firmware update IOCTLs, false = not supported.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -116,7 +119,8 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* scsiIoCtx);
 
 #    if defined(__cplusplus)
 }

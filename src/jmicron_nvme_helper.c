@@ -37,7 +37,8 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
                                             eJMNvmeVendorControl    jmCtrl,
                                             nvmeCmdCtx*             nvmCmd)
 {
-    if (!cdb)
+    DISABLE_NONNULL_COMPARE
+    if (cdb == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
@@ -58,7 +59,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
     case JM_PROTOCOL_SET_PAYLOAD:
         *cdbDataDirection = XFER_DATA_OUT;
         // setup the data payload, which may include a command to issue depending on vendor control field.
-        if (!dataPtr || dataSize < JMICRON_NVME_CMD_PAYLOAD_SIZE)
+        if (dataPtr == M_NULLPTR || dataSize < JMICRON_NVME_CMD_PAYLOAD_SIZE)
         {
             return BAD_PARAMETER;
         }
@@ -176,7 +177,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
         *cdbDataDirection   = XFER_DATA_IN;
         parameterListLength = dataSize;
         // set admin bit based on CMD being sent
-        if (nvmCmd)
+        if (nvmCmd != M_NULLPTR)
         {
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
@@ -193,7 +194,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
         *cdbDataDirection   = XFER_DATA_OUT;
         parameterListLength = dataSize;
         // set admin bit based on CMD being sent
-        if (nvmCmd)
+        if (nvmCmd != M_NULLPTR)
         {
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
@@ -209,7 +210,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
     case JM_PROTOCOL_NON_DATA:
         *cdbDataDirection = XFER_NO_DATA;
         // set admin bit based on CMD being sent
-        if (nvmCmd)
+        if (nvmCmd != M_NULLPTR)
         {
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
@@ -225,7 +226,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
     case JM_PROTOCOL_RETURN_RESPONSE_INFO:
         *cdbDataDirection   = XFER_DATA_IN;
         parameterListLength = JMICRON_NVME_CMD_PAYLOAD_SIZE;
-        if (nvmCmd)
+        if (nvmCmd != M_NULLPTR)
         {
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
@@ -247,6 +248,8 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
     cdb[4] = M_Byte1(parameterListLength);
     cdb[5] = M_Byte0(parameterListLength);
 
+    RESTORE_NONNULL_COMPARE
+
     return SUCCESS;
 }
 
@@ -256,10 +259,12 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmCDB, JMICRON_NVME_CDB_SIZE);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE);
     eDataTransferDirection jmCDBDir = 0;
-    if (!nvmCmd)
+    DISABLE_NONNULL_COMPARE
+    if (nvmCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
     // 1. build CDB & data for command to send
     // Send CDB to set the command values that will be used to issue a command.
     ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE,

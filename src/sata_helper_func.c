@@ -30,10 +30,12 @@
 eReturnValues build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBlock* ataPTCmd, uint8_t pmPort)
 {
     eReturnValues ret = SUCCESS;
-    if (!h2dFis || !ataPTCmd)
+    DISABLE_NONNULL_COMPARE
+    if (h2dFis == M_NULLPTR || ataPTCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     h2dFis->fisType = FIS_TYPE_REG_H2D;
     h2dFis->byte1   = H2D_COMMAND_BIT_MASK |
@@ -66,7 +68,8 @@ eReturnValues build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBloc
 // TJE
 void print_FIS(void* fis, uint32_t fisLengthBytes)
 {
-    if (fis)
+    DISABLE_NONNULL_COMPARE
+    if (fis != M_NULLPTR)
     {
         uint8_t* fisPtr =
             fis; // this is so that if using a fis structure, there aren't casting warnings calling the function
@@ -317,4 +320,5 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             break;
         }
     }
+    RESTORE_NONNULL_COMPARE
 }
