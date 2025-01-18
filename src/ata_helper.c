@@ -1220,8 +1220,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
 {
     eReturnValues ret = UNKNOWN;
     // Both pointers pointing to the same data.
-    DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, 512);
-    uint16_t* ident_word = &device->drive_info.IdentifyData.ata.Word000;
+    uint8_t*  identifyData = M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000);
+    uint16_t* ident_word   = &device->drive_info.IdentifyData.ata.Word000;
 #ifdef _DEBUG
     printf("%s -->\n", __FUNCTION__);
 #endif
