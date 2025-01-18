@@ -2651,7 +2651,7 @@ bool is_Seagate_Vendor_K(tDevice* device)
 {
     bool isVendorK = false;
     // LaCie Vendor ID
-    if (is_LaCie(device))
+    if (is_LaCie(device) || is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident))
     {
         // PID can be set to 1120, 1131, or 1132
         if (device->drive_info.adapter_info.vendorIDValid &&
@@ -2667,24 +2667,19 @@ bool is_Seagate_Vendor_K(tDevice* device)
                 }
             }
         }
-        else if (!device->drive_info.adapter_info.vendorIDValid)
+        else if (strcmp(device->drive_info.product_identification, "Rugged Mini SSD") == 0 ||
+                 strcmp(device->drive_info.product_identification, "Ultra Touch SSD") == 0)
         {
-            // Already checked vendor ID, so check SCSI MN, then check ATA reported info
-            if (strcmp(device->drive_info.product_identification, "Rugged Mini SSD") == 0)
+            if (device->drive_info.bridge_info.isValid &&
+                strcmp(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") == 0)
             {
-                if (device->drive_info.bridge_info.isValid &&
-                    strcmp(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") == 0)
+                // Known FWRevs
+                if (strcmp(device->drive_info.bridge_info.childDriveFW, "W0519CR0") == 0 ||
+                    strcmp(device->drive_info.bridge_info.childDriveFW, "W0918AR0") == 0 ||
+                    strcmp(device->drive_info.bridge_info.childDriveFW, "W0918BR0") == 0 ||
+                    strcmp(device->drive_info.bridge_info.childDriveFW, "W1005AM0") == 0)
                 {
-                    // Known FWRevs
-                    // W0519CR0
-                    // W0918AR0
-                    // W1005AM0
-                    if (strcmp(device->drive_info.bridge_info.childDriveFW, "W0519CR0") == 0 ||
-                        strcmp(device->drive_info.bridge_info.childDriveFW, "W0918AR0") == 0 ||
-                        strcmp(device->drive_info.bridge_info.childDriveFW, "W1005AM0") == 0)
-                    {
-                        isVendorK = true;
-                    }
+                    isVendorK = true;
                 }
             }
         }
@@ -2759,6 +2754,10 @@ eSeagateFamily is_Seagate_Family(tDevice* device)
                 else if (is_Seagate_Model_Number_Vendor_SSD_PJ(device, false))
                 {
                     isSeagateFamily = SEAGATE_VENDOR_SSD_PJ;
+                }
+                else if (is_Seagate_Vendor_K(device))
+                {
+                    isSeagateFamily = SEAGATE_VENDOR_K;
                 }
             }
             break;
@@ -3649,6 +3648,27 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR   = true;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
         device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 130560;
+        break;
+    case 0x207C: // Ultra Touch SSD
+        passthroughHacksSet                                                       = true;
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 15;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages               = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
+        // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+        device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU               = true;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported               = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength =
+            512; // NOTE: Test failed with zero, but setting 512 for single sectors
         break;
     case 0x2088: // Firecuda eSSD
         device->drive_info.passThroughHacks.passthroughType                     = NVME_PASSTHROUGH_REALTEK;
