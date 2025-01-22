@@ -40,8 +40,10 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RW(1)
-    M_PARAM_WO(2) eReturnValues
-        get_Return_TFRs_From_Passthrough_Results_Log(tDevice* device, ataReturnTFRs* ataRTFRs, uint16_t parameterCode);
+    M_PARAM_WO(2)
+    eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(tDevice*       device,
+                                                               ataReturnTFRs* ataRTFRs,
+                                                               uint16_t       parameterCode);
 
     //-----------------------------------------------------------------------------
     //
@@ -60,9 +62,10 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO_SIZE(1, 2)
-    M_PARAM_WO(3) eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* ptrSenseData,
-                                                                            uint32_t       senseDataSize,
-                                                                            ataReturnTFRs* rtfr);
+    M_PARAM_WO(3)
+    eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* ptrSenseData,
+                                                              uint32_t       senseDataSize,
+                                                              ataReturnTFRs* rtfr);
 
     //-----------------------------------------------------------------------------
     //
@@ -84,11 +87,12 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2, 4)
     M_PARAM_RO(1)
-    M_PARAM_RO_SIZE(2, 3) M_PARAM_RW(4) eReturnValues
-        get_RTFRs_From_Fixed_Format_Sense_Data(tDevice*               device,
-                                               const uint8_t*         ptrSenseData,
-                                               uint32_t               senseDataSize,
-                                               ataPassthroughCommand* ataCmd);
+    M_PARAM_RO_SIZE(2, 3)
+    M_PARAM_RW(4)
+    eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(tDevice*               device,
+                                                         const uint8_t*         ptrSenseData,
+                                                         uint32_t               senseDataSize,
+                                                         ataPassthroughCommand* ataCmd);
 
     //-----------------------------------------------------------------------------
     //
@@ -110,10 +114,11 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_PARAM_RW(2) bool get_Return_TFRs_From_Sense_Data(tDevice*               device,
-                                                       ataPassthroughCommand* ataCommandOptions,
-                                                       eReturnValues          ioRet,
-                                                       eReturnValues          senseRet);
+    M_PARAM_RW(2)
+    bool get_Return_TFRs_From_Sense_Data(tDevice*               device,
+                                         ataPassthroughCommand* ataCommandOptions,
+                                         eReturnValues          ioRet,
+                                         eReturnValues          senseRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -268,8 +273,13 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2, 3, 4)
     M_PARAM_RO(1)
-    M_PARAM_RW(2) M_PARAM_RW(3) M_PARAM_RO(4) eReturnValues
-        build_SAT_CDB(tDevice* device, uint8_t** satCDB, eCDBLen* cdbLen, ataPassthroughCommand* ataCommandOptions);
+    M_PARAM_RW(2)
+    M_PARAM_RW(3)
+    M_PARAM_RO(4)
+    eReturnValues build_SAT_CDB(tDevice*               device,
+                                uint8_t**              satCDB,
+                                eCDBLen*               cdbLen,
+                                ataPassthroughCommand* ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //

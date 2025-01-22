@@ -80,19 +80,24 @@ extern "C"
     // Entry is always added in currentPtr->next
     M_NONNULL_PARAM_LIST(2)
     M_PARAM_RW(1)
-    M_NULL_TERM_STRING(2) M_PARAM_RO(2) ptrRaidHandleToScan
-        add_RAID_Handle(ptrRaidHandleToScan currentPtr, const char* handleToScan, raidTypeHint raidHint);
+    M_NULL_TERM_STRING(2)
+    M_PARAM_RO(2)
+    ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr,
+                                        const char*         handleToScan,
+                                        raidTypeHint        raidHint);
 
     // Same as above, but checks to make sure that the provided handle is not already part of the list to scan - helpful
     // for some configurations where a RAID also has JBOD/passthrough disks available on the same HBA If already in the
     // list, currentPtr is returned
     M_NONNULL_PARAM_LIST(3)
     M_PARAM_RO(1)
-    M_PARAM_RW(2) M_NULL_TERM_STRING(3) M_PARAM_RO(3) ptrRaidHandleToScan
-        add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan listBegin,
-                                       ptrRaidHandleToScan currentPtr,
-                                       const char*         handleToScan,
-                                       raidTypeHint        raidHint);
+    M_PARAM_RW(2)
+    M_NULL_TERM_STRING(3)
+    M_PARAM_RO(3)
+    ptrRaidHandleToScan add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan listBegin,
+                                                       ptrRaidHandleToScan currentPtr,
+                                                       const char*         handleToScan,
+                                                       raidTypeHint        raidHint);
 
     // Make it easier to remove an item. Useful when scanning multiple RAID libs because the first RAID lib can remove
     // handles that did in fact work so that they are not scanned again by another RAID library. returns a pointer to

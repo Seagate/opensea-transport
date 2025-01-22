@@ -1905,8 +1905,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_NULL_TERM_STRING(1) M_PARAM_RW(2) OPENSEA_TRANSPORT_API eReturnValues
-        get_Device(const char* filename, tDevice* device);
+    M_NULL_TERM_STRING(1)
+    M_PARAM_RW(2) OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* filename, tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -1955,8 +1955,10 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    OPENSEA_TRANSPORT_API eReturnValues
-        get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags);
+    OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* const ptrToDeviceList,
+                                                        uint32_t       sizeInBytes,
+                                                        versionBlock   ver,
+                                                        uint64_t       flags);
 
     //-----------------------------------------------------------------------------
     //
@@ -2007,8 +2009,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_NULL_TERM_STRING(1) M_PARAM_WO_SIZE(2, 3) OPENSEA_TRANSPORT_API size_t
-        load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize);
+    M_NULL_TERM_STRING(1)
+    M_PARAM_WO_SIZE(2, 3) OPENSEA_TRANSPORT_API size_t load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2544,8 +2546,9 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RW(1)
-    OPENSEA_TRANSPORT_API eReturnValues
-        remove_Device(tDevice* deviceList, uint32_t driveToRemoveIdx, volatile uint32_t* numberOfDevices);
+    OPENSEA_TRANSPORT_API eReturnValues remove_Device(tDevice*           deviceList,
+                                                      uint32_t           driveToRemoveIdx,
+                                                      volatile uint32_t* numberOfDevices);
 
     M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice* device);
 

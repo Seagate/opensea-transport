@@ -54,17 +54,19 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    M_PARAM_RW(3) eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
-                                                           M_ATTR_UNUSED uint64_t flags,
-                                                           ptrRaidHandleToScan*   beginningOfList);
+    M_PARAM_RW(3)
+    eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
+                                             M_ATTR_UNUSED uint64_t flags,
+                                             ptrRaidHandleToScan*   beginningOfList);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    M_PARAM_RW(5) eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
-                                                          uint32_t             sizeInBytes,
-                                                          versionBlock         ver,
-                                                          uint64_t             flags,
-                                                          ptrRaidHandleToScan* beginningOfList);
+    M_PARAM_RW(5)
+    eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
+                                            uint32_t             sizeInBytes,
+                                            versionBlock         ver,
+                                            uint64_t             flags,
+                                            ptrRaidHandleToScan* beginningOfList);
 
 #    if defined(__cplusplus)
 }

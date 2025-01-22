@@ -67,13 +67,14 @@ extern "C"
     M_PARAM_WO(1)
     M_PARAM_RO(2)
     M_PARAM_WO_SIZE(3, 4)
-    M_PARAM_RO(7) eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
-                                                              eDataTransferDirection* cdbDataDirection,
-                                                              uint8_t*                dataPtr,
-                                                              uint32_t                dataSize,
-                                                              eJMNvmeProtocol         jmProtocol,
-                                                              eJMNvmeVendorControl    jmCtrl,
-                                                              nvmeCmdCtx*             nvmCmd);
+    M_PARAM_RO(7)
+    eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
+                                                eDataTransferDirection* cdbDataDirection,
+                                                uint8_t*                dataPtr,
+                                                uint32_t                dataSize,
+                                                eJMNvmeProtocol         jmProtocol,
+                                                eJMNvmeVendorControl    jmCtrl,
+                                                nvmeCmdCtx*             nvmCmd);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)

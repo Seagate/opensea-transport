@@ -27,19 +27,19 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RW(1)
-    M_PARAM_RO(2) eReturnValues
-        build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH], ataPassthroughCommand* ataPtCmd);
+    M_PARAM_RO(2)
+    eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH], ataPassthroughCommand* ataPtCmd);
 
     // NOTE: This is a stub. There is not currently a known way to get RTFRs when sending this passthrough CDB
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_PARAM_RW(2) eReturnValues
-        get_RTFRs_From_CSMI_Legacy(tDevice* device, ataPassthroughCommand* ataCommandOptions, int commandRet);
+    M_PARAM_RW(2)
+    eReturnValues get_RTFRs_From_CSMI_Legacy(tDevice* device, ataPassthroughCommand* ataCommandOptions, int commandRet);
 
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_PARAM_RW(2) eReturnValues
-        send_CSMI_Legacy_ATA_Passthrough(tDevice* device, ataPassthroughCommand* ataCommandOptions);
+    M_PARAM_RW(2)
+    eReturnValues send_CSMI_Legacy_ATA_Passthrough(tDevice* device, ataPassthroughCommand* ataCommandOptions);
 
 #if defined(__cplusplus)
 }

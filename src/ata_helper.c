@@ -41,7 +41,7 @@ typedef enum eATADeviceTypeEnum
 static eATADeviceType get_ATA_Device_Type_From_Signature(ataReturnTFRs* rtfrs)
 {
     eATADeviceType type = ATA_DEVICE_TYPE_NONE;
-    if (rtfrs)
+    if (rtfrs != M_NULLPTR)
     {
         if (rtfrs->secCnt == 0x01 && rtfrs->lbaLow == 0x01)
         {
@@ -113,7 +113,7 @@ bool is_ATA_Identify_Word_Valid_SATA(uint16_t word)
 static bool is_Buffer_Non_Zero(const uint8_t* ptrData, uint32_t dataLen)
 {
     bool isNonZero = false;
-    if (ptrData)
+    if (ptrData != M_NULLPTR)
     {
         for (uint32_t iter = UINT32_C(0); iter < dataLen; ++iter)
         {
@@ -367,12 +367,12 @@ eReturnValues send_ATA_SCT_Read_Write_Long(tDevice*    device,
         // send a SCT command
         if (SUCCESS == send_ATA_SCT_Command(device, readWriteLongCommandSector, LEGACY_DRIVE_SEC_SIZE, true))
         {
-            if (numberOfECCCRCBytes)
+            if (numberOfECCCRCBytes != M_NULLPTR)
             {
                 *numberOfECCCRCBytes = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow,
                                                            device->drive_info.lastCommandRTFRs.secCnt);
             }
-            if (numberOfBlocksRequested)
+            if (numberOfBlocksRequested != M_NULLPTR)
             {
                 *numberOfBlocksRequested = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaHi,
                                                                device->drive_info.lastCommandRTFRs.lbaMid);
@@ -389,12 +389,12 @@ eReturnValues send_ATA_SCT_Read_Write_Long(tDevice*    device,
         // send a SCT command
         if (SUCCESS == send_ATA_SCT_Command(device, readWriteLongCommandSector, LEGACY_DRIVE_SEC_SIZE, true))
         {
-            if (numberOfECCCRCBytes)
+            if (numberOfECCCRCBytes != M_NULLPTR)
             {
                 *numberOfECCCRCBytes = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow,
                                                            device->drive_info.lastCommandRTFRs.secCnt);
             }
-            if (numberOfBlocksRequested)
+            if (numberOfBlocksRequested != M_NULLPTR)
             {
                 *numberOfBlocksRequested = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaHi,
                                                                device->drive_info.lastCommandRTFRs.lbaMid);

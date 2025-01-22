@@ -135,7 +135,7 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
 {
     // this does it's best to parse and print in a human readable for the devinfo
     // structure based on all the known/reported flags in devinfo.h
-    if (devInfoData)
+    if (devInfoData != M_NULLPTR)
     {
         printf("struct devinfo:\n");
         printf("\tdevtype = %c", devInfoData->devtype);
@@ -1115,7 +1115,7 @@ static int get_Adapter_IDs(tDevice* device, char* name)
     {
         snprintf(odmCriteria, MAX_ODMI_CRIT, "name='%s'", name);
         ptrcudv = odm_get_obj(CuDv_CLASS, odmCriteria, &cudv, ODM_FIRST);
-        if (ptrcudv)
+        if (ptrcudv != M_NULLPTR)
         {
             // the parent should be available in ptrcudv now.
             if (device->deviceVerbosity > VERBOSITY_DEFAULT)
@@ -1283,12 +1283,12 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             return MEMORY_FAILURE;
         }
         char* diskName = strrchr(diskFullName, 'r'); // point to r in /dev/rhdisk#
-        if (diskName)
+        if (diskName != M_NULLPTR)
         {
             diskName++; // point just past the r so that it is only hdisk#
             snprintf(odmCriteria, MAX_ODMI_CRIT, "name='%s'", diskName);
             ptrcudv = odm_get_obj(CuDv_CLASS, odmCriteria, &cudv, ODM_FIRST);
-            if (ptrcudv)
+            if (ptrcudv != M_NULLPTR)
             {
                 // the parent should be available in ptrcudv now.
                 if (device->deviceVerbosity > VERBOSITY_DEFAULT)
@@ -3035,7 +3035,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 eReturnValues close_Device(tDevice* dev)
 {
     int retValue = 0;
-    if (dev)
+    if (dev != M_NULLPTR)
     {
         retValue                = close(dev->os_info.fd);
         dev->os_info.last_error = errno;

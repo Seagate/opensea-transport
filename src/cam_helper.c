@@ -176,7 +176,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
         device->os_info.fileSystemInfo.isSystemDisk        = false;
         ptrsPartitionInfo parts =
             M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
-        if (parts)
+        if (parts != M_NULLPTR)
         {
             if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
             {
@@ -1442,7 +1442,7 @@ eReturnValues os_Device_Reset(tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
-    if (ccb)
+    if (ccb != M_NULLPTR)
     {
         CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
         ccb->ccb_h.func_code = XPT_RESET_DEV;
@@ -1466,7 +1466,7 @@ eReturnValues os_Bus_Reset(tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
-    if (ccb)
+    if (ccb != M_NULLPTR)
     {
         CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
         ccb->ccb_h.func_code = XPT_RESET_BUS;
@@ -1722,7 +1722,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
     {
         ptrsPartitionInfo parts =
             M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
-        if (parts)
+        if (parts != M_NULLPTR)
         {
             if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
             {

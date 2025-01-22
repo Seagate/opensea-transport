@@ -128,7 +128,7 @@ static bool supports_CISS_IOCTLs(int fd)
 static bool create_OS_CISS_Handle_Name(const char* input, char* osHandle)
 {
     bool success = false;
-    if (input)
+    if (input != M_NULLPTR)
     {
         if (strncmp(input, "sg", 2) == 0 || strncmp(input, "ciss", 4) == 0 || strncmp(input, "smartpqi", 8) == 0)
         {
@@ -193,7 +193,7 @@ static bool create_OS_CISS_Handle_Name(const char* input, char* osHandle)
 static uint8_t parse_CISS_Handle(const char* devName, char* osHandle, uint16_t* physicalDriveNumber)
 {
     uint8_t parseCount = UINT8_C(0);
-    if (devName)
+    if (devName != M_NULLPTR)
     {
         // TODO: Check the format of the handle to see if it is ciss format that can be supported
         char*   dup    = M_NULLPTR;
@@ -400,7 +400,7 @@ static eReturnValues get_Physical_Device_Location_Data(tDevice* device,
     uint32_t      dataLength     = UINT32_C(8) + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
     uint8_t*      physicalDrives = M_REINTERPRET_CAST(
              uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
-    if (physicalDrives)
+    if (physicalDrives != M_NULLPTR)
     {
         ret = ciss_Scsi_Report_Physical_LUNs(device, CISS_REPORT_PHYSICAL_LUNS_NO_EXTENDED_DATA, physicalDrives,
                                              dataLength);
@@ -455,7 +455,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
 {
     eReturnValues ret      = BAD_PARAMETER;
     int           ioctlRet = 0;
-    if (scsiIoCtx)
+    if (scsiIoCtx != M_NULLPTR)
     {
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
         {
@@ -1174,7 +1174,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
 static eReturnValues ciss_Big_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdType)
 {
     eReturnValues ret = BAD_PARAMETER;
-    if (scsiIoCtx)
+    if (scsiIoCtx != M_NULLPTR)
     {
         if (scsiIoCtx->cdbLength <= 16 && scsiIoCtx->dataLength <= MAX_KMALLOC_SIZE)
         {
@@ -1544,14 +1544,14 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t* count)
     // It creates a psuedo tDevice to issue a scsiIoCtx structure to passthrough and read this.
     // This keeps the rest of the code simpler for now
     eReturnValues ret = SUCCESS;
-    if (count)
+    if (count != M_NULLPTR)
     {
         tDevice   pseudoDev;
         ScsiIoCtx physicalLunCMD;
         DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, 12);
         uint32_t dataLength = (CISS_MAX_PHYSICAL_DRIVES * PHYSICAL_LUN_DESCRIPTOR_LENGTH) + 8; // 8 byte header
         uint8_t* data = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), sizeof(void*)));
-        if (data)
+        if (data != M_NULLPTR)
         {
             // setup the psuedo device
             safe_memset(&pseudoDev, sizeof(tDevice), 0, sizeof(tDevice));

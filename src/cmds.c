@@ -130,11 +130,11 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice* device,
         }
         // we need to allocate a zero pattern if none was provided. 4 bytes is enough for this (and could handle SAT
         // transaltion if necessary).
-        if (!pattern)
+        if (pattern == M_NULLPTR)
         {
             localPattern = true;
             pattern      = M_REINTERPRET_CAST(uint8_t*, safe_calloc(4, sizeof(uint8_t)));
-            if (!pattern)
+            if (pattern == M_NULLPTR)
             {
                 return MEMORY_FAILURE;
             }
@@ -678,7 +678,7 @@ eReturnValues security_Receive(tDevice* device,
                 tcgDataSize = uint32_round_up_power2(dataSize, 512);
                 tcgBufPtr   = C_CAST(uint8_t*, safe_calloc_aligned(uint32_to_sizet(tcgDataSize), sizeof(uint8_t),
                                                                    device->os_info.minimumAlignment));
-                if (!tcgBufPtr)
+                if (tcgBufPtr == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
                 }
@@ -732,7 +732,7 @@ eReturnValues write_Same(tDevice* device, uint64_t startingLba, uint64_t numberO
 {
     eReturnValues ret            = UNKNOWN;
     bool          noDataTransfer = false;
-    if (!pattern)
+    if (pattern == M_NULLPTR)
     {
         noDataTransfer = true;
     }
@@ -2039,7 +2039,7 @@ eReturnValues nvme_Verify_LBA(tDevice* device, uint64_t lba, uint32_t range)
         uint32_t dataLength = device->drive_info.deviceBlockSize * range;
         uint8_t* data       = M_REINTERPRET_CAST(
                   uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
-        if (data)
+        if (data != M_NULLPTR)
         {
             ret = nvme_Read(device, lba, C_CAST(uint16_t, range - 1), false, true, 0, data, dataLength);
         }

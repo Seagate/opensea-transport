@@ -55,13 +55,16 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 2, 6)
     M_PARAM_WO(1)
-    M_PARAM_WO(2) M_NONNULL_IF_NONZERO_PARAM(3, 4) M_PARAM_RW_SIZE(3, 4) M_PARAM_RO(6) eReturnValues
-        build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
-                                           eDataTransferDirection* cdbDataDirection,
-                                           uint8_t*                dataPtr,
-                                           uint32_t                dataSize,
-                                           eRealtekNVMCMDPhase     phase,
-                                           nvmeCmdCtx*             nvmCmd);
+    M_PARAM_WO(2)
+    M_NONNULL_IF_NONZERO_PARAM(3, 4)
+    M_PARAM_RW_SIZE(3, 4)
+    M_PARAM_RO(6)
+    eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
+                                                     eDataTransferDirection* cdbDataDirection,
+                                                     uint8_t*                dataPtr,
+                                                     uint32_t                dataSize,
+                                                     eRealtekNVMCMDPhase     phase,
+                                                     nvmeCmdCtx*             nvmCmd);
 
     M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd);
 

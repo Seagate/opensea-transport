@@ -1274,10 +1274,11 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_WO(2)
     M_PARAM_WO(3)
-    M_PARAM_WO(4) OPENSEA_TRANSPORT_API eReturnValues ata_Request_Sense_Data(tDevice* device,
-                                                                             uint8_t* senseKey,
-                                                                             uint8_t* additionalSenseCode,
-                                                                             uint8_t* additionalSenseCodeQualifier);
+    M_PARAM_WO(4)
+    OPENSEA_TRANSPORT_API eReturnValues ata_Request_Sense_Data(tDevice* device,
+                                                               uint8_t* senseKey,
+                                                               uint8_t* additionalSenseCode,
+                                                               uint8_t* additionalSenseCodeQualifier);
 
     //-----------------------------------------------------------------------------
     //
@@ -1784,8 +1785,10 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(3, 4)
     M_PARAM_RO_SIZE(3, 4)
-    OPENSEA_TRANSPORT_API eReturnValues
-        ata_NV_Remove_LBAs_From_Cache(tDevice* device, bool unpinAll, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_NV_Remove_LBAs_From_Cache(tDevice* device,
+                                                                      bool     unpinAll,
+                                                                      uint8_t* ptrData,
+                                                                      uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2595,8 +2598,9 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_WO(3)
     M_PARAM_WO(4)
-    M_PARAM_WO(5) OPENSEA_TRANSPORT_API eReturnValues
-        convert_LBA_To_CHS(tDevice* device, uint32_t lba, uint16_t* cylinder, uint8_t* head, uint8_t* sector);
+    M_PARAM_WO(5)
+    OPENSEA_TRANSPORT_API eReturnValues
+    convert_LBA_To_CHS(tDevice* device, uint32_t lba, uint16_t* cylinder, uint8_t* head, uint8_t* sector);
 
     /////////////////////////////////////////////////////////////////////////////////
     /// Obsolete ATA Commands. These commands are from specs prior to ATA-ATAPI 7 ///
@@ -2959,13 +2963,14 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RW_SIZE(4, 5)
     M_PARAM_WO(6)
-    M_PARAM_WO(7) OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Read_Write_Long(tDevice*    device,
-                                                                                   eSCTRWLMode mode,
-                                                                                   uint64_t    lba,
-                                                                                   uint8_t*    dataBuf,
-                                                                                   uint32_t    dataSize,
-                                                                                   uint16_t*   numberOfECCCRCBytes,
-                                                                                   uint16_t*   numberOfBlocksRequested);
+    M_PARAM_WO(7)
+    OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Read_Write_Long(tDevice*    device,
+                                                                     eSCTRWLMode mode,
+                                                                     uint64_t    lba,
+                                                                     uint8_t*    dataBuf,
+                                                                     uint32_t    dataSize,
+                                                                     uint16_t*   numberOfECCCRCBytes,
+                                                                     uint16_t*   numberOfBlocksRequested);
 
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)

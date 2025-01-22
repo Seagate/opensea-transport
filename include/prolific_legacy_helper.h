@@ -52,8 +52,11 @@ extern 'C'
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2, 3, 4)
     M_PARAM_WO(1)
-    M_PARAM_WO(2) M_PARAM_WO(3) M_PARAM_RO(4) eReturnValues build_Prolific_Legacy_Passthrough_CDBs(
-        uint8_t lowCDB[16], uint8_t hiCDB[16], bool* highCDBValid, ataPassthroughCommand* ataCommandOptions);
+    M_PARAM_WO(2)
+    M_PARAM_WO(3)
+    M_PARAM_RO(4)
+    eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16], bool* highCDBValid,
+                                                         ataPassthroughCommand* ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -73,8 +76,9 @@ extern 'C'
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_PARAM_RW(2) eReturnValues get_RTFRs_From_Prolific_Legacy(
-        tDevice * device, ataPassthroughCommand * ataCommandOptions, eReturnValues commandRet);
+    M_PARAM_RW(2)
+    eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice * device, ataPassthroughCommand * ataCommandOptions,
+                                                 eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -93,8 +97,8 @@ extern 'C'
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_PARAM_RW(2) eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice * device,
-                                                                         ataPassthroughCommand * ataCommandOptions);
+    M_PARAM_RW(2)
+    eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice * device, ataPassthroughCommand * ataCommandOptions);
 
 #if defined(__cplusplus)
 }

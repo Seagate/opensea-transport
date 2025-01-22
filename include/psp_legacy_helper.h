@@ -63,8 +63,9 @@ extern 'C'
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2, 3)
     M_PARAM_WO(1)
-    M_PARAM_WO(2) M_PARAM_RO(3)
-        eReturnValues build_PSP_Legacy_CDB(uint8_t * cdb, uint8_t * cdbLen, ataPassthroughCommand * ataCommandOptions);
+    M_PARAM_WO(2)
+    M_PARAM_RO(3)
+    eReturnValues build_PSP_Legacy_CDB(uint8_t * cdb, uint8_t * cdbLen, ataPassthroughCommand * ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -84,8 +85,9 @@ extern 'C'
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_PARAM_RW(2) eReturnValues get_RTFRs_From_PSP_Legacy(tDevice * device, ataPassthroughCommand * ataCommandOptions,
-                                                          eReturnValues commandRet);
+    M_PARAM_RW(2)
+    eReturnValues get_RTFRs_From_PSP_Legacy(tDevice * device, ataPassthroughCommand * ataCommandOptions,
+                                            eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -105,7 +107,7 @@ extern 'C'
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-        eReturnValues send_PSP_Legacy_Passthrough_Command(tDevice * device, ataPassthroughCommand * ataCommandOptions);
+    eReturnValues send_PSP_Legacy_Passthrough_Command(tDevice * device, ataPassthroughCommand * ataCommandOptions);
 
 #if defined(__cplusplus)
 }
