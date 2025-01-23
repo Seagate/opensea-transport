@@ -739,8 +739,8 @@ eReturnValues write_Same(tDevice* device, uint64_t startingLba, uint64_t numberO
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word206) &&
-            device->drive_info.IdentifyData.ata.Word206 & BIT2)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word206)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word206) & BIT2)
         {
             if (noDataTransfer)
             {
@@ -758,13 +758,15 @@ eReturnValues write_Same(tDevice* device, uint64_t startingLba, uint64_t numberO
                                               numberOfLogicalBlocks, pattern, 1);
             }
         }
-        else if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word080) &&
-                  (device->drive_info.IdentifyData.ata.Word080 & BIT1 ||
-                   device->drive_info.IdentifyData.ata.Word080 & BIT2)) && /*check for ATA or ATA-2 support*/
-                 (!(is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word053) &&
-                    device->drive_info.IdentifyData.ata.Word053 & BIT1) /* this is a validity bit for field 69 */
-                  && (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word069) &&
-                      (device->drive_info.IdentifyData.ata.Word069 &
+        else if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word080)) &&
+                  (le16_to_host(device->drive_info.IdentifyData.ata.Word080) & BIT1 ||
+                   le16_to_host(device->drive_info.IdentifyData.ata.Word080) &
+                       BIT2)) && /*check for ATA or ATA-2 support*/
+                 (!(is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word053)) &&
+                    le16_to_host(device->drive_info.IdentifyData.ata.Word053) &
+                        BIT1) /* this is a validity bit for field 69 */
+                  && (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word069)) &&
+                      (le16_to_host(device->drive_info.IdentifyData.ata.Word069) &
                        BIT11)))) // Legacy Write same uses same op-code as read buffer DMA, so that command cannot be
                                  // supported or the drive won't do the right thing
         {
@@ -966,7 +968,7 @@ bool is_Write_Flagged_Uncorrectable_Supported(tDevice* device)
         }
         break;
     case NVME_DRIVE:
-        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT1)
         {
             supported = true;
         }
@@ -1432,10 +1434,10 @@ eReturnValues ata_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uin
                         // word84 bit6 or word87 bit6
                         if (forceUnitAccess && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
                                                      device->drive_info.IdentifyData.ata.Word084) &&
-                                                 device->drive_info.IdentifyData.ata.Word084 & BIT6) ||
+                                                 le16_to_host(device->drive_info.IdentifyData.ata.Word084) & BIT6) ||
                                                 (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
                                                      device->drive_info.IdentifyData.ata.Word087) &&
-                                                 device->drive_info.IdentifyData.ata.Word087 & BIT6)))
+                                                 le16_to_host(device->drive_info.IdentifyData.ata.Word087) & BIT6)))
                         {
                             writeDMAFUA = true;
                         }
@@ -2027,7 +2029,7 @@ eReturnValues scsi_Verify(tDevice* device, uint64_t lba, uint32_t range)
 eReturnValues nvme_Verify_LBA(tDevice* device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = SUCCESS;
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT7 && range < (UINT16_MAX + 1))
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT7 && range < (UINT16_MAX + 1))
     {
         // nvme verify command is supported
         ret = nvme_Verify(device, lba, false, true, 0, C_CAST(uint16_t, range) - 1);
@@ -2086,8 +2088,8 @@ eReturnValues verify_LBA(tDevice* device, uint64_t lba, uint32_t range)
 eReturnValues ata_Flush_Cache_Command(tDevice* device)
 {
     bool ext = false;
-    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) &&
-        device->drive_info.IdentifyData.ata.Word083 & BIT13)
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT13)
     {
         ext = true;
     }

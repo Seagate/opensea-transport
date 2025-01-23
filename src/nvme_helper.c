@@ -86,7 +86,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
         fillMaxLba                             = &device->drive_info.bridge_info.childDeviceMaxLba;
     }
 
-    nvmeIDCtrl*       ctrlData = &device->drive_info.IdentifyData.nvme.ctrl; // Conroller information data structure
+    nvmeIDCtrl*       ctrlData = &device->drive_info.IdentifyData.nvme.ctrl; // Controller information data structure
     nvmeIDNameSpaces* nsData   = &device->drive_info.IdentifyData.nvme.ns;   // Name Space Data structure
 
 #ifdef _DEBUG
@@ -827,7 +827,7 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice* device, uint8_t* pData, uint
 #endif
     // Should be able to pull at least one entry.
     DISABLE_NONNULL_COMPARE
-    if (pData == M_NULLPTR || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
+    if (pData == M_NULLPTR || (dataLen < sizeof(nvmeEffectsLog)))
     {
         return ret;
     }
@@ -854,7 +854,7 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice* device, uint8_t* pData, uin
 #endif
     // Should be able to pull at least one entry.
     DISABLE_NONNULL_COMPARE
-    if (pData == M_NULLPTR || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
+    if (pData == M_NULLPTR || (dataLen < sizeof(nvmeSelfTestLog)))
     {
         return ret;
     }

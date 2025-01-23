@@ -1059,11 +1059,13 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice* 
             naaDesignator[1] = 3; // designator type 3, associated with logical unit
             naaDesignator[2] = RESERVED;
             naaDesignator[3] = 16; // 16 bytes following this
-            naaDesignator[4] = M_NibblesTo1ByteValue(6, M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid));
-            naaDesignator[5] = M_NibblesTo1ByteValue(M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid),
-                                                     M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid));
+            naaDesignator[4] =
+                M_NibblesTo1ByteValue(6, M_Nibble3(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)));
+            naaDesignator[5] =
+                M_NibblesTo1ByteValue(M_Nibble2(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)),
+                                      M_Nibble1(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)));
             naaDesignator[6] =
-                M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid),
+                M_NibblesTo1ByteValue(M_Nibble0(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)),
                                       M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[0])));
             naaDesignator[7] =
                 M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[0])),
@@ -1101,11 +1103,13 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice* 
             naaDesignator[21] = 3; // designator type 3, associated with logical unit
             naaDesignator[22] = RESERVED;
             naaDesignator[23] = 8; // 8 bytes for the local designator
-            naaDesignator[24] = M_NibblesTo1ByteValue(3, M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid));
-            naaDesignator[25] = M_NibblesTo1ByteValue(M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid),
-                                                      M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid));
+            naaDesignator[24] =
+                M_NibblesTo1ByteValue(3, M_Nibble3(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)));
+            naaDesignator[25] =
+                M_NibblesTo1ByteValue(M_Nibble2(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)),
+                                      M_Nibble1(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)));
             naaDesignator[26] =
-                M_NibblesTo1ByteValue(M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid),
+                M_NibblesTo1ByteValue(M_Nibble0(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)),
                                       M_Nibble1(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[0])));
             naaDesignator[27] =
                 M_NibblesTo1ByteValue(M_Nibble0(C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[0])),
@@ -1214,10 +1218,10 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice* 
                 t10VendorIdDesignator[offset] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.mn[mnOffset]);
             }
             // now set PCI Vendor ID (as ASCII...spec is horribly written about this)
-            t10VendorIdDesignator[28] = M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-            t10VendorIdDesignator[29] = M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-            t10VendorIdDesignator[30] = M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-            t10VendorIdDesignator[31] = M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
+            t10VendorIdDesignator[28] = M_Nibble3(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)) + '0';
+            t10VendorIdDesignator[29] = M_Nibble2(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)) + '0';
+            t10VendorIdDesignator[30] = M_Nibble1(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)) + '0';
+            t10VendorIdDesignator[31] = M_Nibble0(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)) + '0';
             // Now some SN bytes
             t10VendorIdDesignator[32] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[0]);
             t10VendorIdDesignator[33] = C_CAST(uint8_t, device->drive_info.IdentifyData.nvme.ctrl.sn[1]);
@@ -1372,10 +1376,10 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice* 
             SCSINameStringDesignator[2] = RESERVED;
             SCSINameStringDesignator[3] = SCSINameStringDesignatorLength - 4;
             // now set PCI Vendor ID (as UTF8)
-            SCSINameStringDesignator[4] = M_Nibble3(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-            SCSINameStringDesignator[5] = M_Nibble2(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-            SCSINameStringDesignator[6] = M_Nibble1(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
-            SCSINameStringDesignator[7] = M_Nibble0(device->drive_info.IdentifyData.nvme.ctrl.vid) + '0';
+            SCSINameStringDesignator[4] = M_Nibble3(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)) + '0';
+            SCSINameStringDesignator[5] = M_Nibble2(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)) + '0';
+            SCSINameStringDesignator[6] = M_Nibble1(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)) + '0';
+            SCSINameStringDesignator[7] = M_Nibble0(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.vid)) + '0';
             // 40 MN bytes
             for (uint8_t mnCounter = UINT8_C(0); mnCounter < 40; ++mnCounter, ++offset)
             {
@@ -1589,7 +1593,7 @@ static eReturnValues sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice* 
         extendedInquiry[4] |= (BIT2 | BIT1 | BIT0);
     }
     extendedInquiry[5] |= BIT5; // set UASK_SUP
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT1)
     {
         extendedInquiry[6] |= BIT3; // set WU_SUP since write uncorrectable command is supported
         extendedInquiry[6] |= BIT2; // set CRD_SUP since write uncorrectable command is supported
@@ -1603,11 +1607,11 @@ static eReturnValues sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice* 
     // Extended self test completion time set to zero since not supported (our extension will set this if the drive
     // supports the DST commands from NVMe 1.3)
 #if defined(SNTL_EXT)
-    // if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
+    // if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT4)
     //{
     //     //DST command is supported! So get the time long dst will take to run and put it in here
-    //     extendedInquiry[10] = M_Byte1(device->drive_info.IdentifyData.nvme.ctrl.edstt);
-    //     extendedInquiry[11] = M_Byte0(device->drive_info.IdentifyData.nvme.ctrl.edstt);
+    //     extendedInquiry[10] = M_Byte1(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.edstt));
+    //     extendedInquiry[11] = M_Byte0(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.edstt));
     // }
     // else
 #endif
@@ -1663,7 +1667,7 @@ static eReturnValues sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice* device, S
     // maximum prefetch length (unspecified....we decide) - leave at zero since we don't support the prefetch command
 
     // unmap stuff
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT2)
     {
         uint32_t unmapLBACount            = UINT32_MAX;
         uint32_t unmapMaxBlockDescriptors = UINT32_C(256);
@@ -1721,8 +1725,8 @@ static eReturnValues sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(Sc
     blockDeviceCharacteriticsPage[3] = 0x3C;
 #if defined(SNTL_EXT)
     if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.lpa & BIT5 &&
-        scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.ctratt & BIT4 &&
-        scsiIoCtx->device->drive_info.IdentifyData.nvme.ns.endgid > 0)
+        le32_to_host(scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.ctratt) & BIT4 &&
+        le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.nvme.ns.endgid) > 0)
     {
         // Check if this is an HDD
         // First read the supported logs log page, then if the rotating media log is there, read it.
@@ -1796,20 +1800,20 @@ static eReturnValues sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDev
     // threshold exponent (only non-zero if thin-provisioning is supported)
     logicalBlockProvisioning[4] = 0;
     // lbpu bit
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT2)
     {
         logicalBlockProvisioning[5] |= BIT7;
     }
     // lbpws bit
     /*
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT2)
     {
     logicalBlockProvisioning[5] |= BIT6;
     }
     */
     // lbpws10 bit (set to zero since we don't support unmap during write same yet)
     /*
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT2)
     {
     logicalBlockProvisioning[5] |= BIT5;
     }
@@ -1828,7 +1832,7 @@ static eReturnValues sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDev
 
     // provisioining type
     uint8_t provisioningType = UINT8_C(0);
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT2)
     {
         if (device->drive_info.IdentifyData.nvme.ns.nsfeat & BIT0)
         {
@@ -2112,7 +2116,7 @@ static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(tDevice*   device
     }
     if (scsiIoCtx->pdata)
     {
-        uint64_t maxLBA = device->drive_info.IdentifyData.nvme.ns.nsze - 1;
+        uint64_t maxLBA = le64_to_host(device->drive_info.IdentifyData.nvme.ns.nsze) - UINT64_C(1);
         uint8_t  flbas  = get_bit_range_uint8(device->drive_info.IdentifyData.nvme.ns.flbas, 3, 0);
         if (device->drive_info.IdentifyData.nvme.ns.nlbaf > 16)
         {
@@ -2143,7 +2147,7 @@ static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(tDevice*   device
             readCapacityData[14] = 0;
             readCapacityData[15] = 0;
             // now bits related to provisioning and deallocation
-            if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2 &&
+            if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT2 &&
                 device->drive_info.IdentifyData.nvme.ns.nsfeat &
                     BIT0) // supports provisioning...did this like how we get provisioning type in logical block
                           // provisioining page
@@ -2231,8 +2235,8 @@ static eReturnValues sntl_Translate_Supported_Log_Pages(tDevice* device, ScsiIoC
 #if defined(SNTL_EXT)
     // if rotating media log is supportd on NVMe, then we can also support the start-stop cycle counter log
     if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.lpa & BIT5 &&
-        scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.ctratt & BIT4 &&
-        scsiIoCtx->device->drive_info.IdentifyData.nvme.ns.endgid > 0)
+        le32_to_host(scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.ctratt) & BIT4 &&
+        le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.nvme.ns.endgid) > 0)
     {
         // Check if this is an HDD
         // First read the supported logs log page, then if the rotating media log is there, read it.
@@ -2260,7 +2264,7 @@ static eReturnValues sntl_Translate_Supported_Log_Pages(tDevice* device, ScsiIoC
         }
     }
     // If smart self test is supported, add the self test results log (10h)
-    if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT4)
     {
         supportedPages[offset] = LP_SELF_TEST_RESULTS;
         offset += increment;
@@ -2790,8 +2794,8 @@ static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(tDevice* device, S
     // note: Only parameters 4 and 6 are supported
     // read the nvme log page
     if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.lpa & BIT5 &&
-        scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.ctratt & BIT4 &&
-        scsiIoCtx->device->drive_info.IdentifyData.nvme.ns.endgid > 0)
+        le32_to_host(scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.ctratt) & BIT4 &&
+        le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.nvme.ns.endgid) > 0)
     {
         // Check if this is an HDD
         // First read the supported logs log page, then if the rotating media log is there, read it.
@@ -3194,7 +3198,7 @@ static eReturnValues sntl_Translate_SCSI_Log_Sense_Command(tDevice* device, Scsi
                 switch (subpageCode)
                 {
                 case 0:
-                    if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4)
+                    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT4)
                     {
                         ret = sntl_Translate_Self_Test_Results_Log_0x10(device, scsiIoCtx);
                     }
@@ -3422,7 +3426,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDe
         safe_memset(&getErrRecTime, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
         getErrRecTime.fid = 0x05;
         getErrRecTime.sel = 0;
-        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT4)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT4)
         {
             switch (pageControl)
             {
@@ -3573,7 +3577,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Caching_08h(tDevice*   device,
             safe_memset(&getVWC, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
             getVWC.fid = 0x06;
             getVWC.sel = 0;
-            if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT4)
+            if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT4)
             {
                 switch (pageControl)
                 {
@@ -5679,7 +5683,7 @@ static eReturnValues sntl_Translate_SCSI_Verify_Command(tDevice* device, ScsiIoC
     case 0:
         // TODO: If NVMe verify is supported, issue that, otherwise error
 
-        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT7)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT7)
         {
             if (device->drive_info.IdentifyData.nvme.ns.dps > 0)
             {
@@ -5957,7 +5961,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(tDevice* device, Sc
                 if (SUCCESS == nvme_Identify(device, activeNamespaces, 0, 2))
                 {
                     // allocate based on maximum number of namespaces
-                    reportLunsDataLength += UINT32_C(8) * device->drive_info.IdentifyData.nvme.ctrl.nn;
+                    reportLunsDataLength += UINT32_C(8) * le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.nn);
                     reportLunsData = M_REINTERPRET_CAST(uint8_t*, safe_calloc(reportLunsDataLength, sizeof(uint8_t)));
                     if (reportLunsData)
                     {
@@ -6085,7 +6089,7 @@ static eReturnValues sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice* device
 #if defined(SNTL_EXT)
     // If the device supports sanitize or DST, check if either of these is in progress to report that before returing
     // the default "ready"
-    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
+    if (le32_to_host(scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap) != 0)
     {
         // sanitize is supported. Check if sanitize is currently running or not
         DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
@@ -6182,7 +6186,8 @@ static eReturnValues sntl_Translate_SCSI_Write_Long(tDevice* device, ScsiIoCtx* 
                                             senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1) // check that write uncorrectable command is supported
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) &
+        BIT1) // check that write uncorrectable command is supported
     {
         bool     correctionDisabled      = false;
         bool     writeUncorrectableError = false;
@@ -6364,7 +6369,7 @@ static eReturnValues sntl_Translate_SCSI_Send_Diagnostic_Command(tDevice* device
         else
         {
 #if defined(SNTL_EXT)
-            if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4) // DST supported
+            if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT4) // DST supported
             {
                 // NOTE: doing all namespaces for now...not sure if this should be changed in the future.
                 switch (selfTestCode)
@@ -6458,7 +6463,7 @@ static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(tDevice* device, S
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // Check if download is supported...if not, then invalid operation code!
-    if (!(device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT2))
+    if (!(le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT2))
     {
         fieldPointer = UINT16_C(0);
         bitPointer   = UINT8_C(7);
@@ -7254,7 +7259,7 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(tDevice* device, 
         descriptorFormat = true;
     }
 #if defined(SNTL_EXT)
-    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
+    if (le32_to_host(scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap) != 0)
     {
         // sanitize is supported. Check if sanitize is currently running or not
         DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
@@ -7296,7 +7301,7 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(tDevice* device, 
     }
     // NOTE: DST progress should only report like this under request sense. In test unit ready, DST in progress should
     // only happen for foreground mode (i.e. captive) which isn't supported on NVMe
-    if (scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT4) // DST is supported
+    if (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT4) // DST is supported
     {
         DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 564);
         nvmeGetLogPageCmdOpts dstLog;
@@ -7542,7 +7547,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_In(tDevice* device, ScsiI
     case 2: // report capabilities
     {
         // send NVMe identify command, CNS set to 0, current namespace being queried.
-        if (SUCCESS != nvme_Identify(device, (uint8_t*)&device->drive_info.IdentifyData.nvme.ns,
+        if (SUCCESS != nvme_Identify(device, M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.nvme.ns),
                                      device->drive_info.namespaceID, 0))
         {
             set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense,
@@ -8238,7 +8243,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(tDevice* device, ScsiI
                                             senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (device->drive_info.IdentifyData.nvme.ctrl.sanicap > 0)
+    if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) > 0)
     {
         uint8_t serviceAction = UINT8_C(0x1F) & scsiIoCtx->cdb[1];
         bool immediate = false; // this is ignored for now since there is no way to handle this without multi-threading
@@ -8286,7 +8291,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(tDevice* device, ScsiI
             }
             else
             {
-                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT2)
+                if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) & BIT2)
                 {
                     // check the parameter data
                     bool     invert         = false;
@@ -8406,7 +8411,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(tDevice* device, ScsiI
             }
             else
             {
-                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT1)
+                if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) & BIT1)
                 {
                     if (SUCCESS != nvme_Sanitize(device, false, false, 0, ause, SANITIZE_NVM_BLOCK_ERASE, 0) &&
                         !immediate)
@@ -8483,7 +8488,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(tDevice* device, ScsiI
             }
             else
             {
-                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0)
+                if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) & BIT0)
                 {
                     if (SUCCESS != nvme_Sanitize(device, false, false, 0, ause, SANITIZE_NVM_CRYPTO, 0) && !immediate)
                     {
@@ -8917,7 +8922,7 @@ static eReturnValues sntl_Check_Operation_Code(tDevice*  device,
         break;
     case SECURITY_PROTOCOL_IN: // fallthrough
     case SECURITY_PROTOCOL_OUT:
-        if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT0)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT0)
         {
             cdbLength = 12;
             *dataLength += cdbLength;
@@ -9034,7 +9039,7 @@ static eReturnValues sntl_Check_Operation_Code(tDevice*  device,
         pdata[0][offset + 5] = controlByte; // control byte
         break;
     case UNMAP_CMD:
-        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT2)
         {
             cdbLength = 10;
             *dataLength += cdbLength;
@@ -9271,7 +9276,7 @@ static eReturnValues sntl_Check_Operation_Code(tDevice*  device,
     //     pdata[0][offset + 15] = controlByte;//control byte
     //     break;
     case WRITE_LONG_10_CMD:
-        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT1)
         {
             cdbLength = 10;
             *dataLength += cdbLength;
@@ -9437,12 +9442,12 @@ static eReturnValues sntl_Check_Operation_Code_and_Service_Action(tDevice*  devi
         break;
 #if defined(SNTL_EXT)
     case SANITIZE_CMD:
-        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap > 0)
+        if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) > 0)
         {
             switch (serviceAction)
             {
             case 1: // overwrite
-                if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT2)
+                if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) & BIT2)
                 {
                     cdbLength = 10;
                     *dataLength += cdbLength;
@@ -9468,14 +9473,14 @@ static eReturnValues sntl_Check_Operation_Code_and_Service_Action(tDevice*  devi
                 }
                 break;
             case 2: // block erase
-                if (!(device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT1))
+                if (!(le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) & BIT1))
                 {
                     commandSupported = false;
                     break;
                 }
                 M_FALLTHROUGH;
             case 3: // cryptographic erase
-                if (!(device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0))
+                if (!(le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) & BIT0))
                 {
                     commandSupported = false;
                     break;
@@ -9513,7 +9518,7 @@ static eReturnValues sntl_Check_Operation_Code_and_Service_Action(tDevice*  devi
 #endif
     case WRITE_BUFFER_CMD:
     {
-        if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT2)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT2)
         {
             switch (serviceAction)
             {
@@ -9671,7 +9676,7 @@ static eReturnValues sntl_Check_Operation_Code_and_Service_Action(tDevice*  devi
         switch (serviceAction)
         {
         case 0x11: // write long 16
-            if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
+            if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT1)
             {
                 cdbLength = 16;
                 *dataLength += cdbLength;
@@ -10033,7 +10038,7 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
         sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
     // WRITE_BUFFER_CMD = 0x3B + modes
-    if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT2)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT2)
     {
         pdata[0][offset + 0] = WRITE_BUFFER_CMD;
         pdata[0][offset + 1] = RESERVED;
@@ -10176,7 +10181,7 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
 //    }
 //#endif
 #endif
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT1)
     {
         // WRITE_LONG_10_CMD = 0x3F
         pdata[0][offset + 0] = WRITE_LONG_10_CMD;
@@ -10215,7 +10220,7 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
     //     sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     // }
     // UNMAP_CMD = 0x42
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT2)
     {
         pdata[0][offset + 0] = UNMAP_CMD;
         pdata[0][offset + 1] = RESERVED;
@@ -10236,10 +10241,10 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
     }
 #if defined(SNTL_EXT) // SNTL sanitize extension
     // SANITIZE_CMD = 0x48//4 possible service actions
-    if (device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
+    if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) != 0)
     {
         // check overwrite
-        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT2)
+        if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) & BIT2)
         {
             pdata[0][offset + 0] = SANITIZE_CMD;
             pdata[0][offset + 1] = RESERVED;
@@ -10259,7 +10264,7 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
             }
         }
         // check block erase
-        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT1)
+        if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) & BIT1)
         {
             pdata[0][offset + 0] = SANITIZE_CMD;
             pdata[0][offset + 1] = RESERVED;
@@ -10279,7 +10284,7 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
             }
         }
         // check crypto erase
-        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0)
+        if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) & BIT0)
         {
             pdata[0][offset + 0] = SANITIZE_CMD;
             pdata[0][offset + 1] = RESERVED;
@@ -10487,7 +10492,7 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
         // set up timeouts descriptor
         sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
-    if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT1)
     {
         // 0x9F / 0x11//write long 16                    = 0x9F
         pdata[0][offset + 0] = 0x9F;
@@ -10524,7 +10529,7 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
         // set up timeouts descriptor
         sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
-    if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT0)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT0)
     {
         // SECURITY_PROTOCOL_IN = 0xA2
         pdata[0][offset + 0] = SECURITY_PROTOCOL_IN;
@@ -10629,7 +10634,7 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
         // set up timeouts descriptor
         sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
-    if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT0)
+    if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT0)
     {
         // SECURITY_PROTOCOL_OUT = 0xB5
         pdata[0][offset + 0] = SECURITY_PROTOCOL_OUT;
@@ -10911,14 +10916,14 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
         // SNTL doesn't have this, but we should add it similar to SAT
 #if defined(SNTL_EXT)
     case SANITIZE_CMD: // NVMe Sanitize
-        if (device->drive_info.IdentifyData.nvme.ctrl.sanicap != 0)
+        if (le32_to_host(device->drive_info.IdentifyData.nvme.ctrl.sanicap) != 0)
         {
             ret = sntl_Translate_SCSI_Sanitize_Command(device, scsiIoCtx);
         }
         break;
 #endif
     case SECURITY_PROTOCOL_IN:
-        if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT0)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT0)
         {
             ret = sntl_Translate_SCSI_Security_Protocol_In_Command(device, scsiIoCtx);
         }
@@ -10928,7 +10933,7 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
         }
         break;
     case SECURITY_PROTOCOL_OUT:
-        if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT0)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT0)
         {
             ret = sntl_Translate_SCSI_Security_Protocol_Out_Command(device, scsiIoCtx);
         }
@@ -10952,7 +10957,7 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
         ret = sntl_Translate_SCSI_Test_Unit_Ready_Command(device, scsiIoCtx);
         break;
     case UNMAP_CMD: // Data Set management-TRIM
-        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT2)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT2)
         {
             ret = sntl_Translate_SCSI_Unmap_Command(device, scsiIoCtx);
         }
@@ -10983,7 +10988,7 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
     // ret = sntl_Translate_SCSI_Compare_And_Write_Command(device, scsiIoCtx);
     // break;
     case WRITE_BUFFER_CMD: // Firmware Download
-        if (device->drive_info.IdentifyData.nvme.ctrl.oacs & BIT2)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oacs) & BIT2)
         {
             ret = sntl_Translate_SCSI_Write_Buffer_Command(device, scsiIoCtx);
         }
@@ -10993,7 +10998,7 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
         }
         break;
     case WRITE_LONG_10_CMD: // Write Uncorrectable
-        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT1)
         {
             ret = sntl_Translate_SCSI_Write_Long(device, scsiIoCtx);
         }
@@ -11006,7 +11011,7 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
         switch (scsiIoCtx->cdb[1] & 0x1F)
         {
         case 0x11: // write uncorrectable
-            if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT1)
+            if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT1)
             {
                 ret = sntl_Translate_SCSI_Write_Long(device, scsiIoCtx);
             }
@@ -11030,7 +11035,7 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
         //   break;
 #endif
     case PERSISTENT_RESERVE_IN_CMD:
-        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT5)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT5)
         {
             // reservations supported
             ret = sntl_Translate_Persistent_Reserve_In(device, scsiIoCtx);
@@ -11041,7 +11046,7 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
         }
         break;
     case PERSISTENT_RESERVE_OUT_CMD:
-        if (device->drive_info.IdentifyData.nvme.ctrl.oncs & BIT5)
+        if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT5)
         {
             // reservations supported
             ret = sntl_Translate_Persistent_Reserve_Out(device, scsiIoCtx);

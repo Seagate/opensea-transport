@@ -1982,10 +1982,10 @@ static void set_Sense_Data_By_RTFRs(tDevice* device, ataReturnTFRs* rtfrs, uint8
     }
     // We processed the error above according to other RTFRs, but if the sense data available bit is set, then we should
     // request sense data and return that info back up instead of our translated info
-    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-         device->drive_info.IdentifyData.ata.Word086 & BIT15) /*words 119, 120 valid*/
-        && (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word120) &&
-            device->drive_info.IdentifyData.ata.Word120 & BIT6 && rtfrs->status & BIT1))
+    if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /*words 119, 120 valid*/
+        && (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word120)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word120) & BIT6 && rtfrs->status & BIT1))
     {
         ataReturnTFRs rtfrBackup;
         safe_memcpy(&rtfrBackup, sizeof(ataReturnTFRs), rtfrs, sizeof(ataReturnTFRs));
@@ -2020,17 +2020,17 @@ static eReturnValues satl_Read_Command(ScsiIoCtx* scsiIoCtx,
 {
     eReturnValues ret          = SUCCESS;
     bool          dmaSupported = false;
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8) // lba mode
+    if (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word049) & BIT8) // lba mode
     {
-        if ((scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2)) ||
-            (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0xFF))
+        if ((le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word063) & (BIT0 | BIT1 | BIT2)) ||
+            (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word088) & 0xFF))
         {
             dmaSupported = true;
         }
     }
 
     // check if 48bit
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word083 & BIT10)
+    if (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word083) & BIT10)
     {
         uint16_t scnt = C_CAST(uint16_t, dataSize / scsiIoCtx->device->drive_info.deviceBlockSize);
         if (dataSize > (UINT32_C(65536) * scsiIoCtx->device->drive_info.deviceBlockSize))
@@ -2041,7 +2041,7 @@ static eReturnValues satl_Read_Command(ScsiIoCtx* scsiIoCtx,
                                            M_NULLPTR, 0);
             return SUCCESS;
         }
-        if (fua && scsiIoCtx->device->drive_info.IdentifyData.ata.Word085 & BIT5)
+        if (fua && le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word085) & BIT5)
         {
             // send a read verify command first
             ret = ata_Read_Verify_Sectors(scsiIoCtx->device, true, scnt, lba);
@@ -2073,7 +2073,7 @@ static eReturnValues satl_Read_Command(ScsiIoCtx* scsiIoCtx,
             // passthrough driver will actually allow this)
             scnt = 0;
         }
-        if (fua && scsiIoCtx->device->drive_info.IdentifyData.ata.Word085 & BIT5)
+        if (fua && le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word085) & BIT5)
         {
             // send a read verify command first
             ret = ata_Read_Verify_Sectors(scsiIoCtx->device, false, scnt, lba);
@@ -2101,16 +2101,16 @@ static eReturnValues satl_Write_Command(ScsiIoCtx* scsiIoCtx,
 {
     eReturnValues ret          = SUCCESS;
     bool          dmaSupported = false;
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8) // lba mode
+    if (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word049) & BIT8) // lba mode
     {
-        if ((scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2)) ||
-            (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0xFF))
+        if ((le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word063) & (BIT0 | BIT1 | BIT2)) ||
+            (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word088) & 0xFF))
         {
             dmaSupported = true;
         }
     }
     // check if 48bit
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word083 & BIT10)
+    if (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word083) & BIT10)
     {
         uint32_t scnt = dataSize / scsiIoCtx->device->drive_info.deviceBlockSize;
         if (dataSize > (UINT32_C(65536) * scsiIoCtx->device->drive_info.deviceBlockSize))
@@ -2183,16 +2183,16 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx* scsiIoCtx, uint64_t lba
     eReturnValues ret                = SUCCESS;
     bool          dmaSupported       = false;
     uint32_t      verificationLength = dataSize / scsiIoCtx->device->drive_info.deviceBlockSize;
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word049 & BIT8) // lba mode
+    if (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word049) & BIT8) // lba mode
     {
-        if ((scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2)) ||
-            (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0xFF))
+        if ((le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word063) & (BIT0 | BIT1 | BIT2)) ||
+            (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word088) & 0xFF))
         {
             dmaSupported = true;
         }
     }
     // check if 48bit
-    if (scsiIoCtx->device->drive_info.IdentifyData.ata.Word083 & BIT10)
+    if (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word083) & BIT10)
     {
         if (verificationLength == UINT32_C(65536))
         {
@@ -2701,12 +2701,13 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice* devic
     const char* ataVendorId = "ATA     ";
     // will hold the complete data to return
     uint8_t* deviceIdentificationPage = M_NULLPTR;
-    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) &&
-        device->drive_info.IdentifyData.ata.Word087 & BIT8) // NAA and SCSI Name String
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word087)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word087) & BIT8) // NAA and SCSI Name String
     {
-        uint64_t wwn = M_WordsTo8ByteValue(
-            device->drive_info.IdentifyData.ata.Word108, device->drive_info.IdentifyData.ata.Word109,
-            device->drive_info.IdentifyData.ata.Word110, device->drive_info.IdentifyData.ata.Word111);
+        uint64_t wwn = M_WordsTo8ByteValue(le16_to_host(device->drive_info.IdentifyData.ata.Word108),
+                                           le16_to_host(device->drive_info.IdentifyData.ata.Word109),
+                                           le16_to_host(device->drive_info.IdentifyData.ata.Word110),
+                                           device->drive_info.IdentifyData.ata.Word111);
 #define SAT_SCSI_NAME_STRING_LENGTH 21
         DECLARE_ZERO_INIT_ARRAY(char, scsiNameString, SAT_SCSI_NAME_STRING_LENGTH);
         naaDesignatorLength = 12;
@@ -2841,7 +2842,7 @@ static eReturnValues translate_Block_Device_Characteristics_VPD_Page_B1h(tDevice
     blockDeviceCharacteriticsPage[2] = 0x00;
     blockDeviceCharacteriticsPage[3] = 0x3C;
     // rotation rate
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word217))
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word217)))
     {
         blockDeviceCharacteriticsPage[4] = M_Byte1(device->drive_info.IdentifyData.ata.Word217);
         blockDeviceCharacteriticsPage[5] = M_Byte0(device->drive_info.IdentifyData.ata.Word217);
@@ -2849,7 +2850,7 @@ static eReturnValues translate_Block_Device_Characteristics_VPD_Page_B1h(tDevice
     // product type
     blockDeviceCharacteriticsPage[6] = 0;
     // form factor
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word168))
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word168)))
     {
         blockDeviceCharacteriticsPage[7] = M_Nibble0(device->drive_info.IdentifyData.ata.Word168);
     }
@@ -2911,15 +2912,15 @@ static eReturnValues translate_Power_Condition_VPD_Page_8Ah(tDevice* device, Scs
         {
             powerConditionPage[4] |= BIT1;
         }
-        if (descriptor->nomincalRecoveryTimeToPM0 > 0xFFFE)
+        if (le32_to_host(descriptor->nomincalRecoveryTimeToPM0) > 0xFFFE)
         {
             powerConditionPage[10] = 0xFF;
             powerConditionPage[11] = 0xFF;
         }
         else
         {
-            powerConditionPage[10] = M_Byte1(descriptor->nomincalRecoveryTimeToPM0);
-            powerConditionPage[11] = M_Byte0(descriptor->nomincalRecoveryTimeToPM0);
+            powerConditionPage[10] = M_Byte1(le32_to_host(descriptor->nomincalRecoveryTimeToPM0));
+            powerConditionPage[11] = M_Byte0(le32_to_host(descriptor->nomincalRecoveryTimeToPM0));
         }
         // standby z
         descriptor =
@@ -2928,15 +2929,15 @@ static eReturnValues translate_Power_Condition_VPD_Page_8Ah(tDevice* device, Scs
         {
             powerConditionPage[4] |= BIT0;
         }
-        if (descriptor->nomincalRecoveryTimeToPM0 > 0xFFFE)
+        if (le32_to_host(descriptor->nomincalRecoveryTimeToPM0) > 0xFFFE)
         {
             powerConditionPage[8] = 0xFF;
             powerConditionPage[9] = 0xFF;
         }
         else
         {
-            powerConditionPage[8] = M_Byte1(descriptor->nomincalRecoveryTimeToPM0);
-            powerConditionPage[9] = M_Byte0(descriptor->nomincalRecoveryTimeToPM0);
+            powerConditionPage[8] = M_Byte1(le32_to_host(descriptor->nomincalRecoveryTimeToPM0));
+            powerConditionPage[9] = M_Byte0(le32_to_host(descriptor->nomincalRecoveryTimeToPM0));
         }
         // idle a
         descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[0]);
@@ -2944,15 +2945,15 @@ static eReturnValues translate_Power_Condition_VPD_Page_8Ah(tDevice* device, Scs
         {
             powerConditionPage[5] |= BIT0;
         }
-        if (descriptor->nomincalRecoveryTimeToPM0 > 0xFFFE)
+        if (le32_to_host(descriptor->nomincalRecoveryTimeToPM0) > 0xFFFE)
         {
             powerConditionPage[8] = 0xFF;
             powerConditionPage[9] = 0xFF;
         }
         else
         {
-            powerConditionPage[8] = M_Byte1(descriptor->nomincalRecoveryTimeToPM0);
-            powerConditionPage[9] = M_Byte0(descriptor->nomincalRecoveryTimeToPM0);
+            powerConditionPage[8] = M_Byte1(le32_to_host(descriptor->nomincalRecoveryTimeToPM0));
+            powerConditionPage[9] = M_Byte0(le32_to_host(descriptor->nomincalRecoveryTimeToPM0));
         }
         // idle b
         descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[64]);
@@ -2960,15 +2961,15 @@ static eReturnValues translate_Power_Condition_VPD_Page_8Ah(tDevice* device, Scs
         {
             powerConditionPage[5] |= BIT1;
         }
-        if (descriptor->nomincalRecoveryTimeToPM0 > 0xFFFE)
+        if (le32_to_host(descriptor->nomincalRecoveryTimeToPM0) > 0xFFFE)
         {
             powerConditionPage[8] = 0xFF;
             powerConditionPage[9] = 0xFF;
         }
         else
         {
-            powerConditionPage[8] = M_Byte1(descriptor->nomincalRecoveryTimeToPM0);
-            powerConditionPage[9] = M_Byte0(descriptor->nomincalRecoveryTimeToPM0);
+            powerConditionPage[8] = M_Byte1(le32_to_host(descriptor->nomincalRecoveryTimeToPM0));
+            powerConditionPage[9] = M_Byte0(le32_to_host(descriptor->nomincalRecoveryTimeToPM0));
         }
         // idle c
         descriptor = C_CAST(ataPowerConditionsDescriptor*, &powerConditionsLog[128]);
@@ -2976,15 +2977,15 @@ static eReturnValues translate_Power_Condition_VPD_Page_8Ah(tDevice* device, Scs
         {
             powerConditionPage[5] |= BIT2;
         }
-        if (descriptor->nomincalRecoveryTimeToPM0 > 0xFFFE)
+        if (le32_to_host(descriptor->nomincalRecoveryTimeToPM0) > 0xFFFE)
         {
             powerConditionPage[8] = 0xFF;
             powerConditionPage[9] = 0xFF;
         }
         else
         {
-            powerConditionPage[8] = M_Byte1(descriptor->nomincalRecoveryTimeToPM0);
-            powerConditionPage[9] = M_Byte0(descriptor->nomincalRecoveryTimeToPM0);
+            powerConditionPage[8] = M_Byte1(le32_to_host(descriptor->nomincalRecoveryTimeToPM0));
+            powerConditionPage[9] = M_Byte0(le32_to_host(descriptor->nomincalRecoveryTimeToPM0));
         }
         // copy the data back
         if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
@@ -3020,9 +3021,9 @@ static eReturnValues translate_Logical_Block_Provisioning_VPD_Page_B2h(tDevice* 
     // threshold exponent
     logicalBlockProvisioning[4] = 0;
     // lbpu bit
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169))
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word169)))
     {
-        if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
+        if (le16_to_host(device->drive_info.IdentifyData.ata.Word169) & BIT0)
         {
             logicalBlockProvisioning[5] |= BIT7;
             // lbpws bit (set to zero since we don't support unmap during write same yet)
@@ -3030,12 +3031,12 @@ static eReturnValues translate_Logical_Block_Provisioning_VPD_Page_B2h(tDevice* 
             // lbpws10 bit (set to zero since we don't support unmap during write same yet)
             // logicalBlockProvisioning[5] |= BIT5;
             // lbprz
-            if (device->drive_info.IdentifyData.ata.Word069 & BIT5)
+            if (le16_to_host(device->drive_info.IdentifyData.ata.Word069) & BIT5)
             {
                 logicalBlockProvisioning[5] |= BIT2;
             }
             // anc_sup
-            if (device->drive_info.IdentifyData.ata.Word069 & BIT14)
+            if (le16_to_host(device->drive_info.IdentifyData.ata.Word069) & BIT14)
             {
                 logicalBlockProvisioning[5] |= BIT1;
             }
@@ -3096,8 +3097,9 @@ static eReturnValues translate_Block_Limits_VPD_Page_B0h(tDevice* device, ScsiIo
     // maximum prefetch length (unspecified....we decide) - leave at zero since we don't support the prefetch command
 
     // unmap stuff
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) &&
-        device->drive_info.IdentifyData.ata.Word169 & BIT0 && device->drive_info.IdentifyData.ata.Word069 & BIT14)
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word169)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word169) & BIT0 &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word069) & BIT14)
     {
         uint32_t maxBlocks = UINT32_C(1);
         uint8_t  maxDescriptorsPerBlock;
@@ -3106,9 +3108,9 @@ static eReturnValues translate_Block_Limits_VPD_Page_B0h(tDevice* device, ScsiIo
         uint32_t unmapLBACount;
         uint32_t unmapMaxBlockDescriptors;
 
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word105))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word105)))
         {
-            maxBlocks = device->drive_info.IdentifyData.ata.Word105;
+            maxBlocks = le16_to_host(device->drive_info.IdentifyData.ata.Word105);
         }
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
         maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
@@ -3200,8 +3202,8 @@ static eReturnValues translate_Mode_Page_Policy_VPD_Page_87h(tDevice* device, Sc
     pageOffset += 4;
 #endif // SAT_SPEC_SUPPORTED
     // ATA power condition
-    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) &&
-        device->drive_info.IdentifyData.ata.Word083 & BIT3)
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT3)
     {
         modePagePolicy[pageOffset + 0] = 0x1A;     // pageCode
         modePagePolicy[pageOffset + 1] = 0xF1;     // subpage code
@@ -3353,13 +3355,15 @@ static eReturnValues translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice* devic
     // sequence)
     extendedInquiry[4] |= BIT6; // 01b
     // WU_SUP - set to value of ATA Write Uncorrectable command support from identify data.
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-        device->drive_info.IdentifyData.ata.Word086 & BIT15) /*words 119, 120 valid*/
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /*words 119, 120 valid*/
     {
-        if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) &&
-             device->drive_info.IdentifyData.ata.Word119 & BIT2) ||
-            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word120) &&
-             device->drive_info.IdentifyData.ata.Word120 & BIT2))
+        if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word119)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word119) & BIT2) ||
+            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word120)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word120) & BIT2))
         {
             extendedInquiry[6] |= BIT3;
             // CRD_SUP (Obsolete is SPC5) set to value of WU_SUP
@@ -3367,10 +3371,10 @@ static eReturnValues translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice* devic
         }
     }
     // extended self test completion time minutes to value from SMART Read Data command
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-        device->drive_info.IdentifyData.ata.Word085 & BIT0 &&
-        is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) &&
-        device->drive_info.IdentifyData.ata.Word084 & BIT1) // smart enabled and self test supported
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0 &&
+        is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word084)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word084) & BIT1) // smart enabled and self test supported
     {
         DECLARE_ZERO_INIT_ARRAY(uint8_t, smartData, LEGACY_DRIVE_SEC_SIZE);
         if (SUCCESS == ata_SMART_Read_Data(device, smartData, LEGACY_DRIVE_SEC_SIZE))
@@ -3439,11 +3443,11 @@ static eReturnValues translate_Supported_VPD_Pages_00h(tDevice* device, ScsiIoCt
     pageOffset++;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
     // power condition (only is EPC is supported on the drive)
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-        device->drive_info.IdentifyData.ata.Word086 & BIT15) /*words 119, 120 valid*/
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /*words 119, 120 valid*/
     {
-        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) &&
-            device->drive_info.IdentifyData.ata.Word119 & BIT7)
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word119)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word119) & BIT7)
         {
             supportedPages[pageOffset] = POWER_CONDITION;
             pageOffset++;
@@ -3463,8 +3467,8 @@ static eReturnValues translate_Supported_VPD_Pages_00h(tDevice* device, ScsiIoCt
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
     // logical block provisioning (only show when we have a drive that supports the TRIM command...otherwise this page
     // has little to no meaning)
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) &&
-        device->drive_info.IdentifyData.ata.Word169 & BIT0)
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word169)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word169) & BIT0)
     {
         supportedPages[pageOffset] = LOGICAL_BLOCK_PROVISIONING;
         pageOffset++;
@@ -3548,10 +3552,11 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice* device, ScsiIoCtx* 
                 break;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
             case POWER_CONDITION:
-                if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-                     device->drive_info.IdentifyData.ata.Word086 & BIT15) /*words 119, 120 valid*/
-                    && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) &&
-                        device->drive_info.IdentifyData.ata.Word119 & BIT7))
+                if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+                     le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /*words 119, 120 valid*/
+                    && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                            le16_to_host(device->drive_info.IdentifyData.ata.Word119)) &&
+                        le16_to_host(device->drive_info.IdentifyData.ata.Word119) & BIT7))
                 {
                     ret = translate_Power_Condition_VPD_Page_8Ah(device, scsiIoCtx);
                 }
@@ -3579,8 +3584,8 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice* device, ScsiIoCtx* 
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
             case LOGICAL_BLOCK_PROVISIONING:
                 // only bother supporting this page if the drive supports trim
-                if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) &&
-                    device->drive_info.IdentifyData.ata.Word169 & BIT0)
+                if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word169)) &&
+                    le16_to_host(device->drive_info.IdentifyData.ata.Word169) & BIT0)
                 {
                     ret = translate_Logical_Block_Provisioning_VPD_Page_B2h(device, scsiIoCtx);
                 }
@@ -3674,7 +3679,7 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice* device, ScsiIoCtx* 
             }
 #endif // SAT_SPEC_SUPPORTED
             inquiryData[0] = peripheralDevice;
-            if (device->drive_info.IdentifyData.ata.Word000 & BIT7)
+            if (le16_to_host(device->drive_info.IdentifyData.ata.Word000) & BIT7)
             {
                 inquiryData[1] |= BIT7;
             }
@@ -3805,9 +3810,9 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice* device, ScsiIoCtx* 
        // serial, but we only get to set ATA8-APT or ATA8-AST, which may not be enough)-TJE ATA Version(s) ATA/ATAPI-6
        // through ACS-4 searching for specs between ATA/ATAPI-6 and ACS-3 since ACS3 is the highest thing with a value
        // at this time.
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word080))
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word080)))
             {
-                uint16_t specSupportedWord = device->drive_info.IdentifyData.ata.Word080;
+                uint16_t specSupportedWord = le16_to_host(device->drive_info.IdentifyData.ata.Word080);
                 uint16_t ataSpecVersion    = UINT16_C(0);
                 uint8_t  specCounter       = UINT8_C(1);
                 while (specSupportedWord > 0x0001)
@@ -3952,8 +3957,9 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice* device, bool 
                                        device->drive_info.softSATFlags.senseDataDescriptorFormat, NULL, 0);
         // get the MaxLBA
 
-        if (is_ATA_Identify_Word_Valid(ident_word[1]) && is_ATA_Identify_Word_Valid(ident_word[3]) &&
-            is_ATA_Identify_Word_Valid(ident_word[6]))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[1])) &&
+            is_ATA_Identify_Word_Valid(le16_to_host(ident_word[3])) &&
+            is_ATA_Identify_Word_Valid(le16_to_host(ident_word[6])))
         {
             cylinder = M_BytesTo2ByteValue(identifyData[3], identifyData[2]); // word 1
             head     = identifyData[6];                                       // Word3
@@ -3962,23 +3968,24 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice* device, bool 
             // if set to zero they MAY be valid....so just check validity on everything
         }
 
-        if (is_ATA_Identify_Word_Valid(ident_word[49]))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[49])))
         {
-            if (ident_word[49] & BIT9)
+            if (le16_to_host(ident_word[49]) & BIT9)
             {
                 lbaModeSupported = true;
             }
-            if (ident_word[53] & BIT1)
+            if (le16_to_host(ident_word[53]) & BIT1)
             {
                 words64to70Valid = true;
             }
         }
-        if (is_ATA_Identify_Word_Valid(ident_word[53]))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[53])))
         {
-            if ((ident_word[53] & BIT0) ||
-                (is_ATA_Identify_Word_Valid(ident_word[54]) && is_ATA_Identify_Word_Valid(ident_word[55]) &&
-                 is_ATA_Identify_Word_Valid(ident_word[56]) && is_ATA_Identify_Word_Valid(ident_word[57]) &&
-                 is_ATA_Identify_Word_Valid(ident_word[58])))
+            if ((le16_to_host(ident_word[53]) & BIT0) || (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[54])) &&
+                                                          is_ATA_Identify_Word_Valid(le16_to_host(ident_word[55])) &&
+                                                          is_ATA_Identify_Word_Valid(le16_to_host(ident_word[56])) &&
+                                                          is_ATA_Identify_Word_Valid(le16_to_host(ident_word[57])) &&
+                                                          is_ATA_Identify_Word_Valid(le16_to_host(ident_word[58]))))
             {
                 // only override if these are non-zero. If all are zero, then we cannot determine the current
                 // configuration and should rely on the defaults read earlier. This is being checked again sincea device
@@ -3995,25 +4002,25 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice* device, bool 
         }
         maxLBA = C_CAST(uint64_t, cylinder) * C_CAST(uint64_t, head) * C_CAST(uint64_t, spt);
 
-        if (lbaModeSupported ||
-            (is_ATA_Identify_Word_Valid(ident_word[60]) || is_ATA_Identify_Word_Valid(ident_word[61])))
+        if (lbaModeSupported || (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[60])) ||
+                                 is_ATA_Identify_Word_Valid(le16_to_host(ident_word[61]))))
         {
             lbaModeSupported = true; // workaround for some USB devices that do support lbamode as can be seen by
                                      // reading this LBA value
             maxLBA = M_BytesTo4ByteValue(identifyData[123], identifyData[122], identifyData[121], identifyData[120]);
         }
 
-        if (words64to70Valid && is_ATA_Identify_Word_Valid(ident_word[69]))
+        if (words64to70Valid && is_ATA_Identify_Word_Valid(le16_to_host(ident_word[69])))
         {
-            if (ident_word[69] & BIT3)
+            if (le16_to_host(ident_word[69]) & BIT3)
             {
                 extendedLBAFieldValid = true;
             }
-            if (ident_word[69] & BIT5)
+            if (le16_to_host(ident_word[69]) & BIT5)
             {
                 rzatLBPRZ = true;
             }
-            if (ident_word[69] & BIT14)
+            if (le16_to_host(ident_word[69]) & BIT14)
             {
                 dratLBPME = true;
             }
@@ -4022,8 +4029,10 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice* device, bool 
         {
             // max LBA from other words since 28bit max field is maxed out
             // check words 100-103 are valid values
-            if (is_ATA_Identify_Word_Valid(ident_word[100]) || is_ATA_Identify_Word_Valid(ident_word[101]) ||
-                is_ATA_Identify_Word_Valid(ident_word[102]) || is_ATA_Identify_Word_Valid(ident_word[103]))
+            if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[100])) ||
+                is_ATA_Identify_Word_Valid(le16_to_host(ident_word[101])) ||
+                is_ATA_Identify_Word_Valid(le16_to_host(ident_word[102])) ||
+                is_ATA_Identify_Word_Valid(le16_to_host(ident_word[103])))
             {
                 maxLBA =
                     M_BytesTo8ByteValue(identifyData[207], identifyData[206], identifyData[205], identifyData[204],
@@ -4040,25 +4049,25 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice* device, bool 
             maxLBA -= 1;
         }
         // get the Sector Sizes
-        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[106]))
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(ident_word[106])))
         {
             // word 117 is only valid when word 106 bit 12 is set
-            if ((ident_word[106] & BIT12) == BIT12)
+            if ((le16_to_host(ident_word[106]) & BIT12) == BIT12)
             {
-                logicalSectorSize = M_WordsTo4ByteValue(ident_word[118], ident_word[117]);
+                logicalSectorSize = M_WordsTo4ByteValue(le16_to_host(ident_word[118]), le16_to_host(ident_word[117]));
                 logicalSectorSize *= 2; // convert to words to bytes
             }
             else // means that logical sector size is 512bytes
             {
                 logicalSectorSize = LEGACY_DRIVE_SEC_SIZE;
             }
-            if ((ident_word[106] & BIT13) == 0)
+            if ((le16_to_host(ident_word[106]) & BIT13) == 0)
             {
                 physicalSectorSizeExponent = 0;
             }
             else // multiple logical sectors per physical sector
             {
-                physicalSectorSizeExponent = ident_word[106] & 0x000F;
+                physicalSectorSizeExponent = le16_to_host(ident_word[106]) & 0x000F;
             }
         }
         else
@@ -4066,9 +4075,9 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(tDevice* device, bool 
             logicalSectorSize          = LEGACY_DRIVE_SEC_SIZE;
             physicalSectorSizeExponent = 0;
         }
-        if (is_ATA_Identify_Word_Valid(ident_word[209]) && ident_word[209] & BIT14)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[209])) && le16_to_host(ident_word[209]) & BIT14)
         {
-            sectorAlignment = ident_word[209] & 0x3F;
+            sectorAlignment = le16_to_host(ident_word[209]) & 0x3F;
         }
         // TODO: Zoned info (RC Basis)...need update to SAT 4 before I can fill this in
 
@@ -4829,8 +4838,8 @@ static eReturnValues translate_SCSI_Write_Same_Command(tDevice* device, ScsiIoCt
     if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && wrprotect != 0) ||
         ((fieldPointer = 1) != 0 && (bitPointer = 4) != 0 && (!unmap && anchor)) ||
         ((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 &&
-         (unmap &&
-          !(device->drive_info.IdentifyData.ata.Word169 & BIT0))) // drive doesn't support trim, so we cannot do this...
+         (unmap && !(le16_to_host(device->drive_info.IdentifyData.ata.Word169) &
+                     BIT0))) // drive doesn't support trim, so we cannot do this...
         || ((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && (logicalBlockData && unmap)) ||
         ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 &&
          physicalBlockData) // not supporting physical or logical block data bits at this time. Can be implemented
@@ -4936,9 +4945,9 @@ static eReturnValues translate_SCSI_Write_Same_Command(tDevice* device, ScsiIoCt
             else
             {
                 // else if SCT write same, function 01 or 101 (foreground or background...SATL decides)
-                if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word206) &&
-                    device->drive_info.IdentifyData.ata.Word206 & BIT0 &&
-                    device->drive_info.IdentifyData.ata.Word206 & BIT2)
+                if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word206)) &&
+                    le16_to_host(device->drive_info.IdentifyData.ata.Word206) & BIT0 &&
+                    le16_to_host(device->drive_info.IdentifyData.ata.Word206) & BIT2)
                 {
                     DECLARE_ZERO_INIT_ARRAY(uint8_t, pattern, 4); // 32bits set to zero
                     uint32_t currentTimeout                  = device->drive_info.defaultTimeoutSeconds;
@@ -4967,8 +4976,8 @@ static eReturnValues translate_SCSI_Write_Same_Command(tDevice* device, ScsiIoCt
             else
 #endif
             {
-                if (device->drive_info.IdentifyData.ata.Word206 & BIT0 &&
-                    device->drive_info.IdentifyData.ata.Word206 & BIT2)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word206) & BIT0 &&
+                    le16_to_host(device->drive_info.IdentifyData.ata.Word206) & BIT2)
                 {
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
                     // If SCT - function 102 (foreground). 1 or more SCT commands
@@ -5066,13 +5075,14 @@ static eReturnValues translate_SCSI_Synchronize_Cache_Command(tDevice* device, S
                                        0x00, device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
         return BAD_PARAMETER;
     }
-    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) &&
-        device->drive_info.IdentifyData.ata.Word083 & BIT13) // ext command
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT13) // ext command
     {
         ret = ata_Flush_Cache(device, true);
     }
-    else if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) &&
-             device->drive_info.IdentifyData.ata.Word083 & BIT12) // 28bit command
+    else if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT12) // 28bit command
     {
         ret = ata_Flush_Cache(device, false);
     }
@@ -5212,10 +5222,10 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(tDevice* device, Sc
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
-    if (device->drive_info.IdentifyData.ata.Word049 & BIT8)
+    if (le16_to_host(device->drive_info.IdentifyData.ata.Word049) & BIT8)
     {
-        if ((device->drive_info.IdentifyData.ata.Word063 & (BIT0 | BIT1 | BIT2)) ||
-            device->drive_info.IdentifyData.ata.Word088 & 0xFF)
+        if ((le16_to_host(device->drive_info.IdentifyData.ata.Word063) & (BIT0 | BIT1 | BIT2)) ||
+            le16_to_host(device->drive_info.IdentifyData.ata.Word088) & 0xFF)
         {
             dmaSupported = true;
         }
@@ -5319,7 +5329,7 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(tDevice* device, Sc
         return SUCCESS;
     }
     // check if 48bit
-    if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
+    if (le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT10)
     {
         if (verificationLength == UINT32_C(65536))
         {
@@ -5798,9 +5808,9 @@ static eReturnValues translate_SCSI_Format_Unit_Command(tDevice* device, ScsiIoC
                         if (performWriteOperation)
                         {
                             if (initializationPatternLength == 0x0004 &&
-                                is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word206) &&
-                                device->drive_info.IdentifyData.ata.Word206 & BIT0 &&
-                                device->drive_info.IdentifyData.ata.Word206 & BIT2)
+                                is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word206)) &&
+                                le16_to_host(device->drive_info.IdentifyData.ata.Word206) & BIT0 &&
+                                le16_to_host(device->drive_info.IdentifyData.ata.Word206) & BIT2)
                             {
                                 // SCT write same
                                 ret = send_ATA_SCT_Write_Same(device, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, 0,
@@ -6195,8 +6205,8 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(tDevice* device, Scs
             M_BytesTo4ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1], scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]);
         incrementAmount = 8; // long parameters are 8 bytes in size
     }
-    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) &&
-        device->drive_info.IdentifyData.ata.Word083 & BIT10) // 48bit
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT10) // 48bit
     {
         extCommand = true;
     }
@@ -6346,62 +6356,62 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(tDevice* device
             ataSecurityInformation[0] = RESERVED;
             ataSecurityInformation[1] = 0x0E; // parameter list length
             // security erase time
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word089))
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word089)))
             {
                 ataSecurityInformation[2] =
-                    M_Byte1(device->drive_info.IdentifyData.ata.Word089 & 0x7FFF); // remove bit 15
+                    M_Byte1(le16_to_host(device->drive_info.IdentifyData.ata.Word089) & 0x7FFF); // remove bit 15
                 ataSecurityInformation[3] = M_Byte0(device->drive_info.IdentifyData.ata.Word089);
             }
             // enhanced security erase time
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word090))
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word090)))
             {
                 ataSecurityInformation[4] =
-                    M_Byte1(device->drive_info.IdentifyData.ata.Word090 & 0x7FFF); // remove bit 15
+                    M_Byte1(le16_to_host(device->drive_info.IdentifyData.ata.Word090) & 0x7FFF); // remove bit 15
                 ataSecurityInformation[5] = M_Byte0(device->drive_info.IdentifyData.ata.Word090);
             }
             // master password identifier
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word092))
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word092)))
             {
                 ataSecurityInformation[6] = M_Byte1(device->drive_info.IdentifyData.ata.Word092);
                 ataSecurityInformation[7] = M_Byte0(device->drive_info.IdentifyData.ata.Word092);
             }
             // maxset bit
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word128))
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word128)))
             {
-                if (device->drive_info.IdentifyData.ata.Word128 & BIT8)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word128) & BIT8)
                 {
                     ataSecurityInformation[8] |= BIT0;
                 }
                 // enhanced security erase supported bit
-                if (device->drive_info.IdentifyData.ata.Word128 & BIT5)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word128) & BIT5)
                 {
                     ataSecurityInformation[9] |= BIT5;
                 }
                 // password attempt counter exceeded bit
-                if (device->drive_info.IdentifyData.ata.Word128 & BIT4)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word128) & BIT4)
                 {
                     ataSecurityInformation[9] |= BIT4;
                 }
                 // frozen bit
-                if (device->drive_info.IdentifyData.ata.Word128 & BIT3)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word128) & BIT3)
                 {
                     ataSecurityInformation[9] |= BIT3;
                 }
                 // locked bit
-                if (device->drive_info.IdentifyData.ata.Word128 & BIT2)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word128) & BIT2)
                 {
                     ataSecurityInformation[9] |= BIT2;
                 }
             }
             // security enabled bit
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-                device->drive_info.IdentifyData.ata.Word085 & BIT1)
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+                le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT1)
             {
                 ataSecurityInformation[9] |= BIT1;
             }
             // security supported bit
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) &&
-                device->drive_info.IdentifyData.ata.Word082 & BIT1)
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word082)) &&
+                le16_to_host(device->drive_info.IdentifyData.ata.Word082) & BIT1)
             {
                 ataSecurityInformation[9] |= BIT0;
             }
@@ -7025,12 +7035,13 @@ static eReturnValues translate_SCSI_Write_Long(tDevice* device, ScsiIoCtx* scsiI
                                        senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-         device->drive_info.IdentifyData.ata.Word086 & BIT15) /* words 119, 120 valid */
-        && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) &&
-             device->drive_info.IdentifyData.ata.Word119 & BIT2) ||
-            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word120) &&
-             device->drive_info.IdentifyData.ata.Word120 & BIT2)))
+    if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /* words 119, 120 valid */
+        &&
+        ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word119)) &&
+          le16_to_host(device->drive_info.IdentifyData.ata.Word119) & BIT2) ||
+         (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word120)) &&
+          le16_to_host(device->drive_info.IdentifyData.ata.Word120) & BIT2)))
     {
         bool     correctionDisabled      = false;
         bool     writeUncorrectableError = false;
@@ -7211,8 +7222,8 @@ static eReturnValues translate_SCSI_Sanitize_Command(tDevice* device, ScsiIoCtx*
                                        senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word059) &&
-        device->drive_info.IdentifyData.ata.Word059 & BIT12)
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word059)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT12)
     {
         uint8_t serviceAction = UINT8_C(0x1F) & scsiIoCtx->cdb[1];
         bool immediate = false; // this is ignored for now since there is no way to handle this without multi-threading
@@ -7260,7 +7271,7 @@ static eReturnValues translate_SCSI_Sanitize_Command(tDevice* device, ScsiIoCtx*
             }
             else
             {
-                if (device->drive_info.IdentifyData.ata.Word059 & BIT13)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT13)
                 {
                     // check the parameter data
                     bool     invert         = false;
@@ -7358,7 +7369,7 @@ static eReturnValues translate_SCSI_Sanitize_Command(tDevice* device, ScsiIoCtx*
             }
             else
             {
-                if (device->drive_info.IdentifyData.ata.Word059 & BIT13)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT13)
                 {
                     if (SUCCESS != ata_Sanitize_Block_Erase(device, ause, znr) && !immediate)
                     {
@@ -7412,7 +7423,7 @@ static eReturnValues translate_SCSI_Sanitize_Command(tDevice* device, ScsiIoCtx*
             }
             else
             {
-                if (device->drive_info.IdentifyData.ata.Word059 & BIT13)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT13)
                 {
                     if (SUCCESS != ata_Sanitize_Crypto_Scramble(device, ause, znr) && !immediate)
                     {
@@ -7995,15 +8006,17 @@ static eReturnValues translate_SCSI_Send_Diagnostic_Command(tDevice* device, Scs
         // NOTE: On some old drives this is not a reliable enough check for smart self test.
         //       on these drives you must also issue the SMART read data command and check
         //       if self-test is reported as supported in the SMART data as well.-TJE
-        if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) &&
-             device->drive_info.IdentifyData.ata.Word084 & BIT1) ||
-            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) &&
-             device->drive_info.IdentifyData.ata.Word087 & BIT1))
+        if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word084)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word084) & BIT1) ||
+            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word087)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word087) & BIT1))
         {
             smartSelfTestSupported = true;
         }
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-            device->drive_info.IdentifyData.ata.Word085 & BIT0)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0)
         {
             smartEnabled = true;
         }
@@ -8023,8 +8036,9 @@ static eReturnValues translate_SCSI_Send_Diagnostic_Command(tDevice* device, Scs
             else // 3 read-verify commands
             {
                 bool extCommand = false;
-                if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) &&
-                    device->drive_info.IdentifyData.ata.Word083 & BIT10)
+                if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                        le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+                    le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT10)
                 {
                     extCommand = true;
                 }
@@ -8284,8 +8298,8 @@ static eReturnValues translate_SCSI_Request_Sense_Command(tDevice* device, ScsiI
         descriptorFormat = true;
     }
     ret = ata_Check_Power_Mode(device, &powerMode);
-    if (SUCCESS != ret && is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word059) &&
-        device->drive_info.IdentifyData.ata.Word059 & BIT12)
+    if (SUCCESS != ret && is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word059)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT12)
     {
         ret = SUCCESS;
         // check sanitize status
@@ -8326,8 +8340,9 @@ static eReturnValues translate_SCSI_Request_Sense_Command(tDevice* device, ScsiI
     else
     {
         bool sanitizeInProgress = false;
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word059) &&
-            device->drive_info.IdentifyData.ata.Word059 & BIT12 && SUCCESS == ata_Sanitize_Status(device, false))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word059)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT12 &&
+            SUCCESS == ata_Sanitize_Status(device, false))
         {
             if (device->drive_info.lastCommandRTFRs.secCntExt & BIT6)
             {
@@ -8372,10 +8387,11 @@ static eReturnValues translate_SCSI_Request_Sense_Command(tDevice* device, ScsiI
                 break;
             }
             if (checkDST &&
-                (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-                 device->drive_info.IdentifyData.ata.Word085 & BIT0) &&
-                (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) &&
-                 device->drive_info.IdentifyData.ata.Word084 & BIT1))
+                (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0) &&
+                (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                     le16_to_host(device->drive_info.IdentifyData.ata.Word084)) &&
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word084) & BIT1))
             {
                 // read SMART data and check for DST in progress.
                 DECLARE_ZERO_INIT_ARRAY(uint8_t, smartData, 512);
@@ -8399,8 +8415,8 @@ static eReturnValues translate_SCSI_Request_Sense_Command(tDevice* device, ScsiI
     }
     if (checkSMARTStatus)
     {
-        if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-             device->drive_info.IdentifyData.ata.Word085 & BIT0) &&
+        if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0) &&
             SUCCESS == ata_SMART_Return_Status(device))
         {
             if (device->drive_info.lastCommandRTFRs.lbaMid == 0xF4 && device->drive_info.lastCommandRTFRs.lbaHi == 0x2C)
@@ -8446,19 +8462,20 @@ static eReturnValues translate_SCSI_Write_Buffer_Command(tDevice* device, ScsiIo
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
-    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) &&
-         device->drive_info.IdentifyData.ata.Word083 & BIT0) ||
-        (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-         device->drive_info.IdentifyData.ata.Word086 & BIT0))
+    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT0) ||
+        (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT0))
     {
         downloadCommandSupported = true;
     }
-    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-         device->drive_info.IdentifyData.ata.Word086 & BIT15) /* words 119, 120 valid */
-        && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) &&
-             device->drive_info.IdentifyData.ata.Word119 & BIT4) ||
-            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word120) &&
-             device->drive_info.IdentifyData.ata.Word120 & BIT4)))
+    if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /* words 119, 120 valid */
+        &&
+        ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word119)) &&
+          le16_to_host(device->drive_info.IdentifyData.ata.Word119) & BIT4) ||
+         (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word120)) &&
+          le16_to_host(device->drive_info.IdentifyData.ata.Word120) & BIT4)))
     {
         downloadMode3Supported = true;
     }
@@ -8547,10 +8564,10 @@ static eReturnValues translate_SCSI_Write_Buffer_Command(tDevice* device, ScsiIo
                 if ((bufferOffset & 0x1FF) == 0 && (parameterListLength & 0x1FF) == 0)
                 {
                     // check min and max transfer sizes
-                    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word234) &&
-                         device->drive_info.IdentifyData.ata.Word234 > blockCount) ||
-                        (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word235) &&
-                         device->drive_info.IdentifyData.ata.Word235 < blockCount))
+                    if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word234)) &&
+                         le16_to_host(device->drive_info.IdentifyData.ata.Word234) > blockCount) ||
+                        (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word235)) &&
+                         le16_to_host(device->drive_info.IdentifyData.ata.Word235) < blockCount))
                     {
                         fieldPointer = UINT16_C(6);
                         bitPointer   = UINT8_C(7);
@@ -8642,10 +8659,10 @@ static eReturnValues translate_SCSI_Write_Buffer_Command(tDevice* device, ScsiIo
                 if ((bufferOffset & 0x1FF) == 0 && (parameterListLength & 0x1FF) == 0)
                 {
                     // check minimum and maximum transfer size
-                    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word234) &&
-                         device->drive_info.IdentifyData.ata.Word234 > blockCount) ||
-                        (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word235) &&
-                         device->drive_info.IdentifyData.ata.Word235 < blockCount))
+                    if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word234)) &&
+                         le16_to_host(device->drive_info.IdentifyData.ata.Word234) > blockCount) ||
+                        (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word235)) &&
+                         le16_to_host(device->drive_info.IdentifyData.ata.Word235) < blockCount))
                     {
                         fieldPointer = UINT16_C(6);
                         bitPointer   = UINT8_C(7);
@@ -8830,17 +8847,17 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
     }
 
     // save some information about the flush cache commands supported
-    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) &&
-        device->drive_info.IdentifyData.ata.Word083 & BIT13) // ext command
+    if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT13) // ext command
     {
         flushCacheExt = true;
     }
 
     // if EPC is supported, we do one thing....otherwise we do something else
-    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-         device->drive_info.IdentifyData.ata.Word086 & BIT15) /* words 119, 120 valid */
-        && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) &&
-            device->drive_info.IdentifyData.ata.Word119 & BIT7))
+    if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /* words 119, 120 valid */
+        && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word119)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word119) & BIT7))
     {
         // EPC drive
         switch (powerCondition)
@@ -8865,7 +8882,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                     // ata verify command
                     uint64_t randomLba  = UINT64_C(0);
                     bool     extCommand = false;
-                    if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
+                    if (le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT10)
                     {
                         extCommand = true;
                     }
@@ -8885,7 +8902,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
             {
                 if (loej)
                 {
-                    if (device->drive_info.IdentifyData.ata.Word000 & BIT7)
+                    if (le16_to_host(device->drive_info.IdentifyData.ata.Word000) & BIT7)
                     {
                         // send a media eject command
                         if (SUCCESS != ata_Media_Eject(device))
@@ -8954,7 +8971,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                 // ata verify command
                 uint64_t randomLba  = UINT64_C(0);
                 bool     extCommand = false;
-                if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT10)
                 {
                     extCommand = true;
                 }
@@ -9006,7 +9023,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                     ret = NOT_SUPPORTED;
                     break;
                 }
-                if (descriptor)
+                if (descriptor != M_NULLPTR)
                 {
                     if (descriptor->powerConditionFlags & BIT7)
                     {
@@ -9098,7 +9115,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                     ret = NOT_SUPPORTED;
                     break;
                 }
-                if (descriptor)
+                if (descriptor != M_NULLPTR)
                 {
                     if (descriptor->powerConditionFlags & BIT7)
                     {
@@ -9200,13 +9217,13 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
         uint8_t powerMode                        = UINT8_C(0); // only used for LU_Control power condition
         bool    unload                           = false;
         bool    standbyTimersSpecifiedByStandard = false;
-        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) &&
-            device->drive_info.IdentifyData.ata.Word084 & BIT13)
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word084)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word084) & BIT13)
         {
             unload = true;
         }
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word049) &&
-            device->drive_info.IdentifyData.ata.Word049 & BIT13)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word049)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word049) & BIT13)
         {
             standbyTimersSpecifiedByStandard = true;
         }
@@ -9233,7 +9250,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                     // ata verify command
                     uint64_t randomLba  = UINT64_C(0);
                     bool     extCommand = false;
-                    if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
+                    if (le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT10)
                     {
                         extCommand = true;
                     }
@@ -9254,7 +9271,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
             {
                 if (loej)
                 {
-                    if (device->drive_info.IdentifyData.ata.Word000 & BIT7)
+                    if (le16_to_host(device->drive_info.IdentifyData.ata.Word000) & BIT7)
                     {
                         // send a media eject command
                         if (SUCCESS != ata_Media_Eject(device))
@@ -9316,7 +9333,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                 // ata verify command
                 uint64_t randomLba  = UINT64_C(0);
                 bool     extCommand = false;
-                if (device->drive_info.IdentifyData.ata.Word083 & BIT10)
+                if (le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT10)
                 {
                     extCommand = true;
                 }
@@ -9446,7 +9463,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                         bool     extCommand = false;
                         if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
                                 device->drive_info.IdentifyData.ata.Word083) &&
-                            device->drive_info.IdentifyData.ata.Word083 & BIT10)
+                            le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT10)
                         {
                             extCommand = true;
                         }
@@ -9578,10 +9595,10 @@ static eReturnValues translate_Supported_Log_Pages(tDevice* device, ScsiIoCtx* s
         offset += increment;
     }
     // If smart self test is supported, add the self test results log (10h)
-    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) &&
-         device->drive_info.IdentifyData.ata.Word084 & BIT1) ||
-        (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) &&
-         device->drive_info.IdentifyData.ata.Word087 & BIT1))
+    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word084)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word084) & BIT1) ||
+        (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word087)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word087) & BIT1))
     {
         supportedPages[offset] = LP_SELF_TEST_RESULTS;
         offset += increment;
@@ -9602,8 +9619,8 @@ static eReturnValues translate_Supported_Log_Pages(tDevice* device, ScsiIoCtx* s
     }
 
     // if smart is supported, add informational exceptions log page (2Fh)
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) &&
-        device->drive_info.IdentifyData.ata.Word082 & BIT0)
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word082)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word082) & BIT0)
     {
         supportedPages[offset] = LP_INFORMATION_EXCEPTIONS;
         offset += increment;
@@ -9650,8 +9667,8 @@ static eReturnValues translate_Informational_Exceptions_Log_Page_2F(tDevice* dev
             informationalExceptions[9] = 0x00;
         }
         // set temperature reading
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word206) &&
-            device->drive_info.IdentifyData.ata.Word206 & BIT0)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word206)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word206) & BIT0)
         {
             DECLARE_ZERO_INIT_ARRAY(uint8_t, sctData, LEGACY_DRIVE_SEC_SIZE);
             if (SUCCESS == ata_SMART_Read_Log(device, ATA_SCT_COMMAND_STATUS, sctData, LEGACY_DRIVE_SEC_SIZE))
@@ -10155,11 +10172,9 @@ static eReturnValues translate_Read_Error_Counters_Log_0x03(tDevice* device, Scs
     DECLARE_ZERO_INIT_ARRAY(uint8_t, readErrorCountersLog, 20);
     uint8_t offset = UINT8_C(4);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, LEGACY_DRIVE_SEC_SIZE);
-    uint64_t* qwordPtr                    = (uint64_t*)&logPage[0];
+    uint64_t* qwordPtr                    = M_REINTERPRET_CAST(uint64_t*, &logPage[0]);
     bool      correctiveAlgValid          = false;
     bool      reportedUncorrectablesValid = false;
-    readErrorCountersLog[0]               = 0x03;
-    readErrorCountersLog[1]               = 0x00;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer     = UINT8_C(0);
     uint16_t fieldPointer   = UINT16_C(0);
@@ -10177,9 +10192,9 @@ static eReturnValues translate_Read_Error_Counters_Log_0x03(tDevice* device, Scs
                                     scsiIoCtx->senseDataSize);
             return FAILURE;
         }
-        if (qwordPtr[5] & BIT63 && qwordPtr[5] & BIT62)
+        if (le64_to_host(qwordPtr[5]) & BIT63 && le64_to_host(qwordPtr[5]) & BIT62)
         {
-            uint32_t correctiveAlgProcessedCnt = M_DoubleWord0(qwordPtr[5]);
+            uint32_t correctiveAlgProcessedCnt = M_DoubleWord0(le64_to_host(qwordPtr[5]));
             correctiveAlgValid                 = true;
             readErrorCountersLog[offset + 0]   = 0x00;
             readErrorCountersLog[offset + 1]   = 0x04;
@@ -10203,9 +10218,9 @@ static eReturnValues translate_Read_Error_Counters_Log_0x03(tDevice* device, Scs
                                     scsiIoCtx->senseDataSize);
             return FAILURE;
         }
-        if (qwordPtr[1] & BIT63 && qwordPtr[1] & BIT62)
+        if (le64_to_host(qwordPtr[1]) & BIT63 && le64_to_host(qwordPtr[1]) & BIT62)
         {
-            uint32_t totalUncorrectables     = M_DoubleWord0(qwordPtr[1]);
+            uint32_t totalUncorrectables     = M_DoubleWord0(le64_to_host(qwordPtr[1]));
             reportedUncorrectablesValid      = true;
             readErrorCountersLog[offset + 0] = 0x00;
             readErrorCountersLog[offset + 1] = 0x04;
@@ -10293,21 +10308,21 @@ static eReturnValues translate_Temperature_Log_0x0D(tDevice* device, ScsiIoCtx* 
     if (parameterPointer <= 0)
     {
         // current temp
-        if (qwordPtr[1] & BIT63 && qwordPtr[1] & BIT62)
+        if (le64_to_host(qwordPtr[1]) & BIT63 && le64_to_host(qwordPtr[1]) & BIT62)
         {
             temperatureLog[offset + 0] = 0;
             temperatureLog[offset + 1] = 0;
             temperatureLog[offset + 2] = 0x03; // format and linking = 11b
             temperatureLog[offset + 3] = 0x02;
             temperatureLog[offset + 4] = RESERVED;
-            if (qwordPtr[1] & BIT7)
+            if (le64_to_host(qwordPtr[1]) & BIT7)
             {
                 temperatureLog[offset + 5] = 0;
             }
             else
             {
                 currentValid               = true;
-                temperatureLog[offset + 5] = M_Byte0(qwordPtr[1]);
+                temperatureLog[offset + 5] = M_Byte0(le64_to_host(qwordPtr[1]));
             }
             offset += 6;
         }
@@ -10315,21 +10330,21 @@ static eReturnValues translate_Temperature_Log_0x0D(tDevice* device, ScsiIoCtx* 
     if (parameterPointer <= 1)
     {
         // reference temp
-        if (qwordPtr[11] & BIT63 && qwordPtr[11] & BIT62)
+        if (le64_to_host(qwordPtr[11]) & BIT63 && le64_to_host(qwordPtr[11]) & BIT62)
         {
             temperatureLog[offset + 0] = 0;
             temperatureLog[offset + 1] = 1;
             temperatureLog[offset + 2] = 0x03; // format and linking = 11b
             temperatureLog[offset + 3] = 0x02;
             temperatureLog[offset + 4] = RESERVED;
-            if (qwordPtr[11] & BIT7)
+            if (le64_to_host(qwordPtr[11]) & BIT7)
             {
                 temperatureLog[offset + 5] = 0;
             }
             else
             {
                 referenceValid             = true;
-                temperatureLog[offset + 5] = M_Byte0(qwordPtr[11]);
+                temperatureLog[offset + 5] = M_Byte0(le64_to_host(qwordPtr[11]));
             }
             offset += 6;
         }
@@ -10396,7 +10411,7 @@ static eReturnValues translate_Solid_State_Media_Log_0x11(tDevice* device, ScsiI
     if (parameterPointer <= 1)
     {
         // endurance
-        if (qwordPtr[1] & BIT63 && qwordPtr[1] & BIT62)
+        if (le64_to_host(qwordPtr[1]) & BIT63 && le64_to_host(qwordPtr[1]) & BIT62)
         {
             endurancevalid                 = true;
             solidStateMediaLog[offset + 0] = 0x00;
@@ -10406,7 +10421,7 @@ static eReturnValues translate_Solid_State_Media_Log_0x11(tDevice* device, ScsiI
             solidStateMediaLog[offset + 4] = RESERVED;
             solidStateMediaLog[offset + 5] = RESERVED;
             solidStateMediaLog[offset + 6] = RESERVED;
-            solidStateMediaLog[offset + 7] = M_Byte0(qwordPtr[11]);
+            solidStateMediaLog[offset + 7] = M_Byte0(le64_to_host(qwordPtr[11]));
             offset += 8;
         }
     }
@@ -10472,9 +10487,9 @@ static eReturnValues translate_Background_Scan_Results_Log_0x15(tDevice* device,
     if (parameterPointer <= 0)
     {
         // poh
-        if (qwordPtr[2] & BIT63 && qwordPtr[2] & BIT62)
+        if (le64_to_host(qwordPtr[2]) & BIT63 && le64_to_host(qwordPtr[2]) & BIT62)
         {
-            uint64_t pohMinutes            = UINT64_C(60) * C_CAST(uint64_t, M_DoubleWord0(qwordPtr[2]));
+            uint64_t pohMinutes            = UINT64_C(60) * C_CAST(uint64_t, M_DoubleWord0(le64_to_host(qwordPtr[2])));
             pohvalid                       = true;
             backgroundResults[offset + 0]  = 0x00;
             backgroundResults[offset + 1]  = 0x00;
@@ -10565,9 +10580,9 @@ static eReturnValues translate_General_Statistics_And_Performance_Log_0x19(tDevi
         generalStatisticsAndPerformance[offset + 2] = 0x03; // format and linking = 11b
         generalStatisticsAndPerformance[offset + 3] = 0x40;
         // Number of read Commands
-        if (qwordPtr[6] & BIT63 && qwordPtr[6] & BIT62)
+        if (le64_to_host(qwordPtr[6]) & BIT63 && le64_to_host(qwordPtr[6]) & BIT62)
         {
-            uint64_t numberReads                         = qwordPtr[6] & MAX_48_BIT_LBA;
+            uint64_t numberReads                         = le64_to_host(qwordPtr[6]) & MAX_48_BIT_LBA;
             numReadsValid                                = true;
             generalStatisticsAndPerformance[offset + 4]  = M_Byte7(numberReads);
             generalStatisticsAndPerformance[offset + 5]  = M_Byte6(numberReads);
@@ -10579,9 +10594,9 @@ static eReturnValues translate_General_Statistics_And_Performance_Log_0x19(tDevi
             generalStatisticsAndPerformance[offset + 11] = M_Byte0(numberReads);
         }
         // number of write commands
-        if (qwordPtr[4] & BIT63 && qwordPtr[4] & BIT62)
+        if (le64_to_host(qwordPtr[4]) & BIT63 && le64_to_host(qwordPtr[4]) & BIT62)
         {
-            uint64_t numberWrites                        = qwordPtr[4] & MAX_48_BIT_LBA;
+            uint64_t numberWrites                        = le64_to_host(qwordPtr[4]) & MAX_48_BIT_LBA;
             numWritesValid                               = true;
             generalStatisticsAndPerformance[offset + 12] = M_Byte7(numberWrites);
             generalStatisticsAndPerformance[offset + 13] = M_Byte6(numberWrites);
@@ -10593,9 +10608,9 @@ static eReturnValues translate_General_Statistics_And_Performance_Log_0x19(tDevi
             generalStatisticsAndPerformance[offset + 19] = M_Byte0(numberWrites);
         }
         // number of logical blocks received
-        if (qwordPtr[3] & BIT63 && qwordPtr[3] & BIT62)
+        if (le64_to_host(qwordPtr[3]) & BIT63 && le64_to_host(qwordPtr[3]) & BIT62)
         {
-            uint64_t numLogBlocksWritten                 = qwordPtr[3] & MAX_48_BIT_LBA;
+            uint64_t numLogBlocksWritten                 = le64_to_host(qwordPtr[3]) & MAX_48_BIT_LBA;
             logicalSectorsWrittenValid                   = true;
             generalStatisticsAndPerformance[offset + 20] = M_Byte7(numLogBlocksWritten);
             generalStatisticsAndPerformance[offset + 21] = M_Byte6(numLogBlocksWritten);
@@ -10607,9 +10622,9 @@ static eReturnValues translate_General_Statistics_And_Performance_Log_0x19(tDevi
             generalStatisticsAndPerformance[offset + 27] = M_Byte0(numLogBlocksWritten);
         }
         // number of logical blocks transmitted
-        if (qwordPtr[5] & BIT63 && qwordPtr[5] & BIT62)
+        if (le64_to_host(qwordPtr[5]) & BIT63 && le64_to_host(qwordPtr[5]) & BIT62)
         {
-            uint64_t numLogBlocksRead                    = qwordPtr[5] & MAX_48_BIT_LBA;
+            uint64_t numLogBlocksRead                    = le64_to_host(qwordPtr[5]) & MAX_48_BIT_LBA;
             logicalSectorsReadValid                      = true;
             generalStatisticsAndPerformance[offset + 28] = M_Byte7(numLogBlocksRead);
             generalStatisticsAndPerformance[offset + 29] = M_Byte6(numLogBlocksRead);
@@ -10853,10 +10868,11 @@ static eReturnValues translate_Application_Client_Log_Sense_0x0F(tDevice* device
                 UINT16_C(256)); // this should adjust the offset based on the parameter code and the page we're reading.
         // each iteration through the loop will read a different page for the request
         // Read all 16 sectors of the log page we need to, then go through and set up the data to return
-        if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-             device->drive_info.IdentifyData.ata.Word085 & BIT5) ||
-            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) &&
-             device->drive_info.IdentifyData.ata.Word087 & BIT5)) // GPL
+        if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT5) ||
+            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word087)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word087) & BIT5)) // GPL
         {
             if (SUCCESS != ata_Read_Log_Ext(device, ataLogPageToRead, 0, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE,
                                             device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
@@ -10867,8 +10883,8 @@ static eReturnValues translate_Application_Client_Log_Sense_0x0F(tDevice* device
                 break;
             }
         }
-        else if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-                 device->drive_info.IdentifyData.ata.Word085 & BIT0) // SMART read log
+        else if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0) // SMART read log
         {
             if (SUCCESS != ata_SMART_Read_Log(device, ataLogPageToRead, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE))
             {
@@ -11053,8 +11069,8 @@ static eReturnValues translate_SCSI_Log_Sense_Command(tDevice* device, ScsiIoCtx
                     // First, make sure GPL or SMART are supported/enabled and then that the device supports the
                     // host-vendor specific logs
                     if ((device->drive_info.ata_Options.generalPurposeLoggingSupported ||
-                         (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-                          device->drive_info.IdentifyData.ata.Word085 & BIT0)) &&
+                         (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+                          le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0)) &&
                         device->drive_info.softSATFlags.hostLogsSupported)
                     {
                         ret = translate_Application_Client_Log_Sense_0x0F(device, scsiIoCtx);
@@ -11088,10 +11104,12 @@ static eReturnValues translate_SCSI_Log_Sense_Command(tDevice* device, ScsiIoCtx
                 switch (subpageCode)
                 {
                 case 0:
-                    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) &&
-                         device->drive_info.IdentifyData.ata.Word084 & BIT1) ||
-                        (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) &&
-                         device->drive_info.IdentifyData.ata.Word087 & BIT1))
+                    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                             le16_to_host(device->drive_info.IdentifyData.ata.Word084)) &&
+                         le16_to_host(device->drive_info.IdentifyData.ata.Word084) & BIT1) ||
+                        (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                             le16_to_host(device->drive_info.IdentifyData.ata.Word087)) &&
+                         le16_to_host(device->drive_info.IdentifyData.ata.Word087) & BIT1))
                     {
                         ret = translate_Self_Test_Results_Log_0x10(device, scsiIoCtx);
                     }
@@ -11220,11 +11238,12 @@ static eReturnValues translate_SCSI_Log_Sense_Command(tDevice* device, ScsiIoCtx
             case 0x2F: // Informational Exceptions
                 if (subpageCode == 0)
                 {
-                    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) &&
-                        device->drive_info.IdentifyData.ata.Word082 & BIT0) // check if SMART is supported
+                    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word082)) &&
+                        le16_to_host(device->drive_info.IdentifyData.ata.Word082) & BIT0) // check if SMART is supported
                     {
-                        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-                            device->drive_info.IdentifyData.ata.Word085 & BIT0) // check if SMART is enabled
+                        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+                            le16_to_host(device->drive_info.IdentifyData.ata.Word085) &
+                                BIT0) // check if SMART is enabled
                         {
                             if (parameterPointer == 0)
                             {
@@ -11370,8 +11389,8 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice*   dev
                     break;
                 }
             }
-            else if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-                     device->drive_info.IdentifyData.ata.Word085 & BIT0) // SMART read log
+            else if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+                     le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0) // SMART read log
             {
                 if (SUCCESS !=
                     ata_SMART_Write_Log(device, ataLogPageToWrite, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, false))
@@ -11585,8 +11604,8 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice*   dev
                         break;
                     }
                 }
-                else if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-                         device->drive_info.IdentifyData.ata.Word085 & BIT0) // SMART read log
+                else if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+                         le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0) // SMART read log
                 {
                     if (SUCCESS !=
                         ata_SMART_Read_Log(device, ataLogPageToRead, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE))
@@ -11645,8 +11664,8 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(tDevice*   dev
                         break;
                     }
                 }
-                else if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-                         device->drive_info.IdentifyData.ata.Word085 & BIT0) // SMART read log
+                else if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+                         le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0) // SMART read log
                 {
                     if (SUCCESS !=
                         ata_SMART_Write_Log(device, ataLogPageToRead, hostLogData, 16 * LEGACY_DRIVE_SEC_SIZE, false))
@@ -11733,8 +11752,8 @@ static eReturnValues translate_SCSI_Log_Select_Command(tDevice* device, ScsiIoCt
                     // First, make sure GPL or SMART are supported/enabled and then that the device supports the
                     // host-vendor specific logs
                     if ((device->drive_info.ata_Options.generalPurposeLoggingSupported ||
-                         (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-                          device->drive_info.IdentifyData.ata.Word085 & BIT0)) &&
+                         (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+                          le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0)) &&
                         device->drive_info.softSATFlags.hostLogsSupported)
                     {
                         ret = translate_Application_Client_Log_Select_0x0F(device, scsiIoCtx, scsiIoCtx->pdata,
@@ -11854,9 +11873,9 @@ static eReturnValues translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCtx* sc
         if (unmapBlockDescriptorLength > 0)
         {
             uint16_t trimBufferSize = UINT16_C(1);
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word105))
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word105)))
             {
-                trimBufferSize = device->drive_info.IdentifyData.ata.Word105;
+                trimBufferSize = le16_to_host(device->drive_info.IdentifyData.ata.Word105);
             }
             uint8_t* trimBuffer = C_CAST(
                 uint8_t*, safe_calloc_aligned(
@@ -11884,9 +11903,9 @@ static eReturnValues translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCtx* sc
                 0; // this will be checked later to make sure it isn't greater than what we reported on the VPD pages
             uint16_t ataTrimOffset = UINT16_C(0);
 
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word105))
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word105)))
             {
-                trimBufferSize = device->drive_info.IdentifyData.ata.Word105;
+                trimBufferSize = le16_to_host(device->drive_info.IdentifyData.ata.Word105);
             }
             trimBuffer = C_CAST(
                 uint8_t*,
@@ -12165,12 +12184,14 @@ static eReturnValues translate_Mode_Sense_Control_0Ah(tDevice*   device,
         controlPage[offset + 8] = 0xFF; // busy timeout period
         controlPage[offset + 9] = 0xFF; // busy timeout period
 
-        if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) &&
-             device->drive_info.IdentifyData.ata.Word084 & BIT1) &&
-            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) &&
-             device->drive_info.IdentifyData.ata.Word087 & BIT1) &&
-            (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-             device->drive_info.IdentifyData.ata.Word085 & BIT0))
+        if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word084)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word084) & BIT1) &&
+            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word087)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word087) & BIT1) &&
+            (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT0))
         {
             DECLARE_ZERO_INIT_ARRAY(uint8_t, smartData, LEGACY_DRIVE_SEC_SIZE);
             if (SUCCESS == ata_SMART_Read_Data(device, smartData, LEGACY_DRIVE_SEC_SIZE))
@@ -12286,16 +12307,17 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx* scsiIo
         uint16_t currentMode = UINT16_C(0); // 0-4 = PIO modes, 5-7 = SWDMA, 8-10 = MWDMA, 11-18 = UDMA
         bool     word88Valid = false;
         if (is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word053) &&
-            (scsiIoCtx->device->drive_info.IdentifyData.ata.Word053 & BIT2))
+            (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word053) & BIT2))
         {
             word88Valid = true;
         }
         if (word88Valid && is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word088) &&
-            scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0x7F00)
+            le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word088) & 0x7F00)
         {
             // UDMA mode is set
-            uint8_t udmaMode = C_CAST(uint8_t, (scsiIoCtx->device->drive_info.IdentifyData.ata.Word088 & 0x7F00) >> 8);
-            currentMode      = 11;
+            uint8_t udmaMode =
+                C_CAST(uint8_t, (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word088) & 0x7F00) >> 8);
+            currentMode = 11;
             while (udmaMode != 1)
             {
                 udmaMode = udmaMode >> 1;
@@ -12303,9 +12325,10 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx* scsiIo
             }
         }
         else if (is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word063) &&
-                 scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & 0x0700)
+                 le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word063) & 0x0700)
         {
-            uint8_t mwdmaMode = C_CAST(uint8_t, (scsiIoCtx->device->drive_info.IdentifyData.ata.Word063 & 0x0700) >> 8);
+            uint8_t mwdmaMode =
+                C_CAST(uint8_t, (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word063) & 0x0700) >> 8);
             // MWDMA mode is set
             currentMode = 8;
             while (mwdmaMode != 1)
@@ -12315,9 +12338,10 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx* scsiIo
             }
         }
         else if (is_ATA_Identify_Word_Valid(scsiIoCtx->device->drive_info.IdentifyData.ata.Word062) &&
-                 scsiIoCtx->device->drive_info.IdentifyData.ata.Word062 & 0x0700)
+                 le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word062) & 0x0700)
         {
-            uint8_t swdmaMode = C_CAST(uint8_t, (scsiIoCtx->device->drive_info.IdentifyData.ata.Word062 & 0x0700) >> 8);
+            uint8_t swdmaMode =
+                C_CAST(uint8_t, (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word062) & 0x0700) >> 8);
             // SWDMA mode is set (so obsolete this shouldn't ever happen)
             currentMode = 7;
             while (swdmaMode != 1)
@@ -12569,10 +12593,10 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(tDevice*   device,
     powerConditionPage[offset + 0] = 0x1A;
     powerConditionPage[offset + 1] = 0x26; // length
     // First, we need to check if EPC is supported or not
-    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-         device->drive_info.IdentifyData.ata.Word086 & BIT15) /* words 119, 120 valid */
-        && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) &&
-            device->drive_info.IdentifyData.ata.Word119 & BIT7))
+    if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /* words 119, 120 valid */
+        && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word119)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word119) & BIT7))
     {
         // EPC supported; perform EPC supported translation here
         // need to read the EPC log
@@ -12804,8 +12828,8 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(tDevice*   device,
         // idle_b is zero
         // idle_a is zero
         // standby_z
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word049) &&
-            device->drive_info.IdentifyData.ata.Word049 & BIT13)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word049)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word049) & BIT13)
         {
             powerConditionPage[offset + 3] |= BIT0;
             // TODO: store when the timer is changed by mode select so we can report what it was changed to...for now
@@ -12913,8 +12937,8 @@ static eReturnValues translate_Mode_Sense_ATA_Power_Condition_1A_F1(tDevice*   d
     powerConditionPage[offset + 4] = RESERVED;
     if (pageControl == 0x00 || pageControl == 0x3 || pageControl == 0x2) // current and saved
     {
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-            device->drive_info.IdentifyData.ata.Word086 & BIT3)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT3)
         {
             powerConditionPage[offset + 5] |= BIT0;
             powerConditionPage[offset + 6] = M_Byte0(
@@ -12926,8 +12950,8 @@ static eReturnValues translate_Mode_Sense_ATA_Power_Condition_1A_F1(tDevice*   d
     // {
     //     // TODO: how do we handle default? we should probably store what APM was when we started software SAT to know
     //     // for sure. For now, match the current/saved mode
-    //     if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-    //         device->drive_info.IdentifyData.ata.Word086 & BIT3)
+    //     if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+    //         le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT3)
     //     {
     //         powerConditionPage[offset + 5] |= BIT0;
     //         powerConditionPage[offset + 6] = M_Byte0(device->drive_info.IdentifyData.ata.Word091);
@@ -12935,8 +12959,8 @@ static eReturnValues translate_Mode_Sense_ATA_Power_Condition_1A_F1(tDevice*   d
     // }
     else // changeable
     {
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word083) &&
-            device->drive_info.IdentifyData.ata.Word083 & BIT3) // apm supported
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT3) // apm supported
         {
             // changes can be made
             powerConditionPage[offset + 5] |= BIT0;
@@ -13143,14 +13167,14 @@ static eReturnValues translate_Mode_Sense_Caching_08h(tDevice*   device,
     if (pageControl == 0x1)     // changeable
     {
         // check if write cache is supported
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) &&
-            device->drive_info.IdentifyData.ata.Word082 & BIT5)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word082)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word082) & BIT5)
         {
             caching[offset + 2] = BIT2;
         }
         // check if read-look-ahead is supported
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) &&
-            device->drive_info.IdentifyData.ata.Word082 & BIT6)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word082)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word082) & BIT6)
         {
             caching[offset + 12] = BIT5;
         }
@@ -13161,8 +13185,8 @@ static eReturnValues translate_Mode_Sense_Caching_08h(tDevice*   device,
         ata_Identify(device, iddata, LEGACY_DRIVE_SEC_SIZE);
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0,
                                        device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-            device->drive_info.IdentifyData.ata.Word085 & BIT5)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT5)
         {
             caching[offset + 2] = BIT2; // ic = 0, abpf = 0, cap = 0, disc = 0, size = 0, wce = 1, mf = 0, rcd = 0
         }
@@ -13170,8 +13194,8 @@ static eReturnValues translate_Mode_Sense_Caching_08h(tDevice*   device,
         {
             caching[offset + 2] = 0; // ic = 0, abpf = 0, cap = 0, disc = 0, size = 0, wce = 0, mf = 0, rcd = 0
         }
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word085) &&
-            device->drive_info.IdentifyData.ata.Word085 & BIT6)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word085)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word085) & BIT6)
         {
             caching[offset + 12] =
                 0; // fsw = 0, lbcss = 0, dra = 0, vendor specific (2bits) = 0, sync_prog(2bits) = 0, nv_dis = 0
@@ -13554,8 +13578,8 @@ static eReturnValues translate_SCSI_Mode_Sense_Command(tDevice* device, ScsiIoCt
         switch (subpageCode)
         {
         case 0:
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word082) &&
-                device->drive_info.IdentifyData.ata.Word082 & BIT0)
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word082)) &&
+                le16_to_host(device->drive_info.IdentifyData.ata.Word082) & BIT0)
             {
                 ret = translate_Mode_Sense_Informational_Exceptions_Control_1Ch(
                     scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor, longHeader,
@@ -13589,8 +13613,10 @@ static eReturnValues translate_SCSI_Mode_Sense_Command(tDevice* device, ScsiIoCt
         switch (subpageCode)
         {
         case 0xF1: // ATA power condition (APM)
-            if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) &&
-                device->drive_info.IdentifyData.ata.Word083 & BIT3) // only support this page if APM is supported-TJE
+            if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                    le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+                le16_to_host(device->drive_info.IdentifyData.ata.Word083) &
+                    BIT3) // only support this page if APM is supported-TJE
             {
                 ret = translate_Mode_Sense_ATA_Power_Condition_1A_F1(
                     device, scsiIoCtx, pageControl, returnDataBlockDescriptor, longLBABit, dataBlockDescriptor,
@@ -13947,10 +13973,10 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
     {
         saveParameters = true;
     }
-    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-         device->drive_info.IdentifyData.ata.Word086 & BIT15) /* words 119, 120 valid */
-        && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) &&
-            device->drive_info.IdentifyData.ata.Word119 & BIT7)) // EPC supported
+    if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /* words 119, 120 valid */
+        && (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word119)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word119) & BIT7)) // EPC supported
     {
         if (((fieldPointer = 1) != 0 && (bitPointer = 7) != 0 && pageLength != 0x0026) ||
             ((fieldPointer = 2) != 0 && (bitPointer = 7) != 0 &&
@@ -14499,8 +14525,8 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
         }
         else
         {
-            if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word049) &&
-                device->drive_info.IdentifyData.ata.Word049 & BIT13)
+            if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word049)) &&
+                le16_to_host(device->drive_info.IdentifyData.ata.Word049) & BIT13)
             {
                 uint32_t standby_z_timer =
                     M_BytesTo4ByteValue(ptrToBeginningOfModePage[8], ptrToBeginningOfModePage[9],
@@ -15137,8 +15163,9 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice* device, ScsiIoC
                 break;
 #endif                 // SAT_SPEC_SUPPORTED
             case 0xF1: // ATA power conditions (APM)
-                if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word083) &&
-                    device->drive_info.IdentifyData.ata.Word083 &
+                if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                        le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+                    le16_to_host(device->drive_info.IdentifyData.ata.Word083) &
                         BIT3) // only support this page if APM is supported-TJE
                 {
                     ret = translate_Mode_Select_ATA_Power_Condition_1A_F1(
@@ -15554,11 +15581,11 @@ static eReturnValues translate_SCSI_Report_Timestamp_Command(tDevice* device, Sc
                                     0))
     {
         uint64_t* qwordPtr     = C_CAST(uint64_t*, &generalStats[0]);
-        uint64_t  ataTimestamp = qwordPtr[7] & MAX_48_BIT_LBA;
+        uint64_t  ataTimestamp = le64_to_host(qwordPtr[7]) & MAX_48_BIT_LBA;
         // set up general data
         dataBuf[0] = 0x00;
         dataBuf[1] = 0x0A;
-        if (qwordPtr[7] & BIT62)
+        if (le64_to_host(qwordPtr[7]) & BIT62)
         {
             dataBuf[2] |= BIT1; // timestamp origin field set to 010b
         }
@@ -15618,10 +15645,10 @@ static eReturnValues translate_SCSI_Read_Media_Serial_Number_Command(tDevice* de
         return ret;
     }
     // word 84 for supported, word 87 for validity
-    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word084) &&
-         device->drive_info.IdentifyData.ata.Word084 & BIT2) &&
-        (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word087) &&
-         device->drive_info.IdentifyData.ata.Word087 & BIT2))
+    if ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word084)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word084) & BIT2) &&
+        (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word087)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word087) & BIT2))
     {
         DECLARE_ZERO_INIT_ARRAY(char, ataMediaSN, 61);
         safe_memcpy(ataMediaSN, 61, iddataPtr + 352, 60);
@@ -16119,8 +16146,8 @@ static eReturnValues check_Operation_Code(tDevice*  device,
         pdata[0][offset + 5] = controlByte; // control byte
         break;
     case UNMAP_CMD:
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) &&
-            device->drive_info.IdentifyData.ata.Word169 & BIT0)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word169)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word169) & BIT0)
         {
             cdbLength = 10;
             *dataLength += cdbLength;
@@ -16638,8 +16665,8 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice*  device,
         }
         break;
     case SANITIZE_CMD:
-        if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word059) &&
-            device->drive_info.IdentifyData.ata.Word059 & BIT12)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word059)) &&
+            le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT12)
         {
             switch (serviceAction)
             {
@@ -16735,20 +16762,22 @@ static eReturnValues check_Operation_Code_and_Service_Action(tDevice*  device,
     {
         bool downloadCommandSupported = false;
         bool downloadMode3Supported   = false;
-        if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word083) &&
-             device->drive_info.IdentifyData.ata.Word083 & BIT0) ||
-            (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-             device->drive_info.IdentifyData.ata.Word086 & BIT0) ||
+        if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT0) ||
+            (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT0) ||
             device->drive_info.ata_Options.downloadMicrocodeDMASupported)
         {
             downloadCommandSupported = true;
         }
-        if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-             device->drive_info.IdentifyData.ata.Word086 & BIT15) /* words 119, 120 valid */
-            && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) &&
-                 device->drive_info.IdentifyData.ata.Word119 & BIT4) ||
-                (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word120) &&
-                 device->drive_info.IdentifyData.ata.Word120 & BIT4)))
+        if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /* words 119, 120 valid */
+            && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                     le16_to_host(device->drive_info.IdentifyData.ata.Word119)) &&
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word119) & BIT4) ||
+                (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                     le16_to_host(device->drive_info.IdentifyData.ata.Word120)) &&
+                 le16_to_host(device->drive_info.IdentifyData.ata.Word120) & BIT4)))
         {
             downloadMode3Supported = true;
         }
@@ -17426,20 +17455,21 @@ static eReturnValues create_All_Supported_Op_Codes_Buffer(tDevice*  device,
     }
     bool downloadCommandSupported = false;
     bool downloadMode3Supported   = false;
-    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word083) &&
-         device->drive_info.IdentifyData.ata.Word083 & BIT0) ||
-        (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-         device->drive_info.IdentifyData.ata.Word086 & BIT0) ||
+    if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word083) & BIT0) ||
+        (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT0) ||
         device->drive_info.ata_Options.downloadMicrocodeDMASupported)
     {
         downloadCommandSupported = true;
     }
-    if ((is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word086) &&
-         device->drive_info.IdentifyData.ata.Word086 & BIT15) /* words 119, 120 valid */
-        && ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word119) &&
-             device->drive_info.IdentifyData.ata.Word119 & BIT4) ||
-            (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(device->drive_info.IdentifyData.ata.Word120) &&
-             device->drive_info.IdentifyData.ata.Word120 & BIT4)))
+    if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word086)) &&
+         le16_to_host(device->drive_info.IdentifyData.ata.Word086) & BIT15) /* words 119, 120 valid */
+        &&
+        ((is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word119)) &&
+          le16_to_host(device->drive_info.IdentifyData.ata.Word119) & BIT4) ||
+         (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word120)) &&
+          le16_to_host(device->drive_info.IdentifyData.ata.Word120) & BIT4)))
     {
         downloadMode3Supported = true;
     }
@@ -17660,8 +17690,8 @@ static eReturnValues create_All_Supported_Op_Codes_Buffer(tDevice*  device,
         set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     }
     // UNMAP_CMD = 0x42
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word169) &&
-        device->drive_info.IdentifyData.ata.Word169 & BIT0)
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word169)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word169) & BIT0)
     {
         pdata[0][offset + 0] = UNMAP_CMD;
         pdata[0][offset + 1] = RESERVED;
@@ -17681,11 +17711,11 @@ static eReturnValues create_All_Supported_Op_Codes_Buffer(tDevice*  device,
         }
     }
     // SANITIZE_CMD = 0x48//4 possible service actions
-    if (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word059) &&
-        device->drive_info.IdentifyData.ata.Word059 & BIT12)
+    if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word059)) &&
+        le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT12)
     {
         // check overwrite
-        if (device->drive_info.IdentifyData.ata.Word059 & BIT14)
+        if (le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT14)
         {
             pdata[0][offset + 0] = SANITIZE_CMD;
             pdata[0][offset + 1] = RESERVED;
@@ -17705,7 +17735,7 @@ static eReturnValues create_All_Supported_Op_Codes_Buffer(tDevice*  device,
             }
         }
         // check block erase
-        if (device->drive_info.IdentifyData.ata.Word059 & BIT15)
+        if (le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT15)
         {
             pdata[0][offset + 0] = SANITIZE_CMD;
             pdata[0][offset + 1] = RESERVED;
@@ -17725,7 +17755,7 @@ static eReturnValues create_All_Supported_Op_Codes_Buffer(tDevice*  device,
             }
         }
         // check crypto erase
-        if (device->drive_info.IdentifyData.ata.Word059 & BIT13)
+        if (le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT13)
         {
             pdata[0][offset + 0] = SANITIZE_CMD;
             pdata[0][offset + 1] = RESERVED;
@@ -18688,7 +18718,7 @@ eReturnValues translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
             break;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
         case UNMAP_CMD: // Data Set management-TRIM
-            if (device->drive_info.IdentifyData.ata.Word169 & BIT0)
+            if (le16_to_host(device->drive_info.IdentifyData.ata.Word169) & BIT0)
             {
                 ret = translate_SCSI_Unmap_Command(device, scsiIoCtx);
             }

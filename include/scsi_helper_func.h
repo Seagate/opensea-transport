@@ -61,15 +61,16 @@ extern "C"
     M_NONNULL_IF_NONZERO_PARAM(4, 5)
     M_PARAM_RW_SIZE(4, 5)
     M_NONNULL_IF_NONZERO_PARAM(7, 8)
-    M_PARAM_WO_SIZE(7, 8) OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Cdb(tDevice*               device,
-                                                                            uint8_t*               cdb,
-                                                                            eCDBLen                cdbLen,
-                                                                            uint8_t*               pdata,
-                                                                            uint32_t               dataLen,
-                                                                            eDataTransferDirection dataDirection,
-                                                                            uint8_t*               senseData,
-                                                                            uint32_t               senseDataLen,
-                                                                            uint32_t               timeoutSeconds);
+    M_PARAM_WO_SIZE(7, 8)
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Cdb(tDevice*               device,
+                                                      uint8_t*               cdb,
+                                                      eCDBLen                cdbLen,
+                                                      uint8_t*               pdata,
+                                                      uint32_t               dataLen,
+                                                      eDataTransferDirection dataDirection,
+                                                      uint8_t*               senseData,
+                                                      uint32_t               senseDataLen,
+                                                      uint32_t               timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -1005,17 +1006,19 @@ extern "C"
     M_PARAM_WO(5)
     M_PARAM_WO(6)
     M_PARAM_WO(7)
-    M_PARAM_WO(8) M_PARAM_WO(9) M_PARAM_WO(10) OPENSEA_TRANSPORT_API
-        void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
-                                                 uint8_t*  ptr,
-                                                 uint32_t  totalDataLen,
-                                                 uint16_t* modeDataLength,
-                                                 uint8_t*  mediumType,
-                                                 uint8_t*  devSpecific,
-                                                 bool*     longLBA,
-                                                 uint16_t* blockDescriptorLenth,
-                                                 uint64_t* numberOfBlocks,
-                                                 uint64_t* blockLength);
+    M_PARAM_WO(8)
+    M_PARAM_WO(9)
+    M_PARAM_WO(10)
+    OPENSEA_TRANSPORT_API void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
+                                                                   uint8_t*  ptr,
+                                                                   uint32_t  totalDataLen,
+                                                                   uint16_t* modeDataLength,
+                                                                   uint8_t*  mediumType,
+                                                                   uint8_t*  devSpecific,
+                                                                   bool*     longLBA,
+                                                                   uint16_t* blockDescriptorLenth,
+                                                                   uint64_t* numberOfBlocks,
+                                                                   uint64_t* blockLength);
 
     //-----------------------------------------------------------------------------
     //

@@ -993,15 +993,6 @@ eReturnValues send_ATA_Write_Stream_Cmd(tDevice* device,
     return ret;
 }
 
-void byte_Swap_ID_Data_Buffer(uint16_t* idData, uint16_t dataSizeWords)
-{
-    uint16_t idIter = UINT16_C(0);
-    for (idIter = 0; idIter < 256 && idIter < dataSizeWords; ++idIter)
-    {
-        byte_Swap_16(&idData[idIter]);
-    }
-}
-
 void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
                                          char     ataMN[ATA_IDENTIFY_MN_LENGTH + 1],
                                          char     ataSN[ATA_IDENTIFY_SN_LENGTH + 1],
@@ -1044,9 +1035,6 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
                     ataSN[iter] = ' '; // replace with a space
                 }
             }
-#if !defined(ENV_BIG_ENDIAN)
-            byte_Swap_String_Len(ataSN, snLimit);
-#endif
             remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
         }
         if (validFW && ataFW != M_NULLPTR)
@@ -1065,9 +1053,6 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
                     ataFW[iter] = ' '; // replace with a space
                 }
             }
-#if !defined(ENV_BIG_ENDIAN)
-            byte_Swap_String_Len(ataFW, fwLimit);
-#endif
             remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
         }
         if (validMN && ataMN != M_NULLPTR)
@@ -1086,9 +1071,6 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
                     ataMN[iter] = ' '; // replace with a space
                 }
             }
-#if !defined(ENV_BIG_ENDIAN)
-            byte_Swap_String_Len(ataMN, mnLimit);
-#endif
             remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
         }
     }
@@ -1256,7 +1238,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             device->drive_info.ata_Options.isDevice1 = true;
         }
 
-        if (ident_word[0] & BIT15)
+        if (le16_to_host(ident_word[0]) & BIT15)
         {
             device->drive_info.drive_type = ATAPI_DRIVE;
             device->drive_info.media_type = MEDIA_OPTICAL;
@@ -1266,13 +1248,14 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             device->drive_info.drive_type = ATA_DRIVE;
         }
 
-        if (is_ATA_Identify_Word_Valid(ident_word[1]) && is_ATA_Identify_Word_Valid(ident_word[3]) &&
-            is_ATA_Identify_Word_Valid(ident_word[6]))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[1])) &&
+            is_ATA_Identify_Word_Valid(le16_to_host(ident_word[3])) &&
+            is_ATA_Identify_Word_Valid(le16_to_host(ident_word[6])))
         {
-            cylinder = ident_word[1];      // word 1
-            head = M_Byte0(ident_word[3]); // Word3 - adapted from ESDI so discard high byte. High byte was number of
-                                           // removable drive heads
-            spt = M_Byte0(ident_word[6]);  // Word6
+            cylinder = le16_to_host(ident_word[1]);      // word 1
+            head = M_Byte0(le16_to_host(ident_word[3])); // Word3 - adapted from ESDI so discard high byte. High byte
+                                                         // was number of removable drive heads
+            spt = M_Byte0(le16_to_host(ident_word[6]));  // Word6
             // According to ATA, word 53, bit 0 set to 1 means the words 54,-58 are valid.
             // if set to zero they MAY be valid....so just check validity on everything
         }
@@ -1328,7 +1311,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
                                                 device->drive_info.serialNumber, device->drive_info.product_revision);
         }
 
-        if (is_ATA_Identify_Word_Valid(ident_word[47]) && M_Byte0(ident_word[47]) > 0)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[47])) && M_Byte0(le16_to_host(ident_word[47])) > 0)
         {
             device->drive_info.ata_Options.readWriteMultipleSupported = true;
         }
@@ -1340,13 +1323,13 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         *fillPhysicalSectorSize = LEGACY_DRIVE_SEC_SIZE; // start with this and change later
         // clear DMA support until it is found later
         device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_NO_DMA;
-        if (is_ATA_Identify_Word_Valid(ident_word[49]))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[49])))
         {
-            if (ident_word[49] & BIT9)
+            if (le16_to_host(ident_word[49]) & BIT9)
             {
                 lbaModeSupported = true;
             }
-            if (ident_word[49] & BIT8)
+            if (le16_to_host(ident_word[49]) & BIT8)
             {
                 device->drive_info.ata_Options.dmaSupported = true;
                 // do not set DMA mode here. Let other field checks set this.
@@ -1355,38 +1338,40 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
 
         bool words64to70Valid = false;
         bool word88Valid      = false;
-        if (is_ATA_Identify_Word_Valid(ident_word[53]))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[53])))
         {
-            if (ident_word[53] & BIT2)
+            if (le16_to_host(ident_word[53]) & BIT2)
             {
                 word88Valid = true;
             }
-            if (ident_word[53] & BIT1)
+            if (le16_to_host(ident_word[53]) & BIT1)
             {
                 words64to70Valid = true;
             }
-            if ((ident_word[53] & BIT0) ||
-                (is_ATA_Identify_Word_Valid(ident_word[54]) && is_ATA_Identify_Word_Valid(ident_word[55]) &&
-                 is_ATA_Identify_Word_Valid(ident_word[56]) && is_ATA_Identify_Word_Valid(ident_word[57]) &&
-                 is_ATA_Identify_Word_Valid(ident_word[58])))
+            if ((le16_to_host(ident_word[53]) & BIT0) || (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[54])) &&
+                                                          is_ATA_Identify_Word_Valid(le16_to_host(ident_word[55])) &&
+                                                          is_ATA_Identify_Word_Valid(le16_to_host(ident_word[56])) &&
+                                                          is_ATA_Identify_Word_Valid(le16_to_host(ident_word[57])) &&
+                                                          is_ATA_Identify_Word_Valid(le16_to_host(ident_word[58]))))
             {
                 // only override if these are non-zero. If all are zero, then we cannot determine the current
                 // configuration and should rely on the defaults read earlier. This is being checked again since a
                 // device may set bit0 of word 53 meaning this is a valid field. however if the values are zero, we do
                 // not want to use them.
-                if (ident_word[54] > 0 && M_Byte0(ident_word[55]) > 0 && M_Byte0(ident_word[56]) > 0)
+                if (le16_to_host(ident_word[54]) > 0 && M_Byte0(le16_to_host(ident_word[55])) > 0 &&
+                    M_Byte0(le16_to_host(ident_word[56])) > 0)
                 {
-                    cylinder = ident_word[54];          // word 54
-                    head     = M_Byte0(ident_word[55]); // Word55
-                    spt      = M_Byte0(ident_word[56]); // Word56
+                    cylinder = le16_to_host(ident_word[54]);          // word 54
+                    head     = M_Byte0(le16_to_host(ident_word[55])); // Word55
+                    spt      = M_Byte0(le16_to_host(ident_word[56])); // Word56
                 }
             }
         }
 
-        if (is_ATA_Identify_Word_Valid(ident_word[59]))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[59])))
         {
             // set the number of logical sectors per DRQ data block (current setting)
-            device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock = M_Byte0(ident_word[59]);
+            device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock = M_Byte0(le16_to_host(ident_word[59]));
         }
         else
         {
@@ -1398,12 +1383,12 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         // simulate a max LBA into device information
         *fillMaxLba = C_CAST(uint64_t, cylinder) * C_CAST(uint64_t, head) * C_CAST(uint64_t, spt);
 
-        if (lbaModeSupported ||
-            (is_ATA_Identify_Word_Valid(ident_word[60]) || is_ATA_Identify_Word_Valid(ident_word[61])))
+        if (lbaModeSupported || (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[60])) ||
+                                 is_ATA_Identify_Word_Valid(le16_to_host(ident_word[61]))))
         {
             lbaModeSupported = true; // workaround for some USB devices that do support lbamode as can be seen by
                                      // reading this LBA value
-            *fillMaxLba = M_WordsTo4ByteValue(ident_word[60], ident_word[61]);
+            *fillMaxLba = M_WordsTo4ByteValue(le16_to_host(ident_word[60]), le16_to_host(ident_word[61]));
         }
         else
         {
@@ -1411,11 +1396,11 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         }
 
         // Word62 has SWDMA, but this is long obsolete. Just use PIO mode instead-TJE
-        if (is_ATA_Identify_Word_Valid(ident_word[62]))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[62])))
         {
             // SWDMA
-            // uint8_t swdmaSupported = get_8bit_range_uint16(ident_word[62], 2, 0);
-            uint8_t swdmaSelected = get_8bit_range_uint16(ident_word[62], 10, 8);
+            // uint8_t swdmaSupported = get_8bit_range_uint16(le16_to_host(ident_word[62]), 2, 0);
+            uint8_t swdmaSelected = get_8bit_range_uint16(le16_to_host(ident_word[62]), 10, 8);
             if (swdmaSelected)
             {
                 device->drive_info.ata_Options.dmaMode      = ATA_DMA_MODE_NO_DMA;
@@ -1423,11 +1408,11 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             }
         }
 
-        if (is_ATA_Identify_Word_Valid(ident_word[63]))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[63])))
         {
             // MWDMA
-            // uint8_t mwdmaSupported = get_8bit_range_uint16(ident_word[63], 2, 0);
-            uint8_t mwdmaSelected = get_8bit_range_uint16(ident_word[63], 10, 8);
+            // uint8_t mwdmaSupported = get_8bit_range_uint16(le16_to_host(ident_word[63]), 2, 0);
+            uint8_t mwdmaSelected = get_8bit_range_uint16(le16_to_host(ident_word[63]), 10, 8);
             if (mwdmaSelected)
             {
                 device->drive_info.ata_Options.dmaMode =
@@ -1436,72 +1421,72 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         }
 
         bool extendedLBAFieldValid = false;
-        if (words64to70Valid && is_ATA_Identify_Word_Valid(ident_word[69]))
+        if (words64to70Valid && is_ATA_Identify_Word_Valid(le16_to_host(ident_word[69])))
         {
             // DCO DMA
-            if (ident_word[69] & BIT12)
+            if (le16_to_host(ident_word[69]) & BIT12)
             {
                 device->drive_info.ata_Options.dcoDMASupported = true;
             }
             // set read/write buffer DMA
-            if (ident_word[69] & BIT11)
+            if (le16_to_host(ident_word[69]) & BIT11)
             {
                 device->drive_info.ata_Options.readBufferDMASupported = true;
             }
-            if (ident_word[69] & BIT10)
+            if (le16_to_host(ident_word[69]) & BIT10)
             {
                 device->drive_info.ata_Options.writeBufferDMASupported = true;
             }
             // HPA security ext DMA
-            if (ident_word[69] & BIT9)
+            if (le16_to_host(ident_word[69]) & BIT9)
             {
                 device->drive_info.ata_Options.hpaSecurityExtDMASupported = true;
             }
-            if (ident_word[69] & BIT8)
+            if (le16_to_host(ident_word[69]) & BIT8)
             {
                 device->drive_info.ata_Options.downloadMicrocodeDMASupported = true;
             }
-            if (ident_word[69] & BIT3)
+            if (le16_to_host(ident_word[69]) & BIT3)
             {
                 extendedLBAFieldValid = true;
             }
             if (device->drive_info.zonedType != ZONED_TYPE_HOST_MANAGED)
             {
                 // zoned capabilities (ACS4)
-                device->drive_info.zonedType = C_CAST(uint8_t, ident_word[69] & (BIT0 | BIT1));
+                device->drive_info.zonedType = C_CAST(uint8_t, le16_to_host(ident_word[69]) & (BIT0 | BIT1));
             }
         }
 
         // SATA Capabilities (Words 76 & 77)
-        if (is_ATA_Identify_Word_Valid_SATA(ident_word[76]))
+        if (is_ATA_Identify_Word_Valid_SATA(le16_to_host(ident_word[76])))
         {
             device->drive_info.ata_Options.isParallelTransport              = false;
             device->drive_info.ata_Options.noNeedLegacyDeviceHeadCompatBits = true;
             // check for native command queuing support
-            if (ident_word[76] & BIT8)
+            if (le16_to_host(ident_word[76]) & BIT8)
             {
                 device->drive_info.ata_Options.nativeCommandQueuingSupported = true;
             }
-            if (device->drive_info.IdentifyData.ata.Word076 & BIT15)
+            if (le16_to_host(device->drive_info.IdentifyData.ata.Word076) & BIT15)
             {
                 device->drive_info.ata_Options.sataReadLogDMASameAsPIO = true;
             }
         }
         bool words119to120Valid = false;
-        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[83]) &&
-            is_ATA_Identify_Word_Valid(ident_word[86]))
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(ident_word[83])) &&
+            is_ATA_Identify_Word_Valid(le16_to_host(ident_word[86])))
         {
-            if (ident_word[86] & BIT15)
+            if (le16_to_host(ident_word[86]) & BIT15)
             {
                 words119to120Valid = true;
             }
             // check that 48bit is supported
-            if (ident_word[83] & BIT10)
+            if (le16_to_host(ident_word[83]) & BIT10)
             {
                 device->drive_info.ata_Options.fourtyEightBitAddressFeatureSetSupported = true;
             }
             // check for tagged command queuing support
-            if (ident_word[83] & BIT1 || ident_word[86] & BIT1)
+            if (le16_to_host(ident_word[83]) & BIT1 || le16_to_host(ident_word[86]) & BIT1)
             {
                 device->drive_info.ata_Options.taggedCommandQueuingSupported = true;
             }
@@ -1509,25 +1494,28 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
 
         bool word84Valid = false;
         bool word87Valid = false;
-        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[84]))
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(ident_word[84])))
         {
             word84Valid = true;
         }
-        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[87]))
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(ident_word[87])))
         {
             word87Valid = true;
         }
 
         // GPL support
-        if ((word84Valid && ident_word[84] & BIT5) || (word87Valid && ident_word[87] & BIT5))
+        if ((word84Valid && le16_to_host(ident_word[84]) & BIT5) ||
+            (word87Valid && le16_to_host(ident_word[87]) & BIT5))
         {
             device->drive_info.ata_Options.generalPurposeLoggingSupported = true;
         }
 
-        if ((word84Valid && ident_word[84] & BIT8) || (word87Valid && ident_word[87] & BIT8))
+        if ((word84Valid && le16_to_host(ident_word[84]) & BIT8) ||
+            (word87Valid && le16_to_host(ident_word[87]) & BIT8))
         {
             // get the WWN
-            *fillWWN = M_WordsTo8ByteValue(ident_word[108], ident_word[109], ident_word[110], ident_word[111]);
+            *fillWWN = M_WordsTo8ByteValue(le16_to_host(ident_word[108]), le16_to_host(ident_word[109]),
+                                           le16_to_host(ident_word[110]), le16_to_host(ident_word[111]));
         }
         else
         {
@@ -1535,15 +1523,16 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         }
 
         // check for UDMA support
-        if (word88Valid && is_ATA_Identify_Word_Valid(ident_word[88]) && ident_word[88] & 0x007F)
+        if (word88Valid && is_ATA_Identify_Word_Valid(le16_to_host(ident_word[88])) &&
+            le16_to_host(ident_word[88]) & 0x007F)
         {
             device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
         }
 
         // another check to make sure we've identified device 1 correctly
-        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[93]))
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(ident_word[93])))
         {
-            if (get_8bit_range_uint16(ident_word[93], 12, 8) > 0 && ident_word[93] & BIT8)
+            if (get_8bit_range_uint16(le16_to_host(ident_word[93]), 12, 8) > 0 && le16_to_host(ident_word[93]) & BIT8)
             {
                 device->drive_info.ata_Options.isDevice1 = true;
             }
@@ -1553,27 +1542,32 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         {
             // max LBA from other words since 28bit max field is maxed out
             // check words 100-103 are valid values
-            if (is_ATA_Identify_Word_Valid(ident_word[100]) || is_ATA_Identify_Word_Valid(ident_word[101]) ||
-                is_ATA_Identify_Word_Valid(ident_word[102]) || is_ATA_Identify_Word_Valid(ident_word[103]))
+            if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[100])) ||
+                is_ATA_Identify_Word_Valid(le16_to_host(ident_word[101])) ||
+                is_ATA_Identify_Word_Valid(le16_to_host(ident_word[102])) ||
+                is_ATA_Identify_Word_Valid(le16_to_host(ident_word[103])))
             {
-                *fillMaxLba = M_WordsTo8ByteValue(ident_word[103], ident_word[102], ident_word[101], ident_word[100]);
+                *fillMaxLba = M_WordsTo8ByteValue(le16_to_host(ident_word[103]), le16_to_host(ident_word[102]),
+                                                  le16_to_host(ident_word[101]), le16_to_host(ident_word[100]));
             }
         }
 
         // get the sector sizes from the identify data
-        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[106])) // making sure this word has valid data
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(
+                le16_to_host(ident_word[106]))) // making sure this word has valid data
         {
             // word 117 is only valid when word 106 bit 12 is set
-            if ((ident_word[106] & BIT12) == BIT12)
+            if ((le16_to_host(ident_word[106]) & BIT12) == BIT12)
             {
-                *fillLogicalSectorSize = M_WordsTo4ByteValue(ident_word[117], ident_word[118]);
+                *fillLogicalSectorSize =
+                    M_WordsTo4ByteValue(le16_to_host(ident_word[117]), le16_to_host(ident_word[118]));
                 *fillLogicalSectorSize *= 2; // convert to words to bytes
             }
             else // means that logical sector size is 512bytes
             {
                 *fillLogicalSectorSize = LEGACY_DRIVE_SEC_SIZE;
             }
-            if ((ident_word[106] & BIT13) == 0)
+            if ((le16_to_host(ident_word[106]) & BIT13) == 0)
             {
                 *fillPhysicalSectorSize = *fillLogicalSectorSize;
             }
@@ -1581,45 +1575,46 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             {
                 uint8_t sectorSizeExponent = UINT8_C(0);
                 // get the number of logical blocks per physical blocks
-                sectorSizeExponent      = ident_word[106] & 0x000F;
+                sectorSizeExponent      = le16_to_host(ident_word[106]) & 0x000F;
                 *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize * power_Of_Two(sectorSizeExponent));
             }
         }
 
-        if (words119to120Valid && is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[119]) &&
-            is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[120]))
+        if (words119to120Valid && is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(ident_word[119])) &&
+            is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(ident_word[120])))
         {
-            if (ident_word[120] & BIT6) // word120 holds if this is enabled
+            if (le16_to_host(ident_word[120]) & BIT6) // word120 holds if this is enabled
             {
                 device->drive_info.ata_Options.senseDataReportingEnabled = true;
             }
             // Determine if read/write log ext DMA commands are supported
-            if (ident_word[119] & BIT3 || ident_word[120] & BIT3)
+            if (le16_to_host(ident_word[119]) & BIT3 || le16_to_host(ident_word[120]) & BIT3)
             {
                 device->drive_info.ata_Options.readLogWriteLogDMASupported = true;
             }
-            if (ident_word[119] & BIT2 || ident_word[120] & BIT2)
+            if (le16_to_host(ident_word[119]) & BIT2 || le16_to_host(ident_word[120]) & BIT2)
             {
                 device->drive_info.ata_Options.writeUncorrectableExtSupported = true;
             }
         }
 
         // get the sector alignment
-        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(ident_word[209]))
+        if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(ident_word[209])))
         {
             // bits 13:0 are valid for alignment. bit 15 will be 0 and bit 14 will be 1. remove bit 14 with an xor
-            *fillSectorAlignment = ident_word[209] ^ BIT14;
+            *fillSectorAlignment = le16_to_host(ident_word[209]) ^ BIT14;
         }
 
-        if (is_ATA_Identify_Word_Valid(ident_word[217]) && ident_word[217] == 0x0001)
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[217])) && le16_to_host(ident_word[217]) == 0x0001)
         {
             device->drive_info.media_type = MEDIA_SSD;
         }
 
-        if (is_ATA_Identify_Word_Valid(ident_word[222]))
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[222])))
         {
             // check if the device is parallel or serial
-            uint8_t transportType = C_CAST(uint8_t, (ident_word[222] & (BIT15 | BIT14 | BIT13 | BIT12)) >> 12);
+            uint8_t transportType =
+                C_CAST(uint8_t, (le16_to_host(ident_word[222]) & (BIT15 | BIT14 | BIT13 | BIT12)) >> 12);
             switch (transportType)
             {
             case 0x00: // parallel
@@ -1639,7 +1634,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         // this to get the max LBA since words 100 - 103 may only contain a value of FFFF_FFFF)
         if (extendedLBAFieldValid)
         {
-            *fillMaxLba = M_WordsTo8ByteValue(ident_word[233], ident_word[232], ident_word[231], ident_word[230]);
+            *fillMaxLba = M_WordsTo8ByteValue(le16_to_host(ident_word[233]), le16_to_host(ident_word[232]),
+                                              le16_to_host(ident_word[231]), le16_to_host(ident_word[230]));
         }
         if (*fillMaxLba > 0 && !device->drive_info.ata_Options.chsModeOnly)
         {
@@ -2660,7 +2656,7 @@ eReturnValues set_ATA_Checksum_Into_Data_Buffer(uint8_t* ptrData, uint32_t dataS
 bool is_LBA_Mode_Supported(tDevice* device)
 {
     bool lbaSupported = true;
-    if (!(device->drive_info.IdentifyData.ata.Word049 & BIT9))
+    if (!(le16_to_host(device->drive_info.IdentifyData.ata.Word049) & BIT9))
     {
         lbaSupported = false;
     }
@@ -2671,8 +2667,9 @@ bool is_CHS_Mode_Supported(tDevice* device)
 {
     bool chsSupported = true;
     // Check words 1, 3, 6
-    if (device->drive_info.IdentifyData.ata.Word001 == 0 || device->drive_info.IdentifyData.ata.Word003 == 0 ||
-        device->drive_info.IdentifyData.ata.Word006 == 0)
+    if (le16_to_host(device->drive_info.IdentifyData.ata.Word001) == 0 ||
+        le16_to_host(device->drive_info.IdentifyData.ata.Word003) == 0 ||
+        le16_to_host(device->drive_info.IdentifyData.ata.Word006) == 0)
     {
         chsSupported = false;
     }
@@ -2683,16 +2680,18 @@ bool is_CHS_Mode_Supported(tDevice* device)
 static bool is_Current_CHS_Info_Valid(tDevice* device)
 {
     bool     chsSupported = true;
-    uint8_t* identifyPtr  = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
+    uint8_t* identifyPtr  = M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000);
     uint32_t userAddressableCapacityCHS =
         M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115], identifyPtr[114]);
     // Check words 1, 3, 6, 54, 55, 56, 58:57 for values
-    if (!(device->drive_info.IdentifyData.ata.Word053 &
+    if (!(le16_to_host(device->drive_info.IdentifyData.ata.Word053) &
           BIT0) || // if this bit is set, then the current fields are valid. If not, they may or may not be valid
-        device->drive_info.IdentifyData.ata.Word001 == 0 ||
-        device->drive_info.IdentifyData.ata.Word003 == 0 || device->drive_info.IdentifyData.ata.Word006 == 0 ||
-        device->drive_info.IdentifyData.ata.Word054 == 0 || device->drive_info.IdentifyData.ata.Word055 == 0 ||
-        device->drive_info.IdentifyData.ata.Word056 == 0 || userAddressableCapacityCHS == 0)
+        le16_to_host(device->drive_info.IdentifyData.ata.Word001) == 0 ||
+        le16_to_host(device->drive_info.IdentifyData.ata.Word003) == 0 ||
+        le16_to_host(device->drive_info.IdentifyData.ata.Word006) == 0 ||
+        le16_to_host(device->drive_info.IdentifyData.ata.Word054) == 0 ||
+        le16_to_host(device->drive_info.IdentifyData.ata.Word055) == 0 ||
+        le16_to_host(device->drive_info.IdentifyData.ata.Word056) == 0 || userAddressableCapacityCHS == 0)
     {
         chsSupported = false;
     }
@@ -2750,9 +2749,11 @@ eReturnValues convert_CHS_To_LBA(tDevice* device, uint16_t cylinder, uint8_t hea
     {
         if (is_CHS_Mode_Supported(device))
         {
-            uint16_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055; // from current ID configuration
-            uint16_t sectorsPerTrack  = device->drive_info.IdentifyData.ata.Word056; // from current ID configuration
-            *lba                      = UINT32_MAX;
+            uint16_t headsPerCylinder =
+                le16_to_host(device->drive_info.IdentifyData.ata.Word055); // from current ID configuration
+            uint16_t sectorsPerTrack =
+                le16_to_host(device->drive_info.IdentifyData.ata.Word056); // from current ID configuration
+            *lba = UINT32_MAX;
             *lba = ((((C_CAST(uint32_t, cylinder)) * C_CAST(uint32_t, headsPerCylinder)) + C_CAST(uint32_t, head)) *
                     C_CAST(uint32_t, sectorsPerTrack)) +
                    C_CAST(uint32_t, sector) - UINT32_C(1);
@@ -2777,19 +2778,16 @@ eReturnValues convert_LBA_To_CHS(tDevice* device, uint32_t lba, uint16_t* cylind
     DISABLE_NONNULL_COMPARE
     if (cylinder != M_NULLPTR && head != M_NULLPTR && sector != M_NULLPTR)
     {
-        uint8_t* identifyPtr = (uint8_t*)&device->drive_info.IdentifyData.ata.Word000;
-        // uint32_t lbaCapacity = M_BytesTo4ByteValue(identifyPtr[123], identifyPtr[122], identifyPtr[121],
-        // identifyPtr[120]);//28bit LBA value
-        uint32_t userAddressableCapacityCHS = M_BytesTo4ByteValue(identifyPtr[117], identifyPtr[116], identifyPtr[115],
-                                                                  identifyPtr[114]); // CHS max sector capacity
-        // if (lba < lbaCapacity)
-        //{
+        uint8_t* identifyPtr = M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000);
+        uint32_t userAddressableCapacityCHS = M_BytesTo4ByteValue(
+            le16_to_host(identifyPtr[117]), le16_to_host(identifyPtr[116]), le16_to_host(identifyPtr[115]),
+            le16_to_host(identifyPtr[114])); // CHS max sector capacity
         if (is_CHS_Mode_Supported(device))
         {
             if (is_Current_CHS_Info_Valid(device))
             {
-                uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word055;
-                uint32_t sectorsPerTrack  = device->drive_info.IdentifyData.ata.Word056;
+                uint32_t headsPerCylinder = le16_to_host(device->drive_info.IdentifyData.ata.Word055);
+                uint32_t sectorsPerTrack  = le16_to_host(device->drive_info.IdentifyData.ata.Word056);
                 *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
                 *head     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
                 *sector   = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
@@ -2804,8 +2802,8 @@ eReturnValues convert_LBA_To_CHS(tDevice* device, uint32_t lba, uint16_t* cylind
             }
             else
             {
-                uint32_t headsPerCylinder = device->drive_info.IdentifyData.ata.Word003;
-                uint32_t sectorsPerTrack  = device->drive_info.IdentifyData.ata.Word006;
+                uint32_t headsPerCylinder = le16_to_host(device->drive_info.IdentifyData.ata.Word003);
+                uint32_t sectorsPerTrack  = le16_to_host(device->drive_info.IdentifyData.ata.Word006);
                 *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
                 *head     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
                 *sector   = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
@@ -2826,11 +2824,6 @@ eReturnValues convert_LBA_To_CHS(tDevice* device, uint32_t lba, uint16_t* cylind
         {
             ret = NOT_SUPPORTED;
         }
-        //}
-        // else
-        //{
-        //    ret = NOT_SUPPORTED;
-        //}
     }
     else
     {

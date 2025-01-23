@@ -12523,7 +12523,8 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx* nvmeIoCtx)
             maxPowerScalar = 0.0001;
         }
         double maxPowerWatts =
-            nvmeIoCtx->device->drive_info.IdentifyData.nvme.ctrl.psd[powerState].maxPower * maxPowerScalar;
+            le16_to_host(nvmeIoCtx->device->drive_info.IdentifyData.nvme.ctrl.psd[powerState].maxPower) *
+            maxPowerScalar;
 
         // Need to make sure this power value can actually work in Windows! MS only supports values in milliwatts, and
         // it's possible with the code above to specify something less than 1 milliwatt...-TJE
@@ -12877,7 +12878,7 @@ static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOC
             {
                 compat = NVM_REINIT_INCOMPATIBLE_FORMAT;
                 if (is_Windows_10_Version_1903_Or_Higher() &&
-                    nvmeIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap & BIT0)
+                    le32_to_host(nvmeIoCtx->device->drive_info.IdentifyData.nvme.ctrl.sanicap) & BIT0)
                 {
                     // TODO: Figure out exactly when this IOCTL switches to sanitize from format with crypto erase. MSDN
                     // documentatino does not specify earlier than 1903.-TJE Starting with at least 1903, possibly

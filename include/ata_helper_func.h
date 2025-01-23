@@ -22,10 +22,6 @@ extern "C"
 {
 #endif
 
-    // swaps all words of ATA ID Data...used only in big endian right now for compatibility.
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO_SIZE(1, 2) void byte_Swap_ID_Data_Buffer(uint16_t* idData, uint16_t dataSizeWords);
-
     //-----------------------------------------------------------------------------
     //
     //  ata_Passthrough_Command()

@@ -2873,7 +2873,7 @@ bool is_SATA(tDevice* device)
     if (device->drive_info.drive_type == ATA_DRIVE)
     {
         // Word 76 will be greater than zero, and never 0xFFFF on a SATA drive (bit 0 must be cleared to zero)
-        if (is_ATA_Identify_Word_Valid_SATA(device->drive_info.IdentifyData.ata.Word076))
+        if (is_ATA_Identify_Word_Valid_SATA(le16_to_host(device->drive_info.IdentifyData.ata.Word076)))
         {
             isSata = true;
         }
@@ -3381,8 +3381,8 @@ bool is_Removable_Media(tDevice* device)
             device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.media_type == MEDIA_OPTICAL ||
             device->drive_info.media_type == MEDIA_SSM_FLASH || device->drive_info.media_type == MEDIA_TAPE ||
             device->drive_info.media_type == MEDIA_UNKNOWN ||
-            (is_ATA_Identify_Word_Valid(device->drive_info.IdentifyData.ata.Word000) &&
-             device->drive_info.IdentifyData.ata.Word000 & BIT7))
+            (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word000)) &&
+             le16_to_host(device->drive_info.IdentifyData.ata.Word000) & BIT7))
         {
             result = true;
         }

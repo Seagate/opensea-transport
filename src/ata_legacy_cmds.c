@@ -1009,13 +1009,6 @@ eReturnValues ata_Legacy_Identify_Device_DMA(tDevice* device, uint8_t* ptrData, 
         copy_ata_identify_to_tdevice(device, ptrData);
     }
 
-#if defined(ENV_BIG_ENDIAN)
-    if (ptrData == C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000))
-    {
-        byte_Swap_ID_Data_Buffer(&device->drive_info.IdentifyData.ata.Word000, 256);
-    }
-#endif
-
     if (ret == SUCCESS)
     {
         if (ptrData[510] == ATA_CHECKSUM_VALIDITY_INDICATOR)
