@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MPL-2.0
-//
-// Do NOT modify or remove this copyright and license
-//
-// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
-//
-// This software is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-//
-// ******************************************************************************************
-// \file common.h
-// \brief Defines the constants structures and function headers that are common to OS & Non-OS code.
+
+//! \file common_public.h
+//! \brief Defines the structures and and constants that are common to OS and Non-OS specific code.
+//! Contains tDevice structure used to send commands to any supported device in the system.
+//! \copyright
+//! Do NOT modify or remove this copyright and license
+//!
+//! Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//!
+//! This software is subject to the terms of the Mozilla Public License, v. 2.0.
+//! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #pragma once
 

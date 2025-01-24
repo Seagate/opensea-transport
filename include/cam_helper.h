@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
-//
-// Do NOT modify or remove this copyright and license
-//
-// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
-//
-// This software is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-//
-// ******************************************************************************************
-//
-// \file cam_helper.h
-// \brief Defines the constants structures specific to Free BSD.
+
+//! \file cam_helper.h
+//! \brief Low level interface for FreeBSD's CAM API. Also FreeBSD NVMe support
+//! \copyright
+//! Do NOT modify or remove this copyright and license
+//!
+//! Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//!
+//! This software is subject to the terms of the Mozilla Public License, v. 2.0.
+//! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #ifndef CAM_HELPER_H
 #define CAM_HELPER_H
@@ -25,10 +22,6 @@
 extern "C"
 {
 #endif
-
-    // \file cam_helper.h
-    // \brief Defines the constants structures and function headers to help parse scsi/ata devices
-    // using FreeBSD Common Access Method (CAM) library.
 
 #include <inttypes.h>
 #include <sys/cdefs.h>

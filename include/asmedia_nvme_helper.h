@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
-//
-// Do NOT modify or remove this copyright and license
-//
-// Copyright (c) 2019-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
-//
-// This software is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-//
-// ******************************************************************************************
-//
-// \file asmedia_nvme_helper.h
-// \brief Defines the functions for ASMedia NVMe-USB pass-through
+
+//! \file asmedia_nvme_helper.h
+//! \brief Support for ASMedia USB adapter NVMe passthrough
+//! \copyright
+//! Do NOT modify or remove this copyright and license
+//!
+//! Copyright (c) 2019-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//!
+//! This software is subject to the terms of the Mozilla Public License, v. 2.0.
+//! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 // All code in this file is from a ASMedia USB to NVMe product specification for pass-through nvme commands.
 // This code should only be used on products that are known to use this pass-through interface.

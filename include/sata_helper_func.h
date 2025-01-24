@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
-//
-// Do NOT modify or remove this copyright and license
-//
-// Copyright (c) 2020-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
-//
-// This software is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-//
-// ******************************************************************************************
-//
-// \file sata_helper_func.h
-// \brief functions to help with SATA specific things. Printing out FIS, creating FIS, etc.
+
+//! \file sata_helper_func.h
+//! \brief functions to help with SATA specific things. Printing out FIS, creating FIS, etc.
+//! \copyright
+//! Do NOT modify or remove this copyright and license
+//!
+//! Copyright (c) 2020-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//!
+//! This software is subject to the terms of the Mozilla Public License, v. 2.0.
+//! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #pragma once
 

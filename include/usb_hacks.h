@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: MPL-2.0
-//
-// Do NOT modify or remove this copyright and license
-//
-// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
-//
-// This software is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-//
-// ******************************************************************************************
-// *****************************************************************************
 
-// \file usb_hacks.h
-// \brief Set of functions to check or make modifications to commands to work on USB bridges that don't always follow
-// SCSI/SAT specs.
+//! \file usb_hacks.h
+//! \brief Set of functions to check or make modifications to commands to work on USB bridges that don't always follow
+//! SCSI/SAT specs.
+//! \copyright
+//! Do NOT modify or remove this copyright and license
+//!
+//! Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//!
+//! This software is subject to the terms of the Mozilla Public License, v. 2.0.
+//! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #pragma once
 

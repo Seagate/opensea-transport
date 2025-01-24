@@ -1,21 +1,17 @@
 // SPDX-License-Identifier: MPL-2.0
-//
-// Do NOT modify or remove this copyright and license
-//
-// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
-//
-// This software is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-//
-// ******************************************************************************************
-//
-// \file psp_legacy_helper.h
-// \brief Defines the functions for legacy PSP USB pass-through
 
-// All code in this file is from an OLD PSP (Pesonal Storage Products-Maxtor) USB product specification for pass-through
-// commands. This code should only be used on products that are known to use this pass-through interface. Some of this
-// code may also be from something found in legacy source. This will be commented if it is.
+//! \file psp_legacy_helper.h
+//! \brief Defines the functions for legacy PSP USB pass-through
+//! \details All code in this file is from an OLD PSP (Personal Storage Products-Maxtor) USB product specification for
+//! pass-through commands. This code should only be used on products that are known to use this pass-through interface.
+//! Some of this code may also be from something found in legacy source. This will be commented if it is. 
+//!\copyright
+//! Do NOT modify or remove this copyright and license
+//!
+//! Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//!
+//! This software is subject to the terms of the Mozilla Public License, v. 2.0.
+//! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #pragma once
 

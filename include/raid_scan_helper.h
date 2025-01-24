@@ -1,17 +1,24 @@
 // SPDX-License-Identifier: MPL-2.0
-//
-// Do NOT modify or remove this copyright and license
-//
-// Copyright (c) 2020-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
-//
-// This software is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-//
-// ******************************************************************************************
-// \file raid_scan_helper.h
-// \brief Defines the structures, types, and function to assist with scanning for devices in different RAID
-// configurations.
+
+//! \file raid_scan_helper.h
+//! \brief Defines the structures, types, and function to assist with scanning for devices in different RAID
+//! configurations.
+//! \details How this is supposed to be used:
+//! The general idea is this: Each OS has some information it can use to detect what may or may not be a RAID.
+//! This is handled at a low-level while scanning for devices.
+//! Any device that is suspected of being part of a RAID configuration will have the OS's handle passed off to a RAID
+//! implementation to use as a place to scan with RAID specific IOCTLs This code creates a linked list that should make
+//! it easy to add those handles to a short list that can be passed on to the RAID implementations to use how they are
+//! needed.
+//! This is currently being used by CSMI in WIndows, but further support will be added as other RAID libraries are
+//! supported.
+//!\copyright
+//! Do NOT modify or remove this copyright and license
+//!
+//! Copyright (c) 2020-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//!
+//! This software is subject to the terms of the Mozilla Public License, v. 2.0.
+//! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #pragma once
 
@@ -24,16 +31,7 @@ extern "C"
 {
 #endif
 
-    /* How this is supposed to be used:
-    The general idea is this: Each OS has some information it can use to detect what may or may not be a RAID.
-    This is handled at a low-level while scanning for devices.
-    Any device that is suspected of being part of a RAID configuration will have the OS's handle passed off to a RAID
-    implementation to use as a place to scan with RAID specific IOCTLs This code creates a linked list that should make
-    it easy to add those handles to a short list that can be passed on to the RAID implementations to use how they are
-    needed.
-
-    This is currently being used by CSMI in WIndows, but further support will be added as other RAID libraries are
-    supported.
+    /* 
     */
 
     // using bit field here to reduce memory usage, but can be removed if this causes problems
