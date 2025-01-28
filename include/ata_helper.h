@@ -669,7 +669,7 @@ extern "C"
 
     // Used for commands that set a "signature" in the LBA registers, but do not need the LBA mode bit
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1) static M_INLINE void set_ata_pt_LBA_28_sig(ataPassthroughCommand* cmd, uint32_t signature)
+    M_PARAM_RW(1) static M_INLINE void set_ata_pt_LBA_28_sig(ataPassthroughCommand* cmd, uint32_t signature)
     {
         DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
@@ -683,7 +683,7 @@ extern "C"
     }
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1) static M_INLINE void set_ata_pt_LBA_28(ataPassthroughCommand* cmd, uint32_t lba)
+    M_PARAM_RW(1) static M_INLINE void set_ata_pt_LBA_28(ataPassthroughCommand* cmd, uint32_t lba)
     {
         DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
@@ -695,7 +695,7 @@ extern "C"
     }
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1)
+    M_PARAM_RW(1)
     static M_INLINE void set_ata_pt_CHS(ataPassthroughCommand* cmd, uint16_t cylinder, uint8_t head, uint8_t sector)
     {
         DISABLE_NONNULL_COMPARE
@@ -734,7 +734,7 @@ extern "C"
     }
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1) static M_INLINE void set_ata_pt_LBA_48_sig(ataPassthroughCommand* cmd, uint64_t signature)
+    M_PARAM_RW(1) static M_INLINE void set_ata_pt_LBA_48_sig(ataPassthroughCommand* cmd, uint64_t signature)
     {
         DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
@@ -750,7 +750,7 @@ extern "C"
     }
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1) static M_INLINE void set_ata_pt_LBA_48(ataPassthroughCommand* cmd, uint64_t lba)
+    M_PARAM_RW(1) static M_INLINE void set_ata_pt_LBA_48(ataPassthroughCommand* cmd, uint64_t lba)
     {
         DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
@@ -774,7 +774,7 @@ extern "C"
         return outlba;
     }
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) static M_INLINE uint64_t get_ata_pt_LBA_48(ataPassthroughCommand* cmd)
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) static M_INLINE uint64_t get_ata_pt_LBA_48(ataPassthroughCommand* cmd)
     {
         uint64_t outlba = UINT64_C(0);
         DISABLE_NONNULL_COMPARE
@@ -787,7 +787,7 @@ extern "C"
     }
 
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_WO(1) M_PARAM_RO(2) static M_INLINE void set_ata_pt_device_bits(ataPassthroughCommand* cmd, tDevice* device)
+    M_PARAM_RW(1) M_PARAM_RO(2) static M_INLINE void set_ata_pt_device_bits(ataPassthroughCommand* cmd, tDevice* device)
     {
         DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR && device != M_NULLPTR)
@@ -806,7 +806,7 @@ extern "C"
 
     // for send/recieve FPDMA
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1)
+    M_PARAM_RW(1)
     static M_INLINE void set_ata_pt_prio_subcmd(ataPassthroughCommand* cmd, uint8_t prio, uint8_t subcommand)
     {
         DISABLE_NONNULL_COMPARE
@@ -818,7 +818,7 @@ extern "C"
     }
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1) static M_INLINE void set_ata_pt_aux_icc(ataPassthroughCommand* cmd, uint32_t aux, uint8_t icc)
+    M_PARAM_RW(1) static M_INLINE void set_ata_pt_aux_icc(ataPassthroughCommand* cmd, uint32_t aux, uint8_t icc)
     {
         DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR)
@@ -837,7 +837,7 @@ extern "C"
     }
 
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_WO(1)
+    M_PARAM_RW(1)
     M_PARAM_RO(2) static M_INLINE void set_ata_pt_multipleCount(ataPassthroughCommand* cmd, tDevice* device)
     {
         // multipleLogicalSectors should be greater than 1 so that we get the proper 2^X

@@ -255,7 +255,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(3, 4)
+    M_PARAM_RW_SIZE(3, 4)
     OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Read_Log(tDevice* device,
                                                            uint8_t  logAddress,
                                                            uint8_t* ptrData,
@@ -334,7 +334,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 2) M_PARAM_RO(1) M_PARAM_WO_SIZE(2, 3) eReturnValues
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 2) M_PARAM_RO(1) M_PARAM_RW_SIZE(2, 3) eReturnValues
         ata_SMART_Read_Data(tDevice* device, uint8_t* ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
@@ -418,7 +418,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 2) M_PARAM_RO(1) M_PARAM_WO_SIZE(2, 3) eReturnValues
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 2) M_PARAM_RO(1) M_PARAM_RW_SIZE(2, 3) eReturnValues
         ata_SMART_Read_Thresholds(tDevice* device, uint8_t* ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
@@ -1663,7 +1663,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO(1)
-    M_PARAM_RO_SIZE(3, 4)
+    M_PARAM_RW_SIZE(3, 4)
     OPENSEA_TRANSPORT_API eReturnValues ata_NV_Cache_Add_LBAs_To_Cache(tDevice* device,
                                                                        bool     populateImmediately,
                                                                        uint8_t* ptrData,
@@ -1733,7 +1733,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_PARAM_WO(2) OPENSEA_TRANSPORT_API eReturnValues ata_NV_Query_Misses(tDevice* device, uint8_t* ptrData);
+    M_PARAM_RW(2) OPENSEA_TRANSPORT_API eReturnValues ata_NV_Query_Misses(tDevice* device, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1753,7 +1753,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(3, 4)
+    M_PARAM_RW_SIZE(3, 4)
     OPENSEA_TRANSPORT_API eReturnValues ata_NV_Query_Pinned_Set(tDevice* device,
                                                                 uint64_t dataBlockNumber,
                                                                 uint8_t* ptrData,
@@ -1778,7 +1778,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(3, 4)
-    M_PARAM_RO_SIZE(3, 4)
+    M_PARAM_RW_SIZE(3, 4)
     OPENSEA_TRANSPORT_API eReturnValues ata_NV_Remove_LBAs_From_Cache(tDevice* device,
                                                                       bool     unpinAll,
                                                                       uint8_t* ptrData,
@@ -1979,7 +1979,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(3, 4)
+    M_PARAM_RW_SIZE(3, 4)
     OPENSEA_TRANSPORT_API eReturnValues ata_DCO_Identify(tDevice* device,
                                                          bool     useDMA,
                                                          uint8_t* ptrData,
@@ -2004,7 +2004,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(3, 4)
+    M_PARAM_RW_SIZE(3, 4)
     OPENSEA_TRANSPORT_API eReturnValues ata_DCO_Set(tDevice* device, bool useDMA, uint8_t* ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
@@ -2934,7 +2934,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(2, 3)
+    M_PARAM_RW_SIZE(2, 3)
     OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Status(tDevice* device, uint8_t* dataBuf, uint32_t dataSize);
 
     M_NONNULL_PARAM_LIST(1, 2)

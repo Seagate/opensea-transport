@@ -133,7 +133,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1)
+    M_PARAM_RW(1)
     eReturnValues set_Protocol_Field(uint8_t*               satCDB,
                                      eAtaProtocol           commadProtocol,
                                      eDataTransferDirection dataDirection,
@@ -158,7 +158,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1)
+    M_PARAM_RW(1)
     eReturnValues set_Transfer_Bits(uint8_t*                      satCDB,
                                     eATAPassthroughLength         tLength,
                                     eATAPassthroughTransferBlocks ttype,
@@ -182,7 +182,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1) eReturnValues set_Multiple_Count(uint8_t* satCDB, uint8_t multipleCount, uint8_t protocolOffset);
+    M_PARAM_RW(1) eReturnValues set_Multiple_Count(uint8_t* satCDB, uint8_t multipleCount, uint8_t protocolOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -199,7 +199,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1) eReturnValues set_Offline_Bits(uint8_t* satCDB, uint32_t timeout, uint8_t transferBitsOffset);
+    M_PARAM_RW(1) eReturnValues set_Offline_Bits(uint8_t* satCDB, uint32_t timeout, uint8_t transferBitsOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -215,7 +215,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1) eReturnValues set_Check_Condition_Bit(uint8_t* satCDB, uint8_t transferBitsOffset);
+    M_PARAM_RW(1) eReturnValues set_Check_Condition_Bit(uint8_t* satCDB, uint8_t transferBitsOffset);
 
     //-----------------------------------------------------------------------------
     //
@@ -232,7 +232,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_WO(1) M_PARAM_RO(2) eReturnValues set_Registers(uint8_t* satCDB, ataPassthroughCommand* ataCommandOptions);
+    M_PARAM_RW(1) M_PARAM_RO(2) eReturnValues set_Registers(uint8_t* satCDB, ataPassthroughCommand* ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //

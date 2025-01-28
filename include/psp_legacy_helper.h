@@ -4,7 +4,7 @@
 //! \brief Defines the functions for legacy PSP USB pass-through
 //! \details All code in this file is from an OLD PSP (Personal Storage Products-Maxtor) USB product specification for
 //! pass-through commands. This code should only be used on products that are known to use this pass-through interface.
-//! Some of this code may also be from something found in legacy source. This will be commented if it is. 
+//! Some of this code may also be from something found in legacy source. This will be commented if it is.
 //!\copyright
 //! Do NOT modify or remove this copyright and license
 //!

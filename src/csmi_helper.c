@@ -2660,7 +2660,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE      deviceHandle,
     }
     sspPassthroughBufferLength = sizeof(CSMI_SAS_SSP_PASSTHRU_BUFFER) + sspInputs->dataLength;
     sspPassthrough             = C_CAST(PCSMI_SAS_SSP_PASSTHRU_BUFFER,
-                                        safe_calloc_aligned(sizeof(uint8_t), sspPassthroughBufferLength, sizeof(void*)));
+                                        safe_calloc_aligned(sspPassthroughBufferLength, sizeof(uint8_t), sizeof(void*)));
     if (!sspPassthrough)
     {
         return MEMORY_FAILURE;
@@ -2845,7 +2845,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE      deviceHandle,
     }
     stpPassthroughBufferLength = sizeof(CSMI_SAS_STP_PASSTHRU_BUFFER) + stpInputs->dataLength;
     stpPassthrough             = C_CAST(PCSMI_SAS_STP_PASSTHRU_BUFFER,
-                                        safe_calloc_aligned(sizeof(uint8_t), stpPassthroughBufferLength, sizeof(void*)));
+                                        safe_calloc_aligned(stpPassthroughBufferLength, sizeof(uint8_t), sizeof(void*)));
     if (!stpPassthrough)
     {
         return MEMORY_FAILURE;
