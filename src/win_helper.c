@@ -2910,7 +2910,7 @@ static eReturnValues win_Get_SCSI_Address(HANDLE deviceHandle, PSCSI_ADDRESS scs
         safe_memset(scsiAddress, sizeof(SCSI_ADDRESS), 0, sizeof(SCSI_ADDRESS));
         result = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_ADDRESS, M_NULLPTR, 0, scsiAddress, sizeof(SCSI_ADDRESS),
                                  &returnedBytes, M_NULLPTR);
-        if (!result)
+        if (MSFT_BOOL_FALSE(result))
         {
             scsiAddress->PortNumber = UINT8_MAX;
             scsiAddress->PathId     = UINT8_MAX;
@@ -3107,12 +3107,12 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
     CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
     overlappedStruct.hEvent = M_NULLPTR;
 
-    if (timeNanoseconds)
+    if (timeNanoseconds != M_NULLPTR)
     {
         *timeNanoseconds = get_Nano_Seconds(commandTimer);
     }
 
-    if (result)
+    if (MSFT_BOOL_TRUE(result))
     {
         // command went through
         if (firmwareFunction == FIRMWARE_FUNCTION_GET_INFO && returnedLength > 0)
@@ -3123,7 +3123,7 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
                         M_Min(dataRequestLength, bufferSize - firmwareRequestDataOffset));
         }
         ret = SUCCESS;
-        if (returnCode)
+        if (returnCode != M_NULLPTR)
         {
             *returnCode =
                 srbControl->ReturnCode; // this is so the caller can do what it wants to with this information - TJE
@@ -4366,7 +4366,7 @@ static eReturnValues win_Get_Property_Data(HANDLE              deviceHandle,
         query.QueryType  = PropertyStandardQuery;
         success = DeviceIoControl(deviceHandle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(STORAGE_PROPERTY_QUERY),
                                   outputData, outputDataLength, &returnedData, M_NULLPTR);
-        if (!success)
+        if (MSFT_BOOL_FALSE(success))
         {
             ret = NOT_SUPPORTED;
         }
@@ -4975,7 +4975,7 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
 //     {
 //         BOOL success = FALSE;
 //         DWORD returnedBytes = DWORD_C(0);
-//         while (!success)
+//         while (MSFT_BOOL_FALSE(success))
 //         {
 //             //try this ioctl and reallocate memory if not enough space error is returned until it can be read!
 //             success = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_INQUIRY_DATA, M_NULLPTR, 0, scsiBusInfo,
@@ -6439,7 +6439,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
         overlappedStruct.hEvent          = M_NULLPTR;
         scsiIoCtx->returnStatus.senseKey = sptdioEx->scsiPassThroughEX.ScsiStatus;
 
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             // If the operation completes successfully, the return value is nonzero.
             // If the operation fails or is pending, the return value is zero. To get extended error information, call
@@ -6677,7 +6677,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
         overlappedStruct.hEvent          = M_NULLPTR;
         scsiIoCtx->returnStatus.senseKey = sptdio->scsiPassThroughEXDirect.ScsiStatus;
 
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             // If the operation completes successfully, the return value is nonzero.
             // If the operation fails or is pending, the return value is zero. To get extended error information, call
@@ -6966,7 +6966,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
         stop_Timer(&commandTimer);
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             // If the operation completes successfully, the return value is nonzero.
             // If the operation fails or is pending, the return value is zero. To get extended error information, call
@@ -7110,7 +7110,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
         stop_Timer(&commandTimer);
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             // If the operation completes successfully, the return value is nonzero.
             // If the operation fails or is pending, the return value is zero. To get extended error information, call
@@ -7456,7 +7456,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
             overlappedStruct.hEvent = M_NULLPTR;
         }
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             ret = SUCCESS;
             // use the format, sensekey, acq, acsq from the sense data buffer we passed in rather than what windows
@@ -7769,7 +7769,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
             overlappedStruct.hEvent = M_NULLPTR;
         }
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             ret = SUCCESS;
             // copy the data buffer back to the user's data pointer
@@ -8056,7 +8056,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
             overlappedStruct.hEvent = M_NULLPTR;
         }
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             ret = SUCCESS;
             // copy the data buffer back to the user's data pointer
@@ -9023,7 +9023,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent        = M_NULLPTR;
         scsiIoCtx->returnStatus.format = SCSI_SENSE_CUR_INFO_DESC;
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             ret = SUCCESS;
             // copy the data buffer back to the user's data pointer
@@ -9168,13 +9168,13 @@ eReturnValues os_Device_Reset(tDevice* device)
     // drivers use the Windows API call -
     // http://msdn.microsoft.com/en-us/library/windows/hardware/ff560603%28v=vs.85%29.aspx ULONG returned_data =
     // ULONG_C(0);
-    BOOL success = 0;
+    BOOL success = FALSE;
     SetLastError(NO_ERROR);
     device->os_info.last_error = NO_ERROR;
     success = DeviceIoControl(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_DEVICE, M_NULLPTR, 0, M_NULLPTR, 0,
                               M_NULLPTR, FALSE);
     device->os_info.last_error = GetLastError();
-    if (success && device->os_info.last_error == NO_ERROR)
+    if (MSFT_BOOL_TRUE(success) && device->os_info.last_error == NO_ERROR)
     {
         ret = SUCCESS;
     }
@@ -9191,7 +9191,7 @@ eReturnValues os_Bus_Reset(tDevice* device)
     // This does not seem to work since it is obsolete and likely not implemented in modern drivers
     // use the Windows API call - http://msdn.microsoft.com/en-us/library/windows/hardware/ff560600%28v=vs.85%29.aspx
     ULONG                     returned_data = ULONG_C(0);
-    BOOL                      success       = 0;
+    BOOL                      success       = FALSE;
     STORAGE_BUS_RESET_REQUEST reset;
     safe_memset(&reset, sizeof(STORAGE_BUS_RESET_REQUEST), 0, sizeof(STORAGE_BUS_RESET_REQUEST));
     reset.PathId = device->os_info.scsi_addr.PathId;
@@ -9200,7 +9200,7 @@ eReturnValues os_Bus_Reset(tDevice* device)
     success = DeviceIoControl(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_BUS, &reset, sizeof(reset), &reset,
                               sizeof(reset), &returned_data, FALSE);
     device->os_info.last_error = GetLastError();
-    if (success && device->os_info.last_error == NO_ERROR)
+    if (MSFT_BOOL_TRUE(success) && device->os_info.last_error == NO_ERROR)
     {
         ret = SUCCESS;
     }
@@ -9274,7 +9274,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
                     BOOL lockResult  = FALSE;
                     lockResult       = DeviceIoControl(volumeHandle, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
                                                        &bytesReturned, M_NULLPTR);
-                    if (lockResult == FALSE)
+                    if (MSFT_BOOL_FALSE(lockResult))
                     {
                         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                         {
@@ -9283,7 +9283,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
                     }
                     ioctlResult = DeviceIoControl(volumeHandle, FSCTL_DISMOUNT_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
                                                   &bytesReturned, M_NULLPTR);
-                    if (ioctlResult == FALSE)
+                    if (MSFT_BOOL_FALSE(ioctlResult))
                     {
                         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                         {
@@ -9291,11 +9291,11 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
                         }
                         ret = FAILURE;
                     }
-                    if (lockResult == TRUE)
+                    if (MSFT_BOOL_TRUE(lockResult))
                     {
                         ioctlResult = DeviceIoControl(volumeHandle, FSCTL_UNLOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
                                                       &bytesReturned, M_NULLPTR);
-                        if (ioctlResult == FALSE)
+                        if (MSFT_BOOL_FALSE(ioctlResult))
                         {
                             if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                             {
@@ -11508,7 +11508,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    if (success)
+    if (MSFT_BOOL_TRUE(success))
     {
         ret = SUCCESS;
     }
@@ -11812,7 +11812,7 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx* nvmeIoCtx)
         nvmeIoCtx->device->os_info.last_error                    = GetLastError();
         nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
-        if (result == 0)
+        if (MSFT_BOOL_FALSE(result))
         {
             if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -11991,7 +11991,7 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx* nvmeIoCtx)
     stop_Timer(&commandTimer);
     nvmeIoCtx->device->os_info.last_error                    = GetLastError();
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    if (!result || (returnedLength == 0))
+    if (MSFT_BOOL_FALSE(result) || (returnedLength == 0))
     {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -12104,7 +12104,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
     stop_Timer(&commandTimer);
     nvmeIoCtx->device->os_info.last_error                    = GetLastError();
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    if (!result || (returnedLength == 0))
+    if (MSFT_BOOL_FALSE(result) || (returnedLength == 0))
     {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -12550,7 +12550,7 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx* nvmeIoCtx)
             nvmeIoCtx->device->os_info.last_error                    = GetLastError();
             nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
-            if (success)
+            if (MSFT_BOOL_TRUE(success))
             {
                 ret = SUCCESS;
             }
@@ -12617,7 +12617,7 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx* nvmeIoCtx)
     stop_Timer(&commandTimer);
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
-    if (success)
+    if (MSFT_BOOL_TRUE(success))
     {
         ret                                              = SUCCESS;
         nvmeIoCtx->commandCompletionData.commandSpecific = 0;
@@ -12711,7 +12711,7 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
         start_Timer(&commandTimer);
         nvmeIoCtx->device->os_info.last_error                    = GetLastError();
         nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-        if (!result)
+        if (MSFT_BOOL_FALSE(result))
         {
             if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -13033,7 +13033,7 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
             stop_Timer(&commandTimer);
             nvmeIoCtx->device->os_info.last_error                    = GetLastError();
             nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-            if (!result)
+            if (MSFT_BOOL_FALSE(result))
             {
                 if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
                 {
@@ -13069,7 +13069,7 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
                 stop_Timer(&commandTimer);
                 nvmeIoCtx->device->os_info.last_error                    = GetLastError();
                 nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-                if (!result)
+                if (MSFT_BOOL_FALSE(result))
                 {
                     if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
                     {
@@ -13989,7 +13989,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
     stop_Timer(&commandTimer);
     scsiIoCtx->device->os_info.last_error                    = GetLastError();
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    if (!result || (returnedLength == 0))
+    if (MSFT_BOOL_FALSE(result) || (returnedLength == 0))
     {
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -14093,7 +14093,7 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx)
     stop_Timer(&commandTimer);
     scsiIoCtx->device->os_info.last_error                    = GetLastError();
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-    if (!result || (returnedLength == 0))
+    if (MSFT_BOOL_FALSE(result) || (returnedLength == 0))
     {
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -14735,7 +14735,7 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     // set the offset here
     BOOL retStatus = SetFilePointerEx(handleToUse, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
-    if (!retStatus)
+    if (MSFT_BOOL_FALSE(retStatus))
     {
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
@@ -14780,7 +14780,7 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     }
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
-    if (!retStatus) // not successful
+    if (MSFT_BOOL_FALSE(retStatus)) // not successful
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -14867,7 +14867,7 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     // set the offset here
     BOOL retStatus = SetFilePointerEx(handleToUse, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
-    if (retStatus == FALSE)
+    if (MSFT_BOOL_FALSE(retStatus))
     {
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
@@ -14920,7 +14920,7 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     overlappedStruct.hEvent                       = M_NULLPTR;
     device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
-    if (retStatus == FALSE) // not successful
+    if (MSFT_BOOL_FALSE(retStatus)) // not successful
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -15000,7 +15000,7 @@ eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
     }
     stop_Timer(&verifyTimer);
     device->os_info.last_error = GetLastError();
-    if (!success) // not successful
+    if (MSFT_BOOL_FALSE(success)) // not successful
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -15095,7 +15095,7 @@ eReturnValues os_Flush(tDevice* device)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
-    if (!retStatus) // not successful
+    if (MSFT_BOOL_FALSE(retStatus)) // not successful
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {

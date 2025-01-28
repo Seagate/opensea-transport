@@ -337,13 +337,13 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
                 printf("Intel RAID Firmware: ");
                 printf_Intel_Firmware_SRB_Status(raidFirmwareRequest->Header.ReturnCode);
             }
-            if (!success)
+            if (MSFT_BOOL_FALSE(success))
             {
                 ret = FAILURE;
             }
             else
             {
-                if (returnCode)
+                if (returnCode != M_NULLPTR)
                 {
                     *returnCode = raidFirmwareRequest->Header.ReturnCode;
                 }
@@ -844,7 +844,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
             stop_Timer(&commandTimer);
             CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
             overlappedStruct.hEvent = M_NULLPTR;
-            if (!success)
+            if (MSFT_BOOL_FALSE(success))
             {
                 ret = OS_PASSTHROUGH_FAILURE;
             }

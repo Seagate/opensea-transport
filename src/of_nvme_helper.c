@@ -176,7 +176,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
             CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
             overlappedStruct.hEvent = M_NULLPTR;
         }
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             supported = true;
         }
@@ -226,7 +226,7 @@ eReturnValues send_OFNVME_Reset(tDevice* device)
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    if (success)
+    if (MSFT_BOOL_TRUE(success))
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -286,7 +286,7 @@ eReturnValues send_OFNVME_Add_Namespace(tDevice* device)
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    if (success)
+    if (MSFT_BOOL_TRUE(success))
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -346,7 +346,7 @@ eReturnValues send_OFNVME_Remove_Namespace(tDevice* device)
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    if (success)
+    if (MSFT_BOOL_TRUE(success))
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -505,7 +505,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
             CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
             overlappedStruct.hEvent = M_NULLPTR;
         }
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
