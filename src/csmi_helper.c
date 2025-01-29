@@ -4125,7 +4125,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
     _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT(PRIu32) TEXT(":"),
                 controllerNum);
 #        else
-    _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT("lu") TEXT(":"),
+    _stprintf_s(device_name, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("\\\\.\\SCSI") TEXT("%") TEXT("I32u") TEXT(":"),
                 controllerNum);
 #        endif //_MSC_VER && _MSC_VER < VS2015
     // lets try to open the device.

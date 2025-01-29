@@ -366,7 +366,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
 #else
         // This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined
         // for it versus newer versions.
-        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("PCI\\VEN_%lx&DEV_%lx&SUBSYS_%lx&REV_%lx\\%*s"),
+        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("PCI\\VEN_%I32x&DEV_%I32x&SUBSYS_%I32x&REV_%I32x\\%*s"),
                                       &device->drive_info.adapter_info.vendorID,
                                       &device->drive_info.adapter_info.productID, &subsystem, &revision);
 #endif
@@ -414,7 +414,7 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
 #else
             // This is a hack around how VS2013 handles string concatenation with how the printf format macros were
             // defined for it versus newer versions.
-            int result = _stscanf_s(token, TEXT("%06lx"), &device->drive_info.adapter_info.vendorID);
+            int result = _stscanf_s(token, TEXT("%06I32x"), &device->drive_info.adapter_info.vendorID);
 #endif
 
             if (result == 1)
