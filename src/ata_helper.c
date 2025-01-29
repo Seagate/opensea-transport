@@ -2780,8 +2780,8 @@ eReturnValues convert_LBA_To_CHS(tDevice* device, uint32_t lba, uint16_t* cylind
     {
         uint8_t* identifyPtr = M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000);
         uint32_t userAddressableCapacityCHS = M_BytesTo4ByteValue(
-            le16_to_host(identifyPtr[117]), le16_to_host(identifyPtr[116]), le16_to_host(identifyPtr[115]),
-            le16_to_host(identifyPtr[114])); // CHS max sector capacity
+            identifyPtr[117], identifyPtr[116], identifyPtr[115],
+            identifyPtr[114]); // CHS max sector capacity
         if (is_CHS_Mode_Supported(device))
         {
             if (is_Current_CHS_Info_Valid(device))
