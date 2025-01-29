@@ -279,8 +279,9 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
+    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(4, 5)
     M_PARAM_RO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues security_Send(tDevice* device,
                                                       uint8_t  securityProtocol,
@@ -304,8 +305,9 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
+    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
+    M_NONNULL_IF_NONZERO_PARAM(4, 5)
     M_PARAM_WO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues security_Receive(tDevice* device,
                                                          uint8_t  securityProtocol,
