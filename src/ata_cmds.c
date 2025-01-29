@@ -3559,7 +3559,7 @@ eReturnValues ata_NCQ_Receive_FPDMA_Queued(tDevice* device,
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
         create_ata_queued_cmd(device, ATA_RECEIVE_FPDMA, true, true, ncqTag, XFER_DATA_IN,
-                              dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+                              M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     set_ata_pt_prio_subcmd(&ataCommandOptions, prio, subCommand);
     set_ata_pt_LBA_48(&ataCommandOptions, lba);
     ataCommandOptions.tfr.DeviceHead =
@@ -3611,7 +3611,7 @@ eReturnValues ata_NCQ_Send_FPDMA_Queued(tDevice* device,
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_queued_cmd(
-        device, ATA_SEND_FPDMA, true, true, ncqTag, XFER_DATA_OUT, dataSize / LEGACY_DRIVE_SEC_SIZE, ptrData, dataSize);
+        device, ATA_SEND_FPDMA, true, true, ncqTag, XFER_DATA_OUT, M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     set_ata_pt_prio_subcmd(&ataCommandOptions, prio, subCommand);
     set_ata_pt_LBA_48(&ataCommandOptions, lba);
     ataCommandOptions.tfr.DeviceHead =
