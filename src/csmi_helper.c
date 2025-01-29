@@ -243,12 +243,12 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
 #    endif
     PIOCTL_HEADER ioctlHeader =
         csmiIoInParams->ioctlBuffer; // ioctl buffer should point to the beginning where the header will be.
-    if (!(csmiIoInParams && csmiIoOutParams && ioctlHeader))
+    if (csmiIoInParams == M_NULLPTR || csmiIoOutParams == M_NULLPTR || ioctlHeader == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
     timer = csmiIoOutParams->ioctlTimer;
-    if (!timer)
+    if (timer == M_NULLPTR)
     {
         timer      = M_REINTERPRET_CAST(seatimer_t*, safe_calloc(1, sizeof(seatimer_t)));
         localTimer = true;
