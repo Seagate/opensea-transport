@@ -3609,9 +3609,10 @@ eReturnValues ata_NCQ_Send_FPDMA_Queued(tDevice* device,
                                         uint8_t* ptrData,
                                         uint32_t dataSize)
 {
-    eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_queued_cmd(
-        device, ATA_SEND_FPDMA, true, true, ncqTag, XFER_DATA_OUT, M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
+    eReturnValues         ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions =
+        create_ata_queued_cmd(device, ATA_SEND_FPDMA, true, true, ncqTag, XFER_DATA_OUT,
+                              M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     set_ata_pt_prio_subcmd(&ataCommandOptions, prio, subCommand);
     set_ata_pt_LBA_48(&ataCommandOptions, lba);
     ataCommandOptions.tfr.DeviceHead =

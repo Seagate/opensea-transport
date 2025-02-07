@@ -366,9 +366,10 @@ static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bu
 #else
         // This is a hack around how VS2013 handles string concatenation with how the printf format macros were defined
         // for it versus newer versions.
-        int scannedVals = _sntscanf_s(buffer, bufferLength, TEXT("PCI\\VEN_%I32x&DEV_%I32x&SUBSYS_%I32x&REV_%I32x\\%*s"),
-                                      &device->drive_info.adapter_info.vendorID,
-                                      &device->drive_info.adapter_info.productID, &subsystem, &revision);
+        int scannedVals =
+            _sntscanf_s(buffer, bufferLength, TEXT("PCI\\VEN_%I32x&DEV_%I32x&SUBSYS_%I32x&REV_%I32x\\%*s"),
+                        &device->drive_info.adapter_info.vendorID, &device->drive_info.adapter_info.productID,
+                        &subsystem, &revision);
 #endif
         device->drive_info.adapter_info.vendorIDValid  = true;
         device->drive_info.adapter_info.productIDValid = true;
