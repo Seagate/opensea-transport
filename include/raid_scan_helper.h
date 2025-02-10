@@ -31,8 +31,8 @@ extern "C"
 {
 #endif
 
-    /* 
-    */
+    /*
+     */
 
     // using bit field here to reduce memory usage, but can be removed if this causes problems
     // This is intended to hint which RAID type a device is, if there is a way to know or guess what it is in a given
