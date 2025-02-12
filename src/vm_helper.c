@@ -1012,6 +1012,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
+#define VM_NAME_LEN 128
 eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
     eReturnValues returnValue           = SUCCESS;
@@ -1020,7 +1021,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     uint32_t      found                 = UINT32_C(0);
     uint32_t      failedGetDeviceCount  = UINT32_C(0);
     uint32_t      permissionDeniedCount = UINT32_C(0);
-    DECLARE_ZERO_INIT_ARRAY(char, name, 128); // Because get device needs char
+    DECLARE_ZERO_INIT_ARRAY(char, name, VM_NAME_LEN);
     char*                    nvmeDevName = M_NULLPTR;
     int                      fd          = -1;
     bool                     isScsi      = false;
@@ -1073,7 +1074,8 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     }
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
 
-    if (!(ptrToDeviceList) || (!sizeInBytes))
+    DISABLE_NONNULL_COMPARE
+    if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
     }
@@ -1088,7 +1090,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 #if defined(DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
 #endif
-        for (driveNumber = 0; ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN &&
+        for (driveNumber = UINT32_C(0); ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN &&
                                 driveNumber < (num_sg_devs + num_nvme_devs)) &&
                                (found < numberOfDevices));
              driveNumber++)
@@ -1097,8 +1099,8 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             {
                 continue;
             }
-            safe_memset(name, sizeof(name), 0, sizeof(name)); // clear name before reusing it
-            snprintf(name, sizeof(name), "%s", devs[driveNumber]);
+            safe_memset(name, VM_NAME_LEN, 0, VM_NAME_LEN); // clear name before reusing it
+            snprintf(name, VM_NAME_LEN, "%s", devs[driveNumber]);
 
             nvmeDevName = strstr(name, "vmhba");
             isScsi      = (nvmeDevName == M_NULLPTR) ? true : false;
@@ -1173,6 +1175,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
+    RESTORE_NONNULL_COMPARE
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }

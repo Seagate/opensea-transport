@@ -2898,6 +2898,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
+#define AIX_NAME_LEN 80
 eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
     eReturnValues returnValue           = SUCCESS;
@@ -2908,7 +2909,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     uint32_t      permissionDeniedCount = UINT32_C(0);
     int           fd                    = -1;
     tDevice*      d                     = M_NULLPTR;
-    DECLARE_ZERO_INIT_ARRAY(char, name, 80); // Because get device needs char
+    DECLARE_ZERO_INIT_ARRAY(char, name, AIX_NAME_LEN); // Because get device needs char
 
     int             num_devs = 0;
     struct dirent** namelist;
@@ -2928,7 +2929,8 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
 
-    if (!(ptrToDeviceList) || (!sizeInBytes))
+    DISABLE_NONNULL_COMPARE
+    if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
     }
@@ -2940,7 +2942,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
-        for (driveNumber = 0;
+        for (driveNumber = UINT32_C(0);
              ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < (num_devs)) &&
               (found < numberOfDevices));
              ++driveNumber)
@@ -2949,8 +2951,8 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             {
                 continue;
             }
-            safe_memset(name, sizeof(name), 0, sizeof(name)); // clear name before reusing it
-            snprintf(name, sizeof(name), "%s", devs[driveNumber]);
+            safe_memset(name, AIX_NAME_LEN, 0, AIX_NAME_LEN); // clear name before reusing it
+            snprintf(name, AIX_NAME_LEN, "%s", devs[driveNumber]);
             fd = -1;
             // lets try to open the device.
             // NOTE: When opening a handle, there may be an issue if SC_DIAGNOSTIC is not specified.
@@ -3015,6 +3017,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
+    RESTORE_NONNULL_COMPARE
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }

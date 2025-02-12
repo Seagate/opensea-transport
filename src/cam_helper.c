@@ -1263,6 +1263,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
+#define CAM_DEV_NAME_LEN 80
 eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
@@ -1274,7 +1275,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     uint32_t      found                 = UINT32_C(0);
     uint32_t      failedGetDeviceCount  = UINT32_C(0);
     uint32_t      permissionDeniedCount = UINT32_C(0);
-    DECLARE_ZERO_INIT_ARRAY(char, name, 80);
+    DECLARE_ZERO_INIT_ARRAY(char, name, CAM_DEV_NAME_LEN);
     int      fd            = 0;
     tDevice* d             = M_NULLPTR;
     int      scandirres    = 0;
@@ -1335,7 +1336,8 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &adanamelist));
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &nvmenamelist));
 
-    if (!(ptrToDeviceList) || (!sizeInBytes))
+    DISABLE_NONNULL_COMPARE
+    if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
     }
@@ -1347,7 +1349,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) &&
+        for (driveNumber = UINT32_C(0); ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) &&
                                found < numberOfDevices);
              ++driveNumber)
         {
@@ -1355,8 +1357,8 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 continue;
             }
-            safe_memset(name, sizeof(name), 0, sizeof(name)); // clear name before reusing it
-            snprintf(name, 80, "%s", devs[driveNumber]);
+            safe_memset(name, CAM_DEV_NAME_LEN, 0, CAM_DEV_NAME_LEN); // clear name before reusing it
+            snprintf(name, CAM_DEV_NAME_LEN, "%s", devs[driveNumber]);
             fd = -1;
             // lets try to open the device.
             fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);
@@ -1406,6 +1408,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
+    RESTORE_NONNULL_COMPARE
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }

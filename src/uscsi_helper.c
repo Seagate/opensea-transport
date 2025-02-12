@@ -541,6 +541,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
+#define USCSI_NAME_LEN 80
 eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
@@ -553,7 +554,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     uint32_t      found                 = UINT32_C(0);
     uint32_t      failedGetDeviceCount  = UINT32_C(0);
     uint32_t      permissionDeniedCount = UINT32_C(0);
-    DECLARE_ZERO_INIT_ARRAY(char, name, 80); // Because get device needs char
+    DECLARE_ZERO_INIT_ARRAY(char, name, USCSI_NAME_LEN); // Because get device needs char
     int      fd = -1;
     tDevice* d  = M_NULLPTR;
 
@@ -576,7 +577,8 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     devs[i] = M_NULLPTR;
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist);
 
-    if (!(ptrToDeviceList) || (!sizeInBytes))
+    DISABLE_NONNULL_COMPARE
+    if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
     }
@@ -588,7 +590,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber >= 0 && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) &&
+        for (driveNumber = UINT32_C(0); ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) &&
                                (found < numberOfDevices));
              ++driveNumber)
         {
@@ -596,8 +598,8 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 continue;
             }
-            safe_memset(name, sizeof(name), 0, sizeof(name)); // clear name before reusing it
-            snprintf(name, sizeof(name), "%s", devs[driveNumber]);
+            safe_memset(name, USCSI_NAME_LEN, 0, USCSI_NAME_LEN); // clear name before reusing it
+            snprintf(name, USCSI_NAME_LEN, "%s", devs[driveNumber]);
             fd = -1;
             // lets try to open the device.
             fd = open(name, O_RDWR | O_NONBLOCK);
@@ -642,6 +644,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
+    RESTORE_NONNULL_COMPARE
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }
