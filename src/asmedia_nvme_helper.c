@@ -498,7 +498,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     {
         dataPhaseSize = uint32_round_up_power2(nvmCmd->dataSize, UINT32_C(512));
         dataPhasePtr  = C_CAST(
-             uint8_t*, safe_calloc_aligned(dataPhaseSize, sizeof(uint8_t), nvmCmd->device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(dataPhaseSize, sizeof(uint8_t), nvmCmd->device->os_info.minimumAlignment));
         if (dataPhasePtr == M_NULLPTR)
         {
             return MEMORY_FAILURE;

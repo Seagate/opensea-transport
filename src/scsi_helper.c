@@ -4556,7 +4556,8 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
                      sizeof(scsiVersionDescriptorTable[0]), (int (*)(const void*, const void*))cmp_Version_Descriptor));
     if (versionDescriptorResult)
     {
-        snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "%s", versionDescriptorResult->stringDescription);
+        snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "%s",
+                            versionDescriptorResult->stringDescription);
     }
     else
     {
@@ -4564,377 +4565,377 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
         {
             // 1 - 8 architecture model
         case STANDARD_CODE_SAM:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM");
             break;
         case STANDARD_CODE_SAM2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-2");
             break;
         case STANDARD_CODE_SAM3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-3");
             break;
         case STANDARD_CODE_SAM4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-4");
             break;
         case STANDARD_CODE_SAM5:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-5");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-5");
             break;
         case STANDARD_CODE_SAM6:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-6");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-6");
             break;
             // 9-64 Command Set
         case STANDARD_CODE_SPC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC");
             break;
         case STANDARD_CODE_MMC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC");
             break;
         case STANDARD_CODE_SCC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SCC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SCC");
             break;
         case STANDARD_CODE_SBC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC");
             break;
         case STANDARD_CODE_SMC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC");
             break;
         case STANDARD_CODE_SES:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES");
             break;
         case STANDARD_CODE_SCC2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SCC-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SCC-2");
             break;
         case STANDARD_CODE_SSC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC");
             break;
         case STANDARD_CODE_RBC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RBC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RBC");
             break;
         case STANDARD_CODE_MMC2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-2");
             break;
         case STANDARD_CODE_SPC2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-2");
             break;
         case STANDARD_CODE_OCRW:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OCRW");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OCRW");
             break;
         case STANDARD_CODE_MMC3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-3");
             break;
         case STANDARD_CODE_RMC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RMC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RMC");
             break;
         case STANDARD_CODE_SMC2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC-2");
             break;
         case STANDARD_CODE_SPC3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-3");
             break;
         case STANDARD_CODE_SBC2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-2");
             break;
         case STANDARD_CODE_OSD:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD");
             break;
         case STANDARD_CODE_SSC2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-2");
             break;
         case STANDARD_CODE_BCC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "BCC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "BCC");
             break;
         case STANDARD_CODE_MMC4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-4");
             break;
         case STANDARD_CODE_ADC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC");
             break;
         case STANDARD_CODE_SES2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-2");
             break;
         case STANDARD_CODE_SSC3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-3");
             break;
         case STANDARD_CODE_MMC5:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-5");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-5");
             break;
         case STANDARD_CODE_OSD2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD-2");
             break;
         case STANDARD_CODE_SPC4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-4");
             break;
         case STANDARD_CODE_SMC3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC-3");
             break;
         case STANDARD_CODE_ADC2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-2");
             break;
         case STANDARD_CODE_SBC3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-3");
             break;
         case STANDARD_CODE_MMC6:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-6");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-6");
             break;
         case STANDARD_CODE_ADC3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-3");
             break;
         case STANDARD_CODE_SSC4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-4");
             break;
         case STANDARD_CODE_OSD3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD-3");
             break;
         case STANDARD_CODE_SES3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-3");
             break;
         case STANDARD_CODE_SSC5:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-5");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-5");
             break;
         case STANDARD_CODE_SPC5:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-5");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-5");
             break;
         case STANDARD_CODE_SFSC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SFSC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SFSC");
             break;
         case STANDARD_CODE_SBC4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-4");
             break;
         case STANDARD_CODE_ZBC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ZBC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ZBC");
             break;
         case STANDARD_CODE_ADC4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-4");
             break;
         case STANDARD_CODE_ZBC2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ZBC-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ZBC-2");
             break;
         case STANDARD_CODE_SES4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-4");
             break;
             // 65 - 84 Physical Mapping protocol
         case STANDARD_CODE_SSA_TL2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-TL2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-TL2");
             break;
         case STANDARD_CODE_SSA_TL1:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-TL1");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-TL1");
             break;
         case STANDARD_CODE_SSA_S3P:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-S3P");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-S3P");
             break;
         case STANDARD_CODE_SSA_S2P:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-S2P");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-S2P");
             break;
         case STANDARD_CODE_SIP:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SIP");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SIP");
             break;
         case STANDARD_CODE_FCP:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP");
             break;
         case STANDARD_CODE_SBP2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBP-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBP-2");
             break;
         case STANDARD_CODE_FCP2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-2");
             break;
         case STANDARD_CODE_SST:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SST");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SST");
             break;
         case STANDARD_CODE_SRP:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SRP");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SRP");
             break;
         case STANDARD_CODE_iSCSI:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "iSCSI");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "iSCSI");
             break;
         case STANDARD_CODE_SBP3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBP-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBP-3");
             break;
         case STANDARD_CODE_SRP2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SRP-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SRP-2");
             break;
         case STANDARD_CODE_ADP:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADP");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADP");
             break;
         case STANDARD_CODE_ADT:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT");
             break;
         case STANDARD_CODE_FCP3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-3");
             break;
         case STANDARD_CODE_ADT2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT-2");
             break;
         case STANDARD_CODE_FCP4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-4");
             break;
         case STANDARD_CODE_ADT3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT-3");
             break;
             // 85 - 94 Parallel SCSI Physical
         case STANDARD_CODE_SPI:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI");
             break;
         case STANDARD_CODE_FAST20:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "Fast-20");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "Fast-20");
             break;
         case STANDARD_CODE_SPI2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-2");
             break;
         case STANDARD_CODE_SPI3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-3");
             break;
         case STANDARD_CODE_EPI:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "EPI");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "EPI");
             break;
         case STANDARD_CODE_SPI4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-4");
             break;
         case STANDARD_CODE_SPI5:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-5");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-5");
             break;
             // 95 - 104 Serial Attached SCSI
         case STANDARD_CODE_SAS:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS");
             break;
         case STANDARD_CODE_SAS1_1:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-1.1");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-1.1");
             break;
         case STANDARD_CODE_SAS2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-2");
             break;
         case STANDARD_CODE_SAS2_1:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-2.1");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-2.1");
             break;
         case STANDARD_CODE_SAS3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-3");
             break;
         case STANDARD_CODE_SAS4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-4");
             break;
             // 105 - 154 Fibre Channel
         case STANDARD_CODE_FC_PH:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PH");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PH");
             break;
         case STANDARD_CODE_FC_AL:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-AL");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-AL");
             break;
         case STANDARD_CODE_FC_AL2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-AL-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-AL-2");
             break;
         case STANDARD_CODE_AC_PH3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PH-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PH-3");
             break;
         case STANDARD_CODE_FC_FS:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS");
             break;
         case STANDARD_CODE_FC_PI:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI");
             break;
         case STANDARD_CODE_FC_PI2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-2");
             break;
         case STANDARD_CODE_FC_FS2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-2");
             break;
         case STANDARD_CODE_FC_LS:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS");
             break;
         case STANDARD_CODE_FC_SP:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SP");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SP");
             break;
         case STANDARD_CODE_FC_PI3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-3");
             break;
         case STANDARD_CODE_FC_PI4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-4");
             break;
         case STANDARD_CODE_FC_10GFC:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC 10GFC");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC 10GFC");
             break;
         case STANDARD_CODE_FC_SP2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SP-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SP-2");
             break;
         case STANDARD_CODE_FC_FS3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-3");
             break;
         case STANDARD_CODE_FC_LS2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS-2");
             break;
         case STANDARD_CODE_FC_PI5:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-5");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-5");
             break;
         case STANDARD_CODE_FC_PI6:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-6");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-6");
             break;
         case STANDARD_CODE_FC_FS4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-4");
             break;
         case STANDARD_CODE_FC_LS3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS-3");
             break;
         case STANDARD_CODE_FC_SCM:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SCM");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SCM");
             break;
         case STANDARD_CODE_FC_DA2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-DA-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-DA-2");
             break;
         case STANDARD_CODE_FC_DA:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-DA");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-DA");
             break;
         case STANDARD_CODE_FC_TAPE:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-Tape");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-Tape");
             break;
         case STANDARD_CODE_FC_FLA:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FLA");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FLA");
             break;
         case STANDARD_CODE_FC_PLDA:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PLDA");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PLDA");
             break;
             // 155 - 164 SSA
         case STANDARD_CODE_SSA_PH2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-PH2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-PH2");
             break;
         case STANDARD_CODE_SSA_PH3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-PH3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-PH3");
             break;
             // 165 - 174 IEEE 1394
         case STANDARD_CODE_IEEE_1394_1995:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394-1995");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394-1995");
             break;
         case STANDARD_CODE_IEEE_1394a:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394a");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394a");
             break;
         case STANDARD_CODE_IEEE_1394b:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394b");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394b");
             break;
             // 175 - 200 ATAPI & USB
         case STANDARD_CODE_ATA_ATAPI6:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA/ATAPI-6");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA/ATAPI-6");
             break;
         case STANDARD_CODE_ATA_ATAPI7:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA/ATAPI-7");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA/ATAPI-7");
             break;
         case STANDARD_CODE_ATA_ATAPI8:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA8-ACS");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA8-ACS");
             break;
         case STANDARD_CODE_USB:
             switch (versionDescriptor)
             {
             case 0x1728: // USB 1.1
-                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-1.1");
+                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-1.1");
                 break;
             case 0x1729: // USB 2.0
-                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-2.0");
+                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-2.0");
                 break;
             case 0x1730: // USB BOT
-                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-BOT");
+                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-BOT");
                 break;
             default:
-                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB");
+                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB");
                 break;
             }
             break;
         case STANDARD_CODE_UAS:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "UAS");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "UAS");
             break;
         case STANDARD_CODE_ACSx:
             // special case, look at the version descriptor to set an exact version number
@@ -4942,74 +4943,74 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
             {
             case 0x1761: // ACS-2
             case 0x1762:
-                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-2");
+                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-2");
                 break;
             case 0x1765: // ACS-3
             case 0x1766: // ACS-3 INCITS 522-2014
-                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-3");
+                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-3");
                 break;
             case 0x1767: // ACS-4 INCITS 529-2018
-                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-4");
+                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-4");
                 break;
             default:
-                snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-x");
+                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-x");
                 break;
             }
             break;
         case STANDARD_CODE_UAS2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "UAS-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "UAS-2");
             break;
             // 201 - 224 Networking
             // 225 - 244 ATM
             // 245 - 260 Translators
         case STANDARD_CODE_SAT:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT");
             break;
         case STANDARD_CODE_SAT2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-2");
             break;
         case STANDARD_CODE_SAT3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-3");
             break;
         case STANDARD_CODE_SAT4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-4");
             break;
             // 261 - 270 SAS Transport Protocols
         case STANDARD_CODE_SPL:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL");
             break;
         case STANDARD_CODE_SPL2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-2");
             break;
         case STANDARD_CODE_SPL3:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-3");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-3");
             break;
         case STANDARD_CODE_SPL4:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-4");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-4");
             break;
             // 271 - 290 SCSI over PCI Extress Transport Protocols
         case STANDARD_CODE_SOP:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SOP");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SOP");
             break;
         case STANDARD_CODE_PQI:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "PQI");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "PQI");
             break;
         case STANDARD_CODE_SOP2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SOP-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SOP-2");
             break;
         case STANDARD_CODE_PQI2:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "PQI-2");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "PQI-2");
             break;
             // 291 - 2045 Reserved for Expansion
         case STANDARD_CODE_IEEE_1667:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1667");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1667");
             break;
         case STANDARD_CODE_RESERVED:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RESERVED");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RESERVED");
             break;
         case STANDARD_CODE_NOT_SUPPORTED:
         default:
-            snprintf(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "----");
+            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "----");
             break;
         }
     }

@@ -41,7 +41,7 @@ DISABLE_WARNING_4255
 RESTORE_WARNING_4255
 // NOTE: ARM requires 10.0.16299.0 API to get this library!
 #include <cfgmgr32.h> // added for forced PnP rescan
-//#include <setupapi.h> //NOTE: Not available for ARM
+// #include <setupapi.h> //NOTE: Not available for ARM
 #include <devpkey.h>
 #include <devpropdef.h>
 #include <winbase.h>
@@ -719,7 +719,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DeviceDesc") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DeviceDesc"); break;
                                                                             case 1:
                                                                                 devproperty =
@@ -727,7 +727,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_HardwareIds") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_HardwareIds");
                                                                                 break;
                                                                             case 2:
@@ -736,7 +736,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_CompatibleIds") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_CompatibleIds");
                                                                                 break;
                                                                             case 3:
@@ -745,19 +745,19 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Service") + 1; propertyName
                                                                 = M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Service"); break; case 4: devproperty =
                                                                 &DEVPKEY_Device_Class; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_Class") + 1; propertyName =
                                                                 M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Class"); break; case 5: devproperty =
                                                                 &DEVPKEY_Device_ClassGuid; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_ClassGuid") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_ClassGuid"); break;
                                                                             case 6:
                                                                                 devproperty = &DEVPKEY_Device_Driver;
@@ -765,13 +765,13 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Driver") + 1; propertyName =
                                                                 M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Driver"); break; case 7: devproperty =
                                                                 &DEVPKEY_Device_ConfigFlags; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_ConfigFlags") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_ConfigFlags");
                                                                                 break;
                                                                             case 8:
@@ -780,7 +780,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Manufacturer") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_Manufacturer");
                                                                                 break;
                                                                             case 9:
@@ -789,7 +789,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_FriendlyName") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_FriendlyName");
                                                                                 break;
                                                                             case 10:
@@ -798,7 +798,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_LocationInfo") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_LocationInfo");
                                                                                 break;
                                                                             case 11:
@@ -807,13 +807,13 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_PDOName") + 1; propertyName
                                                                 = M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_PDOName"); break; case 12: devproperty =
                                                                 &DEVPKEY_Device_Capabilities; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_Capabilities") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_Capabilities");
                                                                                 break;
                                                                             case 13:
@@ -822,13 +822,13 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_UINumber") + 1; propertyName
                                                                 = M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_UINumber"); break; case 14: devproperty
                                                                 = &DEVPKEY_Device_UpperFilters; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_UpperFilters") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_UpperFilters");
                                                                                 break;
                                                                             case 15:
@@ -837,7 +837,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_LowerFilters") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_LowerFilters");
                                                                                 break;
                                                                             case 16:
@@ -846,7 +846,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_BusTypeGuid") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_BusTypeGuid");
                                                                                 break;
                                                                             case 17:
@@ -855,7 +855,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_LegacyBusType") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_LegacyBusType");
                                                                                 break;
                                                                             case 18:
@@ -864,7 +864,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_BusNumber") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_BusNumber"); break;
                                                                             case 19:
                                                                                 devproperty =
@@ -872,7 +872,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_EnumeratorName") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_EnumeratorName");
                                                                                 break;
                                                                             case 20:
@@ -881,13 +881,13 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Security") + 1; propertyName
                                                                 = M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Security"); break; case 21: devproperty
                                                                 = &DEVPKEY_Device_SecuritySDS; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_SecuritySDS") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_SecuritySDS");
                                                                                 break;
                                                                             case 22:
@@ -896,13 +896,13 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DevType") + 1; propertyName
                                                                 = M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_DevType"); break; case 23: devproperty =
                                                                 &DEVPKEY_Device_Exclusive; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_Exclusive") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_Exclusive"); break;
                                                                             case 24:
                                                                                 devproperty =
@@ -910,7 +910,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Characteristics") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_Characteristics");
                                                                                 break;
                                                                             case 25:
@@ -919,13 +919,13 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Address") + 1; propertyName
                                                                 = M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Address"); break; case 26: devproperty =
                                                                 &DEVPKEY_Device_UINumberDescFormat; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_UINumberDescFormat") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_UINumberDescFormat"); break; case 27:
                                                                                 devproperty = &DEVPKEY_Device_PowerData;
@@ -933,7 +933,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_PowerData") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_PowerData");
                                                                                 //type = CM_POWER_DATA
                                                                                 break;
@@ -943,7 +943,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_RemovalPolicy") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_RemovalPolicy");
                                                                                 break;
                                                                             case 29:
@@ -952,7 +952,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_Device_RemovalPolicyDefault") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_RemovalPolicyDefault"); break; case 30:
                                                                                 devproperty =
@@ -961,7 +961,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_RemovalPolicyOverride") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_RemovalPolicyOverride"); break; case 31:
                                                                                 devproperty =
@@ -969,7 +969,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_InstallState") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_InstallState");
                                                                                 break;
                                                                             case 32:
@@ -978,7 +978,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_LocationPaths") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_LocationPaths");
                                                                                 break;
                                                                             case 33:
@@ -987,7 +987,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_BaseContainerId") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_BaseContainerId");
                                                                                 break;
                                                                             case 34:
@@ -996,7 +996,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_InstanceId") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_InstanceId"); break;
                                                                             case 35:
                                                                                 devproperty =
@@ -1004,7 +1004,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DevNodeStatus") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DevNodeStatus");
                                                                                 break;
                                                                             case 36:
@@ -1013,7 +1013,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_ProblemCode") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_ProblemCode");
                                                                                 break;
                                                                             case 37:
@@ -1022,7 +1022,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_EjectionRelations") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_EjectionRelations");
                                                                                 break;
                                                                             case 38:
@@ -1031,7 +1031,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_RemovalRelations") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_RemovalRelations");
                                                                                 break;
                                                                             case 39:
@@ -1040,7 +1040,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_PowerRelations") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_PowerRelations");
                                                                                 break;
                                                                             case 40:
@@ -1049,7 +1049,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_BusRelations") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_BusRelations");
                                                                                 break;
                                                                             case 41:
@@ -1058,25 +1058,25 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Parent") + 1; propertyName =
                                                                 M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Parent"); break; case 42: devproperty =
                                                                 &DEVPKEY_Device_Children; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_Children") + 1; propertyName
                                                                 = M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Children"); break; case 43: devproperty
                                                                 = &DEVPKEY_Device_Siblings; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_Siblings") + 1; propertyName
                                                                 = M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Siblings"); break; case 44: devproperty
                                                                 = &DEVPKEY_Device_TransportRelations; propertyNameLength
                                                                 = safe_strlen("DEVPKEY_Device_TransportRelations") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_TransportRelations"); break; case 45:
                                                                                 devproperty =
@@ -1084,7 +1084,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_ProblemStatus") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_ProblemStatus");
                                                                                 break;
                                                                             case 46:
@@ -1093,19 +1093,19 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Reported") + 1; propertyName
                                                                 = M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Reported"); break; case 47: devproperty
                                                                 = &DEVPKEY_Device_Legacy; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_Legacy") + 1; propertyName =
                                                                 M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Legacy"); break; case 48: devproperty =
                                                                 &DEVPKEY_Device_ContainerId; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_ContainerId") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_ContainerId");
                                                                                 break;
                                                                             case 49:
@@ -1115,7 +1115,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_InLocalMachineContainer") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_InLocalMachineContainer"); break; case
                                                                 50: devproperty = &DEVPKEY_Device_Model;
@@ -1123,20 +1123,20 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Model") + 1; propertyName =
                                                                 M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Model"); break; case 51: devproperty =
                                                                 &DEVPKEY_Device_ModelId; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_ModelId") + 1; propertyName
                                                                 = M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_ModelId"); break; case 52: devproperty =
                                                                 &DEVPKEY_Device_FriendlyNameAttributes;
                                                                                 propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_FriendlyNameAttributes") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_FriendlyNameAttributes"); break; case
                                                                 53: devproperty =
@@ -1145,7 +1145,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_ManufacturerAttributes") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_ManufacturerAttributes"); break; case
                                                                 54: devproperty = &DEVPKEY_Device_PresenceNotForDevice;
@@ -1153,7 +1153,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_PresenceNotForDevice") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_PresenceNotForDevice"); break; case 55:
                                                                                 devproperty =
@@ -1161,7 +1161,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_SignalStrength") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_SignalStrength");
                                                                                 break;
                                                                             case 56:
@@ -1171,7 +1171,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_IsAssociateableByUserAction")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_IsAssociateableByUserAction"); break;
                                                                             case 57:
@@ -1180,7 +1180,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_ShowInUninstallUI") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_ShowInUninstallUI");
                                                                                 break;
                                                                             case 58:
@@ -1190,7 +1190,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Numa_Proximity_Domain") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_Numa_Proximity_Domain"); break; case 59:
                                                                                 devproperty =
@@ -1198,7 +1198,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_Device_DHP_Rebalance_Policy") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_DHP_Rebalance_Policy"); break; case 60:
                                                                                 devproperty = &DEVPKEY_Device_Numa_Node;
@@ -1206,7 +1206,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Numa_Node") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_Numa_Node"); break;
                                                                             case 61:
                                                                                 devproperty =
@@ -1215,7 +1215,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_BusReportedDeviceDesc") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_BusReportedDeviceDesc"); break; case 62:
                                                                                 devproperty = &DEVPKEY_Device_IsPresent;
@@ -1223,7 +1223,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_IsPresent") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_IsPresent"); break;
                                                                             case 63:
                                                                                 devproperty =
@@ -1231,7 +1231,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_HasProblem") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_HasProblem"); break;
                                                                             case 64:
                                                                                 devproperty =
@@ -1239,7 +1239,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_ConfigurationId") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_ConfigurationId");
                                                                                 break;
                                                                             case 65:
@@ -1249,7 +1249,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_ReportedDeviceIdsHash") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_ReportedDeviceIdsHash"); break; case 66:
                                                                                 devproperty =
@@ -1258,7 +1258,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_PhysicalDeviceLocation") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_PhysicalDeviceLocation"); break; case
                                                                 67: devproperty = &DEVPKEY_Device_BiosDeviceName;
@@ -1266,7 +1266,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_BiosDeviceName") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_BiosDeviceName");
                                                                                 break;
                                                                             case 68:
@@ -1275,7 +1275,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverProblemDesc") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DriverProblemDesc");
                                                                                 break;
                                                                             case 69:
@@ -1284,7 +1284,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DebuggerSafe") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DebuggerSafe");
                                                                                 break;
                                                                             case 70:
@@ -1294,7 +1294,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_PostInstallInProgress") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_PostInstallInProgress"); break; case 71:
                                                                                 devproperty = &DEVPKEY_Device_Stack;
@@ -1302,14 +1302,14 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_Stack") + 1; propertyName =
                                                                 M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_Device_Stack"); break; case 72: devproperty =
                                                                 &DEVPKEY_Device_ExtendedConfigurationIds;
                                                                                 propertyNameLength =
                                                                 safe_strlen("DEVPKEY_Device_ExtendedConfigurationIds") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_ExtendedConfigurationIds"); break; case
                                                                 73: devproperty = &DEVPKEY_Device_IsRebootRequired;
@@ -1317,7 +1317,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_IsRebootRequired") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_IsRebootRequired");
                                                                                 break;
                                                                             case 74:
@@ -1326,7 +1326,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_FirmwareDate") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_FirmwareDate");
                                                                                 break;
                                                                             case 75:
@@ -1335,7 +1335,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_FirmwareVersion") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_FirmwareVersion");
                                                                                 break;
                                                                             case 76:
@@ -1344,7 +1344,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_FirmwareRevision") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_FirmwareRevision");
                                                                                 break;
                                                                             case 77:
@@ -1353,7 +1353,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_Device_DependencyProviders") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_DependencyProviders"); break; case 78:
                                                                                 devproperty =
@@ -1361,7 +1361,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_Device_DependencyDependents") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_DependencyDependents"); break; case 79:
                                                                                 devproperty =
@@ -1369,7 +1369,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_Device_SoftRestartSupported") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_SoftRestartSupported"); break; case 80:
                                                                                 devproperty =
@@ -1377,7 +1377,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_ExtendedAddress") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_ExtendedAddress");
                                                                                 break;
                                                                             case 81:
@@ -1386,7 +1386,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_SessionId") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_SessionId"); break;
                                                                             case 82:
                                                                                 devproperty =
@@ -1394,7 +1394,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_InstallDate") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_InstallDate");
                                                                                 break;
                                                                             case 83:
@@ -1403,7 +1403,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_FirstInstallDate") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_FirstInstallDate");
                                                                                 break;
                                                                             case 84:
@@ -1412,7 +1412,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_LastArrivalDate") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_LastArrivalDate");
                                                                                 break;
                                                                             case 85:
@@ -1421,7 +1421,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_LastRemovalDate") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_LastRemovalDate");
                                                                                 break;
                                                                             case 86:
@@ -1430,7 +1430,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverDate") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DriverDate"); break;
                                                                             case 87:
                                                                                 devproperty =
@@ -1438,7 +1438,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverVersion") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DriverVersion");
                                                                                 break;
                                                                             case 88:
@@ -1447,7 +1447,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverDesc") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DriverDesc"); break;
                                                                             case 89:
                                                                                 devproperty =
@@ -1455,7 +1455,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverInfPath") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DriverInfPath");
                                                                                 break;
                                                                             case 90:
@@ -1464,7 +1464,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverInfSection") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DriverInfSection");
                                                                                 break;
                                                                             case 91:
@@ -1473,7 +1473,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_Device_DriverInfSectionExt") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_DriverInfSectionExt"); break; case 92:
                                                                                 devproperty =
@@ -1481,7 +1481,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_MatchingDeviceId") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_MatchingDeviceId");
                                                                                 break;
                                                                             case 93:
@@ -1490,7 +1490,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverProvider") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DriverProvider");
                                                                                 break;
                                                                             case 94:
@@ -1500,7 +1500,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverPropPageProvider") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_DriverPropPageProvider"); break; case
                                                                 95: devproperty = &DEVPKEY_Device_DriverCoInstallers;
@@ -1508,7 +1508,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverCoInstallers") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_DriverCoInstallers"); break; case 96:
                                                                                 devproperty =
@@ -1516,7 +1516,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_ResourcePickerTags") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_ResourcePickerTags"); break; case 97:
                                                                                 devproperty =
@@ -1525,7 +1525,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_ResourcePickerExceptions") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_ResourcePickerExceptions"); break; case
                                                                 98: devproperty = &DEVPKEY_Device_DriverRank;
@@ -1533,7 +1533,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverRank") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DriverRank"); break;
                                                                             case 99:
                                                                                 devproperty =
@@ -1541,7 +1541,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_DriverLogoLevel") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_DriverLogoLevel");
                                                                                 break;
                                                                             case 100:
@@ -1550,7 +1550,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_NoConnectSound") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_Device_NoConnectSound");
                                                                                 break;
                                                                             case 101:
@@ -1560,7 +1560,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_GenericDriverInstalled") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_GenericDriverInstalled"); break; case
                                                                 102: devproperty =
@@ -1569,7 +1569,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_AdditionalSoftwareRequested")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_AdditionalSoftwareRequested"); break;
                                                                             case 103:
@@ -1578,7 +1578,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_Device_SafeRemovalRequired") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_SafeRemovalRequired"); break; case 104:
                                                                                 devproperty =
@@ -1587,7 +1587,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_Device_SafeRemovalRequiredOverride")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_Device_SafeRemovalRequiredOverride"); break;
                                                                             case 105:
@@ -1596,13 +1596,13 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DrvPkg_Model") + 1; propertyName =
                                                                 M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_DrvPkg_Model"); break; case 106: devproperty =
                                                                 &DEVPKEY_DrvPkg_VendorWebSite; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_DrvPkg_VendorWebSite") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DrvPkg_VendorWebSite");
                                                                                 break;
                                                                             case 107:
@@ -1611,7 +1611,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_DrvPkg_DetailedDescription") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DrvPkg_DetailedDescription"); break; case 108:
                                                                                 devproperty =
@@ -1619,7 +1619,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DrvPkg_DocumentationLink") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DrvPkg_DocumentationLink");
                                                                                 break;
                                                                             case 109:
@@ -1628,13 +1628,13 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DrvPkg_Icon") + 1; propertyName =
                                                                 M_REINTERPRET_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                snprintf(propertyName, propertyNameLength,
+                                                                snprintf_err_handle(propertyName, propertyNameLength,
                                                                 "DEVPKEY_DrvPkg_Icon"); break; case 110: devproperty =
                                                                 &DEVPKEY_DrvPkg_BrandingIcon; propertyNameLength =
                                                                 safe_strlen("DEVPKEY_DrvPkg_BrandingIcon") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DrvPkg_BrandingIcon");
                                                                                 break;
                                                                             case 111:
@@ -1643,7 +1643,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_UpperFilters") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_UpperFilters");
                                                                                 break;
                                                                             case 112:
@@ -1652,7 +1652,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_LowerFilters") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_LowerFilters");
                                                                                 break;
                                                                             case 113:
@@ -1661,7 +1661,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_Security") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_Security");
                                                                                 break;
                                                                             case 114:
@@ -1670,7 +1670,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_SecuritySDS") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_SecuritySDS");
                                                                                 break;
                                                                             case 115:
@@ -1679,7 +1679,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_DevType") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_DevType");
                                                                                 break;
                                                                             case 116:
@@ -1688,7 +1688,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_Exclusive") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_Exclusive");
                                                                                 break;
                                                                             case 117:
@@ -1697,7 +1697,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_DeviceClass_Characteristics") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceClass_Characteristics"); break; case 118:
                                                                                 devproperty = &DEVPKEY_DeviceClass_Name;
@@ -1705,7 +1705,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_Name") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_Name"); break;
                                                                             case 119:
                                                                                 devproperty =
@@ -1713,7 +1713,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_ClassName") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_ClassName");
                                                                                 break;
                                                                             case 120:
@@ -1722,7 +1722,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_Icon") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_Icon"); break;
                                                                             case 121:
                                                                                 devproperty =
@@ -1730,7 +1730,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_DeviceClass_ClassInstaller") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceClass_ClassInstaller"); break; case 122:
                                                                                 devproperty =
@@ -1739,7 +1739,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_PropPageProvider") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceClass_PropPageProvider"); break; case
                                                                 123: devproperty = &DEVPKEY_DeviceClass_NoInstallClass;
@@ -1747,7 +1747,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_NoInstallClass") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceClass_NoInstallClass"); break; case 124:
                                                                                 devproperty =
@@ -1755,7 +1755,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_DeviceClass_NoDisplayClass") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceClass_NoDisplayClass"); break; case 125:
                                                                                 devproperty =
@@ -1763,7 +1763,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_SilentInstall") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceClass_SilentInstall"); break; case 126:
                                                                                 devproperty =
@@ -1771,7 +1771,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_NoUseClass") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_NoUseClass");
                                                                                 break;
                                                                             case 127:
@@ -1780,7 +1780,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_DeviceClass_DefaultService") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceClass_DefaultService"); break; case 128:
                                                                                 devproperty =
@@ -1788,7 +1788,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_IconPath") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceClass_IconPath");
                                                                                 break;
                                                                             case 129:
@@ -1798,7 +1798,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_DHPRebalanceOptOut") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceClass_DHPRebalanceOptOut"); break; case
                                                                 130: devproperty =
@@ -1807,7 +1807,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceClass_ClassCoInstallers") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceClass_ClassCoInstallers"); break; case
                                                                 131: devproperty =
@@ -1816,7 +1816,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceInterface_FriendlyName") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceInterface_FriendlyName"); break; case
                                                                 132: devproperty = &DEVPKEY_DeviceInterface_Enabled;
@@ -1824,7 +1824,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceInterface_Enabled") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceInterface_Enabled");
                                                                                 break;
                                                                             case 133:
@@ -1833,7 +1833,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceInterface_ClassGuid") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceInterface_ClassGuid"); break; case 134:
                                                                                 devproperty =
@@ -1842,7 +1842,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceInterface_ReferenceString") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceInterface_ReferenceString"); break; case
                                                                 135: devproperty = &DEVPKEY_DeviceInterface_Restricted;
@@ -1850,7 +1850,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceInterface_Restricted") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceInterface_Restricted"); break; case 136:
                                                                                 devproperty =
@@ -1859,7 +1859,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceInterface_UnrestrictedAppCapabilities")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceInterface_UnrestrictedAppCapabilities");
                                                                                 break;
@@ -1870,7 +1870,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceInterface_SchematicName") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceInterface_SchematicName"); break; case
                                                                 138: devproperty =
@@ -1879,7 +1879,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceInterfaceClass_DefaultInterface")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceInterfaceClass_DefaultInterface"); break;
                                                                             case 139:
@@ -1888,7 +1888,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceInterfaceClass_Name") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceInterfaceClass_Name"); break; case 140:
                                                                                 devproperty =
@@ -1896,7 +1896,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_Address") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceContainer_Address");
                                                                                 break;
                                                                             case 141:
@@ -1906,7 +1906,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_DiscoveryMethod") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_DiscoveryMethod"); break; case
                                                                 142: devproperty = &DEVPKEY_DeviceContainer_IsEncrypted;
@@ -1914,7 +1914,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsEncrypted") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsEncrypted"); break; case 143:
                                                                                 devproperty =
@@ -1923,7 +1923,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsAuthenticated") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsAuthenticated"); break; case
                                                                 144: devproperty = &DEVPKEY_DeviceContainer_IsConnected;
@@ -1931,7 +1931,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsConnected") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsConnected"); break; case 145:
                                                                                 devproperty =
@@ -1939,7 +1939,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsPaired") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceContainer_IsPaired");
                                                                                 break;
                                                                             case 146:
@@ -1948,7 +1948,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_Icon") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceContainer_Icon");
                                                                                 break;
                                                                             case 147:
@@ -1957,7 +1957,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_Version") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceContainer_Version");
                                                                                 break;
                                                                             case 148:
@@ -1966,7 +1966,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_Last_Seen") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_Last_Seen"); break; case 149:
                                                                                 devproperty =
@@ -1975,7 +1975,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_Last_Connected") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_Last_Connected"); break; case
                                                                 150: devproperty =
@@ -1984,7 +1984,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsShowInDisconnectedState")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsShowInDisconnectedState");
                                                                                 break;
@@ -1995,7 +1995,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsLocalMachine") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsLocalMachine"); break; case
                                                                 152: devproperty =
@@ -2004,7 +2004,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_MetadataPath") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_MetadataPath"); break; case
                                                                 153: devproperty =
@@ -2013,7 +2013,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsMetadataSearchInProgress")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsMetadataSearchInProgress");
                                                                                 break;
@@ -2024,7 +2024,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_MetadataChecksum")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_MetadataChecksum"); break; case
                                                                 155: devproperty =
@@ -2033,7 +2033,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsNotInterestingForDisplay")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsNotInterestingForDisplay");
                                                                                 break;
@@ -2044,7 +2044,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_LaunchDeviceStageOnDeviceConnect")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_LaunchDeviceStageOnDeviceConnect");
                                                                                 break;
@@ -2055,7 +2055,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_LaunchDeviceStageFromExplorer")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_LaunchDeviceStageFromExplorer");
                                                                                 break;
@@ -2066,7 +2066,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_BaselineExperienceId")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_BaselineExperienceId"); break;
                                                                             case 159:
@@ -2076,7 +2076,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsDeviceUniquelyIdentifiable")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsDeviceUniquelyIdentifiable");
                                                                                 break;
@@ -2087,7 +2087,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_AssociationArray")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_AssociationArray"); break; case
                                                                 161: devproperty =
@@ -2096,7 +2096,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_DeviceDescription1")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_DeviceDescription1"); break;
                                                                             case 162:
@@ -2106,7 +2106,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_DeviceDescription2")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_DeviceDescription2"); break;
                                                                             case 163:
@@ -2115,7 +2115,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_DeviceContainer_HasProblem") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_HasProblem"); break; case 164:
                                                                                 devproperty =
@@ -2124,7 +2124,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsSharedDevice") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsSharedDevice"); break; case
                                                                 165: devproperty =
@@ -2133,7 +2133,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsNetworkDevice") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsNetworkDevice"); break; case
                                                                 166: devproperty =
@@ -2142,7 +2142,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsDefaultDevice") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsDefaultDevice"); break; case
                                                                 167: devproperty =
@@ -2151,7 +2151,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_MetadataCabinet") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_MetadataCabinet"); break; case
                                                                 168: devproperty =
@@ -2160,7 +2160,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_RequiresPairingElevation")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_RequiresPairingElevation");
                                                                                 break;
@@ -2171,7 +2171,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_ExperienceId") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_ExperienceId"); break; case
                                                                 170: devproperty = &DEVPKEY_DeviceContainer_Category;
@@ -2179,7 +2179,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceDEVPKEY_DeviceContainer_Category_HardwareIds")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DeviceContainer_Category");
                                                                                 break;
                                                                             case 171:
@@ -2189,7 +2189,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_Category_Desc_Singular")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_Category_Desc_Singular");
                                                                                 break;
@@ -2200,7 +2200,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_Category_Desc_Plural")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_Category_Desc_Plural"); break;
                                                                             case 173:
@@ -2210,7 +2210,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_Category_Icon") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_Category_Icon"); break; case
                                                                 174: devproperty =
@@ -2219,7 +2219,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_CategoryGroup_Desc")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_CategoryGroup_Desc"); break;
                                                                             case 175:
@@ -2229,7 +2229,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_CategoryGroup_Icon")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_CategoryGroup_Icon"); break;
                                                                             case 176:
@@ -2239,7 +2239,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_PrimaryCategory") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_PrimaryCategory"); break; case
                                                                 178: devproperty =
@@ -2248,7 +2248,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_UnpairUninstall") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_UnpairUninstall"); break; case
                                                                 179: devproperty =
@@ -2257,7 +2257,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_RequiresUninstallElevation")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_RequiresUninstallElevation");
                                                                                 break;
@@ -2268,7 +2268,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_DeviceFunctionSubRank")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_DeviceFunctionSubRank"); break;
                                                                             case 181:
@@ -2278,7 +2278,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected");
                                                                                 break;
@@ -2288,7 +2288,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_DeviceContainer_ConfigFlags") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_ConfigFlags"); break; case 183:
                                                                                 devproperty =
@@ -2297,7 +2297,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_PrivilegedPackageFamilyNames")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_PrivilegedPackageFamilyNames");
                                                                                 break;
@@ -2308,7 +2308,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_CustomPrivilegedPackageFamilyNames")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_CustomPrivilegedPackageFamilyNames");
                                                                                 break;
@@ -2319,7 +2319,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_IsRebootRequired")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_IsRebootRequired"); break; case
                                                                 186: devproperty =
@@ -2328,7 +2328,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_FriendlyName") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_FriendlyName"); break; case
                                                                 187: devproperty =
@@ -2337,7 +2337,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_Manufacturer") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_Manufacturer"); break; case
                                                                 188: devproperty = &DEVPKEY_DeviceContainer_ModelName;
@@ -2345,7 +2345,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_ModelName") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_ModelName"); break; case 189:
                                                                                 devproperty =
@@ -2353,7 +2353,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 = safe_strlen("DEVPKEY_DeviceContainer_ModelNumber") +
                                                                 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_ModelNumber"); break; case 190:
                                                                                 devproperty =
@@ -2362,7 +2362,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DeviceContainer_InstallInProgress")
                                                                 + 1; propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength,
                                                                 "DEVPKEY_DeviceContainer_InstallInProgress"); break;
                                                                             case 191:
@@ -2371,7 +2371,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 safe_strlen("DEVPKEY_DevQuery_ObjectType") + 1;
                                                                                 propertyName = C_CAST(char*,
                                                                 safe_calloc(propertyNameLength, sizeof(char)));
-                                                                                snprintf(propertyName,
+                                                                                snprintf_err_handle(propertyName,
                                                                 propertyNameLength, "DEVPKEY_DevQuery_ObjectType");
                                                                                 break;
                                                                             default:
@@ -2706,8 +2706,8 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 ULONG       propertyBufLen = ULONG_C(0);
                                                                 DEVPROPTYPE propertyType   = ULONG_C(0);
                                                                 cmRet                      = CM_Get_DevNode_PropertyW(
-                                                                                         parentInst, &DEVPKEY_Device_Service, &propertyType,
-                                                                                         M_NULLPTR, &propertyBufLen, 0);
+                                                                    parentInst, &DEVPKEY_Device_Service, &propertyType,
+                                                                    M_NULLPTR, &propertyBufLen, 0);
                                                                 if (CR_SUCCESS == cmRet ||
                                                                     CR_INVALID_POINTER == cmRet ||
                                                                     CR_BUFFER_SMALL ==
@@ -2751,7 +2751,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                         propertyBufLen &&
                                                                                     wcslen(property))
                                                                                 {
-                                                                                    snprintf(
+                                                                                    snprintf_err_handle(
                                                                                         device->drive_info.driver_info
                                                                                             .driverName,
                                                                                         MAX_DRIVER_NAME, "%ls",
@@ -2814,7 +2814,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                         propertyBufLen &&
                                                                                     wcslen(property))
                                                                                 {
-                                                                                    snprintf(
+                                                                                    snprintf_err_handle(
                                                                                         device->drive_info.driver_info
                                                                                             .driverVersionString,
                                                                                         MAX_DRIVER_VER_STR, "%ls",
@@ -3268,7 +3268,7 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                     for (uint8_t iter = UINT8_C(0); iter < firmwareInfo->SlotCount && iter < UINT8_C(7); ++iter)
                     {
                         DECLARE_ZERO_INIT_ARRAY(char, v1Revision, 9);
-                        snprintf(v1Revision, 9, "%s", firmwareInfo->Slot[iter].Revision.Info);
+                        snprintf_err_handle(v1Revision, 9, "%s", firmwareInfo->Slot[iter].Revision.Info);
                         printf("\t    Firmware Slot %d:\n", firmwareInfo->Slot[iter].SlotNumber);
                         printf("\t\tRead Only: %d\n", firmwareInfo->Slot[iter].ReadOnly);
                         printf("\t\tRevision: %s\n", v1Revision); // temp storage since there was not enough room for
@@ -4528,7 +4528,7 @@ static eReturnValues win_Get_Access_Alignment_Descriptor(HANDLE*                
 //     return check_And_Get_Storage_Property(deviceHandle, StorageDeviceResiliencyProperty, C_CAST(void**,
 //     resiliencyDescriptor), sizeof(STORAGE_DEVICE_RESILIENCY_DESCRIPTOR));
 // }
-#    endif //#if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+#    endif // #if defined (WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
 
 #    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WINBLUE
 // static eReturnValues win_Get_Medium_Product_Type(HANDLE *deviceHandle, PSTORAGE_MEDIUM_PRODUCT_TYPE_DESCRIPTOR
@@ -4650,7 +4650,7 @@ static eReturnValues win_Get_Access_Alignment_Descriptor(HANDLE*                
 //     return check_And_Get_Storage_Property(deviceHandle, StorageDeviceUnsafeShutdownCount, C_CAST(void**,
 //     unsafeShutdownCount), sizeof(STORAGE_DEVICE_UNSAFE_SHUTDOWN_COUNT));
 // }
-#        endif //#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
+#        endif // #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
 
 #        if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
 // static eReturnValues win_Get_Device_Endurance(HANDLE *deviceHandle, PSTORAGE_HW_ENDURANCE_DATA_DESCRIPTOR
@@ -5080,7 +5080,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
             {
                 return FAILURE;
             }
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "PD%lu", drive);
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "PD%lu", drive);
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_CDROM_DRIVE))
@@ -5091,7 +5091,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
             {
                 return FAILURE;
             }
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CDROM%lu", drive);
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CDROM%lu", drive);
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_TAPE_DRIVE))
@@ -5102,7 +5102,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
             {
                 return FAILURE;
             }
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "TAPE%lu", drive);
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "TAPE%lu", drive);
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_CHANGER_DEVICE))
@@ -5113,7 +5113,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
             {
                 return FAILURE;
             }
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%lu", drive);
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%lu", drive);
             device->os_info.os_drive_number = drive;
         }
         // NOTE: No final else returning failure as we want to support some other handles that don't map to these easy
@@ -5141,11 +5141,11 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                 _sntprintf_s(ptrLetterName, MAX_VOL_STR_LEN, _TRUNCATE, TEXT("\\\\.\\%c:"), currentLetter);
                 HANDLE letterHandle = CreateFile(ptrLetterName, GENERIC_WRITE | GENERIC_READ,
                                                  FILE_SHARE_READ | FILE_SHARE_WRITE, M_NULLPTR, OPEN_EXISTING,
-                                                 //#if !defined(WINDOWS_DISABLE_OVERLAPPED)
-                                                 //                    FILE_FLAG_OVERLAPPED,
-                                                 //#else
+                                                 // #if !defined(WINDOWS_DISABLE_OVERLAPPED)
+                                                 //                     FILE_FLAG_OVERLAPPED,
+                                                 // #else
                                                  0,
-                                                 //#endif
+                                                 // #endif
                                                  M_NULLPTR);
                 if (letterHandle != INVALID_HANDLE_VALUE)
                 {
@@ -5260,7 +5260,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                 // save the bus types to the tDevice struct since they may be helpful in certain debug scenarios
                 device->os_info.adapterDescBusType = adapter_desc->BusType;
                 device->os_info.deviceDescBusType  = C_CAST(
-                     uint8_t, device_desc->BusType); // NOTE: This enum seems to be a byte in definition today, but if we
+                    uint8_t, device_desc->BusType); // NOTE: This enum seems to be a byte in definition today, but if we
                                                      // run into future issues, we may need to change it. - TJE
 #if defined(WIN_DEBUG)
                 printf("WIN: get adapter IDs (VID/PID for USB or PCIe)\n");
@@ -5636,7 +5636,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                                     device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
                                         .sanitizeBlock = true;
                                 }
-#    endif //#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
+#    endif // #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
                             }
                         }
                         else
@@ -5870,11 +5870,11 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     // think is IDE and what we think is SATA. This may be helpful for debugging later. - TJE
                     if (adapter_desc->BusType == BusTypeSata)
                     {
-                        snprintf(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "%s", "SATA");
+                        snprintf_err_handle(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "%s", "SATA");
                     }
                     else
                     {
-                        snprintf(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "%s", "IDE");
+                        snprintf_err_handle(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "%s", "IDE");
                     }
                 }
                 // now windows api gives us some extra details that we should check to make sure that our
@@ -6022,8 +6022,8 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
                         safe_memset(&raidHint, sizeof(raidTypeHint), 0, sizeof(raidTypeHint));
                         raidHint.unknownRAID = true; // TODO: Look up driver name to set hint instead of unknown to
                                                      // prevent excess IOCTLs being sent from retries.
-                        snprintf(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":",
-                                 scsiAddress.PortNumber);
+                        snprintf_err_handle(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":",
+                                            scsiAddress.PortNumber);
                         if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
                         {
                             printf("Adding SCSI port handle to RAID list to check for compatible devices: %s\n",
@@ -6148,7 +6148,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             if (fd != INVALID_HANDLE_VALUE)
             {
                 CloseHandle(fd);
-                snprintf(name, WIN_MAX_DEVICE_NAME_LENGTH, "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
+                snprintf_err_handle(name, WIN_MAX_DEVICE_NAME_LENGTH, "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
                 eVerbosityLevels temp = d->deviceVerbosity;
                 safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
                 d->deviceVerbosity = temp;
@@ -6182,8 +6182,8 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                                 safe_memset(&raidHint, sizeof(raidTypeHint), 0, sizeof(raidTypeHint));
                                 raidHint.unknownRAID = true; // TODO: Look up driver name to set hint instead of unknown
                                                              // to prevent excess IOCTLs being sent from retries.
-                                snprintf(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":",
-                                         scsiAddress.PortNumber);
+                                snprintf_err_handle(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":",
+                                                    scsiAddress.PortNumber);
                                 if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
                                 {
                                     printf("Adding %s to RAID handle list to scan for compatible devices\n",
@@ -6744,7 +6744,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
     safe_free(&localBuffer);
     return ret;
 }
-#endif //#if defined INCLUDED_SCSI_DOT_H
+#endif // #if defined INCLUDED_SCSI_DOT_H
 
 // This structure MUST be dynamically allocated for double buffered transfers so that there is enough room for the
 // return data! - TJE
@@ -6908,7 +6908,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
     BOOL                       success       = FALSE;
     ULONG                      returned_data = ULONG_C(0);
     ptrSCSIPassThroughIOStruct sptdioDB      = M_REINTERPRET_CAST(
-             ptrSCSIPassThroughIOStruct, safe_malloc(sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength));
+        ptrSCSIPassThroughIOStruct, safe_malloc(sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength));
     if (!sptdioDB)
     {
         return MEMORY_FAILURE;
@@ -8155,7 +8155,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
 
 // This is untested code, but may work if an old system needed it.
 // https://community.osr.com/discussion/64468/scsiop-ata-passthrough-0xcc
-//#define UNDOCUMENTED_SCSI_IDE_PT_OP_CODE 0xCC
+// #define UNDOCUMENTED_SCSI_IDE_PT_OP_CODE 0xCC
 // static eReturnValues send_SCSI_IDE_Pass_Through_IO(ScsiIoCtx *scsiIoCtx)
 //{
 //     eReturnValues ret = FAILURE;
@@ -11550,10 +11550,10 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
         uint16_t parameterErrorLocation = M_BytesTo2ByteValue(commandBuffer[protocolCommand->ErrorInfoOffset + 15],
                                                               commandBuffer[protocolCommand->ErrorInfoOffset + 14]);
         uint64_t lba                    = M_BytesTo8ByteValue(
-                               commandBuffer[protocolCommand->ErrorInfoOffset + 23], commandBuffer[protocolCommand->ErrorInfoOffset + 22],
-                               commandBuffer[protocolCommand->ErrorInfoOffset + 21], commandBuffer[protocolCommand->ErrorInfoOffset + 20],
-                               commandBuffer[protocolCommand->ErrorInfoOffset + 19], commandBuffer[protocolCommand->ErrorInfoOffset + 18],
-                               commandBuffer[protocolCommand->ErrorInfoOffset + 17], commandBuffer[protocolCommand->ErrorInfoOffset + 16]);
+            commandBuffer[protocolCommand->ErrorInfoOffset + 23], commandBuffer[protocolCommand->ErrorInfoOffset + 22],
+            commandBuffer[protocolCommand->ErrorInfoOffset + 21], commandBuffer[protocolCommand->ErrorInfoOffset + 20],
+            commandBuffer[protocolCommand->ErrorInfoOffset + 19], commandBuffer[protocolCommand->ErrorInfoOffset + 18],
+            commandBuffer[protocolCommand->ErrorInfoOffset + 17], commandBuffer[protocolCommand->ErrorInfoOffset + 16]);
         uint32_t nsid = M_BytesTo4ByteValue(
             commandBuffer[protocolCommand->ErrorInfoOffset + 27], commandBuffer[protocolCommand->ErrorInfoOffset + 26],
             commandBuffer[protocolCommand->ErrorInfoOffset + 25], commandBuffer[protocolCommand->ErrorInfoOffset + 24]);
@@ -11952,8 +11952,8 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx* nvmeIoCtx)
         PMSFT_NVME_STORAGE_PROTOCOL_DATA_GET_LOG_PAGE_SUB_VALUE_4,
         &protocolData->Reserved); // protocol data request subvalue 4 is what this is in newer documentation...needs a
                                   // different structure to really see if this way, but this should be compatible.
-    nvmeSubValue4->LogSpecificField                     = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);
-    nvmeSubValue4->RetainAsyncEvent                     = (nvmeIoCtx->cmd.adminCmd.cdw10 & BIT15) > 0 ? 1 : 0;
+    nvmeSubValue4->LogSpecificField = M_Nibble2(nvmeIoCtx->cmd.adminCmd.cdw10);
+    nvmeSubValue4->RetainAsyncEvent = (nvmeIoCtx->cmd.adminCmd.cdw10 & BIT15) > 0 ? 1 : 0;
 #    elif WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_17763
     // 17763 gave sub value 2 for offset high bits
     protocolData->ProtocolDataRequestSubValue2 = nvmeIoCtx->cmd.adminCmd.cdw13;          // offset higher 32 bits
@@ -13167,7 +13167,7 @@ static eReturnValues win10_Translate_Format(nvmeCmdCtx* nvmeIoCtx)
                         ret = nvme_Ioctl_Storage_Reinitialize_Media(nvmeIoCtx);
                     }
                     else
-#        endif //#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+#        endif // #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
                     {
                         ret = scsi_Sanitize_Cryptographic_Erase(nvmeIoCtx->device, false, false, false);
                     }
@@ -13491,7 +13491,7 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx* nvmeIoCtx)
 // }
 
 // uncomment this to enable returning a not supported value when a context attribute is set
-//#define WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
+// #define WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
 
 static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx* nvmeIoCtx)
 {
@@ -13516,9 +13516,9 @@ static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx* nvmeIoCtx)
            // first, allocate enough memory for the Unmap command
         uint16_t unmapParameterDataLength = UINT16_C(8) + (UINT16_C(16) * numberOfRanges);
         uint8_t* unmapParameterData       = C_CAST(
-                  uint8_t*, safe_calloc_aligned(
-                                unmapParameterDataLength, sizeof(uint8_t),
-                                nvmeIoCtx->device->os_info.minimumAlignment)); // each range is 16 bytes plus an 8 byte header
+            uint8_t*, safe_calloc_aligned(
+                          unmapParameterDataLength, sizeof(uint8_t),
+                          nvmeIoCtx->device->os_info.minimumAlignment)); // each range is 16 bytes plus an 8 byte header
         if (unmapParameterData)
         {
             // in a loop, set the unmap descriptors
@@ -13624,9 +13624,9 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
         // This was the original code for the reinitialize IOCTL.
         // Since we ran into a weird compatibility issue, it is commented out.
         // Will need to add some conditions for when to call it, but it will build and issue the IOCTL correctly-TJE
-        //#if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+        // #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
         //     ret = nvme_Ioctl_Storage_Reinitialize_Media(nvmeIoCtx);
-        //#endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
+        // #endif //WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
         uint8_t action = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
         // First check for fields that are not supported
         if (get_bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 10) > 0 || nvmeIoCtx->cmd.adminCmd.cdw10 & BIT9 ||

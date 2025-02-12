@@ -455,7 +455,7 @@ static eSCSICmdSupport is_SCSI_Operation_Code_Supported_ReportOP(tDevice*       
     eSCSICmdSupport cmdsupport    = SCSI_CMD_SUPPORT_UNKNOWN;
     uint32_t        requestOpSize = CDB_LEN_MAX + UINT32_C(4);
     uint8_t*        requestOpCode = M_REINTERPRET_CAST(
-               uint8_t*, safe_calloc_aligned(requestOpSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(requestOpSize, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (requestOpCode != M_NULLPTR)
     {
 // use report supported operation codes to check this CDB

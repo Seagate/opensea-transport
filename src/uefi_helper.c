@@ -41,7 +41,7 @@
 extern bool validate_Device_Struct(versionBlock);
 
 // Define this to turn on extra prints to the screen for debugging UEFI passthrough issues.
-//#define UEFI_PASSTHRU_DEBUG_MESSAGES
+// #define UEFI_PASSTHRU_DEBUG_MESSAGES
 
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
 // This color will be used for normal debug messages that are infomative. Critical memory allocation errors among other
@@ -49,7 +49,7 @@ extern bool validate_Device_Struct(versionBlock);
 eConsoleColors uefiDebugMessageColor = CONSOLE_COLOR_BLUE;
 #endif
 
-#define IS_ALIGNED(addr, size) (((UINTN)(addr) & ((size)-1)) == 0)
+#define IS_ALIGNED(addr, size) (((UINTN)(addr) & ((size) - 1)) == 0)
 
 // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise
 // you must try MAX_CMD_TIMEOUT_SECONDS instead
@@ -873,7 +873,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             // allocate an aligned buffer here!
             localAlignedBuffer = true;
             localBuffer        = M_REINTERPRET_CAST(
-                       uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
+                uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
                                               pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localBuffer)
             {
@@ -916,7 +916,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             // allocate an aligned buffer here!
             localSenseBuffer = true;
             localSensePtr    = M_REINTERPRET_CAST(
-                   uint8_t*, safe_calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t),
+                uint8_t*, safe_calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t),
                                               pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localSensePtr)
             {
@@ -1194,7 +1194,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
             // allocate an aligned buffer here!
             localAlignedBuffer = true;
             localBuffer        = M_REINTERPRET_CAST(
-                       uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
+                uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
                                               pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localBuffer)
             {
@@ -1263,7 +1263,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
             // allocate an aligned buffer here!
             localSenseBuffer = true;
             localSensePtr    = M_REINTERPRET_CAST(
-                   uint8_t*, safe_calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t),
+                uint8_t*, safe_calloc_aligned(scsiIoCtx->senseDataSize, sizeof(uint8_t),
                                               pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localSensePtr)
             {
@@ -1419,7 +1419,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         bool                              localAlignedBuffer = false;
         EFI_ATA_PASS_THRU_COMMAND_PACKET* ataPacket          = M_NULLPTR; // ata command packet
         EFI_ATA_COMMAND_BLOCK*            ataCommand         = C_CAST(
-                               EFI_ATA_COMMAND_BLOCK*, safe_calloc_aligned(1, sizeof(EFI_ATA_COMMAND_BLOCK),
+            EFI_ATA_COMMAND_BLOCK*, safe_calloc_aligned(1, sizeof(EFI_ATA_COMMAND_BLOCK),
                                                         pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
         EFI_ATA_STATUS_BLOCK* ataStatus = C_CAST(
             EFI_ATA_STATUS_BLOCK*, safe_calloc_aligned(1, sizeof(EFI_ATA_STATUS_BLOCK),
@@ -1473,7 +1473,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
             // allocate an aligned buffer here!
             localAlignedBuffer = true;
             localBuffer        = M_REINTERPRET_CAST(
-                       uint8_t*, safe_calloc_aligned(scsiIoCtx->pAtaCmdOpts->dataSize, sizeof(uint8_t),
+                uint8_t*, safe_calloc_aligned(scsiIoCtx->pAtaCmdOpts->dataSize, sizeof(uint8_t),
                                               pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localBuffer)
             {
@@ -1812,7 +1812,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         bool                                      localAlignedBuffer = false;
         EFI_NVM_EXPRESS_PASS_THRU_COMMAND_PACKET* nrp                = M_NULLPTR;
         EFI_NVM_EXPRESS_COMMAND*                  nvmCommand         = C_CAST(
-                                     EFI_NVM_EXPRESS_COMMAND*, safe_calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMMAND),
+            EFI_NVM_EXPRESS_COMMAND*, safe_calloc_aligned(1, sizeof(EFI_NVM_EXPRESS_COMMAND),
                                                           pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
         EFI_NVM_EXPRESS_COMPLETION* nvmCompletion =
             C_CAST(EFI_NVM_EXPRESS_COMPLETION*,
@@ -1885,7 +1885,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #    endif
             localAlignedBuffer = true;
             localBuffer        = M_REINTERPRET_CAST(
-                       uint8_t*, safe_calloc_aligned(M_Max(512, nvmeIoCtx->dataSize), sizeof(uint8_t),
+                uint8_t*, safe_calloc_aligned(M_Max(512, nvmeIoCtx->dataSize), sizeof(uint8_t),
                                               pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localBuffer)
             {
@@ -1919,7 +1919,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             // allocate an aligned buffer here!
             localAlignedBuffer = true;
             localBuffer        = M_REINTERPRET_CAST(
-                       uint8_t*, safe_calloc_aligned(nvmeIoCtx->dataSize, sizeof(uint8_t),
+                uint8_t*, safe_calloc_aligned(nvmeIoCtx->dataSize, sizeof(uint8_t),
                                               pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1));
             if (!localBuffer)
             {
@@ -2320,8 +2320,8 @@ eReturnValues get_ATA_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                         {
                             // found a device!!!
                             DECLARE_ZERO_INIT_ARRAY(char, ataHandle, UEFI_HANDLE_STRING_LENGTH);
-                            snprintf(ataHandle, UEFI_HANDLE_STRING_LENGTH, "ata:%" PRIx16 ":%" PRIx16 ":%" PRIx16,
-                                     counter, port, pmport);
+                            snprintf_err_handle(ataHandle, UEFI_HANDLE_STRING_LENGTH,
+                                                "ata:%" PRIx16 ":%" PRIx16 ":%" PRIx16, counter, port, pmport);
                             eReturnValues result = get_Device(ataHandle, &ptrToDeviceList[*index]);
                             if (result != SUCCESS)
                             {
@@ -2451,8 +2451,8 @@ eReturnValues get_SCSI_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInBy
                 {
                     // found a device!!!
                     DECLARE_ZERO_INIT_ARRAY(char, scsiHandle, UEFI_HANDLE_STRING_LENGTH);
-                    snprintf(scsiHandle, UEFI_HANDLE_STRING_LENGTH, "scsi:%" PRIx16 ":%" PRIx32 ":%" PRIx64, counter,
-                             target, lun);
+                    snprintf_err_handle(scsiHandle, UEFI_HANDLE_STRING_LENGTH, "scsi:%" PRIx16 ":%" PRIx32 ":%" PRIx64,
+                                        counter, target, lun);
                     eReturnValues result = get_Device(scsiHandle, &ptrToDeviceList[*index]);
                     if (result != SUCCESS)
                     {
@@ -2592,13 +2592,13 @@ eReturnValues get_SCSIEx_Devices(tDevice* const ptrToDeviceList,
                 {
                     // found a device!!!
                     DECLARE_ZERO_INIT_ARRAY(char, scsiExHandle, UEFI_HANDLE_STRING_LENGTH);
-                    snprintf(scsiExHandle, UEFI_HANDLE_STRING_LENGTH,
-                             "scsiEx:%" PRIx16 ":%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8
-                             "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8
-                             "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 ":%" PRIx64,
-                             counter, target[0], target[1], target[2], target[3], target[4], target[5], target[6],
-                             target[7], target[8], target[9], target[10], target[11], target[12], target[13],
-                             target[14], target[15], lun);
+                    snprintf_err_handle(scsiExHandle, UEFI_HANDLE_STRING_LENGTH,
+                                        "scsiEx:%" PRIx16 ":%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8
+                                        "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8
+                                        "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 ":%" PRIx64,
+                                        counter, target[0], target[1], target[2], target[3], target[4], target[5],
+                                        target[6], target[7], target[8], target[9], target[10], target[11], target[12],
+                                        target[13], target[14], target[15], lun);
                     eReturnValues result = get_Device(scsiExHandle, &ptrToDeviceList[*index]);
                     if (result != SUCCESS)
                     {
@@ -2730,7 +2730,8 @@ eReturnValues get_NVMe_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInBy
                 {
                     // found a device!!!
                     DECLARE_ZERO_INIT_ARRAY(char, nvmeHandle, UEFI_HANDLE_STRING_LENGTH);
-                    snprintf(nvmeHandle, UEFI_HANDLE_STRING_LENGTH, "nvme:%" PRIx16 ":%" PRIx32, counter, namespaceID);
+                    snprintf_err_handle(nvmeHandle, UEFI_HANDLE_STRING_LENGTH, "nvme:%" PRIx16 ":%" PRIx32, counter,
+                                        namespaceID);
                     eReturnValues result = get_Device(nvmeHandle, &ptrToDeviceList[*index]);
                     if (result != SUCCESS)
                     {

@@ -205,15 +205,16 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
         safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysVmInfo.driver_info, sizeof(driverInfo));
         if (strlen(sysVmInfo.primaryHandleStr) > 0)
         {
-            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysVmInfo.primaryHandleStr);
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
-                     basename(sysVmInfo.primaryHandleStr));
+            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysVmInfo.primaryHandleStr);
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
+                                basename(sysVmInfo.primaryHandleStr));
         }
         if (strlen(sysVmInfo.secondaryHandleStr) > 0)
         {
-            snprintf(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "%s", sysVmInfo.secondaryHandleStr);
-            snprintf(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
-                     basename(sysVmInfo.secondaryHandleStr));
+            snprintf_err_handle(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
+                                sysVmInfo.secondaryHandleStr);
+            snprintf_err_handle(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
+                                basename(sysVmInfo.secondaryHandleStr));
         }
     }
 }
@@ -1056,7 +1057,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         size_t deviceHandleLen = (safe_strlen("/dev/disks/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i]                = M_REINTERPRET_CAST(char*, safe_malloc(deviceHandleLen));
-        snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
+        snprintf_err_handle(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
         safe_free_dirent(&namelist[i]);
     }
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist);
@@ -1067,7 +1068,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
         size_t nvmeAdptNameLen = safe_strlen(nvmeAdptList.adapters[j].name) + 1;
         devs[i]                = M_REINTERPRET_CAST(char*, safe_malloc(nvmeAdptNameLen));
         safe_memset(devs[i], nvmeAdptNameLen, 0, nvmeAdptNameLen);
-        snprintf(devs[i], nvmeAdptNameLen, "%s", nvmeAdptList.adapters[j].name);
+        snprintf_err_handle(devs[i], nvmeAdptNameLen, "%s", nvmeAdptList.adapters[j].name);
 #ifdef _DEBUG
         printf("Discovered NVMe Device index - %d Name - %s \n", j, nvmeAdptList.adapters[j].name);
 #endif
@@ -1091,8 +1092,8 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
         start_Timer(&getDeviceListTimer);
 #endif
         for (driveNumber = UINT32_C(0); ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN &&
-                                driveNumber < (num_sg_devs + num_nvme_devs)) &&
-                               (found < numberOfDevices));
+                                          driveNumber < (num_sg_devs + num_nvme_devs)) &&
+                                         (found < numberOfDevices));
              driveNumber++)
         {
             if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
@@ -1100,7 +1101,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                 continue;
             }
             safe_memset(name, VM_NAME_LEN, 0, VM_NAME_LEN); // clear name before reusing it
-            snprintf(name, VM_NAME_LEN, "%s", devs[driveNumber]);
+            snprintf_err_handle(name, VM_NAME_LEN, "%s", devs[driveNumber]);
 
             nvmeDevName = strstr(name, "vmhba");
             isScsi      = (nvmeDevName == M_NULLPTR) ? true : false;
@@ -1489,7 +1490,7 @@ eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSiz
     int           fd      = 0;
     void*         barRegs = M_NULLPTR;
     DECLARE_ZERO_INIT_ARRAY(char, sysfsPath, PATH_MAX);
-    snprintf(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
+    snprintf_err_handle(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
     fd = open(sysfsPath, O_RDONLY);
     if (fd >= 0)
     {

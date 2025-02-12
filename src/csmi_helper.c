@@ -4077,15 +4077,15 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
         int snprintfres = 0;
         if (intelNVMe)
         {
-            snprintfres = snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
-                                   CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32,
-                                   controllerNum, portID, phyID, lun);
+            snprintfres = snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
+                                              CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32,
+                                              controllerNum, portID, phyID, lun);
         }
         else
         {
-            snprintfres = snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
-                                   CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32, controllerNum,
-                                   portID, phyID, lun);
+            snprintfres = snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
+                                              CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32,
+                                              controllerNum, portID, phyID, lun);
         }
         if (snprintfres < 1 || snprintfres > OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
         {
@@ -4099,9 +4099,10 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
     M_USE_UNUSED(intelTargetID);
     if (baseHandle && safe_strlen(baseHandle) > 0 && !intelNVMe)
     {
-        int snprintfres = snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
-                                   CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s",
-                                   controllerNum, portID, phyID, lun, baseHandle);
+        int snprintfres =
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
+                                CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s",
+                                controllerNum, portID, phyID, lun, baseHandle);
         if (snprintfres < 1 || snprintfres > OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
         {
             safe_free(&baseHandle);
@@ -4767,7 +4768,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
                             M_NULLPTR);
             if (fd != INVALID_HANDLE_VALUE)
 #    else
-            snprintf(deviceName, SIZE_OF_STACK_ARRAY(deviceName), "%s", raidList->handle);
+            snprintf_err_handle(deviceName, SIZE_OF_STACK_ARRAY(deviceName), "%s", raidList->handle);
             if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)
 #    endif
             {
@@ -4998,7 +4999,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
                                             SCSI_DRIVE; // assume SCSI for now. Can be changed later
                                         tempDevice.drive_info.interface_type = RAID_INTERFACE;
                                         tempDevice.os_info.csmiDeviceData    = M_REINTERPRET_CAST(
-                                               ptrCsmiDeviceInfo, safe_calloc(1, sizeof(csmiDeviceInfo)));
+                                            ptrCsmiDeviceInfo, safe_calloc(1, sizeof(csmiDeviceInfo)));
                                         if (!tempDevice.os_info.csmiDeviceData)
                                         {
 #    if defined(CSMI_DEBUG)
@@ -5308,7 +5309,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                 M_NULLPTR);
                 if (fd != INVALID_HANDLE_VALUE)
 #    else  //_WIN32
-                snprintf(deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH, "%s", raidList->handle);
+                snprintf_err_handle(deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH, "%s", raidList->handle);
                 if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)
 #    endif //_WIN32
                 {
@@ -5530,10 +5531,10 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                             // documentation
                                                             //\\.\SCSI?: number is needed in windows, this is the
                                                             // controllerNumber in Windows.
-                                                            snprintf(handle, RAID_HANDLE_STRING_MAX_LEN,
-                                                                     "csmi:%" CPRIu8 ":N:%" CPRIu8 ":%" CPRIu8
-                                                                     ":%" CPRIu8,
-                                                                     controllerNumber, path, target, lun);
+                                                            snprintf_err_handle(handle, RAID_HANDLE_STRING_MAX_LEN,
+                                                                                "csmi:%" CPRIu8 ":N:%" CPRIu8
+                                                                                ":%" CPRIu8 ":%" CPRIu8,
+                                                                                controllerNumber, path, target, lun);
                                                             foundDevice = true;
 #        if defined(CSMI_DEBUG)
                                                             printf(
@@ -5655,15 +5656,16 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                         {
                                                                         case CSMI_SAS_END_DEVICE:
                                                                             foundDevice = true;
-                                                                            snprintf(handle, RAID_HANDLE_STRING_MAX_LEN,
-                                                                                     "csmi:%" CPRIu8 ":%" CPRIu8
-                                                                                     ":%" CPRIu8 ":%" CPRIu8,
-                                                                                     controllerNumber,
-                                                                                     phyInfo.Information.Phy[phyIter]
-                                                                                         .bPortIdentifier,
-                                                                                     phyInfo.Information.Phy[phyIter]
-                                                                                         .Attached.bPhyIdentifier,
-                                                                                     lun);
+                                                                            snprintf_err_handle(
+                                                                                handle, RAID_HANDLE_STRING_MAX_LEN,
+                                                                                "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8
+                                                                                ":%" CPRIu8,
+                                                                                controllerNumber,
+                                                                                phyInfo.Information.Phy[phyIter]
+                                                                                    .bPortIdentifier,
+                                                                                phyInfo.Information.Phy[phyIter]
+                                                                                    .Attached.bPhyIdentifier,
+                                                                                lun);
 #    if defined(CSMI_DEBUG)
                                                                             printf("GDL: End device handle found and "
                                                                                    "set as %s\n",
@@ -5728,11 +5730,11 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                                 41);
                                                                         DECLARE_ZERO_INIT_ARRAY(char, csmiRaidDevSerial,
                                                                                                 41);
-                                                                        snprintf(
+                                                                        snprintf_err_handle(
                                                                             csmiRaidDevModel, 41, "%s",
                                                                             csmiRAIDConfig->Configuration.Drives[iter]
                                                                                 .bModel);
-                                                                        snprintf(
+                                                                        snprintf_err_handle(
                                                                             csmiRaidDevSerial, 41, "%s",
                                                                             csmiRAIDConfig->Configuration.Drives[iter]
                                                                                 .bSerialNumber);
@@ -5861,7 +5863,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                     printf("GDL: Found a matching "
                                                                                            "MN/SN!\n");
 #    endif // CSMI_DEBUG
-                                                                                    snprintf(
+                                                                                    snprintf_err_handle(
                                                                                         handle,
                                                                                         RAID_HANDLE_STRING_MAX_LEN,
                                                                                         "csmi:%" CPRIu8 ":%" CPRIu8
@@ -5921,7 +5923,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                         printf("GDL: Found a matching "
                                                                                                "MN/SN!\n");
 #    endif // CSMI_DEBUG
-                                                                                        snprintf(
+                                                                                        snprintf_err_handle(
                                                                                             handle,
                                                                                             RAID_HANDLE_STRING_MAX_LEN,
                                                                                             "csmi:%" CPRIu8 ":%" CPRIu8
@@ -6000,7 +6002,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                             &inqData[16], 16);
                                                                                 // safe_memcpy(inqProductRev, 5,
                                                                                 // &inqData[32], 4);
-                                                                                snprintf(
+                                                                                snprintf_err_handle(
                                                                                     vidCatPid, 41, "%s%s", inqVendor,
                                                                                     inqProductID); // concatenate now
                                                                                                    // before removing
@@ -6093,7 +6095,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
 #    endif // CSMI_DEBUG
            // found a match!
                                                                                                 foundDevice = true;
-                                                                                                snprintf(
+                                                                                                snprintf_err_handle(
                                                                                                     handle,
                                                                                                     RAID_HANDLE_STRING_MAX_LEN,
                                                                                                     "csmi:%" CPRIu8
@@ -6241,10 +6243,11 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
 #    endif // CSMI_DEBUG
            // Each attached device will be considered a "found device" in this case.
                                             DECLARE_ZERO_INIT_ARRAY(char, handle, RAID_HANDLE_STRING_MAX_LEN);
-                                            snprintf(handle, RAID_HANDLE_STRING_MAX_LEN,
-                                                     "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8,
-                                                     controllerNumber, phyInfo.Information.Phy[phyIter].bPortIdentifier,
-                                                     phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, 0);
+                                            snprintf_err_handle(
+                                                handle, RAID_HANDLE_STRING_MAX_LEN,
+                                                "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber,
+                                                phyInfo.Information.Phy[phyIter].bPortIdentifier,
+                                                phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, 0);
 #    if defined(CSMI_DEBUG)
                                             printf("GDL: Phy Info last resort device handle found and set as %s\n",
                                                    handle);

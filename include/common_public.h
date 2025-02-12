@@ -138,7 +138,7 @@ extern "C"
                 uint16_t Word019;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idSNwords or something-TJE
-        };     // anonymous to make access to SN or SN words easier
+        }; // anonymous to make access to SN or SN words easier
         uint16_t Word020;
         uint16_t Word021;
         uint16_t Word022;
@@ -153,7 +153,7 @@ extern "C"
                 uint16_t Word026;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idFWwords or something-TJE
-        };     // anonymous to make access to FW or FW words easier
+        }; // anonymous to make access to FW or FW words easier
         union
         {
             uint8_t ModelNum[ATA_IDENTIFY_MN_LENGTH]; // 27 ... 46
@@ -181,7 +181,7 @@ extern "C"
                 uint16_t Word046;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idMNwords or something-TJE
-        };     // anonymous to make access to MN or MN words easier
+        }; // anonymous to make access to MN or MN words easier
         uint16_t Word047;
         uint16_t Word048;
         uint16_t Word049;
@@ -1347,9 +1347,9 @@ extern "C"
     int                 fd;
     struct nvme_handle* nvmeFd;
 #    else
-    int     fd;  // primary handle
+    int fd; // primary handle
 #    endif
-    bool                scsiAddressValid; // will be true if the SCSI address is a valid address
+    bool scsiAddressValid; // will be true if the SCSI address is a valid address
     struct
     {
         uint8_t host;    // AKA SCSI adapter #
@@ -1371,7 +1371,7 @@ extern "C"
     int                 fd2;
     struct nvme_handle* nvmeFd2;
 #    else
-    int     fd2; // secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
+    int fd2; // secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
 #    endif
     struct
     {
@@ -1453,10 +1453,10 @@ extern "C"
 #elif defined(__FreeBSD__)
     int fd; // used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but
             // kept here just in case)
-    struct cam_device* cam_dev;             // holds fd inside for CAM devices among other information
+    struct cam_device* cam_dev; // holds fd inside for CAM devices among other information
 #    if defined(__x86_64__) || defined(__amd64__) || defined(__aarch64__) || defined(__ia64__) ||                      \
         defined(__itanium__) || defined(__powerpc64__) || defined(__ppc64__) || defined(__spark__)
-    uint8_t            freeBSDPadding[102]; // padding on 64bit OS
+    uint8_t freeBSDPadding[102]; // padding on 64bit OS
 #    else
     uint8_t freeBSDPadding[106]; // padding on 32bit OS
 #    endif
@@ -1764,7 +1764,7 @@ extern "C"
 #define RAID_INTERFACE_DRIVES BIT12
 #define SD_HANDLES            BIT16 // this is a Linux specific flag to show SDX handles instead of SGX handles
 #define SG_TO_SD              BIT17
-//#define SAT_12_BYTE BIT18
+// #define SAT_12_BYTE BIT18
 #define SCAN_SEAGATE_ONLY BIT19
 #define AGRESSIVE_SCAN                                                                                                 \
     BIT20 // this can wake a drive up because a bus rescan may be issued. (currently only implemented in Windows)

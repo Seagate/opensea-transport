@@ -133,7 +133,7 @@ static bool create_OS_CISS_Handle_Name(const char* input, char* osHandle)
         if (strncmp(input, "sg", 2) == 0 || strncmp(input, "ciss", 4) == 0 || strncmp(input, "smartpqi", 8) == 0)
         {
             // linux SG handle /dev/sg? or freeBSD ciss handle: /dev/ciss?
-            snprintf(osHandle, OS_CISS_HANDLE_MAX_LENGTH, "/dev/%s", input);
+            snprintf_err_handle(osHandle, OS_CISS_HANDLE_MAX_LENGTH, "/dev/%s", input);
             success = true;
         }
         else
@@ -181,7 +181,8 @@ static bool create_OS_CISS_Handle_Name(const char* input, char* osHandle)
             }
             if (success)
             {
-                snprintf(osHandle, OS_CISS_HANDLE_MAX_LENGTH, "/dev/cciss/c%" PRIu16 "d%" PRIu16, controller, device);
+                snprintf_err_handle(osHandle, OS_CISS_HANDLE_MAX_LENGTH, "/dev/cciss/c%" PRIu16 "d%" PRIu16, controller,
+                                    device);
             }
         }
     }
@@ -399,7 +400,7 @@ static eReturnValues get_Physical_Device_Location_Data(tDevice* device,
     eReturnValues ret            = UNKNOWN;
     uint32_t      dataLength     = UINT32_C(8) + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
     uint8_t*      physicalDrives = M_REINTERPRET_CAST(
-             uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
     if (physicalDrives != M_NULLPTR)
     {
         ret = ciss_Scsi_Report_Physical_LUNs(device, CISS_REPORT_PHYSICAL_LUNS_NO_EXTENDED_DATA, physicalDrives,
@@ -1427,7 +1428,7 @@ eReturnValues issue_io_ciss_Dev(ScsiIoCtx* scsiIoCtx)
             return ciss_Big_Passthrough(scsiIoCtx, CISS_CMD_PHYSICAL_LUN);
         }
         else
-#    endif //#if defined (CCISS_BIG_PASSTHRU)
+#    endif // #if defined (CCISS_BIG_PASSTHRU)
         {
             return ciss_Passthrough(scsiIoCtx, CISS_CMD_PHYSICAL_LUN);
         }
@@ -1468,8 +1469,9 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
                     device->issue_io                            = C_CAST(issue_io_func, issue_io_ciss_Dev);
                     device->drive_info.drive_type               = SCSI_DRIVE;
                     device->drive_info.interface_type           = RAID_INTERFACE;
-                    snprintf(&device->os_info.name[0], OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
-                    snprintf(&device->os_info.friendlyName[0], OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", filename);
+                    snprintf_err_handle(&device->os_info.name[0], OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+                    snprintf_err_handle(&device->os_info.friendlyName[0], OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
+                                        filename);
                     device->os_info.minimumAlignment = sizeof(void*);
                     device->os_info.cissDeviceData->smartpqi =
                         is_SmartPQI_Unique_IOCTLs_Supported(device->os_info.cissDeviceData->cissHandle);
@@ -1675,11 +1677,11 @@ eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
             // check if the passed in handle contains /dev/ or not so we can open it correctly
             if (strstr(raidList->handle, "/dev/"))
             {
-                snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "%s", raidList->handle);
+                snprintf_err_handle(deviceName, CISS_HANDLE_MAX_LENGTH, "%s", raidList->handle);
             }
             else
             {
-                snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "/dev/%s", raidList->handle);
+                snprintf_err_handle(deviceName, CISS_HANDLE_MAX_LENGTH, "/dev/%s", raidList->handle);
             }
             if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0) // TODO: Verify O_NONBLOCK on FreeBSD and/or Solaris
             {
@@ -1802,11 +1804,11 @@ eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
                 safe_memset(deviceName, CISS_HANDLE_MAX_LENGTH, 0, CISS_HANDLE_MAX_LENGTH);
                 if (strstr(raidList->handle, "/dev/"))
                 {
-                    snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "%s", raidList->handle);
+                    snprintf_err_handle(deviceName, CISS_HANDLE_MAX_LENGTH, "%s", raidList->handle);
                 }
                 else
                 {
-                    snprintf(deviceName, CISS_HANDLE_MAX_LENGTH, "/dev/%s", raidList->handle);
+                    snprintf_err_handle(deviceName, CISS_HANDLE_MAX_LENGTH, "/dev/%s", raidList->handle);
                 }
                 if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >=
                     0) // TODO: Verify O_NONBLOCK on FreeBSD and/or Solaris
@@ -1827,8 +1829,8 @@ eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                 DECLARE_ZERO_INIT_ARRAY(char, handle, CISS_HANDLE_MAX_LENGTH);
                                 // handle is formatted as "ciss:os_handle:driveNumber" NOTE: osHandle is everything
                                 // after /dev/
-                                snprintf(handle, CISS_HANDLE_MAX_LENGTH, "ciss:%s:%" PRIu32, basename(deviceName),
-                                         currentDev);
+                                snprintf_err_handle(handle, CISS_HANDLE_MAX_LENGTH, "ciss:%s:%" PRIu32,
+                                                    basename(deviceName), currentDev);
                                 // get the CISS device with a get_CISS_Device function
                                 safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
                                 d->sanity.size    = ver.size;

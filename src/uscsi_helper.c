@@ -60,7 +60,7 @@ e.g. return c?t?d? from /dev/rdsk/c?t?d?
 static void set_Device_Name(const char* filename, char* name, int sizeOfName)
 {
     char* s = strrchr(filename, '/') + 1;
-    snprintf(name, sizeOfName, "%s", s);
+    snprintf_err_handle(name, sizeOfName, "%s", s);
 }
 
 static M_INLINE void close_mnttab(FILE** mnttab)
@@ -138,10 +138,10 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
                     // found a match, copy it to the list
                     if (matchesFound < listCount)
                     {
-                        snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
-                                 entry.mnt_special);
-                        snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s",
-                                 entry.mnt_mountp);
+                        snprintf_err_handle((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
+                                            entry.mnt_special);
+                        snprintf_err_handle((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s",
+                                            entry.mnt_mountp);
                         ++matchesFound;
                     }
                     else
@@ -165,7 +165,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
     eReturnValues ret            = SUCCESS;
     int           partitionCount = 0;
     DECLARE_ZERO_INIT_ARRAY(char, blockHandle, OS_HANDLE_NAME_MAX_LENGTH);
-    snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
+    snprintf_err_handle(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
     set_Device_Name(device->os_info.name, &blockHandle[safe_strlen("/dev/")],
                     OS_HANDLE_NAME_MAX_LENGTH - safe_strlen("/dev/"));
     // note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the
@@ -245,7 +245,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         // set the name
-        snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
         set_Device_Partition_Info(device);
         // set the friendly name
         set_Device_Name(filename, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
@@ -571,7 +571,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         size_t handleSize = (safe_strlen("/dev/rdsk/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i]           = M_REINTERPRET_CAST(char*, safe_malloc(handleSize));
-        snprintf(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
+        snprintf_err_handle(devs[i], handleSize, "/dev/rdsk/%s", namelist[i]->d_name);
         safe_free_dirent(&namelist[i]);
     }
     devs[i] = M_NULLPTR;
@@ -590,8 +590,9 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
-        for (driveNumber = UINT32_C(0); ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) &&
-                               (found < numberOfDevices));
+        for (driveNumber = UINT32_C(0);
+             ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) &&
+              (found < numberOfDevices));
              ++driveNumber)
         {
             if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
@@ -599,7 +600,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                 continue;
             }
             safe_memset(name, USCSI_NAME_LEN, 0, USCSI_NAME_LEN); // clear name before reusing it
-            snprintf(name, USCSI_NAME_LEN, "%s", devs[driveNumber]);
+            snprintf_err_handle(name, USCSI_NAME_LEN, "%s", devs[driveNumber]);
             fd = -1;
             // lets try to open the device.
             fd = open(name, O_RDWR | O_NONBLOCK);
@@ -738,7 +739,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
     eReturnValues ret            = SUCCESS;
     int           partitionCount = 0;
     DECLARE_ZERO_INIT_ARRAY(char, blockHandle, OS_HANDLE_NAME_MAX_LENGTH);
-    snprintf(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
+    snprintf_err_handle(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
     set_Device_Name(device->os_info.name, &blockHandle[safe_strlen("/dev/")],
                     OS_HANDLE_NAME_MAX_LENGTH - safe_strlen("/dev/"));
     // note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the

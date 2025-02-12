@@ -2040,7 +2040,7 @@ eReturnValues nvme_Verify_LBA(tDevice* device, uint64_t lba, uint32_t range)
         // set....should be the same minus doing a data transfer.
         uint32_t dataLength = device->drive_info.deviceBlockSize * range;
         uint8_t* data       = M_REINTERPRET_CAST(
-                  uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (data != M_NULLPTR)
         {
             ret = nvme_Read(device, lba, C_CAST(uint16_t, range - 1), false, true, 0, data, dataLength);

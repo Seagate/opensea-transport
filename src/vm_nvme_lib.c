@@ -83,11 +83,11 @@ struct nvme_handle* Nvme_Open(struct nvme_adapter_list* adapters, const char* na
         return M_NULLPTR;
     }
 
-    snprintf(handle->name, VMK_MISC_NAME_MAX, "%s", name);
+    snprintf_err_handle(handle->name, VMK_MISC_NAME_MAX, "%s", name);
 
     signature.version = VMK_REVISION_FROM_NUMBERS(NVME_MGMT_MAJOR, NVME_MGMT_MINOR, NVME_MGMT_UPDATE, NVME_MGMT_PATCH);
-    snprintf(signature.name.string, sizeof(signature.name.string), "%s", adapter->signature);
-    snprintf(signature.vendor.string, sizeof(signature.vendor.string), NVME_MGMT_VENDOR);
+    snprintf_err_handle(signature.name.string, sizeof(signature.name.string), "%s", adapter->signature);
+    snprintf_err_handle(signature.vendor.string, sizeof(signature.vendor.string), NVME_MGMT_VENDOR);
     signature.numCallbacks = NVME_MGMT_CTRLR_NUM_CALLBACKS;
     signature.callbacks    = nvmeCallbacks;
 

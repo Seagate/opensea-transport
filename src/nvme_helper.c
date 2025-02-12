@@ -114,7 +114,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
                                              device->drive_info.serialNumber, device->drive_info.product_revision);
         }
         // set the t10 vendor id to NVMe
-        snprintf(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
+        snprintf_err_handle(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
         device->drive_info.media_type =
             MEDIA_NVM; // This will bite us someday when someone decided to put non-ssds on NVMe interface.
         // set scsi version to 6 if it is not already set
@@ -595,38 +595,39 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* cmdCtx)
         switch (statusCodeType)
         {
         case NVME_SCT_GENERIC_COMMAND_STATUS:
-            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Generic Command Status");
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Generic Command Status");
             break;
         case NVME_SCT_COMMAND_SPECIFIC_STATUS:
-            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Command Specific Status");
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Command Specific Status");
             break;
         case NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS:
-            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Media And Data Integrity Errors");
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
+                                "Media And Data Integrity Errors");
             break;
         case NVME_SCT_PATH_RELATED_STATUS:
-            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Path Related Status");
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Path Related Status");
             break;
         case NVME_SCT_VENDOR_SPECIFIC_STATUS:
-            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Vendor Specific");
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Vendor Specific");
             break;
         default:
-            snprintf(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Unknown");
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Unknown");
             break;
         }
         if (stat != M_NULLPTR)
         {
-            snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "%s", stat->description);
+            snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "%s", stat->description);
         }
         else
         {
             if (statusCodeType == NVME_SCT_VENDOR_SPECIFIC_STATUS)
             {
 
-                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Vendor Specific");
+                snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Vendor Specific");
             }
             else
             {
-                snprintf(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
+                snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
             }
         }
         printf("\t\tStatus Code Type: %s (%" PRIX8 "h)\n", statusCodeTypeString, statusCodeType);

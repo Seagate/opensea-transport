@@ -887,7 +887,8 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice* dev
             else
             {
                 DECLARE_ZERO_INIT_ARRAY(char, shortString, 3);
-                snprintf(shortString, 3, "%02" PRIX8, device->drive_info.IdentifyData.nvme.ns.eui64[euiOffset]);
+                snprintf_err_handle(shortString, 3, "%02" PRIX8,
+                                    device->drive_info.IdentifyData.nvme.ns.eui64[euiOffset]);
                 unitSerialNumber[offset]     = C_CAST(uint8_t, shortString[0]);
                 unitSerialNumber[offset + 1] = C_CAST(uint8_t, shortString[1]);
                 offset += 2;
@@ -912,7 +913,8 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice* dev
             else
             {
                 DECLARE_ZERO_INIT_ARRAY(char, shortString, 3);
-                snprintf(shortString, 3, "%02" PRIX8, device->drive_info.IdentifyData.nvme.ns.nguid[nguidOffset]);
+                snprintf_err_handle(shortString, 3, "%02" PRIX8,
+                                    device->drive_info.IdentifyData.nvme.ns.nguid[nguidOffset]);
                 unitSerialNumber[offset]     = C_CAST(uint8_t, shortString[0]);
                 unitSerialNumber[offset + 1] = C_CAST(uint8_t, shortString[1]);
                 offset += 2;
@@ -937,7 +939,7 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice* dev
             ++counter;
         }
         unitSerialNumber[offset] = '_';
-        snprintf(nsidString, NSID_STRING_LENGTH, "%08" PRIX32, device->drive_info.namespaceID);
+        snprintf_err_handle(nsidString, NSID_STRING_LENGTH, "%08" PRIX32, device->drive_info.namespaceID);
         counter = 0;
         while (counter < 8)
         {
@@ -10158,28 +10160,28 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
     //     sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
     // }
     // TODO: add in support for error history sntl extention
-//#if SAT_4_ERROR_HISTORY_FEATURE
-//    if (device->drive_info.softSATFlags.currentInternalStatusLogSupported ||
-//    device->drive_info.softSATFlags.savedInternalStatusLogSupported)
-//    {
-//        pdata[0][offset + 0] = READ_BUFFER_CMD;
-//        pdata[0][offset + 1] = RESERVED;
-//        pdata[0][offset + 2] = M_Byte1(0x1C);//service action msb
-//        pdata[0][offset + 3] = M_Byte0(0x1C);//service action lsb if non zero set byte 5, bit0
-//        pdata[0][offset + 4] = RESERVED;
-//        pdata[0][offset + 5] = BIT0;
-//        pdata[0][offset + 6] = M_Byte1(CDB_LEN_12);
-//        pdata[0][offset + 7] = M_Byte0(CDB_LEN_12);
-//        offset += 8;
-//        if (rctd)
-//        {
-//            //set CTPD to 1
-//            pdata[0][offset - 8 + 5] |= BIT1;
-//            //set up timeouts descriptor
-//            sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
-//        }
-//    }
-//#endif
+// #if SAT_4_ERROR_HISTORY_FEATURE
+//     if (device->drive_info.softSATFlags.currentInternalStatusLogSupported ||
+//     device->drive_info.softSATFlags.savedInternalStatusLogSupported)
+//     {
+//         pdata[0][offset + 0] = READ_BUFFER_CMD;
+//         pdata[0][offset + 1] = RESERVED;
+//         pdata[0][offset + 2] = M_Byte1(0x1C);//service action msb
+//         pdata[0][offset + 3] = M_Byte0(0x1C);//service action lsb if non zero set byte 5, bit0
+//         pdata[0][offset + 4] = RESERVED;
+//         pdata[0][offset + 5] = BIT0;
+//         pdata[0][offset + 6] = M_Byte1(CDB_LEN_12);
+//         pdata[0][offset + 7] = M_Byte0(CDB_LEN_12);
+//         offset += 8;
+//         if (rctd)
+//         {
+//             //set CTPD to 1
+//             pdata[0][offset - 8 + 5] |= BIT1;
+//             //set up timeouts descriptor
+//             sntl_Set_Command_Timeouts_Descriptor(0, 0, pdata[0], &offset);
+//         }
+//     }
+// #endif
 #endif
     if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT1)
     {

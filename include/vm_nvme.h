@@ -2447,7 +2447,7 @@ struct lba_range
  */
 #define METADATA_MBUF       (1 << 1)
 #define METADATA_LBA        (1 << 0)
-#define METADATA_SUPPORT(x) ((x)&METADATA_LBA)
+#define METADATA_SUPPORT(x) ((x) & METADATA_LBA)
 
 /**
  * @brief Identify - Data Protection Capability field definitions.
@@ -2457,13 +2457,13 @@ struct lba_range
 #define END2END_CAP_TYPE3    (1 << 2)
 #define END2END_CAP_TYPE2    (1 << 1)
 #define END2END_CAP_TYPE1    (1 << 0)
-#define END2END_CAP_TYPE(x)  ((x)&0x07)
+#define END2END_CAP_TYPE(x)  ((x) & 0x07)
 
 /**
  * @brief Identify - Data Protection Type settings field definitions.
  */
 #define END2END_DPS_FIRST   (1 << 3)
-#define END2END_DPS_TYPE(x) ((x)&0x07)
+#define END2END_DPS_TYPE(x) ((x) & 0x07)
 
 /**
  * @brief Identify - Namespace Data Structure.

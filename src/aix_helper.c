@@ -12,12 +12,12 @@
 //
 
 #include <stdio.h>
-//#include <dirent.h>
+// #include <dirent.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h> // for close
-//#include <sys/stat.h>
+// #include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h> //for basename and dirname
@@ -39,7 +39,7 @@
 #    endif
 #endif
 
-//#include <mntent.h> //for determining mounted file systems
+// #include <mntent.h> //for determining mounted file systems
 #include "aix_helper.h"
 #include "bit_manip.h"
 #include "cmds.h"
@@ -108,8 +108,9 @@ extern bool validate_Device_Struct(versionBlock);
 //                 //found a match, copy it to the list
 //                 if(matchesFound < listCount)
 //                 {
-//                     snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
-//                     entry->mnt_fsname); snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH,
+//                     snprintf_err_handle((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
+//                     entry->mnt_fsname); snprintf_err_handle((partitionInfoList + matchesFound)->mntPath,
+//                     PART_INFO_PATH_LENGTH,
 //                     "%s", entry->mnt_dir);
 //                     ++matchesFound;
 //                 }
@@ -983,12 +984,12 @@ static void print_CuDv_Struct(struct CuDv* cudv)
     DECLARE_ZERO_INIT_ARRAY(char, cudvparent, 17);
     DECLARE_ZERO_INIT_ARRAY(char, cudvconnwhere, 17);
     DECLARE_ZERO_INIT_ARRAY(char, cudvPdDvLnLvalue, 49);
-    snprintf(cudvName, 17, "%s", cudv->name);
-    snprintf(cudvddins, 17, "%s", cudv->ddins);
-    snprintf(cudvlocation, 17, "%s", cudv->location);
-    snprintf(cudvparent, 17, "%s", cudv->parent);
-    snprintf(cudvconnwhere, 17, "%s", cudv->connwhere);
-    snprintf(cudvPdDvLnLvalue, 49, "%s", cudv->PdDvLn_Lvalue);
+    snprintf_err_handle(cudvName, 17, "%s", cudv->name);
+    snprintf_err_handle(cudvddins, 17, "%s", cudv->ddins);
+    snprintf_err_handle(cudvlocation, 17, "%s", cudv->location);
+    snprintf_err_handle(cudvparent, 17, "%s", cudv->parent);
+    snprintf_err_handle(cudvconnwhere, 17, "%s", cudv->connwhere);
+    snprintf_err_handle(cudvPdDvLnLvalue, 49, "%s", cudv->PdDvLn_Lvalue);
     printf("CuDv:\n");
     printf("\tid: %ld\n", cudv->_id);
     printf("\treserved: %ld\n", cudv->_reserved);
@@ -1018,21 +1019,21 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         DECLARE_ZERO_INIT_ARRAY(char, pddvStop, 257);
         DECLARE_ZERO_INIT_ARRAY(char, pddvuniquetype, 49);
         // making copies to ensure null termination - TJE
-        snprintf(pddvtype, 17, "%s", cudv->PdDvLn->type);
-        snprintf(pddvclass, 17, "%s", cudv->PdDvLn->class);
-        snprintf(pddvsubclass, 17, "%s", cudv->PdDvLn->subclass);
-        snprintf(pddvprefix, 17, "%s", cudv->PdDvLn->prefix);
-        snprintf(pddvdevid, 17, "%s", cudv->PdDvLn->devid);
-        snprintf(pddvcatalog, 17, "%s", cudv->PdDvLn->catalog);
-        snprintf(pddvDvDr, 17, "%s", cudv->PdDvLn->DvDr);
-        snprintf(pddvDefine, 257, "%s", cudv->PdDvLn->Define);
-        snprintf(pddvConfigure, 257, "%s", cudv->PdDvLn->Configure);
-        snprintf(pddvChange, 257, "%s", cudv->PdDvLn->Change);
-        snprintf(pddvUnconfigure, 257, "%s", cudv->PdDvLn->Unconfigure);
-        snprintf(pddvUndefine, 257, "%s", cudv->PdDvLn->Undefine);
-        snprintf(pddvStart, 257, "%s", cudv->PdDvLn->Start);
-        snprintf(pddvStop, 257, "%s", cudv->PdDvLn->Stop);
-        snprintf(pddvuniquetype, 49, "%s", cudv->PdDvLn->uniquetype);
+        snprintf_err_handle(pddvtype, 17, "%s", cudv->PdDvLn->type);
+        snprintf_err_handle(pddvclass, 17, "%s", cudv->PdDvLn->class);
+        snprintf_err_handle(pddvsubclass, 17, "%s", cudv->PdDvLn->subclass);
+        snprintf_err_handle(pddvprefix, 17, "%s", cudv->PdDvLn->prefix);
+        snprintf_err_handle(pddvdevid, 17, "%s", cudv->PdDvLn->devid);
+        snprintf_err_handle(pddvcatalog, 17, "%s", cudv->PdDvLn->catalog);
+        snprintf_err_handle(pddvDvDr, 17, "%s", cudv->PdDvLn->DvDr);
+        snprintf_err_handle(pddvDefine, 257, "%s", cudv->PdDvLn->Define);
+        snprintf_err_handle(pddvConfigure, 257, "%s", cudv->PdDvLn->Configure);
+        snprintf_err_handle(pddvChange, 257, "%s", cudv->PdDvLn->Change);
+        snprintf_err_handle(pddvUnconfigure, 257, "%s", cudv->PdDvLn->Unconfigure);
+        snprintf_err_handle(pddvUndefine, 257, "%s", cudv->PdDvLn->Undefine);
+        snprintf_err_handle(pddvStart, 257, "%s", cudv->PdDvLn->Start);
+        snprintf_err_handle(pddvStop, 257, "%s", cudv->PdDvLn->Stop);
+        snprintf_err_handle(pddvuniquetype, 49, "%s", cudv->PdDvLn->uniquetype);
         printf("\tPdDv\n");
         printf("\t\tid: %ld\n", cudv->PdDvLn->_id);
         printf("\t\treserved: %ld\n", cudv->PdDvLn->_reserved);
@@ -1068,8 +1069,8 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         // making copies to ensure null termination -TJE
         DECLARE_ZERO_INIT_ARRAY(char, listinfoClassname, MAX_ODMI_NAME + 1);
         DECLARE_ZERO_INIT_ARRAY(char, listinfoCrit, MAX_ODMI_CRIT + 1);
-        snprintf(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname);
-        snprintf(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit);
+        snprintf_err_handle(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname);
+        snprintf_err_handle(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit);
         printf("\t\tlistinfo:\n");
         printf("\t\t\tclassname: %s\n", listinfoClassname);
         printf("\t\t\tcrit: %s\n", listinfoCrit);
@@ -1113,7 +1114,7 @@ static int get_Adapter_IDs(tDevice* device, char* name)
     DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT); // 256
     if (name && safe_strlen(name) > 0)
     {
-        snprintf(odmCriteria, MAX_ODMI_CRIT, "name='%s'", name);
+        snprintf_err_handle(odmCriteria, MAX_ODMI_CRIT, "name='%s'", name);
         ptrcudv = odm_get_obj(CuDv_CLASS, odmCriteria, &cudv, ODM_FIRST);
         if (ptrcudv != M_NULLPTR)
         {
@@ -1262,12 +1263,13 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                                           // alignment, but this will most likely take care of that -TJE
         // Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more
         // details -TJE set name and friendly name
-        snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
         char*   friendlyName = M_NULLPTR;
         errno_t duperr       = safe_strdup(&friendlyName, filename);
         if (duperr == 0 && friendlyName != M_NULLPTR)
         {
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(friendlyName));
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
+                                basename(friendlyName));
         }
         safe_free(&friendlyName);
         struct CuDv  cudv;
@@ -1286,7 +1288,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         if (diskName != M_NULLPTR)
         {
             diskName++; // point just past the r so that it is only hdisk#
-            snprintf(odmCriteria, MAX_ODMI_CRIT, "name='%s'", diskName);
+            snprintf_err_handle(odmCriteria, MAX_ODMI_CRIT, "name='%s'", diskName);
             ptrcudv = odm_get_obj(CuDv_CLASS, odmCriteria, &cudv, ODM_FIRST);
             if (ptrcudv != M_NULLPTR)
             {
@@ -1299,7 +1301,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 {
                     // open the controller handle and get the IOCINFO for it -TJE
                     DECLARE_ZERO_INIT_ARRAY(char, controllerHandle, OS_HANDLE_NAME_MAX_LENGTH);
-                    snprintf(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
+                    snprintf_err_handle(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
 
                     if (device->deviceVerbosity > VERBOSITY_DEFAULT)
                     {
@@ -2104,8 +2106,8 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
     aixPassthrough.q_flags   = 0;             // SC_Q_CLR, SC_Q_RESUME, SC_CLEAR_ACA
     // setup flags
     // These two are available, but not currently used
-    //#define SC_NODISC   0x80        /* don't allow disconnections */
-    //#define SC_ASYNC    0x08        /* asynchronous data xfer */
+    // #define SC_NODISC   0x80        /* don't allow disconnections */
+    // #define SC_ASYNC    0x08        /* asynchronous data xfer */
     switch (scsiIoCtx->direction)
     {
         // NOLINTBEGIN(bugprone-branch-clone)
@@ -2708,15 +2710,15 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         }
         // adapter_set_flags will have some output information upon completion to detect errors-TJE
         // status_validity will be set to indicate these errors:
-        //#define	ATA_IDE_STATUS		1	/* ata.status is valid */
-        //#define ATA_ERROR_VALID		2	/* ata.error reflects error */
-        //#define ATA_DIAGNOSTICS_ERROR	4	/* adapter diagnostics reflects error*/
-        //#define ATA_SMART_VALID    ATA_DIAGNOSTICS_ERROR
-        //#define ATA_CMD_TIMEOUT		0x08	/* adapter timeout of command	*/
-        //#define ATA_NO_DEVICE_RESPONSE	0x10	/* device continually busy	*/
-        //#define ATA_IDE_BUS_RESET	0x20	/* adapter reset the bus	*/
-        //#define ATA_IDE_DMA_ERROR	0x40	/* DMA error occurred   	*/
-        //#define ATA_IDE_DMA_NORES	0x80	/* DMA Resource error occured   */
+        // #define	ATA_IDE_STATUS		1	/* ata.status is valid */
+        // #define ATA_ERROR_VALID		2	/* ata.error reflects error */
+        // #define ATA_DIAGNOSTICS_ERROR	4	/* adapter diagnostics reflects error*/
+        // #define ATA_SMART_VALID    ATA_DIAGNOSTICS_ERROR
+        // #define ATA_CMD_TIMEOUT		0x08	/* adapter timeout of command	*/
+        // #define ATA_NO_DEVICE_RESPONSE	0x10	/* device continually busy	*/
+        // #define ATA_IDE_BUS_RESET	0x20	/* adapter reset the bus	*/
+        // #define ATA_IDE_DMA_ERROR	0x40	/* DMA error occurred   	*/
+        // #define ATA_IDE_DMA_NORES	0x80	/* DMA Resource error occured   */
     }
 
     // NOLINTBEGIN(bugprone-branch-clone)
@@ -2923,7 +2925,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         size_t handleSize = (safe_strlen("/dev/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i]           = M_REINTERPRET_CAST(char*, safe_malloc(handleSize));
-        snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
+        snprintf_err_handle(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
         safe_free_dirent(&namelist[i]);
     }
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
@@ -2952,7 +2954,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                 continue;
             }
             safe_memset(name, AIX_NAME_LEN, 0, AIX_NAME_LEN); // clear name before reusing it
-            snprintf(name, AIX_NAME_LEN, "%s", devs[driveNumber]);
+            snprintf_err_handle(name, AIX_NAME_LEN, "%s", devs[driveNumber]);
             fd = -1;
             // lets try to open the device.
             // NOTE: When opening a handle, there may be an issue if SC_DIAGNOSTIC is not specified.

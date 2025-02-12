@@ -129,8 +129,8 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
         // other OS's we support. - TJE
         struct statfs* mountedFS   = M_NULLPTR;
         int            totalMounts = getmntinfo(
-                       &mountedFS,
-                       MNT_WAIT); // Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
+            &mountedFS,
+            MNT_WAIT); // Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
         if (totalMounts > 0 && mountedFS)
         {
             int entIter = 0;
@@ -143,10 +143,10 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
                     // found a match, copy it to the list
                     if (matchesFound < listCount)
                     {
-                        snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
-                                 (mountedFS + entIter)->f_mntfromname);
-                        snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s",
-                                 (mountedFS + entIter)->f_mntonname);
+                        snprintf_err_handle((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
+                                            (mountedFS + entIter)->f_mntfromname);
+                        snprintf_err_handle((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s",
+                                            (mountedFS + entIter)->f_mntonname);
                         ++matchesFound;
                     }
                     else
@@ -275,8 +275,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 
         char* baseLink = basename(deviceHandle);
         // Now we will set up the device name, etc fields in the os_info structure
-        snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
-        snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
+        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
+        snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
         set_Device_Partition_Info(device);
 
         ret = fill_Drive_Info_Data(device);
@@ -302,9 +302,10 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         {
             // Set name and friendly name
             // name
-            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
             // friendly name
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName, devUnit);
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName,
+                                devUnit);
 
             device->os_info.fd = devUnit;
 
@@ -1312,14 +1313,14 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(danamelist[i]->d_name) + 1) * sizeof(char);
         devs[i]                    = M_REINTERPRET_CAST(char*, safe_malloc(devNameStringLength));
-        snprintf(devs[i], devNameStringLength, "/dev/%s", danamelist[i]->d_name);
+        snprintf_err_handle(devs[i], devNameStringLength, "/dev/%s", danamelist[i]->d_name);
         safe_free_dirent(&danamelist[i]);
     }
     for (j = 0; i < (num_da_devs + num_ada_devs) && j < num_ada_devs; ++i, j++)
     {
         size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(adanamelist[j]->d_name) + 1) * sizeof(char);
         devs[i]                    = M_REINTERPRET_CAST(char*, safe_malloc(devNameStringLength));
-        snprintf(devs[i], devNameStringLength, "/dev/%s", adanamelist[j]->d_name);
+        snprintf_err_handle(devs[i], devNameStringLength, "/dev/%s", adanamelist[j]->d_name);
         safe_free_dirent(&adanamelist[j]);
     }
 
@@ -1327,7 +1328,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(nvmenamelist[k]->d_name) + 1) * sizeof(char);
         devs[i]                    = M_REINTERPRET_CAST(char*, safe_malloc(devNameStringLength));
-        snprintf(devs[i], devNameStringLength, "/dev/%s", nvmenamelist[k]->d_name);
+        snprintf_err_handle(devs[i], devNameStringLength, "/dev/%s", nvmenamelist[k]->d_name);
         safe_free_dirent(&nvmenamelist[k]);
     }
 
@@ -1349,8 +1350,9 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
-        for (driveNumber = UINT32_C(0); ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) &&
-                               found < numberOfDevices);
+        for (driveNumber = UINT32_C(0);
+             ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) &&
+              found < numberOfDevices);
              ++driveNumber)
         {
             if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
@@ -1358,7 +1360,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                 continue;
             }
             safe_memset(name, CAM_DEV_NAME_LEN, 0, CAM_DEV_NAME_LEN); // clear name before reusing it
-            snprintf(name, CAM_DEV_NAME_LEN, "%s", devs[driveNumber]);
+            snprintf_err_handle(name, CAM_DEV_NAME_LEN, "%s", devs[driveNumber]);
             fd = -1;
             // lets try to open the device.
             fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);
@@ -1499,10 +1501,10 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #if defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
 #else // DISABLE_NVME_PASSTHROUGH
-    eReturnValues ret = SUCCESS;
-    int ioctlResult = 0;
+    eReturnValues ret         = SUCCESS;
+    int           ioctlResult = 0;
     DECLARE_SEATIMER(commandTimer);
-    struct nvme_get_nsid gnsid;
+    struct nvme_get_nsid   gnsid;
     struct nvme_pt_command pt;
     safe_memset(&pt, sizeof(pt), 0, sizeof(pt));
 
@@ -1511,11 +1513,11 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         // NOLINTBEGIN(bugprone-branch-clone)
     case NVM_ADMIN_CMD:
 
-        pt.cmd.opc = nvmeIoCtx->cmd.adminCmd.opcode;
+        pt.cmd.opc   = nvmeIoCtx->cmd.adminCmd.opcode;
         pt.cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
-        pt.cmd.nsid = nvmeIoCtx->cmd.adminCmd.nsid;
-        pt.buf = nvmeIoCtx->ptrData;
-        pt.len = nvmeIoCtx->dataSize;
+        pt.cmd.nsid  = nvmeIoCtx->cmd.adminCmd.nsid;
+        pt.buf       = nvmeIoCtx->ptrData;
+        pt.len       = nvmeIoCtx->dataSize;
         if (nvmeIoCtx->commandDirection == XFER_DATA_IN)
         {
             pt.is_read = 1;
@@ -1528,7 +1530,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         pt.cpl.rsvd1 = nvmeIoCtx->cmd.adminCmd.rsvd1;
         pt.cmd.rsvd2 = nvmeIoCtx->cmd.adminCmd.cdw2;
         pt.cmd.rsvd3 = nvmeIoCtx->cmd.adminCmd.cdw3;
-        pt.cmd.mptr = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
+        pt.cmd.mptr  = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
 
         pt.cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
         pt.cmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
@@ -1538,12 +1540,12 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         pt.cmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
         break;
     case NVM_CMD:
-        pt.cmd.opc = nvmeIoCtx->cmd.nvmCmd.opcode;
+        pt.cmd.opc   = nvmeIoCtx->cmd.nvmCmd.opcode;
         pt.cmd.cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
         ioctl(nvmeIoCtx->device->os_info.fd, NVME_GET_NSID, &gnsid);
         pt.cmd.nsid = gnsid.nsid;
-        pt.buf = nvmeIoCtx->ptrData;
-        pt.len = nvmeIoCtx->dataSize;
+        pt.buf      = nvmeIoCtx->ptrData;
+        pt.len      = nvmeIoCtx->dataSize;
         if (nvmeIoCtx->commandDirection == XFER_DATA_IN)
         {
             pt.is_read = 1;
@@ -1556,7 +1558,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         pt.cpl.rsvd1 = nvmeIoCtx->cmd.nvmCmd.commandId;
         pt.cmd.rsvd2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
         pt.cmd.rsvd3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
-        pt.cmd.mptr = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
+        pt.cmd.mptr  = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
 
         pt.cmd.cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
         pt.cmd.cdw11 = nvmeIoCtx->cmd.nvmCmd.cdw11;
@@ -1577,7 +1579,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     if (ioctlResult < 0)
     {
         nvmeIoCtx->device->os_info.last_error = errno;
-        ret = OS_PASSTHROUGH_FAILURE;
+        ret                                   = OS_PASSTHROUGH_FAILURE;
         printf("\nError : %d", nvmeIoCtx->device->os_info.last_error);
         printf("Error %s\n", strerror(C_CAST(int, nvmeIoCtx->device->os_info.last_error)));
         printf("\n OS_PASSTHROUGH_FAILURE. ");

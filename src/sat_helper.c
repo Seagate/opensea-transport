@@ -66,8 +66,8 @@ eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(tDevice*       device
 {
     eReturnValues ret              = NOT_SUPPORTED; // Many devices don't support this log page.
     uint8_t*      sense70logBuffer = C_CAST(
-             uint8_t*,
-             safe_calloc_aligned(14 + LOG_PAGE_HEADER_LENGTH, sizeof(uint8_t),
+        uint8_t*,
+        safe_calloc_aligned(14 + LOG_PAGE_HEADER_LENGTH, sizeof(uint8_t),
                                  device->os_info.minimumAlignment)); // allocate a buffer to get the rtfrs in. the size of 12
                                                                 // is ATA Passthrough Descriptor + 4byte log page header
     if (!sense70logBuffer)
@@ -2505,20 +2505,20 @@ static eReturnValues translate_ATA_Information_VPD_Page_89h(tDevice* device, Scs
     ataInformation[23] = ' ';
     DECLARE_ZERO_INIT_ARRAY(char, openseaVersionString, 9);
 
-    snprintf(openseaVersionString, 9, "%d.%d.%d", OPENSEA_TRANSPORT_MAJOR_VERSION, OPENSEA_TRANSPORT_MINOR_VERSION,
-             OPENSEA_TRANSPORT_PATCH_VERSION);
+    snprintf_err_handle(openseaVersionString, 9, "%d.%d.%d", OPENSEA_TRANSPORT_MAJOR_VERSION,
+                        OPENSEA_TRANSPORT_MINOR_VERSION, OPENSEA_TRANSPORT_PATCH_VERSION);
 
     if (safe_strlen(openseaVersionString) < 8)
     {
         ataInformation[24] = ' ';
         safe_memcpy(&ataInformation[25], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 25, openseaVersionString,
                     safe_strlen(openseaVersionString));
-        // snprintf(C_CAST(char*, &ataInformation[24]), 8, " %-s", openseaVersionString);
+        // snprintf_err_handle(C_CAST(char*, &ataInformation[24]), 8, " %-s", openseaVersionString);
     }
     else
     {
         safe_memcpy(&ataInformation[24], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 24, openseaVersionString, 8);
-        // snprintf(C_CAST(char*, &ataInformation[24]), 8, "%-s", openseaVersionString);
+        // snprintf_err_handle(C_CAST(char*, &ataInformation[24]), 8, "%-s", openseaVersionString);
     }
     // SAT Product Revision -set to SAT Version supported by library
     ataInformation[32] = 'S';
@@ -2730,10 +2730,10 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(tDevice* devic
             naaDesignator[11] = M_Byte0(device->drive_info.IdentifyData.ata.Word111);
 
             // now set up the scsi name string identifier
-            snprintf(&scsiNameString[0], SAT_SCSI_NAME_STRING_LENGTH, "naa.%" PRIX64, wwn);
+            snprintf_err_handle(&scsiNameString[0], SAT_SCSI_NAME_STRING_LENGTH, "naa.%" PRIX64, wwn);
             SCSINameStringDesignatorLength = 24;
             SCSINameStringDesignator       = M_REINTERPRET_CAST(
-                      uint8_t*, safe_calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t)));
+                uint8_t*, safe_calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t)));
             if (SCSINameStringDesignator != M_NULLPTR)
             {
                 // now set this into the buffer
@@ -3695,7 +3695,7 @@ static eReturnValues translate_SCSI_Inquiry_Command(tDevice* device, ScsiIoCtx* 
             inquiryData[2] = 0x06;
 #else  // SAT_SPEC_SUPPORTED
        // SPC5
-            inquiryData[2]                 = 0x07;
+            inquiryData[2] = 0x07;
 #endif // SAT_SPEC_SUPPORTED
        // response format
             inquiryData[3] = 2;
@@ -5845,7 +5845,7 @@ static eReturnValues translate_SCSI_Format_Unit_Command(tDevice* device, ScsiIoC
                                     // ATA Write commands
                                     uint32_t ataWriteDataLength = writeSectors64K * device->drive_info.deviceBlockSize;
                                     uint8_t* ataWritePattern    = M_REINTERPRET_CAST(
-                                           uint8_t*, safe_calloc_aligned(ataWriteDataLength, sizeof(uint8_t),
+                                        uint8_t*, safe_calloc_aligned(ataWriteDataLength, sizeof(uint8_t),
                                                                          device->os_info.minimumAlignment));
                                     if (ataWritePattern)
                                     {
@@ -6509,8 +6509,8 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(tDevice* device
                             scsiIoCtx->pdata[offset + 1] = M_Byte0(descriptorType);
                             scsiIoCtx->pdata[offset + 0] = M_Byte1(descriptorType);
                             reservedBytes                = M_BytesTo2ByteValue(
-                                               scsiIoCtx->pdata[offset + 3],
-                                               scsiIoCtx->pdata[offset + 2]); // one table shows this as a word, another as bytes - TJE
+                                scsiIoCtx->pdata[offset + 3],
+                                scsiIoCtx->pdata[offset + 2]); // one table shows this as a word, another as bytes - TJE
                             scsiIoCtx->pdata[offset + 3] = M_Byte0(reservedBytes);
                             scsiIoCtx->pdata[offset + 2] = M_Byte1(reservedBytes);
                             descriptorLength =
@@ -15152,14 +15152,14 @@ static eReturnValues translate_SCSI_Mode_Select_Command(tDevice* device, ScsiIoC
                 break;
 #else                  // SAT_SPEC_SUPPORTED
                 fieldPointer = C_CAST(
-                                      uint16_t, headerLength + blockDescriptorLength); // we don't support page 0 in this version of SAT
+                    uint16_t, headerLength + blockDescriptorLength); // we don't support page 0 in this version of SAT
                 bitPointer = UINT8_C(5);
                 set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, false, true, bitPointer,
-                                                                                  fieldPointer);
+                                                                fieldPointer);
                 ret = NOT_SUPPORTED;
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST,
-                                                                 0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat,
-                                                                 senseKeySpecificDescriptor, 1);
+                                               0x26, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                               senseKeySpecificDescriptor, 1);
                 break;
 #endif                 // SAT_SPEC_SUPPORTED
             case 0xF1: // ATA power conditions (APM)
@@ -15277,14 +15277,14 @@ static eReturnValues translate_SCSI_Zone_Management_In_Command(tDevice* device, 
     {
         dataBufLength = (allocationLength + 511) / 512;
         dataBuf       = M_REINTERPRET_CAST(
-                  uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
         localMemory = true;
     }
     else if (allocationLength == 0)
     {
         dataBufLength = 512;
         dataBuf       = M_REINTERPRET_CAST(
-                  uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!dataBuf)
         {
             return MEMORY_FAILURE;

@@ -535,8 +535,8 @@ static eReturnValues internal_Intel_FWDL_Function_Activate(tDevice*  device,
     {
         uint32_t                         allocationSize = sizeof(INTEL_STORAGE_FIRMWARE_ACTIVATE);
         PINTEL_STORAGE_FIRMWARE_ACTIVATE activate       = C_CAST(
-                  PINTEL_STORAGE_FIRMWARE_ACTIVATE,
-                  safe_calloc(allocationSize,
+            PINTEL_STORAGE_FIRMWARE_ACTIVATE,
+            safe_calloc(allocationSize,
                               sizeof(uint8_t))); // alignment not needed since this will get copied to an aligned location
         if (activate)
         {

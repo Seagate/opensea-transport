@@ -333,10 +333,10 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
                     // found a match, copy it to the list
                     if (matchesFound < listCount)
                     {
-                        snprintf((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
-                                 entry->mnt_fsname);
-                        snprintf((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s",
-                                 entry->mnt_dir);
+                        snprintf_err_handle((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
+                                            entry->mnt_fsname);
+                        snprintf_err_handle((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s",
+                                            entry->mnt_dir);
                         ++matchesFound;
                     }
                     else
@@ -479,7 +479,7 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
     char* driverVersionFilePath = M_REINTERPRET_CAST(char*, safe_calloc(OPENSEA_PATH_MAX, sizeof(char)));
     if (driverVersionFilePath)
     {
-        snprintf(driverVersionFilePath, OPENSEA_PATH_MAX, "%s/module/version", driverPath);
+        snprintf_err_handle(driverVersionFilePath, OPENSEA_PATH_MAX, "%s/module/version", driverPath);
         // printf("driver version file path = %s\n", driverVersionFilePath);
         // convert relative path to a full path. Basically replace ../'s with /sys/ since this will always be ../../bus
         // and we need /sys/buf
@@ -517,8 +517,8 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
                             !ferror(versionFile))
                         {
                             printf("versionFileData = %s\n", versionFileData);
-                            snprintf(sysFsInfo->driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%s",
-                                     versionFileData);
+                            snprintf_err_handle(sysFsInfo->driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%s",
+                                                versionFileData);
                             DECLARE_ZERO_INIT_ARRAY(uint32_t, versionList, DRIVER_VERSION_LIST_LENGTH);
                             uint8_t versionCount = UINT8_C(0);
                             if (get_Driver_Version_Info_From_String(versionFileData, versionList, 4, &versionCount))
@@ -579,7 +579,7 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
         ;
         if (safe_strdup(&drvPathDup, driverPath) == 0 && drvPathDup != M_NULLPTR)
         {
-            snprintf(sysFsInfo->driver_info.driverName, MAX_DRIVER_NAME, "%s", basename(drvPathDup));
+            snprintf_err_handle(sysFsInfo->driver_info.driverName, MAX_DRIVER_NAME, "%s", basename(drvPathDup));
             safe_free(&drvPathDup);
         }
         safe_free(&driverVersionFilePath);
@@ -643,7 +643,7 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     sysFsInfo->drive_type     = ATA_DRIVE;
     // get vendor and product IDs of the controller attached to this device.
     DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
-    snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
+    snprintf_err_handle(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
     fullPciPath[0] = '/';
     fullPciPath[1] = 's';
@@ -651,14 +651,14 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[3] = 's';
     fullPciPath[4] = '/';
     safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
-    snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
+    snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
     intptr_t newStrLen = strstr(fullPciPath, "/ata") - fullPciPath;
     if (newStrLen > 0)
     {
         char* pciPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
         if (pciPath)
         {
-            snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
+            snprintf_err_handle(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
             // printf("shortened Path = %s\n", dirname(pciPath));
             FILE*   temp        = M_NULLPTR;
             errno_t fileopenerr = safe_fopen(&temp, pciPath, "r");
@@ -739,7 +739,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     sysFsInfo->drive_type     = SCSI_DRIVE; // changed later depending on what passthrough the USB adapter supports
     // set the USB VID and PID. NOTE: There may be a better way to do this, but this seems to work for now.
     DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
-    snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
+    snprintf_err_handle(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
     fullPciPath[0] = '/';
     fullPciPath[1] = 's';
@@ -747,14 +747,14 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[3] = 's';
     fullPciPath[4] = '/';
     safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
-    snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
+    snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
     intptr_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath;
     if (newStrLen > 0)
     {
         char* usbPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
         if (usbPath)
         {
-            snprintf(usbPath, PATH_MAX, "%.*s", C_CAST(int, newStrLen), fullPciPath);
+            snprintf_err_handle(usbPath, PATH_MAX, "%.*s", C_CAST(int, newStrLen), fullPciPath);
             usbPath = dirname(usbPath);
             // printf("full USB Path = %s\n", usbPath);
             // now that the path is correct, we need to read the files idVendor and idProduct
@@ -913,7 +913,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     sysFsInfo->interface_type = IEEE_1394_INTERFACE;
     sysFsInfo->drive_type     = SCSI_DRIVE; // changed later if detected as ATA
     DECLARE_ZERO_INIT_ARRAY(char, fullFWPath, PATH_MAX);
-    snprintf(fullFWPath, PATH_MAX, "%s", inHandleLink);
+    snprintf_err_handle(fullFWPath, PATH_MAX, "%s", inHandleLink);
 
     fullFWPath[0] = '/';
     fullFWPath[1] = 's';
@@ -921,7 +921,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     fullFWPath[3] = 's';
     fullFWPath[4] = '/';
     safe_memmove(&fullFWPath[5], PATH_MAX - 5, &fullFWPath[6], safe_strlen(fullFWPath));
-    snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullFWPath);
+    snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullFWPath);
     // now we need to go up a few directories to get the modalias file to parse
     intptr_t newStrLen = strstr(fullFWPath, "/host") - fullFWPath;
     if (newStrLen > 0)
@@ -929,7 +929,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
         char* fwPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
         if (fwPath)
         {
-            snprintf(fwPath, PATH_MAX, "%.*s/modalias", C_CAST(int, newStrLen), fullFWPath);
+            snprintf_err_handle(fwPath, PATH_MAX, "%.*s/modalias", C_CAST(int, newStrLen), fullFWPath);
             // printf("full FW Path = %s\n", dirname(fwPath));
             // printf("modalias FW Path = %s\n", fwPath);
             FILE*   temp        = M_NULLPTR;
@@ -978,7 +978,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     // get vendor and product IDs of the controller attached to this device.
 
     DECLARE_ZERO_INIT_ARRAY(char, fullPciPath, PATH_MAX);
-    snprintf(fullPciPath, PATH_MAX, "%s", inHandleLink);
+    snprintf_err_handle(fullPciPath, PATH_MAX, "%s", inHandleLink);
 
     fullPciPath[0] = '/';
     fullPciPath[1] = 's';
@@ -986,7 +986,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     fullPciPath[3] = 's';
     fullPciPath[4] = '/';
     safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
-    snprintf(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
+    snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
     // need to trim the path down now since it can vary by controller:
     // adaptec: /sys/devices/pci0000:00/0000:00:02.0/0000:02:00.0/host0/target0:1:0/0:1:0:0/scsi_generic/sg2
     // lsi:
@@ -1002,7 +1002,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
         char* pciPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
         if (pciPath)
         {
-            snprintf(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
+            snprintf_err_handle(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
             // printf("Shortened PCI Path: %s\n", dirname(pciPath));
             FILE*   temp        = M_NULLPTR;
             errno_t fileopenerr = safe_fopen(&temp, pciPath, "r");
@@ -1105,7 +1105,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
 {
     DECLARE_ZERO_INIT_ARRAY(char, fullPathBuffer, PATH_MAX);
     char* fullPath = &fullPathBuffer[0];
-    snprintf(fullPath, PATH_MAX, "%s", sysFsInfo->fullDevicePath);
+    snprintf_err_handle(fullPath, PATH_MAX, "%s", sysFsInfo->fullDevicePath);
     safe_strcat(fullPath, PATH_MAX, "/device/type");
     FILE*   temp        = M_NULLPTR;
     errno_t fileopenerr = safe_fopen(&temp, fullPath, "r");
@@ -1169,10 +1169,10 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
         {
             size_t nvmHandleLen = safe_strlen(handle) + 1;
             char*  nvmHandle    = M_REINTERPRET_CAST(char*, safe_calloc(nvmHandleLen, sizeof(char)));
-            snprintf(nvmHandle, nvmHandleLen, "%s", handle);
+            snprintf_err_handle(nvmHandle, nvmHandleLen, "%s", handle);
             sysFsInfo->interface_type = NVME_INTERFACE;
             sysFsInfo->drive_type     = NVME_DRIVE;
-            snprintf(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "%s", nvmHandle);
+            snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "%s", nvmHandle);
         }
         else // not NVMe, so we need to do some investigation of the handle. NOTE: this requires 2.6 and later kernel
              // since it reads a link in the /sys/class/ filesystem
@@ -1257,11 +1257,13 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                         char* baseLink = basename(inHandleLink);
                         if (bsg)
                         {
-                            snprintf(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "/dev/bsg/%s", baseLink);
+                            snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "/dev/bsg/%s",
+                                                baseLink);
                         }
                         else
                         {
-                            snprintf(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
+                            snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s",
+                                                baseLink);
                         }
 
                         get_SYS_FS_SCSI_Address(inHandleLink, sysFsInfo);
@@ -1282,20 +1284,21 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                                 // Secondary handle will be a generic handle
                                 if (is_Block_SCSI_Generic_Handle(gen))
                                 {
-                                    snprintf(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/bsg/%s",
-                                             gen);
+                                    snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
+                                                        "/dev/bsg/%s", gen);
                                 }
                                 else
                                 {
-                                    snprintf(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/%s",
-                                             gen);
+                                    snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
+                                                        "/dev/%s", gen);
                                 }
                             }
                             else
                             {
                                 // generic handle was sent in
                                 // secondary handle will be a block handle
-                                snprintf(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/%s", block);
+                                snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
+                                                    "/dev/%s", block);
                             }
 
                             if (strstr(block, "sr") || strstr(block, "scd"))
@@ -1348,15 +1351,16 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
         safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysFsInfo.driver_info, sizeof(driverInfo));
         if (safe_strlen(sysFsInfo.primaryHandleStr) > 0)
         {
-            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysFsInfo.primaryHandleStr);
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
-                     basename(sysFsInfo.primaryHandleStr));
+            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysFsInfo.primaryHandleStr);
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
+                                basename(sysFsInfo.primaryHandleStr));
         }
         if (safe_strlen(sysFsInfo.secondaryHandleStr) > 0)
         {
-            snprintf(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "%s", sysFsInfo.secondaryHandleStr);
-            snprintf(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
-                     basename(sysFsInfo.secondaryHandleStr));
+            snprintf_err_handle(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
+                                sysFsInfo.secondaryHandleStr);
+            snprintf_err_handle(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
+                                basename(sysFsInfo.secondaryHandleStr));
         }
     }
 }
@@ -1423,11 +1427,11 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                     // check for sg, then bsg
                     if (stat(scsiGenericClass, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
                     {
-                        snprintf(classPath, PATH_MAX, "%s", scsiGenericClass);
+                        snprintf_err_handle(classPath, PATH_MAX, "%s", scsiGenericClass);
                     }
                     else if (stat(bsgClass, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
                     {
-                        snprintf(classPath, PATH_MAX, "%s", bsgClass);
+                        snprintf_err_handle(classPath, PATH_MAX, "%s", bsgClass);
                         bsg = true;
                     }
                     else
@@ -1440,7 +1444,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                 else
                 {
                     // check for block
-                    snprintf(classPath, PATH_MAX, "%s", blockClass);
+                    snprintf_err_handle(classPath, PATH_MAX, "%s", blockClass);
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
                         // printf ("could not map to block class");
@@ -1461,7 +1465,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                     char*       temp    = M_REINTERPRET_CAST(char*, safe_calloc(tempLen, sizeof(char)));
                     struct stat tempStat;
                     safe_memset(&tempStat, sizeof(struct stat), 0, sizeof(struct stat));
-                    snprintf(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
+                    snprintf_err_handle(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
                     if (lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode)) /*check if this is a link*/
                     {
                         DECLARE_ZERO_INIT_ARRAY(char, mapLink, PATH_MAX);
@@ -1481,7 +1485,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                                 className       = M_REINTERPRET_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
-                                    snprintf(className, classNameLength, "scsi_generic");
+                                    snprintf_err_handle(className, classNameLength, "scsi_generic");
                                 }
                             }
                             else if (bsg) // bsg class
@@ -1490,7 +1494,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                                 className       = M_REINTERPRET_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
-                                    snprintf(className, classNameLength, "bsg");
+                                    snprintf_err_handle(className, classNameLength, "bsg");
                                 }
                             }
                             else // scsi_generic class
@@ -1499,7 +1503,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                                 className       = M_REINTERPRET_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
                                 if (className)
                                 {
-                                    snprintf(className, classNameLength, "block");
+                                    snprintf_err_handle(className, classNameLength, "block");
                                 }
                             }
                             if (className)
@@ -1649,11 +1653,11 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
             // printf("Changing filename to SG device....\n");
             if (is_SCSI_Generic_Handle(genHandle))
             {
-                snprintf(deviceHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", genHandle);
+                snprintf_err_handle(deviceHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", genHandle);
             }
             else
             {
-                snprintf(deviceHandle, LIN_MAX_HANDLE_LENGTH, "/dev/bsg/%s", genHandle);
+                snprintf_err_handle(deviceHandle, LIN_MAX_HANDLE_LENGTH, "/dev/bsg/%s", genHandle);
             }
 #if defined(_DEBUG)
             printf("\tfilename = %s\n", deviceHandle);
@@ -1738,8 +1742,8 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
 
             char* baseLink = basename(deviceHandle);
             // Now we will set up the device name, etc fields in the os_info structure.
-            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
+            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
 
             set_Device_Partition_Info(device);
 
@@ -1754,7 +1758,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
 #    if defined(_DEBUG)
             printf("\nsg helper-nvmedev --  NVME Passthrough disabled, device not supported\n");
 #    endif // DEBUG
-            return NOT_SUPPORTED;    // return not supported since NVMe-passthrough is disabled
+            return NOT_SUPPORTED; // return not supported since NVMe-passthrough is disabled
 #endif     // DISABLE_NVME_PASSTHROUGH
         }
         else // not an NVMe handle
@@ -2622,7 +2626,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         size_t handleSize = (safe_strlen("/dev/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i]           = M_REINTERPRET_CAST(char*, safe_malloc(handleSize));
-        snprintf(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
+        snprintf_err_handle(devs[i], handleSize, "/dev/%s", namelist[i]->d_name);
         safe_free_dirent(&namelist[i]);
     }
     // add nvme devices to the list
@@ -2630,7 +2634,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         size_t handleSize = (safe_strlen("/dev/") + safe_strlen(nvmenamelist[j]->d_name) + 1) * sizeof(char);
         devs[i]           = M_REINTERPRET_CAST(char*, safe_malloc(handleSize));
-        snprintf(devs[i], handleSize, "/dev/%s", nvmenamelist[j]->d_name);
+        snprintf_err_handle(devs[i], handleSize, "/dev/%s", nvmenamelist[j]->d_name);
         safe_free_dirent(&nvmenamelist[j]);
     }
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
@@ -2680,7 +2684,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                 continue;
             }
             safe_memset(name, sizeof(name), 0, sizeof(name)); // clear name before reusing it
-            snprintf(name, sizeof(name), "%s", devs[driveNumber]);
+            snprintf_err_handle(name, sizeof(name), "%s", devs[driveNumber]);
             fd = -1;
             // lets try to open the device.
             fd = open(name, O_RDWR | O_NONBLOCK);
@@ -3086,7 +3090,7 @@ static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
     }
     // found a namespace. Need to open a controller handle instead and use it.
     DECLARE_ZERO_INIT_ARRAY(char, controllerHandle, 40);
-    snprintf(controllerHandle, 40, "/dev/nvme%lu", controller);
+    snprintf_err_handle(controllerHandle, 40, "/dev/nvme%lu", controller);
     if ((handleToReset = open(controllerHandle, O_RDWR | O_NONBLOCK)) < 0)
     {
         device->os_info.last_error = errno;
@@ -3227,7 +3231,7 @@ eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSiz
     int           fd      = 0;
     void*         barRegs = M_NULLPTR;
     DECLARE_ZERO_INIT_ARRAY(char, sysfsPath, PATH_MAX);
-    snprintf(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
+    snprintf_err_handle(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
     fd = open(sysfsPath, O_RDONLY);
     if (fd >= 0)
     {
