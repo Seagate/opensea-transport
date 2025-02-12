@@ -10,31 +10,29 @@
 //
 // ******************************************************************************************
 
-#include "common_types.h"
-#include "precision_timer.h"
-#include "memory_safety.h"
-#include "type_conversion.h"
-#include "string_utils.h"
 #include "bit_manip.h"
 #include "code_attributes.h"
-#include "math_utils.h"
+#include "common_types.h"
 #include "error_translation.h"
+#include "math_utils.h"
+#include "memory_safety.h"
+#include "precision_timer.h"
+#include "sort_and_search.h"
+#include "string_utils.h"
+#include "type_conversion.h"
 
 #include <assert.h>
-#include <string.h>
-#include <stdlib.h>
-#include <vmkapi.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include "common_types.h"
+#include <vmkapi.h>
 
 #include "vm_nvme_lib.h"
-
 
 /*****************************************************************************
  * Global Variables
@@ -42,11 +40,9 @@
 
 struct nvme_adapter_list adapterList;
 
-
 /*****************************************************************************
  * NVMe Management Ops
  ****************************************************************************/
-
 
 /**
  * Open a handle to the specified vmhba device
@@ -56,70 +52,72 @@ struct nvme_adapter_list adapterList;
  * @return pointer to the device handle if successful; M_NULLPTR specified vmhba
  *         is not a valid NVM Express device.
  */
-struct nvme_handle *
-Nvme_Open(struct nvme_adapter_list *adapters, const char *name)
+struct nvme_handle* Nvme_Open(struct nvme_adapter_list* adapters, const char* name)
 {
-   struct nvme_handle *handle;
-   struct nvmeAdapterInfo *adapter;
-   vmk_MgmtApiSignature signature;
-   int i;
-   int rc;
+    struct nvme_handle*     handle;
+    struct nvmeAdapterInfo* adapter;
+    vmk_MgmtApiSignature    signature;
+    int                     i;
+    int                     rc;
 
-   assert(adapters != M_NULLPTR);
-   assert(name != M_NULLPTR);
+    assert(adapters != M_NULLPTR);
+    assert(name != M_NULLPTR);
 
-   adapter = M_NULLPTR;
-   for (i = 0; i < adapters->count; i++) {
-      if (strcmp(name, adapters->adapters[i].name) == 0) {
-         adapter = &adapters->adapters[i];
-         break;
-      }
-   }
-   if (adapter == M_NULLPTR) {
-      return M_NULLPTR;
-   }
+    adapter = M_NULLPTR;
+    for (i = 0; i < adapters->count; i++)
+    {
+        if (strcmp(name, adapters->adapters[i].name) == 0)
+        {
+            adapter = &adapters->adapters[i];
+            break;
+        }
+    }
+    if (adapter == M_NULLPTR)
+    {
+        return M_NULLPTR;
+    }
 
-   handle = C_CAST(struct nvme_handle *, safe_malloc(sizeof(struct nvme_handle)));
-   if (!handle) {
-      return M_NULLPTR;
-   }
+    handle = C_CAST(struct nvme_handle*, safe_malloc(sizeof(struct nvme_handle)));
+    if (!handle)
+    {
+        return M_NULLPTR;
+    }
 
-   snprintf(handle->name, VMK_MISC_NAME_MAX, "%s", name);
+    snprintf(handle->name, VMK_MISC_NAME_MAX, "%s", name);
 
-   signature.version = VMK_REVISION_FROM_NUMBERS(NVME_MGMT_MAJOR, NVME_MGMT_MINOR, NVME_MGMT_UPDATE, NVME_MGMT_PATCH);
-   snprintf(signature.name.string, sizeof(signature.name.string), "%s", adapter->signature);
-   snprintf(signature.vendor.string, sizeof(signature.vendor.string), NVME_MGMT_VENDOR);
-   signature.numCallbacks = NVME_MGMT_CTRLR_NUM_CALLBACKS;
-   signature.callbacks = nvmeCallbacks;
+    signature.version = VMK_REVISION_FROM_NUMBERS(NVME_MGMT_MAJOR, NVME_MGMT_MINOR, NVME_MGMT_UPDATE, NVME_MGMT_PATCH);
+    snprintf(signature.name.string, sizeof(signature.name.string), "%s", adapter->signature);
+    snprintf(signature.vendor.string, sizeof(signature.vendor.string), NVME_MGMT_VENDOR);
+    signature.numCallbacks = NVME_MGMT_CTRLR_NUM_CALLBACKS;
+    signature.callbacks    = nvmeCallbacks;
 
-   rc = vmk_MgmtUserInit(&signature, 0LL, &handle->handle);
-   if (rc) {
-      free(handle);
-      return M_NULLPTR;
-   }
+    rc = vmk_MgmtUserInit(&signature, 0LL, &handle->handle);
+    if (rc)
+    {
+        free(handle);
+        return M_NULLPTR;
+    }
 
-   return handle;
+    return handle;
 }
-
 
 /**
  * Close a handle
  *
  * @param [in] handle pointer to the device handle
  */
-void
-Nvme_Close(struct nvme_handle *handle)
+void Nvme_Close(struct nvme_handle* handle)
 {
-   assert(handle);
+    assert(handle);
 
-   if (!handle || handle->handle == M_NULLPTR) {
-      return;
-   }
+    if (!handle || handle->handle == M_NULLPTR)
+    {
+        return;
+    }
 
-   vmk_MgmtUserDestroy(handle->handle);
-   free(handle);
+    vmk_MgmtUserDestroy(handle->handle);
+    free(handle);
 }
-
 
 /**
  * Get device management signature
@@ -130,31 +128,29 @@ Nvme_Close(struct nvme_handle *handle)
  *
  * @return 0 if successful
  */
-int
-Nvme_GetAdapterList(struct nvme_adapter_list *list)
+int Nvme_GetAdapterList(struct nvme_adapter_list* list)
 {
-   vmk_MgmtUserHandle driverHandle;
-   int rc;
+    vmk_MgmtUserHandle driverHandle;
+    int                rc;
 
-   assert(list != M_NULLPTR);
+    assert(list != M_NULLPTR);
 
-   rc = vmk_MgmtUserInit(&globalSignature, 0LL, &driverHandle);
-   if (rc) {
-      return rc;
-   }
+    rc = vmk_MgmtUserInit(&globalSignature, 0LL, &driverHandle);
+    if (rc)
+    {
+        return rc;
+    }
 
-   rc = vmk_MgmtUserCallbackInvoke(driverHandle, 0LL,
-      NVME_MGMT_GLOBAL_CB_LISTADAPTERS,
-      &list->count, &list->adapters);
-   if (rc) {
-      vmk_MgmtUserDestroy(driverHandle);
-      return rc;
-   }
+    rc = vmk_MgmtUserCallbackInvoke(driverHandle, 0LL, NVME_MGMT_GLOBAL_CB_LISTADAPTERS, &list->count, &list->adapters);
+    if (rc)
+    {
+        vmk_MgmtUserDestroy(driverHandle);
+        return rc;
+    }
 
-   vmk_MgmtUserDestroy(driverHandle);
-   return 0;
+    vmk_MgmtUserDestroy(driverHandle);
+    return 0;
 }
-
 
 /**
  * Set driver parameter: nvme_log_level and nvme_dbg.
@@ -164,23 +160,21 @@ Nvme_GetAdapterList(struct nvme_adapter_list *list)
  *
  * @return 0 if successful
  */
-int
-Nvme_SetLogLevel(int loglevel, int debuglevel)
+int Nvme_SetLogLevel(int loglevel, int debuglevel)
 {
-   vmk_MgmtUserHandle driverHandle;
-   int rc = 0;
+    vmk_MgmtUserHandle driverHandle;
+    int                rc = 0;
 
-   rc = vmk_MgmtUserInit(&globalSignature, 0LL, &driverHandle);
-   if (rc) {
-      return rc;
-   }
+    rc = vmk_MgmtUserInit(&globalSignature, 0LL, &driverHandle);
+    if (rc)
+    {
+        return rc;
+    }
 
-   rc = vmk_MgmtUserCallbackInvoke(driverHandle, 0LL,
-      NVME_MGMT_GLOBAL_CB_SETLOGLEVEL,
-      &loglevel, &debuglevel);
+    rc = vmk_MgmtUserCallbackInvoke(driverHandle, 0LL, NVME_MGMT_GLOBAL_CB_SETLOGLEVEL, &loglevel, &debuglevel);
 
-   vmk_MgmtUserDestroy(driverHandle);
-   return rc;
+    vmk_MgmtUserDestroy(driverHandle);
+    return rc;
 }
 
 /**
@@ -192,20 +186,17 @@ Nvme_SetLogLevel(int loglevel, int debuglevel)
  *
  * @return 0 if successful
  */
-int
-Nvme_Ioctl(struct nvme_handle *handle, int cmd, struct usr_io *uio)
+int Nvme_Ioctl(struct nvme_handle* handle, int cmd, struct usr_io* uio)
 {
-   int ioctlCmd;
+    int ioctlCmd;
 
-   assert(handle);
-   assert(uio);
+    assert(handle);
+    assert(uio);
 
-   ioctlCmd = cmd;
+    ioctlCmd = cmd;
 
-   return vmk_MgmtUserCallbackInvoke(handle->handle, 0LL,
-      NVME_MGMT_CB_IOCTL, &ioctlCmd, uio);
+    return vmk_MgmtUserCallbackInvoke(handle->handle, 0LL, NVME_MGMT_CB_IOCTL, &ioctlCmd, uio);
 }
-
 
 /**
  * Issue admin passthru command to a device
@@ -215,22 +206,22 @@ Nvme_Ioctl(struct nvme_handle *handle, int cmd, struct usr_io *uio)
  *
  * @return 0 if successful
  */
-int
-Nvme_AdminPassthru(struct nvme_handle *handle, struct usr_io *uio)
+int Nvme_AdminPassthru(struct nvme_handle* handle, struct usr_io* uio)
 {
-   int rc;
+    int rc;
 
-   rc = Nvme_Ioctl(handle, NVME_IOCTL_ADMIN_CMD, uio);
+    rc = Nvme_Ioctl(handle, NVME_IOCTL_ADMIN_CMD, uio);
 
-   /**
-    * If the command has been successfully submitted to driver, the actual
-    * return code for the admin command is returned in uio->status field.
-    */
-   if (!rc) {
-      rc = uio->status;
-   }
+    /**
+     * If the command has been successfully submitted to driver, the actual
+     * return code for the admin command is returned in uio->status field.
+     */
+    if (!rc)
+    {
+        rc = uio->status;
+    }
 
-   return rc;
+    return rc;
 }
 
 /**
@@ -241,16 +232,15 @@ Nvme_AdminPassthru(struct nvme_handle *handle, struct usr_io *uio)
  *
  * @return 0 if successful
  */
-int
-Nvme_AdminPassthru_error(struct nvme_handle *handle,int cmd, struct usr_io *uio)
+int Nvme_AdminPassthru_error(struct nvme_handle* handle, int cmd, struct usr_io* uio)
 {
-   return Nvme_Ioctl(handle, cmd, uio);
+    return Nvme_Ioctl(handle, cmd, uio);
 }
 
-
-#if !defined (OK)
-#define OK 0
+#if !defined(OK)
+#    define OK 0
 #endif
+// clang-format off
 /*
  * The return statuses are part of the VMkernel public API. To avoid breaking
  * 3rd party software built on top of this API, any change to the table must
@@ -258,8 +248,8 @@ Nvme_AdminPassthru_error(struct nvme_handle *handle,int cmd, struct usr_io *uio)
  * cannot be moved in the table or removed from the table, and new statuses must
  * be added at the end (before VMK_GENERIC_LINUX_ERROR).
  *
- *                VMK error code name                        Description                                                            Unix name
- *                ===================                        ===========                                                            =========
+ *                VMK error code name                        Description Unix name
+ *                ===================                        =========== =========
  */
 /** \cond nodoc */
 #define VMK_ERROR_CODES \
@@ -642,39 +632,41 @@ Nvme_AdminPassthru_error(struct nvme_handle *handle,int cmd, struct usr_io *uio)
 // #undef DEFINE_VMK_ERR_AT
 // /** \endcond */
 
-typedef struct {
+// clang-format on
+
+typedef struct
+{
     VMK_ReturnStatus code;
-    const char *description;
-    int unixerrno;
+    const char*      description;
+    int              unixerrno;
 } VMKErrorCode;
 
-//define how to expand the error above into the structure
-#define DEFINE_VMK_ERR_AT(_err, _str, _val, _uerr) { _err, _str, _uerr },
-#define DEFINE_VMK_ERR(_err, _str, _uerr) { _err, _str, _uerr },
+// define how to expand the error above into the structure
+#define DEFINE_VMK_ERR_AT(_err, _str, _val, _uerr) {_err, _str, _uerr},
+#define DEFINE_VMK_ERR(_err, _str, _uerr)          {_err, _str, _uerr},
 
-VMKErrorCode vmkerrorTable[] = {
-    VMK_ERROR_CODES
-};
+VMKErrorCode vmkerrorTable[] = {VMK_ERROR_CODES};
 
-//remove definition to not cause errors with anyone else using the table
+// remove definition to not cause errors with anyone else using the table
 #undef DEFINE_VMK_ERR
 #undef DEFINE_VMK_ERR_AT
 
-static int comp_vmk_err(const void *a, const void *b)
+static int comp_vmk_err(const void* a, const void* b)
 {
-   return ((VMKErrorCode *)a)->code - ((VMKErrorCode *)b)->code;
+    return ((VMKErrorCode*)a)->code - ((VMKErrorCode*)b)->code;
 }
 
 const char* get_VMK_API_Error(VMK_ReturnStatus status)
 {
-   VMKErrorCode key = { .code = status };
-   VMKErrorCode *err = bsearch(&key, vmkerrorTable, sizeof(vmkerrorTable) / sizeof(vmkerrorTable[0]), sizeof(VMKErrorCode), comp_vmk_err);
-   if (err)
-   {
-      return err->description;
-   }
-   else 
-   {
-      return "Unknown VMK Error code";
-   }
+    VMKErrorCode  key = {.code = status};
+    VMKErrorCode* err = safe_bsearch(&key, vmkerrorTable, sizeof(vmkerrorTable) / sizeof(vmkerrorTable[0]),
+                                     sizeof(VMKErrorCode), comp_vmk_err);
+    if (err)
+    {
+        return err->description;
+    }
+    else
+    {
+        return "Unknown VMK Error code";
+    }
 }
