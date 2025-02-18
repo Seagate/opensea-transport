@@ -1985,6 +1985,8 @@ extern "C"
         ATA_SCT_DATA_TRANSFER  = 0xE1,
     } eATALog;
 
+#define ATA_SATA_PHY_EVENT_LOG_READ_AND_REINITIALIZE_FEAT UINT16_C(0x0001)
+
     typedef enum eIdentifyDeviceDataLogPageEnum // Log address 30h, ACS-4 Section 9.11
     {
         ATA_ID_DATA_LOG_SUPPORTED_PAGES          = 0x00,
@@ -2010,31 +2012,127 @@ extern "C"
     //
     typedef enum eDeviceStatisticsLogEnum // Log Address 04h, ACS-4 Section 9.5
     {
-        ATA_DEVICE_STATS_LOG_LIST           = 0x00,
-        ATA_DEVICE_STATS_LOG_GENERAL        = 0x01,
-        ATA_DEVICE_STATS_LOG_FREE_FALL      = 0x02,
-        ATA_DEVICE_STATS_LOG_ROTATING_MEDIA = 0x03,
-        ATA_DEVICE_STATS_LOG_GEN_ERR        = 0x04,
-        ATA_DEVICE_STATS_LOG_TEMP           = 0x05,
-        ATA_DEVICE_STATS_LOG_TRANSPORT      = 0x06,
-        ATA_DEVICE_STATS_LOG_SSD            = 0x07,
-        ATA_DEVICE_STATS_LOG_ZONED_DEVICE   = 0x08,
+        ATA_DEVICE_STATS_LOG_LIST              = 0x00,
+        ATA_DEVICE_STATS_LOG_GENERAL           = 0x01,
+        ATA_DEVICE_STATS_LOG_FREE_FALL         = 0x02,
+        ATA_DEVICE_STATS_LOG_ROTATING_MEDIA    = 0x03,
+        ATA_DEVICE_STATS_LOG_GEN_ERR           = 0x04,
+        ATA_DEVICE_STATS_LOG_TEMP              = 0x05,
+        ATA_DEVICE_STATS_LOG_TRANSPORT         = 0x06,
+        ATA_DEVICE_STATS_LOG_SSD               = 0x07,
+        ATA_DEVICE_STATS_LOG_ZONED_DEVICE      = 0x08,
+        ATA_DEVICE_STATS_LOG_CDL_LBA_RANGE_0_1 = 0x09,
+        ATA_DEVICE_STATS_LOG_CDL_LBA_RANGE_2_3 = 0x0A,
         // Add more
         ATA_DEVICE_STATS_LOG_VENDOR_SPECIFIC = 0xFF
     } eDeviceStatisticsLog;
-#define ATA_DEV_STATS_SUP_PG_LIST_LEN_OFFSET                                                                           \
-    UINT16_C(8) // this is the offset in the data where the list length is specified to be read from. The next value is
-                // where the list of supported pages begins.
-#define ATA_DEV_STATS_SUP_PG_LIST_OFFSET                                                                               \
-    UINT16_C(9) // when reading the device statistics log's list of supported pages, this is the offset to start at to
-                // find the page numbers that are supported.
+
+    // this is the offset in the data where the list length is specified to be read from. The next value is
+    // where the list of supported pages begins.
+#define ATA_DEV_STATS_SUP_PG_LIST_LEN_OFFSET UINT16_C(8)
+    // when reading the device statistics log's list of supported pages, this is the offset to start at to
+    // find the page numbers that are supported.
+#define ATA_DEV_STATS_SUP_PG_LIST_OFFSET       UINT16_C(9)
 #define ATA_DEV_STATS_STATISTIC_SUPPORTED_BIT  BIT63 // If bit 63 is set, then the qword is valid
 #define ATA_DEV_STATS_VALID_VALUE_BIT          BIT62
 #define ATA_DEV_STATS_NORMALIZED_STAT_BIT      BIT61
 #define ATA_DEV_STATS_SUPPORTS_DSN             BIT60
 #define ATA_DEV_STATS_MONITORED_CONDITION_MET  BIT59
 #define ATA_DEV_STATS_READ_THEN_INIT_SUPPORTED BIT58
-#define ATA_DEV_STATS_VERSION_1                (0x0001) // to check for at least revision 1 on each page of the log.
+    // most significant bit of the value field that can be reported. Defined this way to pass to the get_Bit_Range
+    // functions
+#define ATA_DEV_STATS_VALUE_MSB 55
+    // least signigicant bit of the value field that can be reported. Defined this way to pass to the get_Bit_Range
+    // functions
+#define ATA_DEV_STATS_VALUE_LSB                  0
+#define ATA_DEV_STATS_VERSION_1                  (0x0001) // to check for at least revision 1 on each page of the log.
+#define ATA_DEV_STATS_READ_AND_REINITIALIZE_FEAT UINT16_C(0x0001)
+
+    typedef enum eDevStatsGeneralOffsetsEnum
+    {
+        ATA_DEV_STAT_GENERAL_LIFETIME_POR             = 8,
+        ATA_DEV_STAT_GENERAL_POH                      = 16,
+        ATA_DEV_STAT_GENERAL_LBA_WRITTEN              = 24,
+        ATA_DEV_STAT_GENERAL_NUM_WRITE_CMDS           = 32,
+        ATA_DEV_STAT_GENERAL_LBA_READ                 = 40,
+        ATA_DEV_STAT_GENERAL_NUM_READ_CMDS            = 48,
+        ATA_DEV_STAT_GENERAL_DATE_AND_TIME_TIMESTAMP  = 56,
+        ATA_DEV_STAT_GENERAL_PENDING_ERR_CNT          = 64,
+        ATA_DEV_STAT_GENERAL_WORKLOAD_UTIL            = 72,
+        ATA_DEV_STAT_GENERAL_UTIL_USAGE_RATE          = 80,
+        ATA_DEV_STAT_GENERAL_RESOURCE_AVAIL           = 88,
+        ATA_DEV_STAT_GENERAL_RAND_WRITE_RESOURCE_USED = 96,
+    } eDevStatsGeneralOffsets;
+
+    typedef enum eDevStatsFreeFallOffsetEnum
+    {
+        ATA_DEV_STAT_FREEFALL_NUM_FREEFALL_EVENTS = 8,
+        ATA_DEV_STAT_FREEFALL_OVERLIM_SHOCK_EVENT = 16,
+    } eDevStatsFreeFallOffset;
+
+    typedef enum eDevStatsRotatingOffsetEnum
+    {
+        ATA_DEV_STAT_ROTATING_SPINDLE_MOTOR_POH              = 8,
+        ATA_DEV_STAT_ROTATING_HEAD_FLYING_HOURS              = 16,
+        ATA_DEV_STAT_ROTATING_HEAD_LOAD_EVENTS               = 24,
+        ATA_DEV_STAT_ROTATING_NUM_REALLOCATED_LBA            = 32,
+        ATA_DEV_STAT_ROTATING_READ_RECOVERY_ATTEMPTS         = 40,
+        ATA_DEV_STAT_ROTATING_NUM_MECH_START_FAILURE         = 48,
+        ATA_DEV_STAT_ROTATING_NUM_REALLOCATION_CANDIDATE_LBA = 56,
+        ATA_DEV_STAT_ROTATING_NUM_HIGH_PRIO_UNLOAD_EVENTS    = 64,
+    } eDevStatsRotatingOffset;
+
+    typedef enum eDevStatsGeneralErrorOffsetEnum
+    {
+        ATA_DEV_STAT_GENERR_NUM_REPORTED_UNCOR_ERR                     = 8,
+        ATA_DEV_STAT_GENERR_NUM_RESETS_BETWEEN_CMD_ACCEPT_AND_COMPLETE = 16,
+        ATA_DEV_STAT_GENERR_PHYSICAL_ELEMENT_STATUS_CHANGE             = 24,
+    } eDevStatsGeneralErrorOffset;
+
+    typedef enum eDevStatsTemperatureOffsetEnum
+    {
+        ATA_DEV_STAT_TEMP_CURRENT_TEMP        = 8,
+        ATA_DEV_STAT_TEMP_AVG_SHORT_TEMP      = 16,
+        ATA_DEV_STAT_TEMP_AVG_LONG_TEMP       = 24,
+        ATA_DEV_STAT_TEMP_HIGHEST_TEMP        = 32,
+        ATA_DEV_STAT_TEMP_LOWEST_TEMP         = 40,
+        ATA_DEV_STAT_TEMP_HIGH_AVG_SHORT_TEMP = 48,
+        ATA_DEV_STAT_TEMP_LOW_AVG_SHORT_TEMP  = 56,
+        ATA_DEV_STAT_TEMP_HIGH_AVG_LONG_TEMP  = 64,
+        ATA_DEV_STAT_TEMP_LOW_AVG_LONG_TEMP   = 72,
+        ATA_DEV_STAT_TEMP_TIME_OVER_TEMP      = 80,
+        ATA_DEV_STAT_TEMP_SPEC_MAX_TEMP       = 88,
+        ATA_DEV_STAT_TEMP_TIME_UNDER_TEMP     = 96,
+        ATA_DEV_STAT_TEMP_SPEC_MIN_TEMP       = 104,
+    } eDevStatsTemperatureOffset;
+
+    typedef enum eDevStatsTransportOffsetEnum
+    {
+        ATA_DEV_STAT_TRANSPORT_NUM_HARD_RESET = 8,
+        ATA_DEV_STAT_TRANSPORT_NUM_ASR_EVENTS = 16,
+        ATA_DEV_STAT_TRANSPORT_NUM_CRC_ERRORS = 32,
+    } eDevStatsTransportOffset;
+
+    typedef enum eDevStatsSSDOffsetEnum
+    {
+        ATA_DEV_STAT_SSD_ENDURANCE = 8,
+    } eDevStatsSSDOffset;
+
+    typedef enum eDevStatsZonedOffsetEnum
+    {
+        ATA_DEV_STAT_ZONED_MAX_OPEN_ZONES                         = 8,
+        ATA_DEV_STAT_ZONED_MAX_EXPLICIT_OPEN_ZONES                = 16,
+        ATA_DEV_STAT_ZONED_MAX_IMPLICIT_OPEN_ZONES                = 24,
+        ATA_DEV_STAT_ZONED_MIN_EMPTY_ZONES                        = 32,
+        ATA_DEV_STAT_ZONED_MAX_NON_SEQ_ZONES                      = 40,
+        ATA_DEV_STAT_ZONED_ZONES_EMPTIED                          = 48,
+        ATA_DEV_STAT_ZONED_SUBOPTIMAL_WRITE_CMD                   = 56,
+        ATA_DEV_STAT_ZONED_CMD_EXCEED_OPTIMAL_LIM                 = 64,
+        ATA_DEV_STAT_ZONED_FAILED_EXPLICIT_OPEN                   = 72,
+        ATA_DEV_STAT_ZONED_READ_RULE_VIOLATIONS                   = 80,
+        ATA_DEV_STAT_ZONED_WRITE_RULE_VIOLATIONS                  = 88,
+        ATA_DEV_STAT_ZONED_MAX_IMPLICIT_OPEN_SEQ_OR_BEF_REQ_ZONES = 96,
+    } eDevStatsZonedOffset;
 
     typedef enum eSCTDeviceStateEnum
     {
