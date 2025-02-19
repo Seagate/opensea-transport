@@ -993,6 +993,39 @@ eReturnValues send_ATA_Write_Stream_Cmd(tDevice* device,
     return ret;
 }
 
+bool read_ATA_String(uint8_t *ptrRawATAStr, uint8_t ataStringLength, char *outstr, size_t outstrLen)
+{
+    bool success = false;
+    DISABLE_NONNULL_COMPARE
+    if (ptrRawATAStr != M_NULLPTR && outstr != M_NULLPTR && outstrLen >= (uint8_to_sizet(ataStringLength) + SIZE_T_C(1)))
+    {
+        for (size_t striter = SIZE_T_C(0); striter < (uint8_to_sizet(ataStringLength)); striter += SIZE_T_C(2))
+        {
+            if (!safe_isascii(M_STATIC_CAST(char, ptrRawATAStr[striter])) || !safe_isprint(M_STATIC_CAST(char, ptrRawATAStr[striter])))
+            {
+                outstr[striter + SIZE_T_C(1)] = ' ';
+            }
+            else
+            {
+                outstr[striter + SIZE_T_C(1)] = M_STATIC_CAST(char, ptrRawATAStr[striter]);
+            }
+            if (!safe_isascii(M_STATIC_CAST(char, ptrRawATAStr[striter + SIZE_T_C(1)])) || !safe_isprint(M_STATIC_CAST(char, ptrRawATAStr[striter + SIZE_T_C(1)])))
+            {
+                outstr[striter] = ' ';
+            }
+            else
+            {
+                outstr[striter] = M_STATIC_CAST(char, ptrRawATAStr[striter + SIZE_T_C(1)]);
+            }
+            
+        }
+        outstr[outstrLen - SIZE_T_C(1)] = '\0';
+        success = true;
+    }
+    RESTORE_NONNULL_COMPARE
+    return success;
+}
+
 void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
                                          char     ataMN[ATA_IDENTIFY_MN_LENGTH + 1],
                                          char     ataSN[ATA_IDENTIFY_SN_LENGTH + 1],
@@ -1027,15 +1060,10 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t snLimit = M_Min(SERIAL_NUM_LEN, ATA_IDENTIFY_SN_LENGTH);
 #endif
             safe_memset(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, 0, snLimit + UINT16_C(1));
-            safe_memcpy(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, idData->SerNum, snLimit);
-            for (uint16_t iter = UINT16_C(0); iter < snLimit; ++iter)
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->SerNum[0]), ATA_IDENTIFY_SN_LENGTH, ataSN, ATA_IDENTIFY_SN_LENGTH + 1))
             {
-                if (!safe_isascii(ataSN[iter]) || !safe_isprint(ataSN[iter]))
-                {
-                    ataSN[iter] = ' '; // replace with a space
-                }
+                remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
             }
-            remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
         }
         if (validFW && ataFW != M_NULLPTR)
         {
@@ -1045,15 +1073,10 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t fwLimit = M_Min(FW_REV_LEN, ATA_IDENTIFY_FW_LENGTH);
 #endif
             safe_memset(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, 0, fwLimit + UINT16_C(1));
-            safe_memcpy(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, idData->FirmVer, fwLimit);
-            for (uint16_t iter = UINT16_C(0); iter < fwLimit; ++iter)
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->FirmVer[0]), ATA_IDENTIFY_FW_LENGTH, ataFW, ATA_IDENTIFY_FW_LENGTH + 1))
             {
-                if (!safe_isascii(ataFW[iter]) || !safe_isprint(ataFW[iter]))
-                {
-                    ataFW[iter] = ' '; // replace with a space
-                }
+                remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
             }
-            remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
         }
         if (validMN && ataMN != M_NULLPTR)
         {
@@ -1063,15 +1086,10 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t mnLimit = M_Min(MODEL_NUM_LEN, ATA_IDENTIFY_MN_LENGTH);
 #endif
             safe_memset(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, 0, mnLimit + UINT16_C(1));
-            safe_memcpy(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, idData->ModelNum, mnLimit);
-            for (uint16_t iter = UINT16_C(0); iter < mnLimit; ++iter)
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->ModelNum[0]), ATA_IDENTIFY_MN_LENGTH, ataMN, ATA_IDENTIFY_MN_LENGTH + 1))
             {
-                if (!safe_isascii(ataMN[iter]) || !safe_isprint(ataMN[iter]))
-                {
-                    ataMN[iter] = ' '; // replace with a space
-                }
+                remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
             }
-            remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
         }
     }
     RESTORE_NONNULL_COMPARE
