@@ -2365,7 +2365,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
         cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ................
         cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ................
         */
-        safe_memcpy(vendorID, INQ_DATA_PRODUCT_REV_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[8],
+        safe_memcpy(vendorID, INQ_DATA_T10_VENDOR_ID_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[8],
                     INQ_DATA_T10_VENDOR_ID_LEN);
 
         for (uint8_t iter = UINT8_C(0); iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
