@@ -2868,7 +2868,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     int ioctlResult = 0;
 
     DISABLE_NONNULL_COMPARE
-    if (nvmeIoCtx != M_NULLPTR)
+    if (nvmeIoCtx == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
