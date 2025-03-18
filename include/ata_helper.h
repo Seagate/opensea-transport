@@ -1664,6 +1664,7 @@ extern "C"
 #define ATA_SMART_LOG_MAX_ATTRIBUTES (256)
     typedef struct s_ataSMARTLog
     {
+        uint16_t smartVersion;
         ataSMARTValue attributes[ATA_SMART_LOG_MAX_ATTRIBUTES]; // attribute numbers 1 - 255 are valid (check valid bit
                                                                 // to make sure it's a used attribute)
     } ataSMARTLog;
