@@ -1456,8 +1456,8 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                 struct dirent** classList;
                 int             numberOfItems = scandir(classPath, &classList,
                                                         M_NULLPTR /*not filtering anything. Just go through each item*/, alphasort);
-                eReturnValues   ret           = SUCCESS;
-                for (int iter = 0; iter < numberOfItems && ret == SUCCESS; ++iter)
+                eReturnValues   ret           = UNKNOWN;
+                for (int iter = 0; iter < numberOfItems && ret == UNKNOWN; ++iter)
                 {
                     // now we need to read the link for classPath/d_name into a buffer...then compare it to the one we
                     // read earlier.
@@ -1514,6 +1514,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                                                                      (M_STATIC_CAST(uintptr_t, classPtr) -
                                                                       M_STATIC_CAST(uintptr_t, mapLink))) == 0)
                                 {
+                                    ret = SUCCESS;
                                     if (incomingBlock)
                                     {
                                         if (0 != safe_strndup(blockHandle, basehandle, safe_strlen(basehandle)) ||
@@ -1547,7 +1548,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                     safe_free_dirent(&classList[classiter]);
                 }
                 safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &classList));
-                if (ret != SUCCESS)
+                if (ret != UNKNOWN)
                 {
                     return ret;
                 }
