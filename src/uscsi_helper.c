@@ -93,7 +93,7 @@ static int get_Partition_Count(const char* blockDeviceName)
                 ++result;
             }
         }
-        close_mnttab(mount);
+        close_mnttab(&mount);
     }
     else
     {
@@ -150,7 +150,7 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
                     }
                 }
             }
-            close_mnttab(mount);
+            close_mnttab(&mount);
         }
         else
         {
