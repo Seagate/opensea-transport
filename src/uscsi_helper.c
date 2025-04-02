@@ -93,7 +93,7 @@ static int get_Partition_Count(const char* blockDeviceName)
                 ++result;
             }
         }
-        close_mnttab(mount);
+        close_mnttab(&mount);
     }
     else
     {
@@ -150,7 +150,7 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
                     }
                 }
             }
-            close_mnttab(mount);
+            close_mnttab(&mount);
         }
         else
         {
@@ -508,7 +508,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
     {
         safe_free_dirent(&namelist[iter]);
     }
-    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
     if (num_devs >= 0)
     {
         *numberOfDevices = C_CAST(uint32_t, num_devs);
@@ -575,7 +575,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
         safe_free_dirent(&namelist[i]);
     }
     devs[i] = M_NULLPTR;
-    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
 
     DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
@@ -636,7 +636,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
         {
             returnValue = FAILURE;
         }
-        else if (permissionDeniedCount == (num_devs))
+        else if (permissionDeniedCount == (numberOfDevices))
         {
             returnValue = PERMISSION_DENIED;
         }
