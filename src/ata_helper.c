@@ -993,15 +993,17 @@ eReturnValues send_ATA_Write_Stream_Cmd(tDevice* device,
     return ret;
 }
 
-bool read_ATA_String(uint8_t *ptrRawATAStr, uint8_t ataStringLength, char *outstr, size_t outstrLen)
+bool read_ATA_String(uint8_t* ptrRawATAStr, uint8_t ataStringLength, char* outstr, size_t outstrLen)
 {
     bool success = false;
     DISABLE_NONNULL_COMPARE
-    if (ptrRawATAStr != M_NULLPTR && outstr != M_NULLPTR && outstrLen >= (uint8_to_sizet(ataStringLength) + SIZE_T_C(1)))
+    if (ptrRawATAStr != M_NULLPTR && outstr != M_NULLPTR &&
+        outstrLen >= (uint8_to_sizet(ataStringLength) + SIZE_T_C(1)))
     {
         for (size_t striter = SIZE_T_C(0); striter < (uint8_to_sizet(ataStringLength)); striter += SIZE_T_C(2))
         {
-            if (!safe_isascii(M_STATIC_CAST(char, ptrRawATAStr[striter])) || !safe_isprint(M_STATIC_CAST(char, ptrRawATAStr[striter])))
+            if (!safe_isascii(M_STATIC_CAST(char, ptrRawATAStr[striter])) ||
+                !safe_isprint(M_STATIC_CAST(char, ptrRawATAStr[striter])))
             {
                 outstr[striter + SIZE_T_C(1)] = ' ';
             }
@@ -1009,7 +1011,8 @@ bool read_ATA_String(uint8_t *ptrRawATAStr, uint8_t ataStringLength, char *outst
             {
                 outstr[striter + SIZE_T_C(1)] = M_STATIC_CAST(char, ptrRawATAStr[striter]);
             }
-            if (!safe_isascii(M_STATIC_CAST(char, ptrRawATAStr[striter + SIZE_T_C(1)])) || !safe_isprint(M_STATIC_CAST(char, ptrRawATAStr[striter + SIZE_T_C(1)])))
+            if (!safe_isascii(M_STATIC_CAST(char, ptrRawATAStr[striter + SIZE_T_C(1)])) ||
+                !safe_isprint(M_STATIC_CAST(char, ptrRawATAStr[striter + SIZE_T_C(1)])))
             {
                 outstr[striter] = ' ';
             }
@@ -1017,10 +1020,9 @@ bool read_ATA_String(uint8_t *ptrRawATAStr, uint8_t ataStringLength, char *outst
             {
                 outstr[striter] = M_STATIC_CAST(char, ptrRawATAStr[striter + SIZE_T_C(1)]);
             }
-            
         }
         outstr[outstrLen - SIZE_T_C(1)] = '\0';
-        success = true;
+        success                         = true;
     }
     RESTORE_NONNULL_COMPARE
     return success;
@@ -1060,7 +1062,8 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t snLimit = M_Min(SERIAL_NUM_LEN, ATA_IDENTIFY_SN_LENGTH);
 #endif
             safe_memset(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, 0, snLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->SerNum[0]), ATA_IDENTIFY_SN_LENGTH, ataSN, ATA_IDENTIFY_SN_LENGTH + 1))
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->SerNum[0]), ATA_IDENTIFY_SN_LENGTH, ataSN,
+                                ATA_IDENTIFY_SN_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
             }
@@ -1073,7 +1076,8 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t fwLimit = M_Min(FW_REV_LEN, ATA_IDENTIFY_FW_LENGTH);
 #endif
             safe_memset(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, 0, fwLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->FirmVer[0]), ATA_IDENTIFY_FW_LENGTH, ataFW, ATA_IDENTIFY_FW_LENGTH + 1))
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->FirmVer[0]), ATA_IDENTIFY_FW_LENGTH, ataFW,
+                                ATA_IDENTIFY_FW_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
             }
@@ -1086,7 +1090,8 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t mnLimit = M_Min(MODEL_NUM_LEN, ATA_IDENTIFY_MN_LENGTH);
 #endif
             safe_memset(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, 0, mnLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->ModelNum[0]), ATA_IDENTIFY_MN_LENGTH, ataMN, ATA_IDENTIFY_MN_LENGTH + 1))
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->ModelNum[0]), ATA_IDENTIFY_MN_LENGTH, ataMN,
+                                ATA_IDENTIFY_MN_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
             }

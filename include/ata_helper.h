@@ -1664,7 +1664,7 @@ extern "C"
 #define ATA_SMART_LOG_MAX_ATTRIBUTES (256)
     typedef struct s_ataSMARTLog
     {
-        uint16_t smartVersion;
+        uint16_t      smartVersion;
         ataSMARTValue attributes[ATA_SMART_LOG_MAX_ATTRIBUTES]; // attribute numbers 1 - 255 are valid (check valid bit
                                                                 // to make sure it's a used attribute)
     } ataSMARTLog;
@@ -2137,7 +2137,7 @@ extern "C"
 
     typedef enum eDevStatsCDL_0_1_OffsetEnum
     {
-        ATA_DEV_STAT_CDL_LOWEST_ACHIEVABLE_CMD_DUR  = 8,
+        ATA_DEV_STAT_CDL_LOWEST_ACHIEVABLE_CMD_DUR = 8,
         // Range 0 for STAT_A
         ATA_DEV_STAT_CDL_RANGE0_STAT_A_R1 = 16,
         ATA_DEV_STAT_CDL_RANGE0_STAT_A_R2 = 24,
@@ -2201,7 +2201,7 @@ extern "C"
         ATA_DEV_STAT_CDL_RANGE1_STAT_B_W5 = 440,
         ATA_DEV_STAT_CDL_RANGE1_STAT_B_W6 = 448,
         ATA_DEV_STAT_CDL_RANGE1_STAT_B_W7 = 456
-    }eDevStatsCDL_0_1_Offset;
+    } eDevStatsCDL_0_1_Offset;
 
     typedef enum eDevStatsCDL_2_3_OffsetEnum
     {
@@ -2268,7 +2268,7 @@ extern "C"
         ATA_DEV_STAT_CDL_RANGE3_STAT_B_W5 = 432,
         ATA_DEV_STAT_CDL_RANGE3_STAT_B_W6 = 440,
         ATA_DEV_STAT_CDL_RANGE3_STAT_B_W7 = 448
-    }eDevStatsCDL_2_3_Offset;
+    } eDevStatsCDL_2_3_Offset;
 
     typedef enum eSCTDeviceStateEnum
     {

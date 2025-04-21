@@ -472,8 +472,11 @@ extern "C"
     OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues
         ata_SMART_Auto_Offline(tDevice* device, bool enable);
 
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 3) M_PARAM_RO_SIZE(1, 2) M_PARAM_WO_SIZE(3, 4)
-    bool read_ATA_String(uint8_t* ptrRawATAStr, uint8_t ataStringLength, char* outstr, size_t outstrLen);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 3) M_PARAM_RO_SIZE(1, 2)
+        M_PARAM_WO_SIZE(3, 4) bool read_ATA_String(uint8_t* ptrRawATAStr,
+                                                   uint8_t  ataStringLength,
+                                                   char*    outstr,
+                                                   size_t   outstrLen);
 
     // This assumes standard ATA identify like reported from ata_Identify or page 1 of the ID data log. 512B long and as
     // reported by the standards.
