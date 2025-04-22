@@ -5806,10 +5806,8 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                         // test an identify command with IDE pass-through
                         device->os_info.ioType = WIN_IOCTL_IDE_PASSTHROUGH_ONLY;
                         // Try an identify command. Should we use check power mode command instead???
-                        
-                        if (SUCCESS == get_Identify_Data(device,
-                                                    tempident,
-                                                    512))
+
+                        if (SUCCESS == get_Identify_Data(device, tempident, 512))
                         {
                             idePassThroughSupported = true;
                         }

@@ -519,8 +519,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 2) M_PARAM_RW(1) M_PARAM_WO_SIZE(2, 3) 
-    eReturnValues get_Identify_Data(tDevice* device, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 2) M_PARAM_RW(1) M_PARAM_WO_SIZE(2, 3) eReturnValues
+        get_Identify_Data(tDevice* device, uint8_t* ptrData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
