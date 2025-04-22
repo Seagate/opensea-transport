@@ -2129,7 +2129,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
 
     // print_io_hdr(&io_hdr);
 
-    if (io_hdr.sb_len_wr)
+    if (io_hdr.sb_len_wr > 0)
     {
         scsiIoCtx->returnStatus.format = io_hdr.sbp[0];
         get_Sense_Key_ASC_ASCQ_FRU(io_hdr.sbp, io_hdr.mx_sb_len, &scsiIoCtx->returnStatus.senseKey,
@@ -2215,6 +2215,13 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
                 // No sense data back. We need to set an error since the layers above are going to look for sense data
                 // and we don't have any.
                 ret = OS_PASSTHROUGH_FAILURE;
+            }
+        }
+        if (io_hdr.msg_status != 0)
+        {
+            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+            {
+                printf("Message Status = %hhu", io_hdr.msg_status);
             }
         }
         if (io_hdr.host_status != 0)
