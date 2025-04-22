@@ -379,6 +379,7 @@ typedef struct s_sysFSLowLevelDeviceInfo
 
 #define DRIVER_VERSION_LIST_LENGTH 4
 
+// TODO: It may be better to switch to safe_strtok to parse this...would be much simpler overall
 M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driververstr,
                                                             uint32_t*   versionlist,
                                                             uint8_t     versionlistlen,
@@ -389,7 +390,6 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
     // major.minor.rev
     // major.minor.rev[build]-string
     // There may be more.
-    printf("Driver version string = \"%s\"\n", driververstr);
     if (driververstr && versionlist && versionlistlen == DRIVER_VERSION_LIST_LENGTH &&
         versionCount) // require 4 spaces for the current parsing based off of what is commented above
     {
@@ -472,6 +472,17 @@ static M_INLINE void close_sysfs_file(FILE** file)
     *file = M_NULLPTR;
 }
 
+static void trim_ctrl_from_line(char* line, size_t linelen)
+{
+    for (size_t offset = SIZE_T_C(0); offset < linelen; offset++)
+    {
+        if (safe_iscntrl(line[offset]))
+        {
+            line[offset] = 0;
+        }
+    }
+}
+
 static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLevelDeviceInfo* sysFsInfo)
 {
     // driverPath now has the full path with the name of the driver.
@@ -498,108 +509,78 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
         driverVersionFilePath[2] = 'y';
         driverVersionFilePath[3] = 's';
 
-        struct stat driverversionstat;
-        safe_memset(&driverversionstat, sizeof(struct stat), 0, sizeof(struct stat));
-        printf("Driver version file path: %s\n", driverVersionFilePath);
-        if (0 == stat(driverVersionFilePath, &driverversionstat))
+        FILE*   versionFile = M_NULLPTR;
+        errno_t fileopenerr = safe_fopen(&versionFile, driverVersionFilePath, "r");
+        if (fileopenerr == 0 && versionFile != M_NULLPTR)
         {
-            off_t versionFileSize = driverversionstat.st_size;
-            if (versionFileSize > 0)
+            char*  versionFileData = M_NULLPTR;
+            size_t versionFileSize = SIZE_T_C(0);
+            if (getline(&versionFileData, &versionFileSize, versionFile) > 0)
             {
-                FILE*   versionFile = M_NULLPTR;
-                errno_t fileopenerr = safe_fopen(&versionFile, driverVersionFilePath, "r");
-                printf("Attempting to open driver version file = %d\n", fileopenerr);
-                if (fileopenerr == 0 && versionFile != M_NULLPTR)
+                trim_ctrl_from_line(versionFileData, versionFileSize);
+                snprintf_err_handle(sysFsInfo->driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%s",
+                                    versionFileData);
+                DECLARE_ZERO_INIT_ARRAY(uint32_t, versionList, DRIVER_VERSION_LIST_LENGTH);
+                uint8_t versionCount = UINT8_C(0);
+                if (get_Driver_Version_Info_From_String(versionFileData, versionList, DRIVER_VERSION_LIST_LENGTH,
+                                                        &versionCount))
                 {
-                    char* versionFileData =
-                        M_REINTERPRET_CAST(char*, safe_calloc(C_CAST(size_t, versionFileSize) + 1, sizeof(char)));
-                        printf("Allocating memory to read file\n");
-                    if (versionFileData != M_NULLPTR)
+                    switch (versionCount)
                     {
-                        size_t freadres = fread(versionFileData, sizeof(char), C_CAST(size_t, versionFileSize), versionFile);
-                        printf("Reading file. Expected size: %zu\tgot: %zu\n",C_CAST(size_t, versionFileSize), freadres );
-                        if (C_CAST(size_t, versionFileSize) == freadres
-                                 &&
-                            !ferror(versionFile))
-                        {
-                            printf("versionFileData = %s\n", versionFileData);
-                            snprintf_err_handle(sysFsInfo->driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%s",
-                                                versionFileData);
-                            DECLARE_ZERO_INIT_ARRAY(uint32_t, versionList, DRIVER_VERSION_LIST_LENGTH);
-                            uint8_t versionCount = UINT8_C(0);
-                            if (get_Driver_Version_Info_From_String(versionFileData, versionList, 4, &versionCount))
-                            {
-                                switch (versionCount)
-                                {
-                                case 4:
-                                    // try figuring out what is in the extraVerInfo string
-                                    sysFsInfo->driver_info.majorVerValid      = true;
-                                    sysFsInfo->driver_info.minorVerValid      = true;
-                                    sysFsInfo->driver_info.revisionVerValid   = true;
-                                    sysFsInfo->driver_info.buildVerValid      = true;
-                                    sysFsInfo->driver_info.driverMajorVersion = versionList[0];
-                                    sysFsInfo->driver_info.driverMinorVersion = versionList[1];
-                                    sysFsInfo->driver_info.driverRevision     = versionList[2];
-                                    sysFsInfo->driver_info.driverBuildNumber  = versionList[3];
-                                    break;
-                                case 3:
-                                    sysFsInfo->driver_info.majorVerValid      = true;
-                                    sysFsInfo->driver_info.minorVerValid      = true;
-                                    sysFsInfo->driver_info.revisionVerValid   = true;
-                                    sysFsInfo->driver_info.driverMajorVersion = versionList[0];
-                                    sysFsInfo->driver_info.driverMinorVersion = versionList[1];
-                                    sysFsInfo->driver_info.driverRevision     = versionList[2];
-                                    break;
-                                case 2:
-                                    sysFsInfo->driver_info.majorVerValid      = true;
-                                    sysFsInfo->driver_info.minorVerValid      = true;
-                                    sysFsInfo->driver_info.driverMajorVersion = versionList[0];
-                                    sysFsInfo->driver_info.driverMinorVersion = versionList[1];
-                                    break;
-                                default:
-                                    // error reading the string! consider the whole scanf a failure!
-                                    // Will need to add other format parsing here if there is something else to read
-                                    // instead.-TJE
-                                    sysFsInfo->driver_info.driverMajorVersion = UINT32_C(0);
-                                    sysFsInfo->driver_info.driverMinorVersion = UINT32_C(0);
-                                    sysFsInfo->driver_info.driverRevision     = UINT32_C(0);
-                                    sysFsInfo->driver_info.driverBuildNumber  = UINT32_C(0);
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                sysFsInfo->driver_info.driverMajorVersion = UINT32_C(0);
-                                sysFsInfo->driver_info.driverMinorVersion = UINT32_C(0);
-                                sysFsInfo->driver_info.driverRevision     = UINT32_C(0);
-                                sysFsInfo->driver_info.driverBuildNumber  = UINT32_C(0);
-                            }
-                        }
-                        safe_free(&versionFileData);
+                    case 4:
+                        // try figuring out what is in the extraVerInfo string
+                        sysFsInfo->driver_info.majorVerValid      = true;
+                        sysFsInfo->driver_info.minorVerValid      = true;
+                        sysFsInfo->driver_info.revisionVerValid   = true;
+                        sysFsInfo->driver_info.buildVerValid      = true;
+                        sysFsInfo->driver_info.driverMajorVersion = versionList[0];
+                        sysFsInfo->driver_info.driverMinorVersion = versionList[1];
+                        sysFsInfo->driver_info.driverRevision     = versionList[2];
+                        sysFsInfo->driver_info.driverBuildNumber  = versionList[3];
+                        break;
+                    case 3:
+                        sysFsInfo->driver_info.majorVerValid      = true;
+                        sysFsInfo->driver_info.minorVerValid      = true;
+                        sysFsInfo->driver_info.revisionVerValid   = true;
+                        sysFsInfo->driver_info.driverMajorVersion = versionList[0];
+                        sysFsInfo->driver_info.driverMinorVersion = versionList[1];
+                        sysFsInfo->driver_info.driverRevision     = versionList[2];
+                        break;
+                    case 2:
+                        sysFsInfo->driver_info.majorVerValid      = true;
+                        sysFsInfo->driver_info.minorVerValid      = true;
+                        sysFsInfo->driver_info.driverMajorVersion = versionList[0];
+                        sysFsInfo->driver_info.driverMinorVersion = versionList[1];
+                        break;
+                    default:
+                        // error reading the string! consider the whole scanf a failure!
+                        // Will need to add other format parsing here if there is something else to read
+                        // instead.-TJE
+                        sysFsInfo->driver_info.driverMajorVersion = UINT32_C(0);
+                        sysFsInfo->driver_info.driverMinorVersion = UINT32_C(0);
+                        sysFsInfo->driver_info.driverRevision     = UINT32_C(0);
+                        sysFsInfo->driver_info.driverBuildNumber  = UINT32_C(0);
+                        break;
                     }
-                    close_sysfs_file(&versionFile);
+                }
+                else
+                {
+                    sysFsInfo->driver_info.driverMajorVersion = UINT32_C(0);
+                    sysFsInfo->driver_info.driverMinorVersion = UINT32_C(0);
+                    sysFsInfo->driver_info.driverRevision     = UINT32_C(0);
+                    sysFsInfo->driver_info.driverBuildNumber  = UINT32_C(0);
                 }
             }
+            safe_free(&versionFileData);
+            close_sysfs_file(&versionFile);
         }
         char* drvPathDup = M_NULLPTR;
-        ;
         if (safe_strdup(&drvPathDup, driverPath) == 0 && drvPathDup != M_NULLPTR)
         {
             snprintf_err_handle(sysFsInfo->driver_info.driverName, MAX_DRIVER_NAME, "%s", basename(drvPathDup));
             safe_free(&drvPathDup);
         }
         safe_free(&driverVersionFilePath);
-    }
-}
-
-static void trim_ctrl_from_line(char *line, size_t linelen)
-{
-    for (size_t offset = SIZE_T_C(0); offset < linelen; offset++)
-    {
-        if (safe_iscntrl(line[offset]))
-        {
-            line[offset] = 0;
-        }
     }
 }
 
@@ -2142,7 +2123,8 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
 
     if (localSenseBuffer != M_NULLPTR)
     {
-        safe_memcpy(scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, localSenseBuffer, SPC3_SENSE_LEN);
+        safe_memcpy(scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, localSenseBuffer,
+                    SPC3_SENSE_LEN);
     }
 
     // print_io_hdr(&io_hdr);
