@@ -5798,6 +5798,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     ret = fill_Drive_Info_Data(device);
                     if (ret != SUCCESS)
                     {
+                        DECLARE_ZERO_INIT_ARRAY(uint8_t, tempident, IDENTIFY_BUFFER_SIZE);
                         // if we are here, then we are likely dealing with an old legacy driver that doesn't support
                         // these other IOs we've been trying...so fall back to some good old legacy stuff that may still
                         // not work. - TJE
@@ -5805,25 +5806,24 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                         // test an identify command with IDE pass-through
                         device->os_info.ioType = WIN_IOCTL_IDE_PASSTHROUGH_ONLY;
                         // Try an identify command. Should we use check power mode command instead???
-                        if (SUCCESS == ata_Identify(device,
-                                                    C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
-                                                    sizeof(tAtaIdentifyData)) ||
-                            SUCCESS == ata_Identify_Packet_Device(
-                                           device, C_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
-                                           sizeof(tAtaIdentifyData)))
+                        
+                        if (SUCCESS == get_Identify_Data(device,
+                                                    tempident,
+                                                    IDENTIFY_BUFFER_SIZE))
                         {
                             idePassThroughSupported = true;
                         }
-                        // NOLINTBEGIN(bugprone-branch-clone)
-                        if (device->os_info.winSMARTCmdSupport.smartIOSupported && idePassThroughSupported)
+                        if (device->os_info.winSMARTCmdSupport.smartIOSupported)
                         {
-                            device->os_info.ioType = WIN_IOCTL_SMART_AND_IDE;
+                            if (idePassThroughSupported)
+                            {
+                                device->os_info.ioType = WIN_IOCTL_SMART_AND_IDE;
+                            }
+                            else
+                            {
+                                device->os_info.ioType = WIN_IOCTL_SMART_ONLY;
+                            }
                         }
-                        else if (device->os_info.winSMARTCmdSupport.smartIOSupported && !idePassThroughSupported)
-                        {
-                            device->os_info.ioType = WIN_IOCTL_SMART_ONLY;
-                        }
-                        // NOLINTEND(bugprone-branch-clone)
                         device->os_info.osReadWriteRecommended = true;
                         ret                                    = fill_Drive_Info_Data(device);
                         checkForCSMI = false; // if we are using any of these limited, old IOCTLs, it is extremely

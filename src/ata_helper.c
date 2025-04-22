@@ -1100,7 +1100,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
     RESTORE_NONNULL_COMPARE
 }
 
-static eReturnValues get_Identify_Data(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
+eReturnValues get_Identify_Data(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues ret = FAILURE;
 

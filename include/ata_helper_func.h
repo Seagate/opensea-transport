@@ -506,6 +506,24 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
+    //  get_Identify_Data()
+    //
+    //! \brief   This will send identify or identify packet and check that the returned data is non-zero
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to tDevice structure
+    //!   \param[out] ptrData = pointer to the data buffer to be filled in with identify data
+    //!   \param[in] dataSize = the size of the data buffer to be filled in (should always be 512)
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 2) M_PARAM_RW(1) M_PARAM_WO_SIZE(2, 3) 
+    eReturnValues get_Identify_Data(tDevice* device, uint8_t* ptrData, uint32_t dataSize);
+
+    //-----------------------------------------------------------------------------
+    //
     //  ata_Security_Disable_Password()
     //
     //! \brief   Description:  Function to send a ATA Security Disable Password command to a device
