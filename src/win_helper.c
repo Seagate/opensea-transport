@@ -5798,7 +5798,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     ret = fill_Drive_Info_Data(device);
                     if (ret != SUCCESS)
                     {
-                        DECLARE_ZERO_INIT_ARRAY(uint8_t, tempident, IDENTIFY_BUFFER_SIZE);
+                        DECLARE_ZERO_INIT_ARRAY(uint8_t, tempident, 512);
                         // if we are here, then we are likely dealing with an old legacy driver that doesn't support
                         // these other IOs we've been trying...so fall back to some good old legacy stuff that may still
                         // not work. - TJE
@@ -5809,7 +5809,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                         
                         if (SUCCESS == get_Identify_Data(device,
                                                     tempident,
-                                                    IDENTIFY_BUFFER_SIZE))
+                                                    512))
                         {
                             idePassThroughSupported = true;
                         }
