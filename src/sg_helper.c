@@ -389,6 +389,7 @@ M_NODISCARD static bool get_Driver_Version_Info_From_String(const char* driverve
     // major.minor.rev
     // major.minor.rev[build]-string
     // There may be more.
+    printf("Driver version string = \"%s\"\n", driververstr);
     if (driververstr && versionlist && versionlistlen == DRIVER_VERSION_LIST_LENGTH &&
         versionCount) // require 4 spaces for the current parsing based off of what is commented above
     {
@@ -499,6 +500,7 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
 
         struct stat driverversionstat;
         safe_memset(&driverversionstat, sizeof(struct stat), 0, sizeof(struct stat));
+        printf("Driver version file path: %s\n", driverVersionFilePath);
         if (0 == stat(driverVersionFilePath, &driverversionstat))
         {
             off_t versionFileSize = driverversionstat.st_size;
@@ -506,14 +508,18 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
             {
                 FILE*   versionFile = M_NULLPTR;
                 errno_t fileopenerr = safe_fopen(&versionFile, driverVersionFilePath, "r");
-                if (fileopenerr == 0 && versionFile)
+                printf("Attempting to open driver version file = %d\n", fileopenerr);
+                if (fileopenerr == 0 && versionFile != M_NULLPTR)
                 {
                     char* versionFileData =
                         M_REINTERPRET_CAST(char*, safe_calloc(C_CAST(size_t, versionFileSize) + 1, sizeof(char)));
-                    if (versionFileData)
+                        printf("Allocating memory to read file\n");
+                    if (versionFileData != M_NULLPTR)
                     {
-                        if (C_CAST(size_t, versionFileSize) ==
-                                fread(versionFileData, sizeof(char), C_CAST(size_t, versionFileSize), versionFile) &&
+                        size_t freadres = fread(versionFileData, sizeof(char), C_CAST(size_t, versionFileSize), versionFile);
+                        printf("Reading file. Expected size: %zu\tgot: %zu\n",C_CAST(size_t, versionFileSize), freadres );
+                        if (C_CAST(size_t, versionFileSize) == freadres
+                                 &&
                             !ferror(versionFile))
                         {
                             printf("versionFileData = %s\n", versionFileData);
@@ -586,6 +592,17 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
     }
 }
 
+static void trim_ctrl_from_line(char *line, size_t linelen)
+{
+    for (size_t offset = SIZE_T_C(0); offset < linelen; offset++)
+    {
+        if (safe_iscntrl(line[offset]))
+        {
+            line[offset] = 0;
+        }
+    }
+}
+
 static bool read_sysfs_file_uint8(FILE* sysfsfile, uint8_t* value)
 {
     bool success = false;
@@ -595,6 +612,7 @@ static bool read_sysfs_file_uint8(FILE* sysfsfile, uint8_t* value)
         size_t linelen = SIZE_T_C(0);
         if (getline(&line, &linelen, sysfsfile) != SSIZE_T_C(-1))
         {
+            trim_ctrl_from_line(line, linelen);
             success = get_And_Validate_Integer_Input_Uint8(line, M_NULLPTR, ALLOW_UNIT_NONE, value);
             safe_free(&line);
         }
@@ -611,6 +629,7 @@ static bool read_sysfs_file_uint16(FILE* sysfsfile, uint16_t* value)
         size_t linelen = SIZE_T_C(0);
         if (getline(&line, &linelen, sysfsfile) != SSIZE_T_C(-1))
         {
+            trim_ctrl_from_line(line, linelen);
             success = get_And_Validate_Integer_Input_Uint16(line, M_NULLPTR, ALLOW_UNIT_NONE, value);
             safe_free(&line);
         }
@@ -627,6 +646,7 @@ static bool read_sysfs_file_uint32(FILE* sysfsfile, uint32_t* value)
         size_t linelen = SIZE_T_C(0);
         if (getline(&line, &linelen, sysfsfile) != SSIZE_T_C(-1))
         {
+            trim_ctrl_from_line(line, linelen);
             success = get_And_Validate_Integer_Input_Uint32(line, M_NULLPTR, ALLOW_UNIT_NONE, value);
             safe_free(&line);
         }
@@ -659,7 +679,6 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
         if (pciPath)
         {
             snprintf_err_handle(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
-            // printf("shortened Path = %s\n", dirname(pciPath));
             FILE*   temp        = M_NULLPTR;
             errno_t fileopenerr = safe_fopen(&temp, pciPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
@@ -1003,7 +1022,6 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
         if (pciPath)
         {
             snprintf_err_handle(pciPath, PATH_MAX, "%.*s/vendor", C_CAST(int, newStrLen), fullPciPath);
-            // printf("Shortened PCI Path: %s\n", dirname(pciPath));
             FILE*   temp        = M_NULLPTR;
             errno_t fileopenerr = safe_fopen(&temp, pciPath, "r");
             if (fileopenerr == 0 && temp != M_NULLPTR)
@@ -1246,7 +1264,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                         {
                             get_SYS_FS_1394_Info(inHandleLink, sysFsInfo);
                         }
-                        // if the link doesn't conatin ata or usb in it, then we are assuming it's scsi since scsi
+                        // if the link doesn't contain ata or usb in it, then we are assuming it's scsi since scsi
                         // doesn't have a nice simple string to check
                         else
                         {
@@ -2120,6 +2138,11 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
                 print_Errno_To_Screen(errno);
             }
         }
+    }
+
+    if (localSenseBuffer != M_NULLPTR)
+    {
+        safe_memcpy(scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, localSenseBuffer, SPC3_SENSE_LEN);
     }
 
     // print_io_hdr(&io_hdr);
