@@ -220,10 +220,15 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
     return ret;
 }
 
+// Man page suggests not transferring more than 16MB.
+// This is used to fill in adapter max transfer length by default.
+// If the IOCTL for USCSIMAXXFER passes, then we use that value instead
+#define MAX_REC_XFER_SIZE_16MB 16777216
+
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-
+    uscsi_xfer_t maxXfer = 0;
     if ((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
     {
         perror("open");
@@ -235,6 +240,14 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     device->os_info.osType = OS_SOLARIS;
     device->os_info.minimumAlignment =
         sizeof(void*); // setting to be compatible with certain aligned memory allocation functions.
+
+    device->os_info.adapterMaxTransferSize = MAX_REC_XFER_SIZE_16MB;
+    #if defined (USCSIMAXXFER)
+    if (0 >= ioctl(device->os_info.fd, USCSIMAXXFER, &maxXfer) && maxXfer > 0)
+    {
+        device->os_info.adapterMaxTransferSize = M_STATIC_CAST(uint32_t, M_Min(maxXfer, UINT32_MAX));
+    }
+    #endif // USCSIMAXXFER
 
     // Adding support for different device discovery options.
     if (device->dFlags == OPEN_HANDLE_ONLY)
@@ -434,6 +447,16 @@ eReturnValues send_uscsi_io(ScsiIoCtx* scsiIoCtx)
             perror("send_IO");
         }
     }
+
+    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
+    {
+        printf("USCSI Results\n");
+        printf("\tSCSI Status: %hu\n", uscsi_io.uscsi_status);
+        printf("\tResid: %zu\n", uscsi_io.uscsi_resid);
+        printf("\tRQS SCSI Status: %hu\n", uscsi_io.uscsi_rqstatus);
+        printf("\tRQS Resid: %hhu\n", uscsi_io.uscsi_rqresid);
+    }
+
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     return ret;
 }
