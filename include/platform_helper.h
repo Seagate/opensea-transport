@@ -12,13 +12,13 @@
 
 #if defined(UEFI_C_SOURCE)
 #    include "uefi_helper.h"
-#elif defined(__linux__) || defined(__DragonFly__)
+#elif defined(__linux__)
 #    if defined(VMK_CROSS_COMP)
 #        include "vm_helper.h"
 #    else
 #        include "sg_helper.h"
 #    endif
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #    include "cam_helper.h"
 #elif defined(__NetBSD__)
 #    error "Need a NetBSD passthrough helper file"

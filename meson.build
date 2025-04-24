@@ -305,7 +305,7 @@ if target_machine.system() == 'linux'
       message('Auto-disabling NVMe support as no ioctl header can be found')
     endif
   endif
-elif target_machine.system() == 'freebsd'
+elif target_machine.system() == 'freebsd' or target_machine.system() == 'dragonfly'
   src_files += ['src/cam_helper.c']
   cam_dep = c.find_library('cam')
   os_deps += [cam_dep]
