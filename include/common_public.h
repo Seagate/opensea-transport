@@ -1474,6 +1474,10 @@ extern "C"
              adapterType; // can be helpful as there are some minor differences in required fields between adapter types
     uint32_t maxXferLength;  // maximum transfer length that was reported by the controller
     uint8_t  aixPadding[76]; // padding the structure out to keep same size as other OSs
+#elif defined (__sun)
+    int fd;
+    uint32_t adapterMaxTransferSize;
+    uint8_t otherPadd[106];
 #else                                // OS preprocessor checks
     int     fd; // some other nix system that only needs a integer file handle
     uint8_t otherPadd[110];
