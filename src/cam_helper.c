@@ -333,45 +333,6 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         // default to scsi drive and scsi interface
                         device->drive_info.drive_type     = SCSI_DRIVE;
                         device->drive_info.interface_type = SCSI_INTERFACE;
-                        // start checking what information we got from the OS
-                        if (cgd.protocol == PROTO_SCSI)
-                        {
-                            device->drive_info.interface_type = SCSI_INTERFACE;
-
-                            safe_memcpy(&device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1,
-                                        cgd.inq_data.vendor, SID_VENDOR_SIZE);
-                            safe_memcpy(&device->drive_info.product_identification, MODEL_NUM_LEN + 1,
-                                        cgd.inq_data.product, M_Min(MODEL_NUM_LEN, SID_PRODUCT_SIZE));
-                            safe_memcpy(&device->drive_info.product_revision, FW_REV_LEN + 1, cgd.inq_data.revision,
-                                        M_Min(FW_REV_LEN, SID_REVISION_SIZE));
-                            // cgd.serial_num is max of 256B. M_Min not used because this is much bigger than our
-                            // internal structure.-TJE
-                            safe_memcpy(&device->drive_info.serialNumber, SERIAL_NUM_LEN + 1, cgd.serial_num,
-                                        SERIAL_NUM_LEN);
-
-                            // remove ATA vs SCSI check as that will be performed in an above layer of the code.
-                        }
-                        else if (cgd.protocol == PROTO_ATA || cgd.protocol == PROTO_ATAPI)
-                        {
-                            device->drive_info.interface_type = IDE_INTERFACE;
-                            device->drive_info.drive_type     = ATA_DRIVE;
-                            if (cgd.protocol == PROTO_ATAPI)
-                            {
-                                device->drive_info.drive_type = ATAPI_DRIVE;
-                            }
-                            safe_memcpy(&device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "ATA", 3);
-                            safe_memcpy(&device->drive_info.product_identification, MODEL_NUM_LEN + 1,
-                                        cgd.ident_data.model,
-                                        M_Min(MODEL_NUM_LEN, 40)); // 40 comes from ata_param stuct in the ata.h
-                            safe_memcpy(&device->drive_info.product_revision, FW_REV_LEN + 1, cgd.ident_data.revision,
-                                        M_Min(FW_REV_LEN, 8)); // 8 comes from ata_param stuct in the ata.h
-                            safe_memcpy(&device->drive_info.serialNumber, SERIAL_NUM_LEN + 1, cgd.ident_data.serial,
-                                        M_Min(SERIAL_NUM_LEN, 20)); // 20 comes from ata_param stuct in the ata.h
-                        }
-                        else
-                        {
-                            printf("Unsupported interface %d\n", cgd.protocol);
-                        }
                         // get interface info
                         CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
                         ccb->ccb_h.func_code = XPT_PATH_INQ;
@@ -385,6 +346,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                 {
                                 case XPORT_SATA:
                                 case XPORT_ATA:
+                                    device->drive_info.drive_type     = ATA_DRIVE;
                                     device->drive_info.interface_type =
                                         IDE_INTERFACE; // Seeing IDE may look strange, but that is how old code was
                                                        // written to identify an ATA interface regardless of parallel or
