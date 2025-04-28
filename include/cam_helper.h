@@ -40,7 +40,9 @@ extern "C"
 #include <string.h>
 #include <unistd.h>
 
+#if !defined (__DragonFly__)
 #include <cam/ata/ata_all.h>
+#endif //!__DragonFly__
 #include <cam/cam.h>
 #include <cam/cam_ccb.h>
 #include <cam/cam_debug.h>

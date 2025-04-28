@@ -512,14 +512,19 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     }
     else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
     {
-        if (scsiIoCtx->pAtaCmdOpts)
-        {
-            ret = send_Ata_Cam_IO(scsiIoCtx);
-        }
-        else
-        {
-            ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
-        }
+        #if defined (__DragonFly__)
+            //Dragonfly BSD has SCSI translation in ahci_cam.c
+            ret = send_Scsi_Cam_IO(scsiIoCtx);
+        #else
+            if (scsiIoCtx->pAtaCmdOpts)
+            {
+                ret = send_Ata_Cam_IO(scsiIoCtx);
+            }
+            else
+            {
+                ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
+            }
+        #endif //__DragonFly__
     }
     else if (scsiIoCtx->device->drive_info.interface_type == RAID_INTERFACE)
     {
@@ -555,6 +560,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
+#if !defined (__DragonFly__)
 eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues     ret       = SUCCESS;
@@ -893,6 +899,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 
     return ret;
 }
+#endif //__DragonFly__
 
 eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
 {
