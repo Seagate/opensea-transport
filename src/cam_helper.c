@@ -57,6 +57,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
     return true;
 }
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
 static bool is_NVMe_Handle(char* handle)
 {
     bool isNVMeDevice = false;
@@ -69,6 +70,7 @@ static bool is_NVMe_Handle(char* handle)
     }
     return isNVMeDevice;
 }
+#endif // !DISABLE_NVME_PASSTHROUGH
 
 static M_INLINE void safe_free_statfs(struct statfs** fs)
 {
@@ -333,45 +335,6 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         // default to scsi drive and scsi interface
                         device->drive_info.drive_type     = SCSI_DRIVE;
                         device->drive_info.interface_type = SCSI_INTERFACE;
-                        // start checking what information we got from the OS
-                        if (cgd.protocol == PROTO_SCSI)
-                        {
-                            device->drive_info.interface_type = SCSI_INTERFACE;
-
-                            safe_memcpy(&device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1,
-                                        cgd.inq_data.vendor, SID_VENDOR_SIZE);
-                            safe_memcpy(&device->drive_info.product_identification, MODEL_NUM_LEN + 1,
-                                        cgd.inq_data.product, M_Min(MODEL_NUM_LEN, SID_PRODUCT_SIZE));
-                            safe_memcpy(&device->drive_info.product_revision, FW_REV_LEN + 1, cgd.inq_data.revision,
-                                        M_Min(FW_REV_LEN, SID_REVISION_SIZE));
-                            // cgd.serial_num is max of 256B. M_Min not used because this is much bigger than our
-                            // internal structure.-TJE
-                            safe_memcpy(&device->drive_info.serialNumber, SERIAL_NUM_LEN + 1, cgd.serial_num,
-                                        SERIAL_NUM_LEN);
-
-                            // remove ATA vs SCSI check as that will be performed in an above layer of the code.
-                        }
-                        else if (cgd.protocol == PROTO_ATA || cgd.protocol == PROTO_ATAPI)
-                        {
-                            device->drive_info.interface_type = IDE_INTERFACE;
-                            device->drive_info.drive_type     = ATA_DRIVE;
-                            if (cgd.protocol == PROTO_ATAPI)
-                            {
-                                device->drive_info.drive_type = ATAPI_DRIVE;
-                            }
-                            safe_memcpy(&device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "ATA", 3);
-                            safe_memcpy(&device->drive_info.product_identification, MODEL_NUM_LEN + 1,
-                                        cgd.ident_data.model,
-                                        M_Min(MODEL_NUM_LEN, 40)); // 40 comes from ata_param stuct in the ata.h
-                            safe_memcpy(&device->drive_info.product_revision, FW_REV_LEN + 1, cgd.ident_data.revision,
-                                        M_Min(FW_REV_LEN, 8)); // 8 comes from ata_param stuct in the ata.h
-                            safe_memcpy(&device->drive_info.serialNumber, SERIAL_NUM_LEN + 1, cgd.ident_data.serial,
-                                        M_Min(SERIAL_NUM_LEN, 20)); // 20 comes from ata_param stuct in the ata.h
-                        }
-                        else
-                        {
-                            printf("Unsupported interface %d\n", cgd.protocol);
-                        }
                         // get interface info
                         CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
                         ccb->ccb_h.func_code = XPT_PATH_INQ;
@@ -385,6 +348,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                 {
                                 case XPORT_SATA:
                                 case XPORT_ATA:
+                                    device->drive_info.drive_type     = ATA_DRIVE;
                                     device->drive_info.interface_type =
                                         IDE_INTERFACE; // Seeing IDE may look strange, but that is how old code was
                                                        // written to identify an ATA interface regardless of parallel or
@@ -409,7 +373,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                     }
                                     break;
                                 case XPORT_SAS:
-                                case XPORT_ISCSI:
+                                //case XPORT_ISCSI: //Only in freeBSD. Since this falls into default, just commenting it out - TJE
                                 case XPORT_SSA:
                                 case XPORT_FC:
                                 case XPORT_UNSPECIFIED:
@@ -512,14 +476,19 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     }
     else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
     {
-        if (scsiIoCtx->pAtaCmdOpts)
-        {
-            ret = send_Ata_Cam_IO(scsiIoCtx);
-        }
-        else
-        {
-            ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
-        }
+        #if defined (__DragonFly__)
+            //Dragonfly BSD has SCSI translation in ahci_cam.c
+            ret = send_Scsi_Cam_IO(scsiIoCtx);
+        #else
+            if (scsiIoCtx->pAtaCmdOpts)
+            {
+                ret = send_Ata_Cam_IO(scsiIoCtx);
+            }
+            else
+            {
+                ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
+            }
+        #endif //__DragonFly__
     }
     else if (scsiIoCtx->device->drive_info.interface_type == RAID_INTERFACE)
     {
@@ -555,6 +524,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
+#if !defined (__DragonFly__)
 eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues     ret       = SUCCESS;
@@ -893,6 +863,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 
     return ret;
 }
+#endif //__DragonFly__
 
 eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
 {
@@ -982,13 +953,12 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
         case XFER_DATA_OUT:
             csio->ccb_h.flags = CAM_DIR_OUT;
             break;
+        #if !defined (__DragonFly__)
         case XFER_DATA_OUT_IN:
         case XFER_DATA_IN_OUT:
             csio->ccb_h.flags = CAM_DIR_BOTH;
             break;
-            // case SG_DXFER_UNKNOWN:
-            // io_hdr.dxfer_direction = SG_DXFER_UNKNOWN;
-            // break;
+        #endif // __DragonFly
             // NOLINTEND(bugprone-branch-clone)
         default:
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
@@ -1075,20 +1045,9 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
             if (((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_SCSI_STATUS_ERROR) &&
                 (ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND) && ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0))
             {
-                safe_memcpy(scsiIoCtx->psense, (scsiIoCtx->senseDataSize), &csio->sense_data.error_code,
-                            sizeof(uint8_t));
-                safe_memcpy(scsiIoCtx->psense + 1, (scsiIoCtx->senseDataSize) - 1, &csio->sense_data.sense_buf[0],
-                            (scsiIoCtx->senseDataSize) - 1);
-#if defined(_DEBUG)
-                printf("%s error code %d, sense [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
-                   [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",
-                       __FUNCTION__, csio->sense_data.error_code, csio->sense_data.sense_buf[0],
-                       csio->sense_data.sense_buf[1], csio->sense_data.sense_buf[2], csio->sense_data.sense_buf[3],
-                       csio->sense_data.sense_buf[4], csio->sense_data.sense_buf[5], csio->sense_data.sense_buf[6],
-                       csio->sense_data.sense_buf[7], csio->sense_data.sense_buf[8], csio->sense_data.sense_buf[9],
-                       csio->sense_data.sense_buf[10], csio->sense_data.sense_buf[11], csio->sense_data.sense_buf[12],
-                       csio->sense_data.sense_buf[13], csio->sense_data.sense_buf[14], csio->sense_data.sense_buf[15]);
-#endif
+                // NOTE: for portability between dragonfly and freebsd, point to the structure rather than the contents to copy
+                safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &csio->sense_data,
+                            SSD_FULL_SIZE);
             }
         }
         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -1197,13 +1156,15 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
     int num_ada_devs  = 0;
     int num_nvme_devs = 0;
 
-    struct dirent** danamelist;
-    struct dirent** adanamelist;
-    struct dirent** nvmenamelist;
+    struct dirent** danamelist = M_NULLPTR;
+    struct dirent** adanamelist = M_NULLPTR;
+    struct dirent** nvmenamelist = M_NULLPTR;
 
     num_da_devs   = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs  = scandir("/dev", &adanamelist, ada_filter, alphasort);
+    #if !defined (DISABLE_NVME_PASSTHROUGH)
     num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
+    #endif
 
     // free the list of names to not leak memory
     for (int iter = 0; iter < num_da_devs; ++iter)
@@ -1284,9 +1245,9 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     uint32_t num_ada_devs  = UINT32_C(0);
     uint32_t num_nvme_devs = UINT32_C(0);
 
-    struct dirent** danamelist;
-    struct dirent** adanamelist;
-    struct dirent** nvmenamelist;
+    struct dirent** danamelist = M_NULLPTR;
+    struct dirent** adanamelist = M_NULLPTR;
+    struct dirent** nvmenamelist = M_NULLPTR;
 
     scandirres = scandir("/dev", &danamelist, da_filter, alphasort);
     if (scandirres > 0)
@@ -1298,11 +1259,13 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         num_ada_devs = C_CAST(uint32_t, scandirres);
     }
+    #if !defined (DISABLE_NVME_PASSTHROUGH)
     scandirres = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
     if (scandirres > 0)
     {
         num_nvme_devs = C_CAST(uint32_t, scandirres);
     }
+    #endif
     uint32_t totalDevs = num_da_devs + num_ada_devs + num_nvme_devs;
 
     char**   devs = M_REINTERPRET_CAST(char**, safe_calloc(totalDevs + 1, sizeof(char*)));
@@ -1351,7 +1314,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
         for (driveNumber = UINT32_C(0);
-             ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) &&
+             ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) &&
               found < numberOfDevices);
              ++driveNumber)
         {
@@ -1499,6 +1462,7 @@ eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice* device)
 eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 {
 #if defined(DISABLE_NVME_PASSTHROUGH)
+    M_USE_UNUSED(nvmeIoCtx);
     return OS_COMMAND_NOT_AVAILABLE;
 #else // DISABLE_NVME_PASSTHROUGH
     eReturnValues ret         = SUCCESS;
@@ -1662,6 +1626,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
 
     return ret;
 #else  // DISABLE_NVME_PASSTHROUGH
+    M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 #endif // DISABLE_NVME_PASSTHROUGH
 }

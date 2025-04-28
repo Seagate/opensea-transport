@@ -1450,7 +1450,7 @@ extern "C"
 #    else
     uint8_t paddWin[44];
 #    endif // Win64 for padding
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined (__DragonFly__)
     int fd; // used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but
             // kept here just in case)
     struct cam_device* cam_dev; // holds fd inside for CAM devices among other information
