@@ -228,7 +228,9 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
     eReturnValues ret = SUCCESS;
+    #if defined (USCSIMAXXFER)
     uscsi_xfer_t maxXfer = 0;
+    #endif // USCSIMAXXFER
     if ((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
     {
         perror("open");
