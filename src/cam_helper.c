@@ -57,6 +57,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
     return true;
 }
 
+#if !defined (DISABLE_NVME_PASSTHROUGH)
 static bool is_NVMe_Handle(char* handle)
 {
     bool isNVMeDevice = false;
@@ -69,6 +70,7 @@ static bool is_NVMe_Handle(char* handle)
     }
     return isNVMeDevice;
 }
+#endif // !DISABLE_NVME_PASSTHROUGH
 
 static M_INLINE void safe_free_statfs(struct statfs** fs)
 {
@@ -1154,9 +1156,9 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
     int num_ada_devs  = 0;
     int num_nvme_devs = 0;
 
-    struct dirent** danamelist;
-    struct dirent** adanamelist;
-    struct dirent** nvmenamelist;
+    struct dirent** danamelist = M_NULLPTR;
+    struct dirent** adanamelist = M_NULLPTR;
+    struct dirent** nvmenamelist = M_NULLPTR;
 
     num_da_devs   = scandir("/dev", &danamelist, da_filter, alphasort);
     num_ada_devs  = scandir("/dev", &adanamelist, ada_filter, alphasort);
@@ -1243,9 +1245,9 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     uint32_t num_ada_devs  = UINT32_C(0);
     uint32_t num_nvme_devs = UINT32_C(0);
 
-    struct dirent** danamelist;
-    struct dirent** adanamelist;
-    struct dirent** nvmenamelist;
+    struct dirent** danamelist = M_NULLPTR;
+    struct dirent** adanamelist = M_NULLPTR;
+    struct dirent** nvmenamelist = M_NULLPTR;
 
     scandirres = scandir("/dev", &danamelist, da_filter, alphasort);
     if (scandirres > 0)
@@ -1312,7 +1314,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
         for (driveNumber = UINT32_C(0);
-             ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) &&
+             ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) &&
               found < numberOfDevices);
              ++driveNumber)
         {
@@ -1460,6 +1462,7 @@ eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice* device)
 eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 {
 #if defined(DISABLE_NVME_PASSTHROUGH)
+    M_USE_UNUSED(nvmeIoCtx);
     return OS_COMMAND_NOT_AVAILABLE;
 #else // DISABLE_NVME_PASSTHROUGH
     eReturnValues ret         = SUCCESS;
@@ -1623,6 +1626,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
 
     return ret;
 #else  // DISABLE_NVME_PASSTHROUGH
+    M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 #endif // DISABLE_NVME_PASSTHROUGH
 }
