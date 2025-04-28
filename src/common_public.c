@@ -1008,8 +1008,8 @@ void print_Low_Level_Info(tDevice* device)
             printf("\t\t\t\tMinor: %" PRIu8 "\n", device->os_info.sgDriverVersion.minorVersion);
             printf("\t\t\t\tRevision: %" PRIu8 "\n", device->os_info.sgDriverVersion.revision);
         }
-#elif defined(__FreeBSD__)
-        printf("\t\t---FreeBSD Unique info---\n");
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
+        printf("\t\t---FreeBSD/DragonFlyBSD Unique info---\n");
         if (device->os_info.fd > 0)
         {
             printf("\t\t\tFD is valid\n");
