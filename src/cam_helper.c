@@ -371,7 +371,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                     }
                                     break;
                                 case XPORT_SAS:
-                                case XPORT_ISCSI:
+                                //case XPORT_ISCSI: //Only in freeBSD. Since this falls into default, just commenting it out - TJE
                                 case XPORT_SSA:
                                 case XPORT_FC:
                                 case XPORT_UNSPECIFIED:
@@ -951,13 +951,12 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
         case XFER_DATA_OUT:
             csio->ccb_h.flags = CAM_DIR_OUT;
             break;
+        #if !defined (__DragonFly__)
         case XFER_DATA_OUT_IN:
         case XFER_DATA_IN_OUT:
             csio->ccb_h.flags = CAM_DIR_BOTH;
             break;
-            // case SG_DXFER_UNKNOWN:
-            // io_hdr.dxfer_direction = SG_DXFER_UNKNOWN;
-            // break;
+        #endif // __DragonFly
             // NOLINTEND(bugprone-branch-clone)
         default:
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
