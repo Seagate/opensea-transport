@@ -1840,7 +1840,7 @@ extern "C"
 #    define MAX_CMD_TIMEOUT_SECONDS 108000
 #elif defined(__linux__)
 #    define MAX_CMD_TIMEOUT_SECONDS 4294967
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined (__DragonFly__)
 #    define MAX_CMD_TIMEOUT_SECONDS 4294967
 #elif defined(__sun)
 #    define MAX_CMD_TIMEOUT_SECONDS 65535
