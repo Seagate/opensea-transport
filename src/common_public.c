@@ -3828,6 +3828,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength =
             262144; // 256KiB according to documentation.
         break;
+    case 0x208C: // Basic SSD
     case 0x208E:
         passthroughHacksSet                                                       = true;
         device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
