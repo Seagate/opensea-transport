@@ -616,7 +616,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
         for (driveNumber = UINT32_C(0);
-             ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) &&
+             ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) &&
               (found < numberOfDevices));
              ++driveNumber)
         {
