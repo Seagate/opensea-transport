@@ -71,7 +71,7 @@ void print_Low_Level_Info(tDevice* device)
             printf("HDD\n");
             break;
         case MEDIA_SSD:
-            printf("SDD\n");
+            printf("SSD\n");
             break;
         case MEDIA_SSM_FLASH:
             printf("SSM Flash\n");

@@ -3380,9 +3380,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             // care about to store info in the device struct
             safe_memset(inq_buf, INQ_RETURN_DATA_LENGTH, 0, INQ_RETURN_DATA_LENGTH);
             bool dummyUpVPDSupport = false;
-            if (device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable ||
-                (!device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable &&
-                 SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, SUPPORTED_VPD_PAGES, true, false)))
+            if ((device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable && device->drive_info.passThroughHacks.scsiHacks.noVPDPages) ||
+                SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, SUPPORTED_VPD_PAGES, true, false))
             {
                 // for whatever reason, this device didn't return support for the list of supported pages, so set a flag
                 // telling us to dummy up a list so that we can still attempt to issue commands to pages we do need to
@@ -3413,7 +3412,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 inq_buf[0] |= peripheralDeviceType;
                 // set page code
                 inq_buf[1] = 0x00;
-                if (device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)
+                if (device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable && device->drive_info.passThroughHacks.scsiHacks.noVPDPages)
                 {
                     // If this is set, then this means that the device ONLY supports the unit SN page, but not other.
                     // Only add unit serial number to this dummied data. This is a workaround for some USB devices.
