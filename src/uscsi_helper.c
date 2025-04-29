@@ -57,7 +57,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
 Return the device name without the path.
 e.g. return c?t?d? from /dev/rdsk/c?t?d?
 */
-static void set_Device_Name(const char* filename, char* name, int sizeOfName)
+static void set_Device_Name(const char* filename, char* name, size_t sizeOfName)
 {
     char* s = strrchr(filename, '/') + 1;
     snprintf_err_handle(name, sizeOfName, "%s", s);
