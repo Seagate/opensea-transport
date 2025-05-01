@@ -228,9 +228,9 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    #if defined (USCSIMAXXFER)
+#if defined(USCSIMAXXFER)
     uscsi_xfer_t maxXfer = 0;
-    #endif // USCSIMAXXFER
+#endif // USCSIMAXXFER
     if ((device->os_info.fd = open(filename, O_RDWR | O_NONBLOCK)) < 0)
     {
         perror("open");
@@ -244,12 +244,12 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         sizeof(void*); // setting to be compatible with certain aligned memory allocation functions.
 
     device->os_info.adapterMaxTransferSize = MAX_REC_XFER_SIZE_16MB;
-    #if defined (USCSIMAXXFER)
+#if defined(USCSIMAXXFER)
     if (0 >= ioctl(device->os_info.fd, USCSIMAXXFER, &maxXfer) && maxXfer > 0)
     {
         device->os_info.adapterMaxTransferSize = M_STATIC_CAST(uint32_t, M_Min(maxXfer, UINT32_MAX));
     }
-    #endif // USCSIMAXXFER
+#endif // USCSIMAXXFER
 
     // Adding support for different device discovery options.
     if (device->dFlags == OPEN_HANDLE_ONLY)
@@ -616,8 +616,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
         for (driveNumber = UINT32_C(0);
-             ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) &&
-              (found < numberOfDevices));
+             ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < num_rdsk) && (found < numberOfDevices));
              ++driveNumber)
         {
             if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)

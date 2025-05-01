@@ -57,7 +57,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
     return true;
 }
 
-#if !defined (DISABLE_NVME_PASSTHROUGH)
+#if !defined(DISABLE_NVME_PASSTHROUGH)
 static bool is_NVMe_Handle(char* handle)
 {
     bool isNVMeDevice = false;
@@ -348,7 +348,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                 {
                                 case XPORT_SATA:
                                 case XPORT_ATA:
-                                    device->drive_info.drive_type     = ATA_DRIVE;
+                                    device->drive_info.drive_type = ATA_DRIVE;
                                     device->drive_info.interface_type =
                                         IDE_INTERFACE; // Seeing IDE may look strange, but that is how old code was
                                                        // written to identify an ATA interface regardless of parallel or
@@ -373,7 +373,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                     }
                                     break;
                                 case XPORT_SAS:
-                                //case XPORT_ISCSI: //Only in freeBSD. Since this falls into default, just commenting it out - TJE
+                                // case XPORT_ISCSI: //Only in freeBSD. Since this falls into default, just commenting
+                                // it out - TJE
                                 case XPORT_SSA:
                                 case XPORT_FC:
                                 case XPORT_UNSPECIFIED:
@@ -476,19 +477,19 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     }
     else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
     {
-        #if defined (__DragonFly__)
-            //Dragonfly BSD has SCSI translation in ahci_cam.c
-            ret = send_Scsi_Cam_IO(scsiIoCtx);
-        #else
-            if (scsiIoCtx->pAtaCmdOpts)
-            {
-                ret = send_Ata_Cam_IO(scsiIoCtx);
-            }
-            else
-            {
-                ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
-            }
-        #endif //__DragonFly__
+#if defined(__DragonFly__)
+        // Dragonfly BSD has SCSI translation in ahci_cam.c
+        ret = send_Scsi_Cam_IO(scsiIoCtx);
+#else
+        if (scsiIoCtx->pAtaCmdOpts)
+        {
+            ret = send_Ata_Cam_IO(scsiIoCtx);
+        }
+        else
+        {
+            ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
+        }
+#endif //__DragonFly__
     }
     else if (scsiIoCtx->device->drive_info.interface_type == RAID_INTERFACE)
     {
@@ -524,7 +525,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-#if !defined (__DragonFly__)
+#if !defined(__DragonFly__)
 eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues     ret       = SUCCESS;
@@ -664,7 +665,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             }
             else if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
             {
-#if defined(ATA_FLAG_AUX) || defined(ATA_FLAG_ICC)
+#    if defined(ATA_FLAG_AUX) || defined(ATA_FLAG_ICC)
                 ataio->cmd.flags |= CAM_ATAIO_48BIT;
                 // NOLINTBEGIN(bugprone-branch-clone)
                 if (scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA ||
@@ -693,33 +694,33 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
                 ataio->cmd.sector_count_exp = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48;
                 if (scsiIoCtx->pAtaCmdOpts->tfr.icc)
                 {
-#    if defined(ATA_FLAG_ICC)
+#        if defined(ATA_FLAG_ICC)
                     // can set ICC
                     ataio->ata_flags |= ATA_FLAG_ICC;
                     ataio->icc = scsiIoCtx->pAtaCmdOpts->tfr.icc;
-#    else
+#        else
                     // cannot set ICC field
                     ret = OS_COMMAND_NOT_AVAILABLE;
-#    endif // ATA_FLAG_ICC
+#        endif // ATA_FLAG_ICC
                 }
                 if (scsiIoCtx->pAtaCmdOpts->tfr.aux1 || scsiIoCtx->pAtaCmdOpts->tfr.aux2 ||
                     scsiIoCtx->pAtaCmdOpts->tfr.aux3 || scsiIoCtx->pAtaCmdOpts->tfr.aux4)
                 {
-#    if defined(ATA_FLAG_AUX)
+#        if defined(ATA_FLAG_AUX)
                     // can set AUX
                     ataio->ata_flags |= ATA_FLAG_AUX;
                     ataio->aux =
                         M_BytesTo4ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.aux4, scsiIoCtx->pAtaCmdOpts->tfr.aux3,
                                             scsiIoCtx->pAtaCmdOpts->tfr.aux2, scsiIoCtx->pAtaCmdOpts->tfr.aux1);
-#    else
+#        else
                     // cannot set AUX field
                     ret = OS_COMMAND_NOT_AVAILABLE;
-#    endif // ATA_FLAG_ICC
+#        endif // ATA_FLAG_ICC
                 }
-#else  /* !AUX || !ICC*/
+#    else  /* !AUX || !ICC*/
                 // AUX and ICC are not available to be set in this version of freebsd
                 ret = OS_COMMAND_NOT_AVAILABLE;
-#endif /* ATA_FLAG_AUX || ATA_FLAG_ICC */
+#    endif /* ATA_FLAG_AUX || ATA_FLAG_ICC */
             }
             else
             {
@@ -730,7 +731,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             if (ret == SUCCESS)
             {
                 DECLARE_SEATIMER(commandTimer);
-#if defined(_DEBUG)
+#    if defined(_DEBUG)
                 printf("ATAIO: cmd=0x%02" PRIX8 " feat=0x%02" PRIX8 " lbalow=0x%02" PRIX8 " lbamid=0x%02" PRIX8
                        " lbahi=0x%02" PRIX8 " sc=0x%02" PRIX8 "\n",
                        ataio->cmd.command, ataio->cmd.features, ataio->cmd.lba_low, ataio->cmd.lba_mid,
@@ -741,7 +742,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
                        ataio->cmd.sector_count_exp);
 
                 printf("\tData Ptr %p, xfer len %d\n", ataio->data_ptr, ataio->dxfer_len);
-#endif
+#    endif
                 /* Always asking for the results at this time. */
                 ccb->ataio.cmd.flags |= CAM_ATAIO_NEEDRESULT;
                 start_Timer(&commandTimer);
@@ -787,9 +788,9 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
                     }
                     else
                     {
-#if defined(_DEBUG)
+#    if defined(_DEBUG)
                         printf("I/O went through status %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
-#endif
+#    endif
                     }
                     ret = SUCCESS;
 
@@ -953,13 +954,13 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
         case XFER_DATA_OUT:
             csio->ccb_h.flags = CAM_DIR_OUT;
             break;
-        #if !defined (__DragonFly__)
+#if !defined(__DragonFly__)
         case XFER_DATA_OUT_IN:
         case XFER_DATA_IN_OUT:
             csio->ccb_h.flags = CAM_DIR_BOTH;
             break;
-        #endif // __DragonFly
-            // NOLINTEND(bugprone-branch-clone)
+#endif // __DragonFly
+       // NOLINTEND(bugprone-branch-clone)
         default:
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
@@ -1045,9 +1046,9 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
             if (((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_SCSI_STATUS_ERROR) &&
                 (ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND) && ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0))
             {
-                // NOTE: for portability between dragonfly and freebsd, point to the structure rather than the contents to copy
-                safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &csio->sense_data,
-                            SSD_FULL_SIZE);
+                // NOTE: for portability between dragonfly and freebsd, point to the structure rather than the contents
+                // to copy
+                safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &csio->sense_data, SSD_FULL_SIZE);
             }
         }
         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -1156,15 +1157,15 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
     int num_ada_devs  = 0;
     int num_nvme_devs = 0;
 
-    struct dirent** danamelist = M_NULLPTR;
-    struct dirent** adanamelist = M_NULLPTR;
+    struct dirent** danamelist   = M_NULLPTR;
+    struct dirent** adanamelist  = M_NULLPTR;
     struct dirent** nvmenamelist = M_NULLPTR;
 
-    num_da_devs   = scandir("/dev", &danamelist, da_filter, alphasort);
-    num_ada_devs  = scandir("/dev", &adanamelist, ada_filter, alphasort);
-    #if !defined (DISABLE_NVME_PASSTHROUGH)
+    num_da_devs  = scandir("/dev", &danamelist, da_filter, alphasort);
+    num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
+#if !defined(DISABLE_NVME_PASSTHROUGH)
     num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
-    #endif
+#endif
 
     // free the list of names to not leak memory
     for (int iter = 0; iter < num_da_devs; ++iter)
@@ -1245,8 +1246,8 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     uint32_t num_ada_devs  = UINT32_C(0);
     uint32_t num_nvme_devs = UINT32_C(0);
 
-    struct dirent** danamelist = M_NULLPTR;
-    struct dirent** adanamelist = M_NULLPTR;
+    struct dirent** danamelist   = M_NULLPTR;
+    struct dirent** adanamelist  = M_NULLPTR;
     struct dirent** nvmenamelist = M_NULLPTR;
 
     scandirres = scandir("/dev", &danamelist, da_filter, alphasort);
@@ -1259,13 +1260,13 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         num_ada_devs = C_CAST(uint32_t, scandirres);
     }
-    #if !defined (DISABLE_NVME_PASSTHROUGH)
+#if !defined(DISABLE_NVME_PASSTHROUGH)
     scandirres = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
     if (scandirres > 0)
     {
         num_nvme_devs = C_CAST(uint32_t, scandirres);
     }
-    #endif
+#endif
     uint32_t totalDevs = num_da_devs + num_ada_devs + num_nvme_devs;
 
     char**   devs = M_REINTERPRET_CAST(char**, safe_calloc(totalDevs + 1, sizeof(char*)));
@@ -1314,9 +1315,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
         for (driveNumber = UINT32_C(0);
-             ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) &&
-              found < numberOfDevices);
-             ++driveNumber)
+             ((driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) && found < numberOfDevices); ++driveNumber)
         {
             if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
             {

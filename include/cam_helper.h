@@ -40,25 +40,25 @@ extern "C"
 #include <string.h>
 #include <unistd.h>
 
-#if !defined (__DragonFly__)
-#include <cam/ata/ata_all.h>
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-#include <cam/cam_debug.h>
-#include <cam/scsi/scsi_all.h>
-#include <cam/scsi/scsi_da.h>
-#include <cam/scsi/scsi_message.h>
-#include <cam/scsi/scsi_pass.h>
-#include <cam/scsi/smp_all.h>
+#if !defined(__DragonFly__)
+#    include <cam/ata/ata_all.h>
+#    include <cam/cam.h>
+#    include <cam/cam_ccb.h>
+#    include <cam/cam_debug.h>
+#    include <cam/scsi/scsi_all.h>
+#    include <cam/scsi/scsi_da.h>
+#    include <cam/scsi/scsi_message.h>
+#    include <cam/scsi/scsi_pass.h>
+#    include <cam/scsi/smp_all.h>
 #else
 // slightly different paths for dragonflybsd
-#include <bus/cam/cam.h>
-#include <bus/cam/cam_ccb.h>
-#include <bus/cam/cam_debug.h>
-#include <bus/cam/scsi/scsi_all.h>
-#include <bus/cam/scsi/scsi_da.h>
-#include <bus/cam/scsi/scsi_message.h>
-#include <bus/cam/scsi/scsi_pass.h>
+#    include <bus/cam/cam.h>
+#    include <bus/cam/cam_ccb.h>
+#    include <bus/cam/cam_debug.h>
+#    include <bus/cam/scsi/scsi_all.h>
+#    include <bus/cam/scsi/scsi_da.h>
+#    include <bus/cam/scsi/scsi_message.h>
+#    include <bus/cam/scsi/scsi_pass.h>
 #endif //!__DragonFly__
 #include <camlib.h>
 

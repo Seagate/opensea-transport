@@ -1450,7 +1450,7 @@ extern "C"
 #    else
     uint8_t paddWin[44];
 #    endif // Win64 for padding
-#elif defined(__FreeBSD__) || defined (__DragonFly__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
     int fd; // used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but
             // kept here just in case)
     struct cam_device* cam_dev; // holds fd inside for CAM devices among other information
@@ -1474,10 +1474,10 @@ extern "C"
              adapterType; // can be helpful as there are some minor differences in required fields between adapter types
     uint32_t maxXferLength;  // maximum transfer length that was reported by the controller
     uint8_t  aixPadding[76]; // padding the structure out to keep same size as other OSs
-#elif defined (__sun)
-    int fd;
+#elif defined(__sun)
+    int      fd;
     uint32_t adapterMaxTransferSize;
-    uint8_t otherPadd[106];
+    uint8_t  otherPadd[106];
 #else                                // OS preprocessor checks
     int     fd; // some other nix system that only needs a integer file handle
     uint8_t otherPadd[110];
@@ -1844,7 +1844,7 @@ extern "C"
 #    define MAX_CMD_TIMEOUT_SECONDS 108000
 #elif defined(__linux__)
 #    define MAX_CMD_TIMEOUT_SECONDS 4294967
-#elif defined(__FreeBSD__) || defined (__DragonFly__)
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
 #    define MAX_CMD_TIMEOUT_SECONDS 4294967
 #elif defined(__sun)
 #    define MAX_CMD_TIMEOUT_SECONDS 65535
