@@ -1950,11 +1950,11 @@ static eReturnValues private_Scsi_Read_Cap_16(tDevice* device, readCapacityData*
     if (SUCCESS == ret && !is_Empty(readCapData, READ_CAPACITY_16_LEN))
     {
         uint64_t* rd16lba    = M_REINTERPRET_CAST(uint64_t*, &readCapData[0]);
-        uint64_t* rd16BlkLen = M_REINTERPRET_CAST(uint64_t*, &readCapData[8]);
+        uint32_t* rd16BlkLen = M_REINTERPRET_CAST(uint32_t*, &readCapData[8]);
         if (*rd16lba != 0) // one more layer of bad USB device workaround
         {
             outputData->returnedLBA                           = be64_to_host(*rd16lba);
-            outputData->logicalBlockLength                    = be64_to_host(*rd16BlkLen);
+            outputData->logicalBlockLength                    = be32_to_host(*rd16BlkLen);
             outputData->readCap16                             = true;
             outputData->rcbasis                               = get_bit_range_uint8(readCapData[12], 5, 4);
             outputData->ptype                                 = get_bit_range_uint8(readCapData[12], 3, 1);
