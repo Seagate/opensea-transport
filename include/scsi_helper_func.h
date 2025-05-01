@@ -560,7 +560,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_WO(2)
-    eReturnValues scsi_Read_Capacity_Cmd_Helper(tDevice* device, readCapacityData* outputData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_Cmd_Helper(tDevice* device, readCapacityData* outputData);
 
     //-----------------------------------------------------------------------------
     //
