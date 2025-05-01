@@ -1937,6 +1937,113 @@ void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
     }
 }
 
+static eReturnValues private_Scsi_Read_Cap_16(tDevice* device, readCapacityData* outputData)
+{
+    uint8_t* readCapData = M_STATIC_CAST(
+        uint8_t*, safe_calloc_aligned(READ_CAPACITY_16_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+    if (readCapData == M_NULLPTR)
+    {
+        return MEMORY_FAILURE;
+    }
+    eReturnValues ret = scsi_Read_Capacity_16(device, readCapData, READ_CAPACITY_16_LEN);
+    // Check for empty data (USB issue) before accepting that this worked
+    if (SUCCESS == ret && !is_Empty(readCapData, READ_CAPACITY_16_LEN))
+    {
+        uint64_t* rd16lba    = M_REINTERPRET_CAST(uint64_t*, &readCapData[0]);
+        uint64_t* rd16BlkLen = M_REINTERPRET_CAST(uint64_t*, &readCapData[8]);
+        if (*rd16lba != 0) // one more layer of bad USB device workaround
+        {
+            outputData->returnedLBA                           = be64_to_host(*rd16lba);
+            outputData->logicalBlockLength                    = be64_to_host(*rd16BlkLen);
+            outputData->readCap16                             = true;
+            outputData->rcbasis                               = get_bit_range_uint8(readCapData[12], 5, 4);
+            outputData->ptype                                 = get_bit_range_uint8(readCapData[12], 3, 1);
+            outputData->protectionEnabled                     = M_ToBool(readCapData[12] & BIT0);
+            outputData->piexponent                            = get_bit_range_uint8(readCapData[13], 7, 4);
+            outputData->logicalBlocksPerPhysicalBlockExponent = get_bit_range_uint8(readCapData[13], 3, 0);
+            outputData->lbpme                                 = M_ToBool(readCapData[14] & BIT7);
+            outputData->lbprz                                 = M_ToBool(readCapData[14] & BIT6);
+            outputData->lowestAlignedLogicalBlock =
+                get_bit_range_uint16(M_BytesTo2ByteValue(readCapData[14], readCapData[15]), 13, 0);
+        }
+        else
+        {
+            ret = NOT_SUPPORTED;
+        }
+    }
+    else
+    {
+        ret = NOT_SUPPORTED;
+    }
+    safe_free_aligned(&readCapData);
+    return ret;
+}
+
+static eReturnValues private_Scsi_Read_Cap_10(tDevice* device, readCapacityData* outputData)
+{
+    uint8_t* readCapData = M_STATIC_CAST(
+        uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+    if (readCapData == M_NULLPTR)
+    {
+        return MEMORY_FAILURE;
+    }
+    eReturnValues ret = scsi_Read_Capacity_10(device, readCapData, READ_CAPACITY_10_LEN);
+    if (SUCCESS == ret)
+    {
+        uint32_t* rd10lba              = M_REINTERPRET_CAST(uint32_t*, &readCapData[0]);
+        uint32_t* rd10BlkLen           = M_REINTERPRET_CAST(uint32_t*, &readCapData[4]);
+        outputData->returnedLBA        = be32_to_host(*rd10lba);
+        outputData->logicalBlockLength = be32_to_host(*rd10BlkLen);
+        outputData->readCap16          = false;
+        if (outputData->returnedLBA == UINT32_MAX)
+        {
+            // Only if lba is UINT32_MAX do we do this attempt at read capacity 16
+            private_Scsi_Read_Cap_16(device, outputData);
+        }
+    }
+    safe_free_aligned(&readCapData);
+    return ret;
+}
+
+// There is a lot going on in this function. That is because old drives need the 10B command, new need 16B....but right
+// in between the two there were some drives produced with SBC2+ support, but still only supported the 10B command. Due
+// to this there are a few retries/fallbacks in here, but it will figure this out for the caller to make life easier
+eReturnValues scsi_Read_Capacity_Cmd_Helper(tDevice* device, readCapacityData* outputData)
+{
+    safe_memset(outputData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
+    if (device == M_NULLPTR || outputData == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
+    if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)
+    {
+        // 16B command added in SBC2. Not a better way to check, so using SPC3 version to decide at the moment since
+        // that is the version referenced by SBC2
+        if (SUCCESS == private_Scsi_Read_Cap_16(device, outputData))
+        {
+            return SUCCESS;
+        }
+        else
+        {
+            uint8_t senseKey = UINT8_C(0);
+            uint8_t asc      = UINT8_C(0);
+            uint8_t ascq     = UINT8_C(0);
+            uint8_t fru      = UINT8_C(0);
+            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq,
+                                       &fru);
+            if (senseKey == SENSE_KEY_MEDIUM_ERROR && asc == 0x31 && ascq == 0)
+            {
+                // since format corrupt, do not attempt to fallback to read capacity 10 since that will do the exact
+                // same thing
+                return FAILURE;
+            }
+        }
+    }
+    // no else here on purpose.
+    // if 16 completes without error it will return as needed, otherwise need to try 10B
+    return private_Scsi_Read_Cap_10(device, outputData);
+}
+
 eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device)
 {
     eReturnValues ret              = FAILURE;
@@ -3380,7 +3487,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             // care about to store info in the device struct
             safe_memset(inq_buf, INQ_RETURN_DATA_LENGTH, 0, INQ_RETURN_DATA_LENGTH);
             bool dummyUpVPDSupport = false;
-            if ((device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable && device->drive_info.passThroughHacks.scsiHacks.noVPDPages) ||
+            if ((device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable &&
+                 device->drive_info.passThroughHacks.scsiHacks.noVPDPages) ||
                 SUCCESS != scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, SUPPORTED_VPD_PAGES, true, false))
             {
                 // for whatever reason, this device didn't return support for the list of supported pages, so set a flag
@@ -3412,7 +3520,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 inq_buf[0] |= peripheralDeviceType;
                 // set page code
                 inq_buf[1] = 0x00;
-                if (device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable && device->drive_info.passThroughHacks.scsiHacks.noVPDPages)
+                if (device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable &&
+                    device->drive_info.passThroughHacks.scsiHacks.noVPDPages)
                 {
                     // If this is set, then this means that the device ONLY supports the unit SN page, but not other.
                     // Only add unit serial number to this dummied data. This is a workaround for some USB devices.
@@ -3717,101 +3826,38 @@ eReturnValues fill_In_Device_Info(tDevice* device)
 
         if (readCapacity && !mediumNotPresent)
         {
-            // if inquiry says SPC or lower (3), then only do read capacity 10
-            // Anything else can have read capacity 16 command available
-
-            // send a read capacity command to get the device's logical block size...read capacity 10 should be enough
-            // for this
-            uint8_t* readCapBuf = M_REINTERPRET_CAST(
-                uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
-            if (readCapBuf == M_NULLPTR)
+            readCapacityData readCapData;
+            safe_memset(&readCapData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
+            if (SUCCESS == scsi_Read_Capacity_Cmd_Helper(device, &readCapData))
             {
-                safe_free_aligned(&inq_buf);
-                return MEMORY_FAILURE;
-            }
-            if (SUCCESS == scsi_Read_Capacity_10(device, readCapBuf, READ_CAPACITY_10_LEN))
-            {
-                copy_Read_Capacity_Info(&device->drive_info.deviceBlockSize, &device->drive_info.devicePhyBlockSize,
-                                        &device->drive_info.deviceMaxLba, &device->drive_info.sectorAlignment,
-                                        readCapBuf, false);
-                if (version > 3) // SPC2 and higher can reference SBC2 and higher which introduced read capacity 16
+                device->drive_info.deviceBlockSize = readCapData.logicalBlockLength;
+                device->drive_info.deviceMaxLba    = readCapData.returnedLBA;
+                if (readCapData.readCap16)
                 {
-                    // try a read capacity 16 anyways and see if the data from that was valid or not since that will
-                    // give us a physical sector size whereas readcap10 data will not
-                    uint8_t* temp = M_REINTERPRET_CAST(
-                        uint8_t*, safe_realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN, READ_CAPACITY_16_LEN,
-                                                       device->os_info.minimumAlignment));
-                    if (temp == M_NULLPTR)
+                    device->drive_info.devicePhyBlockSize =
+                        readCapData.logicalBlockLength *
+                        power_Of_Two(readCapData.logicalBlocksPerPhysicalBlockExponent);
+                    device->drive_info.sectorAlignment       = readCapData.lowestAlignedLogicalBlock;
+                    device->drive_info.currentProtectionType = readCapData.ptype;
+                    device->drive_info.piExponent            = readCapData.piexponent;
+                    if (readCapData.protectionEnabled || readCapData.ptype != 0)
                     {
-                        safe_free_aligned(&readCapBuf);
-                        safe_free_aligned(&inq_buf);
-                        return MEMORY_FAILURE;
+                        checkForSAT = false;
                     }
-                    readCapBuf = temp;
-                    safe_memset(readCapBuf, READ_CAPACITY_16_LEN, 0, READ_CAPACITY_16_LEN);
-                    if (SUCCESS == scsi_Read_Capacity_16(device, readCapBuf, READ_CAPACITY_16_LEN))
-                    {
-                        uint32_t logicalBlockSize  = UINT32_C(0);
-                        uint32_t physicalBlockSize = UINT32_C(0);
-                        uint64_t maxLBA            = UINT64_C(0);
-                        uint16_t sectorAlignment   = UINT16_C(0);
-                        copy_Read_Capacity_Info(&logicalBlockSize, &physicalBlockSize, &maxLBA, &sectorAlignment,
-                                                readCapBuf, true);
-                        // some USB drives will return success and no data, so check if this local var is 0 or not...if
-                        // not, we can use this data
-                        if (maxLBA != 0)
-                        {
-                            device->drive_info.deviceBlockSize    = logicalBlockSize;
-                            device->drive_info.devicePhyBlockSize = physicalBlockSize;
-                            device->drive_info.deviceMaxLba       = maxLBA;
-                            device->drive_info.sectorAlignment    = sectorAlignment;
-                        }
-                        device->drive_info.currentProtectionType = 0;
-                        device->drive_info.piExponent            = get_bit_range_uint8(readCapBuf[13], 7, 4);
-                        if (readCapBuf[12] & BIT0)
-                        {
-                            device->drive_info.currentProtectionType = get_bit_range_uint8(readCapBuf[12], 3, 1) + 1;
-                            checkForSAT                              = false;
-                        }
-                    }
+                }
+                else
+                {
+                    device->drive_info.devicePhyBlockSize = readCapData.logicalBlockLength;
                 }
             }
             else
             {
-                // try read capacity 16, if that fails we are done trying
-                uint8_t* temp = M_REINTERPRET_CAST(uint8_t*, safe_realloc_aligned(readCapBuf, READ_CAPACITY_10_LEN,
-                                                                                  READ_CAPACITY_16_LEN,
-                                                                                  device->os_info.minimumAlignment));
-                if (temp == M_NULLPTR)
-                {
-                    safe_free_aligned(&readCapBuf);
-                    safe_free_aligned(&inq_buf);
-                    return MEMORY_FAILURE;
-                }
-                readCapBuf = temp;
-                safe_memset(readCapBuf, READ_CAPACITY_16_LEN, 0, READ_CAPACITY_16_LEN);
-                if (SUCCESS == scsi_Read_Capacity_16(device, readCapBuf, READ_CAPACITY_16_LEN))
-                {
-                    copy_Read_Capacity_Info(&device->drive_info.deviceBlockSize, &device->drive_info.devicePhyBlockSize,
-                                            &device->drive_info.deviceMaxLba, &device->drive_info.sectorAlignment,
-                                            readCapBuf, true);
-                    device->drive_info.currentProtectionType = 0;
-                    device->drive_info.piExponent            = get_bit_range_uint8(readCapBuf[13], 7, 4);
-                    if (readCapBuf[12] & BIT0)
-                    {
-                        device->drive_info.currentProtectionType = get_bit_range_uint8(readCapBuf[12], 3, 1) + 1;
-                        checkForSAT                              = false;
-                    }
-                }
+                device->drive_info.devicePhyBlockSize = 1; // to prevent divide by zero in some places.
             }
-            safe_free_aligned(&readCapBuf);
-            if (device->drive_info.devicePhyBlockSize == 0)
-            {
-                // If we did not get a physical blocksize, we need to set it to the blocksize (logical).
-                // This will help with old devices or those that don't support the read capacity 16 command or return
-                // other weird invalid data.
-                device->drive_info.devicePhyBlockSize = device->drive_info.deviceBlockSize;
-            }
+        }
+        else
+        {
+            device->drive_info.devicePhyBlockSize = 1; // to prevent divide by zero in some places.
         }
 
         // NOTE: You would think that checking if physical and logical block sizes don't match you can filter NVMe (they

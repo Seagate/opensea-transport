@@ -542,6 +542,26 @@ extern "C"
                                                        uint8_t*  ptrBuf,
                                                        bool      readCap16);
 
+    typedef struct s_readCapacityData
+    {
+        uint64_t returnedLBA; // a.k.a. Max LBA. Odd name due to old obsolete values that can be passed in
+        uint32_t logicalBlockLength;
+        bool     readCap16; // if true, then remaining fields are from read capacity 16
+        uint8_t  rcbasis;   // see ZBC2
+        uint8_t  ptype;
+        bool     protectionEnabled;
+        uint8_t  piexponent;
+        uint8_t  logicalBlocksPerPhysicalBlockExponent; // power of 2 to multiply lba size by to get physical size
+        bool     lbpme;
+        bool     lbprz;
+        uint16_t lowestAlignedLogicalBlock;
+    } readCapacityData;
+
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RO(1)
+    M_PARAM_WO(2)
+    eReturnValues scsi_Read_Capacity_Cmd_Helper(tDevice* device, readCapacityData* outputData);
+
     //-----------------------------------------------------------------------------
     //
     //  is_Device_SAT_Compliant()
