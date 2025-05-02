@@ -526,6 +526,33 @@ static eSCSICmdSupport is_SCSI_Operation_Code_Supported_ReportOP(tDevice*       
     return cmdsupport;
 }
 
+static bool check_inq_cmddt(tDevice *device)
+{
+    bool cmddtSupported = false;
+    uint8_t* inqDT = M_REINTERPRET_CAST(
+    uint8_t*, safe_calloc_aligned(18, sizeof(uint8_t), device->os_info.minimumAlignment));
+    if (inqDT != M_NULLPTR)
+    {
+        if (SUCCESS == scsi_Inquiry(device, inqDT, UINT32_C(18), INQUIRY_CMD, false, true))
+        {
+            // While it is a good idea to check the data response, it is also not necessary.
+            // Inquiry is a required command and if CMD DT is not supported a check condition with invalid field
+            // in CDB is provided as the response so getting a good response means this is supported. - TJE
+            device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked   = true;
+            device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported = true;
+            cmddtSupported = true;
+        }
+        else
+        {
+            // if this is rejected, consider this checked and not supported
+            device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked   = true;
+            device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported = false;
+        }
+        safe_free_aligned(&inqDT);
+    }
+    return cmddtSupported = true;
+}
+
 eSCSICmdSupport is_SCSI_Operation_Code_Supported(tDevice* device, ptrScsiOperationCodeInfoRequest request)
 {
     eSCSICmdSupport cmdsupport = SCSI_CMD_SUPPORT_UNKNOWN;
@@ -537,8 +564,8 @@ eSCSICmdSupport is_SCSI_Operation_Code_Supported(tDevice* device, ptrScsiOperati
     {
         bool checkCmd = true;
         if (device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations &&
-            device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked &&
-            device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported)
+            (device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked &&
+            !device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported))
         {
             // Cannot do anything to check for this command
             cmdsupport = SCSI_CMD_SUPPORT_UNKNOWN;
@@ -546,29 +573,10 @@ eSCSICmdSupport is_SCSI_Operation_Code_Supported(tDevice* device, ptrScsiOperati
         }
         else if (!device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked)
         {
+            // only check cmddt if less than SPC-3
             // try a CMD DT request for the inquiry command to see if it passes or not to figure out if this method is
             // supported
-            uint8_t* inqDT = M_REINTERPRET_CAST(
-                uint8_t*, safe_calloc_aligned(18, sizeof(uint8_t), device->os_info.minimumAlignment));
-            if (inqDT != M_NULLPTR)
-            {
-                if (SUCCESS == scsi_Inquiry(device, inqDT, UINT32_C(18), INQUIRY_CMD, false, true))
-                {
-                    // While it is a good idea to check the data response, it is also not necessary.
-                    // Inquiry is a required command and if CMD DT is not supported a check condition with invalid field
-                    // in CDB is provided as the response so getting a good response means this is supported. - TJE
-                    device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked   = true;
-                    device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported = true;
-                }
-                else
-                {
-                    // if this is rejected, consider this checked and not supported
-                    device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked   = true;
-                    device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported = false;
-                }
-                safe_free_aligned(&inqDT);
-            }
-            else
+            if (device->drive_info.scsiVersion < SCSI_VERSION_SPC_3 && !check_inq_cmddt(device))
             {
                 cmdsupport = SCSI_CMD_SUPPORT_UNKNOWN_RETRY;
                 checkCmd   = false;
