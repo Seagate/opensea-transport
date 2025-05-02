@@ -768,6 +768,47 @@ extern "C"
 #define READ_CAPACITY_10_LEN                     UINT8_C(8)
 #define READ_CAPACITY_16_LEN                     UINT8_C(32)
 
+    typedef enum eDirectAccessMediumTypeEnum
+    {
+        MEDIUM_TYPE_DEFAULT                            = 0x00,
+        MEDIUM_TYPE_FLEX_DISK_SINGLE_SIDED_UNSPECIFIED = 0x01,
+        MEDIUM_TYPE_FLEX_DISK_DOUBLE_SIDED_UNSPECIFIED = 0x02,
+        // 4 & 5 missing
+        // Flexible disks
+        MEDIUM_TYPE_8IN_6B_631RAD_48TD_SS = 0x05,
+        MEDIUM_TYPE_ANSI_X3_73            = 0x05,
+        MEDIUM_TYPE_8IN_6B_631RAD_48TD_DS = 0x06,
+        // 7, 8 missing
+        MEDIUM_TYPE_8IN_13B_262RAD_48TD_SS = 0x09,
+        MEDIUM_TYPE_ANSI_X3_121            = 0x0A,
+        // B, C missing
+        MEDIUM_TYPE_ANSI_X3_82 = 0x0D,
+        // E, F, 10, 11 missing
+        MEDIUM_TYPE_ANSI_X3_125 = 0x12,
+        // 13, 14, 15 missing
+        MEDIUM_TYPE_ANSI_X3_126 = 0x16,
+        // 17, 18, 19 missing
+        MEDIUM_TYPE_ISO_IS_8630 = 0x1A,
+        // 1B, 1C, 1D missing
+        MEDIUM_TYPE_ANSI_X3_137 = 0x1E,
+        // Direct Access Magnetic Tape
+        MEDIUM_TYPE_12TRK_394FTPMM = 0x40,
+        MEDIUM_TYPE_24TRK_394FRPMM = 0x44,
+        // 80h - FFh are vendor specific
+        MEDIUM_TYPE_VENDOR_BEGIN = 0x80,
+        MEDIUM_TYPE_VENDOR_END   = 0xFF
+    } eDirectAccessMediumType;
+
+    typedef enum eModeDensityCodeEnum
+    {
+        DENSITY_CODE_DEFAULT                      = 0x00,
+        DENSITY_CODE_FLEXIBLE_DISK_SINGLE_DENSITY = 0x01,
+        DENSITY_CODE_FLEXIBLE_DISK_DOUBLE_DENSITY = 0x02,
+        // 80h - FFh are vendor specific
+        DENSITY_CODE_VENDOR_BEGIN = 0x80,
+        DENSITY_CODE_VENDOR_END   = 0xFF
+    } eModeDensityCode;
+
     typedef enum eSCSIPeripheralQualifierEnum
     {
         PERIPHERAL_QUALIFIER_ACCESSIBLE_TO_TASK_ROUTER                 = 0x00,
