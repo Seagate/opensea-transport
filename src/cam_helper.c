@@ -24,6 +24,7 @@
 #include "type_conversion.h"
 
 #include "ata_helper_func.h"
+#include "bsd_mount_info.h"
 #include "cam_helper.h"
 #include "nvme_helper_func.h"
 #include "sat_helper_func.h"
@@ -34,7 +35,6 @@
 #include <libgen.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
-#include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/ucred.h>
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -71,151 +71,6 @@ static bool is_NVMe_Handle(char* handle)
     return isNVMeDevice;
 }
 #endif // !DISABLE_NVME_PASSTHROUGH
-
-static M_INLINE void safe_free_statfs(struct statfs** fs)
-{
-    safe_free_core(M_REINTERPRET_CAST(void**, fs));
-}
-
-static int get_Partition_Count(const char* blockDeviceName)
-{
-    int            result    = 0;
-    struct statfs* mountedFS = M_NULLPTR;
-    int            totalMounts =
-        getmntinfo(&mountedFS,
-                   MNT_WAIT); // Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
-    if (totalMounts > 0 && mountedFS)
-    {
-        int entIter = 0;
-        for (entIter = 0; entIter < totalMounts; ++entIter)
-        {
-            if (strstr((mountedFS + entIter)->f_mntfromname, blockDeviceName))
-            {
-                // found a match for the current device handle
-                ++result;
-            }
-        }
-    }
-    safe_free_statfs(&mountedFS);
-    return result;
-}
-
-#define PART_INFO_NAME_LENGTH (32)
-#define PART_INFO_PATH_LENGTH (64)
-typedef struct s_spartitionInfo
-{
-    char fsName[PART_INFO_NAME_LENGTH];
-    char mntPath[PART_INFO_PATH_LENGTH];
-} spartitionInfo, *ptrsPartitionInfo;
-
-static M_INLINE void safe_free_spartioninfo(spartitionInfo** partinfo)
-{
-    safe_free_core(M_REINTERPRET_CAST(void**, partinfo));
-}
-
-// partitionInfoList is a pointer to the beginning of the list
-// listCount is the number of these structures, which should be returned by get_Partition_Count
-static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
-{
-    eReturnValues result       = SUCCESS;
-    int           matchesFound = 0;
-    if (listCount > 0)
-    {
-        // This is written using getmntinfo, which seems to wrap getfsstat.
-        // https://www.freebsd.org/cgi/man.cgi?query=getmntinfo&manpath=FreeBSD+12.1-RELEASE+and+Ports
-        // This was chosen because it provides the info we want, and also claims to only show mounted devices.
-        // I also tried using getfsent, but that didn't return what we needed.
-        // If for any reason, getmntinfo is not available, I recommend switching to getfsstat. The code is similar
-        // but slightly different. I only had a VM to test with so my results showed the same between the APIs,
-        // but the description of getmntinfo was more along the lines of what has been implemented for
-        // other OS's we support. - TJE
-        struct statfs* mountedFS   = M_NULLPTR;
-        int            totalMounts = getmntinfo(
-            &mountedFS,
-            MNT_WAIT); // Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
-        if (totalMounts > 0 && mountedFS)
-        {
-            int entIter = 0;
-            for (entIter = 0; entIter < totalMounts; ++entIter)
-            {
-                if (strstr((mountedFS + entIter)->f_mntfromname, blockDeviceName))
-                {
-                    // found a match for the current device handle
-                    // f_mntonname gives us the directory to unmount
-                    // found a match, copy it to the list
-                    if (matchesFound < listCount)
-                    {
-                        snprintf_err_handle((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
-                                            (mountedFS + entIter)->f_mntfromname);
-                        snprintf_err_handle((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s",
-                                            (mountedFS + entIter)->f_mntonname);
-                        ++matchesFound;
-                    }
-                    else
-                    {
-                        result = MEMORY_FAILURE; // out of memory to copy all results to the list.
-                    }
-                }
-            }
-        }
-        safe_free_statfs(&mountedFS);
-    }
-    return result;
-}
-
-static eReturnValues set_Device_Partition_Info(tDevice* device)
-{
-    eReturnValues ret            = SUCCESS;
-    int           partitionCount = 0;
-    partitionCount               = get_Partition_Count(device->os_info.name);
-#if defined(_DEBUG)
-    printf("Partition count for %s = %d\n", device->os_info.name, partitionCount);
-#endif
-    if (partitionCount > 0)
-    {
-        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
-        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
-        device->os_info.fileSystemInfo.isSystemDisk        = false;
-        ptrsPartitionInfo parts =
-            M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
-        if (parts != M_NULLPTR)
-        {
-            if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
-            {
-                int iter = 0;
-                for (; iter < partitionCount; ++iter)
-                {
-                    // since we found a partition, set the "has file system" bool to true
-                    device->os_info.fileSystemInfo.hasActiveFileSystem = true;
-#if defined(_DEBUG)
-                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
-#endif
-                    // check if one of the partitions is /boot and mark the system disk when this is found
-                    // Should / be treated as a system disk too?
-                    if (strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
-                    {
-                        device->os_info.fileSystemInfo.isSystemDisk = true;
-#if defined(_DEBUG)
-                        printf("found system disk\n");
-#endif
-                    }
-                }
-            }
-            safe_free_spartioninfo(&parts);
-        }
-        else
-        {
-            ret = MEMORY_FAILURE;
-        }
-    }
-    else
-    {
-        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
-        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
-        device->os_info.fileSystemInfo.isSystemDisk        = false;
-    }
-    return ret;
-}
 
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
@@ -279,7 +134,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         // Now we will set up the device name, etc fields in the os_info structure
         snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
         snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
-        set_Device_Partition_Info(device);
+        set_BSD_Device_Partition_Info(device);
 
         ret = fill_Drive_Info_Data(device);
 
@@ -287,172 +142,173 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         return ret;
     }
     else
-#endif
+#endif //! DISABLE_NVME_PASSTHROUGH
 
         if (cam_get_device(filename, devName, 20, &devUnit) == -1)
-    {
-        ret                = FAILURE;
-        device->os_info.fd = -1;
-        printf("%s failed\n", __FUNCTION__);
-    }
-    else
-    {
-        // printf("%s fd %d name %s\n",__FUNCTION__, device->os_info.fd, device->os_info.name);
-        device->os_info.cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, M_NULLPTR); // O_NONBLOCK is not
-                                                                                             // allowed
-        if (device->os_info.cam_dev != M_NULLPTR)
         {
-            // Set name and friendly name
-            // name
-            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
-            // friendly name
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName,
-                                devUnit);
-
-            device->os_info.fd = devUnit;
-
-            // set the OS Type
-            device->os_info.osType           = OS_FREEBSD;
-            device->os_info.minimumAlignment = sizeof(void*);
-
-            if (device->dFlags == OPEN_HANDLE_ONLY)
+            ret                = FAILURE;
+            device->os_info.fd = -1;
+            printf("%s failed\n", __FUNCTION__);
+        }
+        else
+        {
+            // printf("%s fd %d name %s\n",__FUNCTION__, device->os_info.fd, device->os_info.name);
+            device->os_info.cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, M_NULLPTR); // O_NONBLOCK is not
+                                                                                                 // allowed
+            if (device->os_info.cam_dev != M_NULLPTR)
             {
-                return ret;
-            }
+                // Set name and friendly name
+                // name
+                snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+                // friendly name
+                snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName,
+                                    devUnit);
 
-            // printf("%s Successfully opened\n",__FUNCTION__);
-            ccb = cam_getccb(device->os_info.cam_dev);
-            if (ccb != M_NULLPTR)
-            {
-                CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
-                ccb->ccb_h.func_code = XPT_GDEV_TYPE;
-                if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
+                device->os_info.fd = devUnit;
+
+                // set the OS Type
+                device->os_info.osType           = OS_FREEBSD;
+                device->os_info.minimumAlignment = sizeof(void*);
+
+                if (device->dFlags == OPEN_HANDLE_ONLY)
                 {
-                    if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
-                    {
-                        safe_memcpy(&cgd, sizeof(struct ccb_getdev), &ccb->cgd, sizeof(struct ccb_getdev));
+                    return ret;
+                }
 
-                        // default to scsi drive and scsi interface
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
-                        // get interface info
-                        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
-                        ccb->ccb_h.func_code = XPT_PATH_INQ;
-                        if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
+                // printf("%s Successfully opened\n",__FUNCTION__);
+                ccb = cam_getccb(device->os_info.cam_dev);
+                if (ccb != M_NULLPTR)
+                {
+                    CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+                    ccb->ccb_h.func_code = XPT_GDEV_TYPE;
+                    if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
+                    {
+                        if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                         {
-                            if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
+                            safe_memcpy(&cgd, sizeof(struct ccb_getdev), &ccb->cgd, sizeof(struct ccb_getdev));
+
+                            // default to scsi drive and scsi interface
+                            device->drive_info.drive_type     = SCSI_DRIVE;
+                            device->drive_info.interface_type = SCSI_INTERFACE;
+                            // get interface info
+                            CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+                            ccb->ccb_h.func_code = XPT_PATH_INQ;
+                            if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
                             {
-                                safe_memcpy(&cpi, sizeof(struct ccb_pathinq), &ccb->cpi, sizeof(struct ccb_pathinq));
-                                // set the interface from a ccb_pathinq struct
-                                switch (cpi.transport)
+                                if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                                 {
-                                case XPORT_SATA:
-                                case XPORT_ATA:
-                                    device->drive_info.drive_type = ATA_DRIVE;
-                                    device->drive_info.interface_type =
-                                        IDE_INTERFACE; // Seeing IDE may look strange, but that is how old code was
-                                                       // written to identify an ATA interface regardless of parallel or
-                                                       // serial.
-                                    break;
-                                case XPORT_USB:
-                                    device->drive_info.interface_type = USB_INTERFACE;
-                                    break;
-                                case XPORT_SPI:
-                                    device->drive_info.interface_type = SCSI_INTERFACE;
-                                    // firewire is reported as SPI.
-                                    // Check hba_vid for "SBP" to tell the difference and set the proper interface
-                                    if (strncmp(cpi.hba_vid, "SBP", 3) == 0 &&
-                                        cpi.hba_misc &
-                                            (PIM_NOBUSRESET |
-                                             PIM_NO_6_BYTE)) // or check initiator_id? That's defined but not sure if
-                                                             // that could be confused with other SPI devices - TJE
+                                    safe_memcpy(&cpi, sizeof(struct ccb_pathinq), &ccb->cpi,
+                                                sizeof(struct ccb_pathinq));
+                                    // set the interface from a ccb_pathinq struct
+                                    switch (cpi.transport)
                                     {
-                                        device->drive_info.interface_type = IEEE_1394_INTERFACE;
-                                        // TODO: Figure out where to get device unique firewire IDs for specific device
-                                        // compatibility lookups
+                                    case XPORT_SATA:
+                                    case XPORT_ATA:
+                                        device->drive_info.drive_type = ATA_DRIVE;
+                                        device->drive_info.interface_type =
+                                            IDE_INTERFACE; // Seeing IDE may look strange, but that is how old code was
+                                                           // written to identify an ATA interface regardless of
+                                                           // parallel or serial.
+                                        break;
+                                    case XPORT_USB:
+                                        device->drive_info.interface_type = USB_INTERFACE;
+                                        break;
+                                    case XPORT_SPI:
+                                        device->drive_info.interface_type = SCSI_INTERFACE;
+                                        // firewire is reported as SPI.
+                                        // Check hba_vid for "SBP" to tell the difference and set the proper interface
+                                        if (strncmp(cpi.hba_vid, "SBP", 3) == 0 &&
+                                            cpi.hba_misc & (PIM_NOBUSRESET |
+                                                            PIM_NO_6_BYTE)) // or check initiator_id? That's defined but
+                                                                            // not sure if that could be confused with
+                                                                            // other SPI devices - TJE
+                                        {
+                                            device->drive_info.interface_type = IEEE_1394_INTERFACE;
+                                            // TODO: Figure out where to get device unique firewire IDs for specific
+                                            // device compatibility lookups
+                                        }
+                                        break;
+                                    case XPORT_SAS:
+                                    // case XPORT_ISCSI: //Only in freeBSD. Since this falls into default, just
+                                    // commenting it out - TJE
+                                    case XPORT_SSA:
+                                    case XPORT_FC:
+                                    case XPORT_UNSPECIFIED:
+                                    case XPORT_UNKNOWN:
+                                    default:
+                                        device->drive_info.interface_type = SCSI_INTERFACE;
+                                        break;
                                     }
-                                    break;
-                                case XPORT_SAS:
-                                // case XPORT_ISCSI: //Only in freeBSD. Since this falls into default, just commenting
-                                // it out - TJE
-                                case XPORT_SSA:
-                                case XPORT_FC:
-                                case XPORT_UNSPECIFIED:
-                                case XPORT_UNKNOWN:
-                                default:
-                                    device->drive_info.interface_type = SCSI_INTERFACE;
-                                    break;
-                                }
-                                // TODO: Parse other flags to set hacks and capabilities to help with adapter or
-                                // interface specific limitations
-                                //        - target flags which may help identify device capabilities (no 6-byte
-                                //        commands, group 6 & 7 command support, ata_ext request support.
-                                //        - target flag that says no 6-byte commands can help uniquely identify IEEE1394
-                                //        devices
-                                //       These should be saved later when we run into compatibility issues or need to
-                                //       make other improvements. For now, getting the interface is a huge help
+                                    // TODO: Parse other flags to set hacks and capabilities to help with adapter or
+                                    // interface specific limitations
+                                    //        - target flags which may help identify device capabilities (no 6-byte
+                                    //        commands, group 6 & 7 command support, ata_ext request support.
+                                    //        - target flag that says no 6-byte commands can help uniquely identify
+                                    //        IEEE1394 devices
+                                    //       These should be saved later when we run into compatibility issues or need
+                                    //       to make other improvements. For now, getting the interface is a huge help
 
 #if IS_FREEBSD_VERSION(9, 0, 0)
-                                if (device->drive_info.interface_type != USB_INTERFACE &&
-                                    device->drive_info.interface_type != IEEE_1394_INTERFACE)
-                                {
-                                    // NOTE: Not entirely sure EXACTLY when this was introduced, but this is a best
-                                    // guess from looking through cam_ccb.h history
-                                    if (cpi.hba_vendor != 0 &&
-                                        cpi.hba_device != 0) // try to filter out when information is not available
+                                    if (device->drive_info.interface_type != USB_INTERFACE &&
+                                        device->drive_info.interface_type != IEEE_1394_INTERFACE)
                                     {
-                                        device->drive_info.adapter_info.infoType       = ADAPTER_INFO_PCI;
-                                        device->drive_info.adapter_info.productIDValid = true;
-                                        device->drive_info.adapter_info.vendorIDValid  = true;
-                                        device->drive_info.adapter_info.productID      = cpi.hba_device;
-                                        device->drive_info.adapter_info.vendorID       = cpi.hba_vendor;
-                                        // NOT: Subvendor and subdevice seem to specify something further up the tree
-                                        // from the adapter itself.
+                                        // NOTE: Not entirely sure EXACTLY when this was introduced, but this is a best
+                                        // guess from looking through cam_ccb.h history
+                                        if (cpi.hba_vendor != 0 &&
+                                            cpi.hba_device != 0) // try to filter out when information is not available
+                                        {
+                                            device->drive_info.adapter_info.infoType       = ADAPTER_INFO_PCI;
+                                            device->drive_info.adapter_info.productIDValid = true;
+                                            device->drive_info.adapter_info.vendorIDValid  = true;
+                                            device->drive_info.adapter_info.productID      = cpi.hba_device;
+                                            device->drive_info.adapter_info.vendorID       = cpi.hba_vendor;
+                                            // NOT: Subvendor and subdevice seem to specify something further up the
+                                            // tree from the adapter itself.
+                                        }
                                     }
-                                }
 #endif
+                                }
+                                else
+                                {
+                                    printf("WARN: XPT_PATH_INQ I/O status failed\n");
+                                }
                             }
-                            else
+                            // let the library now go out and set up the device struct after sending some commands.
+                            if (device->drive_info.interface_type == USB_INTERFACE ||
+                                device->drive_info.interface_type == IEEE_1394_INTERFACE)
                             {
-                                printf("WARN: XPT_PATH_INQ I/O status failed\n");
+                                // TODO: Actually get the VID and PID set before calling this.
+                                //       This will require some more research, but we should be able to do this now that
+                                //       we know the interface
+                                setup_Passthrough_Hacks_By_ID(device);
                             }
+                            set_BSD_Device_Partition_Info(device);
+                            ret = fill_Drive_Info_Data(device);
                         }
-                        // let the library now go out and set up the device struct after sending some commands.
-                        if (device->drive_info.interface_type == USB_INTERFACE ||
-                            device->drive_info.interface_type == IEEE_1394_INTERFACE)
+                        else
                         {
-                            // TODO: Actually get the VID and PID set before calling this.
-                            //       This will require some more research, but we should be able to do this now that we
-                            //       know the interface
-                            setup_Passthrough_Hacks_By_ID(device);
+                            printf("WARN: XPT_GDEV_TYPE I/O status failed\n");
+                            ret = FAILURE;
                         }
-                        set_Device_Partition_Info(device);
-                        ret = fill_Drive_Info_Data(device);
                     }
                     else
                     {
-                        printf("WARN: XPT_GDEV_TYPE I/O status failed\n");
+                        printf("WARN: XPT_GDEV_TYPE I/O failed\n");
                         ret = FAILURE;
                     }
                 }
                 else
                 {
-                    printf("WARN: XPT_GDEV_TYPE I/O failed\n");
+                    printf("WARN: Could not allocate CCB\n");
                     ret = FAILURE;
                 }
             }
             else
             {
-                printf("WARN: Could not allocate CCB\n");
+                printf("%s Opened Failed\n", __FUNCTION__);
                 ret = FAILURE;
             }
         }
-        else
-        {
-            printf("%s Opened Failed\n", __FUNCTION__);
-            ret = FAILURE;
-        }
-    }
 
     if (ccb != M_NULLPTR)
     {
@@ -1681,49 +1537,5 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
 
 eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
 {
-    eReturnValues ret            = SUCCESS;
-    int           partitionCount = 0;
-    partitionCount               = get_Partition_Count(device->os_info.name);
-#if defined(_DEBUG)
-    printf("Partition count for %s = %d\n", device->os_info.name, partitionCount);
-#endif
-    if (partitionCount > 0)
-    {
-        ptrsPartitionInfo parts =
-            M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
-        if (parts != M_NULLPTR)
-        {
-            if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
-            {
-                int iter = 0;
-                for (; iter < partitionCount; ++iter)
-                {
-                    // since we found a partition, set the "has file system" bool to true
-#if defined(_DEBUG)
-                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
-#endif
-                    // Now that we have a name, unmount the file system
-                    // unmount is more line Linux unmount2
-                    // https://www.freebsd.org/cgi/man.cgi?query=unmount&sektion=2&apropos=0&manpath=FreeBSD+13.0-RELEASE
-                    if (0 > unmount((parts + iter)->mntPath, MNT_FORCE))
-                    {
-                        ret                        = FAILURE;
-                        device->os_info.last_error = errno;
-                        if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
-                        {
-                            printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
-                            print_Errno_To_Screen(errno);
-                            printf("\n");
-                        }
-                    }
-                }
-            }
-            safe_free_spartioninfo(&parts);
-        }
-        else
-        {
-            ret = MEMORY_FAILURE;
-        }
-    }
-    return ret;
+    return bsd_Unmount_From_Matching_Dev(device);
 }
