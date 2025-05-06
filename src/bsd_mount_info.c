@@ -13,8 +13,10 @@
 // \file bsd_mount_info.c Handles the getmntinfo request for freebsd, netbsd, openbsd, etc
 
 #include "common_types.h"
+#include "error_translation.h"
 #include "io_utils.h"
 #include "memory_safety.h"
+#include "type_conversion.h"
 
 #include "bsd_mount_info.h"
 
