@@ -13,10 +13,22 @@
 // \file netbsd_openbsd_helper.c handle functionality to scan for devices and issue commands in
 // both netbsd and openbsd
 
-#include "netbsd_openbsd_helper.h"
+#include "common_types.h"
+#include "io_utils.h"
+#include "memory_safety.h"
+#include "string_utils.h"
+#include "type_conversion.h"
+
 #include "bsd_ata_passthrough.h"
 #include "bsd_mount_info.h"
 #include "bsd_scsi_passthrough.h"
+#include "cmds.h"
+#include "common_public.h"
+#include "netbsd_openbsd_helper.h"
+
+#include <dirent.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 extern bool validate_Device_Struct(versionBlock);
 

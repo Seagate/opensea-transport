@@ -20,6 +20,9 @@ extern "C"
 {
 #endif
 
+#include "code_attributes.h"
+#include "common_types.h"
+
 #include "common_public.h"
 #include "nvme_helper.h"
 #include "sat_helper.h"
