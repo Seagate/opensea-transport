@@ -13,17 +13,21 @@
 // \file bsd_ata_passthrough.c issues a ata passthrough request for openbsd and netbsd
 
 #include "common_types.h"
+#include "error_translation.h"
 #include "precision_timer.h"
+#include "type_conversion.h"
 
 #include "ata_helper.h"
 #include "common_public.h"
 #include "sat_helper_func.h"
 #include "scsi_helper.h"
 
+#include "bsd_ata_passthrough.h"
+
 #include <sys/ataio.h>
 #include <sys/ioctl.h>
 
-#define BSD_ATA_PT_MAX_CMD_TIMEOUT_SECONDS (INTMAX / 1000)
+#define BSD_ATA_PT_MAX_CMD_TIMEOUT_SECONDS M_STATIC_CAST(uint32_t, (INT_MAX / 1000))
 
 static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
 {
@@ -61,15 +65,17 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
             atacmd.datalen = scsiIoCtx->pAtaCmdOpts->dataSize;
             break;
         case XFER_DATA_IN_OUT:
-        case XFER_DATA_OUT_IN
+        case XFER_DATA_OUT_IN:
             return OS_COMMAND_NOT_AVAILABLE;
         }
-        atacmd.command = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
-        atacmd.features = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
+        atacmd.command   = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
+        atacmd.features  = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
         atacmd.sec_count = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
-        atacmd.sec_num = scsiIoCtx->pAtaCmdOpts->tfr.SectorNumber;
-        atacmd.head = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead;// TODO: Does this accept full 8bits or only 4bits for head?
-        atacmd.cylinder = M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.CylinderHigh, scsiIoCtx->pAtaCmdOpts->tfr.CylinderLow);
+        atacmd.sec_num   = scsiIoCtx->pAtaCmdOpts->tfr.SectorNumber;
+        atacmd.head =
+            scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead; // TODO: Does this accept full 8bits or only 4bits for head?
+        atacmd.cylinder =
+            M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.CylinderHigh, scsiIoCtx->pAtaCmdOpts->tfr.CylinderLow);
 #if defined(ATACMD_LBA)
         // This flag exists in NetBSD, but not openBSD, so need ifdef
         if (scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead & LBA_MODE_BIT)
@@ -137,18 +143,18 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
         {
             if (atacmd.retsts == ATACMD_OK)
             {
-                scsiIoCtx->pAtaCmdOpts->rtfr.error = atacmd.error;
+                scsiIoCtx->pAtaCmdOpts->rtfr.error  = atacmd.error;
                 scsiIoCtx->pAtaCmdOpts->rtfr.status = atacmd.command;
                 scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = atacmd.sec_count;
                 scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow = atacmd.sec_num;
                 scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid = M_Byte0(atacmd.cylinder);
-                scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi = M_Byte1(atacmd.cylinder);
+                scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi  = M_Byte1(atacmd.cylinder);
                 scsiIoCtx->pAtaCmdOpts->rtfr.device = atacmd.head;
             }
             else
             {
-                //check the error and dummy up the response registers
-                scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY; //start here
+                // check the error and dummy up the response registers
+                scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_READY; // start here
                 if (atacmd.retsts & ATACMD_ERROR)
                 {
                     scsiIoCtx->pAtaCmdOpts->rtfr.status |= ATA_STATUS_BIT_ERROR;
@@ -189,13 +195,13 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
                     scsiIoCtx->psense[10] = 0;
                     // No ext since this passthorugh only supports 28bit commands
                     // fill in the returned 28bit registers
-                    scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;        // Error
+                    scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;  // Error
                     scsiIoCtx->psense[13] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt; // Sector Count
-                    scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow;      // LBA Lo
-                    scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid;      // LBA Mid
-                    scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;     // LBA Hi
-                    scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device;       // Device/Head
-                    scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status;       // Status
+                    scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow; // LBA Lo
+                    scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid; // LBA Mid
+                    scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;  // LBA Hi
+                    scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device; // Device/Head
+                    scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status; // Status
                 }
             }
         }
@@ -220,7 +226,7 @@ eReturnValues send_BSD_ATA_Reset(int fd)
 #endif
 }
 
-eReturnValues send_BSD_ATA_IO(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_BSD_ATA_IO(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx != M_NULLPTR)

@@ -13,10 +13,14 @@
 // \file bsd_scsi_passthrough.c issues a scsi passthrough request for openbsd and netbsd
 
 #include "common_types.h"
+#include "error_translation.h"
 #include "precision_timer.h"
+#include "type_conversion.h"
 
 #include "common_public.h"
 #include "scsi_helper.h"
+
+#include "bsd_scsi_passthrough.h"
 
 #include <sys/ioctl.h>
 #include <sys/scsiio.h>
@@ -27,7 +31,7 @@
 #    define CMDBUFLEN 16
 #endif
 
-#define BSD_SCSI_PT_MAX_CMD_TIMEOUT_SECONDS (ULONG_MAX / 1000UL)
+#define BSD_SCSI_PT_MAX_CMD_TIMEOUT_SECONDS M_STATIC_CAST(uint32_t, (ULONG_MAX / 1000UL))
 
 eReturnValues get_BSD_SCSI_Address(int fd, int* type, int* bus, int* target, int* lun)
 {
@@ -134,8 +138,12 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
                 scsicmd.databuf = scsiIoCtx->pdata;
                 scsicmd.datalen = scsiIoCtx->dataLength;
                 break;
-            case XFER_DATA_OUT scsicmd.flags |= SCCMD_WRITE; scsicmd.databuf = scsiIoCtx->pdata;
-                scsicmd.datalen = scsiIoCtx->dataLength; break; case XFER_DATA_IN_OUT:
+            case XFER_DATA_OUT:
+                scsicmd.flags |= SCCMD_WRITE;
+                scsicmd.databuf = scsiIoCtx->pdata;
+                scsicmd.datalen = scsiIoCtx->dataLength;
+                break;
+            case XFER_DATA_IN_OUT:
             case XFER_DATA_OUT_IN:
                 scsicmd.flags |= (SCCMD_READ | SCCMD_WRITE);
                 scsicmd.databuf = scsiIoCtx->pdata;
