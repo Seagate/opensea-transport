@@ -20,6 +20,11 @@
 
 extern bool validate_Device_Struct(versionBlock);
 
+bool os_Is_Infinite_Timeout_Supported(void)
+{
+    return false;
+}
+
 static int rsd_filter(const struct dirent* entry)
 {
     int daHandle = strncmp("rsd", entry->d_name, 2);

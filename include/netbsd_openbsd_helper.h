@@ -29,10 +29,7 @@ extern "C"
 
     // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued,
     // otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    OPENSEA_TRANSPORT_API static M_INLINE bool os_Is_Infinite_Timeout_Supported(void)
-    {
-        return false;
-    }
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
 
     M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
 
