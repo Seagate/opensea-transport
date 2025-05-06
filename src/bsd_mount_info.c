@@ -115,7 +115,7 @@ eReturnValues set_BSD_Device_Partition_Info(tDevice* device)
             M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts != M_NULLPTR)
         {
-            if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
+            if (SUCCESS == get_BSD_Partition_List(device->os_info.name, parts, partitionCount))
             {
                 int iter = 0;
                 for (; iter < partitionCount; ++iter)
@@ -166,7 +166,7 @@ eReturnValues set_BSD_Device_Partition_Info(tDevice* device)
 //             M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
 //         if (parts != M_NULLPTR)
 //         {
-//             if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
+//             if (SUCCESS == get_BSD_Partition_List(device->os_info.name, parts, partitionCount))
 //             {
 //                 int iter = 0;
 //                 for (; iter < partitionCount; ++iter)
@@ -216,7 +216,7 @@ eReturnValues bsd_Unmount_From_Matching_Dev(tDevice* device)
             M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
         if (parts != M_NULLPTR)
         {
-            if (SUCCESS == get_Partition_List(device->os_info.name, parts, partitionCount))
+            if (SUCCESS == get_BSD_Partition_List(device->os_info.name, parts, partitionCount))
             {
                 int iter = 0;
                 for (; iter < partitionCount; ++iter)
