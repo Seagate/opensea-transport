@@ -85,42 +85,44 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
 #else
 // TODO: Error if attempting LBA mode???
 #endif // ATACMD_LBA
+        uint32_t timeoutmilliseconds = UINT32_C(0);
         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
             scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
         {
-            atacmd.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            timeoutmilliseconds = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
             // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
             // that we DON'T do a conversion and leave the time as the max...
             if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < BSD_ATA_PT_MAX_CMD_TIMEOUT_SECONDS)
             {
-                atacmd.timeout *= 1000; // convert to milliseconds
+                timeoutmilliseconds *= UINT32_C(1000); // convert to milliseconds
             }
             else
             {
-                atacmd.timeout = INT_MAX; // no timeout or maximum timeout
+                timeoutmilliseconds = INT_MAX; // no timeout or maximum timeout
             }
         }
         else
         {
             if (scsiIoCtx->timeout != UINT32_C(0))
             {
-                atacmd.timeout = scsiIoCtx->timeout;
+                timeoutmilliseconds = scsiIoCtx->timeout;
                 // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata
                 // security) that we DON'T do a conversion and leave the time as the max...
                 if (scsiIoCtx->timeout < BSD_ATA_PT_MAX_CMD_TIMEOUT_SECONDS)
                 {
-                    atacmd.timeout *= 1000; // convert to milliseconds
+                    timeoutmilliseconds *= UINT32_C(1000); // convert to milliseconds
                 }
                 else
                 {
-                    atacmd.timeout = INT_MAX; // no timeout or maximum timeout
+                    timeoutmilliseconds = INT_MAX; // no timeout or maximum timeout
                 }
             }
             else
             {
-                atacmd.timeout = 15000; // default to 15 second timeout
+                timeoutmilliseconds = UINT32_C(15000); // default to 15 second timeout
             }
         }
+        atacmd.timeout = timeoutmilliseconds > INT_MAX ? INT_MAX : M_STATIC_CAST(int, timeoutmilliseconds);
         start_Timer(&commandTimer);
         iocret = ioctl(scsiIoCtx->device->os_info.fd, ATAIOCCOMMAND, &atacmd);
         stop_Timer(&commandTimer);
