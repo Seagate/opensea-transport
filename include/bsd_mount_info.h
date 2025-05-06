@@ -23,6 +23,10 @@
 #include <sys/types.h>
 #include <sys/ucred.h>
 
+#if defined (__NetBSD__)
+#include <sys/statvfs.h>
+#endif // __NetBSD__
+
 #pragma once
 
 #if defined(MNAMELEN)
@@ -51,7 +55,11 @@ static M_INLINE void safe_free_spartioninfo(spartitionInfo** partinfo)
     safe_free_core(M_REINTERPRET_CAST(void**, partinfo));
 }
 
+#if defined (__NetBSD__)
+static M_INLINE void safe_free_statfs(struct statvfs** fs)
+#else
 static M_INLINE void safe_free_statfs(struct statfs** fs)
+#endif // __NetBSD__
 {
     safe_free_core(M_REINTERPRET_CAST(void**, fs));
 }

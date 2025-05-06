@@ -28,7 +28,11 @@
 int get_BSD_Partition_Count(const char* blockDeviceName)
 {
     int            result    = 0;
+    #if defined (__NetBSD__)
+    struct statvfs* mountedFS = M_NULLPTR;
+    #else
     struct statfs* mountedFS = M_NULLPTR;
+    #endif // __NetBSD__
     int            totalMounts =
         getmntinfo(&mountedFS,
                    MNT_WAIT); // Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
@@ -64,7 +68,11 @@ eReturnValues get_BSD_Partition_List(const char* blockDeviceName, ptrsPartitionI
         // but slightly different. I only had a VM to test with so my results showed the same between the APIs,
         // but the description of getmntinfo was more along the lines of what has been implemented for
         // other OS's we support. - TJE
+        #if defined (__NetBSD__)
+        struct statvfs* mountedFS   = M_NULLPTR;
+        #else
         struct statfs* mountedFS   = M_NULLPTR;
+        #endif // __NetBSD__
         int            totalMounts = getmntinfo(
             &mountedFS,
             MNT_WAIT); // Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
