@@ -84,7 +84,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         return MEMORY_FAILURE;
     }
 
-    fd = open(duphandle, O_RDWR | O_NONBLOCK);
+    fd = open(deviceHandle, O_RDWR | O_NONBLOCK);
     if (fd < 0)
     {
         perror("Opening device handle");
@@ -227,7 +227,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     char**   devs = M_REINTERPRET_CAST(char**, safe_calloc(totalDevs + 1, sizeof(char*)));
     uint32_t i    = UINT32_C(0);
     uint32_t j    = UINT32_C(0);
-    uint32_t k    = UINT32_C(0);
+    //uint32_t k    = UINT32_C(0);
     for (i = 0; i < num_sd_devs; ++i)
     {
         size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(sdnamelist[i]->d_name) + 1) * sizeof(char);
@@ -373,9 +373,9 @@ eReturnValues os_Device_Reset(tDevice* device)
     switch (device->os_info.passthroughType)
     {
     case BSD_PASSTHROUGH_SCSI:
-        return send_BSD_SCSI_Reset(device.os_info.fd);
+        return send_BSD_SCSI_Reset(device->os_info.fd);
     case BSD_PASSTHROUGH_ATA:
-        return send_BSD_ATA_Reset(device.os_info.fd);
+        return send_BSD_ATA_Reset(device->os_info.fd);
     default:
         return BAD_PARAMETER;
     }
@@ -386,7 +386,7 @@ eReturnValues os_Bus_Reset(tDevice* device)
     switch (device->os_info.passthroughType)
     {
     case BSD_PASSTHROUGH_SCSI:
-        return send_BSD_SCSI_Bus_Reset(device.os_info.fd);
+        return send_BSD_SCSI_Bus_Reset(device->os_info.fd);
     case BSD_PASSTHROUGH_ATA:
         return OS_COMMAND_NOT_AVAILABLE;
     default:
