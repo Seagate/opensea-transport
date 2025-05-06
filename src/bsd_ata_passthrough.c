@@ -43,7 +43,7 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
     }
     else
     {
-        int iocres = 0;
+        int iocret = 0;
         DECLARE_SEATIMER(commandTimer);
         atareq_t atacmd;
         safe_memset(&atacmd, sizeof(atareq_t), 0, sizeof(atareq_t));
@@ -122,10 +122,10 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
             }
         }
         start_Timer(&commandTimer);
-        iocres = ioctl(scsiIoCtx->device->os_info.fd, ATAIOCCOMMAND, &atacmd);
+        iocret = ioctl(scsiIoCtx->device->os_info.fd, ATAIOCCOMMAND, &atacmd);
         stop_Timer(&commandTimer);
         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-        if (iocres < 0)
+        if (iocret < 0)
         {
             // something went wrong with the ioctl.
             scsiIoCtx->device->os_info.last_error = errno;

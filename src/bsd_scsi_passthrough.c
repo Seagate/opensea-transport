@@ -16,6 +16,7 @@
 #include "error_translation.h"
 #include "precision_timer.h"
 #include "type_conversion.h"
+#include "math_utils.h"
 
 #include "common_public.h"
 #include "scsi_helper.h"
@@ -194,7 +195,7 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
             iocret = ioctl(scsiIoCtx->device->os_info.fd, SCIOCCOMMAND, &scsicmd);
             stop_Timer(&commandTimer);
             scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-            if (iocres < 0)
+            if (iocret < 0)
             {
                 // something went wrong with the ioctl.
                 scsiIoCtx->device->os_info.last_error = errno;
