@@ -47,7 +47,7 @@ int get_BSD_Partition_Count(const char* blockDeviceName)
 }
 
 // partitionInfoList is a pointer to the beginning of the list
-// listCount is the number of these structures, which should be returned by get_Partition_Count
+// listCount is the number of these structures, which should be returned by get_BSD_Partition_Count
 eReturnValues get_BSD_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
 {
     eReturnValues result       = SUCCESS;
@@ -102,7 +102,7 @@ eReturnValues set_BSD_Device_Partition_Info(tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
     int           partitionCount = 0;
-    partitionCount               = get_Partition_Count(device->os_info.name);
+    partitionCount               = get_BSD_Partition_Count(device->os_info.name);
 #if defined(_DEBUG)
     printf("Partition count for %s = %d\n", device->os_info.name, partitionCount);
 #endif
@@ -156,7 +156,7 @@ eReturnValues set_BSD_Device_Partition_Info(tDevice* device)
 // {
 //     eReturnValues ret            = SUCCESS;
 //     int           partitionCount = 0;
-//     partitionCount               = get_Partition_Count(device->os_info.name);
+//     partitionCount               = get_BSD_Partition_Count(device->os_info.name);
 // #if defined(_DEBUG)
 //     printf("Partition count for %s = %d\n", device->os_info.name, partitionCount);
 // #endif
@@ -206,7 +206,7 @@ eReturnValues bsd_Unmount_From_Matching_Dev(tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
     int           partitionCount = 0;
-    partitionCount               = get_Partition_Count(device->os_info.name);
+    partitionCount               = get_BSD_Partition_Count(device->os_info.name);
 #if defined(_DEBUG)
     printf("Partition count for %s = %d\n", device->os_info.name, partitionCount);
 #endif
