@@ -189,7 +189,7 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
             }
             safe_memcpy(scsicmd.cmd, CMDBUFLEN, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
             scsicmd.cmdlen   = scsiIoCtx->cdbLength;
-            scsicmd.senselen = M_Min(SENSEBUGLEN, scsiIoCtx->senseDataSize);
+            scsicmd.senselen = M_Min(SENSEBUFLEN, scsiIoCtx->senseDataSize);
 
             start_Timer(&commandTimer);
             iocret = ioctl(scsiIoCtx->device->os_info.fd, SCIOCCOMMAND, &scsicmd);
