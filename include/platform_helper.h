@@ -20,10 +20,8 @@
 #    endif
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
 #    include "cam_helper.h"
-#elif defined(__NetBSD__)
-#    error "Need a NetBSD passthrough helper file"
-#elif defined(__OpenBSD__)
-#    error "Need a OpenBSD passthrough helper file"
+#elif defined(__NetBSD__) || defined(__OpenBSD__)
+#    include "netbsd_openbsd_helper.h"
 #elif defined(__sun)
 #    include "uscsi_helper.h"
 #elif defined(_WIN32)

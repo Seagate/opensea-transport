@@ -1019,6 +1019,29 @@ void print_Low_Level_Info(tDevice* device)
             printf("\t\t\tCam dev is valid\n");
             // TODO: Print out things from this structure???
         }
+#elif defined(__OpenBSD__) || defined(__NetFly__)
+        printf("\t\t---OpenBSD/NetFlyBSD Unique info---\n");
+        if (device->os_info.fd > 0)
+        {
+            printf("\t\t\tFD is valid\n");
+        }
+        switch (device->os_info.passthroughType)
+        {
+        case BSD_PASSTHROUGH_NOT_SET:
+            printf("\t\t\tPassthrough type not set\n");
+            break;
+        case BSD_PASSTHROUGH_SCSI:
+            printf("\t\t\tSCSI Passthrough\n");
+            break;
+        case BSD_PASSTHROUGH_ATA:
+            printf("\t\t\tATA Passthrough\n");
+            break;
+        }
+        printf("\t\t\tSCSI Address:\n");
+        printf("\t\t\t\tType: %d\n", device->os_info.addresstype);
+        printf("\t\t\t\tBus: %d\n", device->os_info.bus);
+        printf("\t\t\t\tTarget: %d\n", device->os_info.target);
+        printf("\t\t\t\tLun: %d\n", device->os_info.lun);
 #endif // checking OS specific defines
         printf("\t\tOS read-write recommended: %s\n", device->os_info.osReadWriteRecommended ? "true" : "false");
 #if defined(_WIN32)

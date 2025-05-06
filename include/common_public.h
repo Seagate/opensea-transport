@@ -1276,6 +1276,16 @@ extern "C"
     } eAIXAdapterType;
 #endif //_AIX
 
+#if defined(__NetBSD__) || defined(__OpenBSD__)
+    typedef enum eBSDPassthroughTypeEnum
+    {
+        BSD_PASSTHROUGH_NOT_SET = 0,
+        BSD_PASSTHROUGH_SCSI,
+        BSD_PASSTHROUGH_ATA,
+        // TODO: NVMe
+    } eBSDPassthroughType;
+#endif // __NetBSD__ || __OpenBSD__
+
     // forward declare csmi info to avoid including csmi_helper.h
     typedef struct s_csmiDeviceInfo csmiDeviceInfo, *ptrCsmiDeviceInfo;
 
@@ -1478,6 +1488,13 @@ extern "C"
     int      fd;
     uint32_t adapterMaxTransferSize;
     uint8_t  otherPadd[106];
+#elif defined(__NetBSD__) || defined(__OpenBSD__)
+    int                 fd;
+    eBSDPassthroughType passthroughType;
+    int                 addresstype;
+    int                 bus;
+    int                 target;
+    int                 lun;
 #else                                // OS preprocessor checks
     int     fd; // some other nix system that only needs a integer file handle
     uint8_t otherPadd[110];
@@ -1846,6 +1863,8 @@ extern "C"
 #    define MAX_CMD_TIMEOUT_SECONDS 4294967
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
 #    define MAX_CMD_TIMEOUT_SECONDS 4294967
+#elif defined(__NetBSD__) || defined(__OpenBSD__)
+#    define MAX_CMD_TIMEOUT_SECONDS INT_MAX
 #elif defined(__sun)
 #    define MAX_CMD_TIMEOUT_SECONDS 65535
 #elif defined(_AIX)
