@@ -53,6 +53,7 @@
 #include <scsi/scsi.h>
 #include <scsi/sg.h>
 #include <stdio.h>
+#include <sys/file.h> //flock
 #include <sys/ioctl.h>
 #include <sys/mman.h>  //for mmap pci reads. Potential to move.
 #include <sys/mount.h> //for umount and umount2. NOTE: This defines the things we need from linux/fs.h as well, which is why that is commented out - TJE
@@ -249,7 +250,7 @@ static bool is_NVMe_Handle(char* handle)
     bool isNvmeDevice = false;
     if (handle && safe_strlen(handle))
     {
-        if (strstr(handle, "nvme") && !strstr(handle, "nvme-fabrics"))
+        if (strstr(handle, "nvme"))
         {
             isNvmeDevice = true;
         }
@@ -2394,6 +2395,10 @@ static int nvme_filter(const struct dirent* entry)
     }
     if (safe_strlen(entry->d_name) > 5)
     {
+        if (strncmp("nvme-fabrics", entry->d_name, 12) == 0)
+        {
+            return 0;
+        }
         char* partition = strpbrk(entry->d_name, "p");
         if (partition != M_NULLPTR)
         {
@@ -3343,7 +3348,15 @@ eReturnValues os_Lock_Device(tDevice* device)
     // Set Flags
     if (fcntl(device->os_info.fd, F_SETFL, flags) < 0)
     {
-        printf("Failed to set locking flags\n");
+        printf("Failed to set locking flags with fcntl\n");
+        print_Errno_To_Screen(errno);
+    }
+    // Linux kernel 2.0 and higher only. Prior it just called fcntl internally.
+    // NOTE: For other OS's, we need to check what the interactions between these locks are
+    // https://www.kernel.org/doc/Documentation/filesystems/locks.txt
+    if (flock(device->os_info.fd, LOCK_EX | LOCK_NB) < 0)
+    {
+        printf("Failed to set flock\n");
         print_Errno_To_Screen(errno);
     }
     return ret;
@@ -3360,7 +3373,15 @@ eReturnValues os_Unlock_Device(tDevice* device)
     // Set Flags
     if (fcntl(device->os_info.fd, F_SETFL, flags) < 0)
     {
-        printf("Failed to set locking flags\n");
+        printf("Failed to set locking flags with fcntl\n");
+        print_Errno_To_Screen(errno);
+    }
+    // Linux kernel 2.0 and higher only. Prior it just called fcntl internally.
+    // NOTE: For other OS's, we need to check what the interactions between these locks are
+    //https://www.kernel.org/doc/Documentation/filesystems/locks.txt
+    if (flock(device->os_info.fd, LOCK_UN | LOCK_NB) < 0)
+    {
+        printf("Failed to set flock\n");
         print_Errno_To_Screen(errno);
     }
     return ret;
