@@ -249,7 +249,7 @@ static bool is_NVMe_Handle(char* handle)
     bool isNvmeDevice = false;
     if (handle && safe_strlen(handle))
     {
-        if (strstr(handle, "nvme"))
+        if (strstr(handle, "nvme") && !strstr(handle, "nvme-fabrics"))
         {
             isNvmeDevice = true;
         }
@@ -3339,8 +3339,13 @@ eReturnValues os_Lock_Device(tDevice* device)
     int flags = fcntl(device->os_info.fd, F_GETFL);
     // disable O_NONBLOCK
     flags &= ~O_NONBLOCK;
+    flags |= O_EXCL;
     // Set Flags
-    fcntl(device->os_info.fd, F_SETFL, flags);
+    if (fcntl(device->os_info.fd, F_SETFL, flags) < 0)
+    {
+        printf("Failed to set locking flags\n");
+        print_Errno_To_Screen(errno);
+    }
     return ret;
 }
 
@@ -3349,10 +3354,15 @@ eReturnValues os_Unlock_Device(tDevice* device)
     eReturnValues ret = SUCCESS;
     // Get flags
     int flags = fcntl(device->os_info.fd, F_GETFL);
+    flags &= ~O_EXCL;
     // enable O_NONBLOCK
     flags |= O_NONBLOCK;
     // Set Flags
-    fcntl(device->os_info.fd, F_SETFL, flags);
+    if (fcntl(device->os_info.fd, F_SETFL, flags) < 0)
+    {
+        printf("Failed to set locking flags\n");
+        print_Errno_To_Screen(errno);
+    }
     return ret;
 }
 
