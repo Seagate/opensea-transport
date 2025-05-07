@@ -1452,6 +1452,15 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
                     }
                 }
             }
+            else
+            {
+                gotRTFRs = true;
+            }
+        }
+
+        if (!gotRTFRs && ataCommandOptions->needRTFRs)
+        {
+            ret = WARN_INCOMPLETE_RFTRS;
         }
 
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
