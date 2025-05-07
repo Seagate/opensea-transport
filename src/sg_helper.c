@@ -3348,6 +3348,17 @@ eReturnValues os_Lock_Device(tDevice* device)
     // Set Flags
     if (fcntl(device->os_info.fd, F_SETFL, flags) < 0)
     {
+        printf("Failed to set exclusive flag with fcntl\n");
+        print_Errno_To_Screen(errno);
+    }
+    struct flock locks;
+    safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+    locks.l_type = F_WRLCK;
+    locks.l_whence = SEEK_SET;
+    locks.l_start = 0;
+    locks.l_len = 0;//all bytes
+    if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
+    {
         printf("Failed to set locking flags with fcntl\n");
         print_Errno_To_Screen(errno);
     }
@@ -3372,6 +3383,17 @@ eReturnValues os_Unlock_Device(tDevice* device)
     flags |= O_NONBLOCK;
     // Set Flags
     if (fcntl(device->os_info.fd, F_SETFL, flags) < 0)
+    {
+        printf("Failed to set exclusive flag with fcntl\n");
+        print_Errno_To_Screen(errno);
+    }
+    struct flock locks;
+    safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+    locks.l_type = F_UNLCK;
+    locks.l_whence = SEEK_SET;
+    locks.l_start = 0;
+    locks.l_len = 0;//all bytes
+    if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
     {
         printf("Failed to set locking flags with fcntl\n");
         print_Errno_To_Screen(errno);
