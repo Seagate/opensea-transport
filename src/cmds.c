@@ -1844,9 +1844,28 @@ eReturnValues io_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     case SD_INTERFACE:
     case IEEE_1394_INTERFACE:
         // perform SCSI reads
-        return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
+        if (device->drive_info.drive_type == SCSI_DRIVE || is_Blocksize_And_Capacity_In_Sync(device))
+        {
+            return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
+        }
+        else
+        {
+            if (device->drive_info.drive_type == ATA_DRIVE)
+            {
+                return ata_Read(device, lba, forceUnitAccess, ptrData, dataSize);
+            }
+            else if (device->drive_info.drive_type == NVME_DRIVE)
+            {
+                return nvme_Read(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - UINT32_C(1)), false,
+                         forceUnitAccess, 0, ptrData, dataSize);
+            }
+            else
+            {
+                return NOT_SUPPORTED;
+            }
+        }
     case NVME_INTERFACE:
-        return nvme_Read(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - 1), false,
+        return nvme_Read(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - UINT32_C(1)), false,
                          forceUnitAccess, 0, ptrData, dataSize);
     case RAID_INTERFACE:
         // perform SCSI reads for now. We may need to add unique functions for NVMe and RAID reads later
@@ -1875,9 +1894,28 @@ eReturnValues io_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     case SD_INTERFACE:
     case IEEE_1394_INTERFACE:
         // perform SCSI writes
-        return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
+        if (device->drive_info.drive_type == SCSI_DRIVE || is_Blocksize_And_Capacity_In_Sync(device))
+        {
+            return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
+        }
+        else
+        {
+            if (device->drive_info.drive_type == ATA_DRIVE)
+            {
+                return ata_Write(device, lba, forceUnitAccess, ptrData, dataSize);
+            }
+            else if (device->drive_info.drive_type == NVME_DRIVE)
+            {
+                return nvme_Write(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - UINT32_C(1)), false,
+                          forceUnitAccess, 0, 0, ptrData, dataSize);
+            }
+            else
+            {
+                return NOT_SUPPORTED;
+            }
+        }
     case NVME_INTERFACE:
-        return nvme_Write(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - 1), false,
+        return nvme_Write(device, lba, C_CAST(uint16_t, (dataSize / device->drive_info.deviceBlockSize) - UINT32_C(1)), false,
                           forceUnitAccess, 0, 0, ptrData, dataSize);
     case RAID_INTERFACE:
         // perform SCSI writes for now. We may need to add unique functions for NVMe and RAID writes later
@@ -1889,7 +1927,7 @@ eReturnValues io_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
 
 eReturnValues read_LBA(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
-    if (device->os_info.osReadWriteRecommended)
+    if (device->os_info.osReadWriteRecommended && is_Blocksize_And_Capacity_In_Sync(device))
     {
         // Old comment says this function does not always work reliably in Windows...This is NOT functional in other
         // OS's.
@@ -1903,7 +1941,7 @@ eReturnValues read_LBA(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
 
 eReturnValues write_LBA(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
-    if (device->os_info.osReadWriteRecommended)
+    if (device->os_info.osReadWriteRecommended && is_Blocksize_And_Capacity_In_Sync(device))
     {
         // Old comment says this function does not always work reliably in Windows...This is NOT functional in other
         // OS's.
@@ -2056,7 +2094,7 @@ eReturnValues nvme_Verify_LBA(tDevice* device, uint64_t lba, uint32_t range)
 
 eReturnValues verify_LBA(tDevice* device, uint64_t lba, uint32_t range)
 {
-    if (device->os_info.osReadWriteRecommended)
+    if (device->os_info.osReadWriteRecommended && is_Blocksize_And_Capacity_In_Sync(device))
     {
         return os_Verify(device, lba, range);
     }
@@ -2073,7 +2111,25 @@ eReturnValues verify_LBA(tDevice* device, uint64_t lba, uint32_t range)
         case SD_INTERFACE:
         case IEEE_1394_INTERFACE:
             // perform SCSI verifies
-            return scsi_Verify(device, lba, range);
+            if (device->drive_info.drive_type == SCSI_DRIVE || is_Blocksize_And_Capacity_In_Sync(device))
+            {
+                return scsi_Verify(device, lba, range);
+            }
+            else
+            {
+                if (device->drive_info.drive_type == ATA_DRIVE)
+                {
+                    return ata_Read_Verify(device, lba, range);
+                }
+                else if (device->drive_info.drive_type == NVME_DRIVE)
+                {
+                    return nvme_Verify_LBA(device, lba, range);
+                }
+                else
+                {
+                    return NOT_SUPPORTED;
+                }
+            }
         case NVME_INTERFACE:
             return nvme_Verify_LBA(device, lba, range);
         case RAID_INTERFACE:
