@@ -1457,7 +1457,19 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
         device->os_info.cissDeviceData = safe_calloc(1, sizeof(cissDeviceInfo));
         if (device->os_info.cissDeviceData)
         {
-            if ((device->os_info.cissDeviceData->cissHandle = open(handlePtr, O_RDWR | O_NONBLOCK)) >= 0)
+            int handleFlags = O_RDWR | O_NONBLOCK;
+            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+            {
+                handleFlags |= O_EXCL;
+            }
+            device->os_info.cissDeviceData->cissHandle = open(handlePtr, handleFlags);
+            if (!(device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS) && device->os_info.cissDeviceData->cissHandle < 0)
+            {
+                // Try again without exclusive since it was not required, just recommended
+                handleFlags |= ~O_EXCL;
+                device->os_info.cissDeviceData->cissHandle = open(handlePtr, handleFlags);
+            }
+            if (device->os_info.cissDeviceData->cissHandle >= 0)
             {
                 // check that CISS IOCTLs are available. If not, then we don't want to proceed.
                 // There is danger in attempting a vendor unique op code as we don't know how the target will respond to

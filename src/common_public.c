@@ -2912,20 +2912,47 @@ bool is_Sector_Size_Emulation_Active(tDevice* device)
     bool emulationActive = false;
     if (device->drive_info.bridge_info.isValid)
     {
-        if (device->drive_info.deviceBlockSize != device->drive_info.bridge_info.childDeviceBlockSize)
+        if (device->drive_info.deviceBlockSize > UINT32_C(0) && device->drive_info.bridge_info.childDeviceBlockSize > UINT32_C(0))
         {
-            emulationActive = true;
+            if (device->drive_info.deviceBlockSize > device->drive_info.bridge_info.childDeviceBlockSize)
+            {
+                if (device->drive_info.interface_type == USB_INTERFACE)
+                {
+                    emulationActive = true;
+                }
+                else if ((device->drive_info.deviceBlockSize % device->drive_info.bridge_info.childDeviceBlockSize) == UINT32_C(0))
+                {
+                    // One more check to rule out out of sync drive issues.
+                    // Check that maxLBA is divisible by the number of sectors being emulated minus 1
+                    // The minus one has to do with which USB drives we want to catch here.
+                    // Some OS's we cannot detect it is on USB interface, which is why this part of the check is more "generic"
+                    uint32_t emulatedSectors = device->drive_info.deviceBlockSize / device->drive_info.bridge_info.childDeviceBlockSize;
+                    if ((device->drive_info.deviceMaxLba + UINT64_C(1)) == (device->drive_info.bridge_info.childDeviceMaxLba / M_STATIC_CAST(uint64_t, emulatedSectors)))
+                    {
+                        emulationActive = true;
+                    }
+                }
+            }
         }
-        else
-        {
-            emulationActive = false;
-        }
-    }
-    else
-    {
-        emulationActive = false;
     }
     return emulationActive;
+}
+
+bool is_Blocksize_And_Capacity_In_Sync(tDevice *device)
+{
+    bool insync = true;
+    if (device->drive_info.bridge_info.isValid && !is_Sector_Size_Emulation_Active(device))
+    {
+        if (device->drive_info.deviceBlockSize != device->drive_info.bridge_info.childDeviceBlockSize)
+        {
+            insync = false;
+        }
+        else if (device->drive_info.deviceMaxLba != device->drive_info.bridge_info.childDeviceMaxLba)
+        {
+            insync = false;
+        }
+    }
+    return insync;
 }
 
 eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize)
@@ -2940,7 +2967,7 @@ eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize)
     }
     RESTORE_NONNULL_COMPARE
 
-    printf("%s: blksize %d, pBuf %p\n", __FUNCTION__, blockSize, C_CAST(void*, pBuf));
+    //printf("%s: blksize %d, pBuf %p\n", __FUNCTION__, blockSize, C_CAST(void*, pBuf));
 
     for (counter = UINT32_C(0); counter < UINT32_C(511); counter++)
     {
@@ -2948,7 +2975,7 @@ eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize)
     }
     pBuf[511] = (~checksum + 1);
 
-    printf("%s: counter %d\n", __FUNCTION__, counter);
+    //printf("%s: counter %d\n", __FUNCTION__, counter);
 
     return SUCCESS;
 }
