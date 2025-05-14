@@ -653,9 +653,9 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                         safe_memset(&deviceNumber, sizeof(STORAGE_DEVICE_NUMBER), 0,
                                                     sizeof(STORAGE_DEVICE_NUMBER));
                                         DWORD returnedDataSize = DWORD_C(0);
-                                        if (DeviceIoControl(deviceHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, M_NULLPTR, 0,
+                                        if (MSFT_BOOL_TRUE(DeviceIoControl(deviceHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, M_NULLPTR, 0,
                                                             &deviceNumber, sizeof(STORAGE_DEVICE_NUMBER),
-                                                            &returnedDataSize, M_NULLPTR))
+                                                            &returnedDataSize, M_NULLPTR)))
                                         {
                                             if (deviceNumber.DeviceNumber == device->os_info.os_drive_number)
                                             {
@@ -4672,8 +4672,8 @@ static eReturnValues win_Update_Disk_Properties(HANDLE* deviceHandle)
 {
     eReturnValues ret           = NOT_SUPPORTED;
     DWORD         bytesReturned = DWORD_C(0);
-    if (DeviceIoControl(deviceHandle, IOCTL_DISK_UPDATE_PROPERTIES, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned,
-                        M_NULLPTR))
+    if (MSFT_BOOL_TRUE(DeviceIoControl(deviceHandle, IOCTL_DISK_UPDATE_PROPERTIES, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned,
+                        M_NULLPTR)))
     {
         ret = SUCCESS;
     }
@@ -4701,8 +4701,8 @@ static eReturnValues win_Delete_Drive_Layout(HANDLE* deviceHandle)
 {
     eReturnValues ret           = NOT_SUPPORTED;
     DWORD         bytesReturned = DWORD_C(0);
-    if (DeviceIoControl(deviceHandle, IOCTL_DISK_DELETE_DRIVE_LAYOUT, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned,
-                        M_NULLPTR))
+    if (MSFT_BOOL_TRUE(DeviceIoControl(deviceHandle, IOCTL_DISK_DELETE_DRIVE_LAYOUT, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned,
+                        M_NULLPTR)))
     {
         ret = SUCCESS;
     }
@@ -4747,8 +4747,8 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY* ge
         if (*geom)
         {
             safe_memset(*geom, diskGeomSize, 0, diskGeomSize);
-            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, M_NULLPTR, 0, *geom, diskGeomSize,
-                                &bytesReturned, M_NULLPTR))
+            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, M_NULLPTR, 0, *geom, diskGeomSize,
+                                &bytesReturned, M_NULLPTR)))
             {
                 ret = SUCCESS;
             }
@@ -4777,7 +4777,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY* ge
 //     {
 //         return BAD_PARAMETER;
 //     }
-//     if (DeviceIoControl(devHandle, IOCTL_DISK_IS_WRITABLE, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned, M_NULLPTR))
+//     if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_IS_WRITABLE, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned, M_NULLPTR)))
 //     {
 //         *writable = true;
 //     }
@@ -4817,8 +4817,8 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY* ge
 //        if (*numbers)
 //        {
 //            safe_memset(*numbers, controllerNumberSize, 0, controllerNumberSize);
-//            if (DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, M_NULLPTR, 0, *numbers, controllerNumberSize,
-//            &bytesReturned, M_NULLPTR))
+//            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, M_NULLPTR, 0, *numbers, controllerNumberSize,
+//            &bytesReturned, M_NULLPTR)))
 //            {
 //                ret = SUCCESS;
 //            }
@@ -4877,8 +4877,8 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
         if (*geom)
         {
             safe_memset(*geom, diskGeomSize, 0, diskGeomSize);
-            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, M_NULLPTR, 0, *geom, diskGeomSize,
-                                &bytesReturned, M_NULLPTR))
+            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, M_NULLPTR, 0, *geom, diskGeomSize,
+                                &bytesReturned, M_NULLPTR)))
             {
                 ret = SUCCESS;
                 // Setup the other pointers if they were provided.
@@ -4939,8 +4939,8 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
 //        if (*length)
 //        {
 //            safe_memset(*length, lengthInfoSize, 0, lengthInfoSize);
-//            if (DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, M_NULLPTR, 0, *length, lengthInfoSize,
-//            &bytesReturned, M_NULLPTR))
+//            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, M_NULLPTR, 0, *length, lengthInfoSize,
+//            &bytesReturned, M_NULLPTR)))
 //            {
 //                ret = SUCCESS;
 //            }
@@ -5018,51 +5018,50 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
 
 static eReturnValues open_Win_Handle(const char* filename, tDevice* device)
 {
-    eReturnValues ret = SUCCESS;
-    int attempts = 0;
-    #define MAX_OPEN_ATTEMPTS_WIN 2
-    #define DEFAULT_SHARE_FLAGS (FILE_SHARE_READ | FILE_SHARE_WRITE)
-    #define EXCLUSIVE_ACCESS_SHARE_FLAGS DWORD_C(0)
+    eReturnValues ret      = SUCCESS;
+    int           attempts = 0;
+#define MAX_OPEN_ATTEMPTS_WIN        2
+#define DEFAULT_SHARE_FLAGS          (FILE_SHARE_READ | FILE_SHARE_WRITE)
+#define EXCLUSIVE_ACCESS_SHARE_FLAGS DWORD_C(0)
     DWORD sharemode = DEFAULT_SHARE_FLAGS;
     /* We are reverting to the GENERIC_WRITE | GENERIC_READ because
                                        in the use case of a dll where multiple applications are using
                                        our library, this needs to not request full access. If you suspect
                                        some commands might fail (e.g. ISE/SED because of that
                                        please write to developers  -MA */
-    DWORD access = GENERIC_WRITE | GENERIC_READ;// FILE_ALL_ACCESS,
+    DWORD access = GENERIC_WRITE | GENERIC_READ; // FILE_ALL_ACCESS,
     DECLARE_ZERO_INIT_ARRAY(TCHAR, device_name, WIN_MAX_DEVICE_NAME_LENGTH);
     TCHAR* ptrDeviceName = &device_name[0];
     _stprintf_s(device_name, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), filename);
 
     if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
     {
-        sharemode = EXCLUSIVE_ACCESS_SHARE_FLAGS;//exclusive access means no sharing!
+        sharemode = EXCLUSIVE_ACCESS_SHARE_FLAGS; // exclusive access means no sharing!
     }
     do
     {
         ++attempts;
-        
-        device->os_info.fd = CreateFile(ptrDeviceName,
-                                    access, 
-                                    sharemode, M_NULLPTR, OPEN_EXISTING,
+
+        device->os_info.fd = CreateFile(ptrDeviceName, access, sharemode, M_NULLPTR, OPEN_EXISTING,
 #if !defined(WINDOWS_DISABLE_OVERLAPPED)
-                                    FILE_FLAG_OVERLAPPED,
+                                        FILE_FLAG_OVERLAPPED,
 #else
-                                    0,
+                                        0,
 #endif
-                                    M_NULLPTR);
+                                        M_NULLPTR);
 
         device->os_info.last_error = GetLastError();
         if (device->os_info.fd == INVALID_HANDLE_VALUE)
         {
-            //retry if asking for exclusive
-            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS && !(device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS))
+            // retry if asking for exclusive
+            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS &&
+                !(device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS))
             {
                 sharemode = DEFAULT_SHARE_FLAGS;
                 continue;
             }
 
-            //check known error codes for other return values
+            // check known error codes for other return values
             if (device->os_info.last_error == ERROR_FILE_NOT_FOUND)
             {
                 ret = DEVICE_INVALID;
@@ -5091,6 +5090,14 @@ static eReturnValues open_Win_Handle(const char* filename, tDevice* device)
         }
         else
         {
+            if (sharemode == EXCLUSIVE_ACCESS_SHARE_FLAGS)
+            {
+                device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+            }
+            else
+            {
+                device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+            }
             break;
         }
     } while (attempts < MAX_OPEN_ATTEMPTS_WIN);
@@ -5104,8 +5111,6 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
     eReturnValues               win_ret      = SUCCESS;
     PSTORAGE_DEVICE_DESCRIPTOR  device_desc  = M_NULLPTR;
     PSTORAGE_ADAPTER_DESCRIPTOR adapter_desc = M_NULLPTR;
-
-    
 
     // printf("%s -->\n Opening Device %s\n",__FUNCTION__, filename);
     if (!(validate_Device_Struct(device->sanity)))
@@ -5124,7 +5129,8 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
     {
 #if defined(WIN_DEBUG)
         printf("WIN: opened dev\n");
-#endif                                                        // WIN_DEBUG
+#endif // WIN_DEBUG
+
         device->os_info.scsiSRBHandle = INVALID_HANDLE_VALUE; // set this to invalid ahead of anywhere that it might get
                                                               // opened below for discovering additional capabilities.
         // set the handle name
@@ -5217,8 +5223,8 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     if (diskExtents != M_NULLPTR)
                     {
                         safe_memset(diskExtents, diskExtentsSizeBytes, 0, diskExtentsSizeBytes);
-                        if (DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, M_NULLPTR, 0,
-                                            diskExtents, diskExtentsSizeBytes, &returnedBytes, M_NULLPTR))
+                        if (MSFT_BOOL_TRUE(DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, M_NULLPTR, 0,
+                                            diskExtents, diskExtentsSizeBytes, &returnedBytes, M_NULLPTR)))
                         {
                             for (DWORD counter = DWORD_C(0); counter < diskExtents->NumberOfDiskExtents; ++counter)
                             {
@@ -9228,7 +9234,7 @@ eReturnValues os_Device_Reset(tDevice* device)
     BOOL success = FALSE;
     SetLastError(NO_ERROR);
     device->os_info.last_error = NO_ERROR;
-    success = DeviceIoControl(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_DEVICE, M_NULLPTR, 0, M_NULLPTR, 0,
+    success = MSFT_BOOL_FALSE(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_DEVICE, M_NULLPTR, 0, M_NULLPTR, 0,
                               M_NULLPTR, FALSE);
     device->os_info.last_error = GetLastError();
     if (MSFT_BOOL_TRUE(success) && device->os_info.last_error == NO_ERROR)
@@ -9279,9 +9285,19 @@ eReturnValues os_Lock_Device(tDevice* device)
 {
     eReturnValues ret           = SUCCESS;
     DWORD         returnedBytes = DWORD_C(0);
-    if (!DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &returnedBytes, M_NULLPTR))
+
+    if (device->os_info.handleFlags == HANDLE_FLAGS_DEFAULT && strstr(device->os_info.name, "PHYSICAL") != M_NULLPTR)
     {
-        // This can fail is files are open, it's a system disk, or has a pagefile.
+        // attempt to reopen with exclusive access. If it fails, that is ok, we still have this other lock
+        // This is the same way the linux code is working. -TJE
+        CloseHandle(device->os_info.fd);
+        device->dFlags |= HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
+        open_Win_Handle(device->os_info.name, device);
+    }
+
+    if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &returnedBytes, M_NULLPTR)))
+    {
+        // This can fail if files are open, it's a system disk, or has a pagefile.
         ret = FAILURE;
     }
     return ret;
@@ -9291,8 +9307,8 @@ eReturnValues os_Unlock_Device(tDevice* device)
 {
     eReturnValues ret           = SUCCESS;
     DWORD         returnedBytes = DWORD_C(0);
-    if (!DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &returnedBytes,
-                         M_NULLPTR))
+    if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &returnedBytes,
+                         M_NULLPTR)))
     {
         ret = FAILURE;
     }
