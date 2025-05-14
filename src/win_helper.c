@@ -653,9 +653,10 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                         safe_memset(&deviceNumber, sizeof(STORAGE_DEVICE_NUMBER), 0,
                                                     sizeof(STORAGE_DEVICE_NUMBER));
                                         DWORD returnedDataSize = DWORD_C(0);
-                                        if (MSFT_BOOL_TRUE(DeviceIoControl(deviceHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, M_NULLPTR, 0,
-                                                            &deviceNumber, sizeof(STORAGE_DEVICE_NUMBER),
-                                                            &returnedDataSize, M_NULLPTR)))
+                                        if (MSFT_BOOL_TRUE(DeviceIoControl(
+                                                deviceHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, M_NULLPTR, 0,
+                                                &deviceNumber, sizeof(STORAGE_DEVICE_NUMBER), &returnedDataSize,
+                                                M_NULLPTR)))
                                         {
                                             if (deviceNumber.DeviceNumber == device->os_info.os_drive_number)
                                             {
@@ -4672,8 +4673,8 @@ static eReturnValues win_Update_Disk_Properties(HANDLE* deviceHandle)
 {
     eReturnValues ret           = NOT_SUPPORTED;
     DWORD         bytesReturned = DWORD_C(0);
-    if (MSFT_BOOL_TRUE(DeviceIoControl(deviceHandle, IOCTL_DISK_UPDATE_PROPERTIES, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned,
-                        M_NULLPTR)))
+    if (MSFT_BOOL_TRUE(DeviceIoControl(deviceHandle, IOCTL_DISK_UPDATE_PROPERTIES, M_NULLPTR, 0, M_NULLPTR, 0,
+                                       &bytesReturned, M_NULLPTR)))
     {
         ret = SUCCESS;
     }
@@ -4701,8 +4702,8 @@ static eReturnValues win_Delete_Drive_Layout(HANDLE* deviceHandle)
 {
     eReturnValues ret           = NOT_SUPPORTED;
     DWORD         bytesReturned = DWORD_C(0);
-    if (MSFT_BOOL_TRUE(DeviceIoControl(deviceHandle, IOCTL_DISK_DELETE_DRIVE_LAYOUT, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned,
-                        M_NULLPTR)))
+    if (MSFT_BOOL_TRUE(DeviceIoControl(deviceHandle, IOCTL_DISK_DELETE_DRIVE_LAYOUT, M_NULLPTR, 0, M_NULLPTR, 0,
+                                       &bytesReturned, M_NULLPTR)))
     {
         ret = SUCCESS;
     }
@@ -4747,8 +4748,8 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY* ge
         if (*geom)
         {
             safe_memset(*geom, diskGeomSize, 0, diskGeomSize);
-            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, M_NULLPTR, 0, *geom, diskGeomSize,
-                                &bytesReturned, M_NULLPTR)))
+            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, M_NULLPTR, 0, *geom,
+                                               diskGeomSize, &bytesReturned, M_NULLPTR)))
             {
                 ret = SUCCESS;
             }
@@ -4777,7 +4778,8 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY* ge
 //     {
 //         return BAD_PARAMETER;
 //     }
-//     if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_IS_WRITABLE, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned, M_NULLPTR)))
+//     if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_IS_WRITABLE, M_NULLPTR, 0, M_NULLPTR, 0, &bytesReturned,
+//     M_NULLPTR)))
 //     {
 //         *writable = true;
 //     }
@@ -4817,8 +4819,8 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY* ge
 //        if (*numbers)
 //        {
 //            safe_memset(*numbers, controllerNumberSize, 0, controllerNumberSize);
-//            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, M_NULLPTR, 0, *numbers, controllerNumberSize,
-//            &bytesReturned, M_NULLPTR)))
+//            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_CONTROLLER_NUMBER, M_NULLPTR, 0, *numbers,
+//            controllerNumberSize, &bytesReturned, M_NULLPTR)))
 //            {
 //                ret = SUCCESS;
 //            }
@@ -4877,8 +4879,8 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
         if (*geom)
         {
             safe_memset(*geom, diskGeomSize, 0, diskGeomSize);
-            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, M_NULLPTR, 0, *geom, diskGeomSize,
-                                &bytesReturned, M_NULLPTR)))
+            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, M_NULLPTR, 0, *geom,
+                                               diskGeomSize, &bytesReturned, M_NULLPTR)))
             {
                 ret = SUCCESS;
                 // Setup the other pointers if they were provided.
@@ -4939,8 +4941,8 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
 //        if (*length)
 //        {
 //            safe_memset(*length, lengthInfoSize, 0, lengthInfoSize);
-//            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, M_NULLPTR, 0, *length, lengthInfoSize,
-//            &bytesReturned, M_NULLPTR)))
+//            if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_LENGTH_INFO, M_NULLPTR, 0, *length,
+//            lengthInfoSize, &bytesReturned, M_NULLPTR)))
 //            {
 //                ret = SUCCESS;
 //            }
@@ -5223,8 +5225,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     if (diskExtents != M_NULLPTR)
                     {
                         safe_memset(diskExtents, diskExtentsSizeBytes, 0, diskExtentsSizeBytes);
-                        if (MSFT_BOOL_TRUE(DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, M_NULLPTR, 0,
-                                            diskExtents, diskExtentsSizeBytes, &returnedBytes, M_NULLPTR)))
+                        if (MSFT_BOOL_TRUE(DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,
+                                                           M_NULLPTR, 0, diskExtents, diskExtentsSizeBytes,
+                                                           &returnedBytes, M_NULLPTR)))
                         {
                             for (DWORD counter = DWORD_C(0); counter < diskExtents->NumberOfDiskExtents; ++counter)
                             {
@@ -9295,7 +9298,8 @@ eReturnValues os_Lock_Device(tDevice* device)
         open_Win_Handle(device->os_info.name, device);
     }
 
-    if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &returnedBytes, M_NULLPTR)))
+    if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
+                                        &returnedBytes, M_NULLPTR)))
     {
         // This can fail if files are open, it's a system disk, or has a pagefile.
         ret = FAILURE;
@@ -9307,8 +9311,8 @@ eReturnValues os_Unlock_Device(tDevice* device)
 {
     eReturnValues ret           = SUCCESS;
     DWORD         returnedBytes = DWORD_C(0);
-    if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0, &returnedBytes,
-                         M_NULLPTR)))
+    if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
+                                        &returnedBytes, M_NULLPTR)))
     {
         ret = FAILURE;
     }

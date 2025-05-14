@@ -85,7 +85,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     }
     int handleFlags = O_RDWR | O_NONBLOCK;
     int attempts    = 0;
-#define LIN_OPEN_ATTEMPTS_MAX 2
+#define BSD_OPEN_ATTEMPTS_MAX 2
     if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
     {
         handleFlags |= O_EXCL;
@@ -130,7 +130,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         {
             break;
         }
-    } while (attempts < LIN_OPEN_ATTEMPTS_MAX);
+    } while (attempts < BSD_OPEN_ATTEMPTS_MAX);
 
     if (handleFlags & O_EXCL)
     {

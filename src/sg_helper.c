@@ -1754,12 +1754,15 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
     printf("%s: Attempting to open %s\n", __FUNCTION__, deviceHandle);
 #endif
     // Note: We are opening a READ/Write flag
+    int attempts = 0;
+#define LIN_OPEN_ATTEMPTS_MAX 2
     if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
     {
         handleFlags |= O_EXCL;
     }
     do
     {
+        ++attempts;
         if ((device->os_info.fd = open(deviceHandle, handleFlags)) < 0)
         {
             if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
@@ -1797,7 +1800,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
         {
             break;
         }
-    } while (true);
+    } while (attempts < LIN_OPEN_ATTEMPTS_MAX);
 
     if (handleFlags & O_EXCL)
     {
