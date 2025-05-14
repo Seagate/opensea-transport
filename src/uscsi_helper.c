@@ -242,7 +242,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     do
     {
         ++attempts;
-        if ((device->os_info.fd = open(deviceHandle, handleFlags)) < 0)
+        if ((device->os_info.fd = open(filename, handleFlags)) < 0)
         {
             if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
             {

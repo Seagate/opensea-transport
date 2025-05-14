@@ -18,6 +18,7 @@
 #include "memory_safety.h"
 #include "string_utils.h"
 #include "type_conversion.h"
+#include "error_translation.h"
 
 #include "bsd_ata_passthrough.h"
 #include "bsd_mount_info.h"
