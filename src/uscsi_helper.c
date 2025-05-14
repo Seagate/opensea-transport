@@ -256,22 +256,18 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             print_Errno_To_Screen(errno);
             if (device->os_info.last_error == EACCES)
             {
-                safe_free(&deviceHandle);
                 return PERMISSION_DENIED;
             }
             else if (device->os_info.last_error == EBUSY)
             {
-                safe_free(&deviceHandle);
                 return DEVICE_BUSY;
             }
             else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
             {
-                safe_free(&deviceHandle);
                 return DEVICE_INVALID;
             }
             else
             {
-                safe_free(&deviceHandle);
                 return FAILURE;
             }
         }
