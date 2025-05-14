@@ -1818,11 +1818,6 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
         set_Device_Fields_From_Handle(deviceHandle, device);
         setup_Passthrough_Hacks_By_ID(device);
         set_Device_Partition_Info(device);
-        if (handleFlags & O_EXCL && SUCCESS != open_fd2(device))
-        {
-            printf("Warning! Could not open second handle! Errno: ");
-            print_Errno_To_Screen(errno);
-        }
         safe_free(&deviceHandle);
         return ret;
     }
@@ -1929,11 +1924,6 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
                 set_Device_Fields_From_Handle(deviceHandle, device);
                 setup_Passthrough_Hacks_By_ID(device);
                 set_Device_Partition_Info(device);
-                if (handleFlags & O_EXCL && SUCCESS != open_fd2(device))
-                {
-                    printf("Warning! Could not open second handle! Errno: ");
-                    print_Errno_To_Screen(errno);
-                }
 
 #if defined(_DEBUG)
                 printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", device->os_info.name,
