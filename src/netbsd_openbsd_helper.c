@@ -83,13 +83,64 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     {
         return MEMORY_FAILURE;
     }
-
-    fd = open(deviceHandle, O_RDWR | O_NONBLOCK);
-    if (fd < 0)
+    int handleFlags = O_RDWR | O_NONBLOCK;
+    int attempts    = 0;
+#define LIN_OPEN_ATTEMPTS_MAX 2
+    if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
     {
-        perror("Opening device handle");
-        return FAILURE;
+        handleFlags |= O_EXCL;
     }
+    do
+    {
+        ++attempts;
+        if ((device->os_info.fd = open(deviceHandle, handleFlags)) < 0)
+        {
+            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+            {
+                handleFlags &= ~O_EXCL;
+                continue;
+            }
+            perror("open");
+            device->os_info.last_error = errno;
+            printf("open failure\n");
+            printf("Error: ");
+            print_Errno_To_Screen(errno);
+            if (device->os_info.last_error == EACCES)
+            {
+                safe_free(&deviceHandle);
+                return PERMISSION_DENIED;
+            }
+            else if (device->os_info.last_error == EBUSY)
+            {
+                safe_free(&deviceHandle);
+                return DEVICE_BUSY;
+            }
+            else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
+            {
+                safe_free(&deviceHandle);
+                return DEVICE_INVALID;
+            }
+            else
+            {
+                safe_free(&deviceHandle);
+                return FAILURE;
+            }
+        }
+        else
+        {
+            break;
+        }
+    } while (attempts < LIN_OPEN_ATTEMPTS_MAX);
+
+    if (handleFlags & O_EXCL)
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+    }
+    else
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+    }
+
     device->os_info.fd = fd;
 
     // setup any other necessary enumeration of the device
@@ -113,6 +164,19 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         get_BSD_SCSI_Address(device->os_info.fd, &device->os_info.addresstype, &device->os_info.bus,
                              &device->os_info.target, &device->os_info.lun);
     }
+
+#if defined(__NetBSD__)
+    device->os_info.osType = OS_NETBSD;
+#else
+    device->os_info.osType = OS_OPENBSD;
+#endif
+    device->os_info.minimumAlignment = sizeof(void*);
+
+    if (device->dFlags == OPEN_HANDLE_ONLY)
+    {
+        return ret;
+    }
+
     set_BSD_Device_Partition_Info(device);
     ret = fill_Drive_Info_Data(device);
     return ret;
