@@ -1306,7 +1306,7 @@ extern "C"
     {
         HANDLE_FLAGS_DEFAULT,
         HANDLE_FLAGS_EXCLUSIVE
-    }eHandleOpenFlags;
+    } eHandleOpenFlags;
 
 #define OS_HANDLE_NAME_MAX_LENGTH          256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
@@ -1533,7 +1533,7 @@ extern "C"
             csmiDeviceData; // This is a pointer because it will only be allocated when CSMI is supported. This is also
                             // used by Intel RST NVMe passthrough which is basically an extension of CSMI
         ptrCissDeviceInfo cissDeviceData; // This pointer is allocated only when CCISS is supported.
-        eHandleOpenFlags handleFlags; // keeps track of the flags used when the handle was opened.
+        eHandleOpenFlags  handleFlags;    // keeps track of the flags used when the handle was opened.
         uint8_t           padd[2];        // padd to multiple of 8 bytes
     } OSDriveInfo;
 
@@ -1556,8 +1556,10 @@ extern "C"
 #define GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES   BIT20 // matches v2
 #define GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE BIT21 // matches v3
 #define GET_DEVICE_FUNCS_VERBOSE_BUFFERS         BIT22 // matches v4
-#define HANDLE_RECOMMEND_EXCLUSIVE_ACCESS        BIT23 // try to open with exclusive, but if it fails, will complete without error and default permissions.
-#define HANDLE_REQUIRE_EXCLUSIVE_ACCESS          BIT24 // must be able to open with exclusive access, otherwise this will return a failure code.
+#define HANDLE_RECOMMEND_EXCLUSIVE_ACCESS                                                                              \
+    BIT23 // try to open with exclusive, but if it fails, will complete without error and default permissions.
+#define HANDLE_REQUIRE_EXCLUSIVE_ACCESS                                                                                \
+    BIT24 // must be able to open with exclusive access, otherwise this will return a failure code.
 
     typedef eReturnValues (*issue_io_func)(void*);
 
@@ -1918,7 +1920,7 @@ extern "C"
 
     OPENSEA_TRANSPORT_API bool validate_Device_Struct(versionBlock sanity);
 
-    #define DEFAULT_GET_DEV_FLAGS 0
+#define DEFAULT_GET_DEV_FLAGS 0
 
     //-----------------------------------------------------------------------------
     //
@@ -2471,8 +2473,8 @@ extern "C"
     //! \brief   Checks if sector size and capacity are in sync between the SCSI layer performing translation
     //!         and the emulated ATA/NVMe device. This also checks the above sector size emulation is not in use.
     //!         That is more specific to old USB adapters that played that trick to get read/write working on XP.
-    //!         This function is useful to detect issues like a drive had it's sector size changed but the SCSI translator
-    //!         has not refreshed its device data to pick up the change.
+    //!         This function is useful to detect issues like a drive had it's sector size changed but the SCSI
+    //!         translator has not refreshed its device data to pick up the change.
     //
     //  Entry:
     //!   \param[in]  device - file descriptor
@@ -2482,7 +2484,7 @@ extern "C"
     //!   block size = device reported block size
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Blocksize_And_Capacity_In_Sync(tDevice *device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Blocksize_And_Capacity_In_Sync(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //

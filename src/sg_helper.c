@@ -1580,8 +1580,8 @@ static eReturnValues open_fd2(tDevice* device)
     if (device->os_info.secondHandleValid && !device->os_info.secondHandleOpened)
     {
         int handleFlags = O_RDWR | O_NONBLOCK;
-        int attempts = 0;
-        #define SECOND_HANDLE_OPEN_ATTEMPT_MAX 2
+        int attempts    = 0;
+#define SECOND_HANDLE_OPEN_ATTEMPT_MAX 2
         if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
         {
             handleFlags |= O_EXCL;
@@ -1591,7 +1591,8 @@ static eReturnValues open_fd2(tDevice* device)
             ++attempts;
             if ((device->os_info.fd2 = open(device->os_info.secondName, handleFlags)) < 0)
             {
-                if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS && !(device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS))
+                if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS &&
+                    !(device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS))
                 {
                     handleFlags &= ~O_EXCL;
                     continue;
@@ -1761,7 +1762,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
     {
         if ((device->os_info.fd = open(deviceHandle, handleFlags)) < 0)
         {
-            if(device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
             {
                 handleFlags &= ~O_EXCL;
                 continue;
@@ -3412,22 +3413,22 @@ eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
 static bool lock_unlock_handle(int fd, bool lock, eVerbosityLevels verboseLevel)
 {
     struct flock locks;
-    int lockflags = 0;
-    bool success = true;
+    int          lockflags = 0;
+    bool         success   = true;
     safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
     if (lock)
     {
         locks.l_type = F_WRLCK;
-        lockflags = LOCK_EX | LOCK_NB;
+        lockflags    = LOCK_EX | LOCK_NB;
     }
     else
     {
         locks.l_type = F_UNLCK;
-        lockflags = LOCK_UN | LOCK_NB;
+        lockflags    = LOCK_UN | LOCK_NB;
     }
     locks.l_whence = SEEK_SET;
-    locks.l_start = 0;
-    locks.l_len = 0;//all bytes
+    locks.l_start  = 0;
+    locks.l_len    = 0; // all bytes
     if (fcntl(fd, F_SETLK, &locks) < 0)
     {
         if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
@@ -3458,7 +3459,7 @@ eReturnValues os_Lock_Device(tDevice* device)
     if (device->os_info.handleFlags != HANDLE_FLAGS_EXCLUSIVE)
     {
         int attempts = 0;
-        #define LOCK_ATTEMPT_MAX 2
+#define LOCK_ATTEMPT_MAX 2
         int handleFlags = O_RDWR | O_NONBLOCK | O_EXCL;
         // close and reopen if possible with O_EXCL, then proceed with locking
         // need to do this with both FD and FD2
@@ -3508,7 +3509,7 @@ eReturnValues os_Unlock_Device(tDevice* device)
     if (device->os_info.handleFlags != HANDLE_FLAGS_EXCLUSIVE)
     {
         int attempts = 0;
-        #define UNLOCK_ATTEMPTS_MAX 2
+#define UNLOCK_ATTEMPTS_MAX 2
         int handleFlags = O_RDWR | O_NONBLOCK;
         // close and reopen if possible with O_EXCL, then proceed with locking
         // need to do this with both FD and FD2

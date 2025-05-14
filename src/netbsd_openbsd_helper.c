@@ -227,7 +227,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     char**   devs = M_REINTERPRET_CAST(char**, safe_calloc(totalDevs + 1, sizeof(char*)));
     uint32_t i    = UINT32_C(0);
     uint32_t j    = UINT32_C(0);
-    //uint32_t k    = UINT32_C(0);
+    // uint32_t k    = UINT32_C(0);
     for (i = 0; i < num_sd_devs; ++i)
     {
         size_t devNameStringLength = (safe_strlen("/dev/") + safe_strlen(sdnamelist[i]->d_name) + 1) * sizeof(char);

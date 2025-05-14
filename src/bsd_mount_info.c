@@ -27,13 +27,13 @@
 
 int get_BSD_Partition_Count(const char* blockDeviceName)
 {
-    int            result    = 0;
-    #if defined (__NetBSD__)
+    int result = 0;
+#if defined(__NetBSD__)
     struct statvfs* mountedFS = M_NULLPTR;
-    #else
+#else
     struct statfs* mountedFS = M_NULLPTR;
-    #endif // __NetBSD__
-    int            totalMounts =
+#endif // __NetBSD__
+    int totalMounts =
         getmntinfo(&mountedFS,
                    MNT_WAIT); // Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
     if (totalMounts > 0 && mountedFS)
@@ -60,20 +60,20 @@ eReturnValues get_BSD_Partition_List(const char* blockDeviceName, ptrsPartitionI
     int           matchesFound = 0;
     if (listCount > 0)
     {
-        // This is written using getmntinfo, which seems to wrap getfsstat.
-        // https://www.freebsd.org/cgi/man.cgi?query=getmntinfo&manpath=FreeBSD+12.1-RELEASE+and+Ports
-        // This was chosen because it provides the info we want, and also claims to only show mounted devices.
-        // I also tried using getfsent, but that didn't return what we needed.
-        // If for any reason, getmntinfo is not available, I recommend switching to getfsstat. The code is similar
-        // but slightly different. I only had a VM to test with so my results showed the same between the APIs,
-        // but the description of getmntinfo was more along the lines of what has been implemented for
-        // other OS's we support. - TJE
-        #if defined (__NetBSD__)
-        struct statvfs* mountedFS   = M_NULLPTR;
-        #else
-        struct statfs* mountedFS   = M_NULLPTR;
-        #endif // __NetBSD__
-        int            totalMounts = getmntinfo(
+// This is written using getmntinfo, which seems to wrap getfsstat.
+// https://www.freebsd.org/cgi/man.cgi?query=getmntinfo&manpath=FreeBSD+12.1-RELEASE+and+Ports
+// This was chosen because it provides the info we want, and also claims to only show mounted devices.
+// I also tried using getfsent, but that didn't return what we needed.
+// If for any reason, getmntinfo is not available, I recommend switching to getfsstat. The code is similar
+// but slightly different. I only had a VM to test with so my results showed the same between the APIs,
+// but the description of getmntinfo was more along the lines of what has been implemented for
+// other OS's we support. - TJE
+#if defined(__NetBSD__)
+        struct statvfs* mountedFS = M_NULLPTR;
+#else
+        struct statfs* mountedFS = M_NULLPTR;
+#endif // __NetBSD__
+        int totalMounts = getmntinfo(
             &mountedFS,
             MNT_WAIT); // Can switch to MNT_NOWAIT and will probably be fine, but using wait for best results-TJE
         if (totalMounts > 0 && mountedFS)

@@ -23,8 +23,8 @@
 #include <sys/types.h>
 #include <sys/ucred.h>
 
-#if defined (__NetBSD__)
-#include <sys/statvfs.h>
+#if defined(__NetBSD__)
+#    include <sys/statvfs.h>
 #endif // __NetBSD__
 
 #pragma once
@@ -55,7 +55,7 @@ static M_INLINE void safe_free_spartioninfo(spartitionInfo** partinfo)
     safe_free_core(M_REINTERPRET_CAST(void**, partinfo));
 }
 
-#if defined (__NetBSD__)
+#if defined(__NetBSD__)
 static M_INLINE void safe_free_statfs(struct statvfs** fs)
 #else
 static M_INLINE void safe_free_statfs(struct statfs** fs)
