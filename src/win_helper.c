@@ -5016,6 +5016,87 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
 #define MAX_VOL_STR_LEN  (8U)
 #define MAX_DISK_EXTENTS (32U)
 
+static eReturnValues open_Win_Handle(const char* filename, tDevice* device)
+{
+    eReturnValues ret = SUCCESS;
+    int attempts = 0;
+    #define MAX_OPEN_ATTEMPTS_WIN 2
+    #define DEFAULT_SHARE_FLAGS (FILE_SHARE_READ | FILE_SHARE_WRITE)
+    #define EXCLUSIVE_ACCESS_SHARE_FLAGS DWORD_C(0)
+    DWORD sharemode = DEFAULT_SHARE_FLAGS;
+    /* We are reverting to the GENERIC_WRITE | GENERIC_READ because
+                                       in the use case of a dll where multiple applications are using
+                                       our library, this needs to not request full access. If you suspect
+                                       some commands might fail (e.g. ISE/SED because of that
+                                       please write to developers  -MA */
+    DWORD access = GENERIC_WRITE | GENERIC_READ;// FILE_ALL_ACCESS,
+    DECLARE_ZERO_INIT_ARRAY(TCHAR, device_name, WIN_MAX_DEVICE_NAME_LENGTH);
+    TCHAR* ptrDeviceName = &device_name[0];
+    _stprintf_s(device_name, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), filename);
+
+    if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+    {
+        sharemode = EXCLUSIVE_ACCESS_SHARE_FLAGS;//exclusive access means no sharing!
+    }
+    do
+    {
+        ++attempts;
+        
+        device->os_info.fd = CreateFile(ptrDeviceName,
+                                    access, 
+                                    sharemode, M_NULLPTR, OPEN_EXISTING,
+#if !defined(WINDOWS_DISABLE_OVERLAPPED)
+                                    FILE_FLAG_OVERLAPPED,
+#else
+                                    0,
+#endif
+                                    M_NULLPTR);
+
+        device->os_info.last_error = GetLastError();
+        if (device->os_info.fd == INVALID_HANDLE_VALUE)
+        {
+            //retry if asking for exclusive
+            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS && !(device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS))
+            {
+                sharemode = DEFAULT_SHARE_FLAGS;
+                continue;
+            }
+
+            //check known error codes for other return values
+            if (device->os_info.last_error == ERROR_FILE_NOT_FOUND)
+            {
+                ret = DEVICE_INVALID;
+                break;
+            }
+            else if (device->os_info.last_error == ERROR_SHARING_VIOLATION)
+            {
+                ret = DEVICE_BUSY;
+                printf("Busy\n");
+                break;
+            }
+            else if (device->os_info.last_error == ERROR_ACCESS_DENIED)
+            {
+                ret = PERMISSION_DENIED;
+                break;
+            }
+
+            if (VERBOSITY_QUIET < device->deviceVerbosity)
+            {
+                printf("Error: opening dev %s. ", filename);
+                print_Windows_Error_To_Screen(device->os_info.last_error);
+                printf("\n");
+            }
+            ret = FAILURE;
+            break;
+        }
+        else
+        {
+            break;
+        }
+    } while (attempts < MAX_OPEN_ATTEMPTS_WIN);
+    return ret;
+}
+
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 static eReturnValues get_Win_Device(const char* filename, tDevice* device)
 {
@@ -5024,9 +5105,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
     PSTORAGE_DEVICE_DESCRIPTOR  device_desc  = M_NULLPTR;
     PSTORAGE_ADAPTER_DESCRIPTOR adapter_desc = M_NULLPTR;
 
-    DECLARE_ZERO_INIT_ARRAY(TCHAR, device_name, WIN_MAX_DEVICE_NAME_LENGTH);
-    TCHAR* ptrDeviceName = &device_name[0];
-    _stprintf_s(device_name, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), filename);
+    
 
     // printf("%s -->\n Opening Device %s\n",__FUNCTION__, filename);
     if (!(validate_Device_Struct(device->sanity)))
@@ -5034,33 +5113,12 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
         return LIBRARY_MISMATCH;
     }
     // lets try to open the device.
-    device->os_info.fd = CreateFile(ptrDeviceName,
-                                    /* We are reverting to the GENERIC_WRITE | GENERIC_READ because
-                                       in the use case of a dll where multiple applications are using
-                                       our library, this needs to not request full access. If you suspect
-                                       some commands might fail (e.g. ISE/SED because of that
-                                       please write to developers  -MA */
-                                    GENERIC_WRITE | GENERIC_READ, // FILE_ALL_ACCESS,
-                                    FILE_SHARE_READ | FILE_SHARE_WRITE, M_NULLPTR, OPEN_EXISTING,
-#if !defined(WINDOWS_DISABLE_OVERLAPPED)
-                                    FILE_FLAG_OVERLAPPED,
-#else
-                                    0,
-#endif
-                                    M_NULLPTR);
-
-    device->os_info.last_error = GetLastError();
+    ret = open_Win_Handle(filename, device);
 
     // Check if we get a invalid handle back.
-    if (device->os_info.fd == INVALID_HANDLE_VALUE)
+    if (ret != SUCCESS)
     {
-        if (VERBOSITY_QUIET < device->deviceVerbosity)
-        {
-            printf("Error: opening dev %s. ", filename);
-            print_Windows_Error_To_Screen(device->os_info.last_error);
-            printf("\n");
-        }
-        ret = FAILURE;
+        return ret;
     }
     else
     {
