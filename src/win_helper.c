@@ -9237,7 +9237,7 @@ eReturnValues os_Device_Reset(tDevice* device)
     BOOL success = FALSE;
     SetLastError(NO_ERROR);
     device->os_info.last_error = NO_ERROR;
-    success = MSFT_BOOL_FALSE(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_DEVICE, M_NULLPTR, 0, M_NULLPTR, 0,
+    success = DeviceIoControl(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_DEVICE, M_NULLPTR, 0, M_NULLPTR, 0,
                               M_NULLPTR, FALSE);
     device->os_info.last_error = GetLastError();
     if (MSFT_BOOL_TRUE(success) && device->os_info.last_error == NO_ERROR)
