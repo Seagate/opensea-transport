@@ -1135,6 +1135,7 @@ eReturnValues ata_Download_Microcode(tDevice*                   device,
         ataCommandOptions = create_ata_nondata_cmd(
             device, useDMA ? ATA_DOWNLOAD_MICROCODE_DMA : ATA_DOWNLOAD_MICROCODE_CMD, false, true);
         // Set need RTFRs because this can help us understand if the new microcode activated correctly - TJE
+        ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, subCommand);
     }
     else
     {
