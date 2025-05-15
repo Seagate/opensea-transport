@@ -1361,6 +1361,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
                                 sysFsInfo.secondaryHandleStr);
             snprintf_err_handle(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
                                 basename(sysFsInfo.secondaryHandleStr));
+            device->os_info.secondHandleValid = true;
         }
     }
 }
@@ -1570,6 +1571,71 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
     return UNKNOWN;
 }
 
+// This is used to open device->os_info.fd2 which is where we will store
+// a /dev/sd handle which is a block device handle for SCSI devices.
+// This will do nothing on NVMe as it is not needed. - TJE
+static eReturnValues open_fd2(tDevice* device)
+{
+    eReturnValues ret = SUCCESS;
+    if (device->os_info.secondHandleValid && !device->os_info.secondHandleOpened)
+    {
+        int handleFlags = O_RDWR | O_NONBLOCK;
+        int attempts    = 0;
+#define SECOND_HANDLE_OPEN_ATTEMPT_MAX 2
+        if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+        {
+            handleFlags |= O_EXCL;
+        }
+        do
+        {
+            ++attempts;
+            if ((device->os_info.fd2 = open(device->os_info.secondName, handleFlags)) < 0)
+            {
+                if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS &&
+                    !(device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS))
+                {
+                    handleFlags &= ~O_EXCL;
+                    continue;
+                }
+                perror("open");
+                device->os_info.last_error = errno;
+                printf("open failure\n");
+                printf("Error: ");
+                print_Errno_To_Screen(errno);
+                if (device->os_info.last_error == EACCES)
+                {
+                    return PERMISSION_DENIED;
+                }
+                else if (device->os_info.last_error == EBUSY)
+                {
+                    return DEVICE_BUSY;
+                }
+                else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
+                {
+                    return DEVICE_INVALID;
+                }
+                else
+                {
+                    return FAILURE;
+                }
+            }
+            else
+            {
+                break;
+            }
+        } while (attempts < SECOND_HANDLE_OPEN_ATTEMPT_MAX);
+        if (device->os_info.fd2 > 0)
+        {
+            device->os_info.secondHandleOpened = true;
+        }
+        else
+        {
+            ret = FAILURE;
+        }
+    }
+    return ret;
+}
+
 static eReturnValues set_Device_Partition_Info(tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
@@ -1635,6 +1701,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
     char*         deviceHandle = M_NULLPTR;
     eReturnValues ret          = SUCCESS;
     int           k            = 0;
+    int           handleFlags  = O_RDWR | O_NONBLOCK;
 #if defined(_DEBUG)
     printf("%s: Getting device for %s\n", __FUNCTION__, filename);
 #endif
@@ -1687,29 +1754,66 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
     printf("%s: Attempting to open %s\n", __FUNCTION__, deviceHandle);
 #endif
     // Note: We are opening a READ/Write flag
-    if ((device->os_info.fd = open(deviceHandle, O_RDWR | O_NONBLOCK)) < 0)
+    int attempts = 0;
+#define LIN_OPEN_ATTEMPTS_MAX 2
+    if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
     {
-        perror("open");
-        device->os_info.fd = errno;
-        printf("open failure\n");
-        printf("Error: ");
-        print_Errno_To_Screen(errno);
-        if (device->os_info.fd == EACCES)
+        handleFlags |= O_EXCL;
+    }
+    do
+    {
+        ++attempts;
+        if ((device->os_info.fd = open(deviceHandle, handleFlags)) < 0)
         {
-            safe_free(&deviceHandle);
-            return PERMISSION_DENIED;
+            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+            {
+                handleFlags &= ~O_EXCL;
+                continue;
+            }
+            perror("open");
+            device->os_info.last_error = errno;
+            printf("open failure\n");
+            printf("Error: ");
+            print_Errno_To_Screen(errno);
+            if (device->os_info.last_error == EACCES)
+            {
+                safe_free(&deviceHandle);
+                return PERMISSION_DENIED;
+            }
+            else if (device->os_info.last_error == EBUSY)
+            {
+                safe_free(&deviceHandle);
+                return DEVICE_BUSY;
+            }
+            else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
+            {
+                safe_free(&deviceHandle);
+                return DEVICE_INVALID;
+            }
+            else
+            {
+                safe_free(&deviceHandle);
+                return FAILURE;
+            }
         }
         else
         {
-            safe_free(&deviceHandle);
-            return FAILURE;
+            break;
         }
-    }
+    } while (attempts < LIN_OPEN_ATTEMPTS_MAX);
 
+    if (handleFlags & O_EXCL)
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+    }
+    else
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+    }
     device->os_info.minimumAlignment = sizeof(void*);
 
     // Adding support for different device discovery options.
-    if (device->dFlags == OPEN_HANDLE_ONLY)
+    if (M_Byte0(device->dFlags) == OPEN_HANDLE_ONLY)
     {
         // set scsi interface and scsi drive until we know otherwise
         device->drive_info.drive_type     = SCSI_DRIVE;
@@ -3280,34 +3384,6 @@ eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSiz
 #endif
 }
 
-// This is used to open device->os_info.fd2 which is where we will store
-// a /dev/sd handle which is a block device handle for SCSI devices.
-// This will do nothing on NVMe as it is not needed. - TJE
-static eReturnValues open_fd2(tDevice* device)
-{
-    eReturnValues ret = SUCCESS;
-    if (device->os_info.secondHandleValid && !device->os_info.secondHandleOpened)
-    {
-        if ((device->os_info.fd2 = open(device->os_info.secondName, O_RDWR | O_NONBLOCK)) < 0)
-        {
-            perror("open");
-            device->os_info.fd2 = errno;
-            printf("open failure\n");
-            printf("Error: ");
-            print_Errno_To_Screen(errno);
-            if (device->os_info.fd2 == EACCES)
-            {
-                return PERMISSION_DENIED;
-            }
-            else
-            {
-                return FAILURE;
-            }
-        }
-    }
-    return ret;
-}
-
 eReturnValues os_Read(M_ATTR_UNUSED tDevice* device,
                       M_ATTR_UNUSED uint64_t lba,
                       M_ATTR_UNUSED bool     forceUnitAccess,
@@ -3337,38 +3413,95 @@ eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Lock_Device(tDevice* device)
+static bool lock_unlock_handle(int fd, bool lock, eVerbosityLevels verboseLevel)
 {
-    eReturnValues ret = SUCCESS;
-    // Get flags
-    int flags = fcntl(device->os_info.fd, F_GETFL);
-    // disable O_NONBLOCK
-    flags &= ~O_NONBLOCK;
-    flags |= O_EXCL;
-    // Set Flags
-    if (fcntl(device->os_info.fd, F_SETFL, flags) < 0)
-    {
-        printf("Failed to set exclusive flag with fcntl\n");
-        print_Errno_To_Screen(errno);
-    }
     struct flock locks;
+    int          lockflags = 0;
+    bool         success   = true;
     safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
-    locks.l_type = F_WRLCK;
-    locks.l_whence = SEEK_SET;
-    locks.l_start = 0;
-    locks.l_len = 0;//all bytes
-    if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
+    if (lock)
     {
-        printf("Failed to set locking flags with fcntl\n");
-        print_Errno_To_Screen(errno);
+        locks.l_type = F_WRLCK;
+        lockflags    = LOCK_EX | LOCK_NB;
+    }
+    else
+    {
+        locks.l_type = F_UNLCK;
+        lockflags    = LOCK_UN | LOCK_NB;
+    }
+    locks.l_whence = SEEK_SET;
+    locks.l_start  = 0;
+    locks.l_len    = 0; // all bytes
+    if (fcntl(fd, F_SETLK, &locks) < 0)
+    {
+        if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+        {
+            printf("Failed to set locking flags with fcntl\n");
+            print_Errno_To_Screen(errno);
+        }
+        success = false;
     }
     // Linux kernel 2.0 and higher only. Prior it just called fcntl internally.
     // NOTE: For other OS's, we need to check what the interactions between these locks are
     // https://www.kernel.org/doc/Documentation/filesystems/locks.txt
-    if (flock(device->os_info.fd, LOCK_EX | LOCK_NB) < 0)
+    if (flock(fd, lockflags) < 0)
     {
-        printf("Failed to set flock\n");
-        print_Errno_To_Screen(errno);
+        if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+        {
+            printf("Failed to set flock\n");
+            print_Errno_To_Screen(errno);
+        }
+        success = false;
+    }
+    return success;
+}
+
+eReturnValues os_Lock_Device(tDevice* device)
+{
+    eReturnValues ret = SUCCESS;
+    if (device->os_info.handleFlags != HANDLE_FLAGS_EXCLUSIVE)
+    {
+        int attempts = 0;
+#define LOCK_ATTEMPT_MAX 2
+        int handleFlags = O_RDWR | O_NONBLOCK | O_EXCL;
+        // close and reopen if possible with O_EXCL, then proceed with locking
+        // need to do this with both FD and FD2
+        close(device->os_info.fd);
+        do
+        {
+            device->os_info.fd = open(device->os_info.name, handleFlags);
+            if (device->os_info.fd < 0)
+            {
+                if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                {
+                    printf("WARNING: Failed to acquire exclusive access to %s\n", device->os_info.name);
+                }
+                handleFlags &= ~O_EXCL;
+            }
+            else
+            {
+                break;
+            }
+            ++attempts;
+        } while (attempts < LOCK_ATTEMPT_MAX);
+        if (device->os_info.secondHandleValid)
+        {
+            if (device->os_info.secondHandleOpened)
+            {
+                close(device->os_info.fd2);
+                device->os_info.secondHandleOpened = false;
+            }
+            device->dFlags |= HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
+            open_fd2(device);
+        }
+    }
+    if (!lock_unlock_handle(device->os_info.fd, true, device->deviceVerbosity))
+    {
+        ret = FAILURE;
+    }
+    if (device->os_info.secondHandleValid && device->os_info.secondHandleOpened)
+    {
+        lock_unlock_handle(device->os_info.fd2, true, device->deviceVerbosity);
     }
     return ret;
 }
@@ -3376,35 +3509,49 @@ eReturnValues os_Lock_Device(tDevice* device)
 eReturnValues os_Unlock_Device(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    // Get flags
-    int flags = fcntl(device->os_info.fd, F_GETFL);
-    flags &= ~O_EXCL;
-    // enable O_NONBLOCK
-    flags |= O_NONBLOCK;
-    // Set Flags
-    if (fcntl(device->os_info.fd, F_SETFL, flags) < 0)
+    if (device->os_info.handleFlags != HANDLE_FLAGS_EXCLUSIVE)
     {
-        printf("Failed to set exclusive flag with fcntl\n");
-        print_Errno_To_Screen(errno);
+        int attempts = 0;
+#define UNLOCK_ATTEMPTS_MAX 2
+        int handleFlags = O_RDWR | O_NONBLOCK;
+        // close and reopen if possible with O_EXCL, then proceed with locking
+        // need to do this with both FD and FD2
+        close(device->os_info.fd);
+        do
+        {
+            device->os_info.fd = open(device->os_info.name, handleFlags);
+            if (device->os_info.fd < 0)
+            {
+                handleFlags |= O_EXCL;
+                if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                {
+                    printf("WARNING: Failed to acquire default access to %s\n", device->os_info.name);
+                }
+            }
+            else
+            {
+                break;
+            }
+            ++attempts;
+        } while (attempts < UNLOCK_ATTEMPTS_MAX);
+        if (device->os_info.secondHandleValid)
+        {
+            if (device->os_info.secondHandleOpened)
+            {
+                close(device->os_info.fd2);
+                device->os_info.secondHandleOpened = false;
+            }
+            device->dFlags &= ~HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
+            open_fd2(device);
+        }
     }
-    struct flock locks;
-    safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
-    locks.l_type = F_UNLCK;
-    locks.l_whence = SEEK_SET;
-    locks.l_start = 0;
-    locks.l_len = 0;//all bytes
-    if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
+    if (!lock_unlock_handle(device->os_info.fd, false, device->deviceVerbosity))
     {
-        printf("Failed to set locking flags with fcntl\n");
-        print_Errno_To_Screen(errno);
+        ret = FAILURE;
     }
-    // Linux kernel 2.0 and higher only. Prior it just called fcntl internally.
-    // NOTE: For other OS's, we need to check what the interactions between these locks are
-    //https://www.kernel.org/doc/Documentation/filesystems/locks.txt
-    if (flock(device->os_info.fd, LOCK_UN | LOCK_NB) < 0)
+    if (device->os_info.secondHandleValid && device->os_info.secondHandleOpened)
     {
-        printf("Failed to set flock\n");
-        print_Errno_To_Screen(errno);
+        lock_unlock_handle(device->os_info.fd2, false, device->deviceVerbosity);
     }
     return ret;
 }

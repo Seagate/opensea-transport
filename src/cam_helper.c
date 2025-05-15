@@ -152,9 +152,62 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         }
         else
         {
-            // printf("%s fd %d name %s\n",__FUNCTION__, device->os_info.fd, device->os_info.name);
-            device->os_info.cam_dev = cam_open_spec_device(devName, devUnit, O_RDWR, M_NULLPTR); // O_NONBLOCK is not
-                                                                                                 // allowed
+            // O_NONBLOCK is not allowed
+            int handleFlags = O_RDWR;
+            int attempts    = 0;
+#define CAM_OPEN_MAX_ATTEMPTS 2
+            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+            {
+                handleFlags |= O_EXCL;
+            }
+            do
+            {
+                ++attempts;
+                device->os_info.cam_dev = cam_open_spec_device(devName, devUnit, handleFlags, M_NULLPTR);
+                // NOTE: Checking for errno like we have below is not really documented.
+                //       If you read through the cam code in the kernel though, you can find that it calls "open"
+                //       within this function. Open can report these errors and if we do get a failure it is
+                //       most likely from the open failing. It can fail for other things inside this function
+                //       but this will be ok. -TJE
+                if (device->os_info.cam_dev == M_NULLPTR)
+                {
+                    if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+                    {
+                        handleFlags &= ~O_EXCL;
+                        continue;
+                    }
+                    perror("open");
+                    device->os_info.last_error = errno;
+                    printf("open failure\n");
+                    printf("Error: ");
+                    print_Errno_To_Screen(errno);
+                    if (device->os_info.last_error == EACCES)
+                    {
+                        safe_free(&deviceHandle);
+                        return PERMISSION_DENIED;
+                    }
+                    else if (device->os_info.last_error == EBUSY)
+                    {
+                        safe_free(&deviceHandle);
+                        return DEVICE_BUSY;
+                    }
+                    else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
+                    {
+                        safe_free(&deviceHandle);
+                        return DEVICE_INVALID;
+                    }
+                    else
+                    {
+                        safe_free(&deviceHandle);
+                        return FAILURE;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            } while (attempts < CAM_OPEN_MAX_ATTEMPTS);
+
             if (device->os_info.cam_dev != M_NULLPTR)
             {
                 // Set name and friendly name
@@ -166,8 +219,21 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 
                 device->os_info.fd = devUnit;
 
-                // set the OS Type
-                device->os_info.osType           = OS_FREEBSD;
+                if (handleFlags & O_EXCL)
+                {
+                    device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+                }
+                else
+                {
+                    device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+                }
+
+// set the OS Type
+#if defined(__DragonFly__)
+                device->os_info.osType = OS_DRAGONFLYBSD;
+#else
+            device->os_info.osType = OS_FREEBSD;
+#endif
                 device->os_info.minimumAlignment = sizeof(void*);
 
                 if (device->dFlags == OPEN_HANDLE_ONLY)
