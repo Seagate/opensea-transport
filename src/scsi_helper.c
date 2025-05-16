@@ -3836,7 +3836,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 {
                     device->drive_info.devicePhyBlockSize =
                         readCapData.logicalBlockLength *
-                        power_Of_Two(readCapData.logicalBlocksPerPhysicalBlockExponent);
+                        M_STATIC_CAST(uint32_t, power_Of_Two(readCapData.logicalBlocksPerPhysicalBlockExponent));
                     device->drive_info.sectorAlignment       = readCapData.lowestAlignedLogicalBlock;
                     device->drive_info.currentProtectionType = readCapData.ptype;
                     device->drive_info.piExponent            = readCapData.piexponent;
