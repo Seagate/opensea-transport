@@ -25,6 +25,17 @@ extern "C"
 
 #define NVME_MAX_FW_SLOTS         (7)
 
+//! \def NVME_0_BASED
+//! \brief read a 0's based value into a 1's based value
+//! \note While a simple + 1 is easy to do, this helps make it readable and clear what the value being accessed is.
+#define NVME_0_BASED(value) (value + 1)
+
+//! \def NVME_0_BASED_ADJUST
+//! \brief adjust a value from 1's based to 0 based.
+//! \details This is most often used when taking something written in code to convert to a value the drive is expecting.
+//! \note While a simple - 1 is easy to do, this helps make it readable and clear what the value being converted is.
+#define NVME_0_BASED_ADJUST(value) (value - 1)
+
     /* Controller Registers Section 3 & 3.1 NVMe specifications*/
     typedef struct s_nvmeBarCtrlRegisters
     {

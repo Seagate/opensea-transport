@@ -5286,7 +5286,7 @@ static eReturnValues sntl_Translate_SCSI_Read_Command(tDevice* device, ScsiIoCtx
             return UNKNOWN;
         }
     }
-    eReturnValues ret = nvme_Read(device, lba, C_CAST(uint16_t, transferLength - 1), false, fua, pi, scsiIoCtx->pdata,
+    eReturnValues ret = nvme_Read(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(transferLength)), false, fua, pi, scsiIoCtx->pdata,
                                   scsiIoCtx->dataLength);
     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense,
                                   scsiIoCtx->senseDataSize);
@@ -5517,7 +5517,7 @@ static eReturnValues sntl_Translate_SCSI_Write_Command(tDevice* device, ScsiIoCt
             return UNKNOWN;
         }
     }
-    eReturnValues ret = nvme_Write(device, lba, C_CAST(uint16_t, transferLength - 1), false, fua, pi, 0,
+    eReturnValues ret = nvme_Write(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(transferLength)), false, fua, pi, 0,
                                    scsiIoCtx->pdata, scsiIoCtx->dataLength);
     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense,
                                   scsiIoCtx->senseDataSize);
@@ -5707,7 +5707,7 @@ static eReturnValues sntl_Translate_SCSI_Verify_Command(tDevice* device, ScsiIoC
                     break;
                 }
             }
-            ret = nvme_Verify(device, lba, false, false, pi, C_CAST(uint16_t, verificationLength - UINT32_C(1)));
+            ret = nvme_Verify(device, lba, false, false, pi, C_CAST(uint16_t, NVME_0_BASED_ADJUST(verificationLength)));
         }
         else
         {
@@ -5734,7 +5734,7 @@ static eReturnValues sntl_Translate_SCSI_Verify_Command(tDevice* device, ScsiIoC
                 break;
             }
         }
-        ret = nvme_Compare(device, lba, C_CAST(uint16_t, verificationLength - UINT32_C(1)), false, true, pi,
+        ret = nvme_Compare(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(verificationLength)), false, true, pi,
                            scsiIoCtx->pdata, scsiIoCtx->dataLength);
         set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense,
                                       scsiIoCtx->senseDataSize);
@@ -6263,7 +6263,7 @@ static eReturnValues sntl_Translate_SCSI_Write_Long(tDevice* device, ScsiIoCtx* 
                     }
                     else
                     {
-                        ret = nvme_Write_Uncorrectable(device, lba, 0); // only 1 block at a time
+                        ret = nvme_Write_Uncorrectable(device, lba, NVME_0_BASED_ADJUST(1));
                         set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus,
                                                       scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                     }
@@ -7183,7 +7183,7 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
                     if ((nvmeDSMOffset > 4096) && ((unmapBlockDescriptorIter + 16) < minBlockDescriptorLength))
                     {
                         if (SUCCESS ==
-                            nvme_Dataset_Management(device, numberOfRanges, true, false, false, dsmBuffer, 4096))
+                            nvme_Dataset_Management(device, NVME_0_BASED_ADJUST(numberOfRanges), true, false, false, dsmBuffer, 4096))
                         {
                             // clear the buffer for reuse
                             safe_memset(dsmBuffer, 4096, 0, 4096);
@@ -7210,7 +7210,7 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
             {
                 // send the data set management command with whatever is in the trim buffer at this point (all zeros is
                 // safe to send if we do get that)
-                if (SUCCESS != nvme_Dataset_Management(device, numberOfRanges, true, false, false, dsmBuffer, 4096))
+                if (SUCCESS != nvme_Dataset_Management(device, NVME_0_BASED_ADJUST(numberOfRanges), true, false, false, dsmBuffer, 4096))
                 {
                     ret = FAILURE;
                     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus,

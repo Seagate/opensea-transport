@@ -704,7 +704,7 @@ eReturnValues nvme_Firmware_Image_Dl(tDevice* device,
     ImageDl.cmd.adminCmd.addr   = C_CAST(uintptr_t, ptrData);
     ImageDl.ptrData             = ptrData;
     ImageDl.dataSize            = numberOfBytes;
-    ImageDl.cmd.adminCmd.cdw10  = (numberOfBytes >> 2) - 1; // Since this is, 0 based, number of DWords not Bytes.
+    ImageDl.cmd.adminCmd.cdw10  = NVME_0_BASED_ADJUST(numberOfBytes >> 2);
     ImageDl.cmd.adminCmd.cdw11  = bufferOffset >> 2;
     ImageDl.timeout             = timeoutSeconds;
     if (ImageDl.timeout == 0)
@@ -935,7 +935,7 @@ eReturnValues nvme_Get_Log_Page(tDevice* device, nvmeGetLogPageCmdOpts* getLogPa
     getLogPage.ptrData             = getLogPageCmdOpts->addr;
     getLogPage.cmd.adminCmd.nsid   = getLogPageCmdOpts->nsid;
 
-    numDwords = (getLogPageCmdOpts->dataLen / NVME_DWORD_SIZE) - UINT32_C(1); // zero based DWORD value
+    numDwords = NVME_0_BASED_ADJUST(getLogPageCmdOpts->dataLen / NVME_DWORD_SIZE);
 
     dWord10 |= getLogPageCmdOpts->lid;
     dWord10 |= (getLogPageCmdOpts->lsp & 0x0F) << 8;
@@ -1034,7 +1034,7 @@ eReturnValues nvme_Reservation_Report(tDevice* device, bool extendedDataStructur
     nvmCmd.ptrData           = ptrData;
     nvmCmd.timeout           = 15;
 
-    nvmCmd.cmd.nvmCmd.cdw10 = (dataSize >> 2) - 1; // convert bytes to a number of dwords (zeros based value)
+    nvmCmd.cmd.nvmCmd.cdw10 = NVME_0_BASED_ADJUST(dataSize >> 2);
 
     if (extendedDataStructure)
     {
