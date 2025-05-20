@@ -2519,6 +2519,53 @@ static int nvme_filter(const struct dirent* entry)
     }
 }
 
+static int host_filter(const struct dirent* entry)
+{
+    return !strncmp("host", entry->d_name, 4);
+}
+
+static void linux_Rescan_SCSI_Hosts(void)
+{
+    struct dirent** hosts        = M_NULLPTR;
+    const char*     sysSCSIHosts = "/sys/class/scsi_host/";
+    const char*     scsiHostScan = "scan";
+    int             hostscanres  = scandir(sysSCSIHosts, &hosts, host_filter, alphasort);
+    if (hostscanres >= 0)
+    {
+        for (int iter = 0; iter < hostscanres; ++iter)
+        {
+            size_t handleSize = (safe_strlen(sysSCSIHosts) + safe_strlen(hosts[iter]->d_name) + SIZE_T_C(2) +
+                                 safe_strlen(scsiHostScan)) *
+                                sizeof(char);
+            char* hostFileName = M_REINTERPRET_CAST(char*, safe_malloc(handleSize));
+            if (hostFileName != M_NULLPTR)
+            {
+                FILE*              scsiHostFile = M_NULLPTR;
+                eConstraintHandler handler      = set_Constraint_Handler(ERR_IGNORE);
+                snprintf_err_handle(hostFileName, handleSize, "%s%s/%s", sysSCSIHosts, hosts[iter]->d_name,
+                                    scsiHostScan);
+                errno_t err = safe_fopen(&scsiHostFile, hostFileName, "w");
+                if (0 == err)
+                {
+                    // now write the pattern to the file
+                    const char* scsiRescanPattern = "- - -";
+                    size_t      writeres =
+                        fwrite(scsiRescanPattern, sizeof(char), safe_strlen(scsiRescanPattern), scsiHostFile);
+                    if (writeres < safe_strlen(scsiRescanPattern) || 0 != fflush(scsiHostFile))
+                    {
+                        printf("Error rescanning %s\n", hostFileName);
+                    }
+                    fclose(scsiHostFile);
+                }
+                handler = set_Constraint_Handler(handler);
+                safe_free(&hostFileName);
+            }
+            safe_free_dirent(&hosts[iter]);
+        }
+    }
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &hosts));
+}
+
 //-----------------------------------------------------------------------------
 //
 //  get_Device_Count()
@@ -2547,6 +2594,11 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 #if defined(_GNU_SOURCE)
     sortFunc = &versionsort; // use versionsort instead when available with _GNU_SOURCE
 #endif
+
+    if (flags & BUS_RESCAN_ALLOWED)
+    {
+        linux_Rescan_SCSI_Hosts();
+    }
 
     scandirresult = scandir("/dev", &namelist, sg_filter, sortFunc);
     if (scandirresult >= 0)
