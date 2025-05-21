@@ -2534,16 +2534,13 @@ static void linux_Rescan_SCSI_Hosts(void)
     {
         for (int iter = 0; iter < hostscanres; ++iter)
         {
-            size_t handleSize = (safe_strlen(sysSCSIHosts) + safe_strlen(hosts[iter]->d_name) + SIZE_T_C(2) +
-                                 safe_strlen(scsiHostScan)) *
-                                sizeof(char);
-            char* hostFileName = M_REINTERPRET_CAST(char*, safe_malloc(handleSize));
-            if (hostFileName != M_NULLPTR)
+            char* hostFileName = M_NULLPTR;
+            int handlestrres = asprintf(&hostFileName, "%s%s/%s", sysSCSIHosts, hosts[iter]->d_name,
+                                    scsiHostScan);
+            if (handlestrres > 0 && hostFileName != M_NULLPTR)
             {
                 FILE*              scsiHostFile = M_NULLPTR;
                 eConstraintHandler handler      = set_Constraint_Handler(ERR_IGNORE);
-                snprintf_err_handle(hostFileName, handleSize, "%s%s/%s", sysSCSIHosts, hosts[iter]->d_name,
-                                    scsiHostScan);
                 errno_t err = safe_fopen(&scsiHostFile, hostFileName, "w");
                 if (0 == err)
                 {
