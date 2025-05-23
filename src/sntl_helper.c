@@ -5286,8 +5286,8 @@ static eReturnValues sntl_Translate_SCSI_Read_Command(tDevice* device, ScsiIoCtx
             return UNKNOWN;
         }
     }
-    eReturnValues ret = nvme_Read(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(transferLength)), false, fua, pi, scsiIoCtx->pdata,
-                                  scsiIoCtx->dataLength);
+    eReturnValues ret = nvme_Read(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(transferLength)), false, fua, pi,
+                                  scsiIoCtx->pdata, scsiIoCtx->dataLength);
     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense,
                                   scsiIoCtx->senseDataSize);
     return ret;
@@ -5517,8 +5517,8 @@ static eReturnValues sntl_Translate_SCSI_Write_Command(tDevice* device, ScsiIoCt
             return UNKNOWN;
         }
     }
-    eReturnValues ret = nvme_Write(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(transferLength)), false, fua, pi, 0,
-                                   scsiIoCtx->pdata, scsiIoCtx->dataLength);
+    eReturnValues ret = nvme_Write(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(transferLength)), false, fua, pi,
+                                   0, scsiIoCtx->pdata, scsiIoCtx->dataLength);
     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense,
                                   scsiIoCtx->senseDataSize);
     return ret;
@@ -7182,8 +7182,8 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
                     // descriptors, send the command now
                     if ((nvmeDSMOffset > 4096) && ((unmapBlockDescriptorIter + 16) < minBlockDescriptorLength))
                     {
-                        if (SUCCESS ==
-                            nvme_Dataset_Management(device, NVME_0_BASED_ADJUST(numberOfRanges), true, false, false, dsmBuffer, 4096))
+                        if (SUCCESS == nvme_Dataset_Management(device, NVME_0_BASED_ADJUST(numberOfRanges), true, false,
+                                                               false, dsmBuffer, 4096))
                         {
                             // clear the buffer for reuse
                             safe_memset(dsmBuffer, 4096, 0, 4096);
@@ -7210,7 +7210,8 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
             {
                 // send the data set management command with whatever is in the trim buffer at this point (all zeros is
                 // safe to send if we do get that)
-                if (SUCCESS != nvme_Dataset_Management(device, NVME_0_BASED_ADJUST(numberOfRanges), true, false, false, dsmBuffer, 4096))
+                if (SUCCESS != nvme_Dataset_Management(device, NVME_0_BASED_ADJUST(numberOfRanges), true, false, false,
+                                                       dsmBuffer, 4096))
                 {
                     ret = FAILURE;
                     set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus,
