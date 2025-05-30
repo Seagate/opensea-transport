@@ -2120,7 +2120,7 @@ static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(tDevice*   device
     {
         uint64_t maxLBA = le64_to_host(device->drive_info.IdentifyData.nvme.ns.nsze) - UINT64_C(1);
         uint8_t  flbas  = get_bit_range_uint8(device->drive_info.IdentifyData.nvme.ns.flbas, 3, 0);
-        if (device->drive_info.IdentifyData.nvme.ns.nlbaf > 16)
+        if (NVME_0_BASED(device->drive_info.IdentifyData.nvme.ns.nlbaf) > 16)
         {
             // need to append 2 more bits to interpret this correctly since number of formats > 16
             flbas |= get_bit_range_uint8(device->drive_info.IdentifyData.nvme.ns.flbas, 6, 5) << 4;
