@@ -2,40 +2,41 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // ******************************************************************************************
-// 
-#if defined (ENABLE_OFNVME)
+//
+#if defined(ENABLE_OFNVME)
 
-#include "common_types.h"
-#include "precision_timer.h"
-#include "memory_safety.h"
-#include "type_conversion.h"
-#include "string_utils.h"
-#include "bit_manip.h"
-#include "code_attributes.h"
-#include "math_utils.h"
-#include "error_translation.h"
+#    include "bit_manip.h"
+#    include "code_attributes.h"
+#    include "common_types.h"
+#    include "error_translation.h"
+#    include "math_utils.h"
+#    include "memory_safety.h"
+#    include "precision_timer.h"
+#    include "string_utils.h"
+#    include "type_conversion.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <windows.h>
-#include "of_nvme_helper.h"
-#include "of_nvme_helper_func.h"
-#include "cmds.h"
-#include "sntl_helper.h"
-#include "scsi_helper_func.h"
-#include "nvme_helper_func.h"
-
-#if defined (_DEBUG) && !defined (OFNVME_DEBUG)
-#define OFNVME_DEBUG
-#endif //_DEBUG && !OFNVME_DEBUG
+#    include "cmds.h"
+#    include "nvme_helper_func.h"
+#    include "of_nvme_helper.h"
+#    include "of_nvme_helper_func.h"
+#    include "scsi_helper_func.h"
+#    include "sntl_helper.h"
+#    include <stdio.h>
+#    include <stdlib.h>
+#    include <string.h>
+DISABLE_WARNING_4255
+#    include <windows.h>
+RESTORE_WARNING_4255
+#    if defined(_DEBUG) && !defined(OFNVME_DEBUG)
+#        define OFNVME_DEBUG
+#    endif //_DEBUG && !OFNVME_DEBUG
 
 static void print_Ofnvme_SRB_Status(uint32_t srbStatus)
 {
@@ -74,13 +75,13 @@ static void print_Ofnvme_SRB_Status(uint32_t srbStatus)
     case NVME_IOCTL_INVALID_NVM_VENDOR_SPECIFIC_OPCODE:
         printf("Invalid NVM Vendor Specific Opcode\n");
         break;
-    case NVME_IOCTL_ADMIN_VENDOR_SPECIFIC_NOT_SUPPORTED:  // i.e., AVSCC = 0
+    case NVME_IOCTL_ADMIN_VENDOR_SPECIFIC_NOT_SUPPORTED: // i.e., AVSCC = 0
         printf("Admin Vendor Specific Not Supported\n");
         break;
-    case NVME_IOCTL_NVM_VENDOR_SPECIFIC_NOT_SUPPORTED:    // i.e., NVSCC = 0
+    case NVME_IOCTL_NVM_VENDOR_SPECIFIC_NOT_SUPPORTED: // i.e., NVSCC = 0
         printf("NVM Vendor Specific Not Supported\n");
         break;
-    case NVME_IOCTL_INVALID_DIRECTION_SPECIFIED:          // Direction > 3
+    case NVME_IOCTL_INVALID_DIRECTION_SPECIFIED: // Direction > 3
         printf("Invalid Direction Specified\n");
         break;
     case NVME_IOCTL_INVALID_META_BUFFER_LENGTH:
@@ -92,7 +93,7 @@ static void print_Ofnvme_SRB_Status(uint32_t srbStatus)
     case NVME_IOCTL_INVALID_PATH_TARGET_ID:
         printf("Invalid Path Target ID\n");
         break;
-    case NVME_IOCTL_FORMAT_NVM_PENDING:      // Only one Format NVM at a time
+    case NVME_IOCTL_FORMAT_NVM_PENDING: // Only one Format NVM at a time
         printf("Format NVM Pending\n");
         break;
     case NVME_IOCTL_FORMAT_NVM_FAILED:
@@ -114,60 +115,55 @@ static void print_Ofnvme_SRB_Status(uint32_t srbStatus)
         printf("Attach Namespace Failed\n");
         break;
     }
-    return;
 }
 
-//Need to setup an admin identify and try sending it. If this device doesn't support this IOCTL, it should fail, otherwise it will work.
-//This is the same way the sample app works. Would be better if there was some other buffer to just return and validate that reported the driver name, version, etc
+// Need to setup an admin identify and try sending it. If this device doesn't support this IOCTL, it should fail,
+// otherwise it will work. This is the same way the sample app works. Would be better if there was some other buffer to
+// just return and validate that reported the driver name, version, etc
 bool supports_OFNVME_IO(HANDLE deviceHandle)
 {
-    bool supported = false;
+    bool     supported  = false;
     uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + UINT32_C(4096);
-    uint8_t *passthroughBuffer = C_CAST(uint8_t*, safe_calloc_aligned(bufferSize, sizeof(uint8_t), sizeof(void*)));
+    uint8_t* passthroughBuffer =
+        M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(bufferSize, sizeof(uint8_t), sizeof(void*)));
     if (passthroughBuffer)
     {
-        seatimer_t commandTimer;
-        BOOL success = TRUE;
-        PNVME_PASS_THROUGH_IOCTL ioctl = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
-        ioctl->SrbIoCtrl.HeaderLength = sizeof(SRB_IO_CONTROL);
-        memcpy(ioctl->SrbIoCtrl.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
+        DECLARE_SEATIMER(commandTimer);
+        BOOL                     success = TRUE;
+        PNVME_PASS_THROUGH_IOCTL ioctl   = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
+        ioctl->SrbIoCtrl.HeaderLength    = sizeof(SRB_IO_CONTROL);
+        safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
-        ioctl->SrbIoCtrl.Length = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
-        ioctl->SrbIoCtrl.Timeout = 15;
+        ioctl->SrbIoCtrl.Length      = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
+        ioctl->SrbIoCtrl.Timeout     = 15;
 
-        memset(&commandTimer, 0, sizeof(seatimer_t));
+        ioctl->QueueId     = 0;    // admin queue
+        ioctl->NVMeCmd[0]  = 0x06; // identify
+        ioctl->NVMeCmd[10] = 1;    // admin identify
 
-        ioctl->QueueId = 0;//admin queue
-        ioctl->NVMeCmd[0] = 0x06;//identify
-        ioctl->NVMeCmd[10] = 1;//admin identify
-
-        //Set these to zero like the sample code does
+        // Set these to zero like the sample code does
         ioctl->VendorSpecific[0] = 0;
         ioctl->VendorSpecific[1] = 0;
 
-        ioctl->Direction = NVME_FROM_DEV_TO_HOST;//read or non-data
-        ioctl->MetaDataLen = 0;//no metadata or interleaved should be set to zero.
+        ioctl->Direction       = NVME_FROM_DEV_TO_HOST; // read or non-data
+        ioctl->MetaDataLen     = 0;                     // no metadata or interleaved should be set to zero.
         ioctl->ReturnBufferLen = sizeof(NVME_PASS_THROUGH_IOCTL) + 4096;
-        ioctl->DataBufferLen = 0;//Set to zero because we aren't sending any data, only receiving.
-        SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
-        DWORD last_error = ERROR_SUCCESS;
+        ioctl->DataBufferLen   = 0;  // Set to zero because we aren't sending any data, only receiving.
+        SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
+        DWORD      last_error = ERROR_SUCCESS;
         OVERLAPPED overlappedStruct;
-        memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
-        DWORD returned_data = 0;
+        DWORD returned_data     = DWORD_C(0);
         start_Timer(&commandTimer);
-        success = DeviceIoControl(deviceHandle,
-            IOCTL_SCSI_MINIPORT,
-            ioctl,
-            bufferSize,
-            ioctl,
-            bufferSize,
-            &returned_data,
-            &overlappedStruct);
+        success    = DeviceIoControl(deviceHandle, IOCTL_SCSI_MINIPORT, ioctl, bufferSize, ioctl, bufferSize,
+                                     &returned_data, &overlappedStruct);
         last_error = GetLastError();
-        if (ERROR_IO_PENDING == last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
+        if (ERROR_IO_PENDING ==
+            last_error) // This will only happen for overlapped commands. If the drive is opened without the overlapped
+                        // flag, everything will work like old synchronous code.-TJE
         {
-            success = GetOverlappedResult(deviceHandle, &overlappedStruct, &returned_data, TRUE);
+            success    = GetOverlappedResult(deviceHandle, &overlappedStruct, &returned_data, TRUE);
             last_error = GetLastError();
         }
         else if (last_error != ERROR_SUCCESS)
@@ -177,10 +173,10 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         stop_Timer(&commandTimer);
         if (overlappedStruct.hEvent)
         {
-            CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+            CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
             overlappedStruct.hEvent = M_NULLPTR;
         }
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             supported = true;
         }
@@ -193,33 +189,30 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
     return supported;
 }
 
-eReturnValues send_OFNVME_Reset(tDevice * device)
+eReturnValues send_OFNVME_Reset(tDevice* device)
 {
-    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
+    eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    memset(&ofnvmeReset, 0, sizeof(SRB_IO_CONTROL));
+    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_RESET_DEVICE);
-    ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
+    ofnvmeReset.Length      = sizeof(SRB_IO_CONTROL);
 
-    SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
+    SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     device->os_info.last_error = 0;
     OVERLAPPED overlappedStruct;
-    memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
-    DWORD returned_data = 0;
-    BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
-        IOCTL_SCSI_MINIPORT,
-        &ofnvmeReset,
-        sizeof(SRB_IO_CONTROL),
-        &ofnvmeReset,
-        sizeof(SRB_IO_CONTROL),
-        &returned_data,
-        &overlappedStruct);
+    DWORD returned_data     = DWORD_C(0);
+    BOOL  success =
+        DeviceIoControl(device->os_info.scsiSRBHandle, IOCTL_SCSI_MINIPORT, &ofnvmeReset, sizeof(SRB_IO_CONTROL),
+                        &ofnvmeReset, sizeof(SRB_IO_CONTROL), &returned_data, &overlappedStruct);
     device->os_info.last_error = GetLastError();
-    if (ERROR_IO_PENDING == device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
+    if (ERROR_IO_PENDING ==
+        device->os_info.last_error) // This will only happen for overlapped commands. If the drive is opened without the
+                                    // overlapped flag, everything will work like old synchronous code.-TJE
     {
         success = GetOverlappedResult(device->os_info.scsiSRBHandle, &overlappedStruct, &returned_data, TRUE);
         device->os_info.last_error = GetLastError();
@@ -230,10 +223,10 @@ eReturnValues send_OFNVME_Reset(tDevice * device)
     }
     if (overlappedStruct.hEvent)
     {
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    if (success)
+    if (MSFT_BOOL_TRUE(success))
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -256,33 +249,30 @@ eReturnValues send_OFNVME_Reset(tDevice * device)
     return ret;
 }
 
-eReturnValues send_OFNVME_Add_Namespace(tDevice * device)
+eReturnValues send_OFNVME_Add_Namespace(tDevice* device)
 {
-    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
+    eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    memset(&ofnvmeReset, 0, sizeof(SRB_IO_CONTROL));
+    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_ADD_NAMESPACE);
-    ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
+    ofnvmeReset.Length      = sizeof(SRB_IO_CONTROL);
 
-    SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
+    SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     device->os_info.last_error = 0;
     OVERLAPPED overlappedStruct;
-    memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
-    DWORD returned_data = 0;
-    BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
-        IOCTL_SCSI_MINIPORT,
-        &ofnvmeReset,
-        sizeof(SRB_IO_CONTROL),
-        &ofnvmeReset,
-        sizeof(SRB_IO_CONTROL),
-        &returned_data,
-        &overlappedStruct);
+    DWORD returned_data     = DWORD_C(0);
+    BOOL  success =
+        DeviceIoControl(device->os_info.scsiSRBHandle, IOCTL_SCSI_MINIPORT, &ofnvmeReset, sizeof(SRB_IO_CONTROL),
+                        &ofnvmeReset, sizeof(SRB_IO_CONTROL), &returned_data, &overlappedStruct);
     device->os_info.last_error = GetLastError();
-    if (ERROR_IO_PENDING == device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
+    if (ERROR_IO_PENDING ==
+        device->os_info.last_error) // This will only happen for overlapped commands. If the drive is opened without the
+                                    // overlapped flag, everything will work like old synchronous code.-TJE
     {
         success = GetOverlappedResult(device->os_info.scsiSRBHandle, &overlappedStruct, &returned_data, TRUE);
         device->os_info.last_error = GetLastError();
@@ -293,10 +283,10 @@ eReturnValues send_OFNVME_Add_Namespace(tDevice * device)
     }
     if (overlappedStruct.hEvent)
     {
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    if (success)
+    if (MSFT_BOOL_TRUE(success))
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -319,33 +309,30 @@ eReturnValues send_OFNVME_Add_Namespace(tDevice * device)
     return ret;
 }
 
-eReturnValues send_OFNVME_Remove_Namespace(tDevice * device)
+eReturnValues send_OFNVME_Remove_Namespace(tDevice* device)
 {
-    eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;//Start with this since older drivers may or may not support this.
+    eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    memset(&ofnvmeReset, 0, sizeof(SRB_IO_CONTROL));
+    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    memcpy(ofnvmeReset.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_REMOVE_NAMESPACE);
-    ofnvmeReset.Length = sizeof(SRB_IO_CONTROL);
+    ofnvmeReset.Length      = sizeof(SRB_IO_CONTROL);
 
-    SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
+    SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     device->os_info.last_error = 0;
     OVERLAPPED overlappedStruct;
-    memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
-    DWORD returned_data = 0;
-    BOOL success = DeviceIoControl(device->os_info.scsiSRBHandle,
-        IOCTL_SCSI_MINIPORT,
-        &ofnvmeReset,
-        sizeof(SRB_IO_CONTROL),
-        &ofnvmeReset,
-        sizeof(SRB_IO_CONTROL),
-        &returned_data,
-        &overlappedStruct);
+    DWORD returned_data     = DWORD_C(0);
+    BOOL  success =
+        DeviceIoControl(device->os_info.scsiSRBHandle, IOCTL_SCSI_MINIPORT, &ofnvmeReset, sizeof(SRB_IO_CONTROL),
+                        &ofnvmeReset, sizeof(SRB_IO_CONTROL), &returned_data, &overlappedStruct);
     device->os_info.last_error = GetLastError();
-    if (ERROR_IO_PENDING == device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
+    if (ERROR_IO_PENDING ==
+        device->os_info.last_error) // This will only happen for overlapped commands. If the drive is opened without the
+                                    // overlapped flag, everything will work like old synchronous code.-TJE
     {
         success = GetOverlappedResult(device->os_info.scsiSRBHandle, &overlappedStruct, &returned_data, TRUE);
         device->os_info.last_error = GetLastError();
@@ -356,10 +343,10 @@ eReturnValues send_OFNVME_Remove_Namespace(tDevice * device)
     }
     if (overlappedStruct.hEvent)
     {
-        CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+        CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    if (success)
+    if (MSFT_BOOL_TRUE(success))
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
@@ -382,38 +369,41 @@ eReturnValues send_OFNVME_Remove_Namespace(tDevice * device)
     return ret;
 }
 
-eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
+eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
-#if defined (OFNVME_DEBUG)
+#    if defined(OFNVME_DEBUG)
     printf("ofnvme: NVM passthrough request\n");
-#endif //OFNVME_DEBUG
-    uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + nvmeIoCtx->dataSize;//NOTE: No metadata. Don't think Windows supports a separate metadata buffer
-    uint8_t *passthroughBuffer = C_CAST(uint8_t*, safe_calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
+#    endif // OFNVME_DEBUG
+    uint32_t bufferSize =
+        sizeof(NVME_PASS_THROUGH_IOCTL) +
+        nvmeIoCtx->dataSize; // NOTE: No metadata. Don't think Windows supports a separate metadata buffer
+    uint8_t* passthroughBuffer = M_REINTERPRET_CAST(
+        uint8_t*, safe_calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
     if (passthroughBuffer)
     {
-        seatimer_t commandTimer;
-        BOOL success = TRUE;
-        PNVME_PASS_THROUGH_IOCTL ioctl = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
-        ioctl->SrbIoCtrl.HeaderLength = sizeof(SRB_IO_CONTROL);
-        memcpy(ioctl->SrbIoCtrl.Signature, NVME_SIG_STR, NVME_SIG_STR_LEN);
+        DECLARE_SEATIMER(commandTimer);
+        BOOL                     success = TRUE;
+        PNVME_PASS_THROUGH_IOCTL ioctl   = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
+        ioctl->SrbIoCtrl.HeaderLength    = sizeof(SRB_IO_CONTROL);
+        safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
-        ioctl->SrbIoCtrl.Length = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
-        ioctl->SrbIoCtrl.Timeout = nvmeIoCtx->timeout;
+        ioctl->SrbIoCtrl.Length      = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
+        ioctl->SrbIoCtrl.Timeout     = nvmeIoCtx->timeout;
 
-        memset(&commandTimer, 0, sizeof(seatimer_t));
-
-        //setup NVMe DWORDS based on NVM or ADMIN command
-        //Set queue ID. 0 for admin, something else otherwise
+        // setup NVMe DWORDS based on NVM or ADMIN command
+        // Set queue ID. 0 for admin, something else otherwise
         switch (nvmeIoCtx->commandType)
         {
         case NVM_ADMIN_CMD:
-            ioctl->QueueId = 0;//admin queue
-            ioctl->NVMeCmd[0] = nvmeIoCtx->cmd.adminCmd.opcode;//This doesn't currently take into account fused or PRP vs SGL transfers
+            ioctl->QueueId    = 0; // admin queue
+            ioctl->NVMeCmd[0] = nvmeIoCtx->cmd.adminCmd
+                                    .opcode; // This doesn't currently take into account fused or PRP vs SGL transfers
             ioctl->NVMeCmd[1] = nvmeIoCtx->cmd.adminCmd.nsid;
             ioctl->NVMeCmd[2] = nvmeIoCtx->cmd.adminCmd.cdw2;
             ioctl->NVMeCmd[3] = nvmeIoCtx->cmd.adminCmd.cdw3;
-            //data pointers are in next DWORDs not sure if these should be set here since they will be virtual addresses
+            // data pointers are in next DWORDs not sure if these should be set here since they will be virtual
+            // addresses
             ioctl->NVMeCmd[10] = nvmeIoCtx->cmd.adminCmd.cdw10;
             ioctl->NVMeCmd[11] = nvmeIoCtx->cmd.adminCmd.cdw11;
             ioctl->NVMeCmd[12] = nvmeIoCtx->cmd.adminCmd.cdw12;
@@ -422,12 +412,14 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             ioctl->NVMeCmd[15] = nvmeIoCtx->cmd.adminCmd.cdw15;
             break;
         case NVM_CMD:
-            ioctl->QueueId = 1;//should this always be set to 1? or something else depending on capabitlies?
-            ioctl->NVMeCmd[0] = nvmeIoCtx->cmd.nvmCmd.opcode;//This doesn't currently take into account fused or PRP vs SGL transfers
+            ioctl->QueueId = 1; // should this always be set to 1? or something else depending on capabitlies?
+            ioctl->NVMeCmd[0] =
+                nvmeIoCtx->cmd.nvmCmd.opcode; // This doesn't currently take into account fused or PRP vs SGL transfers
             ioctl->NVMeCmd[1] = nvmeIoCtx->cmd.nvmCmd.nsid;
             ioctl->NVMeCmd[2] = nvmeIoCtx->cmd.nvmCmd.cdw2;
             ioctl->NVMeCmd[3] = nvmeIoCtx->cmd.nvmCmd.cdw3;
-            //data pointers are in next DWORDs not sure if these should be set here since they will be virtual addresses
+            // data pointers are in next DWORDs not sure if these should be set here since they will be virtual
+            // addresses
             ioctl->NVMeCmd[10] = nvmeIoCtx->cmd.nvmCmd.cdw10;
             ioctl->NVMeCmd[11] = nvmeIoCtx->cmd.nvmCmd.cdw11;
             ioctl->NVMeCmd[12] = nvmeIoCtx->cmd.nvmCmd.cdw12;
@@ -436,68 +428,71 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             ioctl->NVMeCmd[15] = nvmeIoCtx->cmd.nvmCmd.cdw15;
             break;
         case NVM_UNKNOWN_CMD_SET:
-            //Fallthrough to default
+            // Fallthrough to default
         default:
             safe_free_aligned(&passthroughBuffer);
             return BAD_PARAMETER;
         }
 
-        //Setting to zero like the sample file does. No idea what these are used for.
+        // Setting to zero like the sample file does. No idea what these are used for.
         ioctl->VendorSpecific[0] = 0;
         ioctl->VendorSpecific[1] = 0;
 
-        //databuffer length...set to zero for read or non-data. set to a value for sending data to the device
-        //set direction along with length
-        //set return buffer length...at least size of the IOCTL structure, but larger if expecting data from the device...whatever that length will be
+        // databuffer length...set to zero for read or non-data. set to a value for sending data to the device
+        // set direction along with length
+        // set return buffer length...at least size of the IOCTL structure, but larger if expecting data from the
+        // device...whatever that length will be
         switch (nvmeIoCtx->commandDirection)
         {
         case XFER_NO_DATA:
-            ioctl->DataBufferLen = 0;
-            ioctl->Direction = NVME_NO_DATA_TX;
+            ioctl->DataBufferLen   = 0;
+            ioctl->Direction       = NVME_NO_DATA_TX;
             ioctl->ReturnBufferLen = sizeof(NVME_PASS_THROUGH_IOCTL);
             break;
         case XFER_DATA_IN:
-            ioctl->Direction = NVME_FROM_DEV_TO_HOST;//read or non-data
-            ioctl->MetaDataLen = 0;//no metadata or interleaved should be set to zero.
-            ioctl->ReturnBufferLen = sizeof(NVME_PASS_THROUGH_IOCTL) + nvmeIoCtx->dataSize;//this should include metadata size when supporting metadata!
-            ioctl->DataBufferLen = 0;//Set to zero because we aren't sending any data, only receiving.
+            ioctl->Direction       = NVME_FROM_DEV_TO_HOST; // read or non-data
+            ioctl->MetaDataLen     = 0;                     // no metadata or interleaved should be set to zero.
+            ioctl->ReturnBufferLen = sizeof(NVME_PASS_THROUGH_IOCTL) +
+                                     nvmeIoCtx->dataSize; // this should include metadata size when supporting metadata!
+            ioctl->DataBufferLen = 0; // Set to zero because we aren't sending any data, only receiving.
             break;
         case XFER_DATA_OUT:
-            ioctl->Direction = NVME_FROM_HOST_TO_DEV;
-            ioctl->MetaDataLen = 0;//no metadata or interleaved should be set to zero.
-            ioctl->ReturnBufferLen = sizeof(NVME_PASS_THROUGH_IOCTL);//only the size of the structure since we aren't reading anything back from the device.
-            ioctl->DataBufferLen = nvmeIoCtx->dataSize;//NOTE: This size is supposed to include metadata! It also depends on if metadata is interleaved or at the beginning of the buffer
-            memcpy(ioctl->DataBuffer, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            ioctl->Direction       = NVME_FROM_HOST_TO_DEV;
+            ioctl->MetaDataLen     = 0; // no metadata or interleaved should be set to zero.
+            ioctl->ReturnBufferLen = sizeof(NVME_PASS_THROUGH_IOCTL); // only the size of the structure since we aren't
+                                                                      // reading anything back from the device.
+            ioctl->DataBufferLen =
+                nvmeIoCtx->dataSize; // NOTE: This size is supposed to include metadata! It also depends on if metadata
+                                     // is interleaved or at the beginning of the buffer
+            safe_memcpy(ioctl->DataBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
             break;
         case XFER_DATA_IN_OUT:
         case XFER_DATA_OUT_IN:
-            //TODO: Handle bidirectional transfers!!!
-            //NVME_BI_DIRECTION
+            // TODO: Handle bidirectional transfers!!!
+            // NVME_BI_DIRECTION
         default:
             safe_free_aligned(&passthroughBuffer);
             return BAD_PARAMETER;
         }
 
-        //do device io control here
-        SetLastError(ERROR_SUCCESS);//clear any cached errors before we try to send the command
+        // do device io control here
+        SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         nvmeIoCtx->device->os_info.last_error = 0;
         OVERLAPPED overlappedStruct;
-        memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
+        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
-        DWORD returned_data = 0;
+        DWORD returned_data     = DWORD_C(0);
         start_Timer(&commandTimer);
-        success = DeviceIoControl(nvmeIoCtx->device->os_info.scsiSRBHandle,
-            IOCTL_SCSI_MINIPORT,
-            ioctl,
-            bufferSize,
-            ioctl,
-            bufferSize,
-            &returned_data,
-            &overlappedStruct);
+        success = DeviceIoControl(nvmeIoCtx->device->os_info.scsiSRBHandle, IOCTL_SCSI_MINIPORT, ioctl, bufferSize,
+                                  ioctl, bufferSize, &returned_data, &overlappedStruct);
         nvmeIoCtx->device->os_info.last_error = GetLastError();
-        if (ERROR_IO_PENDING == nvmeIoCtx->device->os_info.last_error)//This will only happen for overlapped commands. If the drive is opened without the overlapped flag, everything will work like old synchronous code.-TJE
+        if (ERROR_IO_PENDING ==
+            nvmeIoCtx->device->os_info
+                .last_error) // This will only happen for overlapped commands. If the drive is opened without the
+                             // overlapped flag, everything will work like old synchronous code.-TJE
         {
-            success = GetOverlappedResult(nvmeIoCtx->device->os_info.scsiSRBHandle, &overlappedStruct, &returned_data, TRUE);
+            success =
+                GetOverlappedResult(nvmeIoCtx->device->os_info.scsiSRBHandle, &overlappedStruct, &returned_data, TRUE);
             nvmeIoCtx->device->os_info.last_error = GetLastError();
         }
         else if (nvmeIoCtx->device->os_info.last_error != ERROR_SUCCESS)
@@ -507,10 +502,10 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
         stop_Timer(&commandTimer);
         if (overlappedStruct.hEvent)
         {
-            CloseHandle(overlappedStruct.hEvent);//close the overlapped handle since it isn't needed any more...-TJE
+            CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
             overlappedStruct.hEvent = M_NULLPTR;
         }
-        if (success)
+        if (MSFT_BOOL_TRUE(success))
         {
             if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
@@ -521,19 +516,20 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             {
                 if (nvmeIoCtx->commandDirection == XFER_DATA_IN)
                 {
-                    //copy back in the data that was read from the device.
-                    memcpy(nvmeIoCtx->ptrData, ioctl->DataBuffer, M_Min(nvmeIoCtx->dataSize, ioctl->ReturnBufferLen - sizeof(NVME_PASS_THROUGH_IOCTL)));
+                    // copy back in the data that was read from the device.
+                    safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, ioctl->DataBuffer,
+                                M_Min(nvmeIoCtx->dataSize, ioctl->ReturnBufferLen - sizeof(NVME_PASS_THROUGH_IOCTL)));
                 }
-                //copy back completion data
+                // copy back completion data
                 nvmeIoCtx->commandCompletionData.commandSpecific = ioctl->CplEntry[0];
-                nvmeIoCtx->commandCompletionData.dw1Reserved = ioctl->CplEntry[1];
-                nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = ioctl->CplEntry[2];
-                nvmeIoCtx->commandCompletionData.statusAndCID = ioctl->CplEntry[3];
-                nvmeIoCtx->commandCompletionData.dw0Valid = true;
-                nvmeIoCtx->commandCompletionData.dw1Valid = true;
-                nvmeIoCtx->commandCompletionData.dw2Valid = true;
-                nvmeIoCtx->commandCompletionData.dw3Valid = true;
-                ret = SUCCESS;
+                nvmeIoCtx->commandCompletionData.dw1Reserved     = ioctl->CplEntry[1];
+                nvmeIoCtx->commandCompletionData.sqIDandHeadPtr  = ioctl->CplEntry[2];
+                nvmeIoCtx->commandCompletionData.statusAndCID    = ioctl->CplEntry[3];
+                nvmeIoCtx->commandCompletionData.dw0Valid        = true;
+                nvmeIoCtx->commandCompletionData.dw1Valid        = true;
+                nvmeIoCtx->commandCompletionData.dw2Valid        = true;
+                nvmeIoCtx->commandCompletionData.dw3Valid        = true;
+                ret                                              = SUCCESS;
             }
             else
             {
@@ -547,10 +543,10 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
                 break;
-            case ERROR_NOT_SUPPORTED://this is what is returned when we try to send a sanitize command in Win10
+            case ERROR_NOT_SUPPORTED: // this is what is returned when we try to send a sanitize command in Win10
                 ret = OS_COMMAND_BLOCKED;
                 break;
-            case ERROR_IO_DEVICE://OS_PASSTHROUGH_FAILURE
+            case ERROR_IO_DEVICE: // OS_PASSTHROUGH_FAILURE
             default:
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
@@ -575,11 +571,11 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx * nvmeIoCtx)
     {
         ret = MEMORY_FAILURE;
     }
-#if defined (OFNVME_DEBUG)
+#    if defined(OFNVME_DEBUG)
     printf("ofnvme: NVM passthrough request result = %u\n", ret);
-#endif
+#    endif
     return ret;
 }
 #else
 
-#endif //ENABLE_OFNVME
+#endif // ENABLE_OFNVME

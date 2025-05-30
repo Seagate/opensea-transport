@@ -354,6 +354,7 @@
     <ClCompile Include="..\..\..\..\src\prolific_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\psp_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\raid_scan_helper.c" />
+    <ClCompile Include="..\..\..\..\src\realtek_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\sata_helper_func.c" />
     <ClCompile Include="..\..\..\..\src\sat_helper.c" />
     <ClCompile Include="..\..\..\..\src\scsi_cmds.c" />
@@ -457,6 +458,7 @@
     <ClInclude Include="..\..\..\..\include\prolific_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\psp_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\raid_scan_helper.h" />
+    <ClInclude Include="..\..\..\..\include\realtek_nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\sata_helper_func.h" />
     <ClInclude Include="..\..\..\..\include\sata_types.h" />
     <ClInclude Include="..\..\..\..\include\sat_helper.h" />
@@ -497,6 +499,8 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_ata_types.h" />
+    <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_common_types.h" />
+    <ClInclude Include="..\..\..\..\include\vendor\seagate\seagate_scsi_types.h" />
     <ClInclude Include="..\..\..\..\include\version.h" />
     <ClInclude Include="..\..\..\..\include\vm_helper.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

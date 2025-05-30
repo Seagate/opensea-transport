@@ -32,7 +32,7 @@ Revision History:
                        Changed CSMI_SAS_BEGIN_PACK to 8 for common structures
                        Fixed other typos identified in first compilation test
    005  SEF  10/03/03  Additions to match first version of CSMI document
-   006  SEF  10/14/03  Fixed typedef struct _CSMI_SAS_SMP_PASSTHRU_BUFFER
+   006  SEF  10/14/03  Fixed typedef struct sCSMI_SAS_SMP_PASSTHRU_BUFFER
                        Added defines for bConnectionRate
    007  SEF  10/15/03  Added Firmware Download Control Code and support
                        Added CSMI revision support
@@ -92,11 +92,12 @@ Revision History:
    026 TJE    4/27/20  Added 12GB/s definitions
    027 TJE    6/10/20  Adding Intel Smart Response drive usage definitions
                        These were figured out by looking at the RAID Config data
+   028 TJE    11/8/24  Removing leading underscores to make clang-tidy stop
+                       warning about using reserved identifiers.
 
 **************************************************************************/
 
-#ifndef _CSMI_SAS_H_
-#define _CSMI_SAS_H_
+#pragma once
 
 // CSMI Specification Revision, the intent is that all versions of the
 // specification will be backward compatible after the 1.00 release.
@@ -115,14 +116,27 @@ Revision History:
 /* TARGET OS LINUX SPECIFIC CODE                                         */
 /*************************************************************************/
 
-#ifdef __linux__
+#ifdef __unix__
 //#ifdef __KERNEL__
 
 // Linux base types
-
-#include <linux/types.h>
-
-#define __i8    char
+// NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
+#if defined __linux__
+   #include <linux/types.h>
+   #define __i8    char
+#else
+   #define __i8    char
+   #define __u8    unsigned char
+   #define __u16   unsigned short
+   #ifndef __LP64__
+      #define __u32   unsigned long
+      #define __u64   unsigned long long
+   #else
+      #define __u32   unsigned int
+      #define __u64   unsigned long
+   #endif //__LP64__
+#endif //__linux__
+// NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 
 // pack definition
 
@@ -201,7 +215,7 @@ Revision History:
 #pragma pack(8)
 
 // IOCTL_HEADER
-typedef struct _IOCTL_HEADER {
+typedef struct sIOCTL_HEADER {
     __u32 IOControllerNumber;
     __u32 Length;
     __u32 ReturnCode;
@@ -244,7 +258,7 @@ typedef struct _IOCTL_HEADER {
 #endif // #if 0
 
 // base types
-
+// NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 #define __u8    unsigned char
 #define __u16   unsigned short
 #ifndef __LP64__  // ILP32 (32-bit), LLP64 (64-bit MSVC, MinGW)
@@ -255,6 +269,7 @@ typedef struct _IOCTL_HEADER {
 #define __u64   unsigned __int64
 
 #define __i8    char
+// NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 
 // IOCTL Control Codes
 // (IoctlHeader.ControlCode)
@@ -322,6 +337,7 @@ typedef unsigned short WORD;
 typedef unsigned char BYTE;
 #endif
 
+// NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 /* Need to have these definitions for Netware */
 #define __u8    unsigned char
 #define __u16   unsigned short
@@ -329,13 +345,14 @@ typedef unsigned char BYTE;
 #define __u64   unsigned __int64
 
 #define __i8    char
+// NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 
 
 // EDM #pragma CSMI_SAS_BEGIN_PACK(8)
 #pragma pack(8)
 
 // IOCTL_HEADER
-typedef struct _IOCTL_HEADER {
+typedef struct sIOCTL_HEADER {
     __u32 Length;
     __u32 ReturnCode;
 } IOCTL_HEADER,
@@ -1046,7 +1063,7 @@ typedef struct _IOCTL_HEADER {
 
 // CC_CSMI_SAS_DRIVER_INFO
 
-typedef struct _CSMI_SAS_DRIVER_INFO {
+typedef struct sCSMI_SAS_DRIVER_INFO {
    __u8  szName[81];
    __u8  szDescription[81];
    __u16 usMajorRevision;
@@ -1058,7 +1075,7 @@ typedef struct _CSMI_SAS_DRIVER_INFO {
 } CSMI_SAS_DRIVER_INFO,
   *PCSMI_SAS_DRIVER_INFO;
 
-typedef struct _CSMI_SAS_DRIVER_INFO_BUFFER {
+typedef struct sCSMI_SAS_DRIVER_INFO_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_DRIVER_INFO Information;
 } CSMI_SAS_DRIVER_INFO_BUFFER,
@@ -1066,7 +1083,7 @@ typedef struct _CSMI_SAS_DRIVER_INFO_BUFFER {
 
 // CC_CSMI_SAS_CNTLR_CONFIGURATION
 
-typedef struct _CSMI_SAS_PCI_BUS_ADDRESS {
+typedef struct sCSMI_SAS_PCI_BUS_ADDRESS {
    __u8  bBusNumber;
    __u8  bDeviceNumber;
    __u8  bFunctionNumber;
@@ -1074,13 +1091,13 @@ typedef struct _CSMI_SAS_PCI_BUS_ADDRESS {
 } CSMI_SAS_PCI_BUS_ADDRESS,
   *PCSMI_SAS_PCI_BUS_ADDRESS;
 
-typedef union _CSMI_SAS_IO_BUS_ADDRESS {
+typedef union uCSMI_SAS_IO_BUS_ADDRESS {
    CSMI_SAS_PCI_BUS_ADDRESS PciAddress;
    __u8  bReserved[32];
 } CSMI_SAS_IO_BUS_ADDRESS,
   *PCSMI_SAS_IO_BUS_ADDRESS;
 
-typedef struct _CSMI_SAS_CNTLR_CONFIG {
+typedef struct sCSMI_SAS_CNTLR_CONFIG {
    __u32 uBaseIoAddress;
    struct {
       __u32 uLowPart;
@@ -1113,7 +1130,7 @@ typedef struct _CSMI_SAS_CNTLR_CONFIG {
 } CSMI_SAS_CNTLR_CONFIG,
   *PCSMI_SAS_CNTLR_CONFIG;
 
-typedef struct _CSMI_SAS_CNTLR_CONFIG_BUFFER {
+typedef struct sCSMI_SAS_CNTLR_CONFIG_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_CNTLR_CONFIG Configuration;
 } CSMI_SAS_CNTLR_CONFIG_BUFFER,
@@ -1121,14 +1138,14 @@ typedef struct _CSMI_SAS_CNTLR_CONFIG_BUFFER {
 
 // CC_CSMI_SAS_CNTLR_STATUS
 
-typedef struct _CSMI_SAS_CNTLR_STATUS {
+typedef struct sCSMI_SAS_CNTLR_STATUS {
    __u32 uStatus;
    __u32 uOfflineReason;
    __u8  bReserved[28];
 } CSMI_SAS_CNTLR_STATUS,
   *PCSMI_SAS_CNTLR_STATUS;
 
-typedef struct _CSMI_SAS_CNTLR_STATUS_BUFFER {
+typedef struct sCSMI_SAS_CNTLR_STATUS_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_CNTLR_STATUS Status;
 } CSMI_SAS_CNTLR_STATUS_BUFFER,
@@ -1136,7 +1153,7 @@ typedef struct _CSMI_SAS_CNTLR_STATUS_BUFFER {
 
 // CC_CSMI_SAS_FIRMWARE_DOWNLOAD
 
-typedef struct _CSMI_SAS_FIRMWARE_DOWNLOAD {
+typedef struct sCSMI_SAS_FIRMWARE_DOWNLOAD {
    __u32 uBufferLength;
    __u32 uDownloadFlags;
    __u8  bReserved[32];
@@ -1145,7 +1162,7 @@ typedef struct _CSMI_SAS_FIRMWARE_DOWNLOAD {
 } CSMI_SAS_FIRMWARE_DOWNLOAD,
   *PCSMI_SAS_FIRMWARE_DOWNLOAD;
 
-typedef struct _CSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER {
+typedef struct sCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_FIRMWARE_DOWNLOAD Information;
    __u8  bDataBuffer[1];
@@ -1154,7 +1171,7 @@ typedef struct _CSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER {
 
 // CC_CSMI_SAS_RAID_INFO
 
-typedef struct _CSMI_SAS_RAID_INFO {
+typedef struct sCSMI_SAS_RAID_INFO {
    __u32 uNumRaidSets;
    __u32 uMaxDrivesPerSet;
    __u32 uMaxRaidSets;
@@ -1179,7 +1196,7 @@ typedef struct _CSMI_SAS_RAID_INFO {
 } CSMI_SAS_RAID_INFO,
   *PCSMI_SAS_RAID_INFO;
 
-typedef struct _CSMI_SAS_RAID_INFO_BUFFER {
+typedef struct sCSMI_SAS_RAID_INFO_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_RAID_INFO Information;
 } CSMI_SAS_RAID_INFO_BUFFER,
@@ -1187,7 +1204,7 @@ typedef struct _CSMI_SAS_RAID_INFO_BUFFER {
 
 // CC_CSMI_SAS_GET_RAID_CONFIG
 
-typedef struct _CSMI_SAS_RAID_DRIVES {
+typedef struct sCSMI_SAS_RAID_DRIVES {
    __u8  bModel[40];
    __u8  bFirmware[8];
    __u8  bSerialNumber[40];
@@ -1207,12 +1224,12 @@ typedef struct _CSMI_SAS_RAID_DRIVES {
 } CSMI_SAS_RAID_DRIVES,
   *PCSMI_SAS_RAID_DRIVES;
 
-typedef struct _CSMI_SAS_RAID_DEVICE_ID {
+typedef struct sCSMI_SAS_RAID_DEVICE_ID {
    __u8  bDeviceIdentificationVPDPage[1];
 } CSMI_SAS_RAID_DEVICE_ID,
   *PCSMI_SAS_RAID_DEVICE_ID;
 
-typedef struct _CSMI_SAS_RAID_SET_ADDITIONAL_DATA {
+typedef struct sCSMI_SAS_RAID_SET_ADDITIONAL_DATA {
    __u8  bLabel[16];
    __u8  bRaidSetLun[8];
    __u8  bWriteProtection;
@@ -1239,7 +1256,7 @@ typedef struct _CSMI_SAS_RAID_SET_ADDITIONAL_DATA {
 } CSMI_SAS_RAID_SET_ADDITIONAL_DATA,
   *PCSMI_SAS_RAID_SET_ADDITIONAL_DATA;
 
-typedef struct _CSMI_SAS_RAID_CONFIG {
+typedef struct sCSMI_SAS_RAID_CONFIG {
    __u32 uRaidSetIndex;
    __u32 uCapacity;
    __u32 uStripeSize;
@@ -1259,7 +1276,7 @@ typedef struct _CSMI_SAS_RAID_CONFIG {
 } CSMI_SAS_RAID_CONFIG,
    *PCSMI_SAS_RAID_CONFIG;
 
-typedef struct _CSMI_SAS_RAID_CONFIG_BUFFER {
+typedef struct sCSMI_SAS_RAID_CONFIG_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_RAID_CONFIG Configuration;
 } CSMI_SAS_RAID_CONFIG_BUFFER,
@@ -1267,7 +1284,7 @@ typedef struct _CSMI_SAS_RAID_CONFIG_BUFFER {
 
 // CC_CSMI_SAS_GET_RAID_FEATURES
 
-typedef struct _CSMI_SAS_RAID_TYPE_DESCRIPTION {
+typedef struct sCSMI_SAS_RAID_TYPE_DESCRIPTION {
   __u8  bRaidType;
   __u8  bReservedBytes[7];
   __u32 uSupportedStripeSizeMap;
@@ -1275,7 +1292,7 @@ typedef struct _CSMI_SAS_RAID_TYPE_DESCRIPTION {
 } CSMI_SAS_RAID_TYPE_DESCRIPTION,
   *PCSMI_SAS_RAID_TYPE_DESCRIPTION;
 
-typedef struct _CSMI_SAS_RAID_FEATURES {
+typedef struct sCSMI_SAS_RAID_FEATURES {
    __u32 uFeatures;
    __u8  bReservedFeatures[32];
    __u8  bDefaultTransformPriority;
@@ -1295,7 +1312,7 @@ typedef struct _CSMI_SAS_RAID_FEATURES {
 } CSMI_SAS_RAID_FEATURES,
   *PCSMI_SAS_RAID_FEATURES;
 
-typedef struct _CSMI_SAS_RAID_FEATURES_BUFFER {
+typedef struct sCSMI_SAS_RAID_FEATURES_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_RAID_FEATURES Information;
 } CSMI_SAS_RAID_FEATURES_BUFFER,
@@ -1303,7 +1320,7 @@ typedef struct _CSMI_SAS_RAID_FEATURES_BUFFER {
 
 // CC_CSMI_SAS_SET_RAID_CONTROL
 
-typedef struct _CSMI_SAS_RAID_CONTROL {
+typedef struct sCSMI_SAS_RAID_CONTROL {
    __u8  bTransformPriority;
    __u8  bRebuildPriority;
    __u8  bCacheRatioFlag;
@@ -1318,7 +1335,7 @@ typedef struct _CSMI_SAS_RAID_CONTROL {
 } CSMI_SAS_RAID_CONTROL,
   *PCSMI_SAS_RAID_CONTROL;
 
-typedef struct _CSMI_SAS_RAID_CONTROL_BUFFER {
+typedef struct sCSMI_SAS_RAID_CONTROL_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_RAID_CONTROL Information;
 } CSMI_SAS_RAID_CONTROL_BUFFER,
@@ -1326,7 +1343,7 @@ typedef struct _CSMI_SAS_RAID_CONTROL_BUFFER {
 
 // CC_CSMI_SAS_GET_RAID_ELEMENT
 
-typedef struct _CSMI_SAS_DRIVE_EXTENT_INFO {
+typedef struct sCSMI_SAS_DRIVE_EXTENT_INFO {
    __u32 uDriveIndex;
    __u8  bExtentType;
    __u8  bReservedBytes[7];
@@ -1345,12 +1362,12 @@ typedef struct _CSMI_SAS_DRIVE_EXTENT_INFO {
 } CSMI_SAS_DRIVE_EXTENT_INFO,
   *PCSMI_SAS_DRIVE_EXTENT_INFO;
 
-typedef struct _CSMI_SAS_RAID_MODULE_INFO {
+typedef struct sCSMI_SAS_RAID_MODULE_INFO {
    __u8  bReserved[128];
 } CSMI_SAS_RAID_MODULE_INFO,
   *PCSMI_SAS_RAID_MODULE_INFO;
 
-typedef struct _CSMI_SAS_DRIVE_LOCATION {
+typedef struct sCSMI_SAS_DRIVE_LOCATION {
    __u8  bConnector[16];
    __u8  bBoxName[16];
    __u32 uBay;
@@ -1361,13 +1378,13 @@ typedef struct _CSMI_SAS_DRIVE_LOCATION {
 } CSMI_SAS_DRIVE_LOCATION,
   *PCSMI_SAS_DRIVE_LOCATION;
 
-typedef struct _CSMI_SAS_RAID_DRIVES_ADDITIONAL_DATA {
+typedef struct sCSMI_SAS_RAID_DRIVES_ADDITIONAL_DATA {
    __u8  bNegotiatedLinkRate[2];
    __u8  bReserved[126];
 } CSMI_SAS_RAID_DRIVES_ADDITIONAL_DATA,
   *PCSMI_SAS_RAID_DRIVES_ADDITIONAL_DATA;
 
-typedef struct _CSMI_SAS_DRIVE_INFO {
+typedef struct sCSMI_SAS_DRIVE_INFO {
    CSMI_SAS_RAID_DRIVES Device;
    CSMI_SAS_RAID_DRIVES_ADDITIONAL_DATA Data;
    CSMI_SAS_DRIVE_LOCATION Location;
@@ -1375,7 +1392,7 @@ typedef struct _CSMI_SAS_DRIVE_INFO {
 } CSMI_SAS_DRIVE_INFO,
   *PCSMI_SAS_DRIVE_INFO;
 
-typedef struct _CSMI_SAS_RAID_ELEMENT {
+typedef struct sCSMI_SAS_RAID_ELEMENT {
    __u32 uEnumerationType;
    __u32 uElementIndex;
    __u32 uNumElements;
@@ -1392,7 +1409,7 @@ typedef struct _CSMI_SAS_RAID_ELEMENT {
 } CSMI_SAS_RAID_ELEMENT,
   *PCSMI_SAS_RAID_ELEMENT;
 
-typedef struct _CSMI_SAS_RAID_ELEMENT_BUFFER {
+typedef struct sCSMI_SAS_RAID_ELEMENT_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_RAID_ELEMENT Information;
 } CSMI_SAS_RAID_ELEMENT_BUFFER,
@@ -1400,7 +1417,7 @@ typedef struct _CSMI_SAS_RAID_ELEMENT_BUFFER {
 
 // CC_CSMI_SAS_SET_RAID_OPERATION
 
-typedef struct _CSMI_SAS_RAID_SET_LIST {
+typedef struct sCSMI_SAS_RAID_SET_LIST {
    __u32 uRaidSetIndex;
    __u8  bExistingLun[8];
    __u8  bNewLun[8];
@@ -1408,14 +1425,14 @@ typedef struct _CSMI_SAS_RAID_SET_LIST {
 } CSMI_SAS_RAID_SET_LIST,
   *PCSMI_SAS_RAID_SET_LIST;
 
-typedef struct _CSMI_SAS_RAID_SET_DRIVE_LIST {
+typedef struct sCSMI_SAS_RAID_SET_DRIVE_LIST {
    __u32 uDriveIndex;
    __u8  bDriveUsage;
    __u8  bReserved[27];
 } CSMI_SAS_RAID_SET_DRIVE_LIST,
   *PCSMI_SAS_RAID_SET_DRIVE_LIST;
 
-typedef struct _CSMI_SAS_RAID_SET_SPARE_INFO {
+typedef struct sCSMI_SAS_RAID_SET_SPARE_INFO {
    __u32 uRaidSetIndex;
    __u32 uDriveCount;
    __u8  bApplicationScratchPad[16];
@@ -1423,14 +1440,14 @@ typedef struct _CSMI_SAS_RAID_SET_SPARE_INFO {
 } CSMI_SAS_RAID_SET_SPARE_INFO,
   *PCSMI_SAS_RAID_SET_SPARE_INFO;
 
-typedef struct _CSMI_SAS_RAID_SET_ONLINE_STATE_INFO {
+typedef struct sCSMI_SAS_RAID_SET_ONLINE_STATE_INFO {
    __u32 uRaidSetIndex;
    __u8  bOnlineState;
    __u8  bReserved[123];
 } CSMI_SAS_RAID_SET_ONLINE_STATE_INFO,
   *PCSMI_SAS_RAID_SET_ONLINE_STATE_INFO;
 
-typedef struct _CSMI_SAS_RAID_SET_CACHE_INFO {
+typedef struct sCSMI_SAS_RAID_SET_CACHE_INFO {
    __u32 uRaidSetIndex;
    __u8  bCacheSetting;
    __u8  bCacheRatioFlag;
@@ -1439,20 +1456,20 @@ typedef struct _CSMI_SAS_RAID_SET_CACHE_INFO {
 } CSMI_SAS_RAID_SET_CACHE_INFO,
   *PCSMI_SAS_RAID_SET_CACHE_INFO;
 
-typedef struct _CSMI_SAS_RAID_SET_WRITE_PROTECT_INFO {
+typedef struct sCSMI_SAS_RAID_SET_WRITE_PROTECT_INFO {
    __u32 uRaidSetIndex;
    __u8  bWriteProtectSetting;
    __u8  bReserved[123];
 } CSMI_SAS_RAID_SET_WRITE_PROTECT_INFO,
   *PCSMI_SAS_RAID_SET_WRITE_PROTECT_INFO;
 
-typedef struct _CSMI_SAS_RAID_SET_DELETE_INFO {
+typedef struct sCSMI_SAS_RAID_SET_DELETE_INFO {
    __u32 uRaidSetIndex;
    __u8  bReserved[124];
 } CSMI_SAS_RAID_SET_DELETE_INFO,
   *PCSMI_SAS_RAID_SET_DELETE_INFO;
 
-typedef struct _CSMI_SAS_RAID_SET_MODIFY_INFO {
+typedef struct sCSMI_SAS_RAID_SET_MODIFY_INFO {
    __u8  bRaidType;
    __u8  bReservedBytes[7];
    __u32 uStripeSize;
@@ -1471,7 +1488,7 @@ typedef struct _CSMI_SAS_RAID_SET_MODIFY_INFO {
 } CSMI_SAS_RAID_SET_MODIFY_INFO,
   *PCSMI_SAS_RAID_SET_MODIFY_INFO;
 
-typedef struct _CSMI_SAS_RAID_SET_TRANSFORM_INFO {
+typedef struct sCSMI_SAS_RAID_SET_TRANSFORM_INFO {
    __u8  bTransformType;
    __u8  bReservedBytes[3];
    __u32 uRaidSetIndex;
@@ -1485,14 +1502,14 @@ typedef struct _CSMI_SAS_RAID_SET_TRANSFORM_INFO {
 } CSMI_SAS_RAID_SET_TRANSFORM_INFO,
   *PCSMI_SAS_RAID_SET_TRANSFORM_INFO;
 
-typedef struct _CSMI_SAS_RAID_SET_LABEL_INFO {
+typedef struct sCSMI_SAS_RAID_SET_LABEL_INFO {
    __u32 uRaidSetIndex;
    __u8  bLabel[16];
    __u8  bReserved[108];
 } CSMI_SAS_RAID_SET_LABEL_INFO,
   *PCSMI_SAS_RAID_SET_LABEL_INFO;
 
-typedef struct _CSMI_SAS_RAID_SET_CREATE_INFO {
+typedef struct sCSMI_SAS_RAID_SET_CREATE_INFO {
    __u8  bRaidType;
    __u8  bReservedBytes[7];
    __u32 uStripeSize;
@@ -1517,7 +1534,7 @@ typedef struct _CSMI_SAS_RAID_SET_CREATE_INFO {
 } CSMI_SAS_RAID_SET_CREATE_INFO,
   *PCSMI_SAS_RAID_SET_CREATE_INFO;
 
-typedef struct _CSMI_SAS_RAID_SET_OPERATION {
+typedef struct sCSMI_SAS_RAID_SET_OPERATION {
    __u32 uOperationType;
    __u32 uChangeCount;
    __u32 uFailureCode;
@@ -1540,7 +1557,7 @@ typedef struct _CSMI_SAS_RAID_SET_OPERATION {
 } CSMI_SAS_RAID_SET_OPERATION,
   *PCSMI_SAS_RAID_SET_OPERATION;
 
-typedef struct _CSMI_SAS_RAID_SET_OPERATION_BUFFER {
+typedef struct sCSMI_SAS_RAID_SET_OPERATION_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_RAID_SET_OPERATION Information;
 } CSMI_SAS_RAID_SET_OPERATION_BUFFER,
@@ -1550,7 +1567,7 @@ typedef struct _CSMI_SAS_RAID_SET_OPERATION_BUFFER {
 
 // CC_CSMI_SAS_GET_PHY_INFO
 
-typedef struct _CSMI_SAS_IDENTIFY {
+typedef struct sCSMI_SAS_IDENTIFY {
    __u8  bDeviceType;
    __u8  bRestricted;
    __u8  bInitiatorPortProtocol;
@@ -1563,7 +1580,7 @@ typedef struct _CSMI_SAS_IDENTIFY {
 } CSMI_SAS_IDENTIFY,
   *PCSMI_SAS_IDENTIFY;
 
-typedef struct _CSMI_SAS_PHY_ENTITY {
+typedef struct sCSMI_SAS_PHY_ENTITY {
    CSMI_SAS_IDENTIFY Identify;
    __u8  bPortIdentifier;
    __u8  bNegotiatedLinkRate;
@@ -1577,14 +1594,14 @@ typedef struct _CSMI_SAS_PHY_ENTITY {
 } CSMI_SAS_PHY_ENTITY,
   *PCSMI_SAS_PHY_ENTITY;
 
-typedef struct _CSMI_SAS_PHY_INFO {
+typedef struct sCSMI_SAS_PHY_INFO {
    __u8  bNumberOfPhys;
    __u8  bReserved[3];
    CSMI_SAS_PHY_ENTITY Phy[32];
 } CSMI_SAS_PHY_INFO,
   *PCSMI_SAS_PHY_INFO;
 
-typedef struct _CSMI_SAS_PHY_INFO_BUFFER {
+typedef struct sCSMI_SAS_PHY_INFO_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_PHY_INFO Information;
 } CSMI_SAS_PHY_INFO_BUFFER,
@@ -1592,7 +1609,7 @@ typedef struct _CSMI_SAS_PHY_INFO_BUFFER {
 
 // CC_CSMI_SAS_SET_PHY_INFO
 
-typedef struct _CSMI_SAS_SET_PHY_INFO {
+typedef struct sCSMI_SAS_SET_PHY_INFO {
    __u8  bPhyIdentifier;
    __u8  bNegotiatedLinkRate;
    __u8  bProgrammedMinimumLinkRate;
@@ -1602,7 +1619,7 @@ typedef struct _CSMI_SAS_SET_PHY_INFO {
 } CSMI_SAS_SET_PHY_INFO,
   *PCSMI_SAS_SET_PHY_INFO;
 
-typedef struct _CSMI_SAS_SET_PHY_INFO_BUFFER {
+typedef struct sCSMI_SAS_SET_PHY_INFO_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_SET_PHY_INFO Information;
 } CSMI_SAS_SET_PHY_INFO_BUFFER,
@@ -1610,7 +1627,7 @@ typedef struct _CSMI_SAS_SET_PHY_INFO_BUFFER {
 
 // CC_CSMI_SAS_GET_LINK_ERRORS
 
-typedef struct _CSMI_SAS_LINK_ERRORS {
+typedef struct sCSMI_SAS_LINK_ERRORS {
    __u8  bPhyIdentifier;
    __u8  bResetCounts;
    __u8  bReserved[2];
@@ -1621,7 +1638,7 @@ typedef struct _CSMI_SAS_LINK_ERRORS {
 } CSMI_SAS_LINK_ERRORS,
   *PCSMI_SAS_LINK_ERRORS;
 
-typedef struct _CSMI_SAS_LINK_ERRORS_BUFFER {
+typedef struct sCSMI_SAS_LINK_ERRORS_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_LINK_ERRORS Information;
 } CSMI_SAS_LINK_ERRORS_BUFFER,
@@ -1629,7 +1646,7 @@ typedef struct _CSMI_SAS_LINK_ERRORS_BUFFER {
 
 // CC_CSMI_SAS_SMP_PASSTHRU
 
-typedef struct _CSMI_SAS_SMP_REQUEST {
+typedef struct sCSMI_SAS_SMP_REQUEST {
    __u8  bFrameType;
    __u8  bFunction;
    __u8  bReserved[2];
@@ -1637,7 +1654,7 @@ typedef struct _CSMI_SAS_SMP_REQUEST {
 } CSMI_SAS_SMP_REQUEST,
   *PCSMI_SAS_SMP_REQUEST;
 
-typedef struct _CSMI_SAS_SMP_RESPONSE {
+typedef struct sCSMI_SAS_SMP_RESPONSE {
    __u8  bFrameType;
    __u8  bFunction;
    __u8  bFunctionResult;
@@ -1646,7 +1663,7 @@ typedef struct _CSMI_SAS_SMP_RESPONSE {
 } CSMI_SAS_SMP_RESPONSE,
   *PCSMI_SAS_SMP_RESPONSE;
 
-typedef struct _CSMI_SAS_SMP_PASSTHRU {
+typedef struct sCSMI_SAS_SMP_PASSTHRU {
    __u8  bPhyIdentifier;
    __u8  bPortIdentifier;
    __u8  bConnectionRate;
@@ -1661,7 +1678,7 @@ typedef struct _CSMI_SAS_SMP_PASSTHRU {
 } CSMI_SAS_SMP_PASSTHRU,
   *PCSMI_SAS_SMP_PASSTHRU;
 
-typedef struct _CSMI_SAS_SMP_PASSTHRU_BUFFER {
+typedef struct sCSMI_SAS_SMP_PASSTHRU_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_SMP_PASSTHRU Parameters;
 } CSMI_SAS_SMP_PASSTHRU_BUFFER,
@@ -1669,7 +1686,7 @@ typedef struct _CSMI_SAS_SMP_PASSTHRU_BUFFER {
 
 // CC_CSMI_SAS_SSP_PASSTHRU
 
-typedef struct _CSMI_SAS_SSP_PASSTHRU {
+typedef struct sCSMI_SAS_SSP_PASSTHRU {
    __u8  bPhyIdentifier;
    __u8  bPortIdentifier;
    __u8  bConnectionRate;
@@ -1686,7 +1703,7 @@ typedef struct _CSMI_SAS_SSP_PASSTHRU {
 } CSMI_SAS_SSP_PASSTHRU,
   *PCSMI_SAS_SSP_PASSTHRU;
 
-typedef struct _CSMI_SAS_SSP_PASSTHRU_STATUS {
+typedef struct sCSMI_SAS_SSP_PASSTHRU_STATUS {
    __u8  bConnectionStatus;
    __u8  bSSPStatus;
    __u8  bReserved[2];
@@ -1698,7 +1715,7 @@ typedef struct _CSMI_SAS_SSP_PASSTHRU_STATUS {
 } CSMI_SAS_SSP_PASSTHRU_STATUS,
   *PCSMI_SAS_SSP_PASSTHRU_STATUS;
 
-typedef struct _CSMI_SAS_SSP_PASSTHRU_BUFFER {
+typedef struct sCSMI_SAS_SSP_PASSTHRU_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_SSP_PASSTHRU Parameters;
    CSMI_SAS_SSP_PASSTHRU_STATUS Status;
@@ -1708,7 +1725,7 @@ typedef struct _CSMI_SAS_SSP_PASSTHRU_BUFFER {
 
 // CC_CSMI_SAS_STP_PASSTHRU
 
-typedef struct _CSMI_SAS_STP_PASSTHRU {
+typedef struct sCSMI_SAS_STP_PASSTHRU {
    __u8  bPhyIdentifier;
    __u8  bPortIdentifier;
    __u8  bConnectionRate;
@@ -1721,7 +1738,7 @@ typedef struct _CSMI_SAS_STP_PASSTHRU {
 } CSMI_SAS_STP_PASSTHRU,
   *PCSMI_SAS_STP_PASSTHRU;
 
-typedef struct _CSMI_SAS_STP_PASSTHRU_STATUS {
+typedef struct sCSMI_SAS_STP_PASSTHRU_STATUS {
    __u8  bConnectionStatus;
    __u8  bReserved[3];
    __u8  bStatusFIS[20];
@@ -1730,7 +1747,7 @@ typedef struct _CSMI_SAS_STP_PASSTHRU_STATUS {
 } CSMI_SAS_STP_PASSTHRU_STATUS,
   *PCSMI_SAS_STP_PASSTHRU_STATUS;
 
-typedef struct _CSMI_SAS_STP_PASSTHRU_BUFFER {
+typedef struct sCSMI_SAS_STP_PASSTHRU_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_STP_PASSTHRU Parameters;
    CSMI_SAS_STP_PASSTHRU_STATUS Status;
@@ -1740,14 +1757,14 @@ typedef struct _CSMI_SAS_STP_PASSTHRU_BUFFER {
 
 // CC_CSMI_SAS_GET_SATA_SIGNATURE
 
-typedef struct _CSMI_SAS_SATA_SIGNATURE {
+typedef struct sCSMI_SAS_SATA_SIGNATURE {
    __u8  bPhyIdentifier;
    __u8  bReserved[3];
    __u8  bSignatureFIS[20];
 } CSMI_SAS_SATA_SIGNATURE,
   *PCSMI_SAS_SATA_SIGNATURE;
 
-typedef struct _CSMI_SAS_SATA_SIGNATURE_BUFFER {
+typedef struct sCSMI_SAS_SATA_SIGNATURE_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_SATA_SIGNATURE Signature;
 } CSMI_SAS_SATA_SIGNATURE_BUFFER,
@@ -1755,7 +1772,7 @@ typedef struct _CSMI_SAS_SATA_SIGNATURE_BUFFER {
 
 // CC_CSMI_SAS_GET_SCSI_ADDRESS
 
-typedef struct _CSMI_SAS_GET_SCSI_ADDRESS_BUFFER {
+typedef struct sCSMI_SAS_GET_SCSI_ADDRESS_BUFFER {
    IOCTL_HEADER IoctlHeader;
    __u8  bSASAddress[8];
    __u8  bSASLun[8];
@@ -1768,7 +1785,7 @@ typedef struct _CSMI_SAS_GET_SCSI_ADDRESS_BUFFER {
 
 // CC_CSMI_SAS_GET_DEVICE_ADDRESS
 
-typedef struct _CSMI_SAS_GET_DEVICE_ADDRESS_BUFFER {
+typedef struct sCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER {
    IOCTL_HEADER IoctlHeader;
    __u8  bHostIndex;
    __u8  bPathId;
@@ -1781,7 +1798,7 @@ typedef struct _CSMI_SAS_GET_DEVICE_ADDRESS_BUFFER {
 
 // CC_CSMI_SAS_TASK_MANAGEMENT
 
-typedef struct _CSMI_SAS_SSP_TASK_IU {
+typedef struct sCSMI_SAS_SSP_TASK_IU {
    __u8  bHostIndex;
    __u8  bPathId;
    __u8  bTargetId;
@@ -1795,7 +1812,7 @@ typedef struct _CSMI_SAS_SSP_TASK_IU {
 } CSMI_SAS_SSP_TASK_IU,
   *PCSMI_SAS_SSP_TASK_IU;
 
-typedef struct _CSMI_SAS_SSP_TASK_IU_BUFFER {
+typedef struct sCSMI_SAS_SSP_TASK_IU_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_SSP_TASK_IU Parameters;
    CSMI_SAS_SSP_PASSTHRU_STATUS Status;
@@ -1804,7 +1821,7 @@ typedef struct _CSMI_SAS_SSP_TASK_IU_BUFFER {
 
 // CC_CSMI_SAS_GET_CONNECTOR_INFO
 
-typedef struct _CSMI_SAS_GET_CONNECTOR_INFO {
+typedef struct sCSMI_SAS_GET_CONNECTOR_INFO {
    __u32 uPinout;
    __u8  bConnector[16];
    __u8  bLocation;
@@ -1812,7 +1829,7 @@ typedef struct _CSMI_SAS_GET_CONNECTOR_INFO {
 } CSMI_SAS_CONNECTOR_INFO,
   *PCSMI_SAS_CONNECTOR_INFO;
 
-typedef struct _CSMI_SAS_CONNECTOR_INFO_BUFFER {
+typedef struct sCSMI_SAS_CONNECTOR_INFO_BUFFER {
    IOCTL_HEADER IoctlHeader;
    CSMI_SAS_CONNECTOR_INFO Reference[32];
 } CSMI_SAS_CONNECTOR_INFO_BUFFER,
@@ -1820,7 +1837,7 @@ typedef struct _CSMI_SAS_CONNECTOR_INFO_BUFFER {
 
 // CC_CSMI_SAS_GET_LOCATION
 
-typedef struct _CSMI_SAS_LOCATION_IDENTIFIER {
+typedef struct sCSMI_SAS_LOCATION_IDENTIFIER {
    __u32 bLocationFlags;
    __u8  bSASAddress[8];
    __u8  bSASLun[8];
@@ -1833,7 +1850,7 @@ typedef struct _CSMI_SAS_LOCATION_IDENTIFIER {
 } CSMI_SAS_LOCATION_IDENTIFIER,
   *PCSMI_SAS_LOCATION_IDENTIFIER;
 
-typedef struct _CSMI_SAS_GET_LOCATION_BUFFER {
+typedef struct sCSMI_SAS_GET_LOCATION_BUFFER {
    IOCTL_HEADER IoctlHeader;
    __u8  bHostIndex;
    __u8  bPathId;
@@ -1848,13 +1865,13 @@ typedef struct _CSMI_SAS_GET_LOCATION_BUFFER {
 
 // CC_CSMI_SAS_PHY_CONTROL
 
-typedef struct _CSMI_SAS_CHARACTER {
+typedef struct sCSMI_SAS_CHARACTER {
    __u8  bTypeFlags;
    __u8  bValue;
 } CSMI_SAS_CHARACTER,
   *PCSMI_SAS_CHARACTER;
 
-typedef struct _CSMI_SAS_PHY_CONTROL {
+typedef struct sCSMI_SAS_PHY_CONTROL {
    __u8  bType;
    __u8  bRate;
    __u8  bReserved[6];
@@ -1878,7 +1895,7 @@ typedef struct _CSMI_SAS_PHY_CONTROL {
 } CSMI_SAS_PHY_CONTROL,
   *PCSMI_SAS_PHY_CONTROL;
 
-typedef struct _CSMI_SAS_PHY_CONTROL_BUFFER {
+typedef struct sCSMI_SAS_PHY_CONTROL_BUFFER {
    IOCTL_HEADER IoctlHeader;
    __u32 uFunction;
    __u8  bPhyIdentifier;
@@ -1895,5 +1912,3 @@ typedef struct _CSMI_SAS_PHY_CONTROL_BUFFER {
 
 //EDM #pragma CSMI_SAS_END_PACK
 #pragma pack()
-
-#endif // _CSMI_SAS_H_

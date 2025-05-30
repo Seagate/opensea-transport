@@ -2,7 +2,7 @@
 #
 # Do NOT modify or remove this copyright and license
 #
-# Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+# Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 #
 # This software is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,11 +16,11 @@
 NAME=opensea-transport
 FILE_OUTPUT_DIR=lib
 #Change the Major version when major interface changes are made. E.g. tDevice changes
-MAJOR=8
+MAJOR=10
 #Change the Minor version when new features are added. 
 MINOR=0
 #Change the patch version when only bug fixes are made.
-PATCH=1
+PATCH=0
 VERSION=$(MAJOR).$(MINOR).$(PATCH)
 
 DESC_ACCEPTANCE_LEVEL=certified
@@ -447,6 +447,7 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)sntl_helper.c\
 	$(SRC_DIR)jmicron_nvme_helper.c\
 	$(SRC_DIR)asmedia_nvme_helper.c\
+	$(SRC_DIR)realtek_nvme_helper.c\
 	$(SRC_DIR)csmi_legacy_pt_cdb_helper.c\
 	$(SRC_DIR)csmi_helper.c
 
