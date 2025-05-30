@@ -1950,9 +1950,10 @@ static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(tDevice *device, 
     }
     if (scsiIoCtx->pdata)
     {
-        uint64_t maxLBA = device->drive_info.IdentifyData.nvme.ns.nsze - 1;
-        uint8_t flbas = M_GETBITRANGE(device->drive_info.IdentifyData.nvme.ns.flbas, 3, 0);
-        if (device->drive_info.IdentifyData.nvme.ns.nlbaf > 16)
+        uint64_t maxLBA = device->drive_info.IdentifyData.nvme.ns.nsze - UINT64_C(1);
+        uint8_t  flbas  = get_bit_range_uint8(device->drive_info.IdentifyData.nvme.ns.flbas, 3, 0);
+        if (NVME_0_BASED(device->drive_info.IdentifyData.nvme.ns.nlbaf) > 16)
+        {
         {
             //need to append 2 more bits to interpret this correctly since number of formats > 16
             flbas |= M_GETBITRANGE(6, 5, device->drive_info.IdentifyData.nvme.ns.flbas) << 4;
