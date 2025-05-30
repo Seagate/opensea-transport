@@ -142,7 +142,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
         {
             uint8_t flbas = get_bit_range_uint8(nsData->flbas, 3, 0);
             // get the LBAF number. THis field varies depending on other things reported by the drive in NVMe 2.0
-            if (nsData->nlbaf > 16)
+            if (NVME_0_BASED(nsData->nlbaf) > 16)
             {
                 // need to append 2 more bits to interpret this correctly since number of formats > 16
                 flbas |= get_bit_range_uint8(nsData->flbas, 6, 5) << 4;

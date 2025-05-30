@@ -2535,13 +2535,12 @@ static void linux_Rescan_SCSI_Hosts(void)
         for (int iter = 0; iter < hostscanres; ++iter)
         {
             char* hostFileName = M_NULLPTR;
-            int handlestrres = asprintf(&hostFileName, "%s%s/%s", sysSCSIHosts, hosts[iter]->d_name,
-                                    scsiHostScan);
+            int   handlestrres = asprintf(&hostFileName, "%s%s/%s", sysSCSIHosts, hosts[iter]->d_name, scsiHostScan);
             if (handlestrres > 0 && hostFileName != M_NULLPTR)
             {
                 FILE*              scsiHostFile = M_NULLPTR;
                 eConstraintHandler handler      = set_Constraint_Handler(ERR_IGNORE);
-                errno_t err = safe_fopen(&scsiHostFile, hostFileName, "w");
+                errno_t            err          = safe_fopen(&scsiHostFile, hostFileName, "w");
                 if (0 == err)
                 {
                     // now write the pattern to the file

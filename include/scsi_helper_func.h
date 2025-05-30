@@ -2337,7 +2337,7 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    M_NONNULL_IF_NONZERO_PARAM(5 -, 3)
+    M_NONNULL_IF_NONZERO_PARAM(5, 3)
     M_PARAM_WO_SIZE(5, 3)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Referrals(tDevice* device,
                                                               uint64_t logicalBlockAddress,

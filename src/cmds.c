@@ -1857,8 +1857,8 @@ eReturnValues io_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
             else if (device->drive_info.drive_type == NVME_DRIVE)
             {
                 return nvme_Read(device, lba,
-                                 C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)), false,
-                                 forceUnitAccess, 0, ptrData, dataSize);
+                                 C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)),
+                                 false, forceUnitAccess, 0, ptrData, dataSize);
             }
             else
             {
@@ -1866,8 +1866,9 @@ eReturnValues io_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
             }
         }
     case NVME_INTERFACE:
-        return nvme_Read(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)),
-                         false, forceUnitAccess, 0, ptrData, dataSize);
+        return nvme_Read(device, lba,
+                         C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)), false,
+                         forceUnitAccess, 0, ptrData, dataSize);
     case RAID_INTERFACE:
         // perform SCSI reads for now. We may need to add unique functions for NVMe and RAID reads later
         return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
@@ -1917,8 +1918,9 @@ eReturnValues io_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
             }
         }
     case NVME_INTERFACE:
-        return nvme_Write(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)),
-                          false, forceUnitAccess, 0, 0, ptrData, dataSize);
+        return nvme_Write(device, lba,
+                          C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)), false,
+                          forceUnitAccess, 0, 0, ptrData, dataSize);
     case RAID_INTERFACE:
         // perform SCSI writes for now. We may need to add unique functions for NVMe and RAID writes later
         return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
@@ -2083,7 +2085,8 @@ eReturnValues nvme_Verify_LBA(tDevice* device, uint64_t lba, uint32_t range)
             uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (data != M_NULLPTR)
         {
-            ret = nvme_Read(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(range)), false, true, 0, data, dataLength);
+            ret =
+                nvme_Read(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(range)), false, true, 0, data, dataLength);
         }
         else
         {
