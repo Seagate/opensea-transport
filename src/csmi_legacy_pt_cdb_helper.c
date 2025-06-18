@@ -48,53 +48,53 @@ eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH
     DISABLE_NONNULL_COMPARE
     if (cdb != M_NULLPTR && ataPtCmd != M_NULLPTR)
     {
-        ret                 = SUCCESS;
-        cdb[OPERATION_CODE] = CSMI_ATA_PASSTHROUGH_OP_CODE;
+        ret                     = SUCCESS;
+        cdb[CDB_OPERATION_CODE] = CSMI_ATA_PASSTHROUGH_OP_CODE;
         switch (ataPtCmd->commadProtocol)
         {
         case ATA_PROTOCOL_PIO:
             if (ataPtCmd->commandDirection == XFER_DATA_IN)
             {
-                cdb[1] = CSMI_PROTOCOL_PIO_IN;
+                cdb[CDB_1] = CSMI_PROTOCOL_PIO_IN;
             }
             else
             {
-                cdb[1] = CSMI_PROTOCOL_PIO_OUT;
+                cdb[CDB_1] = CSMI_PROTOCOL_PIO_OUT;
             }
             break;
         case ATA_PROTOCOL_DMA:
         case ATA_PROTOCOL_UDMA:
             if (ataPtCmd->commandDirection == XFER_DATA_IN)
             {
-                cdb[1] = CSMI_PROTOCOL_DMA_IN;
+                cdb[CDB_1] = CSMI_PROTOCOL_DMA_IN;
             }
             else
             {
-                cdb[1] = CSMI_PROTOCOL_DMA_OUT;
+                cdb[CDB_1] = CSMI_PROTOCOL_DMA_OUT;
             }
             break;
         case ATA_PROTOCOL_NO_DATA:
-            cdb[1] = CSMI_PROTOCOL_NON_DATA;
+            cdb[CDB_1] = CSMI_PROTOCOL_NON_DATA;
             break;
         case ATA_PROTOCOL_DMA_QUE:
         case ATA_PROTOCOL_DMA_FPDMA:
             if (ataPtCmd->commandDirection == XFER_DATA_IN)
             {
-                cdb[1] = CSMI_PROTOCOL_DMA_QUEUED_IN;
+                cdb[CDB_1] = CSMI_PROTOCOL_DMA_QUEUED_IN;
             }
             else
             {
-                cdb[1] = CSMI_PROTOCOL_DMA_QUEUED_OUT;
+                cdb[CDB_1] = CSMI_PROTOCOL_DMA_QUEUED_OUT;
             }
             break;
         case ATA_PROTOCOL_PACKET:
             if (ataPtCmd->commandDirection == XFER_DATA_IN)
             {
-                cdb[1] = CSMI_PROTOCOL_PACKET_IN;
+                cdb[CDB_1] = CSMI_PROTOCOL_PACKET_IN;
             }
             else
             {
-                cdb[1] = CSMI_PROTOCOL_PACKET_OUT;
+                cdb[CDB_1] = CSMI_PROTOCOL_PACKET_OUT;
             }
             break;
         default:
@@ -107,24 +107,24 @@ eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH
             {
                 return OS_COMMAND_NOT_AVAILABLE;
             }
-            cdb[14] = M_Byte1(ataPtCmd->dataSize / sizeof(uint16_t));
-            cdb[15] = M_Byte0(ataPtCmd->dataSize / sizeof(uint16_t));
+            cdb[CDB_14] = M_Byte1(ataPtCmd->dataSize / sizeof(uint16_t));
+            cdb[CDB_15] = M_Byte0(ataPtCmd->dataSize / sizeof(uint16_t));
         }
         else if (ataPtCmd->ataTransferBlocks == ATA_PT_NO_DATA_TRANSFER)
         {
-            cdb[14] = 0;
-            cdb[15] = 0;
+            cdb[CDB_14] = 0;
+            cdb[CDB_15] = 0;
         }
         // TODO: If a rare case occurs and this is used + the rare case of a non 512B logical sector size, we may need
         // to change from the blocks bit below...this combination is highly unlikely to be found though and SAT can
         // conver this as necessary.
         else
         {
-            cdb[1] |= BIT7; // set the blocks bit
+            cdb[CDB_1] |= BIT7; // set the blocks bit
             // set block count (OLD spec says this is in terms of 512...might be different for new 4k drives
             // though...not like this is even used though)
-            cdb[14] = M_Byte1(ataPtCmd->dataSize / LEGACY_DRIVE_SEC_SIZE);
-            cdb[15] = M_Byte0(ataPtCmd->dataSize / LEGACY_DRIVE_SEC_SIZE);
+            cdb[CDB_14] = M_Byte1(ataPtCmd->dataSize / LEGACY_DRIVE_SEC_SIZE);
+            cdb[CDB_15] = M_Byte0(ataPtCmd->dataSize / LEGACY_DRIVE_SEC_SIZE);
         }
         // set registers
         if (ataPtCmd->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
@@ -135,27 +135,27 @@ eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH
             {
                 return OS_COMMAND_NOT_AVAILABLE;
             }
-            cdb[3] = ataPtCmd->tfr.Feature48;
-            cdb[5] = ataPtCmd->tfr.SectorCount48;
-            cdb[7] = ataPtCmd->tfr.LbaHi48;
-            cdb[8] = ataPtCmd->tfr.LbaMid48;
-            cdb[9] = ataPtCmd->tfr.LbaLow48;
+            cdb[CDB_3] = ataPtCmd->tfr.Feature48;
+            cdb[CDB_5] = ataPtCmd->tfr.SectorCount48;
+            cdb[CDB_7] = ataPtCmd->tfr.LbaHi48;
+            cdb[CDB_8] = ataPtCmd->tfr.LbaMid48;
+            cdb[CDB_9] = ataPtCmd->tfr.LbaLow48;
         }
         else
         {
-            cdb[3] = 0;
-            cdb[5] = 0;
-            cdb[7] = 0;
-            cdb[8] = 0;
-            cdb[9] = 0;
+            cdb[CDB_3] = 0;
+            cdb[CDB_5] = 0;
+            cdb[CDB_7] = 0;
+            cdb[CDB_8] = 0;
+            cdb[CDB_9] = 0;
         }
-        cdb[2]  = ataPtCmd->tfr.CommandStatus;
-        cdb[4]  = ataPtCmd->tfr.ErrorFeature;
-        cdb[6]  = ataPtCmd->tfr.SectorCount;
-        cdb[10] = ataPtCmd->tfr.LbaHi;
-        cdb[11] = ataPtCmd->tfr.LbaMid;
-        cdb[12] = ataPtCmd->tfr.LbaLow;
-        cdb[13] = ataPtCmd->tfr.DeviceHead;
+        cdb[CDB_2]  = ataPtCmd->tfr.CommandStatus;
+        cdb[CDB_4]  = ataPtCmd->tfr.ErrorFeature;
+        cdb[CDB_6]  = ataPtCmd->tfr.SectorCount;
+        cdb[CDB_10] = ataPtCmd->tfr.LbaHi;
+        cdb[CDB_11] = ataPtCmd->tfr.LbaMid;
+        cdb[CDB_12] = ataPtCmd->tfr.LbaLow;
+        cdb[CDB_13] = ataPtCmd->tfr.DeviceHead;
     }
     RESTORE_NONNULL_COMPARE
     return ret;
@@ -235,7 +235,7 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(tDevice* device, ataPassthroughCo
     // before we get rid of the sense data, copy it back to the last command sense data
     safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(&device->drive_info.lastCommandSenseData[0], SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
+    safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
                 M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     // safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
     // sizeof(ataReturnTFRs));

@@ -101,12 +101,12 @@ eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice*               device,
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 16);
-    cdb[OPERATION_CODE] = PROLIFIC_GET_REGISTERS_OPCODE;
-    cdb[1]              = RESERVED;
-    cdb[2]              = RESERVED;
-    cdb[3]              = RESERVED;
-    cdb[4]              = M_Byte1(CHECK_WORD);
-    cdb[5]              = M_Byte0(CHECK_WORD);
+    cdb[CDB_OPERATION_CODE] = PROLIFIC_GET_REGISTERS_OPCODE;
+    cdb[CDB_1]              = RESERVED;
+    cdb[CDB_2]              = RESERVED;
+    cdb[CDB_3]              = RESERVED;
+    cdb[CDB_4]              = M_Byte1(CHECK_WORD);
+    cdb[CDB_5]              = M_Byte0(CHECK_WORD);
     ret = scsi_Send_Cdb(device, cdb, CDB_LEN_6, returnData, 16, XFER_DATA_IN, senseData, SPC3_SENSE_LEN, 0);
     if (ret == SUCCESS)
     {
@@ -199,7 +199,7 @@ eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice* device, ataPasst
     // before we get rid of the sense data, copy it back to the last command sense data
     safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(&device->drive_info.lastCommandSenseData[0], SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
+    safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
                 M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
                 sizeof(ataReturnTFRs));

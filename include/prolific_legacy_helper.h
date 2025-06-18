@@ -18,6 +18,7 @@
 #include "ata_helper.h"
 #include "common_public.h"
 #include "common_types.h"
+#include "scsi_helper.h"
 
 #if defined(__cplusplus)
 extern 'C'

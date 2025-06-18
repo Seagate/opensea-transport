@@ -1826,11 +1826,11 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             }
 //             else
 //             {
-//                 aixIoCmd.timeout_value = 15;//default to 15 second timeout
+//                 aixIoCmd.timeout_value = DEFAULT_COMMAND_TIMEOUT;//default to 15 second timeout
 //             }
 //         }
 //         aixIoCmd.command_length = scsiIoCtx->cdbLength;
-//         safe_memcpy(&aixIoCmd.scsi_cdb[0], 12, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+//         safe_memcpy(&aixIoCmd.scsi_cdb[CDB_OPERATION_CODE], 12, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
 //         aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
 
@@ -1939,11 +1939,11 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             }
 //             else
 //             {
-//                 aixIoCmd.timeout_value = 15;//default to 15 second timeout
+//                 aixIoCmd.timeout_value = DEFAULT_COMMAND_TIMEOUT;//default to 15 second timeout
 //             }
 //         }
 //         aixIoCmd.command_length = scsiIoCtx->cdbLength;
-//         safe_memcpy(&aixIoCmd.scsi_cdb[0], 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+//         safe_memcpy(&aixIoCmd.scsi_cdb[CDB_OPERATION_CODE], 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
 //         aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
 
@@ -2022,13 +2022,13 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 
 //         aixIoCmd.data_length = scsiIoCtx->senseDataSize;
 //         aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->psense);
-//         aixIoCmd.timeout_value = 15;//default to 15 second timeout
+//         aixIoCmd.timeout_value = DEFAULT_COMMAND_TIMEOUT;//default to 15 second timeout
 //         //setup the CDB
-//         aixIoCmd.scsi_cdb[0] = REQUEST_SENSE_CMD;
-//         aixIoCmd.scsi_cdb[1] = 0;//TODO: Descriptor bit? Can either track support early on in discovery, or infer
-//         from the command that was sent what to do-TJE aixIoCmd.scsi_cdb[2] = RESERVED; aixIoCmd.scsi_cdb[3] =
-//         RESERVED; aixIoCmd.scsi_cdb[4] = M_Min(252, scsiIoCtx->senseDataSize); aixIoCmd.scsi_cdb[5] = 0;//control
-//         byte
+//         aixIoCmd.scsi_cdb[CDB_OPERATION_CODE] = REQUEST_SENSE_CMD;
+//         aixIoCmd.scsi_cdb[CDB_1] = 0;//TODO: Descriptor bit? Can either track support early on in discovery, or infer
+//         from the command that was sent what to do-TJE aixIoCmd.scsi_cdb[CDB_2] = RESERVED; aixIoCmd.scsi_cdb[CDB_3] =
+//         RESERVED; aixIoCmd.scsi_cdb[CDB_4] = M_Min(252, scsiIoCtx->senseDataSize); aixIoCmd.scsi_cdb[CDB_5] =
+//         0;//control byte
 
 //         aixIoCmd.lun = 0;//if greater than 7, must be used to ignore LUN bits in SCSI 1 commands
 
@@ -2134,7 +2134,8 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
         //       This may be useful to use in the future. -TJE
         return OS_COMMAND_NOT_AVAILABLE;
     }
-    safe_memcpy(&aixPassthrough.scsi_cdb[0], SC_PASSTHRU_CDB_LEN, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+    safe_memcpy(&aixPassthrough.scsi_cdb[CDB_OPERATION_CODE], SC_PASSTHRU_CDB_LEN, scsiIoCtx->cdb,
+                scsiIoCtx->cdbLength);
     aixPassthrough.autosense_length     = scsiIoCtx->senseDataSize;
     aixPassthrough.data_length          = scsiIoCtx->dataLength;
     aixPassthrough.buffer               = C_CAST(char*, scsiIoCtx->pdata);
@@ -2166,7 +2167,7 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            aixPassthrough.timeout_value = 15; // default to 15 second timeout
+            aixPassthrough.timeout_value = DEFAULT_COMMAND_TIMEOUT; // default to 15 second timeout
         }
     }
 
@@ -2343,7 +2344,7 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            idePassthrough.timeout_value = 15; // default to 15 second timeout
+            idePassthrough.timeout_value = DEFAULT_COMMAND_TIMEOUT; // default to 15 second timeout
         }
     }
 
@@ -2440,7 +2441,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            idePassthrough.timeout_value = 15; // default to 15 second timeout
+            idePassthrough.timeout_value = DEFAULT_COMMAND_TIMEOUT; // default to 15 second timeout
         }
     }
 
@@ -2465,8 +2466,8 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
     idePassthrough.atapi_cmd.resvd          = RESERVED;
     idePassthrough.atapi_cmd.resvd1         = RESERVED;
     idePassthrough.atapi_cmd.resvd2         = RESERVED;
-    idePassthrough.atapi_cmd.packet.op_code = scsiIoCtx->cdb[OPERATION_CODE];
-    safe_memcpy(&idePassthrough.atapi_cmd.packet.bytes[0], 15, &scsiIoCtx->cdb[1],
+    idePassthrough.atapi_cmd.packet.op_code = scsiIoCtx->cdb[CDB_OPERATION_CODE];
+    safe_memcpy(&idePassthrough.atapi_cmd.packet.bytes[0], 15, &scsiIoCtx->cdb[CDB_1],
                 M_Min(15, scsiIoCtx->cdbLength - 1)); // this holds remaining bytes after opcode, hence -1 from length
 
     start_Timer(&commandTimer);
@@ -2521,7 +2522,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
 
         requestSensePT.buffsize = SPC3_SENSE_LEN;
         requestSensePT.data_ptr = localSenseData;
-        requestSensePT.timeout  = 15;
+        requestSensePT.timeout  = DEFAULT_COMMAND_TIMEOUT;
 
         requestSensePT.atapi_cmd.length = 12; // ATAPI supports up to 12 or up to 16B commands. So this is set to 12 or
                                               // 16 even if the CDB is smaller.-TJE
@@ -2629,7 +2630,7 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            sataPassthrough.timeout_value = UINT32_C(15); // default to 15 second timeout
+            sataPassthrough.timeout_value = DEFAULT_COMMAND_TIMEOUT; // default to 15 second timeout
         }
     }
 
@@ -3154,7 +3155,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         }
         else
         {
-            nvmePassthrough.cmd.timeout = 15; // default to 15 second timeout
+            nvmePassthrough.cmd.timeout = DEFAULT_COMMAND_TIMEOUT; // default to 15 second timeout
         }
     }
 

@@ -135,7 +135,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length      = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
-        ioctl->SrbIoCtrl.Timeout     = 15;
+        ioctl->SrbIoCtrl.Timeout     = DEFAULT_COMMAND_TIMEOUT;
 
         ioctl->QueueId     = 0;    // admin queue
         ioctl->NVMeCmd[0]  = 0x06; // identify

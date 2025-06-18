@@ -2198,7 +2198,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            io_hdr.timeout = 15 * 1000; // default to 15 second timeout
+            io_hdr.timeout = DEFAULT_COMMAND_TIMEOUT * 1000; // default to 15 second timeout
         }
     }
 
@@ -2386,8 +2386,8 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
                 // TODO: Need to test and see if SAT passthrough trusted send/receive are also blocked to add them to
                 // this case. -TJE
                 if (io_hdr.host_status == OPENSEA_SG_ERR_DID_ERROR &&
-                    (scsiIoCtx->cdb[OPERATION_CODE] == SECURITY_PROTOCOL_IN ||
-                     scsiIoCtx->cdb[OPERATION_CODE] == SECURITY_PROTOCOL_OUT))
+                    (scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_IN ||
+                     scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_OUT))
                 {
                     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                     {
@@ -2551,7 +2551,7 @@ static void linux_Rescan_SCSI_Hosts(void)
                     {
                         printf("Error rescanning %s\n", hostFileName);
                     }
-                    fclose(scsiHostFile);
+                    M_STATIC_CAST(void, fclose(scsiHostFile));
                 }
                 handler = set_Constraint_Handler(handler);
                 safe_free(&hostFileName);
@@ -3064,7 +3064,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         adminCmd.cdw13        = nvmeIoCtx->cmd.adminCmd.cdw13;
         adminCmd.cdw14        = nvmeIoCtx->cmd.adminCmd.cdw14;
         adminCmd.cdw15        = nvmeIoCtx->cmd.adminCmd.cdw15;
-        adminCmd.timeout_ms   = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
+        adminCmd.timeout_ms   = (nvmeIoCtx->timeout ? nvmeIoCtx->timeout : DEFAULT_COMMAND_TIMEOUT) * 1000;
         start_Timer(&commandTimer);
         DISABLE_WARNING_SIGN_CONVERSION
         ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
@@ -3163,9 +3163,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             passThroughCmd->cdw13      = nvmeIoCtx->cmd.nvmCmd.cdw13;
             passThroughCmd->cdw14      = nvmeIoCtx->cmd.nvmCmd.cdw14;
             passThroughCmd->cdw15      = nvmeIoCtx->cmd.nvmCmd.cdw15;
-            passThroughCmd->timeout_ms = nvmeIoCtx->timeout
-                                             ? nvmeIoCtx->timeout * 1000
-                                             : 15000; // timeout is in seconds, so converting to milliseconds
+            passThroughCmd->timeout_ms = (nvmeIoCtx->timeout ? nvmeIoCtx->timeout : DEFAULT_COMMAND_TIMEOUT) *
+                                         1000; // timeout is in seconds, so converting to milliseconds
             start_Timer(&commandTimer);
             DISABLE_WARNING_SIGN_CONVERSION
             ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_IO_CMD, passThroughCmd);

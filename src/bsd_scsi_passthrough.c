@@ -184,7 +184,7 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
                 }
                 else
                 {
-                    scsicmd.timeout = 15000UL; // default to 15 second timeout
+                    scsicmd.timeout = DEFAULT_COMMAND_TIMEOUT * 1000UL; // default to 15 second timeout
                 }
             }
             safe_memcpy(scsicmd.cmd, CMDBUFLEN, scsiIoCtx->cdb, scsiIoCtx->cdbLength);

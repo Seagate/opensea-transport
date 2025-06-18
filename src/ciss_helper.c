@@ -318,29 +318,29 @@ dataLength)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
-    cdb[OPERATION_CODE] = CISS_REPORT_LOGICAL_LUNS_OP;
-    cdb[1] = extendedDataType;//can set to receive extended information, but we don't care about this right now...
-    cdb[2] = RESERVED;
-    cdb[3] = RESERVED;
-    cdb[4] = RESERVED;
-    cdb[5] = RESERVED;
-    cdb[6] = M_Byte3(dataLength);
-    cdb[7] = M_Byte2(dataLength);
-    cdb[8] = M_Byte1(dataLength);
-    cdb[9] = M_Byte0(dataLength);
-    cdb[10] = RESERVED;
-    cdb[11] = 0;//control byte
+    cdb[CDB_OPERATION_CODE] = CISS_REPORT_LOGICAL_LUNS_OP;
+    cdb[CDB_1] = extendedDataType;//can set to receive extended information, but we don't care about this right now...
+    cdb[CDB_2] = RESERVED;
+    cdb[CDB_3] = RESERVED;
+    cdb[CDB_4] = RESERVED;
+    cdb[CDB_5] = RESERVED;
+    cdb[CDB_6] = M_Byte3(dataLength);
+    cdb[CDB_7] = M_Byte2(dataLength);
+    cdb[CDB_8] = M_Byte1(dataLength);
+    cdb[CDB_9] = M_Byte0(dataLength);
+    cdb[CDB_10] = RESERVED;
+    cdb[CDB_11] = 0;//control byte
 
     //CDB is created...let's send it!
     if(ptrData && dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, ptrData, dataLength, XFER_DATA_IN,
-device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA,
-device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
     return ret;
 }
@@ -365,29 +365,29 @@ static eReturnValues ciss_Scsi_Report_Physical_LUNs(tDevice* device,
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
-    cdb[OPERATION_CODE] = CISS_REPORT_PHYSICAL_LUNS_OP;
-    cdb[1]  = extendedDataType; // can set to receive extended information, but we don't care about this right now...
-    cdb[2]  = RESERVED;
-    cdb[3]  = RESERVED;
-    cdb[4]  = RESERVED;
-    cdb[5]  = RESERVED;
-    cdb[6]  = M_Byte3(dataLength);
-    cdb[7]  = M_Byte2(dataLength);
-    cdb[8]  = M_Byte1(dataLength);
-    cdb[9]  = M_Byte0(dataLength);
-    cdb[10] = RESERVED;
-    cdb[11] = 0; // control byte
+    cdb[CDB_OPERATION_CODE] = CISS_REPORT_PHYSICAL_LUNS_OP;
+    cdb[CDB_1] = extendedDataType; // can set to receive extended information, but we don't care about this right now...
+    cdb[CDB_2] = RESERVED;
+    cdb[CDB_3] = RESERVED;
+    cdb[CDB_4] = RESERVED;
+    cdb[CDB_5] = RESERVED;
+    cdb[CDB_6] = M_Byte3(dataLength);
+    cdb[CDB_7] = M_Byte2(dataLength);
+    cdb[CDB_8] = M_Byte1(dataLength);
+    cdb[CDB_9] = M_Byte0(dataLength);
+    cdb[CDB_10] = RESERVED;
+    cdb[CDB_11] = 0; // control byte
 
     // CDB is created...let's send it!
     if (ptrData && dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, ptrData, dataLength, XFER_DATA_IN,
-                            device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+                            device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA,
-                            device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+                            device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
     return ret;
 }
@@ -524,7 +524,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                 }
                 else
                 {
-                    pqiCmd.Request.Timeout = 15;
+                    pqiCmd.Request.Timeout = DEFAULT_COMMAND_TIMEOUT;
                 }
                 safe_memcpy(pqiCmd.Request.CDB, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
@@ -758,7 +758,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                 }
                 else
                 {
-                    cissCmd.Request.Timeout = 15;
+                    cissCmd.Request.Timeout = DEFAULT_COMMAND_TIMEOUT;
                 }
                 safe_memcpy(cissCmd.Request.CDB, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
@@ -981,7 +981,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
             }
             else
             {
-                cissCmd.Timeout = 15;
+                cissCmd.Timeout = DEFAULT_COMMAND_TIMEOUT;
             }
             safe_memcpy(cissCmd.cdb, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
@@ -1240,7 +1240,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType c
             }
             else
             {
-                cissCmd.Request.Timeout = 15;
+                cissCmd.Request.Timeout = DEFAULT_COMMAND_TIMEOUT;
             }
             safe_memcpy(cissCmd.Request.CDB, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
@@ -1574,19 +1574,19 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t* count)
             pseudoDev.sanity.size    = sizeof(tDevice);
 
             // setup the cdb
-            cdb[OPERATION_CODE] = CISS_REPORT_PHYSICAL_LUNS_OP;
-            cdb[1] = 0; // no extended data as it is not needed and this will maximize compatibility with controllers
-                        // and firmwares.
-            cdb[2]  = RESERVED;
-            cdb[3]  = RESERVED;
-            cdb[4]  = RESERVED;
-            cdb[5]  = RESERVED;
-            cdb[6]  = M_Byte3(dataLength);
-            cdb[7]  = M_Byte2(dataLength);
-            cdb[8]  = M_Byte1(dataLength);
-            cdb[9]  = M_Byte0(dataLength);
-            cdb[10] = RESERVED;
-            cdb[11] = 0; // control byte
+            cdb[CDB_OPERATION_CODE] = CISS_REPORT_PHYSICAL_LUNS_OP;
+            cdb[CDB_1] = 0; // no extended data as it is not needed and this will maximize compatibility with
+                            // controllers and firmwares.
+            cdb[CDB_2]  = RESERVED;
+            cdb[CDB_3]  = RESERVED;
+            cdb[CDB_4]  = RESERVED;
+            cdb[CDB_5]  = RESERVED;
+            cdb[CDB_6]  = M_Byte3(dataLength);
+            cdb[CDB_7]  = M_Byte2(dataLength);
+            cdb[CDB_8]  = M_Byte1(dataLength);
+            cdb[CDB_9]  = M_Byte0(dataLength);
+            cdb[CDB_10] = RESERVED;
+            cdb[CDB_11] = 0; // control byte
 
             // setup the scsiIoCtx
             safe_memset(&physicalLunCMD, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
@@ -1595,7 +1595,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t* count)
             physicalLunCMD.pdata         = data;
             physicalLunCMD.psense        = pseudoDev.drive_info.lastCommandSenseData;
             physicalLunCMD.senseDataSize = SPC3_SENSE_LEN;
-            physicalLunCMD.timeout       = 15;
+            physicalLunCMD.timeout       = DEFAULT_COMMAND_TIMEOUT;
             physicalLunCMD.dataLength    = dataLength;
             physicalLunCMD.cdbLength     = 12;
             safe_memcpy(physicalLunCMD.cdb, SCSI_IO_CTX_MAX_CDB_LEN, cdb, 12);

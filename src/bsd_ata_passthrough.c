@@ -119,7 +119,7 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                timeoutmilliseconds = UINT32_C(15000); // default to 15 second timeout
+                timeoutmilliseconds = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
         atacmd.timeout = timeoutmilliseconds > INT_MAX ? INT_MAX : M_STATIC_CAST(int, timeoutmilliseconds);

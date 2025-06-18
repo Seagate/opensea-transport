@@ -76,22 +76,22 @@ static eReturnValues build_Basic_Passthrough_CDB(nvmeCmdCtx* nvmCmd, uint8_t* cd
         {
             // can send this command, so set it up and send it
             safe_memset(cdb, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE, 0, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE);
-            cdb[OPERATION_CODE]                 = ASMEDIA_NVME_PASSTHROUGH_OP;
+            cdb[CDB_OPERATION_CODE]             = ASMEDIA_NVME_PASSTHROUGH_OP;
             cdb[ASMEDIA_NVME_PT_NVME_OP_OFFSET] = nvmCmd->cmd.adminCmd.opcode;
-            cdb[2]                              = RESERVED;
-            cdb[3]                              = M_Byte0(nvmCmd->cmd.adminCmd.cdw10);
-            cdb[4]                              = RESERVED;
-            cdb[5]                              = RESERVED;
-            cdb[6]                              = RESERVED;
-            cdb[7]                              = RESERVED;
-            cdb[8]                              = RESERVED;
-            cdb[9]                              = RESERVED;
-            cdb[10]                             = RESERVED;
-            cdb[11]                             = RESERVED;
-            cdb[12]                             = RESERVED;
-            cdb[13]                             = RESERVED;
-            cdb[14]                             = RESERVED;
-            cdb[15]                             = RESERVED;
+            cdb[CDB_2]                          = RESERVED;
+            cdb[CDB_3]                          = M_Byte0(nvmCmd->cmd.adminCmd.cdw10);
+            cdb[CDB_4]                          = RESERVED;
+            cdb[CDB_5]                          = RESERVED;
+            cdb[CDB_6]                          = RESERVED;
+            cdb[CDB_7]                          = RESERVED;
+            cdb[CDB_8]                          = RESERVED;
+            cdb[CDB_9]                          = RESERVED;
+            cdb[CDB_10]                         = RESERVED;
+            cdb[CDB_11]                         = RESERVED;
+            cdb[CDB_12]                         = RESERVED;
+            cdb[CDB_13]                         = RESERVED;
+            cdb[CDB_14]                         = RESERVED;
+            cdb[CDB_15]                         = RESERVED;
         }
         break;
     case NVME_ADMIN_CMD_GET_LOG_PAGE:
@@ -106,22 +106,22 @@ static eReturnValues build_Basic_Passthrough_CDB(nvmeCmdCtx* nvmCmd, uint8_t* cd
         {
             // can send this command, so set it up and send it
             safe_memset(cdb, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE, 0, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE);
-            cdb[OPERATION_CODE]                 = ASMEDIA_NVME_PASSTHROUGH_OP;
+            cdb[CDB_OPERATION_CODE]             = ASMEDIA_NVME_PASSTHROUGH_OP;
             cdb[ASMEDIA_NVME_PT_NVME_OP_OFFSET] = nvmCmd->cmd.adminCmd.opcode;
-            cdb[2]                              = RESERVED;
-            cdb[3]                              = M_Byte0(nvmCmd->cmd.adminCmd.cdw10);
-            cdb[4]                              = RESERVED;
-            cdb[5]                              = RESERVED;
-            cdb[6]                              = M_Byte3(nvmCmd->cmd.adminCmd.cdw10);
-            cdb[7]                              = M_Byte2(nvmCmd->cmd.adminCmd.cdw10);
-            cdb[8]                              = M_Byte3(nvmCmd->cmd.adminCmd.cdw13);
-            cdb[9]                              = M_Byte2(nvmCmd->cmd.adminCmd.cdw13);
-            cdb[10]                             = M_Byte1(nvmCmd->cmd.adminCmd.cdw13);
-            cdb[11]                             = M_Byte0(nvmCmd->cmd.adminCmd.cdw13);
-            cdb[12]                             = M_Byte3(nvmCmd->cmd.adminCmd.cdw12);
-            cdb[13]                             = M_Byte2(nvmCmd->cmd.adminCmd.cdw12);
-            cdb[14]                             = M_Byte1(nvmCmd->cmd.adminCmd.cdw12);
-            cdb[15]                             = M_Byte0(nvmCmd->cmd.adminCmd.cdw12);
+            cdb[CDB_2]                          = RESERVED;
+            cdb[CDB_3]                          = M_Byte0(nvmCmd->cmd.adminCmd.cdw10);
+            cdb[CDB_4]                          = RESERVED;
+            cdb[CDB_5]                          = RESERVED;
+            cdb[CDB_6]                          = M_Byte3(nvmCmd->cmd.adminCmd.cdw10);
+            cdb[CDB_7]                          = M_Byte2(nvmCmd->cmd.adminCmd.cdw10);
+            cdb[CDB_8]                          = M_Byte3(nvmCmd->cmd.adminCmd.cdw13);
+            cdb[CDB_9]                          = M_Byte2(nvmCmd->cmd.adminCmd.cdw13);
+            cdb[CDB_10]                         = M_Byte1(nvmCmd->cmd.adminCmd.cdw13);
+            cdb[CDB_11]                         = M_Byte0(nvmCmd->cmd.adminCmd.cdw13);
+            cdb[CDB_12]                         = M_Byte3(nvmCmd->cmd.adminCmd.cdw12);
+            cdb[CDB_13]                         = M_Byte2(nvmCmd->cmd.adminCmd.cdw12);
+            cdb[CDB_14]                         = M_Byte1(nvmCmd->cmd.adminCmd.cdw12);
+            cdb[CDB_15]                         = M_Byte0(nvmCmd->cmd.adminCmd.cdw12);
         }
         break;
     default:
@@ -139,7 +139,7 @@ eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx* nvmCmd)
     if (ret == SUCCESS)
     {
         ret = scsi_Send_Cdb(nvmCmd->device, cdb, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE, nvmCmd->ptrData, nvmCmd->dataSize,
-                            XFER_DATA_IN, M_NULLPTR, 0, 15);
+                            XFER_DATA_IN, M_NULLPTR, 0, DEFAULT_COMMAND_TIMEOUT);
         nvmCmd->commandCompletionData.dw0Valid = false;
         nvmCmd->commandCompletionData.dw1Valid = false;
         nvmCmd->commandCompletionData.dw2Valid = false;
@@ -175,24 +175,24 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t*                 c
     case ASMEDIA_NVMP_OP_CONTROL_LED:
         /* Fall-through */
     case ASMEDIA_NVMP_OP_RELINK_USB:
-        cdb[OPERATION_CODE]                         = ASMEDIA_NVME_PACKET_WRITE_OP;
-        cdb[1]                                      = ASMEDIA_NVME_PACKET_SIGNATURE;
+        cdb[CDB_OPERATION_CODE]                     = ASMEDIA_NVME_PACKET_WRITE_OP;
+        cdb[CDB_1]                                  = ASMEDIA_NVME_PACKET_SIGNATURE;
         cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET]   = C_CAST(uint8_t, asmOperation);
         cdb[ASMEDIA_NVME_PACKET_PARAMETER_1_OFFSET] = parameter1;
         // cdb[ASMEDIA_NVME_PACKET_PARAMETER_2_OFFSET] = parameter2;//parameter 2 is unused for these operations
         *cdbDataDirection = XFER_NO_DATA;
         break;
     case ASMEDIA_NVMP_OP_GET_BRIDGE_INFO:
-        cdb[OPERATION_CODE]                         = ASMEDIA_NVME_PACKET_READ_OP;
-        cdb[1]                                      = ASMEDIA_NVME_PACKET_SIGNATURE;
+        cdb[CDB_OPERATION_CODE]                     = ASMEDIA_NVME_PACKET_READ_OP;
+        cdb[CDB_1]                                  = ASMEDIA_NVME_PACKET_SIGNATURE;
         cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET]   = C_CAST(uint8_t, asmOperation);
         cdb[ASMEDIA_NVME_PACKET_PARAMETER_1_OFFSET] = parameter1;
         // cdb[ASMEDIA_NVME_PACKET_PARAMETER_2_OFFSET] = parameter2;//parameter 2 is unused for this operation
         // set allocation length to 40h
-        cdb[10]           = M_Byte3(0x40);
-        cdb[11]           = M_Byte2(0x40);
-        cdb[12]           = M_Byte1(0x40);
-        cdb[13]           = M_Byte0(0x40);
+        cdb[CDB_10]       = M_Byte3(0x40);
+        cdb[CDB_11]       = M_Byte2(0x40);
+        cdb[CDB_12]       = M_Byte1(0x40);
+        cdb[CDB_13]       = M_Byte0(0x40);
         *cdbDataDirection = XFER_DATA_IN;
         break;
     case ASMEDIA_NVMP_OP_SEND_ADMIN_IO_NVM_CMD:
@@ -202,16 +202,16 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t*                 c
         }
         else
         {
-            cdb[OPERATION_CODE]                       = ASMEDIA_NVME_PACKET_WRITE_OP;
-            cdb[1]                                    = ASMEDIA_NVME_PACKET_SIGNATURE;
+            cdb[CDB_OPERATION_CODE]                   = ASMEDIA_NVME_PACKET_WRITE_OP;
+            cdb[CDB_1]                                = ASMEDIA_NVME_PACKET_SIGNATURE;
             cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = C_CAST(uint8_t, asmOperation);
             // ignore input parameter 1 value as we can look at the nvmCmd structure to set it properly for this command
             // setup transfer length as 64B since that's the size of the command in NVMe and that is what the spec shows
             // it is looking for.
-            cdb[10] = M_Byte3(ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
-            cdb[11] = M_Byte2(ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
-            cdb[12] = M_Byte1(ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
-            cdb[13] = M_Byte0(ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
+            cdb[CDB_10] = M_Byte3(ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
+            cdb[CDB_11] = M_Byte2(ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
+            cdb[CDB_12] = M_Byte1(ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
+            cdb[CDB_13] = M_Byte0(ASM_NVMP_DWORDS_DATA_PACKET_SIZE);
 
             // set param 1 for command type
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
@@ -363,8 +363,8 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t*                 c
     case ASMEDIA_NVMP_OP_DATA_PHASE:
     {
         uint32_t allocationLength                 = dataSize;
-        cdb[OPERATION_CODE]                       = ASMEDIA_NVME_PACKET_READ_OP;
-        cdb[1]                                    = ASMEDIA_NVME_PACKET_SIGNATURE;
+        cdb[CDB_OPERATION_CODE]                   = ASMEDIA_NVME_PACKET_READ_OP;
+        cdb[CDB_1]                                = ASMEDIA_NVME_PACKET_SIGNATURE;
         cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = C_CAST(uint8_t, asmOperation);
 
         // set param 1 for command type
@@ -391,7 +391,7 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t*                 c
             }
             break;
         case XFER_DATA_OUT:
-            cdb[OPERATION_CODE] =
+            cdb[CDB_OPERATION_CODE] =
                 ASMEDIA_NVME_PACKET_WRITE_OP; // change to a write opcode if sending data to the device.
             *cdbDataDirection                           = XFER_DATA_OUT;
             cdb[ASMEDIA_NVME_PACKET_PARAMETER_2_OFFSET] = ASM_NVMP_DATA_OUT;
@@ -412,22 +412,22 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t*                 c
         }
 
         // Transfers should be 512B aligned
-        cdb[10] = M_Byte3(allocationLength);
-        cdb[11] = M_Byte2(allocationLength);
-        cdb[12] = M_Byte1(allocationLength);
-        cdb[13] = M_Byte0(allocationLength);
+        cdb[CDB_10] = M_Byte3(allocationLength);
+        cdb[CDB_11] = M_Byte2(allocationLength);
+        cdb[CDB_12] = M_Byte1(allocationLength);
+        cdb[CDB_13] = M_Byte0(allocationLength);
     }
     break;
     case ASMEDIA_NVMP_OP_GET_NVM_COMPLETION:
-        cdb[OPERATION_CODE]                       = ASMEDIA_NVME_PACKET_READ_OP;
-        cdb[1]                                    = ASMEDIA_NVME_PACKET_SIGNATURE;
+        cdb[CDB_OPERATION_CODE]                   = ASMEDIA_NVME_PACKET_READ_OP;
+        cdb[CDB_1]                                = ASMEDIA_NVME_PACKET_SIGNATURE;
         cdb[ASMEDIA_NVME_PACKET_OPERATION_OFFSET] = C_CAST(uint8_t, asmOperation);
 
         // set allocation length to 10h
-        cdb[10] = M_Byte3(ASM_NVMP_RESPONSE_DATA_SIZE);
-        cdb[11] = M_Byte2(ASM_NVMP_RESPONSE_DATA_SIZE);
-        cdb[12] = M_Byte1(ASM_NVMP_RESPONSE_DATA_SIZE);
-        cdb[13] = M_Byte0(ASM_NVMP_RESPONSE_DATA_SIZE);
+        cdb[CDB_10] = M_Byte3(ASM_NVMP_RESPONSE_DATA_SIZE);
+        cdb[CDB_11] = M_Byte2(ASM_NVMP_RESPONSE_DATA_SIZE);
+        cdb[CDB_12] = M_Byte1(ASM_NVMP_RESPONSE_DATA_SIZE);
+        cdb[CDB_13] = M_Byte0(ASM_NVMP_RESPONSE_DATA_SIZE);
 
         // set param 1 for command type
         if (nvmCmd->commandType == NVM_ADMIN_CMD)
@@ -523,7 +523,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
         return ret;
     }
     ret = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, asmPayload,
-                        ASM_NVMP_DWORDS_DATA_PACKET_SIZE, asmCDBDir, M_NULLPTR, 0, 15);
+                        ASM_NVMP_DWORDS_DATA_PACKET_SIZE, asmCDBDir, M_NULLPTR, 0, DEFAULT_COMMAND_TIMEOUT);
     if (SUCCESS != ret)
     {
         if (localMemory)
@@ -545,7 +545,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
         return ret;
     }
     eReturnValues sendRet = scsi_Send_Cdb(nvmCmd->device, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE, dataPhasePtr,
-                                          dataPhaseSize, asmCDBDir, M_NULLPTR, 0, 15);
+                                          dataPhaseSize, asmCDBDir, M_NULLPTR, 0, DEFAULT_COMMAND_TIMEOUT);
 
     if (localMemory)
     {
@@ -611,12 +611,14 @@ static eReturnValues asm_nvme_Shutdown(tDevice* device, bool withShutdownProcess
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
-    eReturnValues          ret = build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_POWER_DOWN_NVME,
-                                                         withShutdownProcessing ? 1 : 0, M_NULLPTR, M_NULLPTR, 0);
+    eReturnValues          ret =
+        build_ASMedia_Packet_Command_CDB(&cdb[CDB_OPERATION_CODE], &asmCDBDir, ASMEDIA_NVMP_OP_POWER_DOWN_NVME,
+                                         withShutdownProcessing ? 1 : 0, M_NULLPTR, M_NULLPTR, 0);
     if (ret == SUCCESS)
     {
         // send it
-        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, M_NULLPTR, 0, asmCDBDir, M_NULLPTR, 0, 15);
+        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, M_NULLPTR, 0, asmCDBDir, M_NULLPTR, 0,
+                            DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
@@ -629,12 +631,13 @@ static eReturnValues asm_nvme_Reset_Bridge(tDevice* device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
-    eReturnValues          ret =
-        build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RESET_BRIDGE, 0, M_NULLPTR, M_NULLPTR, 0);
+    eReturnValues          ret       = build_ASMedia_Packet_Command_CDB(&cdb[CDB_OPERATION_CODE], &asmCDBDir,
+                                                                        ASMEDIA_NVMP_OP_RESET_BRIDGE, 0, M_NULLPTR, M_NULLPTR, 0);
     if (ret == SUCCESS)
     {
         // send it
-        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, M_NULLPTR, 0, asmCDBDir, M_NULLPTR, 0, 15);
+        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, M_NULLPTR, 0, asmCDBDir, M_NULLPTR, 0,
+                            DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
@@ -648,12 +651,13 @@ static eReturnValues asm_nvme_Relink_Bridge(tDevice* device, bool normalShutdown
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
     eReturnValues          ret =
-        build_ASMedia_Packet_Command_CDB(&cdb[0], &asmCDBDir, ASMEDIA_NVMP_OP_RELINK_USB,
+        build_ASMedia_Packet_Command_CDB(&cdb[CDB_OPERATION_CODE], &asmCDBDir, ASMEDIA_NVMP_OP_RELINK_USB,
                                          normalShutdownBeforeDisconnect ? 1 : 0, M_NULLPTR, M_NULLPTR, 0);
     if (ret == SUCCESS)
     {
         // send it
-        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, M_NULLPTR, 0, asmCDBDir, M_NULLPTR, 0, 15);
+        ret = scsi_Send_Cdb(device, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE, M_NULLPTR, 0, asmCDBDir, M_NULLPTR, 0,
+                            DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {

@@ -517,7 +517,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                camTimeout = UINT32_C(15) * UINT32_C(1000); // default to 15 second timeout
+                camTimeout = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
 
@@ -856,7 +856,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                camTimeout = UINT32_C(15) * UINT32_C(1000); // default to 15 second timeout
+                camTimeout = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
         csio->ccb_h.timeout = camTimeout;
@@ -898,7 +898,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
         ccb->ccb_h.flags |= CAM_DEV_QFRZDIS;
         // ccb->ccb_h.flags |= CAM_PASS_ERR_RECOVER; // Needed?
 
-        safe_memcpy(&csio->cdb_io.cdb_bytes[0], IOCDBLEN, &scsiIoCtx->cdb[0], IOCDBLEN);
+        safe_memcpy(&csio->cdb_io.cdb_bytes[0], IOCDBLEN, &scsiIoCtx->cdb[CDB_OPERATION_CODE], IOCDBLEN);
 #if defined(_DEBUG)
         printf("%s cdb [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
                [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",

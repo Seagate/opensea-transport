@@ -32,26 +32,26 @@ eReturnValues enable_Disable_ATA_Passthrough(tDevice* device, bool enable)
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
-    cdb[OPERATION_CODE] = PSP_OPCODE;
+    cdb[CDB_OPERATION_CODE] = PSP_OPCODE;
     if (enable)
     {
-        cdb[1] |= PSP_FUNC_ENABLE_ATA_PASSTHROUGH;
+        cdb[CDB_1] |= PSP_FUNC_ENABLE_ATA_PASSTHROUGH;
         // set the key
-        cdb[2]  = M_Byte7(PSP_PASSTHROUGH_ENABLE_KEY);
-        cdb[3]  = M_Byte6(PSP_PASSTHROUGH_ENABLE_KEY);
-        cdb[4]  = M_Byte5(PSP_PASSTHROUGH_ENABLE_KEY);
-        cdb[5]  = M_Byte4(PSP_PASSTHROUGH_ENABLE_KEY);
-        cdb[6]  = M_Byte3(PSP_PASSTHROUGH_ENABLE_KEY);
-        cdb[7]  = M_Byte2(PSP_PASSTHROUGH_ENABLE_KEY);
-        cdb[8]  = M_Byte1(PSP_PASSTHROUGH_ENABLE_KEY);
-        cdb[9]  = M_Byte0(PSP_PASSTHROUGH_ENABLE_KEY);
-        cdb[10] = RESERVED;
+        cdb[CDB_2]  = M_Byte7(PSP_PASSTHROUGH_ENABLE_KEY);
+        cdb[CDB_3]  = M_Byte6(PSP_PASSTHROUGH_ENABLE_KEY);
+        cdb[CDB_4]  = M_Byte5(PSP_PASSTHROUGH_ENABLE_KEY);
+        cdb[CDB_5]  = M_Byte4(PSP_PASSTHROUGH_ENABLE_KEY);
+        cdb[CDB_6]  = M_Byte3(PSP_PASSTHROUGH_ENABLE_KEY);
+        cdb[CDB_7]  = M_Byte2(PSP_PASSTHROUGH_ENABLE_KEY);
+        cdb[CDB_8]  = M_Byte1(PSP_PASSTHROUGH_ENABLE_KEY);
+        cdb[CDB_9]  = M_Byte0(PSP_PASSTHROUGH_ENABLE_KEY);
+        cdb[CDB_10] = RESERVED;
         // control byte - set to 0
-        cdb[11] = 0;
+        cdb[CDB_11] = 0;
     }
     else
     {
-        cdb[1] |= PSP_FUNC_DISABLE_ATA_PASSTHROUGH;
+        cdb[CDB_1] |= PSP_FUNC_DISABLE_ATA_PASSTHROUGH;
     }
     ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA, senseData, SPC3_SENSE_LEN, 0);
     return ret;
@@ -62,70 +62,70 @@ eReturnValues build_PSP_Legacy_CDB(uint8_t* cdb, uint8_t* cdbLen, ataPassthrough
     eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
-        *cdbLen = PSP_EXT_COMMAND_CDB_LEN;
-        cdb[0]  = PSP_OPCODE;
+        *cdbLen                 = PSP_EXT_COMMAND_CDB_LEN;
+        cdb[CDB_OPERATION_CODE] = PSP_OPCODE;
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:
-            cdb[1] |= PSP_FUNC_NON_DATA_COMMAND;
+            cdb[CDB_1] |= PSP_FUNC_NON_DATA_COMMAND;
             break;
         case XFER_DATA_IN:
-            cdb[1] |= PSP_FUNC_EXT_DATA_IN_COMMAND;
+            cdb[CDB_1] |= PSP_FUNC_EXT_DATA_IN_COMMAND;
             break;
         case XFER_DATA_OUT:
-            cdb[1] |= PSP_FUNC_EXT_DATA_OUT_COMMAND;
+            cdb[CDB_1] |= PSP_FUNC_EXT_DATA_OUT_COMMAND;
             break;
         default:
             return NOT_SUPPORTED;
         }
-        cdb[2]  = RESERVED;
-        cdb[3]  = ataCommandOptions->tfr.SectorCount48;
-        cdb[4]  = ataCommandOptions->tfr.LbaLow48;
-        cdb[5]  = ataCommandOptions->tfr.LbaMid48;
-        cdb[6]  = ataCommandOptions->tfr.LbaHi48;
-        cdb[7]  = RESERVED;
-        cdb[8]  = ataCommandOptions->tfr.SectorCount;
-        cdb[9]  = ataCommandOptions->tfr.LbaLow;
-        cdb[10] = ataCommandOptions->tfr.LbaMid;
-        cdb[11] = ataCommandOptions->tfr.LbaHi;
-        cdb[12] = ataCommandOptions->tfr.DeviceHead;
-        cdb[13] = ataCommandOptions->tfr.CommandStatus;
-        cdb[14] = M_Byte0(ataCommandOptions->dataSize / LEGACY_DRIVE_SEC_SIZE);
-        cdb[15] = M_Byte1(ataCommandOptions->dataSize / LEGACY_DRIVE_SEC_SIZE);
-        cdb[16] = RESERVED;
+        cdb[CDB_2]  = RESERVED;
+        cdb[CDB_3]  = ataCommandOptions->tfr.SectorCount48;
+        cdb[CDB_4]  = ataCommandOptions->tfr.LbaLow48;
+        cdb[CDB_5]  = ataCommandOptions->tfr.LbaMid48;
+        cdb[CDB_6]  = ataCommandOptions->tfr.LbaHi48;
+        cdb[CDB_7]  = RESERVED;
+        cdb[CDB_8]  = ataCommandOptions->tfr.SectorCount;
+        cdb[CDB_9]  = ataCommandOptions->tfr.LbaLow;
+        cdb[CDB_10] = ataCommandOptions->tfr.LbaMid;
+        cdb[CDB_11] = ataCommandOptions->tfr.LbaHi;
+        cdb[CDB_12] = ataCommandOptions->tfr.DeviceHead;
+        cdb[CDB_13] = ataCommandOptions->tfr.CommandStatus;
+        cdb[CDB_14] = M_Byte0(ataCommandOptions->dataSize / LEGACY_DRIVE_SEC_SIZE);
+        cdb[CDB_15] = M_Byte1(ataCommandOptions->dataSize / LEGACY_DRIVE_SEC_SIZE);
+        cdb[CDB_16] = RESERVED;
         // control byte. Set to 0
-        cdb[17] = 0;
+        cdb[CDB_17] = 0;
     }
     else // assume 28bit command
     {
-        *cdbLen = CDB_LEN_12;
-        cdb[0]  = PSP_OPCODE;
+        *cdbLen                 = CDB_LEN_12;
+        cdb[CDB_OPERATION_CODE] = PSP_OPCODE;
         switch (ataCommandOptions->commandDirection)
         {
         case XFER_NO_DATA:
-            cdb[1] |= PSP_FUNC_NON_DATA_COMMAND;
+            cdb[CDB_1] |= PSP_FUNC_NON_DATA_COMMAND;
             break;
         case XFER_DATA_IN:
-            cdb[1] |= PSP_FUNC_DATA_IN_COMMAND;
+            cdb[CDB_1] |= PSP_FUNC_DATA_IN_COMMAND;
             break;
         case XFER_DATA_OUT:
-            cdb[1] |= PSP_FUNC_DATA_OUT_COMMAND;
+            cdb[CDB_1] |= PSP_FUNC_DATA_OUT_COMMAND;
             break;
         default:
             return NOT_SUPPORTED;
         }
-        cdb[2] = ataCommandOptions->tfr.ErrorFeature;
-        cdb[3] = ataCommandOptions->tfr.SectorCount;
-        cdb[4] = ataCommandOptions->tfr.LbaLow;
-        cdb[5] = ataCommandOptions->tfr.LbaMid;
-        cdb[6] = ataCommandOptions->tfr.LbaHi;
-        cdb[7] = ataCommandOptions->tfr.DeviceHead;
-        cdb[8] = ataCommandOptions->tfr.CommandStatus;
+        cdb[CDB_2] = ataCommandOptions->tfr.ErrorFeature;
+        cdb[CDB_3] = ataCommandOptions->tfr.SectorCount;
+        cdb[CDB_4] = ataCommandOptions->tfr.LbaLow;
+        cdb[CDB_5] = ataCommandOptions->tfr.LbaMid;
+        cdb[CDB_6] = ataCommandOptions->tfr.LbaHi;
+        cdb[CDB_7] = ataCommandOptions->tfr.DeviceHead;
+        cdb[CDB_8] = ataCommandOptions->tfr.CommandStatus;
         // transfer length
-        cdb[9]  = M_Byte0(ataCommandOptions->dataSize / LEGACY_DRIVE_SEC_SIZE);
-        cdb[10] = RESERVED;
+        cdb[CDB_9]  = M_Byte0(ataCommandOptions->dataSize / LEGACY_DRIVE_SEC_SIZE);
+        cdb[CDB_10] = RESERVED;
         // control, set to 0
-        cdb[11] = 0;
+        cdb[CDB_11] = 0;
     }
     return ret;
 }
@@ -142,8 +142,8 @@ eReturnValues get_RTFRs_From_PSP_Legacy(tDevice*               device,
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 14);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
-    cdb[OPERATION_CODE] = PSP_OPCODE;
-    cdb[1] |= PSP_FUNC_RETURN_TASK_FILE_REGISTERS;
+    cdb[CDB_OPERATION_CODE] = PSP_OPCODE;
+    cdb[CDB_1] |= PSP_FUNC_RETURN_TASK_FILE_REGISTERS;
     // Set the device register in offset 7 for selecting device 0 vs device 1...we won't do that at this time - TJE
     // send the command
     ret = scsi_Send_Cdb(device, cdb, CDB_LEN_16, returnData, 14, XFER_DATA_IN, senseData, SPC3_SENSE_LEN, 0);
@@ -234,7 +234,7 @@ eReturnValues send_PSP_Legacy_Passthrough_Command(tDevice* device, ataPassthroug
     // before we get rid of the sense data, copy it back to the last command sense data
     safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(&device->drive_info.lastCommandSenseData[0], SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
+    safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
                 M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
                 sizeof(ataReturnTFRs));

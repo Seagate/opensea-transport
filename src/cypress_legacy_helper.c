@@ -27,42 +27,42 @@
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 
-eReturnValues build_Cypress_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand* ataCommandOptions)
+eReturnValues build_Cypress_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand* ataCommandOptions)
 {
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         return NOT_SUPPORTED;
     }
-    cdb[OPERATION_CODE] = CYPRESS_SIGNATURE_OPCODE;
-    cdb[1]              = CYPRESS_SUBCOMMAND;
+    cdb[CDB_OPERATION_CODE] = CYPRESS_SIGNATURE_OPCODE;
+    cdb[CDB_1]              = CYPRESS_SUBCOMMAND;
     // check if we are sending an identify command
     if (ataCommandOptions->tfr.CommandStatus == ATA_IDENTIFY ||
         ataCommandOptions->tfr.CommandStatus == ATA_IDENTIFY_DMA ||
         ataCommandOptions->tfr.CommandStatus == ATAPI_IDENTIFY)
     {
-        cdb[2] |= CYPRESS_IDENTIFY_DATA_BIT;
+        cdb[CDB_2] |= CYPRESS_IDENTIFY_DATA_BIT;
     }
     if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA || ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA)
     {
-        cdb[2] |= CYPRESS_UDMA_COMMAND_BIT;
+        cdb[CDB_2] |= CYPRESS_UDMA_COMMAND_BIT;
     }
     // set register select to 0xFF for all registers. (we can change this later to set bits based on what registers we
     // actually use)
-    cdb[3] = 0xFF;
+    cdb[CDB_3] = 0xFF;
     // Transfer Block Count (used for multiple commands)
     if (ataCommandOptions->multipleCount)
     {
-        cdb[4] = ataCommandOptions->multipleCount;
+        cdb[CDB_4] = ataCommandOptions->multipleCount;
     }
     // command registers
-    cdb[5]  = ataCommandOptions->tfr.DeviceControl;
-    cdb[6]  = ataCommandOptions->tfr.ErrorFeature;
-    cdb[7]  = ataCommandOptions->tfr.SectorCount;
-    cdb[8]  = ataCommandOptions->tfr.LbaLow; // sector num
-    cdb[9]  = ataCommandOptions->tfr.LbaMid; // cyl low
-    cdb[10] = ataCommandOptions->tfr.LbaHi;  // cyl high
-    cdb[11] = ataCommandOptions->tfr.DeviceHead;
-    cdb[12] = ataCommandOptions->tfr.CommandStatus;
+    cdb[CDB_5]  = ataCommandOptions->tfr.DeviceControl;
+    cdb[CDB_6]  = ataCommandOptions->tfr.ErrorFeature;
+    cdb[CDB_7]  = ataCommandOptions->tfr.SectorCount;
+    cdb[CDB_8]  = ataCommandOptions->tfr.LbaLow; // sector num
+    cdb[CDB_9]  = ataCommandOptions->tfr.LbaMid; // cyl low
+    cdb[CDB_10] = ataCommandOptions->tfr.LbaHi;  // cyl high
+    cdb[CDB_11] = ataCommandOptions->tfr.DeviceHead;
+    cdb[CDB_12] = ataCommandOptions->tfr.CommandStatus;
     return SUCCESS;
 }
 
@@ -78,9 +78,9 @@ eReturnValues get_RTFRs_From_Cypress_Legacy(tDevice*               device,
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 8);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
-    cdb[OPERATION_CODE] = CYPRESS_SIGNATURE_OPCODE;
-    cdb[1]              = CYPRESS_SUBCOMMAND;
-    cdb[2] |= CYPRESS_TASK_FILE_READ_BIT;
+    cdb[CDB_OPERATION_CODE] = CYPRESS_SIGNATURE_OPCODE;
+    cdb[CDB_1]              = CYPRESS_SUBCOMMAND;
+    cdb[CDB_2] |= CYPRESS_TASK_FILE_READ_BIT;
     ret = scsi_Send_Cdb(device, cdb, CDB_LEN_16, returnData, 8, XFER_DATA_IN, senseData, SPC3_SENSE_LEN, 0);
     if (ret == SUCCESS)
     {
@@ -161,7 +161,7 @@ eReturnValues send_Cypress_Legacy_Passthrough_Command(tDevice* device, ataPassth
     // before we get rid of the sense data, copy it back to the last command sense data
     safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(&device->drive_info.lastCommandSenseData[0], SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
+    safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
                 M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
                 sizeof(ataReturnTFRs));

@@ -27,33 +27,33 @@
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 
-eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand* ataCommandOptions)
+eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand* ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
     safe_memset(cdb, 16, 0, CDB_LEN_16);
-    cdb[OPERATION_CODE] = NEC_WRITE_OPCODE;
-    cdb[1]              = NEC_WRAPPER_SIGNATURE;
-    cdb[2]              = ataCommandOptions->tfr.CommandStatus;
-    cdb[3]              = ataCommandOptions->tfr.DeviceHead;
+    cdb[CDB_OPERATION_CODE] = NEC_WRITE_OPCODE;
+    cdb[CDB_1]              = NEC_WRAPPER_SIGNATURE;
+    cdb[CDB_2]              = ataCommandOptions->tfr.CommandStatus;
+    cdb[CDB_3]              = ataCommandOptions->tfr.DeviceHead;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         // Ext LBA or cylinders
-        cdb[4] = ataCommandOptions->tfr.LbaHi48;
-        cdb[5] = ataCommandOptions->tfr.LbaMid48;
-        cdb[6] = ataCommandOptions->tfr.LbaLow48;
+        cdb[CDB_4] = ataCommandOptions->tfr.LbaHi48;
+        cdb[CDB_5] = ataCommandOptions->tfr.LbaMid48;
+        cdb[CDB_6] = ataCommandOptions->tfr.LbaLow48;
         // Ext Sector count
-        cdb[10] = ataCommandOptions->tfr.SectorCount48;
+        cdb[CDB_10] = ataCommandOptions->tfr.SectorCount48;
     }
-    cdb[7]  = ataCommandOptions->tfr.LbaHi;
-    cdb[8]  = ataCommandOptions->tfr.LbaMid;
-    cdb[9]  = ataCommandOptions->tfr.LbaLow;
-    cdb[11] = ataCommandOptions->tfr.SectorCount;
-    cdb[12] = ataCommandOptions->tfr.ErrorFeature;
+    cdb[CDB_7]  = ataCommandOptions->tfr.LbaHi;
+    cdb[CDB_8]  = ataCommandOptions->tfr.LbaMid;
+    cdb[CDB_9]  = ataCommandOptions->tfr.LbaLow;
+    cdb[CDB_11] = ataCommandOptions->tfr.SectorCount;
+    cdb[CDB_12] = ataCommandOptions->tfr.ErrorFeature;
     if (ataCommandOptions->multipleCount > 0)
     {
-        cdb[13] |= NEC_MULTIPLE_BIT;
+        cdb[CDB_13] |= NEC_MULTIPLE_BIT;
         // set the multiple count in the "number of long data bytes"? I guess...-TJE
-        cdb[14] |= M_Nibble0(ataCommandOptions->multipleCount);
+        cdb[CDB_14] |= M_Nibble0(ataCommandOptions->multipleCount);
     }
     // set the protocol
     switch (ataCommandOptions->commadProtocol)
@@ -61,21 +61,21 @@ eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand* ataCo
     case ATA_PROTOCOL_PIO:
         break;
     case ATA_PROTOCOL_DEV_DIAG:
-        cdb[13] |= BIT2;
+        cdb[CDB_13] |= BIT2;
         break;
     case ATA_PROTOCOL_DMA:
     case ATA_PROTOCOL_UDMA:
-        cdb[13] |= BIT3;
+        cdb[CDB_13] |= BIT3;
         break;
     case ATA_PROTOCOL_DMA_QUE:
-        cdb[13] |= BIT3 | BIT2;
+        cdb[CDB_13] |= BIT3 | BIT2;
         break;
     case ATA_PROTOCOL_PACKET:
     case ATA_PROTOCOL_PACKET_DMA:
-        cdb[13] |= BIT4;
+        cdb[CDB_13] |= BIT4;
         break;
     case ATA_PROTOCOL_HARD_RESET:
-        cdb[13] |= BIT4 | BIT2;
+        cdb[CDB_13] |= BIT4 | BIT2;
         break;
     default:
         return NOT_SUPPORTED;
@@ -84,10 +84,10 @@ eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand* ataCo
     switch (ataCommandOptions->commandDirection)
     {
     case XFER_DATA_IN: // 01b
-        cdb[13] |= BIT0;
+        cdb[CDB_13] |= BIT0;
         break;
     case XFER_DATA_OUT: // 10b
-        cdb[13] |= BIT1;
+        cdb[CDB_13] |= BIT1;
         break;
     case XFER_NO_DATA: // 00b
         break;
@@ -111,8 +111,8 @@ eReturnValues get_RTFRs_From_NEC_Legacy(tDevice*               device,
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 11);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
-    cdb[OPERATION_CODE] = NEC_READ_OPCODE;
-    cdb[1]              = NEC_WRAPPER_SIGNATURE;
+    cdb[CDB_OPERATION_CODE] = NEC_READ_OPCODE;
+    cdb[CDB_1]              = NEC_WRAPPER_SIGNATURE;
     // send the command
     ret = scsi_Send_Cdb(device, cdb, CDB_LEN_16, returnData, 11, XFER_DATA_IN, senseData, SPC3_SENSE_LEN, 0);
     // now get the RTFRs
@@ -198,7 +198,7 @@ eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice* device, ataPassthroug
     // before we get rid of the sense data, copy it back to the last command sense data
     safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(&device->drive_info.lastCommandSenseData[0], SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
+    safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
                 M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
                 sizeof(ataReturnTFRs));

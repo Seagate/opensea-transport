@@ -863,7 +863,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
                 scsiIoCtx->timeout * UINT64_C(10000000); // value is in 100ns units. zero means wait indefinitely
             if (scsiIoCtx->timeout == UINT32_C(0))
             {
-                srp->Timeout = UINT64_C(15) *
+                srp->Timeout = UINT64_C(DEFAULT_COMMAND_TIMEOUT) *
                                UINT64_C(10000000); // 15 seconds. value is in 100ns units. zero means wait indefinitely
             }
         }
@@ -1179,7 +1179,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
                 scsiIoCtx->timeout * UINT64_C(10000000); // value is in 100ns units. zero means wait indefinitely
             if (scsiIoCtx->timeout == UINT32_C(0))
             {
-                srp->Timeout = UINT64_C(0) *
+                srp->Timeout = UINT64_C(DEFAULT_COMMAND_TIMEOUT) *
                                UINT64_C(10000000); // 15 seconds. value is in 100ns units. zero means wait indefinitely
             }
         }
@@ -1459,7 +1459,8 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->pAtaCmdOpts->timeout == UINT32_C(0))
             {
                 ataPacket->Timeout =
-                    15 * UINT64_C(10000000); // 15 seconds. value is in 100ns units. zero means wait indefinitely
+                    DEFAULT_COMMAND_TIMEOUT *
+                    UINT64_C(10000000); // 15 seconds. value is in 100ns units. zero means wait indefinitely
             }
         }
 
@@ -1869,7 +1870,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             if (nvmeIoCtx->timeout == UINT32_C(0))
             {
                 nrp->CommandTimeout =
-                    UINT64_C(15) *
+                    UINT64_C(DEFAULT_COMMAND_TIMEOUT) *
                     UINT64_C(10000000); // 15 seconds. value is in 100ns units. zero means wait indefinitely
             }
         }

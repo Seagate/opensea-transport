@@ -1669,6 +1669,14 @@ extern "C"
                                                                 // to make sure it's a used attribute)
     } ataSMARTLog;
 
+    // for the simplest features without other inputs, this is used to enable/disable to be more clear than a boolean -
+    // TJE
+    typedef enum eSimpleATAFeatEnum
+    {
+        ATA_SF_DISABLE = 0,
+        ATA_SF_ENABLE  = 1
+    } eSimpleATAFeat;
+
     typedef enum eNVCacheFeaturesEnum
     {
         NV_SET_NV_CACHE_POWER_MODE              = 0x0000,
@@ -1682,6 +1690,8 @@ extern "C"
         NV_CACHE_DISABLE                        = 0x0016,
         NV_CACHE_UNKNOWN
     } eNVCacheFeatures;
+
+#define DCO_DATA_SIZE (512)
 
     typedef enum eDCOFeaturesEnum
     {
@@ -1736,38 +1746,45 @@ extern "C"
     // if the subcommand you are looking for is not in this enum, please add it
     typedef enum eATASetFeaturesSubcommandsEnum
     {
-        SF_RESERVED                                             = 0x00,
-        SF_ENABLE_8_BIT_DATA_TRANSFERS                          = 0x01, // retired in ATA4. Obsolete in ATA3
-        SF_ENABLE_VOLITILE_WRITE_CACHE                          = 0x02,
-        SF_SET_TRANSFER_MODE                                    = 0x03,
-        SF_ENABLE_ALL_AUTOMATIC_DEFECT_REASSIGNMENT             = 0x04, // Defined in ATA3, obsolete since ATA4
-        SF_ENABLE_APM_FEATURE                                   = 0x05,
-        SF_ENABLE_PUIS_FEATURE                                  = 0x06,
-        SF_PUIS_DEVICE_SPIN_UP                                  = 0x07,
-        SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT = 0x09, // Defined in ATA5, obsolete in ACS3
-        SF_ENABLE_CFA_POWER_MODE1                               = 0x0A,
-        SF_ENABLE_WRITE_READ_VERIFY_FEATURE                     = 0x0B,
-        SF_ENABLE_DEVICE_LIFE_CONTROL                           = 0x0C,
-        SF_CDL_FEATURE                                          = 0x0D,
-        SF_ENABLE_SATA_FEATURE                                  = 0x10,
-        SF_TLC_SET_CCTL =
-            0x20, // set command completion time limit for devices supporting the old time limited commands feature set
-        SF_TCL_SET_ERROR_HANDLING =
-            0x21, // Sets error handling for devices supporting TLC and read/write continuous mode
-        SF_DISABLE_MEDIA_STATUS_NOTIFICATION                        = 0x31, // Defined in ATA4, obsolete in ATA8/ACS
-        SF_DISABLE_RETRY                                            = 0x33, // Defined in ATA3, obsolete in ATA5
-        SF_ENABLE_FREE_FALL_CONTROL_FEATURE                         = 0x41,
-        SF_ENABLE_AUTOMATIC_ACOUSTIC_MANAGEMENT_FEATURE             = 0x42,
-        SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES                      = 0x43,
+        SF_RESERVED                                                    = 0x00,
+        SF_ENABLE_8_BIT_DATA_TRANSFERS                                 = 0x01, // retired in ATA4. Obsolete in ATA3
+        SF_ENABLE_VOLITILE_WRITE_CACHE                                 = 0x02, // incorrect spelling
+        SF_ENABLE_VOLATILE_WRITE_CACHE                                 = 0x02, // correct spelling
+        SF_SET_TRANSFER_MODE                                           = 0x03,
+        SF_ENABLE_ALL_AUTOMATIC_DEFECT_REASSIGNMENT                    = 0x04, // Defined in ATA3, obsolete since ATA4
+        SF_ENABLE_APM_FEATURE                                          = 0x05,
+        SF_ENABLE_PUIS_FEATURE                                         = 0x06,
+        SF_PUIS_DEVICE_SPIN_UP                                         = 0x07,
+        SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT        = 0x09, // Defined in ATA5, obsolete in ACS3
+        SF_ENABLE_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT = 0x09, // Defined in ATA5, obsolete in ACS3
+        SF_ENABLE_CFA_POWER_MODE1                                      = 0x0A,
+        SF_ENABLE_WRITE_READ_VERIFY_FEATURE                            = 0x0B,
+        SF_ENABLE_DEVICE_LIFE_CONTROL                                  = 0x0C,
+        SF_CDL_FEATURE                                                 = 0x0D,
+        SF_ENABLE_SATA_FEATURE                                         = 0x10,
+        SF_TLC_SET_CCTL                                                = 0x20, // Time Limited Commands Completion Time
+        SF_TCL_SET_ERROR_HANDLING                       = 0x21, // Time Limited Commands read/write continuous mode
+        SF_DISABLE_MEDIA_STATUS_NOTIFICATION            = 0x31, // Defined in ATA4, obsolete in ATA8/ACS
+        SF_DISABLE_RETRY                                = 0x33, // Defined in ATA3, obsolete in ATA5
+        SF_ENABLE_FREE_FALL_CONTROL_FEATURE             = 0x41,
+        SF_ENABLE_AUTOMATIC_ACOUSTIC_MANAGEMENT_FEATURE = 0x42,
+        SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES          = 0x43,
         SF_LEGACY_SET_VENDOR_SPECIFIC_ECC_BYTES_FOR_READ_WRITE_LONG = 0x44, // defined in ATA, obsolete in ATA4
         SF_SET_RATE_BASIS                                           = 0x45,
-        SF_ZAC_ZONE_ACTIVATION_CONTROL = 0x46, // ZAC2 to set the number of zones. Can affect the zone activate ext
-                                               // command or the zone query ext command
-        SF_ZAC_UPDATE_UNRESTRICTED_READ_S_WHILE_READING_ZONES = 0x47, // ZAC2 update URSWRZ
-        SF_EXTENDED_POWER_CONDITIONS                          = 0x4A,
-        SF_SET_CACHE_SEGMENTS                                 = 0x54, // defined in ATA3, obsolete in ATA4
-        SF_DISABLE_READ_LOOK_AHEAD_FEATURE                    = 0x55,
+        SF_ZAC_ZONE_ACTIVATION_CONTROL                              = 0x46, // ZAC2 to set the number of zones.
+        SF_ZAC_UPDATE_UNRESTRICTED_READ_S_WHILE_READING_ZONES       = 0x47, // ZAC2 update URSWRZ
+        SF_EXTENDED_POWER_CONDITIONS                                = 0x4A,
+        SF_ADVANCED_BACKGROUND_OPERATIONS_CONTROL                   = 0x50,
+        SF_SET_CACHE_SEGMENTS                                       = 0x54, // defined in ATA3, obsolete in ATA4
+        SF_DISABLE_READ_LOOK_AHEAD_FEATURE                          = 0x55,
         // 56h - 5Ch are vendor unique
+        SF_VENDOR_56                                          = 0x56,
+        SF_VENDOR_57                                          = 0x57,
+        SF_VENDOR_58                                          = 0x58,
+        SF_VENDOR_59                                          = 0x59,
+        SF_VENDOR_5A                                          = 0x5A,
+        SF_VENDOR_5B                                          = 0x5B,
+        SF_VENDOR_5C                                          = 0x5C,
         SF_ENABLE_RELEASE_INTERRUPT                           = 0x5D, // TCQ related
         SF_ENABLE_SERVICE_INTERRUPT                           = 0x5E, // TCQ related
         SF_ENABLE_DISABLE_DATA_TRANSFER_AFTER_ERROR_DETECTION = 0x5F, // DDT feature...for some very specific old hosts
@@ -1776,19 +1793,21 @@ extern "C"
         SF_DISABLE_REVERTING_TO_POWERON_DEFAULTS              = 0x66,
         SF_CFA_NOP_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY =
             0x69, // Likely defined in old manual if you can find it: SanDisk SDP Series OEM Manual, 1993
-        SF_DISABLE_ECC                                            = 0x77, // defined in ATA3, obsolete in ATA4
-        SF_DISABLE_8_BIT_DATA_TRANSFERS                           = 0x81, // defined in ATA, obsolete in ATA3
-        SF_DISABLE_VOLITILE_WRITE_CACHE                           = 0x82,
-        SF_DISABLE_ALL_AUTOMATIC_DEFECT_REASSIGNMENT              = 0x84, // defined in ATA3, obsolete in ATA4
-        SF_DISABLE_APM_FEATURE                                    = 0x85,
-        SF_DISABLE_PUIS_FEATURE                                   = 0x86,
-        SF_ENABLE_ECC                                             = 0x88, // defined in ATA3, obsolete in ATA6
-        SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT_2 = 0x89, // Defined in ATA5, obsolete in ACS3
-        SF_DISABLE_CFA_POWER_MODE_1                               = 0x8A,
-        SF_DISABLE_WRITE_READ_VERIFY_FEATURE                      = 0x8B,
-        SF_DISABLE_DEVICE_LIFE_CONTROL                            = 0x8C,
-        SF_DISABLE_SATA_FEATURE                                   = 0x90,
-        SF_ENABLE_MEDIA_STATUS_NOTIFICATION                       = 0x95,
+        SF_DISABLE_ECC                                                  = 0x77, // defined in ATA3, obsolete in ATA4
+        SF_DISABLE_8_BIT_DATA_TRANSFERS                                 = 0x81, // defined in ATA, obsolete in ATA3
+        SF_DISABLE_VOLITILE_WRITE_CACHE                                 = 0x82, // incorrect spelling
+        SF_DISABLE_VOLATILE_WRITE_CACHE                                 = 0x82, // correct spelling
+        SF_DISABLE_ALL_AUTOMATIC_DEFECT_REASSIGNMENT                    = 0x84, // defined in ATA3, obsolete in ATA4
+        SF_DISABLE_APM_FEATURE                                          = 0x85,
+        SF_DISABLE_PUIS_FEATURE                                         = 0x86,
+        SF_ENABLE_ECC                                                   = 0x88, // defined in ATA3, obsolete in ATA6
+        SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT_2       = 0x89, // Defined in ATA5, obsolete in ACS3
+        SF_DISABLE_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT = 0x89, // Defined in ATA5, obsolete in ACS3
+        SF_DISABLE_CFA_POWER_MODE_1                                     = 0x8A,
+        SF_DISABLE_WRITE_READ_VERIFY_FEATURE                            = 0x8B,
+        SF_DISABLE_DEVICE_LIFE_CONTROL                                  = 0x8C,
+        SF_DISABLE_SATA_FEATURE                                         = 0x90,
+        SF_ENABLE_MEDIA_STATUS_NOTIFICATION                             = 0x95,
         SF_CFA_NOP_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY_1 =
             0x96, // Likely defined in old manual if you can find it: SanDisk SDP Series OEM Manual, 1993
         SF_CFA_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY =
@@ -1806,10 +1825,18 @@ extern "C"
         SF_ENABLE_DISABLE_SENSE_DATA_RETURN_FOR_SUCCESSFUL_NCQ_COMMANDS = 0xC4,
         SF_ENABLE_REVERTING_TO_POWER_ON_DEFAULTS                        = 0xCC,
         // D6-DC are vendor unique
+        SF_VENDOR_D6                                           = 0xD6,
+        SF_VENDOR_D7                                           = 0xD7,
+        SF_VENDOR_D8                                           = 0xD8,
+        SF_VENDOR_D9                                           = 0xD9,
+        SF_VENDOR_DA                                           = 0xDA,
+        SF_VENDOR_DB                                           = 0xDB,
+        SF_VENDOR_DC                                           = 0xDC,
         SF_DISABLE_RELEASE_INTERRUPT                           = 0xDD,
         SF_DISABLE_SERVICE_INTERRUPT                           = 0xDE,
         SF_DISABLE_DISABLE_DATA_TRANSFER_AFTER_ERROR_DETECTION = 0xDF,
         // E0 is vendor unique
+        SF_VENDOR_E0 = 0xE0,
         // F0 - FF are reserved for CFA
         SF_UNKNOWN_FEATURE
     } eATASetFeaturesSubcommands;
@@ -1830,13 +1857,65 @@ extern "C"
     typedef enum eSetTransferModeTransferModesEnum
     {
         SF_TRANSFER_MODE_PIO_DEFAULT               = 0,
-        SF_TRANSFER_MODE_PIO_DEFAULT_DISABLE_IORDY = 0,
-        SF_TRANSFER_MODE_FLOW_CONTROL              = 1,
-        SF_TRANSFER_MODE_SINGLE_WORD_DMA           = 2,
-        SF_TRANSFER_MODE_MULTI_WORD_DMA            = 4,
-        SF_TRANSFER_MODE_ULTRA_DMA                 = 8,
-        SF_TRANSFER_MODE_RESERVED                  = 5
+        SF_TRANSFER_MODE_PIO_DEFAULT_DISABLE_IORDY = 1,
+        SF_TRANSFER_MODE_FLOW_CONTROL              = 8,
+        SF_TRANSFER_MODE_SINGLE_WORD_DMA           = 16, // retired
+        SF_TRANSFER_MODE_MULTI_WORD_DMA            = 32,
+        SF_TRANSFER_MODE_ULTRA_DMA                 = 64,
+        SF_TRANSFER_MODE_RESERVED                  = 128,
     } eSetTransferModeTransferModes;
+
+    typedef enum ePIOModesEnum
+    {
+        PIO_MODE_0 = 0,
+        PIO_MODE_1 = 1,
+        PIO_MODE_2 = 2,
+        PIO_MODE_3 = 3,
+        PIO_MODE_4 = 4
+    } ePIOModes;
+
+    typedef enum ePIOCycleTimeEnum
+    {
+        PIO_0_CYCLE_TIME = 600,
+        PIO_1_CYCLE_TIME = 383,
+        PIO_2_CYCLE_TIME = 240
+        // Modes 3 and 4 require IORDY flow control
+    } ePIOCycleTime;
+
+    typedef enum ePIOCycleTimeIORDYEnum
+    {
+        PIO_0_IORDY_CYCLE_TIME = 600,
+        PIO_1_IORDY_CYCLE_TIME = 383,
+        PIO_2_IORDY_CYCLE_TIME = 240,
+        PIO_3_IORDY_CYCLE_TIME = 180,
+        PIO_4_IORDY_CYCLE_TIME = 120,
+    } ePIOCycleTimeIORDY;
+
+    typedef enum eSWDMAModesEnum
+    {
+        SWDMA_MODE_0 = 0,
+        SWDMA_MODE_1 = 1,
+        SWDMA_MODE_2 = 2
+    } eSWDMAModes;
+
+    typedef enum eMWDMAModesEnum
+    {
+        MWDMA_MODE_0 = 0,
+        MWDMA_MODE_1 = 1,
+        MWDMA_MODE_2 = 2
+    } eMWDMAModes;
+
+    typedef enum eUDMAModesEnum
+    {
+        UDMA_MODE_0 = 0,
+        UDMA_MODE_1 = 1,
+        UDMA_MODE_2 = 2,
+        UDMA_MODE_3 = 3,
+        UDMA_MODE_4 = 4,
+        UDMA_MODE_5 = 5,
+        UDMA_MODE_6 = 6,
+        UDMA_MODE_7 = 7 // CFA only
+    } eUDMAModes;
 
     typedef enum eLPSErrorReportingControlEnum
     {
@@ -1868,6 +1947,23 @@ extern "C"
         SATA_FEATURE_ENABLE_DISABLE_POWER_DISABLE                       = 0x0B,
     } eSATAFeatures;
 
+    typedef enum eSATAHardwareFeaturesControlEnum
+    {
+        SATA_HW_FEATURE_CTL_RESERVED           = 0x0000,
+        SATA_HW_FEATURE_CTL_DIRECT_HEAD_UNLOAD = 0x0001,
+        // reserved values 0002h - EEEFh
+        SATA_HW_FEATURE_CTL_VENDOR_START = 0xF000,
+        SATA_HW_FEATURE_CTL_VENDOR_END   = 0xFFFF
+    } eSATAHardwareFeaturesControl;
+
+#define ATA_SF_TLC_DISABLE_LIMIT UINT8_C(0)
+
+    typedef enum eTLCErrorHandlingEnum
+    {
+        TLC_ERR_ABORT = 0,
+        TLC_ERR_RC_WC = 1 // read continuous and write continuous
+    } eTLCErrorHandling;
+
     typedef enum eEPCSubcommandsEnum
     {
         EPC_RESTORE_POWER_CONDITION_SETTINGS = 0x0,
@@ -1889,6 +1985,13 @@ extern "C"
         EPC_POWER_CONDITION_IDLE_C               = 0x83,
         EPC_POWER_CONDITION_ALL_POWER_CONDITIONS = 0xFF
     } eEPCPowerCondition;
+
+    typedef enum eABOControlEnum
+    {
+        ABO_CTL_NO_CHANGE = 0,
+        ABO_CTL_START     = 1,
+        ABO_CTL_STOP      = 2
+    } eABOControl;
 
     typedef enum eSCTWriteSameFunctionsEnum
     {

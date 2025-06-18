@@ -27,7 +27,7 @@
 #include "scsi_helper_func.h"
 #include "ti_legacy_helper.h"
 
-eReturnValues build_TI_Legacy_CDB(uint8_t                cdb[16],
+eReturnValues build_TI_Legacy_CDB(uint8_t                cdb[CDB_16],
                                   ataPassthroughCommand* ataCommandOptions,
                                   bool                   olderOpCode,
                                   bool                   forceMode,
@@ -36,43 +36,43 @@ eReturnValues build_TI_Legacy_CDB(uint8_t                cdb[16],
     eReturnValues ret = SUCCESS;
     if (olderOpCode)
     {
-        cdb[OPERATION_CODE] = TI_LEGACY_OPCODE_OLD;
+        cdb[CDB_OPERATION_CODE] = TI_LEGACY_OPCODE_OLD;
     }
     else
     {
-        cdb[OPERATION_CODE] = TI_LEGACY_OPCODE;
+        cdb[CDB_OPERATION_CODE] = TI_LEGACY_OPCODE;
     }
     // If PIO, set the PIO bit
     if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO)
     {
-        cdb[1] |= BIT7;
+        cdb[CDB_1] |= BIT7;
     }
     if (forceMode)
     {
         // They asked us to set a specific PIO/UDMA mode
-        cdb[1] |= modeValue & 0x07;
+        cdb[CDB_1] |= modeValue & 0x07;
     }
     else
     {
         // this is preferred...set the "fastest" bit to let the bridge determine the transfer mode to use.
-        cdb[1] |= BIT3;
+        cdb[CDB_1] |= BIT3;
     }
-    cdb[2] = RESERVED;
-    cdb[3] = ataCommandOptions->tfr.DeviceHead;
-    cdb[4] = ataCommandOptions->tfr.LbaHi;  // Cyl High
-    cdb[5] = ataCommandOptions->tfr.LbaMid; // Cyl Low
-    cdb[6] = ataCommandOptions->tfr.ErrorFeature;
-    cdb[7] = ataCommandOptions->tfr.SectorCount;
-    cdb[8] = ataCommandOptions->tfr.LbaLow; // sector number
-    cdb[9] = ataCommandOptions->tfr.CommandStatus;
+    cdb[CDB_2] = RESERVED;
+    cdb[CDB_3] = ataCommandOptions->tfr.DeviceHead;
+    cdb[CDB_4] = ataCommandOptions->tfr.LbaHi;  // Cyl High
+    cdb[CDB_5] = ataCommandOptions->tfr.LbaMid; // Cyl Low
+    cdb[CDB_6] = ataCommandOptions->tfr.ErrorFeature;
+    cdb[CDB_7] = ataCommandOptions->tfr.SectorCount;
+    cdb[CDB_8] = ataCommandOptions->tfr.LbaLow; // sector number
+    cdb[CDB_9] = ataCommandOptions->tfr.CommandStatus;
     // all remaining bytes are marked reserved in the spec. Comments are thoughts of things to "try" if we ever care
     // enough and need to debug one of these super old products
-    cdb[10] = RESERVED; // Cyl High Ext?
-    cdb[11] = RESERVED; // Cyl Low Ext?
-    cdb[12] = RESERVED; // Feature Ext?
-    cdb[13] = RESERVED; // Sector Count Ext?
-    cdb[14] = RESERVED; // Sector Number Ext?
-    cdb[15] = RESERVED;
+    cdb[CDB_10] = RESERVED; // Cyl High Ext?
+    cdb[CDB_11] = RESERVED; // Cyl Low Ext?
+    cdb[CDB_12] = RESERVED; // Feature Ext?
+    cdb[CDB_13] = RESERVED; // Sector Count Ext?
+    cdb[CDB_14] = RESERVED; // Sector Number Ext?
+    cdb[CDB_15] = RESERVED;
     return ret;
 }
 
@@ -140,7 +140,7 @@ eReturnValues send_TI_Legacy_Passthrough_Command(tDevice* device, ataPassthrough
             print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
         }
     }
-    safe_memcpy(&device->drive_info.lastCommandSenseData[0], SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
+    safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, ataCommandOptions->ptrSenseData,
                 M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
     safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
                 sizeof(ataReturnTFRs));

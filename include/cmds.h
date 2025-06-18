@@ -449,6 +449,11 @@ extern "C"
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues verify_LBA(tDevice* device, uint64_t lba, uint32_t range);
 
+    M_NONNULL_PARAM_LIST(1, 3)
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(3, 4)
+    OPENSEA_TRANSPORT_API eReturnValues compare_LBA(tDevice* device, uint64_t lba, uint8_t* ptrData, uint32_t dataSize);
+
     //-----------------------------------------------------------------------------
     //
     //  flush_Cache()

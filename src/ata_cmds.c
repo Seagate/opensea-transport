@@ -1167,7 +1167,9 @@ eReturnValues ata_Download_Microcode(tDevice*                   device,
     ataCommandOptions.timeout = timeoutSeconds;
     if (ataCommandOptions.timeout == 0)
     {
-        ataCommandOptions.timeout = 30; // using 30 seconds since some firmwares can take a little longer to activate
+#define DEFAULT_FWDL_TIMEOUT (DEFAULT_COMMAND_TIMEOUT * 2)
+        ataCommandOptions.timeout =
+            DEFAULT_FWDL_TIMEOUT; // using 30 seconds since some firmwares can take a little longer to activate
     }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2617,103 +2619,6 @@ eReturnValues ata_Set_Features(tDevice* device,
     return ret;
 }
 
-eReturnValues ata_EPC_Restore_Power_Condition_Settings(tDevice* device,
-                                                       uint8_t  powerConditionID,
-                                                       bool     defaultBit,
-                                                       bool     save)
-{
-    eReturnValues ret   = UNKNOWN;
-    uint8_t       lbaLo = UINT8_C(0); // restore power condition subcommand
-    if (defaultBit)
-    {
-        lbaLo |= BIT6;
-    }
-    if (save)
-    {
-        lbaLo |= BIT4;
-    }
-    ret = ata_Set_Features(device, SF_EXTENDED_POWER_CONDITIONS, powerConditionID, lbaLo, RESERVED, RESERVED);
-    return ret;
-}
-
-eReturnValues ata_EPC_Go_To_Power_Condition(tDevice* device,
-                                            uint8_t  powerConditionID,
-                                            bool     delayedEntry,
-                                            bool     holdPowerCondition)
-{
-    eReturnValues ret   = UNKNOWN;
-    uint8_t       lbaLo = UINT8_C(1); // go to power condition subcommand
-    uint16_t      lbaHi = UINT16_C(0);
-    if (delayedEntry)
-    {
-        lbaHi |= BIT9;
-    }
-    if (holdPowerCondition)
-    {
-        lbaHi |= BIT8;
-    }
-    ret = ata_Set_Features(device, SF_EXTENDED_POWER_CONDITIONS, powerConditionID, lbaLo, RESERVED, lbaHi);
-    return ret;
-}
-
-eReturnValues ata_EPC_Set_Power_Condition_Timer(tDevice* device,
-                                                uint8_t  powerConditionID,
-                                                uint16_t timerValue,
-                                                bool     timerUnits,
-                                                bool     enable,
-                                                bool     save)
-{
-    eReturnValues ret    = UNKNOWN;
-    uint8_t       lbaLo  = UINT8_C(2); // set power condition timer subcommand
-    uint8_t       lbaMid = M_Byte0(timerValue);
-    uint16_t      lbaHi  = M_Byte1(timerValue);
-    if (save)
-    {
-        lbaLo |= BIT4;
-    }
-    if (enable)
-    {
-        lbaLo |= BIT5;
-    }
-    if (timerUnits)
-    {
-        lbaLo |= BIT7;
-    }
-    ret = ata_Set_Features(device, SF_EXTENDED_POWER_CONDITIONS, powerConditionID, lbaLo, lbaMid, lbaHi);
-    return ret;
-}
-
-eReturnValues ata_EPC_Set_Power_Condition_State(tDevice* device, uint8_t powerConditionID, bool enable, bool save)
-{
-    eReturnValues ret   = UNKNOWN;
-    uint8_t       lbaLo = UINT8_C(3); // set power condition state subcommand
-    if (save)
-    {
-        lbaLo |= BIT4;
-    }
-    if (enable)
-    {
-        lbaLo |= BIT5;
-    }
-    ret = ata_Set_Features(device, SF_EXTENDED_POWER_CONDITIONS, powerConditionID, lbaLo, RESERVED, RESERVED);
-    return ret;
-}
-
-eReturnValues ata_EPC_Enable_EPC_Feature_Set(tDevice* device)
-{
-    return ata_Set_Features(device, SF_EXTENDED_POWER_CONDITIONS, RESERVED, 4, RESERVED, RESERVED);
-}
-
-eReturnValues ata_EPC_Disable_EPC_Feature_Set(tDevice* device)
-{
-    return ata_Set_Features(device, SF_EXTENDED_POWER_CONDITIONS, RESERVED, 5, RESERVED, RESERVED);
-}
-
-eReturnValues ata_EPC_Set_EPC_Power_Source(tDevice* device, uint8_t powerSource)
-{
-    return ata_Set_Features(device, SF_EXTENDED_POWER_CONDITIONS, powerSource & 0x02, 6, RESERVED, RESERVED);
-}
-
 eReturnValues ata_Identify_Packet_Device(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues         ret = UNKNOWN;
@@ -3266,7 +3171,7 @@ eReturnValues ata_Zeros_Ext(tDevice* device, uint16_t numberOfLogicalSectors, ui
 
     return ret;
 }
-
+#define DEFAULT_SET_SECTOR_CONFIG_TIMEOUT (3600)
 eReturnValues ata_Set_Sector_Configuration_Ext(tDevice* device,
                                                uint16_t commandCheck,
                                                uint8_t  sectorConfigurationDescriptorIndex)
@@ -3276,7 +3181,7 @@ eReturnValues ata_Set_Sector_Configuration_Ext(tDevice* device,
     ataCommandOptions.tfr.SectorCount       = sectorConfigurationDescriptorIndex & 0x07;
     ataCommandOptions.tfr.Feature48         = M_Byte1(commandCheck);
     ataCommandOptions.tfr.ErrorFeature      = M_Byte0(commandCheck);
-    ataCommandOptions.timeout               = 3600;
+    ataCommandOptions.timeout               = DEFAULT_SET_SECTOR_CONFIG_TIMEOUT;
     // Setting a 1 hour timeout. This should be way more than enough to complete while allowing a way to handle a
     // failing command due to a timeout instead of using infinite which would never return. Using 1 hour since there are
     // a few rare cases where a drive may be in a state of processing something in the background which could make this

@@ -444,7 +444,7 @@ eReturnValues send_uscsi_io(ScsiIoCtx* scsiIoCtx)
         uscsi_io.uscsi_timeout = scsiIoCtx->timeout;
         if (scsiIoCtx->timeout == UINT32_C(0))
         {
-            uscsi_io.uscsi_timeout = UINT32_C(15); // default to 15 second timeout
+            uscsi_io.uscsi_timeout = DEFAULT_COMMAND_TIMEOUT; // default to 15 second timeout
         }
     }
     uscsi_io.uscsi_cdb     = C_CAST(caddr_t, scsiIoCtx->cdb);

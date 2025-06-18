@@ -3687,7 +3687,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
                             ScsiIoCtx csmiPTCmd;
                             safe_memset(&csmiPTCmd, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
                             csmiPTCmd.device        = device;
-                            csmiPTCmd.timeout       = 15;
+                            csmiPTCmd.timeout       = DEFAULT_COMMAND_TIMEOUT;
                             csmiPTCmd.direction     = XFER_DATA_IN;
                             csmiPTCmd.psense        = device->drive_info.lastCommandSenseData;
                             csmiPTCmd.senseDataSize = SPC3_SENSE_LEN;
@@ -3749,15 +3749,15 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
                                 // SCSI Inquiry and read unit serial number VPD page
                                 DECLARE_ZERO_INIT_ARRAY(uint8_t, inqData, 96);
                                 DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
-                                cdb[OPERATION_CODE] = INQUIRY_CMD;
+                                cdb[CDB_OPERATION_CODE] = INQUIRY_CMD;
                                 /*if (evpd)
                                 {
-                                    cdb[1] |= BIT0;
+                                    cdb[CDB_1] |= BIT0;
                                 }*/
-                                cdb[2] = 0; // pageCode;
-                                cdb[3] = M_Byte1(96);
-                                cdb[4] = M_Byte0(96);
-                                cdb[5] = 0; // control
+                                cdb[CDB_2] = 0; // pageCode;
+                                cdb[CDB_3] = M_Byte1(96);
+                                cdb[CDB_4] = M_Byte0(96);
+                                cdb[CDB_5] = 0; // control
 
                                 csmiPTCmd.cdbLength = CDB_LEN_6;
                                 safe_memcpy(csmiPTCmd.cdb, SCSI_IO_CTX_MAX_CDB_LEN, cdb, 6);
@@ -3797,8 +3797,8 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
            // checking SCSI 2 since every SAS drive *SHOULD* support this.
                                         safe_memset(inqData, 96, 0, 96);
                                         // change CDB to read unit SN page
-                                        cdb[1] |= BIT0;
-                                        cdb[2] = UNIT_SERIAL_NUMBER;
+                                        cdb[CDB_1] |= BIT0;
+                                        cdb[CDB_2] = UNIT_SERIAL_NUMBER;
 #    if defined(CSMI_DEBUG)
                                         printf("JSCI: Requesting Unit SN page\n");
 #    endif // CSMI_DEBUG
@@ -5013,7 +5013,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
                                         ScsiIoCtx csmiPTCmd;
                                         safe_memset(&csmiPTCmd, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
                                         csmiPTCmd.device        = &tempDevice;
-                                        csmiPTCmd.timeout       = 15;
+                                        csmiPTCmd.timeout       = DEFAULT_COMMAND_TIMEOUT;
                                         csmiPTCmd.direction     = XFER_DATA_IN;
                                         csmiPTCmd.psense        = tempDevice.drive_info.lastCommandSenseData;
                                         csmiPTCmd.senseDataSize = SPC3_SENSE_LEN;
@@ -5075,15 +5075,15 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
                                             // SCSI Inquiry and read unit serial number VPD page
                                             DECLARE_ZERO_INIT_ARRAY(uint8_t, inqData, 96);
                                             DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
-                                            cdb[OPERATION_CODE] = INQUIRY_CMD;
+                                            cdb[CDB_OPERATION_CODE] = INQUIRY_CMD;
                                             /*if (evpd)
                                             {
-                                                cdb[1] |= BIT0;
+                                                cdb[CDB_1] |= BIT0;
                                             }*/
-                                            cdb[2] = 0; // pageCode;
-                                            cdb[3] = M_Byte1(96);
-                                            cdb[4] = M_Byte0(96);
-                                            cdb[5] = 0; // control
+                                            cdb[CDB_2] = 0; // pageCode;
+                                            cdb[CDB_3] = M_Byte1(96);
+                                            cdb[CDB_4] = M_Byte0(96);
+                                            cdb[CDB_5] = 0; // control
 
                                             csmiPTCmd.cdbLength = CDB_LEN_6;
                                             safe_memcpy(csmiPTCmd.cdb, SCSI_IO_CTX_MAX_CDB_LEN, cdb, 6);
@@ -5779,7 +5779,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                         safe_memset(&csmiPTCmd, sizeof(ScsiIoCtx), 0,
                                                                                     sizeof(ScsiIoCtx));
                                                                         csmiPTCmd.device    = &tempDevice;
-                                                                        csmiPTCmd.timeout   = 15;
+                                                                        csmiPTCmd.timeout   = DEFAULT_COMMAND_TIMEOUT;
                                                                         csmiPTCmd.direction = XFER_DATA_IN;
                                                                         csmiPTCmd.psense =
                                                                             tempDevice.drive_info.lastCommandSenseData;
@@ -5957,15 +5957,15 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                                     96);
                                                                             DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb,
                                                                                                     CDB_LEN_6);
-                                                                            cdb[OPERATION_CODE] = INQUIRY_CMD;
+                                                                            cdb[CDB_OPERATION_CODE] = INQUIRY_CMD;
                                                                             /*if (evpd)
                                                                             {
-                                                                                cdb[1] |= BIT0;
+                                                                                cdb[CDB_1] |= BIT0;
                                                                             }*/
-                                                                            cdb[2] = 0; // pageCode;
-                                                                            cdb[3] = M_Byte1(96);
-                                                                            cdb[4] = M_Byte0(96);
-                                                                            cdb[5] = 0; // control
+                                                                            cdb[CDB_2] = 0; // pageCode;
+                                                                            cdb[CDB_3] = M_Byte1(96);
+                                                                            cdb[CDB_4] = M_Byte0(96);
+                                                                            cdb[CDB_5] = 0; // control
 
                                                                             csmiPTCmd.cdbLength = CDB_LEN_6;
                                                                             safe_memcpy(csmiPTCmd.cdb,
@@ -6050,8 +6050,8 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
            // checking SCSI 2 since every SAS drive *SHOULD* support this.
                                                                                     safe_memset(inqData, 96, 0, 96);
                                                                                     // change CDB to read unit SN page
-                                                                                    cdb[1] |= BIT0;
-                                                                                    cdb[2] = UNIT_SERIAL_NUMBER;
+                                                                                    cdb[CDB_1] |= BIT0;
+                                                                                    cdb[CDB_2] = UNIT_SERIAL_NUMBER;
 #    if defined(CSMI_DEBUG)
                                                                                     printf("GDL: Requesting Unit SN "
                                                                                            "page\n");
@@ -6501,13 +6501,8 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
         if (ret == SUCCESS)
         {
             // check the sense data to see if it is an invalid command or not
-            uint8_t senseKey = UINT8_C(0);
-            uint8_t asc      = UINT8_C(0);
-            uint8_t ascq     = UINT8_C(0);
-            uint8_t fru      = UINT8_C(0);
-            get_Sense_Key_ASC_ASCQ_FRU(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &senseKey, &asc, &ascq, &fru);
-            if (senseKey == SENSE_KEY_ILLEGAL_REQUEST && asc == 0x20 &&
-                ascq == 0x00) // TODO: Check if A1h vs 85h SAT opcodes for retry???
+            // TODO: Check if A1h vs 85h SAT opcodes for retry???
+            if (is_Invalid_Opcode(scsiIoCtx->psense, scsiIoCtx->senseDataSize))
             {
                 scsiIoCtx->device->drive_info.passThroughHacks.passthroughType =
                     ATA_PASSTHROUGH_CSMI; // change to the legacy passthrough

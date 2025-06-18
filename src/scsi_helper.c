@@ -2025,13 +2025,7 @@ eReturnValues scsi_Read_Capacity_Cmd_Helper(tDevice* device, readCapacityData* o
         }
         else
         {
-            uint8_t senseKey = UINT8_C(0);
-            uint8_t asc      = UINT8_C(0);
-            uint8_t ascq     = UINT8_C(0);
-            uint8_t fru      = UINT8_C(0);
-            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq,
-                                       &fru);
-            if (senseKey == SENSE_KEY_MEDIUM_ERROR && asc == 0x31 && ascq == 0)
+            if (is_Format_Corrupt(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN))
             {
                 // since format corrupt, do not attempt to fallback to read capacity 10 since that will do the exact
                 // same thing
@@ -2135,12 +2129,14 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device)
                     // NOTE: Handles zero length transfers for rw10,12,16 properly it seems
                     // Should be retested in Linux. Results are from Windows, which may be more limited, but cannot
                     // confirm
-                    device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
-                    device->drive_info.passThroughHacks.hacksSetByReportedID                  = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+                    device->drive_info.passThroughHacks.passthroughType          = ATA_PASSTHROUGH_SAT;
+                    device->drive_info.passThroughHacks.hacksSetByReportedID     = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6  = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+                    // if reporting SAT, SAT-2, or SAT-3, report supported operation codes is not supported.
+                    // TODO: SAT-4 and higher reporting HBAs seem to support this. -TJE
                     device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported =
                         true; // note: Need to enable this with kernel param

@@ -174,6 +174,153 @@ extern "C"
                                                      ptrSenseDataFields senseFields);
 
     M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API static M_INLINE bool is_Invalid_Opcode(const uint8_t* senseData, uint32_t senseLen)
+    {
+        bool            invalidOp = false;
+        senseDataFields readSense;
+        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        get_Sense_Data_Fields(senseData, senseLen, &readSense);
+        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x20 &&
+            readSense.scsiStatusCodes.ascq == 0x00)
+        {
+            invalidOp = true;
+        }
+        return invalidOp;
+    }
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API static M_INLINE bool is_Invalid_Field_In_CDB(const uint8_t* senseData, uint32_t senseLen)
+    {
+        bool            invalidField = false;
+        senseDataFields readSense;
+        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        get_Sense_Data_Fields(senseData, senseLen, &readSense);
+        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x24 &&
+            readSense.scsiStatusCodes.ascq == 0x00)
+        {
+            invalidField = true;
+        }
+        return invalidField;
+    }
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API static M_INLINE bool is_Invalid_Field_In_Parameter(const uint8_t* senseData,
+                                                                             uint32_t       senseLen)
+    {
+        bool            invalidField = false;
+        senseDataFields readSense;
+        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        get_Sense_Data_Fields(senseData, senseLen, &readSense);
+        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x25 &&
+            readSense.scsiStatusCodes.ascq == 0x00)
+        {
+            invalidField = true;
+        }
+        return invalidField;
+    }
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API static M_INLINE bool is_Format_Corrupt(const uint8_t* senseData, uint32_t senseLen)
+    {
+        bool            formatCorrupt = false;
+        senseDataFields readSense;
+        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        get_Sense_Data_Fields(senseData, senseLen, &readSense);
+        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_MEDIUM_ERROR && readSense.scsiStatusCodes.asc == 0x31 &&
+            readSense.scsiStatusCodes.ascq == 0x00)
+        {
+            formatCorrupt = true;
+        }
+        return formatCorrupt;
+    }
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API static M_INLINE bool is_Media_Present(const uint8_t* senseData, uint32_t senseLen)
+    {
+        bool            mediaPresent = true;
+        senseDataFields readSense;
+        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        get_Sense_Data_Fields(senseData, senseLen, &readSense);
+        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_MEDIUM_ERROR &&
+            readSense.scsiStatusCodes.asc == 0x3A) // ascq's for this all reference not present
+        {
+            mediaPresent = false;
+        }
+        return mediaPresent;
+    }
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API static M_INLINE bool did_Reset_Occur(const uint8_t* senseData, uint32_t senseLen)
+    {
+        bool            resetOccurred = false;
+        senseDataFields readSense;
+        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        get_Sense_Data_Fields(senseData, senseLen, &readSense);
+        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_UNIT_ATTENTION && readSense.scsiStatusCodes.asc == 0x29)
+        {
+            // Note: skipped ascq check since these are all very closely related to a reset of some sort.
+            //       Can refine this to handle the others if needed.
+            resetOccurred = true;
+        }
+        return resetOccurred;
+    }
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API static M_INLINE bool is_Microcode_Activation_Required(const uint8_t* senseData,
+                                                                                uint32_t       senseLen)
+    {
+        bool            microcodeActReq = false;
+        senseDataFields readSense;
+        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        get_Sense_Data_Fields(senseData, senseLen, &readSense);
+        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_NOT_READY && readSense.scsiStatusCodes.asc == 0x04 &&
+            readSense.scsiStatusCodes.ascq == 0x1E)
+        {
+            microcodeActReq = true;
+        }
+        return microcodeActReq;
+    }
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API static M_INLINE bool is_Command_Sequence_Error(const uint8_t* senseData, uint32_t senseLen)
+    {
+        bool            cmdSeqErr = false;
+        senseDataFields readSense;
+        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        get_Sense_Data_Fields(senseData, senseLen, &readSense);
+        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x2C &&
+            readSense.scsiStatusCodes.ascq == 0x00)
+        {
+            cmdSeqErr = true;
+        }
+        return cmdSeqErr;
+    }
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API static M_INLINE bool is_Unaligned_Write(const uint8_t* senseData, uint32_t senseLen)
+    {
+        bool            unalignedWrite = false;
+        senseDataFields readSense;
+        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        get_Sense_Data_Fields(senseData, senseLen, &readSense);
+        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x21 &&
+            readSense.scsiStatusCodes.ascq == 0x04)
+        {
+            unalignedWrite = true;
+        }
+        return unalignedWrite;
+    }
+
+    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields senseFields);
 
     //-----------------------------------------------------------------------------
@@ -260,12 +407,12 @@ extern "C"
                                                             uint8_t  length,
                                                             uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = M_Byte2(lba) & UINT8_C(0x1F);
-        cdb[2]              = M_Byte1(lba);
-        cdb[3]              = M_Byte0(lba);
-        cdb[4]              = length;
-        cdb[5]              = controlByte;
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB_1]              = M_Byte2(lba) & UINT8_C(0x1F);
+        cdb[CDB_2]              = M_Byte1(lba);
+        cdb[CDB_3]              = M_Byte0(lba);
+        cdb[CDB_4]              = length;
+        cdb[CDB6_CONTROL]       = controlByte;
         return cdb;
     }
 
@@ -278,16 +425,16 @@ extern "C"
                                                              uint16_t length,
                                                              uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = serviceAction;
-        cdb[2]              = M_Byte3(lba);
-        cdb[3]              = M_Byte2(lba);
-        cdb[4]              = M_Byte1(lba);
-        cdb[5]              = M_Byte0(lba);
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB_1]              = serviceAction;
+        cdb[CDB_2]              = M_Byte3(lba);
+        cdb[CDB_3]              = M_Byte2(lba);
+        cdb[CDB_4]              = M_Byte1(lba);
+        cdb[CDB_5]              = M_Byte0(lba);
         // bytes 6 is misc
-        cdb[7] = M_Byte1(length);
-        cdb[8] = M_Byte0(length);
-        cdb[9] = controlByte;
+        cdb[CDB_7]         = M_Byte1(length);
+        cdb[CDB_8]         = M_Byte0(length);
+        cdb[CDB10_CONTROL] = controlByte;
         return cdb;
     }
 
@@ -300,18 +447,18 @@ extern "C"
                                                              uint32_t length,
                                                              uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = serviceAction;
-        cdb[2]              = M_Byte3(lba);
-        cdb[3]              = M_Byte2(lba);
-        cdb[4]              = M_Byte1(lba);
-        cdb[5]              = M_Byte0(lba);
-        cdb[6]              = M_Byte3(length);
-        cdb[7]              = M_Byte2(length);
-        cdb[8]              = M_Byte1(length);
-        cdb[9]              = M_Byte0(length);
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB_1]              = serviceAction;
+        cdb[CDB_2]              = M_Byte3(lba);
+        cdb[CDB_3]              = M_Byte2(lba);
+        cdb[CDB_4]              = M_Byte1(lba);
+        cdb[CDB_5]              = M_Byte0(lba);
+        cdb[CDB_6]              = M_Byte3(length);
+        cdb[CDB_7]              = M_Byte2(length);
+        cdb[CDB_8]              = M_Byte1(length);
+        cdb[CDB_9]              = M_Byte0(length);
         // 10 is misc
-        cdb[11] = controlByte;
+        cdb[CDB12_CONTROL] = controlByte;
         return cdb;
     }
 
@@ -324,19 +471,19 @@ extern "C"
                                                                        uint32_t length,
                                                                        uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = serviceAction;
-        cdb[2]              = M_Byte3(lba);
-        cdb[3]              = M_Byte2(lba);
-        cdb[4]              = M_Byte1(lba);
-        cdb[5]              = M_Byte0(lba);
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB_1]              = serviceAction;
+        cdb[CDB_2]              = M_Byte3(lba);
+        cdb[CDB_3]              = M_Byte2(lba);
+        cdb[CDB_4]              = M_Byte1(lba);
+        cdb[CDB_5]              = M_Byte0(lba);
         // 6 - 9 is misc
-        cdb[10] = M_Byte3(length);
-        cdb[11] = M_Byte2(length);
-        cdb[12] = M_Byte1(length);
-        cdb[13] = M_Byte0(length);
+        cdb[CDB_10] = M_Byte3(length);
+        cdb[CDB_11] = M_Byte2(length);
+        cdb[CDB_12] = M_Byte1(length);
+        cdb[CDB_13] = M_Byte0(length);
         // 14 is misc
-        cdb[15] = controlByte;
+        cdb[CDB16_CONTROL] = controlByte;
         return cdb;
     }
 
@@ -349,22 +496,22 @@ extern "C"
                                                                        uint32_t length,
                                                                        uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = serviceAction;
-        cdb[2]              = M_Byte7(lba);
-        cdb[3]              = M_Byte6(lba);
-        cdb[4]              = M_Byte5(lba);
-        cdb[5]              = M_Byte4(lba);
-        cdb[6]              = M_Byte3(lba);
-        cdb[7]              = M_Byte2(lba);
-        cdb[8]              = M_Byte1(lba);
-        cdb[9]              = M_Byte0(lba);
-        cdb[10]             = M_Byte3(length);
-        cdb[11]             = M_Byte2(length);
-        cdb[12]             = M_Byte1(length);
-        cdb[13]             = M_Byte0(length);
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB_1]              = serviceAction;
+        cdb[CDB_2]              = M_Byte7(lba);
+        cdb[CDB_3]              = M_Byte6(lba);
+        cdb[CDB_4]              = M_Byte5(lba);
+        cdb[CDB_5]              = M_Byte4(lba);
+        cdb[CDB_6]              = M_Byte3(lba);
+        cdb[CDB_7]              = M_Byte2(lba);
+        cdb[CDB_8]              = M_Byte1(lba);
+        cdb[CDB_9]              = M_Byte0(lba);
+        cdb[CDB_10]             = M_Byte3(length);
+        cdb[CDB_11]             = M_Byte2(length);
+        cdb[CDB_12]             = M_Byte1(length);
+        cdb[CDB_13]             = M_Byte0(length);
         // 14 is misc
-        cdb[15] = controlByte;
+        cdb[CDB16_CONTROL] = controlByte;
         return cdb;
     }
 
@@ -377,26 +524,26 @@ extern "C"
                                                             uint32_t length,
                                                             uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = controlByte;
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB32_CONTROL]      = controlByte;
         // skip misc
-        cdb[7] = UINT8_C(0x18);
-        cdb[8] = M_Byte1(serviceAction);
-        cdb[9] = M_Byte0(serviceAction);
+        cdb[CDB_7] = UINT8_C(0x18);
+        cdb[CDB_8] = M_Byte1(serviceAction);
+        cdb[CDB_9] = M_Byte0(serviceAction);
         // skip misc
-        cdb[12] = M_Byte7(lba);
-        cdb[13] = M_Byte6(lba);
-        cdb[14] = M_Byte5(lba);
-        cdb[15] = M_Byte4(lba);
-        cdb[16] = M_Byte3(lba);
-        cdb[17] = M_Byte2(lba);
-        cdb[18] = M_Byte1(lba);
-        cdb[19] = M_Byte0(lba);
+        cdb[CDB_12] = M_Byte7(lba);
+        cdb[CDB_13] = M_Byte6(lba);
+        cdb[CDB_14] = M_Byte5(lba);
+        cdb[CDB_15] = M_Byte4(lba);
+        cdb[CDB_16] = M_Byte3(lba);
+        cdb[CDB_17] = M_Byte2(lba);
+        cdb[CDB_18] = M_Byte1(lba);
+        cdb[CDB_19] = M_Byte0(lba);
         // skip misc
-        cdb[28] = M_Byte3(length);
-        cdb[29] = M_Byte2(length);
-        cdb[30] = M_Byte1(length);
-        cdb[31] = M_Byte0(length);
+        cdb[CDB_28] = M_Byte3(length);
+        cdb[CDB_29] = M_Byte2(length);
+        cdb[CDB_30] = M_Byte1(length);
+        cdb[CDB_31] = M_Byte0(length);
         return cdb;
     }
 
@@ -423,16 +570,16 @@ extern "C"
                                                 uint16_t expectedLogicalBlockAppTag,
                                                 uint16_t logicalBlockAppTagMask)
     {
-        cdb[6]  = GET_GROUP_CODE(groupNumber);
-        cdb[10] = GET_PROTECT_VAL(protect);
-        cdb[20] = M_Byte3(expectedInitialLogicalBlockRefTag);
-        cdb[21] = M_Byte2(expectedInitialLogicalBlockRefTag);
-        cdb[22] = M_Byte1(expectedInitialLogicalBlockRefTag);
-        cdb[23] = M_Byte0(expectedInitialLogicalBlockRefTag);
-        cdb[24] = M_Byte1(expectedLogicalBlockAppTag);
-        cdb[25] = M_Byte0(expectedLogicalBlockAppTag);
-        cdb[26] = M_Byte1(logicalBlockAppTagMask);
-        cdb[27] = M_Byte0(logicalBlockAppTagMask);
+        cdb[CDB_6]  = GET_GROUP_CODE(groupNumber);
+        cdb[CDB_10] = GET_PROTECT_VAL(protect);
+        cdb[CDB_20] = M_Byte3(expectedInitialLogicalBlockRefTag);
+        cdb[CDB_21] = M_Byte2(expectedInitialLogicalBlockRefTag);
+        cdb[CDB_22] = M_Byte1(expectedInitialLogicalBlockRefTag);
+        cdb[CDB_23] = M_Byte0(expectedInitialLogicalBlockRefTag);
+        cdb[CDB_24] = M_Byte1(expectedLogicalBlockAppTag);
+        cdb[CDB_25] = M_Byte0(expectedLogicalBlockAppTag);
+        cdb[CDB_26] = M_Byte1(logicalBlockAppTagMask);
+        cdb[CDB_27] = M_Byte0(logicalBlockAppTagMask);
     }
 
     //-----------------------------------------------------------------------------

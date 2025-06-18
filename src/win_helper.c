@@ -3058,7 +3058,7 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
     safe_memcpy(srbControl->Signature, 8, IOCTL_MINIPORT_SIGNATURE_FIRMWARE, 8);
     if (timeoutSeconds == 0)
     {
-        srbControl->Timeout = 60;
+        srbControl->Timeout = DEFAULT_COMMAND_TIMEOUT * 2;
     }
     else
     {
@@ -3346,13 +3346,14 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
         printf("Flexible Win10 FWDL API allowed. Checking for supported commands\n");
 #    endif
-        if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+        if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == WRITE_BUFFER_CMD)
         {
-            uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0);
+            uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 4, 0);
             if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
             {
-                supportedCMD        = true;
-                transferLengthBytes = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+                supportedCMD = true;
+                transferLengthBytes =
+                    M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
             }
             else if (wbMode == SCSI_WB_ACTIVATE_DEFERRED_MICROCODE)
             {
@@ -3461,10 +3462,11 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
         // Should we check that this is a SCSI Drive? Right now we'll just attempt the download and let the drive/SATL
         // handle translation check that it's a write buffer command for a firmware download & it's a deferred download
         // command since that is all that is supported
-        if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+        if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == WRITE_BUFFER_CMD)
         {
-            uint8_t  wbMode         = get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0);
-            uint32_t transferLength = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            uint8_t  wbMode = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 4, 0);
+            uint32_t transferLength =
+                M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
             switch (wbMode)
             {
             case SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER:
@@ -3505,10 +3507,10 @@ static bool is_Activate_Command(ScsiIoCtx* scsiIoCtx)
             isActivate = true;
         }
     }
-    else if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+    else if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == WRITE_BUFFER_CMD)
     {
         // it's a write buffer command, so we need to also check the mode.
-        uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0);
+        uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 4, 0);
         switch (wbMode)
         {
         case 0x0F:
@@ -3789,11 +3791,11 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             else if (scsiIoCtx)
             {
                 // get offset from the cdb
-                firmwareDownload->Slot = scsiIoCtx->cdb[2];
+                firmwareDownload->Slot = scsiIoCtx->cdb[CDB_2];
                 firmwareDownload->Offset =
-                    M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+                    M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4], scsiIoCtx->cdb[CDB_5]);
                 firmwareDownload->BufferSize = firmwareDownload->ImageSize =
-                    M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+                    M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
             }
             else
             {
@@ -3869,9 +3871,9 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
                 {
                     // get offset from the cdb
                     firmwareDownload->Offset =
-                        M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+                        M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4], scsiIoCtx->cdb[CDB_5]);
                     firmwareDownload->BufferSize =
-                        M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+                        M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
                 }
                 else
                 {
@@ -3934,8 +3936,8 @@ static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->pAtaCmdOpts == M_NULLPTR)
             {
                 firmwareActivate->SlotToActivate =
-                    scsiIoCtx
-                        ->cdb[2]; // Set the slot number to the buffer ID number...This is the closest this translates.
+                    scsiIoCtx->cdb[CDB_2]; // Set the slot number to the buffer ID number...This is the closest this
+                                           // translates.
             }
             if (scsiIoCtx->device->drive_info.interface_type ==
                 NVME_INTERFACE) // SCSI interface, but NVMe in 8.1 will likely only be identified by earlier bustype or
@@ -6430,7 +6432,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoC
         }
         else
         {
-            psptd->scsiPassThroughEX.TimeOutValue = 15;
+            psptd->scsiPassThroughEX.TimeOutValue = DEFAULT_COMMAND_TIMEOUT;
         }
     }
     psptd->scsiPassThroughEX.SenseInfoOffset = offsetof(scsiPassThroughEXIOStruct, senseBuffer);
@@ -6650,7 +6652,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* 
         }
         else
         {
-            psptd->scsiPassThroughEXDirect.TimeOutValue = 15;
+            psptd->scsiPassThroughEXDirect.TimeOutValue = DEFAULT_COMMAND_TIMEOUT;
         }
     }
     psptd->scsiPassThroughEXDirect.SenseInfoOffset = offsetof(scsiPassThroughEXIOStruct, senseBuffer);
@@ -6887,7 +6889,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx*    
         }
         else
         {
-            psptd->scsiPassthroughDirect.TimeOutValue = 15;
+            psptd->scsiPassthroughDirect.TimeOutValue = DEFAULT_COMMAND_TIMEOUT;
         }
     }
     // Use offsetof macro to set where to place the sense data. Old code, for whatever reason, didn't always work
@@ -6954,7 +6956,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiI
         }
         else
         {
-            psptd->scsiPassthrough.TimeOutValue = 15;
+            psptd->scsiPassthrough.TimeOutValue = DEFAULT_COMMAND_TIMEOUT;
         }
     }
     // Use offsetof macro to set where to place the sense data. Old code, for whatever reason, didn't always work
@@ -7392,7 +7394,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
         ptrATAPassThroughDirect->TimeOutValue = p_scsiIoCtx->timeout;
         if (p_scsiIoCtx->timeout == UINT32_C(0))
         {
-            ptrATAPassThroughDirect->TimeOutValue = UINT32_C(15);
+            ptrATAPassThroughDirect->TimeOutValue = DEFAULT_COMMAND_TIMEOUT;
         }
     }
     ptrATAPassThroughDirect->PathId   = p_scsiIoCtx->device->os_info.scsi_addr.PathId;
@@ -7727,7 +7729,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
         }
         else
         {
-            p_t_ata_pt->ataPTCommand.TimeOutValue = 15;
+            p_t_ata_pt->ataPTCommand.TimeOutValue = DEFAULT_COMMAND_TIMEOUT;
         }
     }
     p_t_ata_pt->ataPTCommand.PathId   = p_scsiIoCtx->device->os_info.scsi_addr.PathId;
@@ -8231,16 +8233,16 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
 //         return OS_COMMAND_NOT_AVAILABLE;
 //     }
 //
-//     ideCtx.cdb[0] = UNDOCUMENTED_SCSI_IDE_PT_OP_CODE;
-//     ideCtx.cdb[1] = RESERVED;
-//     ideCtx.cdb[2] = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature; // Features Register
-//     ideCtx.cdb[3] = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount; // Sector Count Reg
-//     ideCtx.cdb[4] = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow; // Sector Number ( or LBA Lo )
-//     ideCtx.cdb[5] = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid; // Cylinder Low ( or LBA Mid )
-//     ideCtx.cdb[6] = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi; // Cylinder High (or LBA Hi)
-//     ideCtx.cdb[7] = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead; // Device/Head Register
-//     ideCtx.cdb[8] = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus; // Command Register
-//     ideCtx.cdb[9] = 0;//control register
+//     ideCtx.cdb[CDB_OPERATION_CODE] = UNDOCUMENTED_SCSI_IDE_PT_OP_CODE;
+//     ideCtx.cdb[CDB_1] = RESERVED;
+//     ideCtx.cdb[CDB_2] = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature; // Features Register
+//     ideCtx.cdb[CDB_3] = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount; // Sector Count Reg
+//     ideCtx.cdb[CDB_4] = scsiIoCtx->pAtaCmdOpts->tfr.LbaLow; // Sector Number ( or LBA Lo )
+//     ideCtx.cdb[CDB_5] = scsiIoCtx->pAtaCmdOpts->tfr.LbaMid; // Cylinder Low ( or LBA Mid )
+//     ideCtx.cdb[CDB_6] = scsiIoCtx->pAtaCmdOpts->tfr.LbaHi; // Cylinder High (or LBA Hi)
+//     ideCtx.cdb[CDB_7] = scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead; // Device/Head Register
+//     ideCtx.cdb[CDB_8] = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus; // Command Register
+//     ideCtx.cdb[CDB_9] = 0;//control register
 //
 //     ideCtx.cdbLength = 10;
 //     ideCtx.dataLength = scsiIoCtx->dataLength;
@@ -8341,7 +8343,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     if (scsiIoCtx && !scsiIoCtx->pAtaCmdOpts)
     {
         downloadActivate.Slot =
-            scsiIoCtx->cdb[2]; // Set the slot number to the buffer ID number...This is the closest this translates.
+            scsiIoCtx->cdb[CDB_2]; // Set the slot number to the buffer ID number...This is the closest this translates.
     }
     if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
     {
@@ -8561,7 +8563,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     if (scsiIoCtx && !scsiIoCtx->pAtaCmdOpts)
     {
         downloadIO->Slot =
-            scsiIoCtx->cdb[2]; // Set the slot number to the buffer ID number...This is the closest this translates.
+            scsiIoCtx->cdb[CDB_2]; // Set the slot number to the buffer ID number...This is the closest this translates.
     }
     // we need to set the offset since MS uses this in the command sent to the device.
     downloadIO->Offset = 0;
@@ -8575,7 +8577,8 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     else if (scsiIoCtx)
     {
         // get offset from the cdb
-        downloadIO->Offset = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+        downloadIO->Offset =
+            M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4], scsiIoCtx->cdb[CDB_5]);
     }
     else
     {
@@ -9425,7 +9428,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         // Check to make sure cmdDT and reserved bits aren't set
-        if (scsiIoCtx->cdb[1] & 0xFE)
+        if (scsiIoCtx->cdb[CDB_1] & 0xFE)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -9436,7 +9439,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
         else
         {
             // check EVPD bit
-            if (scsiIoCtx->cdb[1] & BIT0)
+            if (scsiIoCtx->cdb[CDB_1] & BIT0)
             {
                 DECLARE_ZERO_INIT_ARRAY(
                     uint8_t, vpdPage,
@@ -9452,7 +9455,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                     // check the VPD page to set up that data correctly
                     //       the vpd pagecodes below are probably the only ones that could be implemented with the
                     //       limited capabilities we have at this point
-                    switch (scsiIoCtx->cdb[2])
+                    switch (scsiIoCtx->cdb[CDB_2])
                     {
                     case SUPPORTED_VPD_PAGES:
                         vpdPage[4 + vpdPageLen] = SUPPORTED_VPD_PAGES;
@@ -9553,7 +9556,7 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                 DECLARE_ZERO_INIT_ARRAY(uint8_t, inquiryData, 96);
                 uint8_t                    peripheralDevice = UINT8_C(0);
                 PSTORAGE_DEVICE_DESCRIPTOR deviceDesc       = M_NULLPTR;
-                if (scsiIoCtx->cdb[2] == 0)
+                if (scsiIoCtx->cdb[CDB_2] == 0)
                 {
                     inquiryData[0] = peripheralDevice;
                     inquiryData[2] = 0x05; // SPC3
@@ -9725,8 +9728,9 @@ static eReturnValues wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0 ||
-            scsiIoCtx->cdb[5] != 0 || scsiIoCtx->cdb[6] != 0 || scsiIoCtx->cdb[7] != 0 || scsiIoCtx->cdb[8] != 0)
+        if (scsiIoCtx->cdb[CDB_1] != 0 || scsiIoCtx->cdb[CDB_2] != 0 || scsiIoCtx->cdb[CDB_3] != 0 ||
+            scsiIoCtx->cdb[CDB_4] != 0 || scsiIoCtx->cdb[CDB_5] != 0 || scsiIoCtx->cdb[CDB_6] != 0 ||
+            scsiIoCtx->cdb[CDB_7] != 0 || scsiIoCtx->cdb[CDB_8] != 0)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -9831,14 +9835,14 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         // first check the service action
-        if (get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0) == 0x10)
+        if (get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 4, 0) == 0x10)
         {
-            uint32_t allocationLength =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11],
+                                                            scsiIoCtx->cdb[CDB_12], scsiIoCtx->cdb[CDB_13]);
             // bytes 2 - 9 are not allowed, same with 14
-            if (scsiIoCtx->cdb[14] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0 ||
-                scsiIoCtx->cdb[5] != 0 || scsiIoCtx->cdb[6] != 0 || scsiIoCtx->cdb[7] != 0 || scsiIoCtx->cdb[8] != 0 ||
-                scsiIoCtx->cdb[9] != 0)
+            if (scsiIoCtx->cdb[CDB_14] != 0 || scsiIoCtx->cdb[CDB_2] != 0 || scsiIoCtx->cdb[CDB_3] != 0 ||
+                scsiIoCtx->cdb[CDB_4] != 0 || scsiIoCtx->cdb[CDB_5] != 0 || scsiIoCtx->cdb[CDB_6] != 0 ||
+                scsiIoCtx->cdb[CDB_7] != 0 || scsiIoCtx->cdb[CDB_8] != 0 || scsiIoCtx->cdb[CDB_9] != 0)
             {
                 // invalid field in CDB
                 senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10025,7 +10029,7 @@ static eReturnValues wbst_Read_6(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if (get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0)
+        if (get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10035,8 +10039,9 @@ static eReturnValues wbst_Read_6(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint64_t lba = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[1] & 0x1F), scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
-            uint32_t transferLength = scsiIoCtx->cdb[4];
+            uint64_t lba =
+                M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[CDB_1] & 0x1F), scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3]);
+            uint32_t transferLength = scsiIoCtx->cdb[CDB_4];
             if (transferLength == 0)
             {
                 transferLength = 256;
@@ -10062,15 +10067,15 @@ static eReturnValues wbst_Read_10(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         bool    fua          = false;
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
-        if ((scsiIoCtx->cdb[1] &
+        if ((scsiIoCtx->cdb[CDB_1] &
              BIT0) // reladr bit. Obsolete.
-                   //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
-            || (scsiIoCtx->cdb[1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
-            || (get_bit_range_uint8(scsiIoCtx->cdb[6], 7, 6) != 0))
+                   //|| (scsiIoCtx->cdb[CDB_1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[CDB_1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
+            || (get_bit_range_uint8(scsiIoCtx->cdb[CDB_6], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10080,9 +10085,9 @@ static eReturnValues wbst_Read_10(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint64_t lba =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-            uint32_t transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                               scsiIoCtx->cdb[CDB_5]);
+            uint32_t transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
             if (transferLength != 0) // if zero, do nothing
             {
                 if (transferLength > 65536)
@@ -10118,15 +10123,15 @@ static eReturnValues wbst_Read_12(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         bool    fua          = false;
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
-        if ((scsiIoCtx->cdb[1] &
+        if ((scsiIoCtx->cdb[CDB_1] &
              BIT0) // reladr bit. Obsolete.
-                   //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
-            || (scsiIoCtx->cdb[1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
-            || (get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 6) != 0))
+                   //|| (scsiIoCtx->cdb[CDB_1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[CDB_1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
+            || (get_bit_range_uint8(scsiIoCtx->cdb[CDB_10], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10136,10 +10141,10 @@ static eReturnValues wbst_Read_12(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint64_t lba =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-            uint32_t transferLength =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                               scsiIoCtx->cdb[CDB_5]);
+            uint32_t transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                                          scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
             if (transferLength != 0) // if zero, do nothing
             {
                 if (transferLength > 65536)
@@ -10175,18 +10180,18 @@ static eReturnValues wbst_Read_16(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         bool    fua          = false;
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
         // sbc2 fua_nv bit can be ignored according to SAT.
         // We don't support RARC since was cannot do FPDMA in software SAT
         // We don't support DLD bits either
-        if ((scsiIoCtx->cdb[1] &
+        if ((scsiIoCtx->cdb[CDB_1] &
              BIT0) // reladr bit. Obsolete.
-                   //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
-            || (scsiIoCtx->cdb[1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
-            || (get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 6) != 0))
+                   //|| (scsiIoCtx->cdb[CDB_1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[CDB_1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
+            || (get_bit_range_uint8(scsiIoCtx->cdb[CDB_14], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10196,11 +10201,11 @@ static eReturnValues wbst_Read_16(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint64_t lba =
-                M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                                    scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-            uint32_t transferLength =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            uint64_t lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                               scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                               scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+            uint32_t transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11],
+                                                          scsiIoCtx->cdb[CDB_12], scsiIoCtx->cdb[CDB_13]);
             if (transferLength != 0) // if zero, do nothing
             {
                 if (transferLength > 65536)
@@ -10268,7 +10273,7 @@ static eReturnValues wbst_Write_6(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if (get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0)
+        if (get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10278,8 +10283,9 @@ static eReturnValues wbst_Write_6(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint64_t lba = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[1] & 0x1F), scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
-            uint32_t transferLength = scsiIoCtx->cdb[4];
+            uint64_t lba =
+                M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[CDB_1] & 0x1F), scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3]);
+            uint32_t transferLength = scsiIoCtx->cdb[CDB_4];
             if (transferLength == 0) // write 6, zero means a maximum possible transfer size, which is 256
             {
                 transferLength = 256;
@@ -10316,15 +10322,15 @@ static eReturnValues wbst_Write_10(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         bool    fua          = false;
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
-        if ((scsiIoCtx->cdb[1] &
+        if ((scsiIoCtx->cdb[CDB_1] &
              BIT0) // reladr bit. Obsolete.
-                   //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
-            || (scsiIoCtx->cdb[1] & BIT2) // reserved bit
-            || (get_bit_range_uint8(scsiIoCtx->cdb[6], 7, 6) != 0))
+                   //|| (scsiIoCtx->cdb[CDB_1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[CDB_1] & BIT2) // reserved bit
+            || (get_bit_range_uint8(scsiIoCtx->cdb[CDB_6], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10334,9 +10340,9 @@ static eReturnValues wbst_Write_10(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint64_t lba =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-            uint32_t transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                               scsiIoCtx->cdb[CDB_5]);
+            uint32_t transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
             if (transferLength != 0) // 0 length, means do nothing
             {
                 if (transferLength > 65536)
@@ -10372,15 +10378,15 @@ static eReturnValues wbst_Write_12(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         bool    fua          = false;
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
-        if ((scsiIoCtx->cdb[1] &
+        if ((scsiIoCtx->cdb[CDB_1] &
              BIT0) // reladr bit. Obsolete.
-                   //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
-            || (scsiIoCtx->cdb[1] & BIT2) // reserved bit
-            || (get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 6) != 0))
+                   //|| (scsiIoCtx->cdb[CDB_1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[CDB_1] & BIT2) // reserved bit
+            || (get_bit_range_uint8(scsiIoCtx->cdb[CDB_10], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10390,10 +10396,10 @@ static eReturnValues wbst_Write_12(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint64_t lba =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-            uint32_t transferLength =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                               scsiIoCtx->cdb[CDB_5]);
+            uint32_t transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                                          scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
             if (transferLength != 0) // 0 length, means do nothing
             {
                 if (transferLength > 65536)
@@ -10429,17 +10435,17 @@ static eReturnValues wbst_Write_16(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         bool    fua          = false;
-        if (scsiIoCtx->cdb[1] & BIT3)
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
         // sbc2 fua_nv bit can be ignored according to SAT.
         // We don't support DLD bits either
-        if ((scsiIoCtx->cdb[1] &
+        if ((scsiIoCtx->cdb[CDB_1] &
              BIT0) // reladr bit. Obsolete. also now the DLD2 bit
-                   //|| (scsiIoCtx->cdb[1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
-            || (scsiIoCtx->cdb[1] & BIT2) // reserved bit
-            || (get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 6) != 0))
+                   //|| (scsiIoCtx->cdb[CDB_1] & BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || (scsiIoCtx->cdb[CDB_1] & BIT2) // reserved bit
+            || (get_bit_range_uint8(scsiIoCtx->cdb[CDB_14], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10449,11 +10455,11 @@ static eReturnValues wbst_Write_16(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint64_t lba =
-                M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                                    scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-            uint32_t transferLength =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            uint64_t lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                               scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                               scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+            uint32_t transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11],
+                                                          scsiIoCtx->cdb[CDB_12], scsiIoCtx->cdb[CDB_13]);
             if (transferLength != 0) // 0 length, means do nothing
             {
                 if (transferLength > 65536)
@@ -10515,8 +10521,8 @@ static eReturnValues wbst_Verify_10(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if ((scsiIoCtx->cdb[1] & BIT3) || (scsiIoCtx->cdb[1] & BIT0) ||
-            (get_bit_range_uint8(scsiIoCtx->cdb[6], 7, 6) != 0))
+        if ((scsiIoCtx->cdb[CDB_1] & BIT3) || (scsiIoCtx->cdb[CDB_1] & BIT0) ||
+            (get_bit_range_uint8(scsiIoCtx->cdb[CDB_6], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10526,10 +10532,10 @@ static eReturnValues wbst_Verify_10(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint8_t  byteCheck = get_bit_range_uint8(scsiIoCtx->cdb[1], 2, 1);
-            uint64_t lba =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-            uint32_t verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            uint8_t  byteCheck = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 2, 1);
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                               scsiIoCtx->cdb[CDB_5]);
+            uint32_t verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
             if (verificationLength != 0) // this is allowed and it means to validate inputs and return success
             {
                 if (verificationLength > 65536 || byteCheck != 0) // limit transfer size, and only support a normal
@@ -10565,8 +10571,8 @@ static eReturnValues wbst_Verify_12(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if ((scsiIoCtx->cdb[1] & BIT3) || (scsiIoCtx->cdb[1] & BIT0) ||
-            (get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 6) != 0))
+        if ((scsiIoCtx->cdb[CDB_1] & BIT3) || (scsiIoCtx->cdb[CDB_1] & BIT0) ||
+            (get_bit_range_uint8(scsiIoCtx->cdb[CDB_10], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10576,11 +10582,11 @@ static eReturnValues wbst_Verify_12(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint8_t  byteCheck = get_bit_range_uint8(scsiIoCtx->cdb[1], 2, 1);
-            uint64_t lba =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-            uint32_t verificationLength =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+            uint8_t  byteCheck = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 2, 1);
+            uint64_t lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                               scsiIoCtx->cdb[CDB_5]);
+            uint32_t verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                                              scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
             if (verificationLength != 0) // this is allowed and it means to validate inputs and return success
             {
                 if (verificationLength > 65536 || byteCheck != 0) // limit transfer size, and only support a normal
@@ -10616,8 +10622,8 @@ static eReturnValues wbst_Verify_16(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if ((scsiIoCtx->cdb[1] & BIT3) || (scsiIoCtx->cdb[1] & BIT0) ||
-            (get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 6) != 0))
+        if ((scsiIoCtx->cdb[CDB_1] & BIT3) || (scsiIoCtx->cdb[CDB_1] & BIT0) ||
+            (get_bit_range_uint8(scsiIoCtx->cdb[CDB_14], 7, 6) != 0))
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10627,12 +10633,12 @@ static eReturnValues wbst_Verify_16(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            uint8_t  byteCheck = get_bit_range_uint8(scsiIoCtx->cdb[1], 2, 1);
-            uint64_t lba =
-                M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                                    scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-            uint32_t verificationLength =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            uint8_t  byteCheck = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 2, 1);
+            uint64_t lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                               scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                               scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+            uint32_t verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11],
+                                                              scsiIoCtx->cdb[CDB_12], scsiIoCtx->cdb[CDB_13]);
             if (verificationLength != 0) // this is allowed and it means to validate inputs and return success
             {
                 if (verificationLength > 65536 || byteCheck != 0) // limit transfer size, and only support a normal
@@ -10668,7 +10674,7 @@ static eReturnValues wbst_Synchronize_Cache_10(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[6] != 0)
+        if (scsiIoCtx->cdb[CDB_1] != 0 || scsiIoCtx->cdb[CDB_6] != 0)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10706,7 +10712,7 @@ static eReturnValues wbst_Synchronize_Cache_16(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[14] != 0)
+        if (scsiIoCtx->cdb[CDB_1] != 0 || scsiIoCtx->cdb[CDB_14] != 0)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10744,7 +10750,8 @@ static eReturnValues wbst_Test_Unit_Ready(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0)
+        if (scsiIoCtx->cdb[CDB_1] != 0 || scsiIoCtx->cdb[CDB_2] != 0 || scsiIoCtx->cdb[CDB_3] != 0 ||
+            scsiIoCtx->cdb[CDB_4] != 0)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10774,7 +10781,7 @@ static eReturnValues wbst_Request_Sense(ScsiIoCtx* scsiIoCtx)
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
-        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[2] != 0 || scsiIoCtx->cdb[3] != 0)
+        if (scsiIoCtx->cdb[CDB_1] != 0 || scsiIoCtx->cdb[CDB_2] != 0 || scsiIoCtx->cdb[CDB_3] != 0)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10788,7 +10795,7 @@ static eReturnValues wbst_Request_Sense(ScsiIoCtx* scsiIoCtx)
             // here.
             if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
             {
-                explicit_zeroes(scsiIoCtx->pdata, M_Min(scsiIoCtx->cdb[4], scsiIoCtx->dataLength));
+                explicit_zeroes(scsiIoCtx->pdata, M_Min(scsiIoCtx->cdb[CDB_4], scsiIoCtx->dataLength));
             }
         }
         wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
@@ -10810,10 +10817,10 @@ static eReturnValues wbst_Send_Diagnostic(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         // only allow self-test bit set to one, and return good status.
-        if (scsiIoCtx->cdb[1] & 0xFB  // only allow self-test bit to be set to 1. All others are not supported.
-            || scsiIoCtx->cdb[2] != 0 // reserved
-            || scsiIoCtx->cdb[3] != 0 // parameter list length
-            || scsiIoCtx->cdb[4] != 0 // parameter list length
+        if (scsiIoCtx->cdb[CDB_1] & 0xFB  // only allow self-test bit to be set to 1. All others are not supported.
+            || scsiIoCtx->cdb[CDB_2] != 0 // reserved
+            || scsiIoCtx->cdb[CDB_3] != 0 // parameter list length
+            || scsiIoCtx->cdb[CDB_4] != 0 // parameter list length
         )
         {
             // invalid field in CDB
@@ -10846,8 +10853,8 @@ static eReturnValues wbst_Report_Luns(ScsiIoCtx* scsiIoCtx)
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         // filter out unsupported fields first
-        if (scsiIoCtx->cdb[1] != 0 || scsiIoCtx->cdb[3] != 0 || scsiIoCtx->cdb[4] != 0 || scsiIoCtx->cdb[5] != 0 ||
-            scsiIoCtx->cdb[10] != 0)
+        if (scsiIoCtx->cdb[CDB_1] != 0 || scsiIoCtx->cdb[CDB_3] != 0 || scsiIoCtx->cdb[CDB_4] != 0 ||
+            scsiIoCtx->cdb[CDB_5] != 0 || scsiIoCtx->cdb[CDB_10] != 0)
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10858,9 +10865,9 @@ static eReturnValues wbst_Report_Luns(ScsiIoCtx* scsiIoCtx)
         else
         {
             DECLARE_ZERO_INIT_ARRAY(uint8_t, reportLunsData, REPORT_LUNS_MIN_LENGTH);
-            uint32_t allocationLength =
-                M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-            switch (scsiIoCtx->cdb[2])
+            uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                                            scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+            switch (scsiIoCtx->cdb[CDB_2])
             {
             case 0x00:
                 // set list length to 16 bytes
@@ -10922,8 +10929,8 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
         //       It may be worth implementing if they ever return from beyond the grave...or if we can test and prove it
         //       works on HDDs
         // Ideally this is a nop and it returns that it's ready without actually doing anything
-        if (get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 6) || scsiIoCtx->cdb[1] & BIT3 || scsiIoCtx->cdb[2] ||
-            scsiIoCtx->cdb[3] || scsiIoCtx->cdb[4])
+        if (get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 6) || scsiIoCtx->cdb[CDB_1] & BIT3 || scsiIoCtx->cdb[CDB_2] ||
+            scsiIoCtx->cdb[CDB_3] || scsiIoCtx->cdb[CDB_4])
         {
             // invalid field in CDB
             senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -10933,9 +10940,9 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            bool    longList         = scsiIoCtx->cdb[1] & BIT5;
-            bool    formatData       = scsiIoCtx->cdb[1] & BIT4;
-            uint8_t defectListFormat = get_bit_range_uint8(scsiIoCtx->cdb[1], 2, 0);
+            bool    longList         = scsiIoCtx->cdb[CDB_1] & BIT5;
+            bool    formatData       = scsiIoCtx->cdb[CDB_1] & BIT4;
+            uint8_t defectListFormat = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 2, 0);
             if (formatData && scsiIoCtx->pdata && scsiIoCtx->dataLength > 4)
             {
                 // Parameter header information
@@ -11192,7 +11199,7 @@ static eReturnValues win_Basic_SCSI_Translation(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->cdbLength >= 6) // 6byte CDB is shortest allowed
     {
-        switch (scsiIoCtx->cdb[OPERATION_CODE])
+        switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
         {
         case INQUIRY_CMD:
             ret = wbst_Inquiry(scsiIoCtx);
@@ -11325,8 +11332,8 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
                                                         // send occasionally, so do not remove this.
             {
                 if (scsiIoCtx->device->drive_info.drive_type == ATAPI_DRIVE ||
-                    scsiIoCtx->cdb[OPERATION_CODE] == ATA_PASS_THROUGH_12 ||
-                    scsiIoCtx->cdb[OPERATION_CODE] == ATA_PASS_THROUGH_16)
+                    scsiIoCtx->cdb[CDB_OPERATION_CODE] == ATA_PASS_THROUGH_12 ||
+                    scsiIoCtx->cdb[CDB_OPERATION_CODE] == ATA_PASS_THROUGH_16)
                 {
                     ret = send_SCSI_Pass_Through_IO(scsiIoCtx);
                 }
@@ -11550,7 +11557,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
         }
         else
         {
-            protocolCommand->TimeOutValue = 15;
+            protocolCommand->TimeOutValue = DEFAULT_COMMAND_TIMEOUT;
         }
     }
 
@@ -14791,8 +14798,8 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     uint64_t timeoutInSeconds = UINT64_C(0);
     if (device->drive_info.defaultTimeoutSeconds == 0)
     {
-        comTimeout.ReadTotalTimeoutConstant = 15000; // 15 seconds
-        timeoutInSeconds                    = 15;
+        comTimeout.ReadTotalTimeoutConstant = DEFAULT_COMMAND_TIMEOUT * 1000; // 15 seconds
+        timeoutInSeconds                    = DEFAULT_COMMAND_TIMEOUT;
     }
     else
     {
@@ -14923,8 +14930,8 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     uint64_t timeoutInSeconds = UINT64_C(0);
     if (device->drive_info.defaultTimeoutSeconds == 0)
     {
-        comTimeout.WriteTotalTimeoutConstant = 15000; // 15 seconds
-        timeoutInSeconds                     = 15;
+        comTimeout.WriteTotalTimeoutConstant = DEFAULT_COMMAND_TIMEOUT * 1000; // 15 seconds
+        timeoutInSeconds                     = DEFAULT_COMMAND_TIMEOUT;
     }
     else
     {
@@ -15048,7 +15055,7 @@ eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
     uint64_t timeoutInSeconds = UINT64_C(0);
     if (device->drive_info.defaultTimeoutSeconds == 0)
     {
-        timeoutInSeconds = 15;
+        timeoutInSeconds = DEFAULT_COMMAND_TIMEOUT;
     }
     else
     {
@@ -15147,8 +15154,8 @@ eReturnValues os_Flush(tDevice* device)
     uint64_t timeoutInSeconds = UINT64_C(0);
     if (device->drive_info.defaultTimeoutSeconds == 0)
     {
-        comTimeout.ReadTotalTimeoutConstant = 15000; // 15 seconds
-        timeoutInSeconds                    = 15;
+        comTimeout.ReadTotalTimeoutConstant = DEFAULT_COMMAND_TIMEOUT * 1000; // 15 seconds
+        timeoutInSeconds                    = DEFAULT_COMMAND_TIMEOUT;
     }
     else
     {

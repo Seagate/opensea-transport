@@ -679,7 +679,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            io_hdr.timeout = 15 * 1000; // default to 15 second timeout
+            io_hdr.timeout = DEFAULT_COMMAND_TIMEOUT * 1000; // default to 15 second timeout
         }
     }
 
@@ -1331,7 +1331,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         {
             uio.namespaceID = nvmeIoCtx->cmd.adminCmd.nsid;
         }
-        uio.timeoutUs = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
+        uio.timeoutUs = (nvmeIoCtx->timeout ? nvmeIoCtx->timeout : DEFAULT_COMMAND_TIMEOUT) * 1000;
 
         errno = 0;
         start_Timer(&cmdtimer);
@@ -1400,7 +1400,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             uio.namespaceID = nvmeIoCtx->cmd.nvmCmd.nsid;
         }
 
-        uio.timeoutUs = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
+        uio.timeoutUs = (nvmeIoCtx->timeout ? nvmeIoCtx->timeout : DEFAULT_COMMAND_TIMEOUT) * 1000;
         errno         = 0;
         start_Timer(&cmdtimer);
         ioctlret = Nvme_Ioctl(nvmeIoCtx->device->os_info.nvmeFd, NVME_IOCTL_IO_CMD, &uio);

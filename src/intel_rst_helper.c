@@ -248,7 +248,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
                 }
                 else
                 {
-                    raidFirmwareRequest->Header.Timeout = 15;
+                    raidFirmwareRequest->Header.Timeout = DEFAULT_COMMAND_TIMEOUT;
                 }
             }
             raidFirmwareRequest->Header.ControlCode = C_CAST(ULONG, IOCTL_RAID_FIRMWARE);
@@ -567,13 +567,14 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx* scsiIoCtx, bool* isActivate)
     uint32_t transferLengthBytes = UINT32_C(0);
     // check if this is a SCSI Write buffer command or ATA download microcode. Can only support deferred and activate
     // subcommands.
-    if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+    if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == WRITE_BUFFER_CMD)
     {
-        uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0);
+        uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 4, 0);
         if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
         {
-            compatible          = true;
-            transferLengthBytes = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            compatible = true;
+            transferLengthBytes =
+                M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
         }
         else if (wbMode == SCSI_WB_ACTIVATE_DEFERRED_MICROCODE)
         {
@@ -648,7 +649,7 @@ eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* scsiIoCtx)
             {
                 // assume SCSI write buffer if we made it this far. The is_Compatible_SCSI_FWDL_IO will filter out other
                 // commands since the opcode won't match
-                firmwareSlot = scsiIoCtx->cdb[2]; // firmware slot or buffer ID are "the same" in SNTL
+                firmwareSlot = scsiIoCtx->cdb[CDB_2]; // firmware slot or buffer ID are "the same" in SNTL
             }
             ret = internal_Intel_FWDL_Function_Activate(scsiIoCtx->device, flags, &returnCode, firmwareSlot, timeout);
             // TODO: Dummy up sense data!
@@ -681,8 +682,9 @@ eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* scsiIoCtx)
             {
                 // assume SCSI write buffer if we made it this far. The is_Compatible_SCSI_FWDL_IO will filter out other
                 // commands since the opcode won't match
-                firmwareSlot = scsiIoCtx->cdb[2]; // firmware slot or buffer ID are "the same" in SNTL
-                imageOffset  = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+                firmwareSlot = scsiIoCtx->cdb[CDB_2]; // firmware slot or buffer ID are "the same" in SNTL
+                imageOffset =
+                    M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4], scsiIoCtx->cdb[CDB_5]);
             }
             ret = internal_Intel_FWDL_Function_Download(scsiIoCtx->device, flags, &returnCode, imagePtr,
                                                         imageDataLength, imageOffset, firmwareSlot, timeout);
@@ -735,7 +737,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
                 }
                 else
                 {
-                    nvmPassthroughCommand->Header.Timeout = 15;
+                    nvmPassthroughCommand->Header.Timeout = DEFAULT_COMMAND_TIMEOUT;
                 }
             }
             nvmPassthroughCommand->Header.ControlCode = C_CAST(ULONG, IOCTL_NVME_PASSTHROUGH);
