@@ -9006,7 +9006,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
             }
             break;
         case 0x01: // active
-            if (SUCCESS != ata_EPC_Set_Power_Condition_State(device, 0xFF, false, false) && !immediate)
+            if (SUCCESS != ata_SF_EPC_Set_Power_Condition_State(device, 0xFF, false, false) && !immediate)
             {
                 ret = ABORTED;
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND,
@@ -9085,7 +9085,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                                 return ABORTED;
                             }
                         }
-                        if (SUCCESS != ata_EPC_Set_Power_Condition_State(device, 0xFF, enable, false))
+                        if (SUCCESS != ata_SF_EPC_Set_Power_Condition_State(device, 0xFF, enable, false))
                         {
                             if (!immediate)
                             {
@@ -9101,7 +9101,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                             }
                         }
                         if (SUCCESS !=
-                                ata_EPC_Go_To_Power_Condition(device, powerConditionModifier + 0x81, false, false) &&
+                                ata_SF_EPC_Go_To_Power_Condition(device, powerConditionModifier + 0x81, false, false) &&
                             !immediate)
                         {
                             set_Sense_Data_For_Translation(
@@ -9177,7 +9177,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                                 return ABORTED;
                             }
                         }
-                        if (SUCCESS != ata_EPC_Set_Power_Condition_State(device, 0xFF, enable, false))
+                        if (SUCCESS != ata_SF_EPC_Set_Power_Condition_State(device, 0xFF, enable, false))
                         {
                             if (!immediate)
                             {
@@ -9193,7 +9193,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
                             }
                         }
                         if (SUCCESS !=
-                                ata_EPC_Go_To_Power_Condition(device, powerConditionModifier + 0x01, false, false) &&
+                                ata_SF_EPC_Go_To_Power_Condition(device, powerConditionModifier + 0x01, false, false) &&
                             !immediate)
                         {
                             set_Sense_Data_For_Translation(
@@ -9227,7 +9227,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(tDevice* device, Scs
         case 0x07: // LU Control
             if (powerConditionModifier == 0)
             {
-                if (SUCCESS != ata_EPC_Set_Power_Condition_State(device, 0xFF, true, false) && !immediate)
+                if (SUCCESS != ata_SF_EPC_Set_Power_Condition_State(device, 0xFF, true, false) && !immediate)
                 {
                     set_Sense_Data_For_Translation(
                         scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND, 0x2C, 0,
@@ -14275,7 +14275,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
                         ata_idle_a = UINT16_C(0xFFFF);
                     }
                     ret =
-                        ata_EPC_Set_Power_Condition_Timer(device, 0x81, ata_idle_a, timerUnits, idle_a, saveParameters);
+                        ata_SF_EPC_Set_Power_Condition_Timer(device, 0x81, ata_idle_a, timerUnits, idle_a, saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14327,7 +14327,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
                         ata_idle_b = UINT16_C(0xFFFF);
                     }
                     ret =
-                        ata_EPC_Set_Power_Condition_Timer(device, 0x82, ata_idle_b, timerUnits, idle_b, saveParameters);
+                        ata_SF_EPC_Set_Power_Condition_Timer(device, 0x82, ata_idle_b, timerUnits, idle_b, saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14378,7 +14378,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
                         ata_idle_c = UINT16_C(0xFFFF);
                     }
                     ret =
-                        ata_EPC_Set_Power_Condition_Timer(device, 0x83, ata_idle_c, timerUnits, idle_c, saveParameters);
+                        ata_SF_EPC_Set_Power_Condition_Timer(device, 0x83, ata_idle_c, timerUnits, idle_c, saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14430,7 +14430,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
                         timerUnits    = true;
                         ata_standby_y = UINT16_C(0xFFFF);
                     }
-                    ret = ata_EPC_Set_Power_Condition_Timer(device, 0x01, ata_standby_y, timerUnits, standby_y,
+                    ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x01, ata_standby_y, timerUnits, standby_y,
                                                             saveParameters);
                     if (ret != SUCCESS)
                     {
@@ -14483,7 +14483,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
                         timerUnits    = true;
                         ata_standby_z = UINT16_C(0xFFFF);
                     }
-                    ret = ata_EPC_Set_Power_Condition_Timer(device, 0x00, ata_standby_z, timerUnits, standby_z,
+                    ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x00, ata_standby_z, timerUnits, standby_z,
                                                             saveParameters);
                     if (ret != SUCCESS)
                     {

@@ -2053,21 +2053,21 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Restore_Power_Condition_Settings(tDevice* device,
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Restore_Power_Condition_Settings(tDevice* device,
                                                                                  uint8_t  powerConditionID,
                                                                                  bool     defaultBit,
                                                                                  bool     save);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Go_To_Power_Condition(tDevice* device,
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Go_To_Power_Condition(tDevice* device,
                                                                       uint8_t  powerConditionID,
                                                                       bool     delayedEntry,
                                                                       bool     holdPowerCondition);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Set_Power_Condition_Timer(tDevice* device,
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_Power_Condition_Timer(tDevice* device,
                                                                           uint8_t  powerConditionID,
                                                                           uint16_t timerValue,
                                                                           bool     timerUnits,
@@ -2076,20 +2076,20 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Set_Power_Condition_State(tDevice* device,
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_Power_Condition_State(tDevice* device,
                                                                           uint8_t  powerConditionID,
                                                                           bool     enable,
                                                                           bool     save);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Enable_EPC_Feature_Set(tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Enable_EPC_Feature_Set(tDevice* device);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Disable_EPC_Feature_Set(tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Disable_EPC_Feature_Set(tDevice* device);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Set_EPC_Power_Source(tDevice* device, uint8_t powerSource);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_EPC_Power_Source(tDevice* device, uint8_t powerSource);
 
     //-----------------------------------------------------------------------------
     //
