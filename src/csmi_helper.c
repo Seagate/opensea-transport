@@ -545,8 +545,8 @@ static void print_CSMI_Controller_Configuration(PCSMI_SAS_CNTLR_CONFIG config)
         printf("\tBase Memory Address: %08" CPRIX32 "%08" CPRIX32 "h\n", config->BaseMemoryAddress.uHighPart,
                config->BaseMemoryAddress.uLowPart);
         printf("\tBoard ID: %08" CPRIX32 "h\n", config->uBoardID);
-        printf("\t\tVendor ID: %04" CPRIX16 "h\n", M_Word0(config->uBoardID));
-        printf("\t\tSubsystem ID: %04" CPRIX16 "h\n", M_Word1(config->uBoardID));
+        printf("\t\tVendor ID: %04" CPRIX16 "h\n", M_Word0(M_STATIC_CAST(uint32_t, config->uBoardID)));
+        printf("\t\tSubsystem ID: %04" CPRIX16 "h\n", M_Word1(M_STATIC_CAST(uint32_t, config->uBoardID)));
         printf("\tSlot Number: ");
         if (SLOT_NUMBER_UNKNOWN == config->usSlotNumber)
         {
