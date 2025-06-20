@@ -5298,3 +5298,100 @@ void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
     }
     RESTORE_NONNULL_COMPARE
 }
+
+bool check_Sense_For_Specific_Info(const uint8_t* senseData, uint32_t senseLen, senseToCheck check)
+{
+    bool match = true;
+    eSenseMatchDepth depth = SENSE_MATCH_SENSE_KEY;
+    senseDataFields readSense;
+    safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    get_Sense_Data_Fields(senseData, senseLen, &readSense);
+    while (depth <= check.checkDepth && match == true)
+    {
+        switch (depth)
+        {
+        case SENSE_MATCH_SENSE_KEY:
+            if (readSense.scsiStatusCodes.senseKey != check.senseKey)
+            {
+                match = false;
+            }
+            break;
+        case SENSE_MATCH_ASC:
+            if (readSense.scsiStatusCodes.asc != check.asc)
+            {
+                match = false;
+            }
+            break;
+        case SENSE_MATCH_ASCQ:
+            if (readSense.scsiStatusCodes.ascq != check.ascq)
+            {
+                match = false;
+            }
+            break;
+        case SENSE_MATCH_FRU:
+            if (readSense.scsiStatusCodes.fru != check.fru)
+            {
+                match = false;
+            }
+            break;
+        }
+        ++depth;
+    }
+    return match;
+}
+
+bool is_Invalid_Opcode(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, 0x00 };
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Invalid_Field_In_CDB(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, 0x00 };
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Invalid_Field_In_Parameter(const uint8_t* senseData,
+                                                                            uint32_t       senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x25, 0x00, 0x00 };
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Format_Corrupt(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x00, 0x00 };
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Media_Present(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASC, SENSE_KEY_MEDIUM_ERROR, 0x3A, 0x00, 0x00 };
+    return !check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool did_Reset_Occur(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASC, SENSE_KEY_UNIT_ATTENTION, 0x29, 0x00, 0x00 };
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Microcode_Activation_Required(const uint8_t* senseData,
+                                                                            uint32_t       senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_NOT_READY, 0x04, 0x1E, 0x00 };
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Command_Sequence_Error(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x2C, 0x00, 0x00 };
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Unaligned_Write(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0x04, 0x00 };
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}

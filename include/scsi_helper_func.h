@@ -173,152 +173,64 @@ extern "C"
                                                      uint32_t           senseDataLength,
                                                      ptrSenseDataFields senseFields);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API static M_INLINE bool is_Invalid_Opcode(const uint8_t* senseData, uint32_t senseLen)
+    typedef enum eSenseMatchDepthEnum
     {
-        bool            invalidOp = false;
-        senseDataFields readSense;
-        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
-        get_Sense_Data_Fields(senseData, senseLen, &readSense);
-        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x20 &&
-            readSense.scsiStatusCodes.ascq == 0x00)
-        {
-            invalidOp = true;
-        }
-        return invalidOp;
-    }
+        SENSE_MATCH_SENSE_KEY,
+        SENSE_MATCH_ASC,
+        SENSE_MATCH_ASCQ,
+        SENSE_MATCH_FRU
+    }eSenseMatchDepth;
+
+    typedef struct tSenseToCheck
+    {
+        eSenseMatchDepth checkDepth;
+        eSenseKeyValues senseKey;
+        uint8_t asc;
+        uint8_t ascq;
+        uint8_t fru;
+    }senseToCheck;
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API static M_INLINE bool is_Invalid_Field_In_CDB(const uint8_t* senseData, uint32_t senseLen)
-    {
-        bool            invalidField = false;
-        senseDataFields readSense;
-        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
-        get_Sense_Data_Fields(senseData, senseLen, &readSense);
-        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x24 &&
-            readSense.scsiStatusCodes.ascq == 0x00)
-        {
-            invalidField = true;
-        }
-        return invalidField;
-    }
+    OPENSEA_TRANSPORT_API bool check_Sense_For_Specific_Info(const uint8_t* senseData, uint32_t senseLen, senseToCheck check);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API static M_INLINE bool is_Invalid_Field_In_Parameter(const uint8_t* senseData,
-                                                                             uint32_t       senseLen)
-    {
-        bool            invalidField = false;
-        senseDataFields readSense;
-        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
-        get_Sense_Data_Fields(senseData, senseLen, &readSense);
-        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x25 &&
-            readSense.scsiStatusCodes.ascq == 0x00)
-        {
-            invalidField = true;
-        }
-        return invalidField;
-    }
+    OPENSEA_TRANSPORT_API bool is_Invalid_Opcode(const uint8_t* senseData, uint32_t senseLen);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API static M_INLINE bool is_Format_Corrupt(const uint8_t* senseData, uint32_t senseLen)
-    {
-        bool            formatCorrupt = false;
-        senseDataFields readSense;
-        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
-        get_Sense_Data_Fields(senseData, senseLen, &readSense);
-        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_MEDIUM_ERROR && readSense.scsiStatusCodes.asc == 0x31 &&
-            readSense.scsiStatusCodes.ascq == 0x00)
-        {
-            formatCorrupt = true;
-        }
-        return formatCorrupt;
-    }
+    OPENSEA_TRANSPORT_API bool is_Invalid_Field_In_CDB(const uint8_t* senseData, uint32_t senseLen);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API static M_INLINE bool is_Media_Present(const uint8_t* senseData, uint32_t senseLen)
-    {
-        bool            mediaPresent = true;
-        senseDataFields readSense;
-        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
-        get_Sense_Data_Fields(senseData, senseLen, &readSense);
-        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_MEDIUM_ERROR &&
-            readSense.scsiStatusCodes.asc == 0x3A) // ascq's for this all reference not present
-        {
-            mediaPresent = false;
-        }
-        return mediaPresent;
-    }
+    OPENSEA_TRANSPORT_API bool is_Invalid_Field_In_Parameter(const uint8_t* senseData,
+                                                                             uint32_t       senseLen);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API static M_INLINE bool did_Reset_Occur(const uint8_t* senseData, uint32_t senseLen)
-    {
-        bool            resetOccurred = false;
-        senseDataFields readSense;
-        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
-        get_Sense_Data_Fields(senseData, senseLen, &readSense);
-        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_UNIT_ATTENTION && readSense.scsiStatusCodes.asc == 0x29)
-        {
-            // Note: skipped ascq check since these are all very closely related to a reset of some sort.
-            //       Can refine this to handle the others if needed.
-            resetOccurred = true;
-        }
-        return resetOccurred;
-    }
+    OPENSEA_TRANSPORT_API bool is_Format_Corrupt(const uint8_t* senseData, uint32_t senseLen);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API static M_INLINE bool is_Microcode_Activation_Required(const uint8_t* senseData,
-                                                                                uint32_t       senseLen)
-    {
-        bool            microcodeActReq = false;
-        senseDataFields readSense;
-        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
-        get_Sense_Data_Fields(senseData, senseLen, &readSense);
-        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_NOT_READY && readSense.scsiStatusCodes.asc == 0x04 &&
-            readSense.scsiStatusCodes.ascq == 0x1E)
-        {
-            microcodeActReq = true;
-        }
-        return microcodeActReq;
-    }
+    OPENSEA_TRANSPORT_API bool is_Media_Present(const uint8_t* senseData, uint32_t senseLen);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API static M_INLINE bool is_Command_Sequence_Error(const uint8_t* senseData, uint32_t senseLen)
-    {
-        bool            cmdSeqErr = false;
-        senseDataFields readSense;
-        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
-        get_Sense_Data_Fields(senseData, senseLen, &readSense);
-        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x2C &&
-            readSense.scsiStatusCodes.ascq == 0x00)
-        {
-            cmdSeqErr = true;
-        }
-        return cmdSeqErr;
-    }
+    OPENSEA_TRANSPORT_API bool did_Reset_Occur(const uint8_t* senseData, uint32_t senseLen);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API static M_INLINE bool is_Unaligned_Write(const uint8_t* senseData, uint32_t senseLen)
-    {
-        bool            unalignedWrite = false;
-        senseDataFields readSense;
-        safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
-        get_Sense_Data_Fields(senseData, senseLen, &readSense);
-        if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST && readSense.scsiStatusCodes.asc == 0x21 &&
-            readSense.scsiStatusCodes.ascq == 0x04)
-        {
-            unalignedWrite = true;
-        }
-        return unalignedWrite;
-    }
+    OPENSEA_TRANSPORT_API bool is_Microcode_Activation_Required(const uint8_t* senseData,
+                                                                                uint32_t       senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_Command_Sequence_Error(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_Unaligned_Write(const uint8_t* senseData, uint32_t senseLen);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields senseFields);
