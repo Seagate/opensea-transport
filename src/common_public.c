@@ -5753,6 +5753,120 @@ static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+static bool set_Prolific_USB_Hacks_By_PID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    switch (device->drive_info.adapter_info.productID)
+    {
+    case 0x2773:
+        // based on revision 0000h
+        passthroughHacksSet                                 = true;
+        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_PROLIFIC;
+        // Guessing 64K max
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536; // Bytes
+        // set SCSI hacks
+        // Guessing 64K max
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536; // bytes
+        // device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        // device->drive_info.passThroughHacks.turfValue                             = 14;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6       = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10      = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12      = false;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 =
+            false; // not entirely sure, but probably not. -TJE
+        device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        break;
+    // TODO: Find and test these. Unknown if they support the same capabilities listed above
+    // case 0x3507 - PL3507 ATAPI6 Bridge
+    // case 0x2528 - USB flash drive
+    // case 0x2507 - PL2507 Hi-speed USB to IDE bridge controller
+    // case 0x2307 PL2307 USB-ATAPI4 Bridge
+    // case 0x0600 - IDE Bridge
+    default: // unknown
+        break;
+    }
+    return passthroughHacksSet;
+}
+
+static bool set_Cypress_USB_Hacks_By_PID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    switch (device->drive_info.adapter_info.productID)
+    {
+    case 0x6830: // CY7C68300(A|B|C) USB to ATA adapter
+    case 0x6831: // ISD-300LP
+        // based on revision 0000h
+        passthroughHacksSet                                 = true;
+        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+        passthroughHacksSet                                                     = true;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+        device->drive_info.passThroughHacks.turfValue                           = 6;
+        device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData           = true;
+        // device->drive_info.passThroughHacks.scsiHacks.scsiInq
+        device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 65536;
+        device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly               = true;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported =
+            true; // TODO: Cypress passthrough has a bit for UDMA mode, but didn't appear to work in testing.
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+        break;
+    default: // unknown
+        break;
+    }
+    return passthroughHacksSet;
+}
+
+static bool set_TI_USB_Hacks_By_PID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    switch (device->drive_info.adapter_info.productID)
+    {
+    case 0x625F: // TUSB6250
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_TI;
+        passthroughHacksSet                                                       = true;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 14;
+        device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noModePages                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 65536;
+        device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly               = true;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported            = true;
+        device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands =
+            true; // mutliple mode commands don't work in passthrough.
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+        break;
+    case 0x9261: // TUSB926x
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
+        passthroughHacksSet                                                       = true;
+        //device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        //device->drive_info.passThroughHacks.turfValue                             = 14;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
+        device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked = true;
+        device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported = false;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+        device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+        break;
+    default: // unknown
+        break;
+    }
+    return passthroughHacksSet;
+}
+
 // https://usb-ids.gowdy.us/
 // http://www.linux-usb.org/usb.ids
 static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
@@ -5791,6 +5905,15 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             default: // unknown
                 break;
             }
+            break;
+        case USB_Vendor_Prolific: // 067B
+            passthroughHacksSet = set_Prolific_USB_Hacks_By_PID(device);
+            break;
+        case USB_Vendor_Cypress: // 04B4
+            passthroughHacksSet = set_Cypress_USB_Hacks_By_PID(device);
+            break;
+        case USB_Vendor_TI: // 0451
+            passthroughHacksSet = set_TI_USB_Hacks_By_PID(device);
             break;
         case USB_Vendor_4G_Systems_GmbH: // 1955
             switch (device->drive_info.adapter_info.productID)
