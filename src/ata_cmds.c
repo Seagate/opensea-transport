@@ -34,6 +34,7 @@
 #include "psp_legacy_helper.h"
 #include "sat_helper_func.h"
 #include "scsi_helper_func.h"
+#include "sunplus_legacy_helper.h"
 #include "ti_legacy_helper.h"
 
 eReturnValues ata_Passthrough_Command(tDevice* device, ataPassthroughCommand* ataCommandOptions)
@@ -66,6 +67,9 @@ eReturnValues ata_Passthrough_Command(tDevice* device, ataPassthroughCommand* at
         M_FALLTHROUGH;
     case ATA_PASSTHROUGH_JMICRON_PROLIFIC:
         ret = send_JMicron_Legacy_Passthrough_Command(device, ataCommandOptions);
+        break;
+    case ATA_PASSTHROUGH_SUNPLUS:
+        ret = send_Sunplus_Legacy_Passthrough_Command(device, ataCommandOptions);
         break;
     default:
         ret = BAD_PARAMETER;

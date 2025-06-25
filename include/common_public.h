@@ -1674,6 +1674,7 @@ extern "C"
     typedef enum eUSBVendorIDsEnum
     {
         USB_Vendor_Unknown                            = 0,
+        USB_Vendor_SunplusIT                          = 0x1BCF,
         USB_Vendor_Adaptec                            = 0x03F3,
         USB_Vendor_Buffalo                            = 0x0411,
         USB_Vendor_TI                                 = 0x0451,

@@ -5029,6 +5029,38 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+// This function exists to make it easy to set the same settings for other USB vendor ID's that
+// used this chip (Example: LaCie)
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
+M_NODISCARD
+static bool set_Sunplus_Hacks(tDevice *device)
+{
+    bool passthroughHacksSet = false;
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SUNPLUS;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 6;
+        device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+        device->drive_info.passThroughHacks.scsiHacks.noModePages                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 65536;
+        device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData = true;
+        // device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDOffset = 8;
+        // device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDLength = 28;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported            = true;
+        // device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+        passthroughHacksSet = true;
+    }
+    return passthroughHacksSet;
+}
+
 static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5040,6 +5072,9 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
     case 0x1021:
     case 0x102A:
         passthroughHacksSet = set_JMicron_Legacy_PT_Hacks(device);
+        break;
+    case 0x1010:
+        passthroughHacksSet = set_Sunplus_Hacks(device);
         break;
     case 0x1043: // blade runner (product ID shows this too)
         passthroughHacksSet = true;
@@ -5364,6 +5399,7 @@ static bool set_Maxtor_USB_Hacks_By_PID(tDevice* device)
 
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
+M_NODISCARD
 bool set_JMicron_Legacy_PT_Hacks(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5980,6 +6016,36 @@ static bool set_TI_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+static bool set_Sunplus_USB_Hacks_By_PID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    switch (device->drive_info.adapter_info.productID)
+    {
+    case 0x0C05:
+    case 0x0C15:
+    case 0x0C25:
+        passthroughHacksSet = set_Sunplus_Hacks(device);
+        break;
+    default: // unknown
+        break;
+    }
+    return passthroughHacksSet;
+}
+
+static bool set_SunplusIT_USB_Hacks_By_PID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    switch (device->drive_info.adapter_info.productID)
+    {
+    case 0x0C31:
+        passthroughHacksSet = set_Sunplus_Hacks(device);
+        break;
+    default: // unknown
+        break;
+    }
+    return passthroughHacksSet;
+}
+
 // https://usb-ids.gowdy.us/
 // http://www.linux-usb.org/usb.ids
 static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
@@ -6103,6 +6169,12 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             break;
         case USB_Vendor_Samsung: // 04E8
             passthroughHacksSet = set_Samsung_USB_Hacks_By_PID(device);
+            break;
+        case USB_Vendor_Sunplus: // 04FC
+            passthroughHacksSet = set_Sunplus_USB_Hacks_By_PID(device);
+            break;
+        case USB_Vendor_SunplusIT: //1BCF
+            passthroughHacksSet = set_SunplusIT_USB_Hacks_By_PID(device);
             break;
         case USB_Vendor_Silicon_Motion: // 090C
             switch (device->drive_info.adapter_info.productID)

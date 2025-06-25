@@ -283,6 +283,7 @@ src_files = ['src/asmedia_nvme_helper.c',
              'src/scsi_cmds.c', 
              'src/scsi_helper.c', 
              'src/sntl_helper.c', 
+             'src/sunplus_legacy_helper.c', 
              'src/ti_legacy_helper.c', 
              'src/usb_hacks.c']
 

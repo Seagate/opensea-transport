@@ -720,6 +720,7 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\src\sntl_helper.c" />
     <ClCompile Include="..\..\..\..\src\ti_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\sunplus_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\uefi_helper.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
@@ -937,6 +938,7 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\sntl_helper.h" />
     <ClInclude Include="..\..\..\..\include\ti_legacy_helper.h" />
+    <ClInclude Include="..\..\..\..\include\sunplus_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\uefi_helper.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Static-Debug|Win32'">true</ExcludedFromBuild>
