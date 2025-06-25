@@ -5034,7 +5034,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
 M_NODISCARD
-static bool set_Sunplus_Hacks(tDevice *device)
+static bool set_Sunplus_Hacks(tDevice* device)
 {
     bool passthroughHacksSet = false;
     if (device != M_NULLPTR)
@@ -5043,20 +5043,20 @@ static bool set_Sunplus_Hacks(tDevice *device)
         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
         device->drive_info.passThroughHacks.turfValue                             = 6;
         device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
-        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6 = true;
-        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
         device->drive_info.passThroughHacks.scsiHacks.noModePages                 = true;
         device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
         device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
         device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 65536;
-        device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData = true;
+        device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData             = true;
         // device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDOffset = 8;
         // device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDLength = 28;
-        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported            = true;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
         // device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands = true;
         device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
-        passthroughHacksSet = true;
+        passthroughHacksSet                                              = true;
     }
     return passthroughHacksSet;
 }
@@ -6173,7 +6173,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
         case USB_Vendor_Sunplus: // 04FC
             passthroughHacksSet = set_Sunplus_USB_Hacks_By_PID(device);
             break;
-        case USB_Vendor_SunplusIT: //1BCF
+        case USB_Vendor_SunplusIT: // 1BCF
             passthroughHacksSet = set_SunplusIT_USB_Hacks_By_PID(device);
             break;
         case USB_Vendor_Silicon_Motion: // 090C

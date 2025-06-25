@@ -124,7 +124,7 @@ eReturnValues set_JM_Dev(tDevice* device)
 {
     eReturnValues ret    = SUCCESS;
     uint8_t       jmport = UINT8_C(0);
-    ret = read_Adapter_Register(device, JM_REG_CONNECTED_PORTS, &jmport, sizeof(jmport));
+    ret                  = read_Adapter_Register(device, JM_REG_CONNECTED_PORTS, &jmport, sizeof(jmport));
     if (ret == SUCCESS)
     {
         switch (M_STATIC_CAST(eJMicronConnectedPorts, jmport))

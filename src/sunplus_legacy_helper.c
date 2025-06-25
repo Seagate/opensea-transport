@@ -23,35 +23,35 @@
 #include "type_conversion.h"
 
 #include "ata_helper_func.h"
-#include "sunplus_legacy_helper.h"
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
+#include "sunplus_legacy_helper.h"
 
 eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCDB[SUNPLUS_PT_CDB_LEN],
-                                                     uint8_t                hiCDB[SUNPLUS_PT_CDB_LEN],
-                                                     bool*                  highCDBValid,
-                                                     ataPassthroughCommand* ataCommandOptions)
+                                                    uint8_t                hiCDB[SUNPLUS_PT_CDB_LEN],
+                                                    bool*                  highCDBValid,
+                                                    ataPassthroughCommand* ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
         *highCDBValid         = true;
         hiCDB[OPERATION_CODE] = SUNPLUS_PT_COMMAND_OPCODE;
-        hiCDB[1] = RESERVED;
-        hiCDB[2] = SUNPLUS_SUBCOMMAND_SET_48BIT_REGISTERS;
-        hiCDB[3] = RESERVED;
-        hiCDB[4] = RESERVED;
-        hiCDB[5] = ataCommandOptions->tfr.Feature48;
-        hiCDB[6] = ataCommandOptions->tfr.SectorCount48;
-        hiCDB[7] = ataCommandOptions->tfr.LbaLow48;
-        hiCDB[8] = ataCommandOptions->tfr.LbaMid48;
-        hiCDB[9] = ataCommandOptions->tfr.LbaHi48;
-        hiCDB[10] = RESERVED;
-        hiCDB[11] = RESERVED;
+        hiCDB[1]              = RESERVED;
+        hiCDB[2]              = SUNPLUS_SUBCOMMAND_SET_48BIT_REGISTERS;
+        hiCDB[3]              = RESERVED;
+        hiCDB[4]              = RESERVED;
+        hiCDB[5]              = ataCommandOptions->tfr.Feature48;
+        hiCDB[6]              = ataCommandOptions->tfr.SectorCount48;
+        hiCDB[7]              = ataCommandOptions->tfr.LbaLow48;
+        hiCDB[8]              = ataCommandOptions->tfr.LbaMid48;
+        hiCDB[9]              = ataCommandOptions->tfr.LbaHi48;
+        hiCDB[10]             = RESERVED;
+        hiCDB[11]             = RESERVED;
     }
     lowCDB[OPERATION_CODE] = SUNPLUS_PT_COMMAND_OPCODE;
-    lowCDB[1] = RESERVED;
-    lowCDB[2] = SUNPLUS_SUBCOMMAND_SEND_ATA_COMMAND;
+    lowCDB[1]              = RESERVED;
+    lowCDB[2]              = SUNPLUS_SUBCOMMAND_SEND_ATA_COMMAND;
     switch (ataCommandOptions->commandDirection)
     {
     case XFER_NO_DATA:
@@ -67,12 +67,12 @@ eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCD
     case XFER_DATA_OUT_IN:
         return BAD_PARAMETER;
     }
-    lowCDB[4] = ataCommandOptions->dataSize >> 9;// converting to number of 512B blocks
-    lowCDB[5] = ataCommandOptions->tfr.ErrorFeature;
-    lowCDB[6] = ataCommandOptions->tfr.SectorCount;
-    lowCDB[7] = ataCommandOptions->tfr.LbaLow;
-    lowCDB[8] = ataCommandOptions->tfr.LbaMid;
-    lowCDB[9] = ataCommandOptions->tfr.LbaHi;
+    lowCDB[4]  = ataCommandOptions->dataSize >> 9; // converting to number of 512B blocks
+    lowCDB[5]  = ataCommandOptions->tfr.ErrorFeature;
+    lowCDB[6]  = ataCommandOptions->tfr.SectorCount;
+    lowCDB[7]  = ataCommandOptions->tfr.LbaLow;
+    lowCDB[8]  = ataCommandOptions->tfr.LbaMid;
+    lowCDB[9]  = ataCommandOptions->tfr.LbaHi;
     lowCDB[10] = ataCommandOptions->tfr.DeviceHead;
     lowCDB[11] = ataCommandOptions->tfr.CommandStatus;
     return ret;
@@ -80,8 +80,8 @@ eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCD
 
 #define SUBPLUS_READ_REG_LEN 16
 eReturnValues get_RTFRs_From_Sunplus_Legacy(tDevice*               device,
-                                             ataPassthroughCommand* ataCommandOptions,
-                                             eReturnValues          commandRet)
+                                            ataPassthroughCommand* ataCommandOptions,
+                                            eReturnValues          commandRet)
 {
     eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
@@ -101,18 +101,19 @@ eReturnValues get_RTFRs_From_Sunplus_Legacy(tDevice*               device,
     cdb[7]              = RESERVED;
     cdb[8]              = RESERVED;
     cdb[9]              = RESERVED;
-    cdb[10]              = RESERVED;
-    cdb[11]              = RESERVED;
-    ret = scsi_Send_Cdb(device, cdb, SUNPLUS_PT_CDB_LEN, returnData, SUBPLUS_READ_REG_LEN, XFER_DATA_IN, senseData, SPC3_SENSE_LEN, 0);
+    cdb[10]             = RESERVED;
+    cdb[11]             = RESERVED;
+    ret = scsi_Send_Cdb(device, cdb, SUNPLUS_PT_CDB_LEN, returnData, SUBPLUS_READ_REG_LEN, XFER_DATA_IN, senseData,
+                        SPC3_SENSE_LEN, 0);
     if (ret == SUCCESS)
     {
-        ataCommandOptions->rtfr.error     = returnData[1];
-        ataCommandOptions->rtfr.secCnt    = returnData[2];
-        ataCommandOptions->rtfr.lbaLow    = returnData[3];
-        ataCommandOptions->rtfr.lbaMid    = returnData[4];
-        ataCommandOptions->rtfr.lbaHi     = returnData[5];
-        ataCommandOptions->rtfr.device    = returnData[6];
-        ataCommandOptions->rtfr.status    = returnData[7];
+        ataCommandOptions->rtfr.error  = returnData[1];
+        ataCommandOptions->rtfr.secCnt = returnData[2];
+        ataCommandOptions->rtfr.lbaLow = returnData[3];
+        ataCommandOptions->rtfr.lbaMid = returnData[4];
+        ataCommandOptions->rtfr.lbaHi  = returnData[5];
+        ataCommandOptions->rtfr.device = returnData[6];
+        ataCommandOptions->rtfr.status = returnData[7];
         if (ataCommandOptions->commandType != ATA_CMD_TYPE_TASKFILE && ataCommandOptions->needRTFRs)
         {
             ret = WARN_INCOMPLETE_RFTRS;
@@ -158,9 +159,9 @@ eReturnValues send_Sunplus_Legacy_Passthrough_Command(tDevice* device, ataPassth
                                 ataCommandOptions->senseDataSize, 0);
         }
         // send low CDB
-        ret = scsi_Send_Cdb(device, sunplusLowCDB, SUNPLUS_PT_CDB_LEN, ataCommandOptions->ptrData, ataCommandOptions->dataSize,
-                            ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData,
-                            ataCommandOptions->senseDataSize, 0);
+        ret = scsi_Send_Cdb(device, sunplusLowCDB, SUNPLUS_PT_CDB_LEN, ataCommandOptions->ptrData,
+                            ataCommandOptions->dataSize, ataCommandOptions->commandDirection,
+                            ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, 0);
         // get the RTFRs
         ret = get_RTFRs_From_Sunplus_Legacy(device, ataCommandOptions, ret);
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
