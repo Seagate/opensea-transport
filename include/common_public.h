@@ -744,6 +744,9 @@ extern "C"
         ATA_PASSTHROUGH_PROLIFIC,
         ATA_PASSTHROUGH_TI,
         ATA_PASSTHROUGH_NEC,
+        ATA_PASSTHROUGH_JMICRON,
+        ATA_PASSTHROUGH_JMICRON_PROLIFIC,
+        ATA_PASSTHROUGH_SUNPLUS,
         ATA_PASSTHROUGH_PSP, // Some PSP drives use this passthrough and others use SAT...it's not clear if this was
                              // ever even used. If testing for it, test it last.
         ATA_PASSTHROUGH_END_LEGACY_USB =
@@ -765,7 +768,8 @@ extern "C"
         NVME_PASSTHROUGH_ASMEDIA_BASIC = 102, // ASMedia command that is capable of only select commands. Must be after
                                               // full passthrough that way when trying one passthrough after another it
                                               // can properly find full capabilities before basic capabilities.
-        NVME_PASSTHROUGH_REALTEK = 103,
+        NVME_PASSTHROUGH_REALTEK       = 103,
+        NVME_PASSTHROUGH_REALTEK_BASIC = 104,
         // Add other vendor unique SCSI to NVMe passthrough here
         NVME_PASSTHROUGH_UNKNOWN,
         // No passthrough
@@ -1044,9 +1048,8 @@ extern "C"
                                // even if the target drive is 48bit
             bool noMultipleModeCommands; // This is to disable use read/write multiple commands if a bridge chip doesn't
                                          // handle them correctly.
-            // uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
-            uint32_t maxTransferLength; // ATA Passthrough max transfer length in bytes. This may be different than the
-                                        // scsi translation max.
+            uint32_t maxTransferLength;  // ATA Passthrough max transfer length in bytes. This may be different than the
+                                         // scsi translation max.
             bool limitedUseTPSIU; // This might work for certain other commands, but only identify device has been found
                                   // to show this. Using TPSIU on identify works as expected, but other data transfers
                                   // abort this.
@@ -1055,6 +1058,9 @@ extern "C"
             bool possilbyEmulatedNVMe; // realtek's USB to M.2 adapter can do AHCI or NVMe. Since nothing changes in IDs
                                        // and it emulates ATA identify data, need this to work around how it reports.
                                        // -TJE
+            bool retryWithJMicronPT;   // Needed for some JMicron adapters. Newer may support SAT, older support their
+                                       // lagacy passthrough, so this is to retry on these devices.
+            bool jmPTDevSet; // for JMicron's passthrough we need to set dev 0 or 1. This gets turned to true once set
         } ataPTHacks;
         // NVMe Hacks
         struct
@@ -2612,6 +2618,11 @@ extern "C"
     M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice* device);
 
     M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) bool setup_Passthrough_Hacks_By_ID(tDevice* device);
+
+    // This is exposed for retrying from SAT to Jmicron passthrough - TJE
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1)
+    bool set_JMicron_Legacy_PT_Hacks(tDevice* device);
 
 #if defined(_DEBUG)
     // This function is more for debugging than anything else!

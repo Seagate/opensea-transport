@@ -676,6 +676,7 @@
     <ClInclude Include="..\..\..\..\include\intel_rst_defs.h" />
     <ClInclude Include="..\..\..\..\include\intel_rst_helper.h" />
     <ClInclude Include="..\..\..\..\include\jmicron_nvme_helper.h" />
+    <ClInclude Include="..\..\..\..\include\jmicron_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\nec_legacy_helper.h" />
     <ClInclude Include="..\..\..\..\include\nvme_helper.h" />
     <ClInclude Include="..\..\..\..\include\nvme_helper_func.h" />
@@ -834,6 +835,7 @@
     <ClCompile Include="..\..\..\..\src\cypress_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\intel_rst_helper.c" />
     <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c" />
+    <ClCompile Include="..\..\..\..\src\jmicron_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\nec_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\nvme_cmds.c" />
     <ClCompile Include="..\..\..\..\src\nvme_helper.c" />

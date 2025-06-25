@@ -28,6 +28,7 @@
 #include "common_public.h"
 #include "csmi_legacy_pt_cdb_helper.h"
 #include "cypress_legacy_helper.h"
+#include "jmicron_legacy_helper.h"
 #include "nec_legacy_helper.h"
 #include "prolific_legacy_helper.h"
 #include "psp_legacy_helper.h"
@@ -60,6 +61,11 @@ eReturnValues ata_Passthrough_Command(tDevice* device, ataPassthroughCommand* at
         break;
     case ATA_PASSTHROUGH_CSMI:
         ret = send_CSMI_Legacy_ATA_Passthrough(device, ataCommandOptions);
+        break;
+    case ATA_PASSTHROUGH_JMICRON:
+        M_FALLTHROUGH;
+    case ATA_PASSTHROUGH_JMICRON_PROLIFIC:
+        ret = send_JMicron_Legacy_Passthrough_Command(device, ataCommandOptions);
         break;
     default:
         ret = BAD_PARAMETER;

@@ -99,6 +99,9 @@
     <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\src\jmicron_legacy_helper.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\src\asmedia_nvme_helper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -228,6 +231,9 @@
       <Filter>Header Files\vendor\seagate</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\jmicron_nvme_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\jmicron_legacy_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\asmedia_nvme_helper.h">
