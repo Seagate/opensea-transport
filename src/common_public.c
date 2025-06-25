@@ -5033,7 +5033,6 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
 // used this chip (Example: LaCie)
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-M_NODISCARD
 static bool set_Sunplus_Hacks(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5397,9 +5396,6 @@ static bool set_Maxtor_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
-M_NONNULL_PARAM_LIST(1)
-M_PARAM_RW(1)
-M_NODISCARD
 bool set_JMicron_Legacy_PT_Hacks(tDevice* device)
 {
     bool passthroughHacksSet = false;
