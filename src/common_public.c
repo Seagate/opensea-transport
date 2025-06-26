@@ -5406,10 +5406,11 @@ bool set_JMicron_Legacy_PT_Hacks(tDevice* device)
         passthroughHacksSet                                         = true;
         device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
         device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
-        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength                             = UINT16_MAX;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength                             = 65024;
         device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands                        = true;
-        // TODO: Not sure if this will support DMA mode commands or not.
-        //       There do not appear to be flags for the protocol, so it may be PIO only - TJE
+        // https://github.com/Seagate/openSeaChest/issues/197#issuecomment-3008133785
+        // output after implementing support shows DMA mode commands working from the automated test.
+        // odd that ATA passthrough is 1 sector less than 65536 in the testing.
         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
         device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
