@@ -99,6 +99,7 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)sata_helper_func.c\
 	$(SRC_DIR)raid_scan_helper.c\
 	$(SRC_DIR)sntl_helper.c\
+	$(SRC_DIR)jmicron_legacy_helper.c\
 	$(SRC_DIR)jmicron_nvme_helper.c\
 	$(SRC_DIR)asmedia_nvme_helper.c\
 	$(SRC_DIR)realtek_nvme_helper.c\
