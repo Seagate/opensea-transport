@@ -1671,7 +1671,7 @@ eReturnValues ata_Read_Stream_Ext(tDevice* device,
     }
     else
     {
-        ataCommandOptions = create_ata_dma_in_cmd(
+        ataCommandOptions = create_ata_pio_in_cmd(
             device, ATA_READ_STREAM_EXT, true,
             get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, true), ptrData,
             dataSize);
@@ -1963,7 +1963,7 @@ eReturnValues ata_Trusted_Receive(tDevice* device,
     else
     {
         ataCommandOptions =
-            create_ata_pio_in_cmd(device, ATA_PROTOCOL_PIO, false,
+            create_ata_pio_in_cmd(device, ATA_TRUSTED_RECEIVE, false,
                                   M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
     }
     ataCommandOptions.tfr.ErrorFeature = securityProtocol;
