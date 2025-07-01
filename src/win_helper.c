@@ -5898,24 +5898,26 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     }
                 }
 
+                // This feature is incomplete, so disabling it for now.
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                 if (checkForCSMI)
                 {
-#if defined(WIN_DEBUG)
+#    if defined(WIN_DEBUG)
                     printf("WIN: Additional CSMI check\n");
-#endif // WIN_DEBUG
+#    endif // WIN_DEBUG
                     if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE ||
                         SUCCESS == open_SCSI_SRB_Handle(device))
                     {
-#if defined(WIN_DEBUG)
+#    if defined(WIN_DEBUG)
                         printf("WIN: Looking for CSMI IO support\n");
-#endif // WIN_DEBUG
+#    endif // WIN_DEBUG
                         if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
                         {
-#if defined(WIN_DEBUG)
+#    if defined(WIN_DEBUG)
                             printf("WIN: Setting up CSMI capabilities\n");
-#endif // WIN_DEBUG
-       // open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work around
-       // other commands.
+#    endif // WIN_DEBUG
+           // open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work
+           // around other commands.
                             if (SUCCESS == jbod_Setup_CSMI_Info(
                                                device->os_info.scsiSRBHandle, device, 0,
                                                device->os_info.scsi_addr.PortNumber, device->os_info.scsi_addr.PathId,
@@ -5926,6 +5928,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                         }
                     }
                 }
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
 
                 // Fill in IDE for ATA interface so we can know based on scan output which passthrough may need
                 // debugging

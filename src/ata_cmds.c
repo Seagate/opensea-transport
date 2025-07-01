@@ -1147,7 +1147,7 @@ eReturnValues ata_Download_Microcode(tDevice*                   device,
         else
         {
             ataCommandOptions =
-                create_ata_dma_out_cmd(device, ATA_DOWNLOAD_MICROCODE_CMD, false, M_Byte0(blockCount), pData, dataLen);
+                create_ata_pio_out_cmd(device, ATA_DOWNLOAD_MICROCODE_CMD, false, M_Byte0(blockCount), pData, dataLen);
         }
         ataCommandOptions.tfr.ErrorFeature = C_CAST(uint8_t, subCommand);
         ataCommandOptions.tfr.LbaLow       = M_Byte1(blockCount);
