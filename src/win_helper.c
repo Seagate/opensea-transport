@@ -12321,11 +12321,13 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
     downloadActivate.Size    = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     downloadActivate.Flags |=
         STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER; // this command must go to the controller, not the namespace
-    ret = set_NVMe_Firmware_Activate_Flags(nvmeIoCtx, &downloadActivate.Flags);
+    uint32_t activateFlags = UINT32_C(0);
+    ret                    = set_NVMe_Firmware_Activate_Flags(nvmeIoCtx, &activateFlags);
     if (ret != SUCCESS)
     {
         return ret;
     }
+    downloadActivate.Flags |= M_STATIC_CAST(DWORD, activateFlags);
     downloadActivate.Slot = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
 #    if defined(_DEBUG)
     printf("%s: downloadActivate->Version=%ld\n\t->Size=%ld\n\t->Flags=0x%lX\n\t->Slot=%d\n", __FUNCTION__,
