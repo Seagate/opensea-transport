@@ -3249,6 +3249,18 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             //       this too, this will reduce commanmds sent to genuine SAT devices.
         }
 
+        // TODO: Try detection of SATA vs NVMe here? End of this function is also capable of this detection...
+        // realtek usb to nvme and usb to sata adapters
+        // if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
+        //{
+        //    // Realtek's 9210 adapter is currently the only one setting this flag and it gets set either by VID/PID or
+        //    inq data.
+        //    // So if this is set, we need to determine whether this is a SATA M.2 or a NVMe M.2 drive
+        //    // Both respond to passthrough ATA identify, with NVMe product info translated into place, however some
+        //    other ATA info
+        //    // will not be present at all, so we can use this to filter between the drives.
+        //}
+
         if (device->drive_info.interface_type == SCSI_INTERFACE &&
             is_Seagate_SAS_Vendor_ID(device->drive_info.T10_vendor_ident))
         {
@@ -3899,38 +3911,91 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             {
                 device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_REALTEK;
             }
-            // NOTE: It is OK if this fails since it will fall back to treating as SCSI
-            ret = fill_In_NVMe_Device_Info(device);
-            if (ret == SUCCESS && checkJMicronNVMe)
+            while (true)
             {
-                device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
-                device->drive_info.passThroughHacks.turfValue                             = 13;
-                device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported           = true; // set this so in
-                device->drive_info.drive_type                                             = NVME_DRIVE;
-                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
-                device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
-                device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
-                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
-                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
-                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
-                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
-                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages               = true;
-                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
-                device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
-                device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength         = UINT16_MAX;
-            }
-            else if (ret != SUCCESS && (checkJMicronNVMe || checkRealtekNVMe))
-            {
-                device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
-                ret = scsiRet; // do not fail here since this should otherwise be treated as a SCSI drive
-            }
-            else if (ret == SUCCESS)
-            {
-                device->drive_info.drive_type = NVME_DRIVE;
-            }
-            else
-            {
-                ret = scsiRet; // do not fail here since this should otherwise be treated as a SCSI drive
+                // NOTE: It is OK if this fails since it will fall back to treating as SCSI
+                ret = fill_In_NVMe_Device_Info(device);
+                if (ret == SUCCESS && checkJMicronNVMe)
+                {
+                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+                    device->drive_info.passThroughHacks.turfValue                             = 13;
+                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported           = true; // set this so in
+                    device->drive_info.drive_type                                             = NVME_DRIVE;
+                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
+                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
+                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noLogSubPages               = true;
+                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
+                    device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength         = UINT16_MAX;
+                }
+                else if (ret == SUCCESS && checkRealtekNVMe)
+                {
+                    if (device->drive_info.passThroughHacks.passthroughType == NVME_PASSTHROUGH_REALTEK_BASIC)
+                    {
+                        device->drive_info.drive_type                                           = NVME_DRIVE;
+                        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                        device->drive_info.passThroughHacks.turfValue                           = 34;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available       = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6             = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10            = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12            = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16            = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noLogPages                = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages             = true;
+                        device->drive_info.passThroughHacks.scsiHacks.noModeSubPages =
+                            true; // this supports some mode pages, but unable to test for subpages, so considering them
+                                  // not supported at this time -TJE
+                        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+                        // NOTE: Security protocol is supported according to online web page. I do not have a device
+                        // supporting security to test against at this time to see if INC512 is needed/required -TJE
+                        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported = true;
+                        // device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512 = true;
+                        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength                = 524288;
+                        device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage                     = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength              = UINT16_MAX;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController =
+                            true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace =
+                            true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage     = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures    = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest = false;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.format         = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive = true;
+                        device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend    = true;
+                        // unknown if format update commands work or not. Suspect they will but do not know where to put
+                        // cdw11 for offset when sending fw.-TJE
+                        // Note: Get features works with a data transfer, but cannot get dword results
+                        // TODO: Need to test for firmware update, format, and set features commands
+                    }
+                }
+                else if (ret != SUCCESS && (checkJMicronNVMe || checkRealtekNVMe))
+                {
+                    if (checkRealtekNVMe &&
+                        device->drive_info.passThroughHacks.passthroughType != NVME_PASSTHROUGH_REALTEK_BASIC)
+                    {
+                        // one time retry to basic passthrough mode
+                        device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_REALTEK_BASIC;
+                        continue;
+                    }
+                    device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                    ret = scsiRet; // do not fail here since this should otherwise be treated as a SCSI drive
+                }
+                else if (ret == SUCCESS)
+                {
+                    device->drive_info.drive_type = NVME_DRIVE;
+                }
+                else
+                {
+                    ret = scsiRet; // do not fail here since this should otherwise be treated as a SCSI drive
+                }
+                break;
             }
         }
     }
