@@ -3197,6 +3197,16 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                 device->os_info.fwdlIOsupport.fwdlIOSupported  = firmwareInfo->UpgradeSupport;
                 device->os_info.fwdlIOsupport.payloadAlignment = firmwareInfo->ImagePayloadAlignment;
                 device->os_info.fwdlIOsupport.maxXferSize      = firmwareInfo->ImagePayloadMaxSize;
+                device->os_info.fwdlIOsupport.activateSupport.switchToExisting = true;//always true
+                if (is_Windows_11_Version_22H2_Or_Higher())
+                {
+                    device->os_info.fwdlIOsupport.activateSupport.replaceExisting = true;
+                }
+                if (is_Windows_11_Version_24H2_Or_Higher())
+                {
+                    device->os_info.fwdlIOsupport.activateSupport.replaceAndSwitchReset = true;
+                    device->os_info.fwdlIOsupport.activateSupport.switchNoReset         = true;
+                }
 #        if defined(_DEBUG)
                 printf("Got Miniport V2 FWDL Info\n");
                 printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
@@ -4069,6 +4079,67 @@ static eReturnValues dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG retur
     return ret;
 }
 
+// nvmeIoCtx to get the cmd dwords to evaluate
+// current flags to preserve existing flags....new ones are or'd to this value
+eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* nvmeIoCtx, uint32_t *currentFlags)
+{
+    eReturnValues ret            = SUCCESS;
+    nvmeFWCommitAction activateAction = M_STATIC_CAST(nvmeFWCommitAction, get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3));
+    DISABLE_NONNULL_COMPARE
+    if (nvmeIoCtx == M_NULLPTR || currentFlags == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
+    RESTORE_NONNULL_COMPARE
+    switch (activateAction)
+    {
+    case NVME_CA_REPLACE_NOT_ACTIVITED:
+        // 10.0.22621.0
+        if (is_Windows_11_Version_22H2_Or_Higher())
+        {
+            *currentFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_EXISTING_IMAGE;
+        }
+        else
+        {
+            ret = OS_COMMAND_NOT_AVAILABLE;
+        }
+        break;
+    case NVME_CA_REPLACE_ACTIVITE_ON_RST:
+        // 10.0.26100.0
+        if (is_Windows_11_Version_24H2_Or_Higher())
+        {
+            *currentFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_AND_SWITCH_UPON_RESET;
+        }
+        else
+        {
+            ret = OS_COMMAND_NOT_AVAILABLE;
+        }
+        break;
+    case NVME_CA_ACTIVITE_ON_RST:
+        // supported on all versions
+        *currentFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
+        break;
+    case NVME_CA_ACTIVITE_IMMEDIATE:
+        // 10.0.26100.0
+        if (is_Windows_11_Version_24H2_Or_Higher())
+        {
+            *currentFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_FIRMWARE_WITHOUT_RESET;
+        }
+        else
+        {
+            ret = OS_COMMAND_NOT_AVAILABLE;
+        }
+        break;
+    case NVME_CA_RESERVED_4:
+    case NVME_CA_RESERVED_5:
+    case NVME_CA_DOWNLOAD_REP_BOOT_PART_W_PART_ID:
+    case NVME_CA_MARK_BOOT_PART_AS_ACTIVE:
+        ret = OS_COMMAND_NOT_AVAILABLE;
+        break;
+    }
+    return ret;
+}
+
 static eReturnValues send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = NOT_SUPPORTED;
@@ -4189,20 +4260,15 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
         {
             uint32_t returnCode     = UINT32_C(0);
             uint32_t fwdlFlags      = FIRMWARE_REQUEST_FLAG_CONTROLLER; // start with this, but may need other flags
-            uint8_t  activateAction = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
             // Setup input values
             firmwareActivate->Version        = STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION;
             firmwareActivate->Size           = sizeof(STORAGE_FIRMWARE_ACTIVATE);
             firmwareActivate->SlotToActivate = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
-            if (activateAction == NVME_CA_ACTIVITE_ON_RST ||
-                activateAction == NVME_CA_ACTIVITE_IMMEDIATE) // check the activate action
+            ret = set_NVMe_Firmware_Activate_Flags(nvmeIoCtx, &fwdlFlags);
+            if (SUCCESS != ret)
             {
-                // Activate actions 2, & 3 sound like the closest match to this flag. Each of these requests switching
-                // to the a firmware already on the drive. Activate action 0 & 1 say to replace a firmware image in a
-                // specified slot (and to or not to activate).
-                fwdlFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
+                return ret;
             }
-
             // Issue the minport IOCTL
             ret = send_Win_Firmware_Miniport_Command(
                 nvmeIoCtx->device->os_info.fd, nvmeIoCtx->device->deviceVerbosity, firmwareActivate,
@@ -8295,7 +8361,16 @@ eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busT
         device->os_info.fwdlIOsupport.fwdlIOSupported  = fwdlSupportedInfo->SupportUpgrade;
         device->os_info.fwdlIOsupport.payloadAlignment = fwdlSupportedInfo->ImagePayloadAlignment;
         device->os_info.fwdlIOsupport.maxXferSize      = fwdlSupportedInfo->ImagePayloadMaxSize;
-
+        device->os_info.fwdlIOsupport.activateSupport.switchToExisting = true; // always true
+        if (is_Windows_11_Version_22H2_Or_Higher())
+        {
+            device->os_info.fwdlIOsupport.activateSupport.replaceExisting = true;
+        }
+        if (is_Windows_11_Version_24H2_Or_Higher())
+        {
+            device->os_info.fwdlIOsupport.activateSupport.replaceAndSwitchReset = true;
+            device->os_info.fwdlIOsupport.activateSupport.switchNoReset         = true;
+        }
 #    if defined(_DEBUG)
         printf("Got Win10 FWDL Info\n");
         printf("\tSupported: %d\n", fwdlSupportedInfo->SupportUpgrade);
@@ -12244,16 +12319,12 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
     safe_memset(&downloadActivate, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE), 0, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
     downloadActivate.Version = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     downloadActivate.Size    = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
-    uint8_t activateAction   = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3);
     downloadActivate.Flags |=
         STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER; // this command must go to the controller, not the namespace
-    if (activateAction == NVME_CA_ACTIVITE_ON_RST ||
-        activateAction == NVME_CA_ACTIVITE_IMMEDIATE) // check the activate action
+    ret = set_NVMe_Firmware_Activate_Flags(nvmeIoCtx, &downloadActivate.Flags);
+    if (ret != SUCCESS)
     {
-        // Activate actions 2, & 3 sound like the closest match to this flag. Each of these requests switching to the a
-        // firmware already on the drive. Activate action 0 & 1 say to replace a firmware image in a specified slot (and
-        // to or not to activate).
-        downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
+        return ret;
     }
     downloadActivate.Slot = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
 #    if defined(_DEBUG)
