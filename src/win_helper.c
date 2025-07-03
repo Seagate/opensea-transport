@@ -4110,10 +4110,8 @@ eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* nvmeIoCtx, uint32_t *
         {
             *currentFlags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_AND_SWITCH_UPON_RESET;
         }
-        else
-        {
-            ret = OS_COMMAND_NOT_AVAILABLE;
-        }
+        // NOTE: No else here because this is the default action in Win10, so we do not want to
+        // return an error.
         break;
     case NVME_CA_ACTIVITE_ON_RST:
         // supported on all versions
