@@ -415,54 +415,59 @@ static eReturnValues nvme_Firmware_Download_Command(tDevice*      device,
             // For windows we are limited by the update API.
             // This is stored in tDevice so we can use it, plus the drive supported actions to make a choice
             bool supportActivateNoReset = false;
-            if (device->os_info.fwdlIOsupport.activateSupport.switchNoReset &&
-                device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
+            if (device->os_info.fwdlIOsupport.fwdlIOSupported)
             {
-                supportActivateNoReset = true;
-            }
-            if (existingImage)
-            {
-                if (supportActivateNoReset)
+                if (device->os_info.fwdlIOsupport.activateSupport.switchNoReset &&
+                    device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
                 {
-                    nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
+                    supportActivateNoReset = true;
                 }
-                else
-                {
-                    nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
-                }
-            }
-            else
-            {
-                // NOTE: Windows 11 24H2 SHOULD accept this, but if we run into issues
-                //       switch to the replace, activate on reset instead - TJE
-                if (supportActivateNoReset)
-                {
-                    nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
-                }
-                else
-                {
-                    nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
-                }
-            }
-#else // !_WIN32
-            if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
-            {
-                // this activate action can be used for replacing or activating existing images if the controller
-                // supports it.
-                nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
-            }
-            else
-            {
                 if (existingImage)
                 {
-                    nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
+                    if (supportActivateNoReset)
+                    {
+                        nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
+                    }
+                    else
+                    {
+                        nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
+                    }
                 }
                 else
                 {
-                    nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+                    // NOTE: Windows 11 24H2 SHOULD accept this, but if we run into issues
+                    //       switch to the replace, activate on reset instead - TJE
+                    if (supportActivateNoReset)
+                    {
+                        nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
+                    }
+                    else
+                    {
+                        nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+                    }
                 }
             }
+            else
 #endif // _WIN32
+            {
+                if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
+                {
+                    // this activate action can be used for replacing or activating existing images if the controller
+                    // supports it.
+                    nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
+                }
+                else
+                {
+                    if (existingImage)
+                    {
+                        nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
+                    }
+                    else
+                    {
+                        nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+                    }
+                }
+            }
         }
         ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
         if (ret == SUCCESS &&
