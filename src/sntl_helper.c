@@ -1954,7 +1954,6 @@ static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(tDevice *device, 
         uint8_t  flbas  = get_bit_range_uint8(device->drive_info.IdentifyData.nvme.ns.flbas, 3, 0);
         if (NVME_0_BASED(device->drive_info.IdentifyData.nvme.ns.nlbaf) > 16)
         {
-        {
             //need to append 2 more bits to interpret this correctly since number of formats > 16
             flbas |= M_GETBITRANGE(6, 5, device->drive_info.IdentifyData.nvme.ns.flbas) << 4;
         }

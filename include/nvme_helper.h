@@ -499,6 +499,8 @@ extern "C"
         NVME_CA_REPLACE_ACTIVITE_ON_RST = 1,
         NVME_CA_ACTIVITE_ON_RST = 2,
         NVME_CA_ACTIVITE_IMMEDIATE = 3,
+        NVME_CA_RESERVED_4 = 4,
+        NVME_CA_RESERVED_5 = 5,
         NVME_CA_DOWNLOAD_REP_BOOT_PART_W_PART_ID    = 6,
         NVME_CA_MARK_BOOT_PART_AS_ACTIVE    = 7
     } nvmeFWCommitAction;

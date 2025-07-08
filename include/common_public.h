@@ -1180,125 +1180,185 @@ extern "C"
                 uint32_t namespaceID;
             }nvme;
             uint8_t raw[24];
-        }address;
-        uint16_t            controllerNum;//used to figure out which controller the above address applies to.
-        uint8_t paddUEFIAddr[2];
-        #elif defined (__linux__)
-        #if defined(VMK_CROSS_COMP)
-        /**
-         * In VMWare we discover or send IOCTL to NVMe throught NDDK. 
-         * So we will need 2 different handle for NVMe_IO and SG_IO 
-         * 
-         * @author 521852 (8/27/2018)
-         */
-        int                 fd;
-        struct nvme_handle *nvmeFd;
-        #else
-        int                 fd;//primary handle
-        #endif
-        bool                scsiAddressValid;//will be true if the SCSI address is a valid address
-        struct {
-            uint8_t         host;//AKA SCSI adapter #
-            uint8_t         channel;//AKA bus
-            uint8_t         target;//AKA id number
-            uint8_t         lun;//logical unit number
-        }scsiAddress;
-        bool                secondHandleValid;//must be true for remaining fields to be used.
-        char                secondName[OS_SECOND_HANDLE_NAME_LENGTH];
-        char                secondFriendlyName[OS_SECOND_HANDLE_NAME_LENGTH];
-        bool                secondHandleOpened;
-        #if defined(VMK_CROSS_COMP)
-        /**
-         * In VMWare we discover or send IOCTL to NVMe throught NDDK. 
-         * So we will need 2 different handle for NVMe_IO and SG_IO 
-         * 
-         * @author 521852 (8/27/2018)
-         */
-        int                 fd2;
-        struct nvme_handle *nvmeFd2;
-        #else
-        int                 fd2;//secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
-        #endif
-        struct {
-            bool            driverVersionValid;
-            uint8_t         majorVersion;
-            uint8_t         minorVersion;
-            uint8_t         revision;
-        }sgDriverVersion;
-        #if defined(VMK_CROSS_COMP)
-        uint8_t paddSG[35];//TODO: need to change this based on size of NVMe handle for VMWare.
-        #else
-        uint8_t paddSG[35];
-        #endif
-        #elif defined (_WIN32)
-        HANDLE              fd;
-        HANDLE              scsiSRBHandle;//To support for SCSI SRB IOCTLs (miniport) that use this same handle type (\\.\SCSI<pathId>:)
-        SCSI_ADDRESS        scsi_addr;
-        uint32_t            os_drive_number;
-        int                 srbtype; //this will be used to filter when a controller supports the new SCSI PassThrough EX IOCTLs
-        unsigned long       alignmentMask;//save the alignment mask. This may be needed on some controllers....not currently used but SHOULD be added later for the SCSI IOCTL DIRECT EX
-        eWindowsIOCTLType   ioType;//This will be set during get_Device so we know how to talk to the drive (Mostly for ATA). Only change this if you know what you're doing.
-        eWindowsIOCTLMethod ioMethod;//Use this to force using DIRECT or Double Buffered IOCTLs for each command. By default the library will decide...typically 16KiB or less will use double buffered for compatibility purposes. This is ignored for IDE and SMART IOCTLs since they are only double buffered.
-        struct {
-            bool smartIOSupported;//if this is false, nothing below this is valid. This just tracks whether the SMART IO is available or not. it will only be set when other ATA Pass-through methods fail. - TJE
-            bool ataIDsupported;//EC command can be sent through this IO
-            bool atapiIDsupported;//A1 command can be sent through this IO
-            bool smartSupported;//B0 command can be sent through this IO
-            uint8_t deviceBitmap;//This specifies which channel the drive is on (PATA)...might need this for sending this IO on some legacy systems. See bIDEDeviceMap here https://msdn.microsoft.com/en-us/library/windows/hardware/ff554977(v=vs.85).aspx
-        }winSMARTCmdSupport;
-        struct {
-            bool fwdlIOSupported;
-            bool allowFlexibleUseOfAPI;//Set this to true to allow using the Win10 API for FWDL for any compatible download commands. If this is false, the Win10 API will only be used on IDE_INTERFACE for an ATA download command and SCSI interface for a supported Write buffer command. If true, it will be used regardless of which command the caller is using. This is useful for pure FW updates versus testing a specific condition.
-            uint32_t payloadAlignment; //From MSDN: The alignment of the image payload, in number of bytes. The maximum is PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at least sector size. When this value is set to 0, this means that this value is invalid.
-            uint32_t maxXferSize; //From MSDN: The image payload maximum size, this is used for a single command
-            //expand this struct if we need other data when we check for firmware download support on a device.
-        }fwdlIOsupport;
-        uint32_t adapterMaxTransferSize;//Bytes. Returned by querying for adapter properties. Can be used to know when trying to request more than the adapter or driver supports.
-        bool openFabricsNVMePassthroughSupported;//If true, then nvme commands can be issued using the open fabrics NVMe passthrough IOCTL
-        bool intelNVMePassthroughSupported;//if true, this is a device that supports intel's nvme passthrough, but doesn't show up as full features with CSMI as expected otherwise.
-        bool fwdlMiniportSupported;//Miniport IOCTL for FWDL is supported. This should be in the structure above, but it is here for compatibility at this time - TJE
-        HANDLE forceUnitAccessRWfd;//used for os_read and os_Write when using the force unit access option
-        uint32_t volumeBitField;//This is a bitfield that is stored to prevent rereading, mounting, waking all systems on the system. Since we read this up front, this will be stored so taht each partition on a device can be unmouted later if necessary. - TJE
-        uint8_t adapterDescBusType;//bus type reported in adapter descriptor
-        uint8_t deviceDescBusType;//bus type reported in the device descriptor
-        //TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that MAX_DEVICE_ID_LEN characters. (This is defined as 200)
-        //padding to keep same size as other OSs. This is to keep things similar across OSs.
-        //Variable sizes based on 32 vs 64bit since handle is a void*
-        #if defined (_WIN64)
-            uint8_t paddWin[32];
-        #else
-            uint8_t paddWin[44];
-        #endif //Win64 for padding
-        #elif defined (__FreeBSD__)
-        int fd;//used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but kept here just in case)
-        struct cam_device *cam_dev;//holds fd inside for CAM devices among other information
-        #if defined (__x86_64__) || defined (__amd64__) || defined (__aarch64__) || defined (__ia64__) || defined (__itanium__) || defined (__powerpc64__) || defined (__ppc64__) || defined (__spark__)
-            uint8_t freeBSDPadding[102];//padding on 64bit OS
-        #else
-            uint8_t freeBSDPadding[106];//padding on 32bit OS
-        #endif
-        #elif defined (_AIX)
-        int fd;//rhdisk handle
-        int ctrlfd;//handle to the controller (required for NVMe, may not be used for SCSI/SATA)
-        bool ctrlfdValid;
-        bool diagnosticModeFlagInUse;//handle was opened with the diagnostic mode flag set, which allows some other IOCTLs which require this flag-TJE
-        uint64_t scsiID;
-        uint64_t lunID;//nvme namespace for NVME devices-TJE
-        eAIXPassthroughType ptType;//used to route the command to the correct passthrough for the device/controller combination
-        eAIXAdapterType adapterType;//can be helpful as there are some minor differences in required fields between adapter types
-        uint32_t maxXferLength;//maximum transfer length that was reported by the controller
-        uint8_t aixPadding[76];//padding the structure out to keep same size as other OSs
-        #else //OS preprocessor checks
-        int                 fd;//some other nix system that only needs a integer file handle
-        uint8_t otherPadd[110];
-        #endif //OS preprocessor checks
-        bool                osReadWriteRecommended;//This will be set to true when it is recommended that OS read/write calls are used instead of IO read/write (typically when using SMART or IDE IOCTLs in Windows since they may not work right for read/write)
-        unsigned int        last_error; // errno in Linux or GetLastError in Windows.
-        struct {
-            bool fileSystemInfoValid;//This must be set to true for the other bools to have any meaning. This is here because some OS's may not have support for detecting this information
-            union {
-                bool hasFileSystem;//[deprecated], use the hasActiveFileSystem below. This will only be true for filesystems the current OS can detect. Ex: Windows will only set this for mounted volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem types since it can handle more than Windows by default
-                bool hasActiveFileSystem;//This is a bit more clear that the filesystem detected was mounted and is in use within the OS.
+        } address;
+        uint16_t controllerNum; // used to figure out which controller the above address applies to.
+        uint8_t  paddUEFIAddr[2];
+#elif defined(__linux__)
+#    if defined(VMK_CROSS_COMP)
+    /**
+     * In VMWare we discover or send IOCTL to NVMe throught NDDK.
+     * So we will need 2 different handle for NVMe_IO and SG_IO
+     *
+     * @author 521852 (8/27/2018)
+     */
+    int                 fd;
+    struct nvme_handle* nvmeFd;
+#    else
+    int fd; // primary handle
+#    endif
+    bool scsiAddressValid; // will be true if the SCSI address is a valid address
+    struct
+    {
+        uint8_t host;    // AKA SCSI adapter #
+        uint8_t channel; // AKA bus
+        uint8_t target;  // AKA id number
+        uint8_t lun;     // logical unit number
+    } scsiAddress;
+    bool secondHandleValid; // must be true for remaining fields to be used.
+    char secondName[OS_SECOND_HANDLE_NAME_LENGTH];
+    char secondFriendlyName[OS_SECOND_HANDLE_NAME_LENGTH];
+    bool secondHandleOpened;
+#    if defined(VMK_CROSS_COMP)
+    /**
+     * In VMWare we discover or send IOCTL to NVMe throught NDDK.
+     * So we will need 2 different handle for NVMe_IO and SG_IO
+     *
+     * @author 521852 (8/27/2018)
+     */
+    int                 fd2;
+    struct nvme_handle* nvmeFd2;
+#    else
+    int fd2; // secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
+#    endif
+    struct
+    {
+        bool    driverVersionValid;
+        uint8_t majorVersion;
+        uint8_t minorVersion;
+        uint8_t revision;
+    } sgDriverVersion;
+#    if defined(VMK_CROSS_COMP)
+    uint8_t paddSG[35]; // TODO: need to change this based on size of NVMe handle for VMWare.
+#    else
+    uint8_t paddSG[35];
+#    endif
+#elif defined(_WIN32)
+    HANDLE fd;
+    HANDLE scsiSRBHandle; // To support for SCSI SRB IOCTLs (miniport) that use this same handle type
+                          // (\\.\SCSI<pathId>:)
+    SCSI_ADDRESS  scsi_addr;
+    uint32_t      os_drive_number;
+    int           srbtype; // this will be used to filter when a controller supports the new SCSI PassThrough EX IOCTLs
+    unsigned long alignmentMask; // save the alignment mask. This may be needed on some controllers....not currently
+                                 // used but SHOULD be added later for the SCSI IOCTL DIRECT EX
+    eWindowsIOCTLType ioType;    // This will be set during get_Device so we know how to talk to the drive (Mostly for
+                                 // ATA). Only change this if you know what you're doing.
+    eWindowsIOCTLMethod
+        ioMethod; // Use this to force using DIRECT or Double Buffered IOCTLs for each command. By default the library
+                  // will decide...typically 16KiB or less will use double buffered for compatibility purposes. This is
+                  // ignored for IDE and SMART IOCTLs since they are only double buffered.
+    struct
+    {
+        bool
+            smartIOSupported; // if this is false, nothing below this is valid. This just tracks whether the SMART IO is
+                              // available or not. it will only be set when other ATA Pass-through methods fail. - TJE
+        bool    ataIDsupported;   // EC command can be sent through this IO
+        bool    atapiIDsupported; // A1 command can be sent through this IO
+        bool    smartSupported;   // B0 command can be sent through this IO
+        uint8_t deviceBitmap; // This specifies which channel the drive is on (PATA)...might need this for sending this
+                              // IO on some legacy systems. See bIDEDeviceMap here
+                              // https://msdn.microsoft.com/en-us/library/windows/hardware/ff554977(v=vs.85).aspx
+    } winSMARTCmdSupport;
+    struct
+    {
+        bool fwdlIOSupported;
+        bool
+            allowFlexibleUseOfAPI; // Set this to true to allow using the Win10 API for FWDL for any compatible download
+                                   // commands. If this is false, the Win10 API will only be used on IDE_INTERFACE for
+                                   // an ATA download command and SCSI interface for a supported Write buffer command.
+                                   // If true, it will be used regardless of which command the caller is using. This is
+                                   // useful for pure FW updates versus testing a specific condition.
+        uint32_t
+            payloadAlignment; // From MSDN: The alignment of the image payload, in number of bytes. The maximum is
+                              // PAGE_SIZE. The transfer size is a mutliple of this size. Some protocols require at
+                              // least sector size. When this value is set to 0, this means that this value is invalid.
+        uint32_t maxXferSize; // From MSDN: The image payload maximum size, this is used for a single command
+        // expand this struct if we need other data when we check for firmware download support on a device.
+        struct
+        {
+            bool switchNoReset;// 10.0.26100.0
+            bool replaceAndSwitchReset;// 10.0.26100.0
+            bool replaceExisting;// 10.0.22621.0
+            bool switchToExisting;// always true
+        } activateSupport;
+    } fwdlIOsupport;
+    uint32_t adapterMaxTransferSize; // Bytes. Returned by querying for adapter properties. Can be used to know when
+                                     // trying to request more than the adapter or driver supports.
+    bool openFabricsNVMePassthroughSupported; // If true, then nvme commands can be issued using the open fabrics NVMe
+                                              // passthrough IOCTL
+    bool intelNVMePassthroughSupported; // if true, this is a device that supports intel's nvme passthrough, but doesn't
+                                        // show up as full features with CSMI as expected otherwise.
+    bool fwdlMiniportSupported;   // Miniport IOCTL for FWDL is supported. This should be in the structure above, but it
+                                  // is here for compatibility at this time - TJE
+    HANDLE   forceUnitAccessRWfd; // used for os_read and os_Write when using the force unit access option
+    uint32_t volumeBitField; // This is a bitfield that is stored to prevent rereading, mounting, waking all systems on
+                             // the system. Since we read this up front, this will be stored so taht each partition on a
+                             // device can be unmouted later if necessary. - TJE
+    uint8_t adapterDescBusType; // bus type reported in adapter descriptor
+    uint8_t deviceDescBusType;  // bus type reported in the device descriptor
+// TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that
+// MAX_DEVICE_ID_LEN characters. (This is defined as 200) padding to keep same size as other OSs. This is to keep things
+// similar across OSs. Variable sizes based on 32 vs 64bit since handle is a void*
+#    if defined(_WIN64)
+    uint8_t paddWin[32];
+#    else
+    uint8_t paddWin[44];
+#    endif // Win64 for padding
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
+    int fd; // used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but
+            // kept here just in case)
+    struct cam_device* cam_dev; // holds fd inside for CAM devices among other information
+#    if defined(__x86_64__) || defined(__amd64__) || defined(__aarch64__) || defined(__ia64__) ||                      \
+        defined(__itanium__) || defined(__powerpc64__) || defined(__ppc64__) || defined(__spark__)
+    uint8_t freeBSDPadding[102]; // padding on 64bit OS
+#    else
+    uint8_t freeBSDPadding[106]; // padding on 32bit OS
+#    endif
+#elif defined(_AIX)
+    int  fd;     // rhdisk handle
+    int  ctrlfd; // handle to the controller (required for NVMe, may not be used for SCSI/SATA)
+    bool ctrlfdValid;
+    bool diagnosticModeFlagInUse; // handle was opened with the diagnostic mode flag set, which allows some other IOCTLs
+                                  // which require this flag-TJE
+    uint64_t scsiID;
+    uint64_t lunID; // nvme namespace for NVME devices-TJE
+    eAIXPassthroughType
+        ptType; // used to route the command to the correct passthrough for the device/controller combination
+    eAIXAdapterType
+             adapterType; // can be helpful as there are some minor differences in required fields between adapter types
+    uint32_t maxXferLength;  // maximum transfer length that was reported by the controller
+    uint8_t  aixPadding[76]; // padding the structure out to keep same size as other OSs
+#elif defined(__sun)
+    int      fd;
+    uint32_t adapterMaxTransferSize;
+    uint8_t  otherPadd[106];
+#elif defined(__NetBSD__) || defined(__OpenBSD__)
+    int                 fd;
+    eBSDPassthroughType passthroughType;
+    int                 addresstype;
+    int                 bus;
+    int                 target;
+    int                 lun;
+#else                                // OS preprocessor checks
+    int     fd; // some other nix system that only needs a integer file handle
+    uint8_t otherPadd[110];
+#endif                               // OS preprocessor checks
+        bool osReadWriteRecommended; // This will be set to true when it is recommended that OS read/write calls are
+                                     // used instead of IO read/write (typically when using SMART or IDE IOCTLs in
+                                     // Windows since they may not work right for read/write)
+        unsigned int last_error;
+        struct
+        {
+            bool fileSystemInfoValid; // This must be set to true for the other bools to have any meaning. This is here
+                                      // because some OS's may not have support for detecting this information
+            union
+            {
+                bool hasFileSystem; //[deprecated], use the hasActiveFileSystem below. This will only be true for
+                                    // filesystems the current OS can detect. Ex: Windows will only set this for mounted
+                                    // volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem
+                                    // types since it can handle more than Windows by default
+                bool hasActiveFileSystem; // This is a bit more clear that the filesystem detected was mounted and is in
+                                          // use within the OS.
             };
             bool isSystemDisk;//This will be set if the drive has a file system and the OS is running off of it. Ex: Windows' C:\Windows\System32, Linux's / & /boot, etc
         }fileSystemInfo;
