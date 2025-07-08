@@ -38,6 +38,49 @@ extern "C"
 #    endif
 #endif
 
+//
+// Indicate that the existing firmware in slot should be activated immediately without
+// controller reset. Only valid for IOCTL_STORAGE_FIRMWARE_ACTIVATE.
+//
+// added in 10.0.26100.0
+#if !defined(STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_FIRMWARE_WITHOUT_RESET)
+#define STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_FIRMWARE_WITHOUT_RESET 0x10000000
+    #endif
+
+//
+// Indicate that any existing firmware in slot should be replaced with the downloaded image,
+// and activated with controller reset. Only valid for IOCTL_STORAGE_FIRMWARE_ACTIVATE.
+//
+// added in 10.0.26100.0
+#if !defined(STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_AND_SWITCH_UPON_RESET)
+#define STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_AND_SWITCH_UPON_RESET 0x20000000
+    #endif
+
+//
+// Indicate that any existing firmware in slot should be replaced with the downloaded image.
+// Only valid for IOCTL_STORAGE_FIRMWARE_ACTIVATE.
+//
+//added in 10.0.22621.0
+#if !defined(STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_EXISTING_IMAGE)
+#define STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_EXISTING_IMAGE 0x40000000
+    #endif
+
+//
+// Indicate that the existing firmware in slot should be activated with a controller reset.
+// Only valid for IOCTL_STORAGE_FIRMWARE_ACTIVATE.
+//
+#if !defined(STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE)
+#define STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE 0x80000000
+#endif
+
+    // Used internally to set the flags above for the new firmware update IOCTL.
+    // NOTE: This versions checks win10/11 to determine when the requested mode is supporetd.
+    // If not supported, it returns OS_COMMAND_NOT_AVAILABLE
+    M_NONNULL_PARAM_LIST(1, 2)
+    M_PARAM_RW(1)
+    M_PARAM_RW(2)
+    eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* nvmeIoCtx, uint32_t* currentFlags);
+
 #define WIN_SCSI_SRB       "\\\\.\\SCSI" // can be used to issue mini port ioctls. Not really supported right now...
 #define WIN_PHYSICAL_DRIVE "\\\\.\\PhysicalDrive"
 #define WIN_TAPE_DRIVE     "\\\\.\\Tape"
