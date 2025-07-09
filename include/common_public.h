@@ -1445,10 +1445,10 @@ extern "C"
         // expand this struct if we need other data when we check for firmware download support on a device.
         struct
         {
-            bool switchNoReset;// 10.0.26100.0
-            bool replaceAndSwitchReset;// 10.0.26100.0
-            bool replaceExisting;// 10.0.22621.0
-            bool switchToExisting;// always true
+            bool switchNoReset;         // 10.0.26100.0
+            bool replaceAndSwitchReset; // 10.0.26100.0
+            bool replaceExisting;       // 10.0.22621.0
+            bool switchToExisting;      // always true
         } activateSupport;
     } fwdlIOsupport;
     uint32_t adapterMaxTransferSize; // Bytes. Returned by querying for adapter properties. Can be used to know when

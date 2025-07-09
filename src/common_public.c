@@ -5799,8 +5799,8 @@ static bool set_Cypress_USB_Hacks_By_PID(tDevice* device)
     case 0x6830: // CY7C68300(A|B|C) USB to ATA adapter
     case 0x6831: // ISD-300LP
         // based on revision 0000h
-        passthroughHacksSet                                 = true;
-        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
+        passthroughHacksSet                                                     = true;
+        device->drive_info.passThroughHacks.passthroughType                     = ATA_PASSTHROUGH_CYPRESS;
         passthroughHacksSet                                                     = true;
         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
         device->drive_info.passThroughHacks.turfValue                           = 6;
@@ -5843,23 +5843,23 @@ static bool set_TI_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
         break;
     case 0x9261: // TUSB926x
-        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
-        passthroughHacksSet                                                       = true;
-        //device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
-        //device->drive_info.passThroughHacks.turfValue                             = 14;
+        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+        passthroughHacksSet                                 = true;
+        // device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        // device->drive_info.passThroughHacks.turfValue                             = 14;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
-        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR = true;
-        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = true;
-        device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked = true;
-        device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported = false;
-        device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
-        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
-        device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
-        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
-        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
-        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 65536;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported   = true;
+        device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked                   = true;
+        device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported                 = false;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                     = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noModeSubPages                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations    = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available            = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16                 = true;
         break;
     default: // unknown
         break;

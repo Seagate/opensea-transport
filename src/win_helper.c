@@ -3193,11 +3193,11 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                                                      &returnCode, &device->os_info.last_error, M_NULLPTR);
             if (ret == SUCCESS)
             {
-                device->os_info.fwdlMiniportSupported          = true;
-                device->os_info.fwdlIOsupport.fwdlIOSupported  = firmwareInfo->UpgradeSupport;
-                device->os_info.fwdlIOsupport.payloadAlignment = firmwareInfo->ImagePayloadAlignment;
-                device->os_info.fwdlIOsupport.maxXferSize      = firmwareInfo->ImagePayloadMaxSize;
-                device->os_info.fwdlIOsupport.activateSupport.switchToExisting = true;//always true
+                device->os_info.fwdlMiniportSupported                          = true;
+                device->os_info.fwdlIOsupport.fwdlIOSupported                  = firmwareInfo->UpgradeSupport;
+                device->os_info.fwdlIOsupport.payloadAlignment                 = firmwareInfo->ImagePayloadAlignment;
+                device->os_info.fwdlIOsupport.maxXferSize                      = firmwareInfo->ImagePayloadMaxSize;
+                device->os_info.fwdlIOsupport.activateSupport.switchToExisting = true; // always true
                 if (is_Windows_11_Version_22H2_Or_Higher())
                 {
                     device->os_info.fwdlIOsupport.activateSupport.replaceExisting = true;
@@ -4081,10 +4081,11 @@ static eReturnValues dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG retur
 
 // nvmeIoCtx to get the cmd dwords to evaluate
 // current flags to preserve existing flags....new ones are or'd to this value
-eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* nvmeIoCtx, uint32_t *currentFlags)
+eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* nvmeIoCtx, uint32_t* currentFlags)
 {
-    eReturnValues ret            = SUCCESS;
-    nvmeFWCommitAction activateAction = M_STATIC_CAST(nvmeFWCommitAction, get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3));
+    eReturnValues      ret = SUCCESS;
+    nvmeFWCommitAction activateAction =
+        M_STATIC_CAST(nvmeFWCommitAction, get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3));
     DISABLE_NONNULL_COMPARE
     if (nvmeIoCtx == M_NULLPTR || currentFlags == M_NULLPTR)
     {
@@ -4256,13 +4257,13 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
             M_REINTERPRET_CAST(PSTORAGE_FIRMWARE_ACTIVATE, safe_calloc(firmwareActivateLength, sizeof(UCHAR)));
         if (firmwareActivate)
         {
-            uint32_t returnCode     = UINT32_C(0);
-            uint32_t fwdlFlags      = FIRMWARE_REQUEST_FLAG_CONTROLLER; // start with this, but may need other flags
+            uint32_t returnCode = UINT32_C(0);
+            uint32_t fwdlFlags  = FIRMWARE_REQUEST_FLAG_CONTROLLER; // start with this, but may need other flags
             // Setup input values
             firmwareActivate->Version        = STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION;
             firmwareActivate->Size           = sizeof(STORAGE_FIRMWARE_ACTIVATE);
             firmwareActivate->SlotToActivate = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
-            ret = set_NVMe_Firmware_Activate_Flags(nvmeIoCtx, &fwdlFlags);
+            ret                              = set_NVMe_Firmware_Activate_Flags(nvmeIoCtx, &fwdlFlags);
             if (SUCCESS != ret)
             {
                 return ret;
@@ -8355,10 +8356,10 @@ eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busT
     // Got the version info, but that doesn't mean we'll be successful with commands...
     if (fwdlRet)
     {
-        PSTORAGE_HW_FIRMWARE_INFO fwdlSupportedInfo    = C_CAST(PSTORAGE_HW_FIRMWARE_INFO, outputData);
-        device->os_info.fwdlIOsupport.fwdlIOSupported  = fwdlSupportedInfo->SupportUpgrade;
-        device->os_info.fwdlIOsupport.payloadAlignment = fwdlSupportedInfo->ImagePayloadAlignment;
-        device->os_info.fwdlIOsupport.maxXferSize      = fwdlSupportedInfo->ImagePayloadMaxSize;
+        PSTORAGE_HW_FIRMWARE_INFO fwdlSupportedInfo                    = C_CAST(PSTORAGE_HW_FIRMWARE_INFO, outputData);
+        device->os_info.fwdlIOsupport.fwdlIOSupported                  = fwdlSupportedInfo->SupportUpgrade;
+        device->os_info.fwdlIOsupport.payloadAlignment                 = fwdlSupportedInfo->ImagePayloadAlignment;
+        device->os_info.fwdlIOsupport.maxXferSize                      = fwdlSupportedInfo->ImagePayloadMaxSize;
         device->os_info.fwdlIOsupport.activateSupport.switchToExisting = true; // always true
         if (is_Windows_11_Version_22H2_Or_Higher())
         {

@@ -340,16 +340,16 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
     return status;
 }
 
-static eReturnValues ata_Firmware_Download_Command(tDevice* device,
-    eDownloadMode dlMode,
-    uint32_t      offset,
-    uint32_t      xferLen,
-    uint8_t* ptrData,
-    bool          firstSegment,
-    bool          lastSegment,
-    uint32_t      timeoutSeconds)
+static eReturnValues ata_Firmware_Download_Command(tDevice*      device,
+                                                   eDownloadMode dlMode,
+                                                   uint32_t      offset,
+                                                   uint32_t      xferLen,
+                                                   uint8_t*      ptrData,
+                                                   bool          firstSegment,
+                                                   bool          lastSegment,
+                                                   uint32_t      timeoutSeconds)
 {
-    eReturnValues ret = SUCCESS;
+    eReturnValues              ret       = SUCCESS;
     eDownloadMicrocodeFeatures ataDLMode = ATA_DL_MICROCODE_SAVE_IMMEDIATE; // default
     switch (dlMode)
     {
@@ -383,18 +383,18 @@ static eReturnValues ata_Firmware_Download_Command(tDevice* device,
 }
 
 static eReturnValues nvme_Firmware_Download_Command(tDevice*      device,
-                                             eDownloadMode dlMode,
-                                             uint32_t      offset,
-                                             uint32_t      xferLen,
-                                             uint8_t*      ptrData,
-                                             uint8_t       slotNumber,
-                                             bool          existingImage,
-                                             bool          firstSegment,
-                                             bool          lastSegment,
-                                             uint32_t      timeoutSeconds,
-                                             bool          nvmeForceCA,
-                                             uint8_t       commitAction,
-                                             bool          forceDisableReset)
+                                                    eDownloadMode dlMode,
+                                                    uint32_t      offset,
+                                                    uint32_t      xferLen,
+                                                    uint8_t*      ptrData,
+                                                    uint8_t       slotNumber,
+                                                    bool          existingImage,
+                                                    bool          firstSegment,
+                                                    bool          lastSegment,
+                                                    uint32_t      timeoutSeconds,
+                                                    bool          nvmeForceCA,
+                                                    uint8_t       commitAction,
+                                                    bool          forceDisableReset)
 {
     eReturnValues ret = SUCCESS;
     switch (dlMode)
@@ -572,17 +572,17 @@ static eReturnValues nvme_Firmware_Download_Command(tDevice*      device,
     return ret;
 }
 
-static eReturnValues scsi_Firmware_Download_Command(tDevice* device,
-    eDownloadMode dlMode,
-    uint32_t      offset,
-    uint32_t      xferLen,
-    uint8_t* ptrData,
-    uint8_t       slotNumber,
-    bool          firstSegment,
-    bool          lastSegment,
-    uint32_t      timeoutSeconds)
+static eReturnValues scsi_Firmware_Download_Command(tDevice*      device,
+                                                    eDownloadMode dlMode,
+                                                    uint32_t      offset,
+                                                    uint32_t      xferLen,
+                                                    uint8_t*      ptrData,
+                                                    uint8_t       slotNumber,
+                                                    bool          firstSegment,
+                                                    bool          lastSegment,
+                                                    uint32_t      timeoutSeconds)
 {
-    eReturnValues ret = SUCCESS;
+    eReturnValues    ret        = SUCCESS;
     eWriteBufferMode scsiDLMode = SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE; // default
     switch (dlMode)
     {
@@ -633,17 +633,17 @@ eReturnValues firmware_Download_Command(tDevice*      device,
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        ret = ata_Firmware_Download_Command(device, dlMode, offset, xferLen, ptrData, 
-                                            firstSegment, lastSegment, timeoutSeconds);
+        ret = ata_Firmware_Download_Command(device, dlMode, offset, xferLen, ptrData, firstSegment, lastSegment,
+                                            timeoutSeconds);
         break;
     case NVME_DRIVE:
         ret = nvme_Firmware_Download_Command(device, dlMode, offset, xferLen, ptrData, slotNumber, existingImage,
-                                                  firstSegment, lastSegment, timeoutSeconds, nvmeForceCA, commitAction,
-                                                  forceDisableReset);
+                                             firstSegment, lastSegment, timeoutSeconds, nvmeForceCA, commitAction,
+                                             forceDisableReset);
         break;
     case SCSI_DRIVE:
-        ret = scsi_Firmware_Download_Command(device, dlMode, offset, xferLen, ptrData, slotNumber, 
-                                             firstSegment, lastSegment, timeoutSeconds);
+        ret = scsi_Firmware_Download_Command(device, dlMode, offset, xferLen, ptrData, slotNumber, firstSegment,
+                                             lastSegment, timeoutSeconds);
         break;
     default:
         ret = NOT_SUPPORTED;
