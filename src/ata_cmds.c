@@ -3369,6 +3369,7 @@ eReturnValues ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elem
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(elementIdentifier);
     ataCommandOptions.tfr.ErrorFeature  = M_Byte2(elementIdentifier);
     ataCommandOptions.tfr.Feature48     = M_Byte3(elementIdentifier);
+    ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (os_Is_Infinite_Timeout_Supported())
     {
         ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;

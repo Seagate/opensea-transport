@@ -258,6 +258,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     uint32_t      found                 = UINT32_C(0);
     uint32_t      failedGetDeviceCount  = UINT32_C(0);
     uint32_t      permissionDeniedCount = UINT32_C(0);
+    uint32_t      busyDevCount          = UINT32_C(0);
     DECLARE_ZERO_INIT_ARRAY(char, name, BSD_DEV_NAME_LEN);
     int      fd          = 0;
     tDevice* d           = M_NULLPTR;
@@ -357,38 +358,57 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                 eReturnValues ret  = get_Device(name, d);
                 if (ret != SUCCESS)
                 {
-                    failedGetDeviceCount++;
+                    ++failedGetDeviceCount;
                 }
-                found++;
-                d++;
-            }
-            else if (errno == EACCES) // quick fix for opening drives without sudo
-            {
-                ++permissionDeniedCount;
-                failedGetDeviceCount++;
+                ++found;
+                ++d;
             }
             else
             {
-                failedGetDeviceCount++;
+                if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
+                {
+                    printf("Failed open, reason: ");
+                    print_Errno_To_Screen(errno);
+                }
+                ++failedGetDeviceCount;
+                switch (errno)
+                {
+                case EACCES:
+                    ++permissionDeniedCount;
+                    break;
+                case EBUSY:
+                    ++busyDevCount;
+                    break;
+                default:
+                    break;
+                }
             }
             // free the dev[deviceNumber] since we are done with it now.
             safe_free(&devs[driveNumber]);
         }
-        if (found == failedGetDeviceCount)
-        {
-            returnValue = FAILURE;
-        }
-        else if (permissionDeniedCount == totalDevs)
+        if (permissionDeniedCount == totalDevs)
         {
             returnValue = PERMISSION_DENIED;
         }
-        else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
+        else if (busyDevCount == totalDevs)
+        {
+            returnValue = DEVICE_BUSY;
+        }
+        else if (failedGetDeviceCount == totalDevs)
+        {
+            returnValue = FAILURE;
+        }
+        else if (failedGetDeviceCount > 0)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
     RESTORE_NONNULL_COMPARE
     safe_free(M_REINTERPRET_CAST(void**, &devs));
+    if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
+    {
+        printf("Get device list returning %d\n", returnValue);
+    }
     return returnValue;
 }
 

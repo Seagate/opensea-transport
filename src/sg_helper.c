@@ -2740,13 +2740,14 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     uint32_t      found                 = UINT32_C(0);
     uint32_t      failedGetDeviceCount  = UINT32_C(0);
     uint32_t      permissionDeniedCount = UINT32_C(0);
+    uint32_t      busyDevCount          = UINT32_C(0);
     DECLARE_ZERO_INIT_ARRAY(char, name, 80); // Because get device needs char
     int      fd = -1;
     tDevice* d  = M_NULLPTR;
 #if defined(DEGUG_SCAN_TIME)
     DECLARE_SEATIMER(getDeviceTimer);
     DECLARE_SEATIMER(getDeviceListTimer);
-#endif
+#endif // DEGUG_SCAN_TIME
     ptrRaidHandleToScan raidHandleList      = M_NULLPTR;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     raidTypeHint        raidHint;
@@ -2760,10 +2761,24 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     struct dirent** namelist;
     struct dirent** nvmenamelist;
 
+    eVerbosityLevels listVerbosity = VERBOSITY_DEFAULT;
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        listVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        listVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        listVerbosity = VERBOSITY_BUFFERS;
+    }
+
     int (*sortFunc)(const struct dirent**, const struct dirent**) = &alphasort;
 #if defined(_GNU_SOURCE)
     sortFunc = &versionsort; // use versionsort instead when available with _GNU_SOURCE
-#endif
+#endif                       // _GNU_SOURCE
 
     scandirresult = scandir("/dev", &namelist, sg_filter, sortFunc);
     if (scandirresult >= 0)
@@ -2845,7 +2860,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
         d               = ptrToDeviceList;
 #if defined(DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
-#endif
+#endif // DEGUG_SCAN_TIME
         for (driveNumber = 0;
              (driveNumber < MAX_DEVICES_TO_SCAN && driveNumber < totalDevs) && (found < numberOfDevices); ++driveNumber)
         {
@@ -2869,13 +2884,13 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 #if defined(DEGUG_SCAN_TIME)
                 DECLARE_SEATIMER(getDeviceTimer);
                 start_Timer(&getDeviceTimer);
-#endif
+#endif // DEGUG_SCAN_TIME
                 d->dFlags         = flags;
                 eReturnValues ret = get_Device(name, d);
 #if defined(DEGUG_SCAN_TIME)
                 stop_Timer(&getDeviceTimer);
                 printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
-#endif
+#endif // DEGUG_SCAN_TIME
                 if (ret != SUCCESS)
                 {
                     failedGetDeviceCount++;
@@ -2913,14 +2928,25 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                 found++;
                 d++;
             }
-            else if (errno == EACCES) // quick fix for opening drives without sudo
-            {
-                ++permissionDeniedCount;
-                failedGetDeviceCount++;
-            }
             else
             {
-                failedGetDeviceCount++;
+                if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
+                {
+                    printf("Failed open, reason: ");
+                    print_Errno_To_Screen(errno);
+                }
+                ++failedGetDeviceCount;
+                switch (errno)
+                {
+                case EACCES:
+                    ++permissionDeniedCount;
+                    break;
+                case EBUSY:
+                    ++busyDevCount;
+                    break;
+                default:
+                    break;
+                }
             }
             // free the dev[deviceNumber] since we are done with it now.
             safe_free(&devs[driveNumber]);
@@ -2946,23 +2972,31 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 #if defined(DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
         printf("Time to get all device = %fms\n", get_Milli_Seconds(getDeviceListTimer));
-#endif
-
-        if (found == failedGetDeviceCount)
-        {
-            returnValue = FAILURE;
-        }
-        else if (permissionDeniedCount == totalDevs)
+#endif // DEGUG_SCAN_TIME
+       // check specific cases first before going into a failure mode.
+        if (permissionDeniedCount == totalDevs)
         {
             returnValue = PERMISSION_DENIED;
         }
-        else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
+        else if (busyDevCount == totalDevs)
+        {
+            returnValue = DEVICE_BUSY;
+        }
+        else if (failedGetDeviceCount == totalDevs)
+        {
+            returnValue = FAILURE;
+        }
+        else if (failedGetDeviceCount > 0)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
     RESTORE_NONNULL_COMPARE
     safe_free(M_REINTERPRET_CAST(void**, &devs));
+    if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
+    {
+        printf("Get device list returning %d\n", returnValue);
+    }
     return returnValue;
 }
 
