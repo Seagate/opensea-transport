@@ -1209,7 +1209,8 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
     default:
         break;
     }
-    if (SUCCESS == get_Device_Count(&deviceCount, getCountFlags))
+    eReturnValues ret = get_Device_Count(&deviceCount, getCountFlags);
+    if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
     {
         if (deviceCount > 0)
         {
@@ -1238,7 +1239,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                 getDeviceflags |= GET_DEVICE_FUNCS_IGNORE_CSMI;
             }
 #endif
-            eReturnValues ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
+            ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
             if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
             {
                 printf("%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
@@ -1355,12 +1356,32 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                     close_Device(&deviceList[deviceIter]);
                 }
             }
+            else if (ret == PERMISSION_DENIED)
+            {
+                printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
+            }
+            else if (ret == DEVICE_BUSY)
+            {
+                printf("All devices reported as busy at this time.\n");
+            }
+            else
+            {
+                printf("Unknown failure occurred trying to get device list\n");
+            }
             safe_Free_aligned(C_CAST(void**, &deviceList));
         }
         else
         {
             printf("No devices found\n");
         }
+    }
+    else if (ret == PERMISSION_DENIED)
+    {
+        printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
+    }
+    else if (ret == DEVICE_BUSY)
+    {
+        printf("All devices reported as busy at this time.\n");
     }
     else
     {

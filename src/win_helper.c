@@ -4294,9 +4294,11 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
             win_ret = win_Get_Device_Descriptor(device->os_info.fd, &device_desc);
             if (win_ret == SUCCESS)
             {
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                 bool checkForCSMI = false;
-                bool checkForNVMe = false;
-                eReturnValues fwdlResult = NOT_SUPPORTED;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
+                bool          checkForNVMe = false;
+                eReturnValues fwdlResult   = NOT_SUPPORTED;
 
                 //save the bus types to the tDevice struct since they may be helpful in certain debug scenarios
                 device->os_info.adapterDescBusType = adapter_desc->BusType;
@@ -4333,13 +4335,15 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
 
                 if (device_desc->BusType == BusTypeUnknown)//Add other device types that can't be handled with other methods of SCSI or ATA passthrough among other options below.
                 {
-                    //special case to handle unknown device types!
-                    device->drive_info.drive_type = SCSI_DRIVE;
+                    // special case to handle unknown device types!
+                    device->drive_info.drive_type     = SCSI_DRIVE;
                     device->drive_info.interface_type = SCSI_INTERFACE;
-                    device->os_info.ioType = WIN_IOCTL_BASIC;
+                    device->os_info.ioType            = WIN_IOCTL_BASIC;
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                     checkForCSMI = false;
-                    checkForNVMe = false;
-                    device->os_info.winSMARTCmdSupport.ataIDsupported = false;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
+                    checkForNVMe                                        = false;
+                    device->os_info.winSMARTCmdSupport.ataIDsupported   = false;
                     device->os_info.winSMARTCmdSupport.atapiIDsupported = false;
                     device->os_info.winSMARTCmdSupport.deviceBitmap = 0;
                     device->os_info.winSMARTCmdSupport.smartIOSupported = false;
@@ -4355,9 +4359,11 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                     device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
 #if defined (WIN_DEBUG)
                     printf("WIN: get SMART IO support ATA\n");
-#endif //WIN_DEBUG
-                    get_Windows_SMART_IO_Support(device);//might be used later
+#endif                                                    // WIN_DEBUG
+                    get_Windows_SMART_IO_Support(device); // might be used later
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                     checkForCSMI = true;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                 }
                 else if ((adapter_desc->BusType == BusTypeAtapi) ||
                     (device_desc->BusType == BusTypeAtapi)
@@ -4384,7 +4390,9 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                     else
                     {
                         device->drive_info.drive_type = ATA_DRIVE;
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                         checkForCSMI = true;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                     }
                     //we are assuming, for now, that SAT translation is being done below, and so far through testing on a few chipsets this appears to be correct.
                     device->drive_info.interface_type = IDE_INTERFACE;
@@ -4633,9 +4641,12 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                     if (device_desc->BusType == BusTypeSas)
                     {
-                        //CSMI checks are needed for controllers showing as SAS or RAID.
-                        //RAID must also be considered due to how drivers, especially Intel's shows devices, both RAIDs and individual devices behind controllers in RAID mode.
+// CSMI checks are needed for controllers showing as SAS or RAID.
+// RAID must also be considered due to how drivers, especially Intel's shows devices, both RAIDs
+// and individual devices behind controllers in RAID mode.
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                         checkForCSMI = true;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                     }
                     else if (device_desc->BusType == BusTypeRAID)
                     {
@@ -4646,7 +4657,9 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                         //      Unfortunately, the Intel RST driver will show NVMe drives as RAID, but no vendor ID, so we need to check them all for this until we can find something else to use.
                         //      This means issuing an admin identify which should fail gracefully on drivers that don't actually support this since it's vendor unique IOCTL code and signature.
                         checkForNVMe = true;
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                         checkForCSMI = true;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                     }
                 }
 
@@ -4686,8 +4699,10 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                         {
                             //use OS read/write calls since this driver may not allow these to work since it is limited in capabilities for passthrough.
                             device->os_info.osReadWriteRecommended = true;
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                             checkForCSMI = false;
-#if defined (WIN_DEBUG)
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
+#if defined(WIN_DEBUG)
                             printf("WIN: Intel NVMe support found\n");
 #endif //WIN_DEBUG
                             //TODO: This passthrough may be limited in commands allowed to be sent. If this is limited, need to fill in the nvme hacks to show what is or is not supported.
@@ -4764,11 +4779,15 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                             device->os_info.ioType = WIN_IOCTL_SMART_ONLY;
                         }
                         device->os_info.osReadWriteRecommended = true;
-                        ret = fill_Drive_Info_Data(device);
-                        checkForCSMI = false;//if we are using any of these limited, old IOCTLs, it is extremely unlikely that CSMI will work at all.
+                        ret                                    = fill_Drive_Info_Data(device);
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
+                        checkForCSMI = false; // if we are using any of these limited, old IOCTLs, it is extremely
+// unlikely that CSMI will work at all.
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                     }
                 }
 
+                #if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                 if (checkForCSMI)
                 {
 #if defined (WIN_DEBUG)
@@ -4792,6 +4811,7 @@ static eReturnValues get_Win_Device(const char *filename, tDevice *device )
                         }
                     }
                 }
+                #endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
 
                 //Fill in IDE for ATA interface so we can know based on scan output which passthrough may need debugging
                 if (device->drive_info.interface_type == IDE_INTERFACE)
@@ -5025,6 +5045,8 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     uint32_t found = 0;
     uint32_t failedGetDeviceCount = 0;
     uint32_t permissionDeniedCount = 0;
+    uint32_t      busyDevCount          = UINT32_C(0);
+    uint32_t      totalDevs             = UINT32_C(0);
     DECLARE_ZERO_INIT_ARRAY(TCHAR, deviceName, WIN_MAX_DEVICE_NAME_LENGTH);
     DECLARE_ZERO_INIT_ARRAY(char, name, WIN_MAX_DEVICE_NAME_LENGTH); //Because get device needs char
     HANDLE fd = INVALID_HANDLE_VALUE;
@@ -5032,18 +5054,6 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     ptrRaidHandleToScan raidHandleList = M_NULLPTR;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
     eVerbosityLevels winListVerbosity = VERBOSITY_DEFAULT;
-    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
-    {
-        winListVerbosity = VERBOSITY_COMMAND_NAMES;
-    }
-    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
-    {
-        winListVerbosity = VERBOSITY_COMMAND_VERBOSE;
-    }
-    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
-    {
-        winListVerbosity = VERBOSITY_BUFFERS;
-    }
 
     if (!(ptrToDeviceList) || (!sizeInBytes))
     {
@@ -5127,22 +5137,25 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             }
             else
             {
-                //Check last error for permissions issues
+                ++failedGetDeviceCount;
+                // Check last error for permissions issues
                 DWORD lastError = GetLastError();
-                if (lastError == ERROR_ACCESS_DENIED)
+                switch (lastError)
                 {
+                case ERROR_ACCESS_DENIED:
                     ++permissionDeniedCount;
-                    ++failedGetDeviceCount;
+                    break;
+                case ERROR_BUSY:
+                    ++busyDevCount;
+                    break;
+                default:
+                    break;
                 }
-                //NOTE: No generic else like other OS's due to the way devices are scanned in Windows today. Since we are just trying to open handles, they can fail for various reasons, like the handle not even being valid, but that should not cause a failure.
-                //If the code is updated to use something like setupapi or cfgmgr32 to figure out devices in the system, then it would make sense to add additional error checks here like we have for 'nix OSs. - TJE
-                //If a handle does not exist ERROR_FILE_NOT_FOUND is returned.
-                if (VERBOSITY_COMMAND_NAMES <= d->deviceVerbosity)
-                {
-                    _tprintf_s(TEXT("Error: opening dev %s. "), deviceName);
-                    print_Windows_Error_To_Screen(lastError);
-                    _tprintf_s(TEXT("\n"));
-                }
+                // NOTE: No generic else like other OS's due to the way devices are scanned in Windows today. Since we
+                // are just trying to open handles, they can fail for various reasons, like the handle not even being
+                // valid, but that should not cause a failure. If the code is updated to use something like setupapi or
+                // cfgmgr32 to figure out devices in the system, then it would make sense to add additional error checks
+                // here like we have for 'nix OSs. - TJE If a handle does not exist ERROR_FILE_NOT_FOUND is returned.
             }
         }
 
@@ -5160,29 +5173,25 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 }
             }
         }
-        else if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
-        {
-            printf("CSMI Scan skipped due to flag\n");
-        }
 #endif
-        if (found == failedGetDeviceCount)
-        {
-            returnValue = FAILURE;
-        }
-        else if (permissionDeniedCount == numberOfDevices)
+        if (permissionDeniedCount == totalDevs)
         {
             returnValue = PERMISSION_DENIED;
         }
-        else if (failedGetDeviceCount)
+        else if (busyDevCount == totalDevs)
+        {
+            returnValue = DEVICE_BUSY;
+        }
+        else if (failedGetDeviceCount == totalDevs)
+        {
+            returnValue = FAILURE;
+        }
+        else if (failedGetDeviceCount > 0)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
         //Clean up RAID handle list
         delete_RAID_List(beginRaidHandleList);
-    }
-    if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
-    {
-        printf("Win get device list returning %d\n", returnValue);
     }
 
     return returnValue;

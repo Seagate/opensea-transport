@@ -2342,6 +2342,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     uint32_t found = 0;
     uint32_t failedGetDeviceCount = 0;
     uint32_t permissionDeniedCount = 0;
+    uint32_t      busyDevCount          = UINT32_C(0);
     DECLARE_ZERO_INIT_ARRAY(char, name, 80); //Because get device needs char
     int fd = -1;
     tDevice * d = M_NULLPTR;
@@ -2476,7 +2477,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #if defined (DEGUG_SCAN_TIME)
                 stop_Timer(&getDeviceTimer);
                 printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
-#endif
+#endif // DEGUG_SCAN_TIME
                 if (ret != SUCCESS)
                 {
                     failedGetDeviceCount++;
@@ -2517,14 +2518,20 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 found++;
                 d++;
             }
-            else if (errno == EACCES) //quick fix for opening drives without sudo
-            {
-                ++permissionDeniedCount;
-                failedGetDeviceCount++;
-            }
             else
             {
-                failedGetDeviceCount++;
+                ++failedGetDeviceCount;
+                switch (errno)
+                {
+                case EACCES:
+                    ++permissionDeniedCount;
+                    break;
+                case EBUSY:
+                    ++busyDevCount;
+                    break;
+                default:
+                    break;
+                }
             }
             //free the dev[deviceNumber] since we are done with it now.
             safe_free(&devs[driveNumber]);
@@ -2549,17 +2556,21 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 #if defined (DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
         printf("Time to get all device = %fms\n", get_Milli_Seconds(getDeviceListTimer));
-#endif
-
-	    if (found == failedGetDeviceCount)
-	    {
-	        returnValue = FAILURE;
-	    }
-        else if(permissionDeniedCount == totalDevs)
+#endif // DEGUG_SCAN_TIME
+       // check specific cases first before going into a failure mode.
+        if (permissionDeniedCount == totalDevs)
         {
             returnValue = PERMISSION_DENIED;
         }
-        else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
+        else if (busyDevCount == totalDevs)
+        {
+            returnValue = DEVICE_BUSY;
+        }
+        else if (failedGetDeviceCount == totalDevs)
+        {
+            returnValue = FAILURE;
+        }
+        else if (failedGetDeviceCount > 0)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
