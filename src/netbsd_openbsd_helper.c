@@ -271,6 +271,20 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     struct dirent** wdnamelist = M_NULLPTR;
     // struct dirent** nvmenamelist = M_NULLPTR;
 
+    eVerbosityLevels listVerbosity = VERBOSITY_DEFAULT;
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        listVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        listVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        listVerbosity = VERBOSITY_BUFFERS;
+    }
+
     scandirres = scandir("/dev", &sdnamelist, rsd_filter, alphasort);
     if (scandirres > 0)
     {
