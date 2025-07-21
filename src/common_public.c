@@ -5200,6 +5200,28 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported   = true;
         device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 0;
         break;
+    case 0x113B: // Rugged SSD4
+        // NOTE: This is a weird drive.
+        passthroughHacksSet                                                       = true;
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 7;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
+        // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+        device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly      = true;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 0;
+        device->drive_info.passThroughHacks.ataPTHacks.smartEnabled = true;
+        break;
     case 0x1105: // Mobile Drive
     case 0x1106: // Mobile Drive
     case 0x1107: // Mobile Secure
