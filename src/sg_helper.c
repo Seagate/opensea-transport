@@ -3562,6 +3562,7 @@ eReturnValues os_Lock_Device(tDevice* device)
             }
             else
             {
+                device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
                 break;
             }
             ++attempts;
@@ -3612,6 +3613,7 @@ eReturnValues os_Unlock_Device(tDevice* device)
             }
             else
             {
+                device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
                 break;
             }
             ++attempts;
@@ -3690,9 +3692,10 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
         blockHandle = device->os_info.secondName;
     }
     partitionCount = get_Partition_Count(blockHandle);
-#if defined(_DEBUG)
-    printf("Partition count for %s = %d\n", blockHandle, partitionCount);
-#endif
+    if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+    {
+        printf("Partition count for %s = %d\n", blockHandle, partitionCount);
+    }
     if (partitionCount > 0)
     {
         ptrsPartitionInfo parts =
@@ -3705,9 +3708,10 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
                 for (; iter < partitionCount; ++iter)
                 {
                     // since we found a partition, set the "has file system" bool to true
-#if defined(_DEBUG)
-                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
-#endif
+                    if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                    {
+                        printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
+                    }
                     // Now that we have a name, unmount the file system
                     // Linux 2.1.116 added the umount2()
                     if (0 > umount2((parts + iter)->mntPath, MNT_FORCE))
