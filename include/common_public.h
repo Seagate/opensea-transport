@@ -1055,7 +1055,7 @@ extern "C"
             bool possilbyEmulatedNVMe; // realtek's USB to M.2 adapter can do AHCI or NVMe. Since nothing changes in IDs
                                        // and it emulates ATA identify data, need this to work around how it reports.
                                        // -TJE
-            bool smartEnabled; // Override check of ATA word 85, bit0 since some USB adapters don't set this.
+            bool smartEnabled;         // Override check of ATA word 85, bit0 since some USB adapters don't set this.
         } ataPTHacks;
         // NVMe Hacks
         struct

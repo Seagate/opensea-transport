@@ -648,7 +648,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
         listVerbosity = VERBOSITY_BUFFERS;
     }
 
-    int             scandirres = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
+    int scandirres = scandir("/dev/rdsk", &namelist, uscsi_filter, alphasort);
     if (scandirres > 0)
     {
         num_rdsk = C_CAST(uint32_t, scandirres);

@@ -1396,7 +1396,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         {
             // set the number of logical sectors per DRQ data block (current setting)
             device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock = M_Byte0(le16_to_host(ident_word[59]));
-            sanitizeSupported                                            = M_ToBool(le16_to_host(ident_word[59]) & BIT12);
+            sanitizeSupported = M_ToBool(le16_to_host(ident_word[59]) & BIT12);
         }
         else
         {
@@ -1678,9 +1678,11 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         // but it is an SSD. So this match will catch it when this happens. It should be uncommon to find though -TJE
         if (device->drive_info.media_type != MEDIA_SSD &&
             safe_strlen(device->drive_info.bridge_info.childDriveMN) > 0 &&
-            ((strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != M_NULLPTR) || (strstr(device->drive_info.bridge_info.childDriveMN, "Rugged SSD") != M_NULLPTR)) &&
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != M_NULLPTR) ||
+             (strstr(device->drive_info.bridge_info.childDriveMN, "Rugged SSD") != M_NULLPTR)) &&
             safe_strlen(device->drive_info.bridge_info.childDriveFW) > 0 &&
-            ((strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != M_NULLPTR) || (strstr(device->drive_info.bridge_info.childDriveFW, "ULFS") != M_NULLPTR)))
+            ((strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != M_NULLPTR) ||
+             (strstr(device->drive_info.bridge_info.childDriveFW, "ULFS") != M_NULLPTR)))
         {
             device->drive_info.media_type = MEDIA_SSD;
         }
@@ -1731,7 +1733,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         else if ((!device->drive_info.ata_Options.dmaSupported &&
                   device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 &&
                   device->drive_info.drive_type != ATAPI_DRIVE) &&
-                 word84Valid == false && word87Valid == false && words119to120Valid == false && sanitizeSupported == false && smartSupported == false)
+                 word84Valid == false && word87Valid == false && words119to120Valid == false &&
+                 sanitizeSupported == false && smartSupported == false)
         {
             // This very likely is emulated since a valid ATA device will have fillMaxLba set to SOMETHING even in
             // really old CHS drives since the LBA is simulated in software.

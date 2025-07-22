@@ -5216,11 +5216,11 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
         device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
-        device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly      = true;
-        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly                  = true;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported               = true;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 0;
-        device->drive_info.passThroughHacks.ataPTHacks.smartEnabled = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 0;
+        device->drive_info.passThroughHacks.ataPTHacks.smartEnabled                  = true;
         break;
     case 0x1105: // Mobile Drive
     case 0x1106: // Mobile Drive

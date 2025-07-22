@@ -3881,7 +3881,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             safe_strlen(device->drive_info.bridge_info.childDriveMN) &&
             safe_strlen(device->drive_info.bridge_info.childDriveSN) &&
             safe_strlen(device->drive_info.bridge_info.childDriveFW) &&
-            device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe) // This can be set by the ata_helper in SAT check now, so check it here.
+            device->drive_info.passThroughHacks.ataPTHacks
+                .possilbyEmulatedNVMe) // This can be set by the ata_helper in SAT check now, so check it here.
         {
             checkRealtekNVMe = true;
         }
