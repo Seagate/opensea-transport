@@ -9389,22 +9389,26 @@ eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice* device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-// TODO: We may need to switch between locking fd and scsiSrbHandle in some way...for now just locking fd value.
-// https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume
-eReturnValues os_Lock_Device(tDevice* device)
+eReturnValues os_Get_Exclusive(tDevice* device)
 {
-    eReturnValues ret           = SUCCESS;
-    DWORD         returnedBytes = DWORD_C(0);
-
+    eReturnValues ret = SUCCESS;
     if (device->os_info.handleFlags == HANDLE_FLAGS_DEFAULT && strstr(device->os_info.name, "PHYSICAL") != M_NULLPTR)
     {
         // attempt to reopen with exclusive access. If it fails, that is ok, we still have this other lock
         // This is the same way the linux code is working. -TJE
         CloseHandle(device->os_info.fd);
         device->dFlags |= HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
-        open_Win_Handle(device->os_info.name, device);
+        ret = open_Win_Handle(device->os_info.name, device);
     }
+    return ret;
+}
 
+// TODO: We may need to switch between locking fd and scsiSrbHandle in some way...for now just locking fd value.
+// https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume
+eReturnValues os_Lock_Device(tDevice* device)
+{
+    eReturnValues ret           = SUCCESS;
+    DWORD         returnedBytes = DWORD_C(0);
     if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
                                         &returnedBytes, M_NULLPTR)))
     {

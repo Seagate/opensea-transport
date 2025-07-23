@@ -3538,15 +3538,15 @@ static bool lock_unlock_handle(int fd, bool lock, eVerbosityLevels verboseLevel)
     return success;
 }
 
-eReturnValues os_Lock_Device(tDevice* device)
+eReturnValues os_Get_Exclusive(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.handleFlags != HANDLE_FLAGS_EXCLUSIVE)
     {
         int attempts = 0;
-#define LOCK_ATTEMPT_MAX 2
+#define EXCL_ATTEMPT_MAX 2
         int handleFlags = O_RDWR | O_NONBLOCK | O_EXCL;
-        // close and reopen if possible with O_EXCL, then proceed with locking
+        // close and reopen if possible with O_EXCL
         // need to do this with both FD and FD2
         close(device->os_info.fd);
         do
@@ -3559,14 +3559,23 @@ eReturnValues os_Lock_Device(tDevice* device)
                     printf("WARNING: Failed to acquire exclusive access to %s\n", device->os_info.name);
                 }
                 handleFlags &= ~O_EXCL;
+                ret = FAILURE;
             }
             else
             {
-                device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+                if (handleFlags & O_EXCL)
+                {
+                    device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+                    ret                         = SUCCESS;
+                }
+                else
+                {
+                    ret = FAILURE;
+                }
                 break;
             }
             ++attempts;
-        } while (attempts < LOCK_ATTEMPT_MAX);
+        } while (attempts < EXCL_ATTEMPT_MAX);
         if (device->os_info.secondHandleValid)
         {
             if (device->os_info.secondHandleOpened)
@@ -3578,6 +3587,12 @@ eReturnValues os_Lock_Device(tDevice* device)
             open_fd2(device);
         }
     }
+    return ret;
+}
+
+eReturnValues os_Lock_Device(tDevice* device)
+{
+    eReturnValues ret = SUCCESS;
     if (!lock_unlock_handle(device->os_info.fd, true, device->deviceVerbosity))
     {
         ret = FAILURE;
@@ -3592,43 +3607,6 @@ eReturnValues os_Lock_Device(tDevice* device)
 eReturnValues os_Unlock_Device(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->os_info.handleFlags != HANDLE_FLAGS_EXCLUSIVE)
-    {
-        int attempts = 0;
-#define UNLOCK_ATTEMPTS_MAX 2
-        int handleFlags = O_RDWR | O_NONBLOCK;
-        // close and reopen if possible with O_EXCL, then proceed with locking
-        // need to do this with both FD and FD2
-        close(device->os_info.fd);
-        do
-        {
-            device->os_info.fd = open(device->os_info.name, handleFlags);
-            if (device->os_info.fd < 0)
-            {
-                handleFlags |= O_EXCL;
-                if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
-                {
-                    printf("WARNING: Failed to acquire default access to %s\n", device->os_info.name);
-                }
-            }
-            else
-            {
-                device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
-                break;
-            }
-            ++attempts;
-        } while (attempts < UNLOCK_ATTEMPTS_MAX);
-        if (device->os_info.secondHandleValid)
-        {
-            if (device->os_info.secondHandleOpened)
-            {
-                close(device->os_info.fd2);
-                device->os_info.secondHandleOpened = false;
-            }
-            device->dFlags &= ~HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
-            open_fd2(device);
-        }
-    }
     if (!lock_unlock_handle(device->os_info.fd, false, device->deviceVerbosity))
     {
         ret = FAILURE;

@@ -525,6 +525,11 @@ eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
 eReturnValues os_Lock_Device(tDevice* device)
 {
     // flock?

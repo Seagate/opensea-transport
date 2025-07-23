@@ -3362,6 +3362,13 @@ eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
+{
+    // TODO: Not sure if this is correct or not. If you look at locking below it opens with a diagnostic flag which is
+    // extremely similar in behavior which is why this function is empty. -TJE
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
 // add SC_DIAGNOSTIC flag
 eReturnValues os_Lock_Device(tDevice* device)
 {

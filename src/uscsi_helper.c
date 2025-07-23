@@ -809,6 +809,11 @@ eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
 eReturnValues os_Lock_Device(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
