@@ -2009,6 +2009,7 @@ bool is_LaCie(tDevice* device)
 // USB, firewire, thunderbolt, etc
 void seagate_External_SN_Cleanup(char** sn, size_t snlen)
 {
+    DISABLE_NONNULL_COMPARE
     if (sn != M_NULLPTR && *sn != M_NULLPTR)
     {
         // sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
@@ -2081,6 +2082,7 @@ void seagate_External_SN_Cleanup(char** sn, size_t snlen)
         // NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to
         // add different cases for these older LaCie products.
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 bool is_Samsung_String(const char* string)
