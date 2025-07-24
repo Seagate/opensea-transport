@@ -1327,6 +1327,12 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             fill_ATA_Strings_From_Identify_Data(identifyData, device->drive_info.bridge_info.childDriveMN,
                                                 device->drive_info.bridge_info.childDriveSN,
                                                 device->drive_info.bridge_info.childDriveFW);
+            if (is_Seagate_Family(device))
+            {
+                char*  p1    = device->drive_info.bridge_info.childDriveSN;
+                char** snptr = &p1;
+                seagate_External_SN_Cleanup(snptr, SERIAL_NUM_LEN + 1);
+            }
         }
         else
         {

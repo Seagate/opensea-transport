@@ -2646,86 +2646,17 @@ bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent)
     }
 }
 
+// Need main cleanup logic for USB in generic location
+// This function can still exist and just call that for the vendor IDs
+// Then in ATA layer and NVMe layer they can do their own evaluation and
+// call into the same main cleanup function since the same 0-padding exists in those interfaces.
 void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerialNumber, size_t unitSNSize)
 {
     if (t10VendorIdent && unitSerialNumber && *unitSerialNumber)
     {
         if (is_Seagate_USB_Vendor_ID(t10VendorIdent) || is_LaCie_USB_Vendor_ID(t10VendorIdent))
         {
-            // sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
-            // All of these SNs should be only 8 characters long.
-            DECLARE_ZERO_INIT_ARRAY(char, zeroes, SERIAL_NUM_LEN + 1); // making bigger than needed for now.
-            safe_memset(zeroes, SERIAL_NUM_LEN + 1, '0', SERIAL_NUM_LEN);
-            zeroes[SERIAL_NUM_LEN] = '\0';
-            if (strncmp(zeroes, *unitSerialNumber, SEAGATE_SERIAL_NUMBER_LEN) == 0)
-            {
-                // 8 zeroes at the beginning. Strip them off
-                safe_memmove(&(*unitSerialNumber)[0], unitSNSize, &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN],
-                             safe_strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
-                safe_memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], unitSNSize - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                            safe_strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN);
-            }
-            else if (strncmp(zeroes, &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN],
-                             safe_strlen(*unitSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
-            {
-                // zeroes at the end. Write nulls over them
-                // This is not correct, reverse the string as this is a product defect.
-                DECLARE_ZERO_INIT_ARRAY(char, currentSerialNumber, SERIAL_NUM_LEN + 1);
-                DECLARE_ZERO_INIT_ARRAY(char, newSerialNumber, SERIAL_NUM_LEN + 1);
-                uint8_t serialMaxSize = C_CAST(uint8_t, M_Min(SERIAL_NUM_LEN, unitSNSize));
-                // backup current just in case
-                safe_memcpy(currentSerialNumber, SERIAL_NUM_LEN + 1, (*unitSerialNumber),
-                            M_Min(SERIAL_NUM_LEN, unitSNSize));
-                for (uint8_t curSN = serialMaxSize, newSN = UINT8_C(0); newSN < serialMaxSize; --curSN)
-                {
-                    if ((*unitSerialNumber)[curSN] != '\0')
-                    {
-                        newSerialNumber[newSN] = (*unitSerialNumber)[curSN];
-                        ++newSN;
-                    }
-                    if (curSN == 0)
-                    {
-                        break;
-                    }
-                }
-                safe_memcpy((*unitSerialNumber), unitSNSize, newSerialNumber, M_Min(SERIAL_NUM_LEN, unitSNSize));
-                // At this point the zeroes will now all be at the end.
-                if (strncmp(zeroes, (*unitSerialNumber), SEAGATE_SERIAL_NUMBER_LEN) == 0)
-                {
-                    // zeroes at the beginning. Strip them off
-                    safe_memmove(&(*unitSerialNumber)[0], unitSNSize, &(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN],
-                                 safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
-                    safe_memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], unitSNSize - SEAGATE_SERIAL_NUMBER_LEN,
-                                0, safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
-                }
-                else if (strncmp(zeroes, (*unitSerialNumber), 4) == 0)
-                {
-                    // zeroes at the beginning. Strip them off
-                    safe_memmove(&(*unitSerialNumber)[0], unitSNSize, &(*unitSerialNumber)[4],
-                                 safe_strlen((*unitSerialNumber)) - 4);
-                    safe_memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], unitSNSize - SEAGATE_SERIAL_NUMBER_LEN,
-                                0, safe_strlen((*unitSerialNumber)) - 4);
-                }
-                else
-                {
-                    // after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the
-                    // end.
-                    safe_memcpy((*unitSerialNumber), unitSNSize, currentSerialNumber,
-                                M_Min(SERIAL_NUM_LEN, unitSNSize));
-                    safe_memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], unitSNSize - SEAGATE_SERIAL_NUMBER_LEN,
-                                0, safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
-                }
-            }
-            else if (strncmp(zeroes, (*unitSerialNumber), 4) == 0)
-            {
-                // 4 zeroes at the beginning. Strip them off
-                safe_memmove(&(*unitSerialNumber)[0], unitSNSize, &(*unitSerialNumber)[4],
-                             safe_strlen((*unitSerialNumber)) - 4);
-                safe_memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], unitSNSize - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                            safe_strlen((*unitSerialNumber)) - 4);
-            }
-            // NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to
-            // add different cases for these older LaCie products.
+            seagate_External_SN_Cleanup(unitSerialNumber, unitSNSize);
         }
         else if (is_Seagate_SAS_Vendor_ID(t10VendorIdent))
         {

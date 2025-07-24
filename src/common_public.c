@@ -26,6 +26,7 @@
 #include "common_public.h"
 #include "csmi_helper_func.h"
 #include "platform_helper.h"
+#include "vendor/seagate/seagate_common_types.h"
 
 void print_Low_Level_Info(tDevice* device)
 {
@@ -1973,28 +1974,113 @@ bool is_PrarieTek_VendorID(tDevice* device)
 bool is_LaCie(tDevice* device)
 {
     bool isLaCie = false;
-    // LaCie drives do not have a IEEE OUI, so the only way we know it's LaCie is to check the VendorID field reported
-    // by the device
-    size_t lacieLen  = safe_strlen("LACIE");
-    size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
-    if (stringLen > 0)
+    if ((device->drive_info.interface_type == NVME_INTERFACE) &&
+        (device->drive_info.adapter_info.vendorID == LACIE_VENDOR_ID))
     {
-        char* vendorID = M_REINTERPRET_CAST(char*, safe_calloc(stringLen + 1, sizeof(char)));
-        if (vendorID == M_NULLPTR)
+        return true;
+    }
+    else
+    {
+        // LaCie drives do not have a IEEE OUI, so the only way we know it's LaCie is to check the VendorID field
+        // reported by the device
+        size_t lacieLen  = safe_strlen("LACIE");
+        size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
+        if (stringLen > 0)
         {
-            perror("calloc failure");
-            return MEMORY_FAILURE;
+            char* vendorID = M_REINTERPRET_CAST(char*, safe_calloc(stringLen + 1, sizeof(char)));
+            if (vendorID == M_NULLPTR)
+            {
+                perror("calloc failure");
+                return MEMORY_FAILURE;
+            }
+            snprintf_err_handle(vendorID, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
+            vendorID[stringLen] = '\0';
+            convert_String_To_Upper_Case(vendorID);
+            if (safe_strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
+            {
+                isLaCie = true;
+            }
+            safe_free(&vendorID);
         }
-        snprintf_err_handle(vendorID, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
-        vendorID[stringLen] = '\0';
-        convert_String_To_Upper_Case(vendorID);
-        if (safe_strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
-        {
-            isLaCie = true;
-        }
-        safe_free(&vendorID);
     }
     return isLaCie;
+}
+
+// USB, firewire, thunderbolt, etc
+void seagate_External_SN_Cleanup(char** sn, size_t snlen)
+{
+    if (sn != M_NULLPTR && *sn != M_NULLPTR)
+    {
+        // sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
+        // All of these SNs should be only 8 characters long.
+        DECLARE_ZERO_INIT_ARRAY(char, zeroes, SERIAL_NUM_LEN + 1); // making bigger than needed for now.
+        safe_memset(zeroes, SERIAL_NUM_LEN + 1, '0', SERIAL_NUM_LEN);
+        zeroes[SERIAL_NUM_LEN] = '\0';
+        if (strncmp(zeroes, *sn, SEAGATE_SERIAL_NUMBER_LEN) == 0)
+        {
+            // 8 zeroes at the beginning. Strip them off
+            safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
+                         safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN);
+            safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                        safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN);
+        }
+        else if (strncmp(zeroes, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN], safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
+        {
+            // zeroes at the end. Write nulls over them
+            // This is not correct, reverse the string as this is a product defect.
+            DECLARE_ZERO_INIT_ARRAY(char, currentSerialNumber, SERIAL_NUM_LEN + 1);
+            DECLARE_ZERO_INIT_ARRAY(char, newSerialNumber, SERIAL_NUM_LEN + 1);
+            uint8_t serialMaxSize = C_CAST(uint8_t, M_Min(SERIAL_NUM_LEN, snlen));
+            // backup current just in case
+            safe_memcpy(currentSerialNumber, SERIAL_NUM_LEN + 1, (*sn), M_Min(SERIAL_NUM_LEN, snlen));
+            for (uint8_t curSN = serialMaxSize, newSN = UINT8_C(0); newSN < serialMaxSize; --curSN)
+            {
+                if ((*sn)[curSN] != '\0')
+                {
+                    newSerialNumber[newSN] = (*sn)[curSN];
+                    ++newSN;
+                }
+                if (curSN == 0)
+                {
+                    break;
+                }
+            }
+            safe_memcpy((*sn), snlen, newSerialNumber, M_Min(SERIAL_NUM_LEN, snlen));
+            // At this point the zeroes will now all be at the end.
+            if (strncmp(zeroes, (*sn), SEAGATE_SERIAL_NUMBER_LEN) == 0)
+            {
+                // zeroes at the beginning. Strip them off
+                safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
+                             safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN);
+                safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                            safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN);
+            }
+            else if (strncmp(zeroes, (*sn), 4) == 0)
+            {
+                // zeroes at the beginning. Strip them off
+                safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4);
+                safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                            safe_strlen((*sn)) - 4);
+            }
+            else
+            {
+                // after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the
+                // end.
+                safe_memcpy((*sn), snlen, currentSerialNumber, M_Min(SERIAL_NUM_LEN, snlen));
+                safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                            safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN);
+            }
+        }
+        else if (strncmp(zeroes, (*sn), 4) == 0)
+        {
+            // 4 zeroes at the beginning. Strip them off
+            safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4);
+            safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                        safe_strlen((*sn)) - 4);
+        }
+        // NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to
+        // add different cases for these older LaCie products.
+    }
 }
 
 bool is_Samsung_String(const char* string)

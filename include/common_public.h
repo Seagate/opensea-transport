@@ -74,8 +74,6 @@ extern "C"
 #    define OPENSEA_TRANSPORT_API
 #endif
 
-#define SEAGATE_VENDOR_ID          (0x1BB1)
-
 #define OPENSEA_MAX_CONTROLLERS    (8U)
 #define MAX_DEVICES_PER_CONTROLLER (256U)
 #define MAX_DEVICES_TO_SCAN        (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
@@ -1740,6 +1738,7 @@ extern "C"
         PCI_VENDOR_HIGHPOINT     = 0x1103,
         PCI_VENDOR_MICROCHIP     = 0x11F8, // or PMC?
         PCI_VENDOR_SEAGATE       = 0x1BB1,
+        PCI_VENDOR_LACIE         = 0x1C19,
         PCI_VENDOR_3WARE         = 0x13C1,
         PCI_VENDOR_BROADCOM      = 0x14E4,
         PCI_VENDOR_HPE           = 0x1590,
@@ -1753,6 +1752,9 @@ extern "C"
         PCI_VENDOR_ADAPTEC       = 0x9004,
         PCI_VENDOR_ADAPTEC_2     = 0x9005,
     } ePCIVendorIDs;
+
+#define SEAGATE_VENDOR_ID PCI_VENDOR_SEAGATE
+#define LACIE_VENDOR_ID   PCI_VENDOR_LACIE
 
     typedef enum eSeagateFamilyEnum
     {
@@ -2155,6 +2157,9 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate(tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** sn, size_t snlen);
 
     //-----------------------------------------------------------------------------
     //
