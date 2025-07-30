@@ -1598,6 +1598,11 @@ eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice* device,
     return NOT_SUPPORTED;
 }
 
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
+{
+    return SUCCESS;
+}
+
 eReturnValues os_Lock_Device(M_ATTR_UNUSED tDevice* device)
 {
     // There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
