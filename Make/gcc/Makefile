@@ -20,7 +20,7 @@ MAJOR=10
 #Change the Minor version when new features are added. 
 MINOR=0
 #Change the patch version when only bug fixes are made.
-PATCH=0
+PATCH=1
 VERSION=$(MAJOR).$(MINOR).$(PATCH)
 SRC_DIR=../../src/
 INC_DIR=-I../../include -I../../include/vendor -I../../../opensea-common/include  

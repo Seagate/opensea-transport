@@ -44,8 +44,8 @@ extern "C"
 //
 // added in 10.0.26100.0
 #if !defined(STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_FIRMWARE_WITHOUT_RESET)
-#define STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_FIRMWARE_WITHOUT_RESET 0x10000000
-    #endif
+#    define STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_FIRMWARE_WITHOUT_RESET 0x10000000
+#endif
 
 //
 // Indicate that any existing firmware in slot should be replaced with the downloaded image,
@@ -53,24 +53,24 @@ extern "C"
 //
 // added in 10.0.26100.0
 #if !defined(STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_AND_SWITCH_UPON_RESET)
-#define STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_AND_SWITCH_UPON_RESET 0x20000000
-    #endif
+#    define STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_AND_SWITCH_UPON_RESET 0x20000000
+#endif
 
 //
 // Indicate that any existing firmware in slot should be replaced with the downloaded image.
 // Only valid for IOCTL_STORAGE_FIRMWARE_ACTIVATE.
 //
-//added in 10.0.22621.0
+// added in 10.0.22621.0
 #if !defined(STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_EXISTING_IMAGE)
-#define STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_EXISTING_IMAGE 0x40000000
-    #endif
+#    define STORAGE_HW_FIRMWARE_REQUEST_FLAG_REPLACE_EXISTING_IMAGE 0x40000000
+#endif
 
 //
 // Indicate that the existing firmware in slot should be activated with a controller reset.
 // Only valid for IOCTL_STORAGE_FIRMWARE_ACTIVATE.
 //
 #if !defined(STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE)
-#define STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE 0x80000000
+#    define STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE 0x80000000
 #endif
 
     // Used internally to set the flags above for the new firmware update IOCTL.
@@ -184,6 +184,8 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Lock_Device(tDevice* device);
+
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Get_Exclusive(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //

@@ -3193,11 +3193,11 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                                                      &returnCode, &device->os_info.last_error, M_NULLPTR);
             if (ret == SUCCESS)
             {
-                device->os_info.fwdlMiniportSupported          = true;
-                device->os_info.fwdlIOsupport.fwdlIOSupported  = firmwareInfo->UpgradeSupport;
-                device->os_info.fwdlIOsupport.payloadAlignment = firmwareInfo->ImagePayloadAlignment;
-                device->os_info.fwdlIOsupport.maxXferSize      = firmwareInfo->ImagePayloadMaxSize;
-                device->os_info.fwdlIOsupport.activateSupport.switchToExisting = true;//always true
+                device->os_info.fwdlMiniportSupported                          = true;
+                device->os_info.fwdlIOsupport.fwdlIOSupported                  = firmwareInfo->UpgradeSupport;
+                device->os_info.fwdlIOsupport.payloadAlignment                 = firmwareInfo->ImagePayloadAlignment;
+                device->os_info.fwdlIOsupport.maxXferSize                      = firmwareInfo->ImagePayloadMaxSize;
+                device->os_info.fwdlIOsupport.activateSupport.switchToExisting = true; // always true
                 if (is_Windows_11_Version_22H2_Or_Higher())
                 {
                     device->os_info.fwdlIOsupport.activateSupport.replaceExisting = true;
@@ -4081,10 +4081,11 @@ static eReturnValues dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG retur
 
 // nvmeIoCtx to get the cmd dwords to evaluate
 // current flags to preserve existing flags....new ones are or'd to this value
-eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* nvmeIoCtx, uint32_t *currentFlags)
+eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* nvmeIoCtx, uint32_t* currentFlags)
 {
-    eReturnValues ret            = SUCCESS;
-    nvmeFWCommitAction activateAction = M_STATIC_CAST(nvmeFWCommitAction, get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3));
+    eReturnValues      ret = SUCCESS;
+    nvmeFWCommitAction activateAction =
+        M_STATIC_CAST(nvmeFWCommitAction, get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3));
     DISABLE_NONNULL_COMPARE
     if (nvmeIoCtx == M_NULLPTR || currentFlags == M_NULLPTR)
     {
@@ -4256,13 +4257,13 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
             M_REINTERPRET_CAST(PSTORAGE_FIRMWARE_ACTIVATE, safe_calloc(firmwareActivateLength, sizeof(UCHAR)));
         if (firmwareActivate)
         {
-            uint32_t returnCode     = UINT32_C(0);
-            uint32_t fwdlFlags      = FIRMWARE_REQUEST_FLAG_CONTROLLER; // start with this, but may need other flags
+            uint32_t returnCode = UINT32_C(0);
+            uint32_t fwdlFlags  = FIRMWARE_REQUEST_FLAG_CONTROLLER; // start with this, but may need other flags
             // Setup input values
             firmwareActivate->Version        = STORAGE_FIRMWARE_ACTIVATE_STRUCTURE_VERSION;
             firmwareActivate->Size           = sizeof(STORAGE_FIRMWARE_ACTIVATE);
             firmwareActivate->SlotToActivate = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 2, 0);
-            ret = set_NVMe_Firmware_Activate_Flags(nvmeIoCtx, &fwdlFlags);
+            ret                              = set_NVMe_Firmware_Activate_Flags(nvmeIoCtx, &fwdlFlags);
             if (SUCCESS != ret)
             {
                 return ret;
@@ -5384,7 +5385,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
             win_ret = win_Get_Device_Descriptor(device->os_info.fd, &device_desc);
             if (win_ret == SUCCESS)
             {
-                bool          checkForCSMI = false;
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
+                bool checkForCSMI = false;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                 bool          checkForNVMe = false;
                 eReturnValues fwdlResult   = NOT_SUPPORTED;
 
@@ -5429,10 +5432,12 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                                     // passthrough among other options below.
                 {
                     // special case to handle unknown device types!
-                    device->drive_info.drive_type                       = SCSI_DRIVE;
-                    device->drive_info.interface_type                   = SCSI_INTERFACE;
-                    device->os_info.ioType                              = WIN_IOCTL_BASIC;
-                    checkForCSMI                                        = false;
+                    device->drive_info.drive_type     = SCSI_DRIVE;
+                    device->drive_info.interface_type = SCSI_INTERFACE;
+                    device->os_info.ioType            = WIN_IOCTL_BASIC;
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
+                    checkForCSMI = false;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                     checkForNVMe                                        = false;
                     device->os_info.winSMARTCmdSupport.ataIDsupported   = false;
                     device->os_info.winSMARTCmdSupport.atapiIDsupported = false;
@@ -5451,7 +5456,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     printf("WIN: get SMART IO support ATA\n");
 #endif                                                    // WIN_DEBUG
                     get_Windows_SMART_IO_Support(device); // might be used later
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                     checkForCSMI = true;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                 }
                 else if ((adapter_desc->BusType == BusTypeAtapi) || (device_desc->BusType == BusTypeAtapi))
                 {
@@ -5479,7 +5486,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     else
                     {
                         device->drive_info.drive_type = ATA_DRIVE;
-                        checkForCSMI                  = true;
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
+                        checkForCSMI = true;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                     }
                     // we are assuming, for now, that SAT translation is being done below, and so far through testing on
                     // a few chipsets this appears to be correct.
@@ -5790,10 +5799,12 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     device->os_info.ioType        = WIN_IOCTL_SCSI_PASSTHROUGH;
                     if (device_desc->BusType == BusTypeSas)
                     {
-                        // CSMI checks are needed for controllers showing as SAS or RAID.
-                        // RAID must also be considered due to how drivers, especially Intel's shows devices, both RAIDs
-                        // and individual devices behind controllers in RAID mode.
+// CSMI checks are needed for controllers showing as SAS or RAID.
+// RAID must also be considered due to how drivers, especially Intel's shows devices, both RAIDs
+// and individual devices behind controllers in RAID mode.
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                         checkForCSMI = true;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                     }
                     else if (device_desc->BusType == BusTypeRAID)
                     {
@@ -5806,7 +5817,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
        //       should fail gracefully on drivers that don't actually support this since it's vendor unique IOCTL code
        //       and signature.
                         checkForNVMe = true;
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                         checkForCSMI = true;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                     }
                 }
 
@@ -5853,7 +5866,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                             // use OS read/write calls since this driver may not allow these to work since it is limited
                             // in capabilities for passthrough.
                             device->os_info.osReadWriteRecommended = true;
-                            checkForCSMI                           = false;
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
+                            checkForCSMI = false;
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
 #if defined(WIN_DEBUG)
                             printf("WIN: Intel NVMe support found\n");
 #endif // WIN_DEBUG
@@ -5955,8 +5970,10 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                         }
                         device->os_info.osReadWriteRecommended = true;
                         ret                                    = fill_Drive_Info_Data(device);
+#if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                         checkForCSMI = false; // if we are using any of these limited, old IOCTLs, it is extremely
-                                              // unlikely that CSMI will work at all.
+// unlikely that CSMI will work at all.
+#endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
                     }
                 }
 
@@ -6232,24 +6249,26 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     uint32_t      found                 = UINT32_C(0);
     uint32_t      failedGetDeviceCount  = UINT32_C(0);
     uint32_t      permissionDeniedCount = UINT32_C(0);
+    uint32_t      busyDevCount          = UINT32_C(0);
+    uint32_t      totalDevs             = UINT32_C(0);
     DECLARE_ZERO_INIT_ARRAY(TCHAR, deviceName, WIN_MAX_DEVICE_NAME_LENGTH);
     DECLARE_ZERO_INIT_ARRAY(char, name, WIN_MAX_DEVICE_NAME_LENGTH); // Because get device needs char
     HANDLE              fd                  = INVALID_HANDLE_VALUE;
     tDevice*            d                   = M_NULLPTR;
     ptrRaidHandleToScan raidHandleList      = M_NULLPTR;
     ptrRaidHandleToScan beginRaidHandleList = raidHandleList;
-    eVerbosityLevels    winListVerbosity    = VERBOSITY_DEFAULT;
+    eVerbosityLevels    listVerbosity       = VERBOSITY_DEFAULT;
     if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
     {
-        winListVerbosity = VERBOSITY_COMMAND_NAMES;
+        listVerbosity = VERBOSITY_COMMAND_NAMES;
     }
     if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
     {
-        winListVerbosity = VERBOSITY_COMMAND_VERBOSE;
+        listVerbosity = VERBOSITY_COMMAND_VERBOSE;
     }
     if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
     {
-        winListVerbosity = VERBOSITY_BUFFERS;
+        listVerbosity = VERBOSITY_BUFFERS;
     }
     DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == 0)
@@ -6264,7 +6283,9 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
         d               = ptrToDeviceList;
-        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices)); driveNumber++)
+        totalDevs       = numberOfDevices;
+        for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices) && found < totalDevs);
+             driveNumber++)
         {
             _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
             // lets try to open the device.
@@ -6303,7 +6324,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                             // scanned for additional types of RAID interfaces.
                             SCSI_ADDRESS scsiAddress;
                             safe_memset(&scsiAddress, sizeof(SCSI_ADDRESS), 0, sizeof(SCSI_ADDRESS));
-                            if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+                            if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                             {
                                 printf("Detected RAID adapter for %s\n", name);
                             }
@@ -6316,7 +6337,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                                                              // to prevent excess IOCTLs being sent from retries.
                                 snprintf_err_handle(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":",
                                                     scsiAddress.PortNumber);
-                                if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+                                if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                                 {
                                     printf("Adding %s to RAID handle list to scan for compatible devices\n",
                                            raidHandle);
@@ -6337,23 +6358,29 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             }
             else
             {
+                ++failedGetDeviceCount;
                 // Check last error for permissions issues
                 DWORD lastError = GetLastError();
-                if (lastError == ERROR_ACCESS_DENIED)
+                switch (lastError)
                 {
+                case ERROR_ACCESS_DENIED:
                     ++permissionDeniedCount;
-                    ++failedGetDeviceCount;
+                    break;
+                case ERROR_BUSY:
+                    ++busyDevCount;
+                    break;
+                default:
+                    break;
                 }
                 // NOTE: No generic else like other OS's due to the way devices are scanned in Windows today. Since we
                 // are just trying to open handles, they can fail for various reasons, like the handle not even being
                 // valid, but that should not cause a failure. If the code is updated to use something like setupapi or
                 // cfgmgr32 to figure out devices in the system, then it would make sense to add additional error checks
                 // here like we have for 'nix OSs. - TJE If a handle does not exist ERROR_FILE_NOT_FOUND is returned.
-                if (VERBOSITY_COMMAND_NAMES <= d->deviceVerbosity)
+                if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
                     _tprintf_s(TEXT("Error: opening dev %s. "), deviceName);
                     print_Windows_Error_To_Screen(lastError);
-                    _tprintf_s(TEXT("\n"));
                 }
             }
         }
@@ -6373,29 +6400,33 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                 }
             }
         }
-        else if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+        else if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
         {
             printf("CSMI Scan skipped due to flag\n");
         }
 #endif
-        if (found == failedGetDeviceCount)
-        {
-            returnValue = FAILURE;
-        }
-        else if (permissionDeniedCount == numberOfDevices)
+        if (permissionDeniedCount == totalDevs)
         {
             returnValue = PERMISSION_DENIED;
         }
-        else if (failedGetDeviceCount)
+        else if (busyDevCount == totalDevs)
+        {
+            returnValue = DEVICE_BUSY;
+        }
+        else if (failedGetDeviceCount == totalDevs)
+        {
+            returnValue = FAILURE;
+        }
+        else if (failedGetDeviceCount > 0)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
         // Clean up RAID handle list
         delete_RAID_List(beginRaidHandleList);
     }
-    if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
+    if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
     {
-        printf("Win get device list returning %d\n", returnValue);
+        printf("Get device list returning %d\n", returnValue);
     }
     RESTORE_NONNULL_COMPARE
     return returnValue;
@@ -8355,10 +8386,10 @@ eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busT
     // Got the version info, but that doesn't mean we'll be successful with commands...
     if (fwdlRet)
     {
-        PSTORAGE_HW_FIRMWARE_INFO fwdlSupportedInfo    = C_CAST(PSTORAGE_HW_FIRMWARE_INFO, outputData);
-        device->os_info.fwdlIOsupport.fwdlIOSupported  = fwdlSupportedInfo->SupportUpgrade;
-        device->os_info.fwdlIOsupport.payloadAlignment = fwdlSupportedInfo->ImagePayloadAlignment;
-        device->os_info.fwdlIOsupport.maxXferSize      = fwdlSupportedInfo->ImagePayloadMaxSize;
+        PSTORAGE_HW_FIRMWARE_INFO fwdlSupportedInfo                    = C_CAST(PSTORAGE_HW_FIRMWARE_INFO, outputData);
+        device->os_info.fwdlIOsupport.fwdlIOSupported                  = fwdlSupportedInfo->SupportUpgrade;
+        device->os_info.fwdlIOsupport.payloadAlignment                 = fwdlSupportedInfo->ImagePayloadAlignment;
+        device->os_info.fwdlIOsupport.maxXferSize                      = fwdlSupportedInfo->ImagePayloadMaxSize;
         device->os_info.fwdlIOsupport.activateSupport.switchToExisting = true; // always true
         if (is_Windows_11_Version_22H2_Or_Higher())
         {
@@ -9358,22 +9389,26 @@ eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice* device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-// TODO: We may need to switch between locking fd and scsiSrbHandle in some way...for now just locking fd value.
-// https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume
-eReturnValues os_Lock_Device(tDevice* device)
+eReturnValues os_Get_Exclusive(tDevice* device)
 {
-    eReturnValues ret           = SUCCESS;
-    DWORD         returnedBytes = DWORD_C(0);
-
+    eReturnValues ret = SUCCESS;
     if (device->os_info.handleFlags == HANDLE_FLAGS_DEFAULT && strstr(device->os_info.name, "PHYSICAL") != M_NULLPTR)
     {
         // attempt to reopen with exclusive access. If it fails, that is ok, we still have this other lock
         // This is the same way the linux code is working. -TJE
         CloseHandle(device->os_info.fd);
         device->dFlags |= HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
-        open_Win_Handle(device->os_info.name, device);
+        ret = open_Win_Handle(device->os_info.name, device);
     }
+    return ret;
+}
 
+// TODO: We may need to switch between locking fd and scsiSrbHandle in some way...for now just locking fd value.
+// https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume
+eReturnValues os_Lock_Device(tDevice* device)
+{
+    eReturnValues ret           = SUCCESS;
+    DWORD         returnedBytes = DWORD_C(0);
     if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
                                         &returnedBytes, M_NULLPTR)))
     {
