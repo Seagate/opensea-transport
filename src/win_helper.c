@@ -12382,7 +12382,7 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
         downloadIO->Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_FIRST_SEGMENT;
     }
 #    endif
-    downloadIO->Slot = STORAGE_HW_FIRMWARE_INVALID_SLOT; // get_8bit_range_uint32(nvmeIoCtx->cmd, 1, 0);
+    downloadIO->Slot = 0; // set zero since this is not used in this command unlike SAS
     // we need to set the offset since MS uses this in the command sent to the device.
     downloadIO->Offset = C_CAST(uint64_t, nvmeIoCtx->cmd.adminCmd.cdw11) << 2; // convert #DWords to bytes for offset
     // set the size of the buffer

@@ -14274,8 +14274,8 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
                         timerUnits = true;
                         ata_idle_a = UINT16_C(0xFFFF);
                     }
-                    ret =
-                        ata_SF_EPC_Set_Power_Condition_Timer(device, 0x81, ata_idle_a, timerUnits, idle_a, saveParameters);
+                    ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x81, ata_idle_a, timerUnits, idle_a,
+                                                               saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14326,8 +14326,8 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
                         timerUnits = true;
                         ata_idle_b = UINT16_C(0xFFFF);
                     }
-                    ret =
-                        ata_SF_EPC_Set_Power_Condition_Timer(device, 0x82, ata_idle_b, timerUnits, idle_b, saveParameters);
+                    ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x82, ata_idle_b, timerUnits, idle_b,
+                                                               saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14377,8 +14377,8 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
                         timerUnits = true;
                         ata_idle_c = UINT16_C(0xFFFF);
                     }
-                    ret =
-                        ata_SF_EPC_Set_Power_Condition_Timer(device, 0x83, ata_idle_c, timerUnits, idle_c, saveParameters);
+                    ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x83, ata_idle_c, timerUnits, idle_c,
+                                                               saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14431,7 +14431,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
                         ata_standby_y = UINT16_C(0xFFFF);
                     }
                     ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x01, ata_standby_y, timerUnits, standby_y,
-                                                            saveParameters);
+                                                               saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14484,7 +14484,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(tDevice*       de
                         ata_standby_z = UINT16_C(0xFFFF);
                     }
                     ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x00, ata_standby_z, timerUnits, standby_z,
-                                                            saveParameters);
+                                                               saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;

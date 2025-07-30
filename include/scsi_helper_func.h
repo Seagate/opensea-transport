@@ -179,20 +179,22 @@ extern "C"
         SENSE_MATCH_ASC,
         SENSE_MATCH_ASCQ,
         SENSE_MATCH_FRU
-    }eSenseMatchDepth;
+    } eSenseMatchDepth;
 
     typedef struct tSenseToCheck
     {
         eSenseMatchDepth checkDepth;
-        eSenseKeyValues senseKey;
-        uint8_t asc;
-        uint8_t ascq;
-        uint8_t fru;
-    }senseToCheck;
+        eSenseKeyValues  senseKey;
+        uint8_t          asc;
+        uint8_t          ascq;
+        uint8_t          fru;
+    } senseToCheck;
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API bool check_Sense_For_Specific_Info(const uint8_t* senseData, uint32_t senseLen, senseToCheck check);
+    OPENSEA_TRANSPORT_API bool check_Sense_For_Specific_Info(const uint8_t* senseData,
+                                                             uint32_t       senseLen,
+                                                             senseToCheck   check);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
@@ -204,8 +206,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API bool is_Invalid_Field_In_Parameter(const uint8_t* senseData,
-                                                                             uint32_t       senseLen);
+    OPENSEA_TRANSPORT_API bool is_Invalid_Field_In_Parameter(const uint8_t* senseData, uint32_t senseLen);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
@@ -221,8 +222,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
-    OPENSEA_TRANSPORT_API bool is_Microcode_Activation_Required(const uint8_t* senseData,
-                                                                                uint32_t       senseLen);
+    OPENSEA_TRANSPORT_API bool is_Microcode_Activation_Required(const uint8_t* senseData, uint32_t senseLen);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
