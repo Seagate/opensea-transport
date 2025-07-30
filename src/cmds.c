@@ -80,16 +80,21 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice* device,
                                             bool     znr)
 {
     eReturnValues ret          = NOT_SUPPORTED;
-    bool          localPattern = false;
+    uint8_t *patternPtr = pattern;
+    uint32_t shortPattern = UINT32_C(0);
+    if (pattern && patternLength >= UINT16_C(4))
+    {
+        shortPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
+    }
+    else
+    {
+        // This is to satisfy the SCSI case below which expects a uint8_t* instead of uint32 like ATA and NVMe
+        patternPtr = M_REINTERPRET_CAST(uint8_t*, &shortPattern);
+        patternLength = sizeof(shortPattern);
+    }
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-    {
-        uint32_t ataPattern = UINT32_C(0);
-        if (pattern && patternLength >= 4)
-        {
-            ataPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
-        }
         // Note: ATA drives have a "definitive ending pattern bit"
         //       In order to be consistent with SCSI and NVMe specifications, this should be set when the
         //       Device supports it. Basically it means that the provided pattern WILL DEFINITELY be the
@@ -97,22 +102,16 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice* device,
         //       When this is not supported/set then the device may or may not be consistent with this behavior...it's
         //       up to the firmware to decide. Because of this, this bit will be set when it is discovered as supported
         //       whenever possible -TJE
+        // Note: If we discover which devices don't output a definitive ending pattern without this bit, then we could write a
+        //       table and handle this in software based on inversion and pass count rules. None known at this time -TJE
         ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F,
-                                           ataPattern, znr,
+                                           shortPattern, znr,
                                            device->drive_info.ata_Options.sanitizeOverwriteDefinitiveEndingPattern);
-    }
-    break;
+        break;
     case NVME_DRIVE:
-    {
-        uint32_t nvmPattern = UINT32_C(0);
-        if (pattern && patternLength >= 4)
-        {
-            nvmPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
-        }
         ret = nvme_Sanitize(device, znr, invertBetweenPasses, overwritePasses, exitFailureMode, SANITIZE_NVM_OVERWRITE,
-                            nvmPattern);
-    }
-    break;
+                            shortPattern);
+        break;
     case SCSI_DRIVE:
         // overwrite passes set to 0 on scsi is reserved. This is being changed to the maximum for SCSI to mean 16
         // passes
@@ -120,24 +119,8 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice* device,
         {
             overwritePasses = 0x1F;
         }
-        // we need to allocate a zero pattern if none was provided. 4 bytes is enough for this (and could handle SAT
-        // transaltion if necessary).
-        if (pattern == M_NULLPTR)
-        {
-            localPattern = true;
-            pattern      = M_REINTERPRET_CAST(uint8_t*, safe_calloc(4, sizeof(uint8_t)));
-            if (pattern == M_NULLPTR)
-            {
-                return MEMORY_FAILURE;
-            }
-        }
         ret = scsi_Sanitize_Overwrite(device, exitFailureMode, znr, true, invertBetweenPasses,
-                                      SANITIZE_OVERWRITE_NO_CHANGES, overwritePasses & 0x1F, pattern, patternLength);
-        if (localPattern)
-        {
-            safe_free(&pattern);
-            localPattern = false;
-        }
+                                      SANITIZE_OVERWRITE_NO_CHANGES, overwritePasses & 0x1F, patternPtr, patternLength);
         break;
     default:
         break;
