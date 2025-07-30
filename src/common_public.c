@@ -26,6 +26,7 @@
 #include "common_public.h"
 #include "csmi_helper_func.h"
 #include "platform_helper.h"
+#include "vendor/seagate/seagate_common_types.h"
 
 void print_Low_Level_Info(tDevice* device)
 {
@@ -1260,7 +1261,8 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
     default:
         break;
     }
-    if (SUCCESS == get_Device_Count(&deviceCount, getCountFlags))
+    eReturnValues ret = get_Device_Count(&deviceCount, getCountFlags);
+    if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
     {
         if (deviceCount > 0)
         {
@@ -1290,7 +1292,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                 getDeviceflags |= GET_DEVICE_FUNCS_IGNORE_CSMI;
             }
 #endif
-            eReturnValues ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
+            ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
             if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
             {
                 printf("%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
@@ -1422,12 +1424,32 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                     close_Device(&deviceList[deviceIter]);
                 }
             }
+            else if (ret == PERMISSION_DENIED)
+            {
+                printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
+            }
+            else if (ret == DEVICE_BUSY)
+            {
+                printf("All devices reported as busy at this time.\n");
+            }
+            else
+            {
+                printf("Unknown failure occurred trying to get device list\n");
+            }
             safe_free_aligned_core(C_CAST(void**, &deviceList));
         }
         else
         {
             printf("No devices found\n");
         }
+    }
+    else if (ret == PERMISSION_DENIED)
+    {
+        printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
+    }
+    else if (ret == DEVICE_BUSY)
+    {
+        printf("All devices reported as busy at this time.\n");
     }
     else
     {
@@ -1952,28 +1974,115 @@ bool is_PrarieTek_VendorID(tDevice* device)
 bool is_LaCie(tDevice* device)
 {
     bool isLaCie = false;
-    // LaCie drives do not have a IEEE OUI, so the only way we know it's LaCie is to check the VendorID field reported
-    // by the device
-    size_t lacieLen  = safe_strlen("LACIE");
-    size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
-    if (stringLen > 0)
+    if ((device->drive_info.interface_type == NVME_INTERFACE) &&
+        (device->drive_info.adapter_info.vendorID == LACIE_VENDOR_ID))
     {
-        char* vendorID = M_REINTERPRET_CAST(char*, safe_calloc(stringLen + 1, sizeof(char)));
-        if (vendorID == M_NULLPTR)
+        return true;
+    }
+    else
+    {
+        // LaCie drives do not have a IEEE OUI, so the only way we know it's LaCie is to check the VendorID field
+        // reported by the device
+        size_t lacieLen  = safe_strlen("LACIE");
+        size_t stringLen = safe_strlen(device->drive_info.T10_vendor_ident);
+        if (stringLen > 0)
         {
-            perror("calloc failure");
-            return MEMORY_FAILURE;
+            char* vendorID = M_REINTERPRET_CAST(char*, safe_calloc(stringLen + 1, sizeof(char)));
+            if (vendorID == M_NULLPTR)
+            {
+                perror("calloc failure");
+                return MEMORY_FAILURE;
+            }
+            snprintf_err_handle(vendorID, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
+            vendorID[stringLen] = '\0';
+            convert_String_To_Upper_Case(vendorID);
+            if (safe_strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
+            {
+                isLaCie = true;
+            }
+            safe_free(&vendorID);
         }
-        snprintf_err_handle(vendorID, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
-        vendorID[stringLen] = '\0';
-        convert_String_To_Upper_Case(vendorID);
-        if (safe_strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
-        {
-            isLaCie = true;
-        }
-        safe_free(&vendorID);
     }
     return isLaCie;
+}
+
+// USB, firewire, thunderbolt, etc
+void seagate_External_SN_Cleanup(char** sn, size_t snlen)
+{
+    DISABLE_NONNULL_COMPARE
+    if (sn != M_NULLPTR && *sn != M_NULLPTR)
+    {
+        // sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
+        // All of these SNs should be only 8 characters long.
+        DECLARE_ZERO_INIT_ARRAY(char, zeroes, SERIAL_NUM_LEN + 1); // making bigger than needed for now.
+        safe_memset(zeroes, SERIAL_NUM_LEN + 1, '0', SERIAL_NUM_LEN);
+        zeroes[SERIAL_NUM_LEN] = '\0';
+        if (strncmp(zeroes, *sn, SEAGATE_SERIAL_NUMBER_LEN) == 0)
+        {
+            // 8 zeroes at the beginning. Strip them off
+            safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
+                         safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN);
+            safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                        safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN);
+        }
+        else if (strncmp(zeroes, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN], safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
+        {
+            // zeroes at the end. Write nulls over them
+            // This is not correct, reverse the string as this is a product defect.
+            DECLARE_ZERO_INIT_ARRAY(char, currentSerialNumber, SERIAL_NUM_LEN + 1);
+            DECLARE_ZERO_INIT_ARRAY(char, newSerialNumber, SERIAL_NUM_LEN + 1);
+            uint8_t serialMaxSize = C_CAST(uint8_t, M_Min(SERIAL_NUM_LEN, snlen));
+            // backup current just in case
+            safe_memcpy(currentSerialNumber, SERIAL_NUM_LEN + 1, (*sn), M_Min(SERIAL_NUM_LEN, snlen));
+            for (uint8_t curSN = serialMaxSize, newSN = UINT8_C(0); newSN < serialMaxSize; --curSN)
+            {
+                if ((*sn)[curSN] != '\0')
+                {
+                    newSerialNumber[newSN] = (*sn)[curSN];
+                    ++newSN;
+                }
+                if (curSN == 0)
+                {
+                    break;
+                }
+            }
+            safe_memcpy((*sn), snlen, newSerialNumber, M_Min(SERIAL_NUM_LEN, snlen));
+            // At this point the zeroes will now all be at the end.
+            if (strncmp(zeroes, (*sn), SEAGATE_SERIAL_NUMBER_LEN) == 0)
+            {
+                // zeroes at the beginning. Strip them off
+                safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
+                             safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN);
+                safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                            safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN);
+            }
+            else if (strncmp(zeroes, (*sn), 4) == 0)
+            {
+                // zeroes at the beginning. Strip them off
+                safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4);
+                safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                            safe_strlen((*sn)) - 4);
+            }
+            else
+            {
+                // after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the
+                // end.
+                safe_memcpy((*sn), snlen, currentSerialNumber, M_Min(SERIAL_NUM_LEN, snlen));
+                safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                            safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN);
+            }
+        }
+        else if (strncmp(zeroes, (*sn), 4) == 0)
+        {
+            // 4 zeroes at the beginning. Strip them off
+            safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4);
+            safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                        safe_strlen((*sn)) - 4);
+        }
+        // NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to
+        // add different cases for these older LaCie products.
+    }
+    RESTORE_NONNULL_COMPARE
 }
 
 bool is_Samsung_String(const char* string)
@@ -5179,6 +5288,28 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported   = true;
         device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 0;
         break;
+    case 0x113B: // Rugged SSD4
+        // NOTE: This is a weird drive.
+        passthroughHacksSet                                                       = true;
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 7;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
+        // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+        device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly                  = true;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported               = true;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 0;
+        device->drive_info.passThroughHacks.ataPTHacks.smartEnabled                  = true;
+        break;
     case 0x1105: // Mobile Drive
     case 0x1106: // Mobile Drive
     case 0x1107: // Mobile Secure
@@ -5753,6 +5884,120 @@ static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+static bool set_Prolific_USB_Hacks_By_PID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    switch (device->drive_info.adapter_info.productID)
+    {
+    case 0x2773:
+        // based on revision 0000h
+        passthroughHacksSet                                 = true;
+        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_PROLIFIC;
+        // Guessing 64K max
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536; // Bytes
+        // set SCSI hacks
+        // Guessing 64K max
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength = 65536; // bytes
+        // device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        // device->drive_info.passThroughHacks.turfValue                             = 14;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6       = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10      = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12      = false;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 =
+            false; // not entirely sure, but probably not. -TJE
+        device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        break;
+    // TODO: Find and test these. Unknown if they support the same capabilities listed above
+    // case 0x3507 - PL3507 ATAPI6 Bridge
+    // case 0x2528 - USB flash drive
+    // case 0x2507 - PL2507 Hi-speed USB to IDE bridge controller
+    // case 0x2307 PL2307 USB-ATAPI4 Bridge
+    // case 0x0600 - IDE Bridge
+    default: // unknown
+        break;
+    }
+    return passthroughHacksSet;
+}
+
+static bool set_Cypress_USB_Hacks_By_PID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    switch (device->drive_info.adapter_info.productID)
+    {
+    case 0x6830: // CY7C68300(A|B|C) USB to ATA adapter
+    case 0x6831: // ISD-300LP
+        // based on revision 0000h
+        passthroughHacksSet                                                     = true;
+        device->drive_info.passThroughHacks.passthroughType                     = ATA_PASSTHROUGH_CYPRESS;
+        passthroughHacksSet                                                     = true;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+        device->drive_info.passThroughHacks.turfValue                           = 6;
+        device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData           = true;
+        // device->drive_info.passThroughHacks.scsiHacks.scsiInq
+        device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 65536;
+        device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly               = true;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported =
+            true; // TODO: Cypress passthrough has a bit for UDMA mode, but didn't appear to work in testing.
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+        break;
+    default: // unknown
+        break;
+    }
+    return passthroughHacksSet;
+}
+
+static bool set_TI_USB_Hacks_By_PID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    switch (device->drive_info.adapter_info.productID)
+    {
+    case 0x625F: // TUSB6250
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_TI;
+        passthroughHacksSet                                                       = true;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 14;
+        device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noModePages                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 65536;
+        device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly               = true;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported            = true;
+        device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands =
+            true; // mutliple mode commands don't work in passthrough.
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+        break;
+    case 0x9261: // TUSB926x
+        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+        passthroughHacksSet                                 = true;
+        // device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        // device->drive_info.passThroughHacks.turfValue                             = 14;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 65536;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported   = true;
+        device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked                   = true;
+        device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported                 = false;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                     = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noModeSubPages                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations    = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available            = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16                 = true;
+        break;
+    default: // unknown
+        break;
+    }
+    return passthroughHacksSet;
+}
+
 // https://usb-ids.gowdy.us/
 // http://www.linux-usb.org/usb.ids
 static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
@@ -5791,6 +6036,15 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             default: // unknown
                 break;
             }
+            break;
+        case USB_Vendor_Prolific: // 067B
+            passthroughHacksSet = set_Prolific_USB_Hacks_By_PID(device);
+            break;
+        case USB_Vendor_Cypress: // 04B4
+            passthroughHacksSet = set_Cypress_USB_Hacks_By_PID(device);
+            break;
+        case USB_Vendor_TI: // 0451
+            passthroughHacksSet = set_TI_USB_Hacks_By_PID(device);
             break;
         case USB_Vendor_4G_Systems_GmbH: // 1955
             switch (device->drive_info.adapter_info.productID)

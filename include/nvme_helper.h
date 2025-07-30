@@ -308,23 +308,21 @@ extern "C"
         NVME_CMD_RESERVATION_RELEASE  = 0x15,
     } eNvmeOPCodes;
 
-    M_PACK_ALIGN_STRUCT(nvmCommand,
-                        1,
-                        uint8_t  opcode;    // CDW0
-                        uint8_t  flags;     // CDW0
-                        uint16_t commandId; // CDW0
-                        uint32_t nsid;      // CDW1
-                        uint32_t cdw2;      // CDW2
-                        uint32_t cdw3;      // CDW3
-                        uint64_t metadata;  // CDW4 & 5
-                        uint64_t prp1;      // CDW6 & 7
-                        uint64_t prp2;      // CDW8 & 9
-                        uint32_t cdw10;     // CDW10
-                        uint32_t cdw11;     // CDW11
-                        uint32_t cdw12;     // CDW12
-                        uint32_t cdw13;     // CDW13
-                        uint32_t cdw14;     // CDW14
-                        uint32_t cdw15;     // CDW15
+    M_PACK_ALIGN_STRUCT(nvmCommand, 1, uint8_t opcode; /* CDW0  */
+                        uint8_t  flags;                /* CDW0  */
+                        uint16_t commandId;            /* CDW0  */
+                        uint32_t nsid;                 /* CDW1  */
+                        uint32_t cdw2;                 /* CDW2  */
+                        uint32_t cdw3;                 /* CDW3  */
+                        uint64_t metadata;             /* CDW4 & 5  */
+                        uint64_t prp1;                 /* CDW6 & 7  */
+                        uint64_t prp2;                 /* CDW8 & 9  */
+                        uint32_t cdw10;                /* CDW10  */
+                        uint32_t cdw11;                /* CDW11  */
+                        uint32_t cdw12;                /* CDW12  */
+                        uint32_t cdw13;                /* CDW13  */
+                        uint32_t cdw14;                /* CDW14  */
+                        uint32_t cdw15;                /* CDW15  */
     );
 
     // NVMe Spec - Figure 62: Firmware Commit - Command Dword 10
@@ -334,6 +332,8 @@ extern "C"
         NVME_CA_REPLACE_ACTIVITE_ON_RST          = 1,
         NVME_CA_ACTIVITE_ON_RST                  = 2,
         NVME_CA_ACTIVITE_IMMEDIATE               = 3,
+        NVME_CA_RESERVED_4                       = 4,
+        NVME_CA_RESERVED_5                       = 5,
         NVME_CA_DOWNLOAD_REP_BOOT_PART_W_PART_ID = 6,
         NVME_CA_MARK_BOOT_PART_AS_ACTIVE         = 7
     } nvmeFWCommitAction;

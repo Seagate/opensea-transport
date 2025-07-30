@@ -340,6 +340,278 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
     return status;
 }
 
+static eReturnValues ata_Firmware_Download_Command(tDevice*      device,
+                                                   eDownloadMode dlMode,
+                                                   uint32_t      offset,
+                                                   uint32_t      xferLen,
+                                                   uint8_t*      ptrData,
+                                                   bool          firstSegment,
+                                                   bool          lastSegment,
+                                                   uint32_t      timeoutSeconds)
+{
+    eReturnValues              ret       = SUCCESS;
+    eDownloadMicrocodeFeatures ataDLMode = ATA_DL_MICROCODE_SAVE_IMMEDIATE; // default
+    switch (dlMode)
+    {
+    case DL_FW_ACTIVATE:
+        ataDLMode = ATA_DL_MICROCODE_ACTIVATE;
+        break;
+    case DL_FW_FULL:
+        ataDLMode = ATA_DL_MICROCODE_SAVE_IMMEDIATE;
+        break;
+    case DL_FW_TEMP:
+        ataDLMode = ATA_DL_MICROCODE_TEMPORARY_IMMEDIATE;
+        break;
+    case DL_FW_SEGMENTED:
+        ataDLMode = ATA_DL_MICROCODE_OFFSETS_SAVE_IMMEDIATE;
+        break;
+    case DL_FW_DEFERRED:
+        ataDLMode = ATA_DL_MICROCODE_OFFSETS_SAVE_FUTURE;
+        break;
+    case DL_FW_DEFERRED_SELECT_ACTIVATE:
+    default:
+        return BAD_PARAMETER;
+    }
+    // ret = ata_Download_Microcode(device, ataDLMode, xferLen / LEGACY_DRIVE_SEC_SIZE, offset /
+    // LEGACY_DRIVE_SEC_SIZE, useDMA, ptrData, xferLen); Switching to this new function since it will automatically
+    // try DMA mode if supported by the drive. If the controller or driver don't like issuing DMA mode, this will
+    // detect it and retry the command with PIO mode.
+    ret = send_ATA_Download_Microcode_Cmd(device, ataDLMode, C_CAST(uint16_t, xferLen / LEGACY_DRIVE_SEC_SIZE),
+                                          C_CAST(uint16_t, offset / LEGACY_DRIVE_SEC_SIZE), ptrData, xferLen,
+                                          firstSegment, lastSegment, timeoutSeconds);
+    return ret;
+}
+
+static eReturnValues nvme_Firmware_Download_Command(tDevice*      device,
+                                                    eDownloadMode dlMode,
+                                                    uint32_t      offset,
+                                                    uint32_t      xferLen,
+                                                    uint8_t*      ptrData,
+                                                    uint8_t       slotNumber,
+                                                    bool          existingImage,
+                                                    bool          firstSegment,
+                                                    bool          lastSegment,
+                                                    uint32_t      timeoutSeconds,
+                                                    bool          nvmeForceCA,
+                                                    uint8_t       commitAction,
+                                                    bool          forceDisableReset)
+{
+    eReturnValues ret = SUCCESS;
+    switch (dlMode)
+    {
+    case DL_FW_ACTIVATE:
+    {
+        uint8_t statusCodeType   = UINT8_C(0);
+        uint8_t statusCode       = UINT8_C(0);
+        bool    doNotRetry       = false;
+        bool    more             = false;
+        bool    issueReset       = false;
+        bool    subsystem        = false;
+        uint8_t nvmeCommitAction = commitAction; // assume something is passed in for now
+        if (!nvmeForceCA)
+        {
+            // user is not forcing a commit action so figure out what to use instead.
+#if defined(_WIN32)
+            // For windows we are limited by the update API.
+            // This is stored in tDevice so we can use it, plus the drive supported actions to make a choice
+            bool supportActivateNoReset = false;
+            if (device->os_info.fwdlIOsupport.fwdlIOSupported)
+            {
+                if (device->os_info.fwdlIOsupport.activateSupport.switchNoReset &&
+                    device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
+                {
+                    supportActivateNoReset = true;
+                }
+                if (existingImage)
+                {
+                    if (supportActivateNoReset)
+                    {
+                        nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
+                    }
+                    else
+                    {
+                        nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
+                    }
+                }
+                else
+                {
+                    // NOTE: Windows 11 24H2 SHOULD accept this, but if we run into issues
+                    //       switch to the replace, activate on reset instead - TJE
+                    if (supportActivateNoReset)
+                    {
+                        nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
+                    }
+                    else
+                    {
+                        nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+                    }
+                }
+            }
+            else
+#endif // _WIN32
+            {
+                if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
+                {
+                    // this activate action can be used for replacing or activating existing images if the controller
+                    // supports it.
+                    nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
+                }
+                else
+                {
+                    if (existingImage)
+                    {
+                        nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
+                    }
+                    else
+                    {
+                        nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+                    }
+                }
+            }
+        }
+        ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
+        if (ret == SUCCESS &&
+            (nvmeCommitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || nvmeCommitAction == NVME_CA_ACTIVITE_ON_RST) &&
+            !forceDisableReset)
+        {
+            issueReset = true;
+        }
+        // Issue a reset if we need to!
+        get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more,
+                                          &statusCodeType, &statusCode);
+        if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
+        {
+            switch (statusCode)
+            {
+            case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                issueReset = true;
+                subsystem  = true;
+                break;
+            case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+            case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                issueReset = true;
+                break;
+            case NVME_CMD_SP_SC_FW_ACT_REQ_MAX_TIME_VIOALTION:
+                if (!nvmeForceCA) // only retry when not forcing a specific mode
+                {
+                    // needs to be reissued for an activate on reset instead due to maximum time violation.
+                    if (existingImage)
+                    {
+                        nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
+                    }
+                    else
+                    {
+                        nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
+                    }
+                    ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
+                    get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry,
+                                                      &more, &statusCodeType, &statusCode);
+                    if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
+                    {
+                        switch (statusCode)
+                        {
+                        case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
+                            if (!forceDisableReset)
+                            {
+                                issueReset = true;
+                                subsystem  = true;
+                            }
+                            break;
+                        case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
+                        case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
+                            if (!forceDisableReset)
+                            {
+                                issueReset = true;
+                            }
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                }
+                break;
+            default:
+                break;
+            }
+        }
+        if (issueReset && !forceDisableReset) // if the reset is being forced to not run, there is a good reason for
+                                              // it! Listen to this flag ALWAYS
+        {
+            // send an appropriate reset to the device to activate the firmware.
+            // NOTE: On Windows, this is a stub since their API call will do this for us.
+            if (subsystem)
+            {
+                // subsystem reset
+                nvme_Subsystem_Reset(device);
+            }
+            else
+            {
+                // reset
+                nvme_Reset(device);
+            }
+        }
+        else if (nvmeCommitAction != NVME_CA_ACTIVITE_IMMEDIATE)
+        {
+            // Set this return code since the reset was bypassed.
+            ret = POWER_CYCLE_REQUIRED;
+        }
+    }
+    break;
+    case DL_FW_DEFERRED:
+        ret = nvme_Firmware_Image_Dl(device, offset, xferLen, ptrData, firstSegment, lastSegment, timeoutSeconds);
+        break;
+    case DL_FW_FULL:
+    case DL_FW_TEMP:
+    case DL_FW_SEGMENTED:
+    case DL_FW_DEFERRED_SELECT_ACTIVATE:
+    // none of these are supported
+    default:
+        ret = NOT_SUPPORTED;
+        break;
+    }
+    return ret;
+}
+
+static eReturnValues scsi_Firmware_Download_Command(tDevice*      device,
+                                                    eDownloadMode dlMode,
+                                                    uint32_t      offset,
+                                                    uint32_t      xferLen,
+                                                    uint8_t*      ptrData,
+                                                    uint8_t       slotNumber,
+                                                    bool          firstSegment,
+                                                    bool          lastSegment,
+                                                    uint32_t      timeoutSeconds)
+{
+    eReturnValues    ret        = SUCCESS;
+    eWriteBufferMode scsiDLMode = SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE; // default
+    switch (dlMode)
+    {
+    case DL_FW_ACTIVATE:
+        scsiDLMode = SCSI_WB_ACTIVATE_DEFERRED_MICROCODE;
+        break;
+    case DL_FW_FULL:
+        scsiDLMode = SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE;
+        break;
+    case DL_FW_TEMP:
+        scsiDLMode = SCSI_WB_DL_MICROCODE_TEMP_ACTIVATE;
+        break;
+    case DL_FW_SEGMENTED:
+        scsiDLMode = SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_ACTIVATE;
+        break;
+    case DL_FW_DEFERRED:
+        scsiDLMode = SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER;
+        break;
+    case DL_FW_DEFERRED_SELECT_ACTIVATE:
+        scsiDLMode = SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_SELECT_ACTIVATE_DEFER;
+        break;
+    default:
+        return BAD_PARAMETER;
+    }
+    ret = scsi_Write_Buffer(device, scsiDLMode, 0, slotNumber, offset, xferLen, ptrData, firstSegment, lastSegment,
+                            timeoutSeconds);
+    return ret;
+}
+
 eReturnValues firmware_Download_Command(tDevice*      device,
                                         eDownloadMode dlMode,
                                         uint32_t      offset,
@@ -361,204 +633,18 @@ eReturnValues firmware_Download_Command(tDevice*      device,
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-    {
-        eDownloadMicrocodeFeatures ataDLMode = ATA_DL_MICROCODE_SAVE_IMMEDIATE; // default
-        switch (dlMode)
-        {
-        case DL_FW_ACTIVATE:
-            ataDLMode = ATA_DL_MICROCODE_ACTIVATE;
-            break;
-        case DL_FW_FULL:
-            ataDLMode = ATA_DL_MICROCODE_SAVE_IMMEDIATE;
-            break;
-        case DL_FW_TEMP:
-            ataDLMode = ATA_DL_MICROCODE_TEMPORARY_IMMEDIATE;
-            break;
-        case DL_FW_SEGMENTED:
-            ataDLMode = ATA_DL_MICROCODE_OFFSETS_SAVE_IMMEDIATE;
-            break;
-        case DL_FW_DEFERRED:
-            ataDLMode = ATA_DL_MICROCODE_OFFSETS_SAVE_FUTURE;
-            break;
-        case DL_FW_DEFERRED_SELECT_ACTIVATE:
-        default:
-            return BAD_PARAMETER;
-        }
-        // ret = ata_Download_Microcode(device, ataDLMode, xferLen / LEGACY_DRIVE_SEC_SIZE, offset /
-        // LEGACY_DRIVE_SEC_SIZE, useDMA, ptrData, xferLen); Switching to this new function since it will automatically
-        // try DMA mode if supported by the drive. If the controller or driver don't like issuing DMA mode, this will
-        // detect it and retry the command with PIO mode.
-        ret = send_ATA_Download_Microcode_Cmd(device, ataDLMode, C_CAST(uint16_t, xferLen / LEGACY_DRIVE_SEC_SIZE),
-                                              C_CAST(uint16_t, offset / LEGACY_DRIVE_SEC_SIZE), ptrData, xferLen,
-                                              firstSegment, lastSegment, timeoutSeconds);
-    }
-    break;
-    case NVME_DRIVE:
-    {
-        switch (dlMode)
-        {
-        case DL_FW_ACTIVATE:
-        {
-            uint8_t statusCodeType   = UINT8_C(0);
-            uint8_t statusCode       = UINT8_C(0);
-            bool    doNotRetry       = false;
-            bool    more             = false;
-            bool    issueReset       = false;
-            bool    subsystem        = false;
-            uint8_t nvmeCommitAction = commitAction; // assume something is passed in for now
-            if (!nvmeForceCA)
-            {
-                // user is not forcing a commit action so figure out what to use instead.
-                if (device->drive_info.IdentifyData.nvme.ctrl.frmw & BIT4)
-                {
-                    // this activate action can be used for replacing or activating existing images if the controller
-                    // supports it.
-                    nvmeCommitAction = NVME_CA_ACTIVITE_IMMEDIATE;
-                }
-                else
-                {
-                    if (existingImage)
-                    {
-                        nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
-                    }
-                    else
-                    {
-                        nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
-                    }
-                }
-            }
-            ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
-            if (ret == SUCCESS &&
-                (nvmeCommitAction == NVME_CA_REPLACE_ACTIVITE_ON_RST || nvmeCommitAction == NVME_CA_ACTIVITE_ON_RST) &&
-                !forceDisableReset)
-            {
-                issueReset = true;
-            }
-            // Issue a reset if we need to!
-            get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry, &more,
-                                              &statusCodeType, &statusCode);
-            if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
-            {
-                switch (statusCode)
-                {
-                case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
-                    issueReset = true;
-                    subsystem  = true;
-                    break;
-                case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
-                case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
-                    issueReset = true;
-                    break;
-                case NVME_CMD_SP_SC_FW_ACT_REQ_MAX_TIME_VIOALTION:
-                    if (!nvmeForceCA) // only retry when not forcing a specific mode
-                    {
-                        // needs to be reissued for an activate on reset instead due to maximum time violation.
-                        if (existingImage)
-                        {
-                            nvmeCommitAction = NVME_CA_ACTIVITE_ON_RST;
-                        }
-                        else
-                        {
-                            nvmeCommitAction = NVME_CA_REPLACE_ACTIVITE_ON_RST;
-                        }
-                        ret = nvme_Firmware_Commit(device, nvmeCommitAction, slotNumber, timeoutSeconds);
-                        get_NVMe_Status_Fields_From_DWord(device->drive_info.lastNVMeResult.lastNVMeStatus, &doNotRetry,
-                                                          &more, &statusCodeType, &statusCode);
-                        if (statusCodeType == NVME_SCT_COMMAND_SPECIFIC_STATUS)
-                        {
-                            switch (statusCode)
-                            {
-                            case NVME_CMD_SP_SC_FW_ACT_REQ_NVM_SUBSYS_RESET:
-                                if (!forceDisableReset)
-                                {
-                                    issueReset = true;
-                                    subsystem  = true;
-                                }
-                                break;
-                            case NVME_CMD_SP_SC_FW_ACT_REQ_RESET:
-                            case NVME_CMD_SP_SC_FW_ACT_REQ_CONVENTIONAL_RESET:
-                                if (!forceDisableReset)
-                                {
-                                    issueReset = true;
-                                }
-                                break;
-                            default:
-                                break;
-                            }
-                        }
-                    }
-                    break;
-                default:
-                    break;
-                }
-            }
-            if (issueReset && !forceDisableReset) // if the reset is being forced to not run, there is a good reason for
-                                                  // it! Listen to this flag ALWAYS
-            {
-                // send an appropriate reset to the device to activate the firmware.
-                // NOTE: On Windows, this is a stub since their API call will do this for us.
-                if (subsystem)
-                {
-                    // subsystem reset
-                    nvme_Subsystem_Reset(device);
-                }
-                else
-                {
-                    // reset
-                    nvme_Reset(device);
-                }
-            }
-            else if (nvmeCommitAction != NVME_CA_ACTIVITE_IMMEDIATE)
-            {
-                // Set this return code since the reset was bypassed.
-                ret = POWER_CYCLE_REQUIRED;
-            }
-        }
+        ret = ata_Firmware_Download_Command(device, dlMode, offset, xferLen, ptrData, firstSegment, lastSegment,
+                                            timeoutSeconds);
         break;
-        case DL_FW_DEFERRED:
-            ret = nvme_Firmware_Image_Dl(device, offset, xferLen, ptrData, firstSegment, lastSegment, timeoutSeconds);
-            break;
-        case DL_FW_FULL:
-        case DL_FW_TEMP:
-        case DL_FW_SEGMENTED:
-        case DL_FW_DEFERRED_SELECT_ACTIVATE:
-        // none of these are supported
-        default:
-            ret = NOT_SUPPORTED;
-            break;
-        }
-    }
-    break;
+    case NVME_DRIVE:
+        ret = nvme_Firmware_Download_Command(device, dlMode, offset, xferLen, ptrData, slotNumber, existingImage,
+                                             firstSegment, lastSegment, timeoutSeconds, nvmeForceCA, commitAction,
+                                             forceDisableReset);
+        break;
     case SCSI_DRIVE:
-    {
-        eWriteBufferMode scsiDLMode = SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE; // default
-        switch (dlMode)
-        {
-        case DL_FW_ACTIVATE:
-            scsiDLMode = SCSI_WB_ACTIVATE_DEFERRED_MICROCODE;
-            break;
-        case DL_FW_FULL:
-            scsiDLMode = SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE;
-            break;
-        case DL_FW_TEMP:
-            scsiDLMode = SCSI_WB_DL_MICROCODE_TEMP_ACTIVATE;
-            break;
-        case DL_FW_SEGMENTED:
-            scsiDLMode = SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_ACTIVATE;
-            break;
-        case DL_FW_DEFERRED:
-            scsiDLMode = SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER;
-            break;
-        case DL_FW_DEFERRED_SELECT_ACTIVATE:
-            scsiDLMode = SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_SELECT_ACTIVATE_DEFER;
-            break;
-        default:
-            return BAD_PARAMETER;
-        }
-        ret = scsi_Write_Buffer(device, scsiDLMode, 0, slotNumber, offset, xferLen, ptrData, firstSegment, lastSegment,
-                                timeoutSeconds);
-    }
-    break;
+        ret = scsi_Firmware_Download_Command(device, dlMode, offset, xferLen, ptrData, slotNumber, firstSegment,
+                                             lastSegment, timeoutSeconds);
+        break;
     default:
         ret = NOT_SUPPORTED;
         break;
