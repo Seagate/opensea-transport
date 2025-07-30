@@ -33,7 +33,7 @@
 
 eReturnValues send_Sanitize_Block_Erase(tDevice* device, bool exitFailureMode, bool znr)
 {
-    eReturnValues ret = UNKNOWN;
+    eReturnValues ret = NOT_SUPPORTED;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -46,10 +46,6 @@ eReturnValues send_Sanitize_Block_Erase(tDevice* device, bool exitFailureMode, b
         ret = scsi_Sanitize_Block_Erase(device, exitFailureMode, true, znr);
         break;
     default:
-        if (VERBOSITY_QUIET < device->deviceVerbosity)
-        {
-            printf("Current device type not supported yet\n");
-        }
         break;
     }
     return ret;
@@ -57,7 +53,7 @@ eReturnValues send_Sanitize_Block_Erase(tDevice* device, bool exitFailureMode, b
 
 eReturnValues send_Sanitize_Crypto_Erase(tDevice* device, bool exitFailureMode, bool znr)
 {
-    eReturnValues ret = UNKNOWN;
+    eReturnValues ret = NOT_SUPPORTED;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -70,10 +66,6 @@ eReturnValues send_Sanitize_Crypto_Erase(tDevice* device, bool exitFailureMode, 
         ret = scsi_Sanitize_Cryptographic_Erase(device, exitFailureMode, true, znr);
         break;
     default:
-        if (VERBOSITY_QUIET < device->deviceVerbosity)
-        {
-            printf("Current device type not supported yet\n");
-        }
         break;
     }
     return ret;
@@ -87,7 +79,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice* device,
                                             uint16_t patternLength,
                                             bool     znr)
 {
-    eReturnValues ret          = UNKNOWN;
+    eReturnValues ret          = NOT_SUPPORTED;
     bool          localPattern = false;
     switch (device->drive_info.drive_type)
     {
@@ -148,7 +140,6 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice* device,
         }
         break;
     default:
-        printf("Current device type not supported yet\n");
         break;
     }
     return ret;
@@ -156,7 +147,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice* device,
 
 eReturnValues send_Sanitize_Exit_Failure_Mode(tDevice* device)
 {
-    eReturnValues ret = UNKNOWN;
+    eReturnValues ret = NOT_SUPPORTED;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -169,7 +160,6 @@ eReturnValues send_Sanitize_Exit_Failure_Mode(tDevice* device)
         ret = scsi_Sanitize_Exit_Failure_Mode(device);
         break;
     default:
-        printf("Current device type not supported yet\n");
         break;
     }
     return ret;
@@ -177,7 +167,7 @@ eReturnValues send_Sanitize_Exit_Failure_Mode(tDevice* device)
 
 eReturnValues spin_down_drive(tDevice* device, bool sleepState)
 {
-    eReturnValues ret = UNKNOWN;
+    eReturnValues ret = NOT_SUPPORTED;
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
@@ -229,11 +219,6 @@ eReturnValues spin_down_drive(tDevice* device, bool sleepState)
         }
         break;
     default:
-        if (VERBOSITY_QUIET < device->deviceVerbosity)
-        {
-            printf("Spin down drive is not supported on this drive type at this time\n");
-        }
-        ret = NOT_SUPPORTED;
         break;
     }
     return ret;
@@ -282,7 +267,6 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
                 status = fill_In_ATA_Drive_Info(device);
                 if (status == FAILURE || status == UNKNOWN)
                 {
-                    // printf("trying scsi discovery\n");
                     // could not enumerate as ATA, try SCSI in case it's taking CDBs at the low layer to communicate and
                     // not translating more than the A1 op-code to check it if's a SAT command.
                     status = fill_In_Device_Info(device);

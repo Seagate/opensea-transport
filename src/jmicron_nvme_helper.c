@@ -406,7 +406,7 @@ eReturnValues jm_nvme_Reset(tDevice* device)
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Sending JMicron NVMe Reset\n");
+        print_str("Sending JMicron NVMe Reset\n");
     }
     if (SUCCESS == jm_NVMe_Normal_Shutdown(device))
     {
@@ -431,7 +431,7 @@ eReturnValues jm_nvme_Subsystem_Reset(tDevice* device)
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Sending JMicron NVMe Subsystem Reset\n");
+        print_str("Sending JMicron NVMe Subsystem Reset\n");
     }
     if (SUCCESS == jm_NVMe_Normal_Shutdown(device))
     {

@@ -41,7 +41,7 @@ bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device)
         device->drive_info.drive_type == SCSI_DRIVE)
     {
 #if defined(_DEBUG)
-        printf("\n\tAttempting to set USB passthrough type with identify commands\n");
+        print_str("\n\tAttempting to set USB passthrough type with identify commands\n");
 #endif
         while (device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_UNKNOWN)
         {

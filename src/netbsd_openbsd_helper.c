@@ -103,8 +103,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             }
             perror("open");
             device->os_info.last_error = errno;
-            printf("open failure\n");
-            printf("Error: ");
+            print_str("open failure\n");
+            print_str("Error: ");
             print_Errno_To_Screen(errno);
             if (device->os_info.last_error == EACCES)
             {

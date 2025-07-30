@@ -70,7 +70,7 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSe
     safe_memset(scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
     {
-        printf("\n  CDB:\n");
+        print_str("\n  CDB:\n");
         print_Data_Buffer(scsiIoCtx->cdb, scsiIoCtx->cdbLength, false);
     }
 #if defined(_DEBUG)
@@ -84,17 +84,17 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSe
         scsiIoCtx->direction == XFER_DATA_OUT)
 #endif
     {
-        printf("\t  Data Buffer being sent:\n");
+        print_str("\t  Data Buffer being sent:\n");
         print_Data_Buffer(scsiIoCtx->pdata, scsiIoCtx->dataLength, true);
-        printf("\n");
+        print_str("\n");
     }
     // send the command
     eReturnValues sendIOret = send_IO(scsiIoCtx);
     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->psense)
     {
-        printf("\n  Sense Data Buffer:\n");
+        print_str("\n  Sense Data Buffer:\n");
         print_Data_Buffer(scsiIoCtx->psense, get_Returned_Sense_Data_Length(scsiIoCtx->psense), false);
-        printf("\n");
+        print_str("\n");
     }
     get_Sense_Data_Fields(scsiIoCtx->psense, scsiIoCtx->senseDataSize, pSenseFields);
     ret = check_Sense_Key_ASC_ASCQ_And_FRU(scsiIoCtx->device, pSenseFields->scsiStatusCodes.senseKey,
@@ -121,9 +121,9 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSe
         scsiIoCtx->direction == XFER_DATA_IN)
 #endif
     {
-        printf("\t  Data Buffer being returned:\n");
+        print_str("\t  Data Buffer being returned:\n");
         print_Data_Buffer(scsiIoCtx->pdata, scsiIoCtx->dataLength, true);
-        printf("\n");
+        print_str("\n");
     }
     if (ret == SUCCESS && sendIOret != SUCCESS)
     {
@@ -281,7 +281,7 @@ eReturnValues scsi_SecurityProtocol_In(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Security Protocol In\n");
+        print_str("Sending SCSI Security Protocol In\n");
     }
 
     cdb[CDB_OPERATION_CODE] = SECURITY_PROTOCOL_IN;
@@ -334,7 +334,7 @@ eReturnValues scsi_Report_Supported_Operation_Codes(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Requesting SCSI Supported Op Codes\n");
+        print_str("Requesting SCSI Supported Op Codes\n");
     }
 
     cdb[CDB_OPERATION_CODE] = REPORT_SUPPORTED_OPERATION_CODES_CMD;
@@ -639,7 +639,7 @@ eReturnValues scsi_Sanitize_Cmd(tDevice*             device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Sanitize Command\n");
+        print_str("Sending SCSI Sanitize Command\n");
     }
 
     cdb[CDB_OPERATION_CODE] = SANITIZE_CMD;
@@ -752,7 +752,7 @@ eReturnValues scsi_Request_Sense_Cmd(tDevice* device, bool descriptorBit, uint8_
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Request Sense Command\n");
+        print_str("Sending SCSI Request Sense Command\n");
     }
     DISABLE_NONNULL_COMPARE
     if (pdata == M_NULLPTR)
@@ -973,7 +973,7 @@ eReturnValues scsi_Send_Diagnostic(tDevice* device,
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Send Diagnostic Command\n");
+        print_str("Sending SCSI Send Diagnostic Command\n");
     }
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = SEND_DIAGNOSTIC_CMD; // Send Diagnostic
@@ -1010,7 +1010,7 @@ eReturnValues scsi_Read_Capacity_10(tDevice* device, uint8_t* pdata, uint16_t da
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read Capacity 10 command\n");
+        print_str("Sending SCSI Read Capacity 10 command\n");
     }
 
     // Set up the CDB.
@@ -1042,7 +1042,7 @@ eReturnValues scsi_Read_Capacity_16(tDevice* device, uint8_t* pdata, uint32_t da
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read Capacity 16 command\n");
+        print_str("Sending SCSI Read Capacity 16 command\n");
     }
 
     // Set up the CDB.
@@ -1335,7 +1335,7 @@ eReturnValues scsi_Mode_Select_6(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Mode Select 6\n");
+        print_str("Sending SCSI Mode Select 6\n");
     }
 
     // Set up the CDB.
@@ -1388,7 +1388,7 @@ eReturnValues scsi_Mode_Select_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Mode Select 10\n");
+        print_str("Sending SCSI Mode Select 10\n");
     }
 
     // Set up the CDB.
@@ -1455,7 +1455,7 @@ eReturnValues scsi_Write_Buffer(tDevice*         device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Write Buffer\n");
+        print_str("Sending SCSI Write Buffer\n");
     }
 
     // Set up the CDB.
@@ -1513,7 +1513,7 @@ eReturnValues scsi_Inquiry(tDevice* device,
         }
         else
         {
-            printf("Sending SCSI Inquiry\n");
+            print_str("Sending SCSI Inquiry\n");
         }
     }
 
@@ -1663,7 +1663,7 @@ eReturnValues scsi_Read_Media_Serial_Number(tDevice* device, uint32_t allocation
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read Media Serial Number\n");
+        print_str("Sending SCSI Read Media Serial Number\n");
     }
 
     // Set up the CDB.
@@ -1714,7 +1714,7 @@ eReturnValues scsi_Read_Attribute(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read Attribute\n");
+        print_str("Sending SCSI Read Attribute\n");
     }
 
     // Set up the CDB.
@@ -1770,7 +1770,7 @@ eReturnValues scsi_Read_Buffer(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read Buffer\n");
+        print_str("Sending SCSI Read Buffer\n");
     }
 
     // Set up the CDB.
@@ -1820,7 +1820,7 @@ eReturnValues scsi_Read_Buffer_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read Buffer 16\n");
+        print_str("Sending SCSI Read Buffer 16\n");
     }
 
     // Set up the CDB.
@@ -1914,7 +1914,7 @@ eReturnValues scsi_Remove_I_T_Nexus(tDevice* device, uint32_t parameterListLengt
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Remove I_T Nexus\n");
+        print_str("Sending SCSI Remove I_T Nexus\n");
     }
 
     // Set up the CDB.
@@ -1957,7 +1957,7 @@ eReturnValues scsi_Report_Aliases(tDevice* device, uint32_t allocationLength, ui
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Report Aliases\n");
+        print_str("Sending SCSI Report Aliases\n");
     }
 
     // Set up the CDB.
@@ -2004,7 +2004,7 @@ eReturnValues scsi_Report_Identifying_Information(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Report Identifying Information\n");
+        print_str("Sending SCSI Report Identifying Information\n");
     }
 
     // Set up the CDB.
@@ -2047,7 +2047,7 @@ eReturnValues scsi_Report_Luns(tDevice* device, uint8_t selectReport, uint32_t a
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Report LUNs\n");
+        print_str("Sending SCSI Report LUNs\n");
     }
 
     // Set up the CDB.
@@ -2093,7 +2093,7 @@ eReturnValues scsi_Report_Priority(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Report Priority\n");
+        print_str("Sending SCSI Report Priority\n");
     }
 
     // Set up the CDB.
@@ -2139,7 +2139,7 @@ eReturnValues scsi_Report_Supported_Task_Management_Functions(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Report Supported Task Management Functions\n");
+        print_str("Sending SCSI Report Supported Task Management Functions\n");
     }
 
     // Set up the CDB.
@@ -2187,7 +2187,7 @@ eReturnValues scsi_Report_Timestamp(tDevice* device, uint32_t allocationLength, 
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Report Timestamp\n");
+        print_str("Sending SCSI Report Timestamp\n");
     }
 
     // Set up the CDB.
@@ -2237,7 +2237,7 @@ eReturnValues scsi_SecurityProtocol_Out(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Security Protocol Out\n");
+        print_str("Sending SCSI Security Protocol Out\n");
     }
 
     cdb[CDB_OPERATION_CODE] = SECURITY_PROTOCOL_OUT;
@@ -2288,7 +2288,7 @@ eReturnValues scsi_Set_Identifying_Information(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Set Identifying Information\n");
+        print_str("Sending SCSI Set Identifying Information\n");
     }
 
     cdb[CDB_OPERATION_CODE] = SET_IDENTIFYING_INFORMATION;
@@ -2334,7 +2334,7 @@ eReturnValues scsi_Set_Priority(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Set Priority\n");
+        print_str("Sending SCSI Set Priority\n");
     }
 
     cdb[CDB_OPERATION_CODE] = SET_PRIORITY_CMD;
@@ -2379,7 +2379,7 @@ eReturnValues scsi_Set_Target_Port_Groups(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Set Target Port Groups\n");
+        print_str("Sending SCSI Set Target Port Groups\n");
     }
 
     cdb[CDB_OPERATION_CODE] = SET_TARGET_PORT_GROUPS_CMD;
@@ -2421,7 +2421,7 @@ eReturnValues scsi_Set_Timestamp(tDevice* device, uint32_t parameterListLength, 
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Set Timestamp\n");
+        print_str("Sending SCSI Set Timestamp\n");
     }
 
     cdb[CDB_OPERATION_CODE] = SET_TIMESTAMP_CMD;
@@ -2463,7 +2463,7 @@ eReturnValues scsi_Test_Unit_Ready(tDevice* device, scsiStatus* pReturnStatus)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Test Unit Ready\n");
+        print_str("Sending SCSI Test Unit Ready\n");
     }
 
     cdb[CDB_OPERATION_CODE] = TEST_UNIT_READY_CMD;
@@ -2503,7 +2503,7 @@ eReturnValues scsi_Write_Attribute(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Write Attribute\n");
+        print_str("Sending SCSI Write Attribute\n");
     }
 
     cdb[CDB_OPERATION_CODE] = WRITE_ATTRIBUTE_CMD;
@@ -2560,7 +2560,7 @@ eReturnValues scsi_Compare_And_Write(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Compare And Write\n");
+        print_str("Sending SCSI Compare And Write\n");
     }
 
     cdb[CDB_OPERATION_CODE] = COMPARE_AND_WRITE;
@@ -2624,7 +2624,7 @@ eReturnValues scsi_Format_Unit(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Format Unit\n");
+        print_str("Sending SCSI Format Unit\n");
     }
 
     if (!ptrData && fmtData)
@@ -2681,7 +2681,7 @@ eReturnValues scsi_Format_With_Preset(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Format With Preset\n");
+        print_str("Sending SCSI Format With Preset\n");
     }
 
     cdb[CDB_OPERATION_CODE] = SCSI_FORMAT_WITH_PRESET_CMD;
@@ -2721,7 +2721,7 @@ eReturnValues scsi_Get_Lba_Status(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Get LBA Status\n");
+        print_str("Sending SCSI Get LBA Status\n");
     }
 
     cdb[CDB_OPERATION_CODE] = GET_LBA_STATUS;
@@ -2775,7 +2775,7 @@ eReturnValues scsi_Orwrite_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI ORWrite 16\n");
+        print_str("Sending SCSI ORWrite 16\n");
     }
 
     cdb[CDB_OPERATION_CODE] = ORWRITE_16;
@@ -2841,7 +2841,7 @@ eReturnValues scsi_Orwrite_32(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI ORWrite 32\n");
+        print_str("Sending SCSI ORWrite 32\n");
     }
 
     set_Typical_SCSI_32_CDB_Fields(cdb, ORWRITE_32, 0x000E, logicalBlockAddress, transferLengthBlocks,
@@ -2898,7 +2898,7 @@ eReturnValues scsi_Prefetch_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Pre-Fetch 10\n");
+        print_str("Sending SCSI Pre-Fetch 10\n");
     }
 
     cdb[CDB_OPERATION_CODE] = PRE_FETCH_10;
@@ -2936,7 +2936,7 @@ eReturnValues scsi_Prefetch_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Pre-Fetch 16\n");
+        print_str("Sending SCSI Pre-Fetch 16\n");
     }
 
     cdb[CDB_OPERATION_CODE] = PRE_FETCH_16;
@@ -2976,7 +2976,7 @@ eReturnValues scsi_Prevent_Allow_Medium_Removal(tDevice* device, uint8_t prevent
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Prevent Allow Medium Removal\n");
+        print_str("Sending SCSI Prevent Allow Medium Removal\n");
     }
 
     cdb[CDB_OPERATION_CODE] = PREVENT_ALLOW_MEDIUM_REMOVAL;
@@ -3014,7 +3014,7 @@ eReturnValues scsi_Read_6(tDevice* device,
     RESTORE_NONNULL_COMPARE
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read 6\n");
+        print_str("Sending SCSI Read 6\n");
     }
 
     set_Typical_SCSI_6B_CDB_Fields(cdb, READ6, logicalBlockAddress, transferLengthBlocks,
@@ -3046,7 +3046,7 @@ eReturnValues scsi_Read_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read 10\n");
+        print_str("Sending SCSI Read 10\n");
     }
 
     cdb[CDB_OPERATION_CODE] = READ10;
@@ -3107,7 +3107,7 @@ eReturnValues scsi_Read_12(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read 12\n");
+        print_str("Sending SCSI Read 12\n");
     }
 
     cdb[CDB_OPERATION_CODE] = READ12;
@@ -3170,7 +3170,7 @@ eReturnValues scsi_Read_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read 16\n");
+        print_str("Sending SCSI Read 16\n");
     }
 
     cdb[CDB_OPERATION_CODE] = READ16;
@@ -3240,7 +3240,7 @@ eReturnValues scsi_Read_32(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read 32\n");
+        print_str("Sending SCSI Read 32\n");
     }
 
     set_Typical_SCSI_32_CDB_Fields(cdb, READ32, 0x0009, logicalBlockAddress, transferLengthBlocks,
@@ -3292,7 +3292,7 @@ eReturnValues scsi_Read_Defect_Data_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read Defect Data 10\n");
+        print_str("Sending SCSI Read Defect Data 10\n");
     }
 
     cdb[CDB_OPERATION_CODE] = READ_DEFECT_DATA_10_CMD;
@@ -3346,7 +3346,7 @@ eReturnValues scsi_Read_Defect_Data_12(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read Defect Data 12\n");
+        print_str("Sending SCSI Read Defect Data 12\n");
     }
 
     cdb[CDB_OPERATION_CODE] = READ_DEFECT_DATA_12_CMD;
@@ -3401,7 +3401,7 @@ eReturnValues scsi_Read_Long_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read Long 10\n");
+        print_str("Sending SCSI Read Long 10\n");
     }
 
     cdb[CDB_OPERATION_CODE] = READ_LONG_10;
@@ -3453,7 +3453,7 @@ eReturnValues scsi_Read_Long_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Read Long 16\n");
+        print_str("Sending SCSI Read Long 16\n");
     }
 
     cdb[CDB_OPERATION_CODE] = READ_LONG_16;
@@ -3512,7 +3512,7 @@ eReturnValues scsi_Reassign_Blocks(tDevice* device, bool longLBA, bool longList,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Reassign Blocks\n");
+        print_str("Sending SCSI Reassign Blocks\n");
     }
 
     cdb[CDB_OPERATION_CODE] = REASSIGN_BLOCKS_6;
@@ -3550,7 +3550,7 @@ eReturnValues scsi_Report_Referrals(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Report Referrals\n");
+        print_str("Sending SCSI Report Referrals\n");
     }
 
     cdb[CDB_OPERATION_CODE] = REPORT_REFERRALS;
@@ -3605,7 +3605,7 @@ eReturnValues scsi_Start_Stop_Unit(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Start Stop Unit\n");
+        print_str("Sending SCSI Start Stop Unit\n");
     }
 
     cdb[CDB_OPERATION_CODE] = START_STOP_UNIT_CMD;
@@ -3651,7 +3651,7 @@ eReturnValues scsi_Synchronize_Cache_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Synchronize Cache 10\n");
+        print_str("Sending SCSI Synchronize Cache 10\n");
     }
 
     cdb[CDB_OPERATION_CODE] = SYNCHRONIZE_CACHE_10;
@@ -3689,7 +3689,7 @@ eReturnValues scsi_Synchronize_Cache_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Synchronize Cache 16\n");
+        print_str("Sending SCSI Synchronize Cache 16\n");
     }
 
     cdb[CDB_OPERATION_CODE] = SYNCHRONIZE_CACHE_16_CMD;
@@ -3733,7 +3733,7 @@ eReturnValues scsi_Unmap(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Unmap\n");
+        print_str("Sending SCSI Unmap\n");
     }
 
     cdb[CDB_OPERATION_CODE] = UNMAP_CMD;
@@ -3784,7 +3784,7 @@ eReturnValues scsi_Verify_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending Verify 10\n");
+        print_str("Sending Verify 10\n");
     }
 
     cdb[CDB_OPERATION_CODE] = VERIFY10;
@@ -3840,7 +3840,7 @@ eReturnValues scsi_Verify_12(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending Verify 12\n");
+        print_str("Sending Verify 12\n");
     }
 
     cdb[CDB_OPERATION_CODE] = VERIFY12;
@@ -3898,7 +3898,7 @@ eReturnValues scsi_Verify_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending Verify 16\n");
+        print_str("Sending Verify 16\n");
     }
 
     cdb[CDB_OPERATION_CODE] = VERIFY16;
@@ -3963,7 +3963,7 @@ eReturnValues scsi_Verify_32(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending Verify 32\n");
+        print_str("Sending Verify 32\n");
     }
 
     set_Typical_SCSI_32_CDB_Fields(cdb, VERIFY32, 0x000A, logicalBlockAddress, verificationLength,
@@ -4018,7 +4018,7 @@ eReturnValues scsi_Write_6(tDevice* device,
     RESTORE_NONNULL_COMPARE
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Write 6\n");
+        print_str("Sending SCSI Write 6\n");
     }
 
     set_Typical_SCSI_6B_CDB_Fields(cdb, WRITE6, logicalBlockAddress, transferLengthBlocks,
@@ -4050,7 +4050,7 @@ eReturnValues scsi_Write_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Write 10\n");
+        print_str("Write 10\n");
     }
 
     set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE10, NO_SERVICE_ACTION, logicalBlockAddress, transferLengthBlocks,
@@ -4101,7 +4101,7 @@ eReturnValues scsi_Write_12(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Write 12\n");
+        print_str("Write 12\n");
     }
 
     set_Typical_SCSI_12B_CDB_Fields(cdb, WRITE12, NO_SERVICE_ACTION, logicalBlockAddress, transferLengthBlocks,
@@ -4152,7 +4152,7 @@ eReturnValues scsi_Write_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Write 16\n");
+        print_str("Write 16\n");
     }
 
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE16, NO_SERVICE_ACTION, logicalBlockAddress,
@@ -4206,7 +4206,7 @@ eReturnValues scsi_Write_32(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending Write 32\n");
+        print_str("Sending Write 32\n");
     }
 
     set_Typical_SCSI_32_CDB_Fields(cdb, WRITE32, 0x000B, logicalBlockAddress, transferLengthBlocks,
@@ -4258,7 +4258,7 @@ eReturnValues scsi_Write_And_Verify_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Write and Verify 10\n");
+        print_str("Write and Verify 10\n");
     }
 
     set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE_AND_VERIFY_10, NO_SERVICE_ACTION, logicalBlockAddress,
@@ -4306,7 +4306,7 @@ eReturnValues scsi_Write_And_Verify_12(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Write and Verify 12\n");
+        print_str("Write and Verify 12\n");
     }
 
     set_Typical_SCSI_12B_CDB_Fields(cdb, WRITE_AND_VERIFY_12, NO_SERVICE_ACTION, logicalBlockAddress,
@@ -4354,7 +4354,7 @@ eReturnValues scsi_Write_And_Verify_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Write and Verify 16\n");
+        print_str("Write and Verify 16\n");
     }
 
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE_AND_VERIFY_16, NO_SERVICE_ACTION, logicalBlockAddress,
@@ -4405,7 +4405,7 @@ eReturnValues scsi_Write_And_Verify_32(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending Write and Verify 32\n");
+        print_str("Sending Write and Verify 32\n");
     }
 
     set_Typical_SCSI_32_CDB_Fields(cdb, WRITE_AND_VERIFY_32, 0x000C, logicalBlockAddress, transferLengthBlocks,
@@ -4452,7 +4452,7 @@ eReturnValues scsi_Write_Long_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Write Long 10\n");
+        print_str("Sending SCSI Write Long 10\n");
     }
 
     set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE_LONG_10_CMD, NO_SERVICE_ACTION, logicalBlockAddress, byteTransferLength,
@@ -4504,7 +4504,7 @@ eReturnValues scsi_Write_Long_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Write Long 16\n");
+        print_str("Sending SCSI Write Long 16\n");
     }
 
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE_LONG_16_CMD, 0x11, logicalBlockAddress, byteTransferLength,
@@ -4573,7 +4573,7 @@ eReturnValues scsi_Write_Same_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Write Same 10\n");
+        print_str("Sending SCSI Write Same 10\n");
     }
 
     set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE_SAME_10_CMD, NO_SERVICE_ACTION, logicalBlockAddress,
@@ -4630,7 +4630,7 @@ eReturnValues scsi_Write_Same_16(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Write Same 16\n");
+        print_str("Sending SCSI Write Same 16\n");
     }
 
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE_SAME_16_CMD, NO_SERVICE_ACTION, logicalBlockAddress,
@@ -4704,7 +4704,7 @@ eReturnValues scsi_Write_Same_32(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Write Same 32\n");
+        print_str("Sending SCSI Write Same 32\n");
     }
 
     set_Typical_SCSI_32_CDB_Fields(cdb, WRITE_SAME_32_CMD, 0x000D, logicalBlockAddress, numberOfLogicalBlocks,
@@ -4784,7 +4784,7 @@ eReturnValues scsi_Write_Same_32(tDevice* device,
 //
 //    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 //    {
-//        printf("Sending SCSI XD Write Read 10\n");
+//        print_str("Sending SCSI XD Write Read 10\n");
 //    }
 //
 //    cdb[CDB_OPERATION_CODE] = XDWRITEREAD_10;
@@ -4878,7 +4878,7 @@ eReturnValues scsi_Write_Same_32(tDevice* device,
 //
 //    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
 //    {
-//        printf("Sending SCSI XD Write Read 32\n");
+//        print_str("Sending SCSI XD Write Read 32\n");
 //    }
 //
 //    cdb[CDB_OPERATION_CODE] = XDWRITEREAD_32;
@@ -4974,7 +4974,7 @@ eReturnValues scsi_xp_Write_10(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI XP Write 10\n");
+        print_str("Sending SCSI XP Write 10\n");
     }
 
     set_Typical_SCSI_10B_CDB_Fields(cdb, XPWRITE_10, NO_SERVICE_ACTION, logicalBlockAddress, transferLength,
@@ -5024,7 +5024,7 @@ eReturnValues scsi_xp_Write_32(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI XP Write 32\n");
+        print_str("Sending SCSI XP Write 32\n");
     }
 
     set_Typical_SCSI_32_CDB_Fields(cdb, XPWRITE_32, 0x0006, logicalBlockAddress, transferLength,
@@ -5110,7 +5110,7 @@ eReturnValues scsi_Zone_Management_Out_Std_Format_CDB(tDevice*  device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Zone Management Out\n");
+        print_str("Sending SCSI Zone Management Out\n");
     }
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
@@ -5244,7 +5244,7 @@ eReturnValues scsi_Zone_Management_In_Report(tDevice*  device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Zone Management In\n");
+        print_str("Sending SCSI Zone Management In\n");
     }
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
@@ -5313,7 +5313,7 @@ eReturnValues scsi_Zone_Management_In_ZD(tDevice*  device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Zone Management In\n");
+        print_str("Sending SCSI Zone Management In\n");
     }
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
@@ -5415,7 +5415,7 @@ eReturnValues scsi_Get_Physical_Element_Status(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Get Physical Element Status\n");
+        print_str("Sending SCSI Get Physical Element Status\n");
     }
 
     // send the command
@@ -5452,7 +5452,7 @@ eReturnValues scsi_Remove_And_Truncate(tDevice* device, uint64_t requestedCapaci
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Remove And Truncate\n");
+        print_str("Sending SCSI Remove And Truncate\n");
     }
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
@@ -5484,7 +5484,7 @@ eReturnValues scsi_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t ele
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Remove Element And Modify Zones\n");
+        print_str("Sending SCSI Remove Element And Modify Zones\n");
     }
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
@@ -5516,7 +5516,7 @@ eReturnValues scsi_Restore_Elements_And_Rebuild(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Restore Elements and Rebuild\n");
+        print_str("Sending SCSI Restore Elements and Rebuild\n");
     }
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
@@ -5635,7 +5635,7 @@ eReturnValues scsi_Rezero_Unit(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SCSI Rezero Unit\n");
+        print_str("Sending SCSI Rezero Unit\n");
     }
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,

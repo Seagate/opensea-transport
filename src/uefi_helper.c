@@ -813,7 +813,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
     EFI_SCSI_PASS_THRU_PROTOCOL* pPassthru;
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
     set_Console_Colors(true, uefiDebugMessageColor);
-    printf("Sending UEFI SCSI Passthru Command\n");
+    print_str("Sending UEFI SCSI Passthru Command\n");
     set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
     if (SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
@@ -835,18 +835,18 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
 
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("Got SCSI Passthru protocol pointer:\n");
+        print_str("Got SCSI Passthru protocol pointer:\n");
         if (pPassthru->Mode->Attributes & EFI_SCSI_PASS_THRU_ATTRIBUTES_PHYSICAL)
         {
-            printf("\tphysical device\n");
+            print_str("\tphysical device\n");
         }
         if (pPassthru->Mode->Attributes & EFI_SCSI_PASS_THRU_ATTRIBUTES_LOGICAL)
         {
-            printf("\tlogical device\n");
+            print_str("\tlogical device\n");
         }
         if (pPassthru->Mode->Attributes & EFI_SCSI_PASS_THRU_ATTRIBUTES_NONBLOCKIO)
         {
-            printf("\tnon-blocking IO supported\n");
+            print_str("\tnon-blocking IO supported\n");
         }
         printf("\tIOAlignment required: %" PRIu32 "\n", pPassthru->Mode->IoAlign);
         printf("\tAdapterID: %" PRIu32 "\n", pPassthru->Mode->AdapterId);
@@ -879,7 +879,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("Failed to allocate memory for an aligned data pointer!\n");
+                print_str("Failed to allocate memory for an aligned data pointer!\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
                 return MEMORY_FAILURE;
@@ -901,7 +901,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("Failed to allocate memory for an aligned CDB pointer!\n");
+                print_str("Failed to allocate memory for an aligned CDB pointer!\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
                 return MEMORY_FAILURE;
@@ -922,7 +922,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("Failed to allocate memory for an aligned sense data pointer!\n");
+                print_str("Failed to allocate memory for an aligned sense data pointer!\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
                 return MEMORY_FAILURE;
@@ -948,7 +948,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
         case XFER_DATA_OUT_IN: // bidirectional command support not allowed with this type of passthru
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
             set_Console_Colors(true, uefiDebugMessageColor);
-            printf("Send UEFI SCSI PT CMD NOT AVAILABLE\n");
+            print_str("Send UEFI SCSI PT CMD NOT AVAILABLE\n");
             set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
             return OS_COMMAND_NOT_AVAILABLE;
@@ -962,7 +962,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
 
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("Sending SCSI Passthru command\n");
+        print_str("Sending SCSI Passthru command\n");
         printf("\t->TransferLength = %" PRIu32 "\n", srp->TransferLength);
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
@@ -972,7 +972,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
         stop_Timer(&commandTimer);
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("SCSI Passthru command returned ");
+        print_str("SCSI Passthru command returned ");
         print_EFI_STATUS_To_Screen(Status);
         printf("\t<-TransferLength = %" PRIu32 "\n", srp->TransferLength);
         print_UEFI_SCSI_Adapter_Status(srp->HostAdapterStatus);
@@ -1000,7 +1000,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("EFI Status: ");
+                print_str("EFI Status: ");
                 print_EFI_STATUS_To_Screen(scsiIoCtx->device->os_info.last_error);
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
@@ -1129,7 +1129,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
     EFI_EXT_SCSI_PASS_THRU_PROTOCOL* pPassthru = M_NULLPTR;
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
     set_Console_Colors(true, uefiDebugMessageColor);
-    printf("Sending UEFI SCSIEx Passthru Command\n");
+    print_str("Sending UEFI SCSIEx Passthru Command\n");
     set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
     if (SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, scsiIoCtx->device->os_info.controllerNum))
@@ -1151,18 +1151,18 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
 
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("Got SCSIEx Passthru protocol pointer:\n");
+        print_str("Got SCSIEx Passthru protocol pointer:\n");
         if (pPassthru->Mode->Attributes & EFI_EXT_SCSI_PASS_THRU_ATTRIBUTES_PHYSICAL)
         {
-            printf("\tphysical device\n");
+            print_str("\tphysical device\n");
         }
         if (pPassthru->Mode->Attributes & EFI_EXT_SCSI_PASS_THRU_ATTRIBUTES_LOGICAL)
         {
-            printf("\tlogical device\n");
+            print_str("\tlogical device\n");
         }
         if (pPassthru->Mode->Attributes & EFI_EXT_SCSI_PASS_THRU_ATTRIBUTES_NONBLOCKIO)
         {
-            printf("\tnon-blocking IO supported\n");
+            print_str("\tnon-blocking IO supported\n");
         }
         printf("\tIOAlignment required: %" PRIu32 "\n", pPassthru->Mode->IoAlign);
         printf("\tAdapterID: %" PRIu32 "\n", pPassthru->Mode->AdapterId);
@@ -1188,7 +1188,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
         {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
             set_Console_Colors(true, MAGENTA);
-            printf("scsiIoTcx->pdata is not aligned! Creating local aligned buffer\n");
+            print_str("scsiIoTcx->pdata is not aligned! Creating local aligned buffer\n");
             set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
             // allocate an aligned buffer here!
@@ -1200,7 +1200,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
             {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("Failed to allocate memory for an aligned data pointer!\n");
+                print_str("Failed to allocate memory for an aligned data pointer!\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
                 return MEMORY_FAILURE;
@@ -1214,7 +1214,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
             if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
             {
                 set_Console_Colors(true, MAGENTA);
-                printf("WARNING! Alignedpointer is still not properly aligned\n");
+                print_str("WARNING! Alignedpointer is still not properly aligned\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
 #endif
@@ -1224,7 +1224,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
         {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
             set_Console_Colors(true, MAGENTA);
-            printf("scsiIoTcx->cdb is not aligned! Creating local cdb buffer\n");
+            print_str("scsiIoTcx->cdb is not aligned! Creating local cdb buffer\n");
             set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
             // allocate an aligned buffer here!
@@ -1235,7 +1235,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
             {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("Failed to allocate memory for an aligned CDB pointer!\n");
+                print_str("Failed to allocate memory for an aligned CDB pointer!\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
                 return MEMORY_FAILURE;
@@ -1247,7 +1247,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
             if (!IS_ALIGNED(alignedCDB, pPassthru->Mode->IoAlign))
             {
                 set_Console_Colors(true, MAGENTA);
-                printf("WARNING! AlignedCDB is still not properly aligned\n");
+                print_str("WARNING! AlignedCDB is still not properly aligned\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
 #endif
@@ -1257,7 +1257,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
         {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
             set_Console_Colors(true, MAGENTA);
-            printf("scsiIoTcx->psense is not aligned! Creating local sense buffer\n");
+            print_str("scsiIoTcx->psense is not aligned! Creating local sense buffer\n");
             set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
             // allocate an aligned buffer here!
@@ -1269,7 +1269,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
             {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("Failed to allocate memory for an aligned sense data pointer!\n");
+                print_str("Failed to allocate memory for an aligned sense data pointer!\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
                 return MEMORY_FAILURE;
@@ -1279,7 +1279,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
             if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
             {
                 set_Console_Colors(true, MAGENTA);
-                printf("WARNING! Alignedsenseptr is still not properly aligned\n");
+                print_str("WARNING! Alignedsenseptr is still not properly aligned\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
 #endif
@@ -1320,7 +1320,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
 
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("Sending SCSIEx Passthru command\n");
+        print_str("Sending SCSIEx Passthru command\n");
         printf("\t->InTransferLength = %" PRIu32 "\tOutTransferLength = %" PRIu32 "\n", srp->InTransferLength,
                srp->OutTransferLength);
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
@@ -1331,7 +1331,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
         stop_Timer(&commandTimer);
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("SCSIEx Passthru command returned ");
+        print_str("SCSIEx Passthru command returned ");
         print_EFI_STATUS_To_Screen(Status);
         printf("\t<-InTransferLength = %" PRIu32 "\tOutTransferLength = %" PRIu32 "\n", srp->InTransferLength,
                srp->OutTransferLength);
@@ -1361,7 +1361,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("EFI Status: ");
+                print_str("EFI Status: ");
                 print_EFI_STATUS_To_Screen(scsiIoCtx->device->os_info.last_error);
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
@@ -1404,7 +1404,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     EFI_ATA_PASS_THRU_PROTOCOL* pPassthru;
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
     set_Console_Colors(true, uefiDebugMessageColor);
-    printf("Sending UEFI ATA Passthru command\n");
+    print_str("Sending UEFI ATA Passthru command\n");
     set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
     if (scsiIoCtx->pAtaCmdOpts == M_NULLPTR)
@@ -1431,18 +1431,18 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
 
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("Got ATA Passthru protocol pointer:\n");
+        print_str("Got ATA Passthru protocol pointer:\n");
         if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_PHYSICAL)
         {
-            printf("\tphysical device\n");
+            print_str("\tphysical device\n");
         }
         if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_LOGICAL)
         {
-            printf("\tlogical device\n");
+            print_str("\tlogical device\n");
         }
         if (pPassthru->Mode->Attributes & EFI_ATA_PASS_THRU_ATTRIBUTES_NONBLOCKIO)
         {
-            printf("\tnon-blocking IO supported\n");
+            print_str("\tnon-blocking IO supported\n");
         }
         printf("\tIOAlignment required: %" PRIu32 "\n", pPassthru->Mode->IoAlign);
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
@@ -1468,7 +1468,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
             set_Console_Colors(true, MAGENTA);
-            printf("scsiIoCtx->pAtaCmdOpts->ptrData is not aligned! Creating local aligned buffer\n");
+            print_str("scsiIoCtx->pAtaCmdOpts->ptrData is not aligned! Creating local aligned buffer\n");
             set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
             // allocate an aligned buffer here!
@@ -1480,7 +1480,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
             {
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("Failed to allocate memory for an aligned data pointer!\n");
+                print_str("Failed to allocate memory for an aligned data pointer!\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
                 return MEMORY_FAILURE;
@@ -1494,7 +1494,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
             if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
             {
                 set_Console_Colors(true, MAGENTA);
-                printf("WARNING! Alignedpointer is still not properly aligned\n");
+                print_str("WARNING! Alignedpointer is still not properly aligned\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
 #endif
@@ -1595,7 +1595,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         default:
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("\nProtocol Not Supported in ATA Pass Through.\n");
+                print_str("\nProtocol Not Supported in ATA Pass Through.\n");
             }
             return NOT_SUPPORTED;
             break;
@@ -1627,7 +1627,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         }
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("Sending ATA Passthru command\n");
+        print_str("Sending ATA Passthru command\n");
         printf("\t->InTransferLength = %" PRIu32 "\t OutTransferLength = %" PRIu32 "\n", ataPacket->InTransferLength,
                ataPacket->OutTransferLength);
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
@@ -1639,7 +1639,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         // convert return status from sending the command into a return value for opensea-transport
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("ATA Passthru command returned ");
+        print_str("ATA Passthru command returned ");
         print_EFI_STATUS_To_Screen(Status);
         printf("\t<-InTransferLength = %" PRIu32 "\t OutTransferLength = %" PRIu32 "\n", ataPacket->InTransferLength,
                ataPacket->OutTransferLength);
@@ -1711,7 +1711,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("EFI Status: ");
+                print_str("EFI Status: ");
                 print_EFI_STATUS_To_Screen(scsiIoCtx->device->os_info.last_error);
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
@@ -1751,7 +1751,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
-        printf("Sending command with send_IO\n");
+        print_str("Sending command with send_IO\n");
     }
     switch (scsiIoCtx->device->os_info.passthroughType)
     {
@@ -1802,7 +1802,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL* pPassthru;
 #    if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
     set_Console_Colors(true, uefiDebugMessageColor);
-    printf("Sending UEFI NVMe Passthru Command\n");
+    print_str("Sending UEFI NVMe Passthru Command\n");
     set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #    endif
     if (SUCCESS == get_NVMe_Passthru_Protocol_Ptr(&pPassthru, nvmeIoCtx->device->os_info.controllerNum))
@@ -1822,7 +1822,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 
         if (!nvmCommand || !nvmCompletion)
         {
-            printf("Error allocating command or completion for nrp\n");
+            print_str("Error allocating command or completion for nrp\n");
             return MEMORY_FAILURE;
         }
 
@@ -1832,28 +1832,28 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 
         if (!nrp)
         {
-            printf("Error allocating NRP\n");
+            print_str("Error allocating NRP\n");
             return MEMORY_FAILURE;
         }
 
 #    if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("Got NVMe Passthru protocol pointer:\n");
+        print_str("Got NVMe Passthru protocol pointer:\n");
         if (pPassthru->Mode->Attributes & EFI_NVM_EXPRESS_PASS_THRU_ATTRIBUTES_PHYSICAL)
         {
-            printf("\tphysical device\n");
+            print_str("\tphysical device\n");
         }
         if (pPassthru->Mode->Attributes & EFI_NVM_EXPRESS_PASS_THRU_ATTRIBUTES_LOGICAL)
         {
-            printf("\tlogical device\n");
+            print_str("\tlogical device\n");
         }
         if (pPassthru->Mode->Attributes & EFI_NVM_EXPRESS_PASS_THRU_ATTRIBUTES_NONBLOCKIO)
         {
-            printf("\tnon-blocking IO supported\n");
+            print_str("\tnon-blocking IO supported\n");
         }
         if (pPassthru->Mode->Attributes & EFI_NVM_EXPRESS_PASS_THRU_ATTRIBUTES_CMD_SET_NVM)
         {
-            printf("\tNVM command set supported\n");
+            print_str("\tNVM command set supported\n");
         }
         printf("\tIOAlignment required: %" PRIu32 "\n", pPassthru->Mode->IoAlign);
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
@@ -1881,7 +1881,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         {
 #    if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
             set_Console_Colors(true, YELLOW);
-            printf("WARNING! Data transfer command specifying zero length!\n");
+            print_str("WARNING! Data transfer command specifying zero length!\n");
             set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #    endif
             localAlignedBuffer = true;
@@ -1904,7 +1904,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             if (!IS_ALIGNED(alignedPointer, pPassthru->Mode->IoAlign))
             {
                 set_Console_Colors(true, MAGENTA);
-                printf("WARNING! Alignedpointer is still not properly aligned\n");
+                print_str("WARNING! Alignedpointer is still not properly aligned\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
 #    endif
@@ -1914,7 +1914,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         {
 #    if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
             set_Console_Colors(true, MAGENTA);
-            printf("nvmeIoCtx->ptrData is not aligned! Creating local aligned buffer\n");
+            print_str("nvmeIoCtx->ptrData is not aligned! Creating local aligned buffer\n");
             set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #    endif
             // allocate an aligned buffer here!
@@ -1926,7 +1926,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             {
 #    if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("Failed to allocate memory for an aligned data pointer!\n");
+                print_str("Failed to allocate memory for an aligned data pointer!\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #    endif
                 return MEMORY_FAILURE;
@@ -1940,7 +1940,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             {
 #    if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, MAGENTA);
-                printf("WARNING! Alignedpointer is still not properly aligned\n");
+                print_str("WARNING! Alignedpointer is still not properly aligned\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #    endif
             }
@@ -2063,7 +2063,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 
 #    if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("Sending NVMe Passthru command\n");
+        print_str("Sending NVMe Passthru command\n");
         printf("\t->TransferLength = %" PRIu32 "\n", nrp->TransferLength);
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #    endif
@@ -2087,7 +2087,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         // NOLINTEND(bugprone-branch-clone)
 #    if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
         set_Console_Colors(true, uefiDebugMessageColor);
-        printf("NVMe Passthru command returned ");
+        print_str("NVMe Passthru command returned ");
         print_EFI_STATUS_To_Screen(Status);
         printf("\t<-TransferLength = %" PRIu32 "\n", nrp->TransferLength);
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
@@ -2115,7 +2115,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf("EFI Status: ");
+                print_str("EFI Status: ");
                 print_EFI_STATUS_To_Screen(nvmeIoCtx->device->os_info.last_error);
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
@@ -2174,7 +2174,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
     // otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Sending NVMe Reset\n");
+        print_str("Sending NVMe Reset\n");
     }
 
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -2190,7 +2190,7 @@ eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
     // otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Sending NVMe Subsystem Reset\n");
+        print_str("Sending NVMe Subsystem Reset\n");
     }
 
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)

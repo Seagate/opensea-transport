@@ -116,7 +116,7 @@ eReturnValues ata_Identify(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Identify command\n");
+        print_str("Sending ATA Identify command\n");
     }
     ret = ata_Passthrough_Command(device, &identify);
 
@@ -137,7 +137,7 @@ eReturnValues ata_Identify(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
                 ret = WARN_INVALID_CHECKSUM;
                 if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
                 {
-                    printf("Warning: Identify Checksum is invalid\n");
+                    print_str("Warning: Identify Checksum is invalid\n");
                 }
             }
         }
@@ -176,29 +176,29 @@ eReturnValues ata_Sanitize_Command(tDevice*            device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Sanitize command - ");
+        print_str("Sending ATA Sanitize command - ");
         switch (sanitizeFeature)
         {
         case ATA_SANITIZE_STATUS:
-            printf("Status\n");
+            print_str("Status\n");
             break;
         case ATA_SANITIZE_CRYPTO_SCRAMBLE:
-            printf("Crypto Scramble\n");
+            print_str("Crypto Scramble\n");
             break;
         case ATA_SANITIZE_BLOCK_ERASE:
-            printf("Block Erase\n");
+            print_str("Block Erase\n");
             break;
         case ATA_SANITIZE_OVERWRITE_ERASE:
-            printf("Overwrite Erase\n");
+            print_str("Overwrite Erase\n");
             break;
         case ATA_SANITIZE_FREEZE_LOCK:
-            printf("Freeze Lock\n");
+            print_str("Freeze Lock\n");
             break;
         case ATA_SANITIZE_ANTI_FREEZE_LOCK:
-            printf("Anti Freeze Lock\n");
+            print_str("Anti Freeze Lock\n");
             break;
         default:
-            printf("Unknown\n");
+            print_str("Unknown\n");
             break;
         }
     }
@@ -328,11 +328,11 @@ eReturnValues ata_Read_Log_Ext(tDevice* device,
     {
         if (useDMA)
         {
-            printf("Sending ATA Read Log Ext DMA command");
+            print_str("Sending ATA Read Log Ext DMA command");
         }
         else
         {
-            printf("Sending ATA Read Log Ext command");
+            print_str("Sending ATA Read Log Ext command");
         }
         printf(" - Log %02" PRIX8 "h, Page %" PRIu16 ", Count %" PRIu32 "\n", logAddress, pageNumber,
                (dataSize / LEGACY_DRIVE_SEC_SIZE));
@@ -423,11 +423,11 @@ eReturnValues ata_Write_Log_Ext(tDevice* device,
     {
         if (useDMA)
         {
-            printf("Sending ATA Write Log Ext DMA command");
+            print_str("Sending ATA Write Log Ext DMA command");
         }
         else
         {
-            printf("Sending ATA Write Log Ext command");
+            print_str("Sending ATA Write Log Ext command");
         }
         printf(" - Log %02" PRIX8 "h, Page %" PRIu16 ", Count %" PRIu32 "\n", logAddress, pageNumber,
                (dataSize / LEGACY_DRIVE_SEC_SIZE));
@@ -495,7 +495,7 @@ eReturnValues ata_SMART_Command(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA SMART command - ");
+        print_str("Sending ATA SMART command - ");
     }
     // zap it
     safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
@@ -510,13 +510,13 @@ eReturnValues ata_SMART_Command(tDevice* device,
     case ATA_SMART_RDATTR_THRESH:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_RDATTR_THRESH)
         {
-            printf("Read Thresholds\n");
+            print_str("Read Thresholds\n");
         }
         M_FALLTHROUGH;
     case ATA_SMART_READ_DATA:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_READ_DATA)
         {
-            printf("Read Data\n");
+            print_str("Read Data\n");
         }
         ataCommandOptions =
             create_ata_pio_in_cmd(device, ATA_SMART_CMD, ATA_CMD_TYPE_TASKFILE,
@@ -535,19 +535,19 @@ eReturnValues ata_SMART_Command(tDevice* device,
     case ATA_SMART_SW_AUTOSAVE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_SW_AUTOSAVE)
         {
-            printf("Attribute Autosave\n");
+            print_str("Attribute Autosave\n");
         }
         M_FALLTHROUGH;
     case ATA_SMART_SAVE_ATTRVALUE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_SAVE_ATTRVALUE)
         {
-            printf("Save Attributes\n");
+            print_str("Save Attributes\n");
         }
         M_FALLTHROUGH;
     case ATA_SMART_ENABLE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_ENABLE)
         {
-            printf("Enable Operations\n");
+            print_str("Enable Operations\n");
         }
         M_FALLTHROUGH;
     case ATA_SMART_EXEC_OFFLINE_IMM:
@@ -559,13 +559,13 @@ eReturnValues ata_SMART_Command(tDevice* device,
     case ATA_SMART_RTSMART:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_RTSMART)
         {
-            printf("Return Status\n");
+            print_str("Return Status\n");
         }
         M_FALLTHROUGH;
     case ATA_SMART_DISABLE:
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity && feature == ATA_SMART_DISABLE)
         {
-            printf("Disable Operations\n");
+            print_str("Disable Operations\n");
         }
         ataCommandOptions = create_ata_nondata_cmd(device, ATA_SMART_CMD, ATA_CMD_TYPE_TASKFILE, forceRTFRs);
         ataCommandOptions.tfr.SectorCount = countReg;
@@ -678,7 +678,7 @@ eReturnValues ata_SMART_Read_Log(tDevice* device, uint8_t logAddress, uint8_t* p
                 ret = WARN_INVALID_CHECKSUM;
                 if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
                 {
-                    printf("Warning: Log Checksum is invalid\n");
+                    print_str("Warning: Log Checksum is invalid\n");
                 }
             }
             break;
@@ -715,7 +715,7 @@ eReturnValues ata_SMART_Read_Data(tDevice* device, uint8_t* ptrData, uint32_t da
             ret = WARN_INVALID_CHECKSUM;
             if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
             {
-                printf("Warning: Checksum is invalid\n");
+                print_str("Warning: Checksum is invalid\n");
             }
         }
     }
@@ -749,7 +749,7 @@ eReturnValues ata_SMART_Read_Thresholds(tDevice* device, uint8_t* ptrData, uint3
             ret = WARN_INVALID_CHECKSUM;
             if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
             {
-                printf("Warning: Checksum is invalid\n");
+                print_str("Warning: Checksum is invalid\n");
             }
         }
     }
@@ -797,7 +797,7 @@ eReturnValues ata_Security_Disable_Password(tDevice* device, uint8_t* ptrData)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Security Disable Password Command\n");
+        print_str("Sending ATA Security Disable Password Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -816,7 +816,7 @@ eReturnValues ata_Security_Erase_Prepare(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Security Erase Prepare Command\n");
+        print_str("Sending ATA Security Erase Prepare Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -838,7 +838,7 @@ eReturnValues ata_Security_Erase_Unit(tDevice* device, uint8_t* ptrData, uint32_
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Security Erase Unit Command\n");
+        print_str("Sending ATA Security Erase Unit Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -859,7 +859,7 @@ eReturnValues ata_Security_Set_Password(tDevice* device, uint8_t* ptrData)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Security Set Password Command\n");
+        print_str("Sending ATA Security Set Password Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -880,7 +880,7 @@ eReturnValues ata_Security_Unlock(tDevice* device, uint8_t* ptrData)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Security Unlock Command\n");
+        print_str("Sending ATA Security Unlock Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -901,7 +901,7 @@ eReturnValues ata_Security_Freeze_Lock(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Security Freeze Lock Command\n");
+        print_str("Sending ATA Security Freeze Lock Command\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -993,12 +993,12 @@ eReturnValues ata_Read_Native_Max_Address(tDevice* device, uint64_t* nativeMaxLB
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Read Native Max Address");
+        print_str("Sending ATA Read Native Max Address");
         if (ext)
         {
-            printf(" Ext");
+            print_str(" Ext");
         }
-        printf("\n");
+        print_str("\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1223,7 +1223,7 @@ eReturnValues ata_Check_Power_Mode(tDevice* device, uint8_t* powerMode)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Check Power Mode\n");
+        print_str("Sending ATA Check Power Mode\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1268,7 +1268,7 @@ eReturnValues ata_Configure_Stream(tDevice* device,
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Configure Stream\n");
+        print_str("Sending ATA Configure Stream\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1303,11 +1303,11 @@ eReturnValues ata_Data_Set_Management(tDevice* device, bool trimBit, uint8_t* pt
     {
         if (xl)
         {
-            printf("Sending ATA Data Set Management XL\n");
+            print_str("Sending ATA Data Set Management XL\n");
         }
         else
         {
-            printf("Sending ATA Data Set Management\n");
+            print_str("Sending ATA Data Set Management\n");
         }
     }
 
@@ -1334,7 +1334,7 @@ eReturnValues ata_Execute_Device_Diagnostic(tDevice* device, uint8_t* diagnostic
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Execute Device Diagnostic\n");
+        print_str("Sending ATA Execute Device Diagnostic\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1365,11 +1365,11 @@ eReturnValues ata_Flush_Cache(tDevice* device, bool extendedCommand)
     {
         if (extendedCommand)
         {
-            printf("Sending ATA Flush Cache Ext\n");
+            print_str("Sending ATA Flush Cache Ext\n");
         }
         else
         {
-            printf("Sending ATA Flush Cache\n");
+            print_str("Sending ATA Flush Cache\n");
         }
     }
 
@@ -1462,11 +1462,11 @@ eReturnValues ata_Read_Buffer(tDevice* device, uint8_t* ptrData, bool useDMA)
     {
         if (useDMA)
         {
-            printf("Sending ATA Read Buffer DMA\n");
+            print_str("Sending ATA Read Buffer DMA\n");
         }
         else
         {
-            printf("Sending ATA Read Buffer\n");
+            print_str("Sending ATA Read Buffer\n");
         }
     }
 
@@ -1512,11 +1512,11 @@ eReturnValues ata_Read_DMA(tDevice*               device,
     {
         if (extendedCmd)
         {
-            printf("Sending ATA Read DMA Ext\n");
+            print_str("Sending ATA Read DMA Ext\n");
         }
         else
         {
-            printf("Sending ATA Read DMA\n");
+            print_str("Sending ATA Read DMA\n");
         }
     }
 
@@ -1563,11 +1563,11 @@ eReturnValues ata_Read_Multiple(tDevice*               device,
     {
         if (extendedCmd)
         {
-            printf("Sending ATA Read Multiple Ext\n");
+            print_str("Sending ATA Read Multiple Ext\n");
         }
         else
         {
-            printf("Sending ATA Read Multiple\n");
+            print_str("Sending ATA Read Multiple\n");
         }
     }
 
@@ -1613,11 +1613,11 @@ eReturnValues ata_Read_Sectors(tDevice*               device,
     {
         if (extendedCmd)
         {
-            printf("Sending ATA Read Sectors Ext\n");
+            print_str("Sending ATA Read Sectors Ext\n");
         }
         else
         {
-            printf("Sending ATA Read Sectors\n");
+            print_str("Sending ATA Read Sectors\n");
         }
     }
 
@@ -1657,7 +1657,7 @@ eReturnValues ata_Read_Sectors_No_Retry(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Read Sectors(No Retry)\n");
+        print_str("Sending ATA Read Sectors(No Retry)\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1724,11 +1724,11 @@ eReturnValues ata_Read_Stream_Ext(tDevice* device,
     {
         if (useDMA)
         {
-            printf("Sending ATA Read Stream Ext DMA\n");
+            print_str("Sending ATA Read Stream Ext DMA\n");
         }
         else
         {
-            printf("Sending ATA Read Stream Ext\n");
+            print_str("Sending ATA Read Stream Ext\n");
         }
     }
 
@@ -1770,11 +1770,11 @@ eReturnValues ata_Read_Verify_Sectors(tDevice* device, bool extendedCmd, uint16_
     {
         if (extendedCmd)
         {
-            printf("Sending ATA Read Verify Sectors Ext\n");
+            print_str("Sending ATA Read Verify Sectors Ext\n");
         }
         else
         {
-            printf("Sending ATA Read Verify Sectors\n");
+            print_str("Sending ATA Read Verify Sectors\n");
         }
     }
 
@@ -1812,7 +1812,7 @@ eReturnValues ata_Request_Sense_Data(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Request Sense Data\n");
+        print_str("Sending ATA Request Sense Data\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1884,7 +1884,7 @@ eReturnValues ata_Sleep(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Sleep\n");
+        print_str("Sending ATA Sleep\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1927,7 +1927,7 @@ eReturnValues ata_Standby_Immediate(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Standby Immediate\n");
+        print_str("Sending ATA Standby Immediate\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -1958,7 +1958,7 @@ eReturnValues ata_Trusted_Non_Data(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Trusted Non-Data");
+        print_str("Sending ATA Trusted Non-Data");
         printf(" - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n", securityProtocol,
                securityProtocolSpecific);
     }
@@ -2010,11 +2010,11 @@ eReturnValues ata_Trusted_Receive(tDevice* device,
     {
         if (useDMA)
         {
-            printf("Sending ATA Trusted Receive DMA");
+            print_str("Sending ATA Trusted Receive DMA");
         }
         else
         {
-            printf("Sending ATA Trusted Receive");
+            print_str("Sending ATA Trusted Receive");
         }
         printf(" - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n", securityProtocol,
                securityProtocolSpecific);
@@ -2074,11 +2074,11 @@ eReturnValues ata_Trusted_Send(tDevice* device,
     {
         if (useDMA)
         {
-            printf("Sending ATA Trusted Send DMA");
+            print_str("Sending ATA Trusted Send DMA");
         }
         else
         {
-            printf("Sending ATA Trusted Send");
+            print_str("Sending ATA Trusted Send");
         }
         printf(" - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n", securityProtocol,
                securityProtocolSpecific);
@@ -2127,11 +2127,11 @@ eReturnValues ata_Write_Buffer(tDevice* device, uint8_t* ptrData, bool useDMA)
     {
         if (useDMA)
         {
-            printf("Sending ATA Write Buffer DMA\n");
+            print_str("Sending ATA Write Buffer DMA\n");
         }
         else
         {
-            printf("Sending ATA Write Buffer\n");
+            print_str("Sending ATA Write Buffer\n");
         }
     }
 
@@ -2177,11 +2177,11 @@ eReturnValues ata_Write_DMA(tDevice* device,
     {
         if (extendedCmd)
         {
-            printf("Sending ATA Write DMA Ext\n");
+            print_str("Sending ATA Write DMA Ext\n");
         }
         else
         {
-            printf("Sending ATA Write DMA\n");
+            print_str("Sending ATA Write DMA\n");
         }
     }
 
@@ -2228,11 +2228,11 @@ eReturnValues ata_Write_Multiple(tDevice* device,
     {
         if (extendedCmd)
         {
-            printf("Sending ATA Write Multiple Ext\n");
+            print_str("Sending ATA Write Multiple Ext\n");
         }
         else
         {
-            printf("Sending ATA Write Multiple\n");
+            print_str("Sending ATA Write Multiple\n");
         }
     }
 
@@ -2272,11 +2272,11 @@ eReturnValues ata_Write_Sectors(tDevice* device, uint64_t LBA, uint8_t* ptrData,
     {
         if (extendedCmd)
         {
-            printf("Sending ATA Write Sectors Ext\n");
+            print_str("Sending ATA Write Sectors Ext\n");
         }
         else
         {
-            printf("Sending ATA Write Sectors\n");
+            print_str("Sending ATA Write Sectors\n");
         }
     }
 
@@ -2314,7 +2314,7 @@ eReturnValues ata_Write_Sectors_No_Retry(tDevice* device, uint64_t LBA, uint8_t*
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Write Sectors(No Retry)\n");
+        print_str("Sending ATA Write Sectors(No Retry)\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2382,11 +2382,11 @@ eReturnValues ata_Write_Stream_Ext(tDevice* device,
     {
         if (useDMA)
         {
-            printf("Sending ATA Write Stream Ext DMA\n");
+            print_str("Sending ATA Write Stream Ext DMA\n");
         }
         else
         {
-            printf("Sending ATA Write Stream Ext\n");
+            print_str("Sending ATA Write Stream Ext\n");
         }
     }
 
@@ -2662,7 +2662,7 @@ eReturnValues ata_Identify_Packet_Device(tDevice* device, uint8_t* ptrData, uint
         create_ata_pio_in_cmd(device, ATAPI_IDENTIFY, ATA_CMD_TYPE_TASKFILE, 1, ptrData, dataSize);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Identify Packet Device\n");
+        print_str("Sending ATA Identify Packet Device\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2868,7 +2868,7 @@ eReturnValues ata_ZAC_Management_In(tDevice*  device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Zone Management In\n");
+        print_str("Sending ATA Zone Management In\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -2927,7 +2927,7 @@ eReturnValues ata_ZAC_Management_Out(tDevice*  device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Zone Management Out\n");
+        print_str("Sending ATA Zone Management Out\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3109,7 +3109,7 @@ eReturnValues ata_Media_Eject(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Media Eject\n");
+        print_str("Sending ATA Media Eject\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3130,7 +3130,7 @@ eReturnValues ata_Get_Media_Status(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Get Media Status\n");
+        print_str("Sending ATA Get Media Status\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3151,7 +3151,7 @@ eReturnValues ata_Media_Lock(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Media Lock\n");
+        print_str("Sending ATA Media Lock\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3172,7 +3172,7 @@ eReturnValues ata_Media_Unlock(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Media Unlock\n");
+        print_str("Sending ATA Media Unlock\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3232,7 +3232,7 @@ eReturnValues ata_Set_Sector_Configuration_Ext(tDevice* device,
     // take longer than expected, but should still complete long before 1 hour has elapsed.
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Set Sector Configuration Ext\n");
+        print_str("Sending ATA Set Sector Configuration Ext\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3264,7 +3264,7 @@ eReturnValues ata_Get_Physical_Element_Status(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Get Physical Element Status\n");
+        print_str("Sending ATA Get Physical Element Status\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3298,7 +3298,7 @@ eReturnValues ata_Remove_Element_And_Truncate(tDevice* device, uint32_t elementI
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Remove And Truncate\n");
+        print_str("Sending ATA Remove And Truncate\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3330,7 +3330,7 @@ eReturnValues ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elem
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Remove And Modify Zones\n");
+        print_str("Sending ATA Remove And Modify Zones\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3358,7 +3358,7 @@ eReturnValues ata_Restore_Elements_And_Rebuild(tDevice* device)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Restore Elements and Rebuild\n");
+        print_str("Sending ATA Restore Elements and Rebuild\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3396,7 +3396,7 @@ eReturnValues ata_Mutate_Ext(tDevice* device, bool requestMaximumAccessibleCapac
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Mutate Ext\n");
+        print_str("Sending ATA Mutate Ext\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3649,7 +3649,7 @@ eReturnValues ata_NCQ_Read_FPDMA_Queued(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Read FPDMA Queued\n");
+        print_str("Sending ATA Read FPDMA Queued\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -3688,7 +3688,7 @@ eReturnValues ata_NCQ_Write_FPDMA_Queued(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending ATA Write FPDMA Queued\n");
+        print_str("Sending ATA Write FPDMA Queued\n");
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);

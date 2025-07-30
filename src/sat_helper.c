@@ -836,7 +836,7 @@ eReturnValues request_Return_TFRs_From_Device(tDevice* device, ataReturnTFRs* rt
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SAT Return Response Information\n");
+        print_str("Sending SAT Return Response Information\n");
     }
 
     if (SUCCESS ==
@@ -1546,7 +1546,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
                         device->drive_info.ataSenseData.additionalSenseCodeQualifier = ataAdditionalSenseCodeQualifier;
                         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
                         {
-                            printf("\t  ATA Sense Data reported:\n");
+                            print_str("\t  ATA Sense Data reported:\n");
                         }
                         ataSenseRet = check_Sense_Key_ASC_ASCQ_And_FRU(device, ataSenseKey, ataAdditionalSenseCode,
                                                                        ataAdditionalSenseCodeQualifier, 0);

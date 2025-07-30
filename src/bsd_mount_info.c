@@ -141,7 +141,7 @@ eReturnValues set_BSD_Device_Partition_Info(tDevice* device)
                     {
                         device->os_info.fileSystemInfo.isSystemDisk = true;
 #if defined(_DEBUG)
-                        printf("found system disk\n");
+                        print_str("found system disk\n");
 #endif
                     }
                 }
@@ -197,7 +197,7 @@ eReturnValues set_BSD_Device_Partition_Info(tDevice* device)
 //                         {
 //                             printf("Unable to reload mount info for %s: \n", (parts + iter)->mntPath);
 //                             print_Errno_To_Screen(errno);
-//                             printf("\n");
+//                             print_str("\n");
 //                         }
 //                     }
 //                 }
@@ -246,7 +246,7 @@ eReturnValues bsd_Unmount_From_Matching_Dev(tDevice* device)
                         {
                             printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
                             print_Errno_To_Screen(errno);
-                            printf("\n");
+                            print_str("\n");
                         }
                     }
                 }

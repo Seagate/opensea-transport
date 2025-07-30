@@ -138,284 +138,284 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
     // structure based on all the known/reported flags in devinfo.h
     if (devInfoData != M_NULLPTR)
     {
-        printf("struct devinfo:\n");
+        print_str("struct devinfo:\n");
         printf("\tdevtype = %c", devInfoData->devtype);
         switch (devInfoData->devtype)
         {
         case DD_TMSCSI:
-            printf(" - SCSI target mode\n");
+            print_str(" - SCSI target mode\n");
             break;
         case DD_SCSITM:
-            printf(" - SCSI-3 target mode\n");
+            print_str(" - SCSI-3 target mode\n");
             break;
         case DD_LP:
-            printf(" - line printer\n");
+            print_str(" - line printer\n");
             break;
         case DD_TAPE:
-            printf(" - mag tape\n");
+            print_str(" - mag tape\n");
             break;
         case DD_SCTAPE:
-            printf(" - SCSI tape\n");
+            print_str(" - SCSI tape\n");
             break;
         // case DD_TTY:
-        //     printf(" - terminal\n");
+        //     print_str(" - terminal\n");
         //     break;
         case DD_DISK:
-            printf(" - disk\n");
+            print_str(" - disk\n");
             break;
         case DD_CDROM:
-            printf(" - cdrom\n");
+            print_str(" - cdrom\n");
             break;
         case DD_DLC:
-            printf(" - Data Link Control\n");
+            print_str(" - Data Link Control\n");
             break;
         case DD_SCDISK:
-            printf(" - SCSI disk\n"); /* SCSI disk, but NVMe disk if DF_NVME is set */
+            print_str(" - SCSI disk\n"); /* SCSI disk, but NVMe disk if DF_NVME is set */
             break;
         case DD_RTC:
-            printf(" - real-time (calendar) clock\n");
+            print_str(" - real-time (calendar) clock\n");
             break;
         case DD_PSEU:
-            printf(" - psuedo device\n");
+            print_str(" - psuedo device\n");
             break;
         case DD_NET:
-            printf(" - networks\n");
+            print_str(" - networks\n");
             break;
         case DD_EN:
-            printf(" - Ethernet Interface\n");
+            print_str(" - Ethernet Interface\n");
             break;
         case DD_EM78:
-            printf(" - 3278/79 emulator\n");
+            print_str(" - 3278/79 emulator\n");
             break;
         case DD_TR:
-            printf(" - token ring\n");
+            print_str(" - token ring\n");
             break;
         case DD_BIO:
-            printf(" - block i/o device\n");
+            print_str(" - block i/o device\n");
             break;
         case DD_X25:
-            printf(" - X.25 DDN device driver\n");
+            print_str(" - X.25 DDN device driver\n");
             break;
         case DD_IEEE_3:
-            printf(" - IEEE 802.3\n");
+            print_str(" - IEEE 802.3\n");
             break;
         case DD_SL:
-            printf(" - Serial line IP\n");
+            print_str(" - Serial line IP\n");
             break;
         case DD_LO:
-            printf(" - Loopback IP\n");
+            print_str(" - Loopback IP\n");
             break;
         case DD_DUMP:
-            printf(" - dump device driver\n");
+            print_str(" - dump device driver\n");
             break;
         // case DD_SCCD:
-        //     printf(" - SCSI CDROM\n");
+        //     print_str(" - SCSI CDROM\n");
         //     break;
         case DD_CIO:
-            printf(" - common communications device driver\n");
+            print_str(" - common communications device driver\n");
             break;
         case DD_BUS:
-            printf(" - I/O Bus device\n");
+            print_str(" - I/O Bus device\n");
             break;
         case DD_HFT:
-            printf(" - HFT\n");
+            print_str(" - HFT\n");
             break;
         case DD_INPUT:
-            printf(" - graphic input device\n");
+            print_str(" - graphic input device\n");
             break;
         case DD_CON:
-            printf(" - console\n");
+            print_str(" - console\n");
             break;
         case DD_NET_DH:
-            printf(" - Network device handler\n");
+            print_str(" - Network device handler\n");
             break;
         case DD_DISK_C:
-            printf(" - Disk Controller\n");
+            print_str(" - Disk Controller\n");
             break;
         case DD_SOL:
-            printf(" - Serial Optical Link\n");
+            print_str(" - Serial Optical Link\n");
             break;
         case DD_CAT:
-            printf(" - S/370 parallel channel\n");
+            print_str(" - S/370 parallel channel\n");
             break;
         case DD_FDDI:
-            printf(" - FDDI\n");
+            print_str(" - FDDI\n");
             break;
         case DD_SCRWOPT:
-            printf(" - SCSI R/W optical\n");
+            print_str(" - SCSI R/W optical\n");
             break;
         case DD_SES:
-            printf(" - SCSI Enclosure Services Device\n");
+            print_str(" - SCSI Enclosure Services Device\n");
             break;
         case DD_AUDIT:
-            printf(" - Streams mode auditing virtual device\n");
+            print_str(" - Streams mode auditing virtual device\n");
             break;
         case DD_LIB:
-            printf(" - Medium library device\n");
+            print_str(" - Medium library device\n");
             break;
         case DD_VIOA:
-            printf(" - Virtual IOA\n");
+            print_str(" - Virtual IOA\n");
             break;
         case DD_OTHER:
-            printf(" - Other\n");
+            print_str(" - Other\n");
             break;
         default:
-            printf(" - Unknown\n");
+            print_str(" - Unknown\n");
             break;
         }
         printf("\tdevsubtype = %c", devInfoData->devsubtype);
         switch (devInfoData->devsubtype)
         {
         case DS_DLCETHER: /* DLC - Standard Ethernet */
-            printf(" - DLC - Standard Ethernet\n");
+            print_str(" - DLC - Standard Ethernet\n");
             break;
         case DS_DLC8023: /* DLC - IEEE 802.3 Ethernet */
-            printf(" - DLC - IEEE 802.3 Ethernet\n");
+            print_str(" - DLC - IEEE 802.3 Ethernet\n");
             break;
         case DS_DLCTOKEN: /* DLC - Token Ring */
-            printf(" - DLC - Token Ring\n");
+            print_str(" - DLC - Token Ring\n");
             break;
         case DS_DLCSDLC: /* DLC - SDLC */
-            printf(" - DLC - SDLC\n");
+            print_str(" - DLC - SDLC\n");
             break;
         case DS_DLCQLLC: /* DLC - X.25 Qualified LLC */
-            printf(" - DLC - X.25 Qualified LLC\n");
+            print_str(" - DLC - X.25 Qualified LLC\n");
             break;
         case DS_DLCFDDI: /* DLC - FDDI */
-            printf(" - DLC - FDDI\n");
+            print_str(" - DLC - FDDI\n");
             break;
         case DS_LV: /* logical volume */
-            printf(" - logical volume\n");
+            print_str(" - logical volume\n");
             break;
         case DS_PV: /* physical volume - hard disk */
-            printf(" - physical volume - hard disk\n");
+            print_str(" - physical volume - hard disk\n");
             break;
         case DS_SCSI: /* SCSI adapter */
-            printf(" - SCSI Adapter\n");
+            print_str(" - SCSI Adapter\n");
             break;
         case DS_IDE: /* IDE adapter  */
-            printf(" - IDE adapter\n");
+            print_str(" - IDE adapter\n");
             break;
         case DS_SAS: /* SAS adapter  */
-            printf(" - SAS adapter\n");
+            print_str(" - SAS adapter\n");
             break;
         case DS_SATA: /* SATA adapter */
-            printf(" - SATA adapter\n");
+            print_str(" - SATA adapter\n");
             break;
         // case DS_PP:     /* Parallel printer */
-        //     printf(" - Parallel printer\n");
+        //     print_str(" - Parallel printer\n");
         //     break;
         case DS_SP: /* Serial printer   */
-            printf(" - Serial Printer\n");
+            print_str(" - Serial Printer\n");
             break;
         case DS_TM: /* SCSI target mode */
-            printf(" - SCSI target mode\n");
+            print_str(" - SCSI target mode\n");
             break;
         case DS_SDA: /* Serial DASD adapter */
-            printf(" - Serial DASD adapter\n");
+            print_str(" - Serial DASD adapter\n");
             break;
         case DS_SDC: /* Serial DASD Controller */
-            printf(" - Serial DASD Controller\n");
+            print_str(" - Serial DASD Controller\n");
             break;
         case DS_NFS: /* NFS device for swapping */
-            printf(" - NFS Device for Swapping\n");
+            print_str(" - NFS Device for Swapping\n");
             break;
         case DS_CAT: /* S/370 parallel channel */
-            printf(" - S/370 Parallel Channel\n");
+            print_str(" - S/370 Parallel Channel\n");
             break;
         case DS_FCP: /* FC SCSI adapter        */
-            printf(" - FC SCSI Adapter\n");
+            print_str(" - FC SCSI Adapter\n");
             break;
 #if !defined(DISABLE_NVME_PASSTHROUGH)
         case DS_FCNVME: /* FC-NVMe device       */
-            printf(" - FC-NVMe device\n");
+            print_str(" - FC-NVMe device\n");
             break;
 #endif              // DISABLE_NVME_PASSTHROUGH
         case DS_VM: /* VM logical volume */
-            printf(" - VM Logical volume\n");
+            print_str(" - VM Logical volume\n");
             break;
         // case DS_QIO:     /* Quick IO logical volume */
-        //     printf(" - Quick IO logical volume\n");
+        //     print_str(" - Quick IO logical volume\n");
         //     break;
         case DS_ISCSI: /* iSCSI adapter           */
-            printf(" - iSCSI adapter\n");
+            print_str(" - iSCSI adapter\n");
             break;
         // case DS_LVZ:	/* New logical volume type */
         //     M_FALLTHROUGH;
         case DS_LV0: /* New logical volume type */
-            printf(" - New logical volume type\n");
+            print_str(" - New logical volume type\n");
             break;
         case DS_VMZ: /* VM logical volume */
-            printf(" - VM logical volume\n");
+            print_str(" - VM logical volume\n");
             break;
         case DS_VDEVICE: /* Virtual deivce or bus   */
-            printf(" - Virtual device or bus\n");
+            print_str(" - Virtual device or bus\n");
             break;
         // case DS_CVSCSI:   /* Virtual SCSI Client (hosteD)  */
-        //     printf(" - Virtual SCSI Client (hosteD)\n");
+        //     print_str(" - Virtual SCSI Client (hosteD)\n");
         //     break;
         case DS_SVSCSI: /* Virtual SCSI Server (hostinG) */
-            printf(" - Virtual SCSI Server (hostinG)\n");
+            print_str(" - Virtual SCSI Server (hostinG)\n");
             break;
         case DS_RPV: /* Remote device */
-            printf(" - Remote device\n");
+            print_str(" - Remote device\n");
             break;
         case DS_ACCEL: /* Accel device */
-            printf(" - Accel device\n");
+            print_str(" - Accel device\n");
             break;
 #if defined(DS_CAPI_IO)
         case DS_CAPI_IO: /* CAPI Storage device */
-            printf(" - CAPI Storage device\n");
+            print_str(" - CAPI Storage device\n");
             break;
 #endif // DS_CAPI_IO
 #if defined(DS_VRTSCSI)
         case DS_VRTSCSI: /* VirtIO SCSI Client Adapter */
-            printf(" - VirtIO SCSI Client Adapter\n");
+            print_str(" - VirtIO SCSI Client Adapter\n");
             break;
 #endif               // DS_VRTSCSI
         case DS_VSD: /* VSD type device */
-            printf(" - VSD Type Device\n");
+            print_str(" - VSD Type Device\n");
             break;
 #if !defined(DISABLE_NVME_PASSTHROUGH)
         case DS_NVME: /* non-volatile Memory controller   */
-            printf(" - Non-Volatile Memory Controller (NVMe)\n");
+            print_str(" - Non-Volatile Memory Controller (NVMe)\n");
             break;
 #endif // DISABLE_NVME_PASSTHROUGH
         default:
-            printf(" - Unknown\n");
+            print_str(" - Unknown\n");
             break;
         }
         printf("\tflags = %02" PRIX8 "h\n", devInfoData->flags);
         if (devInfoData->flags & DF_FIXED)
         {
-            printf("\t\tFixed/non-removable\n");
+            print_str("\t\tFixed/non-removable\n");
         }
         if (devInfoData->flags & DF_RAND)
         {
-            printf("\t\tRandom access possible\n");
+            print_str("\t\tRandom access possible\n");
         }
         if (devInfoData->flags & DF_FAST)
         {
-            printf("\t\tFast\n");
+            print_str("\t\tFast\n");
         }
         if (devInfoData->flags & DF_CONC)
         {
-            printf("\t\tConcurrent mode supported\n");
+            print_str("\t\tConcurrent mode supported\n");
         }
         if (devInfoData->flags & DF_LGDSK)
         {
-            printf("\t\tLarge > 2TB disk\n");
+            print_str("\t\tLarge > 2TB disk\n");
         }
         if (devInfoData->flags & DF_IVAL)
         {
-            printf("\t\tInner structure flags are valid\n");
+            print_str("\t\tInner structure flags are valid\n");
         }
         // based on type/subtype and flags, check proper structure in union called un
         switch (devInfoData->devtype)
         {
         case DD_TMSCSI:
             // devInfoData->un.tmscsi
-            printf("\t\ttmscsi");
+            print_str("\t\ttmscsi");
             printf("\t\t\tscsi_id: %" PRIu8 "\n", devInfoData->un.tmscsi.scsi_id);
             printf("\t\t\tlun_id: %" PRIu8 "\n", devInfoData->un.tmscsi.lun_id);
             printf("\t\t\tbuf_size: %" PRIu32 "\n", devInfoData->un.tmscsi.buf_size);
@@ -425,7 +425,7 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
             break;
         case DD_SCSITM:
             // devInfoData->un.scsitm
-            printf("\t\tscsitm");
+            print_str("\t\tscsitm");
             printf("\t\t\tlo_scsi_id: %" PRIu8 "\n", devInfoData->un.scsitm.lo_scsi_id);
             printf("\t\t\thi_scsi_id: %" PRIu8 "\n", devInfoData->un.scsitm.hi_scsi_id);
             printf("\t\t\tlo_lun_id: %" PRIu8 "\n", devInfoData->un.scsitm.lo_lun_id);
@@ -440,35 +440,35 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
             break;
         case DD_TAPE:
             // devInfoData->un.mt
-            printf("\t\tmt");
+            print_str("\t\tmt");
             printf("\t\t\ttype: %" PRIu8 " - ", devInfoData->un.mt.type);
             switch (devInfoData->un.mt.type)
             {
             case DT_STREAM:
-                printf("Streaming tape\n");
+                print_str("Streaming tape\n");
                 break;
             case DT_STRTSTP:
-                printf("Start-Stop tape\n");
+                print_str("Start-Stop tape\n");
                 break;
             default:
-                printf("Unknown\n");
+                print_str("Unknown\n");
                 break;
             }
             break;
         case DD_SCTAPE:
             // devInfoData->un.scmt
-            printf("\t\tscmt");
+            print_str("\t\tscmt");
             printf("\t\t\ttype: %" PRIu8 " - ", devInfoData->un.scmt.type);
             switch (devInfoData->un.scmt.type)
             {
             case DT_STREAM:
-                printf("Streaming tape\n");
+                print_str("Streaming tape\n");
                 break;
             case DT_STRTSTP:
-                printf("Start-Stop tape\n");
+                print_str("Start-Stop tape\n");
                 break;
             default:
-                printf("Unknown\n");
+                print_str("Unknown\n");
                 break;
             }
             printf("\t\t\tblksize: %" PRId32 "\n", devInfoData->un.scmt.blksize);
@@ -479,7 +479,7 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
             if (devInfoData->flags & DF_LGDSK)
             {
                 // dk64
-                printf("\t\tdk64\n");
+                print_str("\t\tdk64\n");
                 printf("\t\t\tbytpsec = %" PRIu16 "\n", devInfoData->un.dk64.bytpsec);
                 printf("\t\t\tsecptrk = %" PRIu16 "\n", devInfoData->un.dk64.secptrk);
                 printf("\t\t\ttrkpcyl = %" PRIu16 "\n", devInfoData->un.dk64.trkpcyl);
@@ -496,7 +496,7 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
             else
             {
                 // dk
-                printf("\t\tdk\n");
+                print_str("\t\tdk\n");
                 printf("\t\t\tbytpsec = %" PRIu16 "\n", devInfoData->un.dk.bytpsec);
                 printf("\t\t\tsecptrk = %" PRIu16 "\n", devInfoData->un.dk.secptrk);
                 printf("\t\t\ttrkpcyl = %" PRIu16 "\n", devInfoData->un.dk.trkpcyl);
@@ -512,7 +512,7 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
             // sccd64, idecd64 //DF_LGDSK flag must be set
             if (devInfoData->flags & DF_LGDSK)
             {
-                printf("\t\tsccd64\n");
+                print_str("\t\tsccd64\n");
                 printf("\t\t\tblksize = %" PRIu16 "\n", devInfoData->un.sccd64.blksize);
                 if (devInfoData->flags & DF_IVAL)
                 {
@@ -523,7 +523,7 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
             }
             else
             {
-                printf("\t\tsccd\n");
+                print_str("\t\tsccd\n");
                 printf("\t\t\tblksize = %" PRIu16 "\n", devInfoData->un.sccd.blksize);
                 printf("\t\t\tnumblks = %ld\n", devInfoData->un.sccd.numblks);
             }
@@ -537,49 +537,49 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
             // devInfoData->un.scdk64, idedk64;//DF_LGDSK flag must be set
             if (devInfoData->flags & DF_LGDSK)
             {
-                printf("\t\tscdk64\n");
+                print_str("\t\tscdk64\n");
                 printf("\t\t\tblksize = %" PRIu16 "\n", devInfoData->un.scdk64.blksize);
                 if (devInfoData->flags & DF_IVAL)
                 {
                     printf("\t\t\tflags = %" PRIu16 "\n", devInfoData->un.scdk64.flags);
                     if (devInfoData->un.scdk64.flags & DF_SSD)
                     {
-                        printf("\t\t\t\tSSD\n");
+                        print_str("\t\t\t\tSSD\n");
                     }
 #if defined(DF_CFLASH)
                     if (devInfoData->un.scdk64.flags & DF_CFLASH)
                     {
-                        printf("\t\t\t\tCAPI Flash disk\n");
+                        print_str("\t\t\t\tCAPI Flash disk\n");
                     }
 #endif // DF_CFLASH
 #if defined(DF_LBP)
                     if (devInfoData->un.scdk64.flags & DF_LBP)
                     {
-                        printf("\t\t\t\tLBP fields are valid\n");
+                        print_str("\t\t\t\tLBP fields are valid\n");
                     }
 #endif // DF_LBP
 #if defined(DF_NVME)
                     if (devInfoData->un.scdk64.flags & DF_NVME)
                     {
-                        printf("\t\t\t\tNVMe\n");
+                        print_str("\t\t\t\tNVMe\n");
                     }
 #endif // DF_NVME
 #if defined(DF_4B_ALIGNED)
                     if (devInfoData->un.scdk64.flags & DF_4B_ALIGNED)
                     {
-                        printf("\t\t\t\t4B alignment required\n");
+                        print_str("\t\t\t\t4B alignment required\n");
                     }
 #endif // DF_4B_ALIGNED
 #if defined(DF_NVMEM)
                     if (devInfoData->un.scdk64.flags & DF_NVMEM)
                     {
-                        printf("\t\t\t\tNVMEM disk\n");
+                        print_str("\t\t\t\tNVMEM disk\n");
                     }
 #endif // DF_NVMEM
 #if defined(DF_VPMEM)
                     if (devInfoData->un.scdk64.flags & DF_VPMEM)
                     {
-                        printf("\t\t\t\tContents are no persistent across CEC reboot\n");
+                        print_str("\t\t\t\tContents are no persistent across CEC reboot\n");
                     }
 #endif // DF_VPMEM
                 }
@@ -597,44 +597,44 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
                     printf("\t\t\tlbp_flags = %" PRIu32 "\n", devInfoData->un.scdk64.lbp_flags);
                     if (devInfoData->un.scdk64.lbp_flags & SCDK_LBPF_ENABLED)
                     {
-                        printf("\t\t\t\tLogical Block Provisioning support is enabled on this AIX node\n");
+                        print_str("\t\t\t\tLogical Block Provisioning support is enabled on this AIX node\n");
                     }
                     if (devInfoData->un.scdk64.lbp_flags & SCDK_LBPF_UNSUPPORTED_DEVICE)
                     {
-                        printf("\t\t\t\tAIX does not support Logical Block Provisioning on this device\n");
+                        print_str("\t\t\t\tAIX does not support Logical Block Provisioning on this device\n");
                     }
                     if (devInfoData->un.scdk64.lbp_flags & SCDK_LBPF_ALIGN_FIELD_VALID)
                     {
-                        printf("\t\t\t\tlbp_alignment is valid\n");
+                        print_str("\t\t\t\tlbp_alignment is valid\n");
                     }
                     if (devInfoData->un.scdk64.lbp_flags & SCDK_LBPF_READ_ZEROS)
                     {
-                        printf("\t\t\t\tUnmapped blocks return zero on read\n");
+                        print_str("\t\t\t\tUnmapped blocks return zero on read\n");
                     }
                     if (devInfoData->un.scdk64.lbp_flags & SCDK_LBPF_WS_SUPPORTED)
                     {
-                        printf("\t\t\t\tWrite Same command is supported\n");
+                        print_str("\t\t\t\tWrite Same command is supported\n");
                     }
                     if (devInfoData->un.scdk64.lbp_flags & SCDK_LBPF_UNMAP_SUPPORTED)
                     {
-                        printf("\t\t\t\tUnmap command is supported\n");
+                        print_str("\t\t\t\tUnmap command is supported\n");
                     }
                     if (devInfoData->un.scdk64.lbp_flags & SCDK_LBPF_CANCEL_SUPPORTED)
                     {
-                        printf("\t\t\t\tDriver supports ioctl(DK_CANCEL_RECLAIM)\n");
+                        print_str("\t\t\t\tDriver supports ioctl(DK_CANCEL_RECLAIM)\n");
                     }
                     printf("\t\t\tlbp_provision_type = %" PRIu8 " - ", devInfoData->un.scdk64.lbp_provision_type);
                     switch (devInfoData->un.scdk64.lbp_provision_type)
                     {
                     case LBP_TYPE_THICK:
-                        printf("Thick\n");
+                        print_str("Thick\n");
                         break;
                     case LBP_TYPE_THIN:
-                        printf("Thin\n");
+                        print_str("Thin\n");
                         break;
                     case LBP_TYPE_UNKNOWN:
                     default:
-                        printf("Unknown\n");
+                        print_str("Unknown\n");
                         break;
                     }
                     printf("\t\t\tlbp_max_blks = %" PRIu32 "\n", devInfoData->un.scdk64.lbp_max_blks);
@@ -648,7 +648,7 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
             }
             else
             {
-                printf("\t\tscdk\n");
+                print_str("\t\tscdk\n");
                 printf("\t\t\tblksize = %" PRIu16 "\n", devInfoData->un.scdk.blksize);
                 printf("\t\t\tnumblks = %ld\n", devInfoData->un.scdk.numblks);
                 printf("\t\t\tmax_request = %ld\n", devInfoData->un.scdk.max_request);
@@ -704,23 +704,23 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
             switch (devInfoData->devsubtype)
             {
             case DS_SCSI: /* SCSI adapter */
-                printf("\t\tscsi\n");
+                print_str("\t\tscsi\n");
                 printf("\t\t\tcard_scsi_id = %" PRId8 "\n", devInfoData->un.scsi.card_scsi_id);
                 printf("\t\t\tmax_transfer = %ld\n", devInfoData->un.scsi.max_transfer);
                 break;
             case DS_IDE: /* IDE adapter  */
-                printf("\t\tide\n");
+                print_str("\t\tide\n");
                 printf("\t\t\tresv1 = %" PRId8 "\n", devInfoData->un.ide.resv1);
                 printf("\t\t\tmax_transfer = %ld\n", devInfoData->un.ide.max_transfer);
                 break;
             case DS_SAS: /* SAS adapter  */
-                printf("\t\tsas\n");
+                print_str("\t\tsas\n");
                 if (devInfoData->flags & DF_IVAL)
                 {
                     printf("\t\t\tflags = %" PRIu8 "\n", devInfoData->un.sas.flags);
                     if (devInfoData->un.sas.flags & SAS_FLAGS_DK_BUFX_EXT)
                     {
-                        printf("\t\t\t\tDriver supports disk_bufx_ext\n");
+                        print_str("\t\t\t\tDriver supports disk_bufx_ext\n");
                     }
                 }
                 printf("\t\t\treserved1 = %" PRIu8 "\n", devInfoData->un.sas.reserved1);
@@ -731,7 +731,7 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
                 printf("\t\t\tmax_transfer = %" PRId32 "\n", devInfoData->un.sas.max_transfer);
                 break;
             case DS_SATA: /* SATA adapter */
-                printf("\t\tsata\n");
+                print_str("\t\tsata\n");
                 if (devInfoData->flags & DF_IVAL)
                 {
                     printf("\t\t\tflags = %" PRIu8 "\n", devInfoData->un.sata.flags);
@@ -764,7 +764,7 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
 #endif // DS_CAPI_IO
 #if !defined(DISABLE_NVME_PASSTHROUGH)
             case DS_NVME: /* non-volatile Memory controller   */
-                printf("\t\tnvme\n");
+                print_str("\t\tnvme\n");
                 printf("\t\t\treserved1 = %" PRIu32 "\n", devInfoData->un.nvme.reserved1);
                 printf("\t\t\tcapability = %" PRIu32 "\n", devInfoData->un.nvme.capability);
                 if (devInfoData->un.nvme.capability == 0)
@@ -782,19 +782,19 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
                     printf("\t\t\tflags = %" PRIu8 "\n", devInfoData->un.nvme.flags);
                     if (devInfoData->un.nvme.flags & NVME_STATIC_CTLR)
                     {
-                        printf("\t\t\t\tStatic Controller\n");
+                        print_str("\t\t\t\tStatic Controller\n");
                     }
                     if (devInfoData->un.nvme.flags & NVME_DYNAMIC_CTLR)
                     {
-                        printf("\t\t\t\tDynamic Controller\n");
+                        print_str("\t\t\t\tDynamic Controller\n");
                     }
                     if (devInfoData->un.nvme.flags & NVME_DISCOVERY_CTLR)
                     {
-                        printf("\t\t\t\tDiscovery Controller\n");
+                        print_str("\t\t\t\tDiscovery Controller\n");
                     }
                     if (devInfoData->un.nvme.flags & NVME_REMOTE_CTLR)
                     {
-                        printf("\t\t\t\tRemote Controller\n");
+                        print_str("\t\t\t\tRemote Controller\n");
                     }
                 }
                 printf("\t\t\tmax_transfer = %" PRId32 "\n", devInfoData->un.nvme.max_transfer);
@@ -807,7 +807,7 @@ static void print_devinfo_struct(struct devinfo* devInfoData)
                 break;
 #if defined(DS_VRTSCSI)
             case DS_VRTSCSI: /* VirtIO SCSI Client Adapter */
-                printf("\t\tvrt_scsi\n");
+                print_str("\t\tvrt_scsi\n");
                 printf("\t\t\tvrtscsi_id = %" PRId8 "\n", devInfoData->un.vrt_scsi.vrtscsi_id);
                 printf("\t\t\tmax_transfer = %" PRId32 "\n", devInfoData->un.vrt_scsi.max_transfer);
                 printf("\t\t\treserved1 = %" PRId32 "\n", devInfoData->un.vrt_scsi.reserved1);
@@ -871,103 +871,103 @@ static void print_ODM_Error(int odmError)
     switch (odmError)
     {
     case ODMI_OPEN_ERR:
-        printf("ODMI Cannot open object class\n");
+        print_str("ODMI Cannot open object class\n");
         break;
     case ODMI_MALLOC_ERR:
-        printf("ODMI Cannot allocate memory\n");
+        print_str("ODMI Cannot allocate memory\n");
         break;
     case ODMI_MAGICNO_ERR:
-        printf("ODMI Invalid file magic number\n");
+        print_str("ODMI Invalid file magic number\n");
         break;
     case ODMI_NO_OBJECT:
-        printf("ODMI no object\n");
+        print_str("ODMI no object\n");
         break;
     case ODMI_BAD_CRIT:
-        printf("ODMI Invalid search criteria\n");
+        print_str("ODMI Invalid search criteria\n");
         break;
     case ODMI_INTERNAL_ERR:
-        printf("ODMI Internal Error\n");
+        print_str("ODMI Internal Error\n");
         break;
     case ODMI_TOOMANYCLASSES:
-        printf("ODMI Accessing too many classes\n");
+        print_str("ODMI Accessing too many classes\n");
         break;
     case ODMI_LINK_NOT_FOUND:
-        printf("ODMI Link not found\n");
+        print_str("ODMI Link not found\n");
         break;
     case ODMI_INVALID_CLASS:
-        printf("ODMI invalid class\n");
+        print_str("ODMI invalid class\n");
         break;
     case ODMI_CLASS_EXISTS:
-        printf("ODMI class exists\n");
+        print_str("ODMI class exists\n");
         break;
     case ODMI_CLASS_DNE:
-        printf("ODMI class dne\n"); // DNE = does not exist???
+        print_str("ODMI class dne\n"); // DNE = does not exist???
         break;
     case ODMI_BAD_CLASSNAME:
-        printf("ODMI bad classname\n");
+        print_str("ODMI bad classname\n");
         break;
     case ODMI_UNLINKCLASS_ERR:
-        printf("ODMI unlinkclass error\n");
+        print_str("ODMI unlinkclass error\n");
         break;
     case ODMI_UNLINKCLXN_ERR:
-        printf("ODMI unlink clxn error\n");
+        print_str("ODMI unlink clxn error\n");
         break;
     case ODMI_INVALID_CLXN:
-        printf("ODMI invalid clxn\n");
+        print_str("ODMI invalid clxn\n");
         break;
     case ODMI_CLXNMAGICNO_ERR:
-        printf("ODMI clxn magic number error\n");
+        print_str("ODMI clxn magic number error\n");
         break;
     case ODMI_BAD_CLXNNAME:
-        printf("ODMI bad clxn name\n");
+        print_str("ODMI bad clxn name\n");
         break;
     case ODMI_CLASS_PERMS:
-        printf("ODMI PERMISSIONS DON'T ALLOW OPEN\n");
+        print_str("ODMI PERMISSIONS DON'T ALLOW OPEN\n");
         break;
     case ODMI_BAD_TIMEOUT:
-        printf("ODMI INVALID TIMEOUT VALUE\n");
+        print_str("ODMI INVALID TIMEOUT VALUE\n");
         break;
     case ODMI_BAD_TOKEN:
-        printf("ODMI UNABLE TO OPEN/CREATE TOKEN\n");
+        print_str("ODMI UNABLE TO OPEN/CREATE TOKEN\n");
         break;
     case ODMI_LOCK_BLOCKED:
-        printf("ODMI ANOTHER PROCESS HAS LOCK\n");
+        print_str("ODMI ANOTHER PROCESS HAS LOCK\n");
         break;
     case ODMI_LOCK_ENV:
-        printf("ODMI CANNOT GET/SET ENV VARIABLE\n");
+        print_str("ODMI CANNOT GET/SET ENV VARIABLE\n");
         break;
     case ODMI_UNLOCK:
-        printf("ODMI CANNOT UNLOCK THE TOKEN\n");
+        print_str("ODMI CANNOT UNLOCK THE TOKEN\n");
         break;
     case ODMI_BAD_LOCK:
-        printf("ODMI UNABLE TO SET LOCK\n");
+        print_str("ODMI UNABLE TO SET LOCK\n");
         break;
     case ODMI_LOCK_ID:
-        printf("ODMI INVALID LOCK ID\n");
+        print_str("ODMI INVALID LOCK ID\n");
         break;
     case ODMI_PARAMS:
-        printf("ODMI INVALID PARAMETERS PASSED IN\n");
+        print_str("ODMI INVALID PARAMETERS PASSED IN\n");
         break;
     case ODMI_OPEN_PIPE:
-        printf("ODMI COULD NOT OPEN CHILD PIPE\n");
+        print_str("ODMI COULD NOT OPEN CHILD PIPE\n");
         break;
     case ODMI_READ_PIPE:
-        printf("ODMI COULD NOT READ FROM CHILD PIPE\n");
+        print_str("ODMI COULD NOT READ FROM CHILD PIPE\n");
         break;
     case ODMI_FORK:
-        printf("ODMI COULD NOT FORK CHILD PROCESS\n");
+        print_str("ODMI COULD NOT FORK CHILD PROCESS\n");
         break;
     case ODMI_INVALID_PATH:
-        printf("ODMI PATH OR FILE IS INVALID\n");
+        print_str("ODMI PATH OR FILE IS INVALID\n");
         break;
     case ODMI_READ_ONLY:
-        printf("ODMI CLASS IS OPENED AS READ-ONLY\n");
+        print_str("ODMI CLASS IS OPENED AS READ-ONLY\n");
         break;
     case ODMI_NO_SPACE:
-        printf("ODMI FILESYSTEM FULL\n");
+        print_str("ODMI FILESYSTEM FULL\n");
         break;
     case ODMI_VERSION_ERROR:
-        printf("ODMI Invalid object class version\n");
+        print_str("ODMI Invalid object class version\n");
         break;
     default:
         printf("ODMI Unknown error: %d\n", odmError);
@@ -990,7 +990,7 @@ static void print_CuDv_Struct(struct CuDv* cudv)
     snprintf_err_handle(cudvparent, 17, "%s", cudv->parent);
     snprintf_err_handle(cudvconnwhere, 17, "%s", cudv->connwhere);
     snprintf_err_handle(cudvPdDvLnLvalue, 49, "%s", cudv->PdDvLn_Lvalue);
-    printf("CuDv:\n");
+    print_str("CuDv:\n");
     printf("\tid: %ld\n", cudv->_id);
     printf("\treserved: %ld\n", cudv->_reserved);
     printf("\tscratch: %ld\n", cudv->_scratch);
@@ -1034,7 +1034,7 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         snprintf_err_handle(pddvStart, 257, "%s", cudv->PdDvLn->Start);
         snprintf_err_handle(pddvStop, 257, "%s", cudv->PdDvLn->Stop);
         snprintf_err_handle(pddvuniquetype, 49, "%s", cudv->PdDvLn->uniquetype);
-        printf("\tPdDv\n");
+        print_str("\tPdDv\n");
         printf("\t\tid: %ld\n", cudv->PdDvLn->_id);
         printf("\t\treserved: %ld\n", cudv->PdDvLn->_reserved);
         printf("\t\tscratch: %ld\n", cudv->PdDvLn->_scratch);
@@ -1071,7 +1071,7 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         DECLARE_ZERO_INIT_ARRAY(char, listinfoCrit, MAX_ODMI_CRIT + 1);
         snprintf_err_handle(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname);
         snprintf_err_handle(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit);
-        printf("\t\tlistinfo:\n");
+        print_str("\t\tlistinfo:\n");
         printf("\t\t\tclassname: %s\n", listinfoClassname);
         printf("\t\t\tcrit: %s\n", listinfoCrit);
         printf("\t\t\tnum: %d\n", cudv->PdDvLn_info->num);
@@ -1227,7 +1227,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         safe_memset(&driveInfo, sizeof(struct devinfo), 0, sizeof(struct devinfo));
         if (device->deviceVerbosity > VERBOSITY_DEFAULT)
         {
-            printf("Attempting device IOCINFO\n");
+            print_str("Attempting device IOCINFO\n");
         }
         if (extensionFlags & SC_DIAGNOSTIC)
         {
@@ -1247,7 +1247,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             device->os_info.last_error = errno;
             if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
             {
-                printf("Device IOCINFO Error: ");
+                print_str("Device IOCINFO Error: ");
                 print_Errno_To_Screen(device->os_info.last_error);
             }
             if (device->os_info.last_error == EACCES)
@@ -1448,7 +1448,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 {
                     if (device->deviceVerbosity > VERBOSITY_DEFAULT)
                     {
-                        printf("Warning: Parent is empty!\n");
+                        print_str("Warning: Parent is empty!\n");
                     }
                 }
             }
@@ -1610,35 +1610,35 @@ static void print_Passthrough_Bus_And_Adapter_Status(uchar status_validity,
     case 0: // no bus or adapter status
         break;
     case 1: // scsi_bus_status is valid
-        printf("AIX SCSI Bus Status:\n");
+        print_str("AIX SCSI Bus Status:\n");
         switch (scsi_bus_status & SCSI_STATUS_MASK)
         {
         case SC_GOOD_STATUS:
-            printf("\tGood\n");
+            print_str("\tGood\n");
             break;
         case SC_CHECK_CONDITION:
-            printf("\tCheck Condition\n");
+            print_str("\tCheck Condition\n");
             break;
         case SC_BUSY_STATUS:
-            printf("\tBusy\n");
+            print_str("\tBusy\n");
             break;
         case SC_INTMD_GOOD:
-            printf("\tIntermediate Good\n");
+            print_str("\tIntermediate Good\n");
             break;
         case SC_RESERVATION_CONFLICT:
-            printf("\tReservation Conflict\n");
+            print_str("\tReservation Conflict\n");
             break;
         case SC_COMMAND_TERMINATED:
-            printf("\tCommand Terminated\n");
+            print_str("\tCommand Terminated\n");
             break;
         case SC_QUEUE_FULL:
-            printf("\tQueue Full\n");
+            print_str("\tQueue Full\n");
             break;
         case SC_ACA_ACTIVE:
-            printf("\tACA Active\n");
+            print_str("\tACA Active\n");
             break;
         case SC_TASK_ABORTED:
-            printf("\tTask Aborted\n");
+            print_str("\tTask Aborted\n");
             break;
         default:
             printf("\tUnknown scsi bus status: %u\n", scsi_bus_status & SCSI_STATUS_MASK);
@@ -1646,85 +1646,85 @@ static void print_Passthrough_Bus_And_Adapter_Status(uchar status_validity,
         }
         break;
     case 2: // adap_status_type is valid
-        printf("AIX SCSI Adapter Status:\n");
+        print_str("AIX SCSI Adapter Status:\n");
         switch (adap_status_type)
         {
         case SC_ADAP_SC_ERR: // parallel SCSI adapter
-            printf("\tParallel SCSI Adapter Status:\n");
+            print_str("\tParallel SCSI Adapter Status:\n");
             // general_card_status
             switch (adapter_status)
             {
             case SC_HOST_IO_BUS_ERR:
-                printf("\t\tHost I/O Bus Error\n");
+                print_str("\t\tHost I/O Bus Error\n");
                 break;
             case SC_SCSI_BUS_FAULT:
-                printf("\t\tSCSI Bus Failure\n");
+                print_str("\t\tSCSI Bus Failure\n");
                 break;
             case SC_CMD_TIMEOUT:
-                printf("\t\tCommand Timeout\n");
+                print_str("\t\tCommand Timeout\n");
                 break;
             case SC_NO_DEVICE_RESPONSE:
-                printf("\t\tNo Device Response\n");
+                print_str("\t\tNo Device Response\n");
                 break;
             case SC_ERROR_NO_RETRY:
-                printf("\t\tError Occurred - do not retry\n");
+                print_str("\t\tError Occurred - do not retry\n");
                 break;
             case SC_ERROR_DELAY_LOG:
-                printf("\t\tError Occurred - Only log if max retries exceeded\n");
+                print_str("\t\tError Occurred - Only log if max retries exceeded\n");
                 break;
             case SC_ADAPTER_HDW_FAILURE:
-                printf("\t\tAdapter Hardware Failure\n");
+                print_str("\t\tAdapter Hardware Failure\n");
                 break;
             case SC_ADAPTER_SFW_FAILURE:
-                printf("\t\tAdapter Microcode Failure\n");
+                print_str("\t\tAdapter Microcode Failure\n");
                 break;
             case SC_FUSE_OR_TERMINAL_PWR:
-                printf("\t\tAdapter blown fuse or bad termination\n");
+                print_str("\t\tAdapter blown fuse or bad termination\n");
                 break;
             case SC_SCSI_BUS_RESET:
-                printf("\t\tAdapter detected external bus reset\n");
+                print_str("\t\tAdapter detected external bus reset\n");
                 break;
             }
             break;
         case SC_ADAP_SAM_ERR: // SAM-3 adapter
-            printf("\tSAM-3 Adapter Status:\n");
+            print_str("\tSAM-3 Adapter Status:\n");
             // adapter_status
             switch (adapter_status)
             {
             // scsi_buf.h defines these for scsi_buf
             // https://www.ibm.com/docs/en/aix/7.2?topic=structure-fields-in-scsi-buf
             case SCSI_HOST_IO_BUS_ERR:
-                printf("\t\tSCSI Host I/O Bus Error\n");
+                print_str("\t\tSCSI Host I/O Bus Error\n");
                 break;
             case SCSI_TRANSPORT_FAULT:
-                printf("\t\tSCSI Transport Fault\n");
+                print_str("\t\tSCSI Transport Fault\n");
                 break;
             case SCSI_CMD_TIMEOUT:
-                printf("\t\tSCSI Command Timeout\n");
+                print_str("\t\tSCSI Command Timeout\n");
                 break;
             case SCSI_NO_DEVICE_RESPONSE:
-                printf("\t\tSCSI No Device Response\n");
+                print_str("\t\tSCSI No Device Response\n");
                 break;
             case SCSI_ADAPTER_HDW_FAILURE:
-                printf("\t\tSCSI Adapter Hardware Failure\n");
+                print_str("\t\tSCSI Adapter Hardware Failure\n");
                 break;
             case SCSI_ADAPTER_SFW_FAILURE:
-                printf("\t\tSCSI Adapter Microcode Failure\n");
+                print_str("\t\tSCSI Adapter Microcode Failure\n");
                 break;
             case SCSI_FUSE_OR_TERMINAL_PWR:
-                printf("\t\tSCSI Fuse Blown or Bad Termination\n");
+                print_str("\t\tSCSI Fuse Blown or Bad Termination\n");
                 break;
             case SCSI_TRANSPORT_RESET:
-                printf("\t\tSCSI Transport Layer Was Reset\n");
+                print_str("\t\tSCSI Transport Layer Was Reset\n");
                 break;
             case SCSI_WW_NAME_CHANGE:
-                printf("\t\tSCSI World Wide Name Has Changed\n");
+                print_str("\t\tSCSI World Wide Name Has Changed\n");
                 break;
             case SCSI_TRANSPORT_BUSY:
-                printf("\t\tSCSI Transport Busy\n");
+                print_str("\t\tSCSI Transport Busy\n");
                 break;
             case SCSI_TRANSPORT_DEAD:
-                printf("\t\tSCSI Transport Dead\n");
+                print_str("\t\tSCSI Transport Dead\n");
                 break;
             }
             break;
@@ -1743,11 +1743,11 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 {
     if (adap_q_status == 0)
     {
-        printf("Adapter Queue Status: Cleared\n");
+        print_str("Adapter Queue Status: Cleared\n");
     }
     else if (adap_q_status == SC_DID_NOT_CLEAR_Q)
     {
-        printf("Adapter Queue Status: Queue at the Adapter was not cleared\n");
+        print_str("Adapter Queue Status: Queue at the Adapter was not cleared\n");
     }
     else
     {
@@ -1845,7 +1845,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             {
 //                 if (scsiIoCtx->device->os_info.last_error != 0)
 //                 {
-//                     printf("Error: ");
+//                     print_str("Error: ");
 //                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
 //                 }
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
@@ -1958,7 +1958,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             {
 //                 if (scsiIoCtx->device->os_info.last_error != 0)
 //                 {
-//                     printf("Error: ");
+//                     print_str("Error: ");
 //                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
 //                 }
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
@@ -2043,7 +2043,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             {
 //                 if (scsiIoCtx->device->os_info.last_error != 0)
 //                 {
-//                     printf("Error: ");
+//                     print_str("Error: ");
 //                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
 //                 }
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
@@ -2184,14 +2184,14 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             // https://github.com/RobinTMiller/dt/blob/master/scsilib-aix.c
             if (scsiIoCtx->device->os_info.last_error != 0)
             {
-                printf("Error: ");
+                print_str("Error: ");
                 print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
             print_Passthrough_Bus_And_Adapter_Status(aixPassthrough.status_validity, aixPassthrough.scsi_bus_status,
                                                      aixPassthrough.adap_status_type, aixPassthrough.adapter_status);
             if (aixPassthrough.adap_set_flags & SC_AUTOSENSE_DATA_VALID)
             {
-                printf("Adapter auto-sense data is valid\n");
+                print_str("Adapter auto-sense data is valid\n");
             }
             if (aixPassthrough.adap_set_flags & SC_RET_ID)
             {
@@ -2205,58 +2205,58 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             {
                 // TODO: Some of these, upon error will return an allowed value. Look at showing these in this error
                 // output.-TJE
-                printf("Invalid field in sc_passthru:\n");
+                print_str("Invalid field in sc_passthru:\n");
                 switch (aixPassthrough.einval_arg)
                 {
                 case SC_PASSTHRU_INV_VERS:
-                    printf("\tInvalid Version\n");
+                    print_str("\tInvalid Version\n");
                     break;
                 case SC_PASSTHRU_INV_Q_TAG_MSG:
-                    printf("\tQ Tag field is invalid\n");
+                    print_str("\tQ Tag field is invalid\n");
                     break;
                 case SC_PASSTHRU_INV_FLAGS:
-                    printf("\tInvalid flags\n");
+                    print_str("\tInvalid flags\n");
                     break;
                 case SC_PASSTHRU_INV_DEVFLAGS:
-                    printf("\tInvalid device flags\n");
+                    print_str("\tInvalid device flags\n");
                     break;
                 case SC_PASSTHRU_INV_Q_FLAGS:
-                    printf("\tInvalid Queue flags\n");
+                    print_str("\tInvalid Queue flags\n");
                     break;
                 case SC_PASSTHRU_INV_CDB_LEN:
-                    printf("\tInvalid CDB length\n");
+                    print_str("\tInvalid CDB length\n");
                     break;
                 case SC_PASSTHRU_INV_AS_LEN:
-                    printf("\tInvalid autosense length\n");
+                    print_str("\tInvalid autosense length\n");
                     break;
                 case SC_PASSTHRU_INV_CDB:
-                    printf("\tInvalid CDB\n");
+                    print_str("\tInvalid CDB\n");
                     break;
                 case SC_PASSTHRU_INV_TO:
                     // Supposedly this can tell what an appropriate maximum timeout is in the timeout offset when this
                     // occurs.
-                    printf("\tInvalid timeout\n");
+                    print_str("\tInvalid timeout\n");
                     break;
                 case SC_PASSTHRU_INV_D_LEN:
-                    printf("\tInvalid data length\n");
+                    print_str("\tInvalid data length\n");
                     break;
                 case SC_PASSTHRU_INV_SID:
-                    printf("\tInvalid SCSI ID\n");
+                    print_str("\tInvalid SCSI ID\n");
                     break;
                 case SC_PASSTHRU_INV_LUN:
-                    printf("\tInvalid LUN ID\n");
+                    print_str("\tInvalid LUN ID\n");
                     break;
                 case SC_PASSTHRU_INV_BUFF:
-                    printf("\tInvalid data buffer pointer\n");
+                    print_str("\tInvalid data buffer pointer\n");
                     break;
                 case SC_PASSTHRU_INV_AS_BUFF:
-                    printf("\tInvalid autosense buffer pointer\n");
+                    print_str("\tInvalid autosense buffer pointer\n");
                     break;
                 case SC_PASSTHRU_INV_VAR_CDB_LEN:
-                    printf("\tInvalid variable CDB length\n");
+                    print_str("\tInvalid variable CDB length\n");
                     break;
                 case SC_PASSTHRU_INV_VAR_CDB:
-                    printf("\tInvalid variable length CDB pointer\n");
+                    print_str("\tInvalid variable length CDB pointer\n");
                     break;
                 default:
                     printf("\tUnknown invalid field: %u\n", aixPassthrough.einval_arg);
@@ -2369,7 +2369,7 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         {
             if (scsiIoCtx->device->os_info.last_error != 0)
             {
-                printf("Error: ");
+                print_str("Error: ");
                 print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
@@ -2482,7 +2482,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
         {
             if (scsiIoCtx->device->os_info.last_error != 0)
             {
-                printf("Error: ");
+                print_str("Error: ");
                 print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
             printf("IDE ATAPI Passthru Status: %02" PRIX8 "h\n", idePassthrough.ata_status);
@@ -2705,7 +2705,7 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         {
             if (scsiIoCtx->device->os_info.last_error != 0)
             {
-                printf("Error: ");
+                print_str("Error: ");
                 print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
@@ -2814,7 +2814,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         {
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("No Raid PassThrough IO Routine present for this device\n");
+                print_str("No Raid PassThrough IO Routine present for this device\n");
             }
         }
         break;
@@ -3172,7 +3172,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         {
             if (nvmeIoCtx->device->os_info.last_error != 0)
             {
-                printf("Error: ");
+                print_str("Error: ");
                 print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
             }
             if (nvmeIoCtx->device->os_info.last_error == EINVAL)
@@ -3182,13 +3182,13 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
                     switch (nvmePassthrough->resp.status)
                 {
                 case NVME_PASSTHRU_INVAL_DATA_LENGTH:
-                    printf("\tInvalid data length\n");
+                    print_str("\tInvalid data length\n");
                     break;
                 case NVME_PASSTHRU_BLOCKED_OP_CODE:
-                    printf("\tOperation code blocked\n");
+                    print_str("\tOperation code blocked\n");
                     break;
                 case NVME_PASSTHRU_CMD_HAS_NO_DATA:
-                    printf("\tCommand has no data\n");
+                    print_str("\tCommand has no data\n");
                     break;
                 default:
                     printf("\tUnknown invalid field: %04" PRIX16 "\n", nvmePassthrough->resp.status);
@@ -3262,7 +3262,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
         ret = OS_PASSTHROUGH_FAILURE;
         if (nvmeIoCtx->device->os_info.last_error != 0)
         {
-            printf("Error: ");
+            print_str("Error: ");
             print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
     }

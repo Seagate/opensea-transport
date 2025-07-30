@@ -41,157 +41,157 @@ void print_Low_Level_Info(tDevice* device)
         // other handles that were found or open
         // Anything operating system specific would also be useful to output in here. Do this last and try to do common
         // stuff up front.
-        printf("\n---Low Level tDevice information---\n");
+        print_str("\n---Low Level tDevice information---\n");
         if (device->issue_io)
         {
-            printf("\tissue io function pointer set\n");
+            print_str("\tissue io function pointer set\n");
         }
         if (device->issue_nvme_io)
         {
-            printf("\tissue nvme io function pointer set\n");
+            print_str("\tissue nvme io function pointer set\n");
         }
         if (device->dFlags & FORCE_ATA_PIO_ONLY)
         {
-            printf("\tForcing ATA PIO only\n");
+            print_str("\tForcing ATA PIO only\n");
         }
         if (device->dFlags & FORCE_ATA_DMA_SAT_MODE)
         {
-            printf("\tForcing ATA DMA mode\n");
+            print_str("\tForcing ATA DMA mode\n");
         }
         if (device->dFlags & FORCE_ATA_UDMA_SAT_MODE)
         {
-            printf("\tForcing ATA UDMA mode\n");
+            print_str("\tForcing ATA UDMA mode\n");
         }
-        printf("\t---Drive Info---\n");
+        print_str("\t---Drive Info---\n");
         // print things from drive info structure that will be useful
-        printf("\t\tmedia type: ");
+        print_str("\t\tmedia type: ");
         switch (device->drive_info.media_type)
         {
         case MEDIA_HDD:
-            printf("HDD\n");
+            print_str("HDD\n");
             break;
         case MEDIA_SSD:
-            printf("SSD\n");
+            print_str("SSD\n");
             break;
         case MEDIA_SSM_FLASH:
-            printf("SSM Flash\n");
+            print_str("SSM Flash\n");
             break;
         case MEDIA_SSHD:
-            printf("SSHD\n");
+            print_str("SSHD\n");
             break;
         case MEDIA_OPTICAL:
-            printf("Optical\n");
+            print_str("Optical\n");
             break;
         case MEDIA_TAPE:
-            printf("Tape\n");
+            print_str("Tape\n");
             break;
         case MEDIA_NVM:
-            printf("NVM\n");
+            print_str("NVM\n");
             break;
         default:
-            printf("unknown\n");
+            print_str("unknown\n");
             break;
         }
-        printf("\t\tdrive type: ");
+        print_str("\t\tdrive type: ");
         switch (device->drive_info.drive_type)
         {
         case ATA_DRIVE:
-            printf("ATA\n");
+            print_str("ATA\n");
             break;
         case SCSI_DRIVE:
-            printf("SCSI\n");
+            print_str("SCSI\n");
             break;
         case RAID_DRIVE:
-            printf("RAID\n");
+            print_str("RAID\n");
             break;
         case NVME_DRIVE:
-            printf("NVMe\n");
+            print_str("NVMe\n");
             break;
         case ATAPI_DRIVE:
-            printf("ATAPI\n");
+            print_str("ATAPI\n");
             break;
         case FLASH_DRIVE:
-            printf("Flash\n");
+            print_str("Flash\n");
             break;
         case LEGACY_TAPE_DRIVE:
-            printf("Tape\n");
+            print_str("Tape\n");
             break;
         case UNKNOWN_DRIVE:
-            printf("unknown\n");
+            print_str("unknown\n");
             break;
         }
-        printf("\t\tinterface type: ");
+        print_str("\t\tinterface type: ");
         switch (device->drive_info.interface_type)
         {
         case IDE_INTERFACE:
-            printf("IDE/ATA\n");
+            print_str("IDE/ATA\n");
             break;
         case SCSI_INTERFACE:
-            printf("SCSI/SAS/FC/etc\n");
+            print_str("SCSI/SAS/FC/etc\n");
             break;
         case RAID_INTERFACE:
-            printf("RAID\n");
+            print_str("RAID\n");
             break;
         case NVME_INTERFACE:
-            printf("NVMe\n");
+            print_str("NVMe\n");
             break;
         case USB_INTERFACE:
-            printf("USB\n");
+            print_str("USB\n");
             break;
         case MMC_INTERFACE:
-            printf("MMC\n");
+            print_str("MMC\n");
             break;
         case SD_INTERFACE:
-            printf("SD\n");
+            print_str("SD\n");
             break;
         case IEEE_1394_INTERFACE:
-            printf("IEEE 1394/Firewire\n");
+            print_str("IEEE 1394/Firewire\n");
             break;
         case UNKNOWN_INTERFACE:
-            printf("unknown\n");
+            print_str("unknown\n");
             break;
         }
-        printf("\t\tzoned type: ");
+        print_str("\t\tzoned type: ");
         switch (device->drive_info.zonedType)
         {
         case ZONED_TYPE_NOT_ZONED:
-            printf("not zoned\n");
+            print_str("not zoned\n");
             break;
         case ZONED_TYPE_HOST_AWARE:
-            printf("host aware\n");
+            print_str("host aware\n");
             break;
         case ZONED_TYPE_DEVICE_MANAGED:
-            printf("device managed\n");
+            print_str("device managed\n");
             break;
         case ZONED_TYPE_HOST_MANAGED:
-            printf("host managed\n");
+            print_str("host managed\n");
             break;
         case ZONED_TYPE_RESERVED:
-            printf("unknown\n");
+            print_str("unknown\n");
             break;
         }
         /*if (device->drive_info.bridge_info.isValid)
         {
-            printf("\t\t---Bridge Info---\n");
+            print_str("\t\t---Bridge Info---\n");
         }*/
-        printf("\t\t---adapter info---\n");
+        print_str("\t\t---adapter info---\n");
         adapterIDWidthSpec = 8;
         switch (device->drive_info.adapter_info.infoType)
         {
         case ADAPTER_INFO_USB:
-            printf("\t\t\tUSB:\n");
+            print_str("\t\t\tUSB:\n");
             adapterIDWidthSpec = 4;
             break;
         case ADAPTER_INFO_IEEE1394:
-            printf("\t\t\tIEEE1394:\n");
+            print_str("\t\t\tIEEE1394:\n");
             adapterIDWidthSpec = 6; // these are 24bits
             break;
         case ADAPTER_INFO_PCI:
-            printf("\t\t\tPCI/PCIe:\n");
+            print_str("\t\t\tPCI/PCIe:\n");
             adapterIDWidthSpec = 4;
             break;
         case ADAPTER_INFO_UNKNOWN:
-            printf("\t\t\tUnknown or no adapter info available\n");
+            print_str("\t\t\tUnknown or no adapter info available\n");
             break;
         }
         if (device->drive_info.adapter_info.vendorIDValid)
@@ -211,7 +211,7 @@ void print_Low_Level_Info(tDevice* device)
             printf("\t\t\tSpecifierID: %0*" PRIX32 "h\n", adapterIDWidthSpec,
                    device->drive_info.adapter_info.specifierID);
         }
-        printf("\t\t---driver info---\n");
+        print_str("\t\t---driver info---\n");
         printf("\t\t\tdriver name: %s\n", device->drive_info.driver_info.driverName);
         printf("\t\t\tdriver version string: %s\n", device->drive_info.driver_info.driverVersionString);
         if (device->drive_info.driver_info.majorVerValid)
@@ -234,7 +234,7 @@ void print_Low_Level_Info(tDevice* device)
         {
             // TODO: print ataoptions struct? This is things setup based on detection from identify and helps with how
             // some commands are built/issued
-            printf("\t\t---ata flags---\n");
+            print_str("\t\t---ata flags---\n");
         }
         // TODO: Software SAT flags? These are currently always setup even when software translator is not active.
         if (device->drive_info.defaultTimeoutSeconds > 0)
@@ -247,143 +247,143 @@ void print_Low_Level_Info(tDevice* device)
         }
         // TODO: Protection info?
         printf("\t\tSCSI Version: %" PRIu8 "\n", device->drive_info.scsiVersion);
-        printf("\t\t---Passthrough Hacks---\n");
+        print_str("\t\t---Passthrough Hacks---\n");
         if (device->drive_info.passThroughHacks.hacksSetByReportedID)
         {
-            printf("\t\t\tHacks were setup from the reported adapter information\n");
+            print_str("\t\t\tHacks were setup from the reported adapter information\n");
         }
         if (device->drive_info.passThroughHacks.someHacksSetByOSDiscovery)
         {
-            printf("\t\t\tSome hacks setup by OS discovery level\n");
+            print_str("\t\t\tSome hacks setup by OS discovery level\n");
         }
-        printf("\t\t\tPassthrough type: ");
+        print_str("\t\t\tPassthrough type: ");
         switch (device->drive_info.passThroughHacks.passthroughType)
         {
         case ATA_PASSTHROUGH_SAT:
-            printf("SAT/system/none\n");
+            print_str("SAT/system/none\n");
             break;
         case ATA_PASSTHROUGH_CYPRESS:
-            printf("ATA Cypress\n");
+            print_str("ATA Cypress\n");
             break;
         case ATA_PASSTHROUGH_PROLIFIC:
-            printf("ATA prolific\n");
+            print_str("ATA prolific\n");
             break;
         case ATA_PASSTHROUGH_TI:
-            printf("ATA TI\n");
+            print_str("ATA TI\n");
             break;
         case ATA_PASSTHROUGH_NEC:
-            printf("ATA NEC\n");
+            print_str("ATA NEC\n");
             break;
         case ATA_PASSTHROUGH_PSP:
-            printf("ATA PSP\n");
+            print_str("ATA PSP\n");
             break;
         case ATA_PASSTHROUGH_CSMI:
-            printf("ATA CSMI CDBs (legacy, should be using SAT)\n");
+            print_str("ATA CSMI CDBs (legacy, should be using SAT)\n");
             break;
         case ATA_PASSTHROUGH_UNKNOWN:
-            printf("ATA unknown\n");
+            print_str("ATA unknown\n");
             break;
         case ATA_PASSTHROUGH_BEGIN_NON_USB:
-            printf("ATA non-USB\n");
+            print_str("ATA non-USB\n");
             break;
         case NVME_PASSTHROUGH_JMICRON:
-            printf("NVMe JMicron\n");
+            print_str("NVMe JMicron\n");
             break;
         case NVME_PASSTHROUGH_ASMEDIA:
-            printf("NVMe ASMedia\n");
+            print_str("NVMe ASMedia\n");
             break;
         case NVME_PASSTHROUGH_ASMEDIA_BASIC:
-            printf("NVMe ASMedia Basic\n");
+            print_str("NVMe ASMedia Basic\n");
             break;
         case NVME_PASSTHROUGH_REALTEK:
-            printf("NVMe Realtek\n");
+            print_str("NVMe Realtek\n");
             break;
         case PASSTHROUGH_NONE:
-            printf("None\n");
+            print_str("None\n");
             break;
         case NVME_PASSTHROUGH_UNKNOWN:
-            printf("NVMe Unknown\n");
+            print_str("NVMe Unknown\n");
             break;
         }
         // TODO: Test unit ready command after a failure value
-        printf("\t\t\t\t---SCSI Hacks---\n");
+        print_str("\t\t\t\t---SCSI Hacks---\n");
         if (device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)
         {
-            printf("\t\t\t\t\tUNA (unit serial number available)\n");
+            print_str("\t\t\t\t\tUNA (unit serial number available)\n");
         }
         if (device->drive_info.passThroughHacks.scsiHacks.readWrite.available)
         {
             if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6)
             {
-                printf("\t\t\t\t\tRW6 (read/write 6 byte commands)\n");
+                print_str("\t\t\t\t\tRW6 (read/write 6 byte commands)\n");
             }
             if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10)
             {
-                printf("\t\t\t\t\tRW10 (read/write 10 byte commands)\n");
+                print_str("\t\t\t\t\tRW10 (read/write 10 byte commands)\n");
             }
             if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12)
             {
-                printf("\t\t\t\t\tRW12 (read/write 12 byte commands)\n");
+                print_str("\t\t\t\t\tRW12 (read/write 12 byte commands)\n");
             }
             if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16)
             {
-                printf("\t\t\t\t\tRW16 (read/write 16 byte commands)\n");
+                print_str("\t\t\t\t\tRW16 (read/write 16 byte commands)\n");
             }
         }
         if (device->drive_info.passThroughHacks.scsiHacks.noVPDPages)
         {
-            printf("\t\t\t\t\tNVPD (no VPD pages supported)\n");
+            print_str("\t\t\t\t\tNVPD (no VPD pages supported)\n");
         }
         if (device->drive_info.passThroughHacks.scsiHacks.noModePages)
         {
-            printf("\t\t\t\t\tNMP (no Mode pages supported)\n");
+            print_str("\t\t\t\t\tNMP (no Mode pages supported)\n");
         }
         if (device->drive_info.passThroughHacks.scsiHacks.noModeSubPages)
         {
-            printf("\t\t\t\t\tNMSP (no Mode page subpages supported)\n");
+            print_str("\t\t\t\t\tNMSP (no Mode page subpages supported)\n");
         }
         if (device->drive_info.passThroughHacks.scsiHacks.noLogPages)
         {
-            printf("\t\t\t\t\tNLP (no Log pages supported)\n");
+            print_str("\t\t\t\t\tNLP (no Log pages supported)\n");
         }
         if (device->drive_info.passThroughHacks.scsiHacks.noLogSubPages)
         {
-            printf("\t\t\t\t\tNLPS (no Log page subpages supported)\n");
+            print_str("\t\t\t\t\tNLPS (no Log page subpages supported)\n");
         }
         if (device->drive_info.passThroughHacks.scsiHacks.mode6bytes)
         {
-            printf("\t\t\t\t\tMP6 (mode pages with 6byte commands only)\n");
+            print_str("\t\t\t\t\tMP6 (mode pages with 6byte commands only)\n");
         }
         if (device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations)
         {
-            printf("\t\t\t\t\tNRSUPOP (no report supported operation codes command)\n");
+            print_str("\t\t\t\t\tNRSUPOP (no report supported operation codes command)\n");
         }
         else
         {
             if (device->drive_info.passThroughHacks.scsiHacks.mode6bytes)
             {
-                printf("\t\t\t\t\tSUPSOP (report single operation codes supported)\n");
+                print_str("\t\t\t\t\tSUPSOP (report single operation codes supported)\n");
             }
             if (device->drive_info.passThroughHacks.scsiHacks.mode6bytes)
             {
-                printf("\t\t\t\t\tREPALLOP (report all operation codes supported)\n");
+                print_str("\t\t\t\t\tREPALLOP (report all operation codes supported)\n");
             }
         }
         if (device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported)
         {
-            printf("\t\t\t\t\tSECPROT (security protocol command is supported)\n");
+            print_str("\t\t\t\t\tSECPROT (security protocol command is supported)\n");
         }
         if (device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512)
         {
-            printf("\t\t\t\t\tSECPROTI512 (security protocol command with inc512 bit supported)\n");
+            print_str("\t\t\t\t\tSECPROTI512 (security protocol command with inc512 bit supported)\n");
         }
         if (device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData)
         {
-            printf("\t\t\t\t\tPRESCSI2 (inquiry data is pre-SCSI 2)\n");
+            print_str("\t\t\t\t\tPRESCSI2 (inquiry data is pre-SCSI 2)\n");
         }
         if (device->drive_info.passThroughHacks.scsiHacks.writeBufferNoDeferredDownload)
         {
-            printf("\t\t\t\t\tWBND (HBA blocks SCSI write buffer - deferred download modes)\n");
+            print_str("\t\t\t\t\tWBND (HBA blocks SCSI write buffer - deferred download modes)\n");
         }
         // MXFER > 0 means we know a maximum transfer size available
         if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength > 0)
@@ -391,105 +391,105 @@ void print_Low_Level_Info(tDevice* device)
             printf("\t\t\t\t\tMXFER = %" PRIu32 "B\n", device->drive_info.passThroughHacks.scsiHacks.maxTransferLength);
         }
         // list any NVMe hacks
-        printf("\t\t\t\t---NVMe Hacks---\n");
+        print_str("\t\t\t\t---NVMe Hacks---\n");
         if (device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities)
         {
-            printf("\t\t\t\t\tLIMPT (Limited passthrough capabilities. Only specific commands are allowed)\n");
-            printf("\t\t\t\t\tAllowed commands:\n");
+            print_str("\t\t\t\t\tLIMPT (Limited passthrough capabilities. Only specific commands are allowed)\n");
+            print_str("\t\t\t\t\tAllowed commands:\n");
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric)
             {
-                printf("\t\t\t\t\t\tAny identify command\n");
+                print_str("\t\t\t\t\t\tAny identify command\n");
             }
             else
             {
                 if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController)
                 {
-                    printf("\t\t\t\t\t\tIdentify controller\n");
+                    print_str("\t\t\t\t\t\tIdentify controller\n");
                 }
                 if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace)
                 {
-                    printf("\t\t\t\t\t\tIdentify namespace\n");
+                    print_str("\t\t\t\t\t\tIdentify namespace\n");
                 }
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage)
             {
-                printf("\t\t\t\t\t\tGet Log Page\n");
+                print_str("\t\t\t\t\t\tGet Log Page\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.format)
             {
-                printf("\t\t\t\t\t\tFormat NVM\n");
+                print_str("\t\t\t\t\t\tFormat NVM\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures)
             {
-                printf("\t\t\t\t\t\tGet Features\n");
+                print_str("\t\t\t\t\t\tGet Features\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload)
             {
-                printf("\t\t\t\t\t\tFirmware Download\n");
+                print_str("\t\t\t\t\t\tFirmware Download\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit)
             {
-                printf("\t\t\t\t\t\tFirmware Commit\n");
+                print_str("\t\t\t\t\t\tFirmware Commit\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique)
             {
-                printf("\t\t\t\t\t\tVendor Unique (Commands effects log)\n");
+                print_str("\t\t\t\t\t\tVendor Unique (Commands effects log)\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest)
             {
-                printf("\t\t\t\t\t\tDevice Self Test\n");
+                print_str("\t\t\t\t\t\tDevice Self Test\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize)
             {
-                printf("\t\t\t\t\t\tSanitize\n");
+                print_str("\t\t\t\t\t\tSanitize\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeCrypto)
             {
-                printf("\t\t\t\t\t\tSanitize Crypto Erase\n");
+                print_str("\t\t\t\t\t\tSanitize Crypto Erase\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeBlock)
             {
-                printf("\t\t\t\t\t\tSanitize Block Erase\n");
+                print_str("\t\t\t\t\t\tSanitize Block Erase\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeOverwrite)
             {
-                printf("\t\t\t\t\t\tSanitize Overwrite Erase\n");
+                print_str("\t\t\t\t\t\tSanitize Overwrite Erase\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement)
             {
-                printf("\t\t\t\t\t\tNamespace Management\n");
+                print_str("\t\t\t\t\t\tNamespace Management\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceAttachment)
             {
-                printf("\t\t\t\t\t\tNamespace Attachment\n");
+                print_str("\t\t\t\t\t\tNamespace Attachment\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures)
             {
-                printf("\t\t\t\t\t\tSet Features\n");
+                print_str("\t\t\t\t\t\tSet Features\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend)
             {
-                printf("\t\t\t\t\t\tMI Send\n");
+                print_str("\t\t\t\t\t\tMI Send\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive)
             {
-                printf("\t\t\t\t\t\tMI Receive\n");
+                print_str("\t\t\t\t\t\tMI Receive\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend)
             {
-                printf("\t\t\t\t\t\tSecurity Send\n");
+                print_str("\t\t\t\t\t\tSecurity Send\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive)
             {
-                printf("\t\t\t\t\t\tSecurity Receive\n");
+                print_str("\t\t\t\t\t\tSecurity Receive\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase)
             {
-                printf("\t\t\t\t\t\tFormat - SES = crypto erase\n");
+                print_str("\t\t\t\t\t\tFormat - SES = crypto erase\n");
             }
             if (device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatUserSecureErase)
             {
-                printf("\t\t\t\t\t\tFormat - SES = user erase\n");
+                print_str("\t\t\t\t\t\tFormat - SES = user erase\n");
             }
         }
         if (device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength > 0)
@@ -498,14 +498,14 @@ void print_Low_Level_Info(tDevice* device)
                    device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength);
         }
         // list any ATA hacks
-        printf("\t\t\t\t---ATA Hacks---\n");
+        print_str("\t\t\t\t---ATA Hacks---\n");
         if (device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly)
         {
-            printf("\t\t\t\t\tSCTSM (SCT commands only compatible with smart commands)\n");
+            print_str("\t\t\t\t\tSCTSM (SCT commands only compatible with smart commands)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
         {
-            printf("\t\t\t\t\tNA1 (A1h opcode, 12B SAT, is NOT supported by this device at all)\n");
+            print_str("\t\t\t\t\tNA1 (A1h opcode, 12B SAT, is NOT supported by this device at all)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.a1ExtCommandWhenPossible)
         {
@@ -534,19 +534,19 @@ void print_Low_Level_Info(tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
         {
-            printf("\t\t\t\t\tCHK (SAT check condition bit is always supported)\n");
+            print_str("\t\t\t\t\tCHK (SAT check condition bit is always supported)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA)
         {
-            printf("\t\t\t\t\tFDMA (SAT dma commands MUST use protocol set to DMA instead of UDMA-in/out)\n");
+            print_str("\t\t\t\t\tFDMA (SAT dma commands MUST use protocol set to DMA instead of UDMA-in/out)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
         {
-            printf("\t\t\t\t\tNDMA (No DMA commands are supported on this adapter. Must use PIO only)\n");
+            print_str("\t\t\t\t\tNDMA (No DMA commands are supported on this adapter. Must use PIO only)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.partialRTFRs)
         {
-            printf("\t\t\t\t\tPARTRTFR (Only 28bit responses are available. All extended registers are missing)\n");
+            print_str("\t\t\t\t\tPARTRTFR (Only 28bit responses are available. All extended registers are missing)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible)
         {
@@ -565,7 +565,7 @@ void print_Low_Level_Info(tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly)
         {
-            printf("\t\t\t\t\tATA28 (Only 28bit ATA commands are possible on this adapter)\n");
+            print_str("\t\t\t\t\tATA28 (Only 28bit ATA commands are possible on this adapter)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands)
         {
@@ -584,7 +584,7 @@ void print_Low_Level_Info(tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition)
         {
-            printf("\t\t\t\t\tNCHK (Do not use the check condition bit. It causes problems on this system)\n");
+            print_str("\t\t\t\t\tNCHK (Do not use the check condition bit. It causes problems on this system)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty)
         {
@@ -598,28 +598,28 @@ void print_Low_Level_Info(tDevice* device)
         }
         // print out the os_info unique things. This has a lot of ifdefs for the different OSs/configurations so need to
         // watch out for the differences in here
-        printf("\t---OS Info---\n");
+        print_str("\t---OS Info---\n");
         printf("\t\thandle name: %s\n", device->os_info.name);
         printf("\t\tfriendly name: %s\n", device->os_info.friendlyName);
         printf("\t\tminimum memory alignment: %" PRIu8 "\n", device->os_info.minimumAlignment);
 #if defined(UEFI_C_SOURCE)
-        printf("\t\t---UEFI Unique Info---\n");
+        print_str("\t\t---UEFI Unique Info---\n");
         // TODO: fd and device path
-        printf("\t\t\tPassthrough type: ");
+        print_str("\t\t\tPassthrough type: ");
         switch (device->os_info.passthroughType)
         {
         case UEFI_PASSTHROUGH_UNKNOWN:
-            printf("Unknown\n");
+            print_str("Unknown\n");
             break;
         case UEFI_PASSTHROUGH_SCSI:
-            printf("SCSI\n");
-            printf("\t\t\tSCSI Address:\n");
+            print_str("SCSI\n");
+            print_str("\t\t\tSCSI Address:\n");
             printf("\t\t\t\tTarget: %" PRIu32 "\n", device->os_info.address.scsi.target);
             printf("\t\t\t\tLun: %" PRIu64 "\n", device->os_info.address.scsi.lun);
             break;
         case UEFI_PASSTHROUGH_SCSI_EXT:
-            printf("SCSI Ext\n");
-            printf("\t\t\t\tTarget: ");
+            print_str("SCSI Ext\n");
+            print_str("\t\t\t\tTarget: ");
             for (int i = 0; i < TARGET_MAX_BYTES; ++i)
             {
                 printf("%02" PRIX8, device->os_info.address.scsiEx.target[i]);
@@ -627,28 +627,28 @@ void print_Low_Level_Info(tDevice* device)
             printf("\n\t\t\t\tLun: %" PRIu64 "\n", device->os_info.address.scsiEx.lun);
             break;
         case UEFI_PASSTHROUGH_ATA:
-            printf("ATA\n");
+            print_str("ATA\n");
             printf("\t\t\t\tPort: %" PRIu16 "\n", device->os_info.address.ata.port);
             printf("\t\t\t\tPMP: %" PRIu16 "\n", device->os_info.address.ata.portMultiplierPort);
             break;
         case UEFI_PASSTHROUGH_NVME:
-            printf("NVMe\n");
+            print_str("NVMe\n");
             printf("\t\t\t\tNamespace ID: %" PRIu32 "\n", device->os_info.address.nvme.namespaceID);
             break;
         }
         printf("\t\t\tController Number: %" PRIu16 "\n", device->os_info.controllerNum);
 #elif defined(_WIN32)
-        printf("\t\t---Windows Unique Info---\n");
+        print_str("\t\t---Windows Unique Info---\n");
         // show if handle and scsiSRBHandle are there
         if (device->os_info.fd != INVALID_HANDLE_VALUE && device->os_info.fd != 0)
         {
-            printf("\t\t\tPrimary handle opened\n");
+            print_str("\t\t\tPrimary handle opened\n");
         }
         if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE && device->os_info.scsiSRBHandle != 0)
         {
-            printf("\t\t\tSCSI SRB handle opened\n");
+            print_str("\t\t\tSCSI SRB handle opened\n");
         }
-        printf("\t\t\tSCSI Address:\n");
+        print_str("\t\t\tSCSI Address:\n");
         printf("\t\t\t\tPort Number: %" PRIu8 "\n", device->os_info.scsi_addr.PortNumber);
         printf("\t\t\t\tPath ID: %" PRIu8 "\n", device->os_info.scsi_addr.PathId);
         printf("\t\t\t\tTarget ID: %" PRIu8 "\n", device->os_info.scsi_addr.TargetId);
@@ -656,76 +656,76 @@ void print_Low_Level_Info(tDevice* device)
         printf("\t\t\tos drive number: %" PRIu32 "\n", device->os_info.os_drive_number);
         printf("\t\t\tSRB type: %d\n", device->os_info.srbtype);
         printf("\t\t\tAlignment Mask: %lXh\n", device->os_info.alignmentMask);
-        printf("\t\t\tIOCTL Type: ");
+        print_str("\t\t\tIOCTL Type: ");
         switch (device->os_info.ioType)
         {
         case WIN_IOCTL_NOT_SET:
-            printf("Not Set\n");
+            print_str("Not Set\n");
             break;
         case WIN_IOCTL_ATA_PASSTHROUGH:
-            printf("ATA Passthrough\n");
+            print_str("ATA Passthrough\n");
             break;
         case WIN_IOCTL_SCSI_PASSTHROUGH:
-            printf("SCSI Passthrough\n");
+            print_str("SCSI Passthrough\n");
             break;
         case WIN_IOCTL_SCSI_PASSTHROUGH_EX:
-            printf("SCSI Passthrough EX\n");
+            print_str("SCSI Passthrough EX\n");
             break;
         case WIN_IOCTL_SMART_ONLY:
-            printf("SMART Only\n");
+            print_str("SMART Only\n");
             break;
         case WIN_IOCTL_IDE_PASSTHROUGH_ONLY:
-            printf("IDE Passthrough Only\n");
+            print_str("IDE Passthrough Only\n");
             break;
         case WIN_IOCTL_SMART_AND_IDE:
-            printf("SMART and IDE Passthrough\n");
+            print_str("SMART and IDE Passthrough\n");
             break;
         case WIN_IOCTL_STORAGE_PROTOCOL_COMMAND:
-            printf("Storage Protocol Command\n");
+            print_str("Storage Protocol Command\n");
             break;
         case WIN_IOCTL_BASIC:
-            printf("Basic\n");
+            print_str("Basic\n");
             break;
         }
-        printf("\t\t\tIOCTL Method: ");
+        print_str("\t\t\tIOCTL Method: ");
         switch (device->os_info.ioMethod)
         {
         case WIN_IOCTL_DEFAULT_METHOD:
-            printf("Default\n");
+            print_str("Default\n");
             break;
         case WIN_IOCTL_FORCE_ALWAYS_DIRECT:
-            printf("Force Direct\n");
+            print_str("Force Direct\n");
             break;
         case WIN_IOCTL_FORCE_ALWAYS_DOUBLE_BUFFERED:
-            printf("Force Double Buffered\n");
+            print_str("Force Double Buffered\n");
             break;
         case WIN_IOCTL_MAX_METHOD:
-            printf("Unknown\n");
+            print_str("Unknown\n");
             break;
         }
         if (device->os_info.winSMARTCmdSupport.smartIOSupported)
         {
-            printf("\t\t\tSMART IOCTL Support:\n");
+            print_str("\t\t\tSMART IOCTL Support:\n");
             if (device->os_info.winSMARTCmdSupport.ataIDsupported)
             {
-                printf("\t\t\t\tATA Identify supported\n");
+                print_str("\t\t\t\tATA Identify supported\n");
             }
             if (device->os_info.winSMARTCmdSupport.atapiIDsupported)
             {
-                printf("\t\t\t\tATAPI Identify supported\n");
+                print_str("\t\t\t\tATAPI Identify supported\n");
             }
             if (device->os_info.winSMARTCmdSupport.smartSupported)
             {
-                printf("\t\t\t\tSMART Supported\n");
+                print_str("\t\t\t\tSMART Supported\n");
             }
             printf("\t\t\t\tdevice bitmap: %" PRIX8 "h\n", device->os_info.winSMARTCmdSupport.deviceBitmap);
         }
         if (device->os_info.fwdlIOsupport.fwdlIOSupported)
         {
-            printf("\t\t\tFWDL IOCTL Support:\n");
+            print_str("\t\t\tFWDL IOCTL Support:\n");
             if (device->os_info.fwdlIOsupport.allowFlexibleUseOfAPI)
             {
-                printf("\t\t\t\tFlexible use flag enabled\n");
+                print_str("\t\t\t\tFlexible use flag enabled\n");
             }
             printf("\t\t\t\tPayload alignment: %" PRIu32 "B\n", device->os_info.fwdlIOsupport.payloadAlignment);
             printf("\t\t\t\tMaximum Transfer size: %" PRIu32 "B\n", device->os_info.fwdlIOsupport.maxXferSize);
@@ -733,233 +733,233 @@ void print_Low_Level_Info(tDevice* device)
         printf("\t\t\tAdapter reported max transfer size: %" PRIu32 "B\n", device->os_info.adapterMaxTransferSize);
         if (device->os_info.openFabricsNVMePassthroughSupported)
         {
-            printf("\t\t\tOpen Fabrics NVMe passthrough IOCTL is supported\n");
+            print_str("\t\t\tOpen Fabrics NVMe passthrough IOCTL is supported\n");
         }
         if (device->os_info.intelNVMePassthroughSupported)
         {
-            printf("\t\t\tIntel NVMe Consumer passthrough is supported\n");
+            print_str("\t\t\tIntel NVMe Consumer passthrough is supported\n");
         }
         if (device->os_info.fwdlMiniportSupported)
         {
-            printf("\t\t\tMiniport FWDL IOCTL is supported\n");
+            print_str("\t\t\tMiniport FWDL IOCTL is supported\n");
         }
         if (device->os_info.forceUnitAccessRWfd != INVALID_HANDLE_VALUE && device->os_info.forceUnitAccessRWfd != 0)
         {
-            printf("\t\t\tFUA handle opened\n");
+            print_str("\t\t\tFUA handle opened\n");
         }
         printf("\t\t\tVolume bitfield: %" PRIX32 "\n", device->os_info.volumeBitField);
-        printf("\t\t\tAdapter Descriptor bustype: ");
+        print_str("\t\t\tAdapter Descriptor bustype: ");
         switch (device->os_info.adapterDescBusType)
         {
         case 0:
-            printf("Unknown\n");
+            print_str("Unknown\n");
             break;
         case 1:
-            printf("SCSI\n");
+            print_str("SCSI\n");
             break;
         case 2:
-            printf("ATAPI\n");
+            print_str("ATAPI\n");
             break;
         case 3:
-            printf("ATA\n");
+            print_str("ATA\n");
             break;
         case 4:
-            printf("1394\n");
+            print_str("1394\n");
             break;
         case 5:
-            printf("SSA\n");
+            print_str("SSA\n");
             break;
         case 6:
-            printf("Fibre\n");
+            print_str("Fibre\n");
             break;
         case 7:
-            printf("USB\n");
+            print_str("USB\n");
             break;
         case 8:
-            printf("RAID\n");
+            print_str("RAID\n");
             break;
         case 9:
-            printf("iSCSI\n");
+            print_str("iSCSI\n");
             break;
         case 10:
-            printf("SAS\n");
+            print_str("SAS\n");
             break;
         case 11:
-            printf("SATA\n");
+            print_str("SATA\n");
             break;
         case 12:
-            printf("SD\n");
+            print_str("SD\n");
             break;
         case 13:
-            printf("MMC\n");
+            print_str("MMC\n");
             break;
         case 14:
-            printf("Virtual\n");
+            print_str("Virtual\n");
             break;
         case 15:
-            printf("File Backed Virtual\n");
+            print_str("File Backed Virtual\n");
             break;
         case 16:
-            printf("Spaces\n");
+            print_str("Spaces\n");
             break;
         case 17:
-            printf("NVMe\n");
+            print_str("NVMe\n");
             break;
         case 18:
-            printf("SCM\n");
+            print_str("SCM\n");
             break;
         case 19:
-            printf("UFS\n");
+            print_str("UFS\n");
             break;
         case 0x7F:
-            printf("Max reserved\n");
+            print_str("Max reserved\n");
             break;
         default:
             printf("Unknown - %u\n", device->os_info.adapterDescBusType);
             break;
         }
-        printf("\t\t\tDevice Descriptor bustype: ");
+        print_str("\t\t\tDevice Descriptor bustype: ");
         switch (device->os_info.deviceDescBusType)
         {
         case 0:
-            printf("Unknown\n");
+            print_str("Unknown\n");
             break;
         case 1:
-            printf("SCSI\n");
+            print_str("SCSI\n");
             break;
         case 2:
-            printf("ATAPI\n");
+            print_str("ATAPI\n");
             break;
         case 3:
-            printf("ATA\n");
+            print_str("ATA\n");
             break;
         case 4:
-            printf("1394\n");
+            print_str("1394\n");
             break;
         case 5:
-            printf("SSA\n");
+            print_str("SSA\n");
             break;
         case 6:
-            printf("Fibre\n");
+            print_str("Fibre\n");
             break;
         case 7:
-            printf("USB\n");
+            print_str("USB\n");
             break;
         case 8:
-            printf("RAID\n");
+            print_str("RAID\n");
             break;
         case 9:
-            printf("iSCSI\n");
+            print_str("iSCSI\n");
             break;
         case 10:
-            printf("SAS\n");
+            print_str("SAS\n");
             break;
         case 11:
-            printf("SATA\n");
+            print_str("SATA\n");
             break;
         case 12:
-            printf("SD\n");
+            print_str("SD\n");
             break;
         case 13:
-            printf("MMC\n");
+            print_str("MMC\n");
             break;
         case 14:
-            printf("Virtual\n");
+            print_str("Virtual\n");
             break;
         case 15:
-            printf("File Backed Virtual\n");
+            print_str("File Backed Virtual\n");
             break;
         case 16:
-            printf("Spaces\n");
+            print_str("Spaces\n");
             break;
         case 17:
-            printf("NVMe\n");
+            print_str("NVMe\n");
             break;
         case 18:
-            printf("SCM\n");
+            print_str("SCM\n");
             break;
         case 19:
-            printf("UFS\n");
+            print_str("UFS\n");
             break;
         case 0x7F:
-            printf("Max reserved\n");
+            print_str("Max reserved\n");
             break;
         default:
             printf("Unknown - %u\n", device->os_info.deviceDescBusType);
             break;
         }
 #elif defined(_AIX)
-        printf("\t\t---AIX Unique info---\n");
+        print_str("\t\t---AIX Unique info---\n");
         if (device->os_info.fd > 0)
         {
-            printf("\t\t\trhdisk handle open and valid\n");
+            print_str("\t\t\trhdisk handle open and valid\n");
         }
         if (device->os_info.ctrlfdValid)
         {
-            printf("\t\t\tController fd is valid\n");
+            print_str("\t\t\tController fd is valid\n");
         }
         if (device->os_info.diagnosticModeFlagInUse)
         {
-            printf("\t\t\tHandle opened with SC_DIAGNOSTIC flag\n");
+            print_str("\t\t\tHandle opened with SC_DIAGNOSTIC flag\n");
         }
         printf("\t\t\tscsiID: %" PRIX64 "h\n", device->os_info.scsiID);
         printf("\t\t\tlunID: %" PRIX64 "h\n", device->os_info.lunID);
-        printf("\t\t\tPassthrough Type: ");
+        print_str("\t\t\tPassthrough Type: ");
         switch (device->os_info.ptType)
         {
         case AIX_PASSTHROUGH_NOT_SET:
-            printf("Not set\n");
+            print_str("Not set\n");
             break;
         case AIX_PASSTHROUGH_SCSI:
-            printf("SCSI\n");
+            print_str("SCSI\n");
             break;
         case AIX_PASSTHROUGH_IDE_ATA:
-            printf("ATA\n");
+            print_str("ATA\n");
             break;
         case AIX_PASSTHROUGH_IDE_ATAPI:
-            printf("IDE ATAPI\n");
+            print_str("IDE ATAPI\n");
             break;
         case AIX_PASSTHROUGH_SATA:
-            printf("SATA\n");
+            print_str("SATA\n");
             break;
         case AIX_PASSTHROUGH_NVME:
-            printf("NVMe\n");
+            print_str("NVMe\n");
             break;
         }
         switch (device->os_info.adapterType)
         {
         case AIX_ADAPTER_UNKNOWN:
-            printf("Unknown\n");
+            print_str("Unknown\n");
             break;
         case AIX_ADAPTER_SCSI:
-            printf("Parallel SCSI\n");
+            print_str("Parallel SCSI\n");
             break;
         case AIX_ADAPTER_IDE:
-            printf("IDE\n");
+            print_str("IDE\n");
             break;
         case AIX_ADAPTER_SAS:
-            printf("SAS\n");
+            print_str("SAS\n");
             break;
         case AIX_ADAPTER_SATA:
-            printf("SATA\n");
+            print_str("SATA\n");
             break;
         case AIX_ADAPTER_FC:
-            printf("FC\n");
+            print_str("FC\n");
             break;
         case AIX_ADAPTER_USB:
-            printf("USB\n");
+            print_str("USB\n");
             break;
         case AIX_ADAPTER_VSCSI:
-            printf("VSCSI\n");
+            print_str("VSCSI\n");
             break;
         case AIX_ADAPTER_ISCSI:
-            printf("ISCSI\n");
+            print_str("ISCSI\n");
             break;
         case AIX_ADAPTER_DASD:
-            printf("DASD\n");
+            print_str("DASD\n");
             break;
         case AIX_ADAPTER_NVME:
-            printf("NVME\n");
+            print_str("NVME\n");
             break;
         }
         if (device->os_info.maxXferLength > 0)
@@ -968,25 +968,25 @@ void print_Low_Level_Info(tDevice* device)
         }
 #elif defined(__linux__)
 #    if defined(VMK_CROSS_COMP)
-        printf("\t\t---VMWare ESXi Unique info---\n");
+        print_str("\t\t---VMWare ESXi Unique info---\n");
         if (device->os_info.fd > 0)
         {
-            printf("\t\t\tFD is valid\n");
+            print_str("\t\t\tFD is valid\n");
         }
         if (device->os_info.nvmeFd)
         {
-            printf("\t\t\tNVME FD is valid\n");
+            print_str("\t\t\tNVME FD is valid\n");
         }
 #    else  // VMK_CROSS_COMP
-        printf("\t\t---Linux Unique info---\n");
+        print_str("\t\t---Linux Unique info---\n");
         if (device->os_info.fd > 0)
         {
-            printf("\t\t\tFD is valid\n");
+            print_str("\t\t\tFD is valid\n");
         }
 #    endif // VMK_CROSS_COMP
         if (device->os_info.scsiAddressValid)
         {
-            printf("\t\t\tSCSI Address:\n");
+            print_str("\t\t\tSCSI Address:\n");
             printf("\t\t\t\tHost: %" PRIu8 "\n", device->os_info.scsiAddress.host);
             printf("\t\t\t\tChannel: %" PRIu8 "\n", device->os_info.scsiAddress.channel);
             printf("\t\t\t\tTarget: %" PRIu8 "\n", device->os_info.scsiAddress.target);
@@ -998,46 +998,46 @@ void print_Low_Level_Info(tDevice* device)
             printf("\t\t\tSecond Handle friendly name: %s\n", device->os_info.secondFriendlyName);
             if (device->os_info.secondHandleOpened)
             {
-                printf("\t\t\tSecond handle is open\n");
+                print_str("\t\t\tSecond handle is open\n");
             }
         }
         if (device->os_info.sgDriverVersion.driverVersionValid)
         {
-            printf("\t\t\tSG Driver Version:\n");
+            print_str("\t\t\tSG Driver Version:\n");
             printf("\t\t\t\tMajor: %" PRIu8 "\n", device->os_info.sgDriverVersion.majorVersion);
             printf("\t\t\t\tMinor: %" PRIu8 "\n", device->os_info.sgDriverVersion.minorVersion);
             printf("\t\t\t\tRevision: %" PRIu8 "\n", device->os_info.sgDriverVersion.revision);
         }
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
-        printf("\t\t---FreeBSD/DragonFlyBSD Unique info---\n");
+        print_str("\t\t---FreeBSD/DragonFlyBSD Unique info---\n");
         if (device->os_info.fd > 0)
         {
-            printf("\t\t\tFD is valid\n");
+            print_str("\t\t\tFD is valid\n");
         }
         if (device->os_info.cam_dev)
         {
-            printf("\t\t\tCam dev is valid\n");
+            print_str("\t\t\tCam dev is valid\n");
             // TODO: Print out things from this structure???
         }
 #elif defined(__OpenBSD__) || defined(__NetFly__)
-        printf("\t\t---OpenBSD/NetFlyBSD Unique info---\n");
+        print_str("\t\t---OpenBSD/NetFlyBSD Unique info---\n");
         if (device->os_info.fd > 0)
         {
-            printf("\t\t\tFD is valid\n");
+            print_str("\t\t\tFD is valid\n");
         }
         switch (device->os_info.passthroughType)
         {
         case BSD_PASSTHROUGH_NOT_SET:
-            printf("\t\t\tPassthrough type not set\n");
+            print_str("\t\t\tPassthrough type not set\n");
             break;
         case BSD_PASSTHROUGH_SCSI:
-            printf("\t\t\tSCSI Passthrough\n");
+            print_str("\t\t\tSCSI Passthrough\n");
             break;
         case BSD_PASSTHROUGH_ATA:
-            printf("\t\t\tATA Passthrough\n");
+            print_str("\t\t\tATA Passthrough\n");
             break;
         }
-        printf("\t\t\tSCSI Address:\n");
+        print_str("\t\t\tSCSI Address:\n");
         printf("\t\t\t\tType: %d\n", device->os_info.addresstype);
         printf("\t\t\t\tBus: %d\n", device->os_info.bus);
         printf("\t\t\t\tTarget: %d\n", device->os_info.target);
@@ -1051,18 +1051,18 @@ void print_Low_Level_Info(tDevice* device)
 #endif // _WIN32
         if (device->os_info.fileSystemInfo.fileSystemInfoValid)
         {
-            printf("\t\tFile system Info:\n");
+            print_str("\t\tFile system Info:\n");
             if (device->os_info.fileSystemInfo.hasActiveFileSystem)
             {
-                printf("\t\t\tActive file system detected on device\n");
+                print_str("\t\t\tActive file system detected on device\n");
             }
             else
             {
-                printf("\t\t\tNo active file systems detected\n");
+                print_str("\t\t\tNo active file systems detected\n");
             }
             if (device->os_info.fileSystemInfo.isSystemDisk)
             {
-                printf("\t\t\tDetected that this is the system disk\n");
+                print_str("\t\t\tDetected that this is the system disk\n");
             }
         }
 #if defined(ENABLE_CSMI)
@@ -1072,7 +1072,7 @@ void print_Low_Level_Info(tDevice* device)
             print_CSMI_Device_Info(device);
         }
 #endif // ENABLE_CSMI
-        printf("\n");
+        print_str("\n");
     }
     RESTORE_NONNULL_COMPARE
 }
@@ -1093,11 +1093,11 @@ size_t load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize)
     // Read file contents into buffer
     if (SEC_FILE_SUCCESS != secure_Read_File(fp, myBuf, bufSize, sizeof(uint8_t), bufSize, &bytesRead))
     {
-        printf("Error reading file into memory\n");
+        print_str("Error reading file into memory\n");
     }
     if (SEC_FILE_SUCCESS != secure_Close_File(fp))
     {
-        printf("Error closing file after reading!\n");
+        print_str("Error closing file after reading!\n");
     }
     free_Secure_File_Info(&fp);
     return bytesRead;
@@ -1426,12 +1426,12 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
         }
         else
         {
-            printf("No devices found\n");
+            print_str("No devices found\n");
         }
     }
     else
     {
-        printf("Unable to get number of devices from OS\n");
+        print_str("Unable to get number of devices from OS\n");
     }
 }
 
@@ -3121,32 +3121,32 @@ void print_Command_Time(uint64_t timeInNanoSeconds)
         }
         ++unitCounter;
     }
-    printf("Command Time (");
+    print_str("Command Time (");
     switch (unitCounter)
     {
     case 6: // we shouldn't get to a days value, but room for future large drives I guess...-TJE
-        printf("d): ");
+        print_str("d): ");
         break;
     case 5:
-        printf("h): ");
+        print_str("h): ");
         break;
     case 4:
-        printf("m): ");
+        print_str("m): ");
         break;
     case 3:
-        printf("s): ");
+        print_str("s): ");
         break;
     case 2:
-        printf("ms): ");
+        print_str("ms): ");
         break;
     case 1:
-        printf("us): ");
+        print_str("us): ");
         break;
     case 0:
-        printf("ns): ");
+        print_str("ns): ");
         break;
     default: // couldn't get a good conversion or something weird happened so show original nanoseconds.
-        printf("ns): ");
+        print_str("ns): ");
         printTime = C_CAST(double, timeInNanoSeconds);
         break;
     }
@@ -3215,32 +3215,32 @@ void print_Time(uint64_t timeInNanoSeconds)
         }
         ++unitCounter;
     }
-    printf(" (");
+    print_str(" (");
     switch (unitCounter)
     {
     case 6: // we shouldn't get to a days value, but room for future large drives I guess...-TJE
-        printf("d): ");
+        print_str("d): ");
         break;
     case 5:
-        printf("h): ");
+        print_str("h): ");
         break;
     case 4:
-        printf("m): ");
+        print_str("m): ");
         break;
     case 3:
-        printf("s): ");
+        print_str("s): ");
         break;
     case 2:
-        printf("ms): ");
+        print_str("ms): ");
         break;
     case 1:
-        printf("us): ");
+        print_str("us): ");
         break;
     case 0:
-        printf("ns): ");
+        print_str("ns): ");
         break;
     default: // couldn't get a good conversion or something weird happened so show original nanoseconds.
-        printf("ns): ");
+        print_str("ns): ");
         printTime = C_CAST(double, timeInNanoSeconds);
         break;
     }
@@ -3304,7 +3304,7 @@ eReturnValues remove_Duplicate_Devices(tDevice*                 deviceList,
             if (sameSlNo)
             {
 #ifdef _DEBUG
-                printf("We have same serial no \n");
+                print_str("We have same serial no \n");
 #endif
 #if defined(_WIN32)
                 /* We are supporting csmi only - for now */
@@ -3383,11 +3383,11 @@ bool is_CSMI_Device(tDevice* device)
 #ifdef _DEBUG
     if (csmiDevice)
     {
-        printf("This is a CSMI drive \n");
+        print_str("This is a CSMI drive \n");
     }
     else
     {
-        printf("This is not a CSMI drive \n");
+        print_str("This is not a CSMI drive \n");
     }
 #endif
     return csmiDevice;
@@ -3398,8 +3398,8 @@ bool is_CSMI_Device(tDevice* device)
 #    include <stddef.h>
 void print_tDevice_Size(void)
 {
-    printf("==Device struct information==\n");
-    printf("--structure sizes--\n");
+    print_str("==Device struct information==\n");
+    print_str("--structure sizes--\n");
     printf("tDevice = %zu\n", sizeof(tDevice));
     printf("\tversionBlock = %zu\n", sizeof(versionBlock));
     printf("\tOSDriveInfo = %zu\n", sizeof(OSDriveInfo));
@@ -3408,8 +3408,8 @@ void print_tDevice_Size(void)
     printf("\tissue_io_func = %zu\n", sizeof(issue_io_func));
     printf("\teDiscoveryOptions = %zu\n", sizeof(uint64_t));
     printf("\teVerbosityLevels = %zu\n", sizeof(eVerbosityLevels));
-    printf("\n--Important offsets--\n");
-    printf("tDevice = 0\n");
+    print_str("\n--Important offsets--\n");
+    print_str("tDevice = 0\n");
     printf("\tversionBlock = %zu\n", offsetof(tDevice, sanity));
     printf("\tos_info = %zu\n", offsetof(tDevice, os_info));
     printf("\tdrive_info = %zu\n", offsetof(tDevice, drive_info));
@@ -3424,7 +3424,7 @@ void print_tDevice_Size(void)
     printf("\tissue_nvme_io = %zu\n", offsetof(tDevice, issue_nvme_io));
     printf("\tdFlags = %zu\n", offsetof(tDevice, dFlags));
     printf("\tdeviceVerbosity = %zu\n", offsetof(tDevice, deviceVerbosity));
-    printf("\n");
+    print_str("\n");
 }
 #endif //_DEBUG
 
@@ -3474,11 +3474,11 @@ bool is_Removable_Media(tDevice* device)
                C_CAST(long int, __LINE__));
         if (result)
         {
-            printf("This is a Removable Media");
+            print_str("This is a Removable Media");
         }
         else
         {
-            printf("This is not a Removable Media");
+            print_str("This is not a Removable Media");
         }
     }
     return result;

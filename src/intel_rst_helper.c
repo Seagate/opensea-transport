@@ -36,101 +36,101 @@
 
 static void print_Intel_SRB_Status(uint32_t srbStatus)
 {
-    printf("SRB Status: ");
+    print_str("SRB Status: ");
     switch (srbStatus)
     {
     case INTEL_SRB_STATUS_PENDING:
-        printf("Pending\n");
+        print_str("Pending\n");
         break;
     case INTEL_SRB_STATUS_SUCCESS:
-        printf("Success\n");
+        print_str("Success\n");
         break;
     case INTEL_SRB_STATUS_ABORTED:
-        printf("Aborted\n");
+        print_str("Aborted\n");
         break;
     case INTEL_SRB_STATUS_ABORT_FAILED:
-        printf("Abort Failed\n");
+        print_str("Abort Failed\n");
         break;
     case INTEL_SRB_STATUS_ERROR:
-        printf("Error\n");
+        print_str("Error\n");
         break;
     case INTEL_SRB_STATUS_BUSY:
-        printf("Busy\n");
+        print_str("Busy\n");
         break;
     case INTEL_SRB_STATUS_INVALID_REQUEST:
-        printf("Invalid Request\n");
+        print_str("Invalid Request\n");
         break;
     case INTEL_SRB_STATUS_INVALID_PATH_ID:
-        printf("Invalid Path ID\n");
+        print_str("Invalid Path ID\n");
         break;
     case INTEL_SRB_STATUS_NO_DEVICE:
-        printf("No Device\n");
+        print_str("No Device\n");
         break;
     case INTEL_SRB_STATUS_TIMEOUT:
-        printf("Timeout\n");
+        print_str("Timeout\n");
         break;
     case INTEL_SRB_STATUS_SELECTION_TIMEOUT:
-        printf("Selection Timeout\n");
+        print_str("Selection Timeout\n");
         break;
     case INTEL_SRB_STATUS_COMMAND_TIMEOUT:
-        printf("Command Timeout\n");
+        print_str("Command Timeout\n");
         break;
     case INTEL_SRB_STATUS_MESSAGE_REJECTED:
-        printf("Message Rejected\n");
+        print_str("Message Rejected\n");
         break;
     case INTEL_SRB_STATUS_BUS_RESET:
-        printf("Bus Reset\n");
+        print_str("Bus Reset\n");
         break;
     case INTEL_SRB_STATUS_PARITY_ERROR:
-        printf("Parity Error\n");
+        print_str("Parity Error\n");
         break;
     case INTEL_SRB_STATUS_REQUEST_SENSE_FAILED:
-        printf("Request Sense Failed\n");
+        print_str("Request Sense Failed\n");
         break;
     case INTEL_SRB_STATUS_NO_HBA:
-        printf("No HBA\n");
+        print_str("No HBA\n");
         break;
     case INTEL_SRB_STATUS_DATA_OVERRUN:
-        printf("Data Overrun\n");
+        print_str("Data Overrun\n");
         break;
     case INTEL_SRB_STATUS_UNEXPECTED_BUS_FREE:
-        printf("Unexpected Bus Free\n");
+        print_str("Unexpected Bus Free\n");
         break;
     case INTEL_SRB_STATUS_PHASE_SEQUENCE_FAILURE:
-        printf("Phase Sequence Failure\n");
+        print_str("Phase Sequence Failure\n");
         break;
     case INTEL_SRB_STATUS_BAD_SRB_BLOCK_LENGTH:
-        printf("Bad SRB Block Length\n");
+        print_str("Bad SRB Block Length\n");
         break;
     case INTEL_SRB_STATUS_REQUEST_FLUSHED:
-        printf("Request Flushed\n");
+        print_str("Request Flushed\n");
         break;
     case INTEL_SRB_STATUS_INVALID_LUN:
-        printf("Invalid LUN\n");
+        print_str("Invalid LUN\n");
         break;
     case INTEL_SRB_STATUS_INVALID_TARGET_ID:
-        printf("Invalid Target ID\n");
+        print_str("Invalid Target ID\n");
         break;
     case INTEL_SRB_STATUS_BAD_FUNCTION:
-        printf("Bad Function\n");
+        print_str("Bad Function\n");
         break;
     case INTEL_SRB_STATUS_ERROR_RECOVERY:
-        printf("Error Recovery\n");
+        print_str("Error Recovery\n");
         break;
     case INTEL_SRB_STATUS_NOT_POWERED:
-        printf("Not Powered\n");
+        print_str("Not Powered\n");
         break;
     case INTEL_SRB_STATUS_LINK_DOWN:
-        printf("Link Down\n");
+        print_str("Link Down\n");
         break;
     case INTEL_SRB_STATUS_INSUFFICIENT_RESOURCES:
-        printf("Insufficient Resources\n");
+        print_str("Insufficient Resources\n");
         break;
     case INTEL_SRB_STATUS_THROTTLED_REQUEST:
-        printf("Throttled Request\n");
+        print_str("Throttled Request\n");
         break;
     case INTEL_SRB_STATUS_INVALID_PARAMETER:
-        printf("Invalid Parameter\n");
+        print_str("Invalid Parameter\n");
         break;
     default:
         printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
@@ -143,61 +143,61 @@ static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
     switch (srbStatus)
     {
     case INTEL_FIRMWARE_STATUS_SUCCESS:
-        printf("Success\n");
+        print_str("Success\n");
         break;
     case INTEL_FIRMWARE_STATUS_ERROR:
-        printf("Error\n");
+        print_str("Error\n");
         break;
     case INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST:
-        printf("Illegal Request\n");
+        print_str("Illegal Request\n");
         break;
     case INTEL_FIRMWARE_STATUS_INVALID_PARAMETER:
-        printf("Invalid Parameter\n");
+        print_str("Invalid Parameter\n");
         break;
     case INTEL_FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
-        printf("Input Buffer Too Big\n");
+        print_str("Input Buffer Too Big\n");
         break;
     case INTEL_FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
-        printf("Output Buffer Too Small\n");
+        print_str("Output Buffer Too Small\n");
         break;
     case INTEL_FIRMWARE_STATUS_INVALID_SLOT:
-        printf("Invalid Slot\n");
+        print_str("Invalid Slot\n");
         break;
     case INTEL_FIRMWARE_STATUS_INVALID_IMAGE:
-        printf("Invalid Image\n");
+        print_str("Invalid Image\n");
         break;
     case INTEL_FIRMWARE_STATUS_CONTROLLER_ERROR:
-        printf("Controller Error\n");
+        print_str("Controller Error\n");
         break;
     case INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
-        printf("Power Cycle Required\n");
+        print_str("Power Cycle Required\n");
         break;
     case INTEL_FIRMWARE_STATUS_DEVICE_ERROR:
-        printf("Device Error\n");
+        print_str("Device Error\n");
         break;
     case INTEL_FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
-        printf("Interface CRC Error\n");
+        print_str("Interface CRC Error\n");
         break;
     case INTEL_FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
-        printf("Uncorrectable Data Error\n");
+        print_str("Uncorrectable Data Error\n");
         break;
     case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE:
-        printf("Media Change\n");
+        print_str("Media Change\n");
         break;
     case INTEL_FIRMWARE_STATUS_ID_NOT_FOUND:
-        printf("ID Not Found\n");
+        print_str("ID Not Found\n");
         break;
     case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
-        printf("Media Change Request\n");
+        print_str("Media Change Request\n");
         break;
     case INTEL_FIRMWARE_STATUS_COMMAND_ABORT:
-        printf("Command Abort\n");
+        print_str("Command Abort\n");
         break;
     case INTEL_FIRMWARE_STATUS_END_OF_MEDIA:
-        printf("End of Media\n");
+        print_str("End of Media\n");
         break;
     case INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH:
-        printf("Illegal Length\n");
+        print_str("Illegal Length\n");
         break;
     default:
         printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
@@ -298,7 +298,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
 
             if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
             {
-                printf("\n====Sending Intel Raid Firmware Request====\n");
+                print_str("\n====Sending Intel Raid Firmware Request====\n");
             }
 
             // send the command
@@ -332,9 +332,9 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
             overlappedStruct.hEvent = M_NULLPTR;
             if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(device->os_info.last_error);
-                printf("Intel RAID Firmware: ");
+                print_str("Intel RAID Firmware: ");
                 printf_Intel_Firmware_SRB_Status(raidFirmwareRequest->Header.ReturnCode);
             }
             if (MSFT_BOOL_FALSE(success))
@@ -409,7 +409,7 @@ bool supports_Intel_Firmware_Download(tDevice* device)
 {
     bool supported = false;
 #    if defined(INTRST_DEBUG)
-    printf("Intel: Checking FWDL IOCTL support\n");
+    print_str("Intel: Checking FWDL IOCTL support\n");
 #    endif // INTRST_DEBUG
     uint32_t allocationSize =
         sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2) + (sizeof(INTEL_STORAGE_FIRMWARE_SLOT_INFO_V2) * 7); // max of 7 slots
@@ -430,7 +430,7 @@ bool supports_Intel_Firmware_Download(tDevice* device)
         firmwareInfo->Size    = sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2);
         // nothing else needs setup, just issue the command
 #    if defined(INTRST_DEBUG)
-        printf("Attempting to get Intel FWDL support\n");
+        print_str("Attempting to get Intel FWDL support\n");
 #    endif // INTRST_DEBUG
         if (SUCCESS == intel_RAID_FW_Request(device, firmwareInfo, allocationSize, 15, INTEL_FIRMWARE_FUNCTION_GET_INFO,
                                              flags, true, &returnCode))
@@ -444,7 +444,7 @@ bool supports_Intel_Firmware_Download(tDevice* device)
                 device->os_info.csmiDeviceData->intelRSTSupport.payloadAlignment  = firmwareInfo->ImagePayloadAlignment;
             }
 #    if defined(INTRST_DEBUG)
-            printf("Got Intel FWDL Info\n");
+            print_str("Got Intel FWDL Info\n");
             printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
             printf("\tPayload Alignment: %ld\n", firmwareInfo->ImagePayloadAlignment);
             printf("\tmaxXferSize: %ld\n", firmwareInfo->ImagePayloadMaxSize);
@@ -716,7 +716,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
                    safe_calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
         if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
         {
-            printf("\n====Sending Intel RST NVMe Command====\n");
+            print_str("\n====Sending Intel RST NVMe Command====\n");
         }
         if (nvmPassthroughCommand)
         {
@@ -1062,7 +1062,7 @@ eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #    if defined(INTRST_DEBUG)
-    printf("Intel: NVM passthrough request\n");
+    print_str("Intel: NVM passthrough request\n");
 #    endif // INTRST_DEBUG
     DISABLE_NONNULL_COMPARE
     if (nvmeIoCtx != M_NULLPTR)
@@ -1074,13 +1074,13 @@ eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx)
             case NVME_ADMIN_CMD_DOWNLOAD_FW:
             case NVME_ADMIN_CMD_ACTIVATE_FW:
 #    if defined(INTRST_DEBUG)
-                printf("Intel: NVM firmware command\n");
+                print_str("Intel: NVM firmware command\n");
 #    endif // INTRST_DEBUG
                 ret = send_Intel_NVM_Firmware_Download(nvmeIoCtx);
                 break;
             default:
 #    if defined(INTRST_DEBUG)
-                printf("Intel: NVM generic passthrough command\n");
+                print_str("Intel: NVM generic passthrough command\n");
 #    endif // INTRST_DEBUG
                 ret = send_Intel_NVM_Passthrough_Command(nvmeIoCtx);
                 break;
@@ -1106,7 +1106,7 @@ eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #    if defined(INTRST_DEBUG)
-    printf("Intel: Received SCSI command for translation\n");
+    print_str("Intel: Received SCSI command for translation\n");
 #    endif // INTRST_DEBUG
     DISABLE_NONNULL_COMPARE
     if (scsiIoCtx != M_NULLPTR)

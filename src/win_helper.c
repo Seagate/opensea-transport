@@ -181,67 +181,67 @@ void print_bus_type(BYTE type)
     switch (type)
     {
     case BusTypeScsi:
-        printf("SCSI");
+        print_str("SCSI");
         break;
     case BusTypeAtapi:
-        printf("ATAPI");
+        print_str("ATAPI");
         break;
     case BusTypeAta:
-        printf("ATA");
+        print_str("ATA");
         break;
     case BusType1394:
-        printf("1394");
+        print_str("1394");
         break;
     case BusTypeSsa:
-        printf("SSA");
+        print_str("SSA");
         break;
     case BusTypeFibre:
-        printf("FIBRE");
+        print_str("FIBRE");
         break;
     case BusTypeUsb:
-        printf("USB");
+        print_str("USB");
         break;
     case BusTypeRAID:
-        printf("RAID");
+        print_str("RAID");
         break;
     case BusTypeiScsi:
-        printf("iSCSI");
+        print_str("iSCSI");
         break;
     case BusTypeSas:
-        printf("SAS");
+        print_str("SAS");
         break;
     case BusTypeSata:
-        printf("SATA");
+        print_str("SATA");
         break;
     case BusTypeSd:
-        printf("SD");
+        print_str("SD");
         break;
     case BusTypeMmc:
-        printf("MMC");
+        print_str("MMC");
         break;
     case BusTypeVirtual:
-        printf("VIRTUAL");
+        print_str("VIRTUAL");
         break;
     case BusTypeFileBackedVirtual:
-        printf("FILEBACKEDVIRTUAL");
+        print_str("FILEBACKEDVIRTUAL");
         break;
 #    if WINVER >= SEA_WIN32_WINNT_WIN8
     case BusTypeSpaces:
-        printf("Spaces");
+        print_str("Spaces");
         break;
 #        if WINVER >= SEA_WIN32_WINNT_WINBLUE // 8.1 introduced NVMe
     case BusTypeNvme:
-        printf("NVMe");
+        print_str("NVMe");
         break;
 #            if WINVER >= SEA_WIN32_WINNT_WIN10 // Win10 API kits may have more or less of these bus types so need to
                                                 // also check which version of the Win10 API is being targetted
 #                if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_10586
     case BusTypeSCM:
-        printf("SCM");
+        print_str("SCM");
         break;
 #                    if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
     case BusTypeUfs:
-        printf("UFS");
+        print_str("UFS");
         break;
 #                    endif // WIN_API_TARGET_VERSION >= Win 10 API 10.0.15063.0
 #                endif     // WIN_API_TARGET_VERSION >= Win 10 API 10.0.10586.0
@@ -249,13 +249,13 @@ void print_bus_type(BYTE type)
 #        endif             // WINVER >= WIN8.1
 #    endif                 // WINVER >= WIN8.0
     case BusTypeMax:
-        printf("MAX");
+        print_str("MAX");
         break;
     case BusTypeMaxReserved:
-        printf("MAXRESERVED");
+        print_str("MAXRESERVED");
         break;
     default:
-        printf("UNKNOWN");
+        print_str("UNKNOWN");
         break;
     }
 }
@@ -699,15 +699,15 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                     {
                                                                         if (instanceCounter > 0)
                                                                         {
-                                                                            printf("\n==========================\n");
-                                                                            printf("Parent instance properties\n");
-                                                                            printf("==========================\n\n");
+                                                                            print_str("\n==========================\n");
+                                                                            print_str("Parent instance properties\n");
+                                                                            print_str("==========================\n\n");
                                                                         }
                                                                         else
                                                                         {
-                                                                            printf("\n==========================\n");
-                                                                            printf("Device instance properties\n");
-                                                                            printf("==========================\n\n");
+                                                                            print_str("\n==========================\n");
+                                                                            print_str("Device instance properties\n");
+                                                                            print_str("==========================\n\n");
                                                                         }
                                                                         while (devproperty)
                                                                         {
@@ -2403,7 +2403,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                         //print the property name here
                                                                 in case anything fails above so we don't print a bunch
                                                                 of empty properties - TJE
-                                                                                        printf("=========================================================================\n");
+                                                                                        print_str("=========================================================================\n");
                                                                                         printf(" %s: \n", propertyName);
                                                                                         switch (propertyType &
                                                                 DEVPROP_MASK_TYPE)//need to mask as there may also be
@@ -2513,12 +2513,12 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 C_CAST(BOOLEAN*, propertyBuf); if (*theBool ==
                                                                 DEVPROP_FALSE)
                                                                                             {
-                                                                                                printf("\tFALSE\n");
+                                                                                                print_str("\tFALSE\n");
                                                                                             }
                                                                                             else //if (*theBool ==
                                                                 DEVPROP_TRUE)
                                                                                             {
-                                                                                                printf("\tTRUE\n");
+                                                                                                print_str("\tTRUE\n");
                                                                                             }
                                                                                         }
                                                                                         break;
@@ -2941,62 +2941,62 @@ static void print_Firmware_Miniport_SRB_Status(ULONG returnCode)
     switch (returnCode)
     {
     case FIRMWARE_STATUS_SUCCESS:
-        printf("Success\n");
+        print_str("Success\n");
         break;
     case FIRMWARE_STATUS_INVALID_SLOT:
-        printf("Invalid Slot\n");
+        print_str("Invalid Slot\n");
         break;
     case FIRMWARE_STATUS_INVALID_IMAGE:
-        printf("Invalid Image\n");
+        print_str("Invalid Image\n");
         break;
     case FIRMWARE_STATUS_ERROR:
-        printf("Error\n");
+        print_str("Error\n");
         break;
     case FIRMWARE_STATUS_ILLEGAL_REQUEST:
-        printf("Illegal Request\n");
+        print_str("Illegal Request\n");
         break;
     case FIRMWARE_STATUS_INVALID_PARAMETER:
-        printf("Invalid Parameter\n");
+        print_str("Invalid Parameter\n");
         break;
     case FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
-        printf("Input Buffer Too Big\n");
+        print_str("Input Buffer Too Big\n");
         break;
     case FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
-        printf("Output Buffer Too Small\n");
+        print_str("Output Buffer Too Small\n");
         break;
     case FIRMWARE_STATUS_CONTROLLER_ERROR:
-        printf("Controller Error\n");
+        print_str("Controller Error\n");
         break;
     case FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
-        printf("Power Cycle Required\n");
+        print_str("Power Cycle Required\n");
         break;
     case FIRMWARE_STATUS_DEVICE_ERROR:
-        printf("Device Error\n");
+        print_str("Device Error\n");
         break;
 #    if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
     case FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
-        printf("Interface CRC Error\n");
+        print_str("Interface CRC Error\n");
         break;
     case FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
-        printf("Uncorrectable Data Error\n");
+        print_str("Uncorrectable Data Error\n");
         break;
     case FIRMWARE_STATUS_MEDIA_CHANGE:
-        printf("Media Change\n");
+        print_str("Media Change\n");
         break;
     case FIRMWARE_STATUS_ID_NOT_FOUND:
-        printf("ID Not Found\n");
+        print_str("ID Not Found\n");
         break;
     case FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
-        printf("Media Change Request\n");
+        print_str("Media Change Request\n");
         break;
     case FIRMWARE_STATUS_COMMAND_ABORT:
-        printf("Command Abort\n");
+        print_str("Command Abort\n");
         break;
     case FIRMWARE_STATUS_END_OF_MEDIA:
-        printf("End of Media\n");
+        print_str("End of Media\n");
         break;
     case FIRMWARE_STATUS_ILLEGAL_LENGTH:
-        printf("Illegal Length\n");
+        print_str("Illegal Length\n");
         break;
 #    endif
     default:
@@ -3049,7 +3049,7 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
 
     if (VERBOSITY_COMMAND_NAMES <= verboseLevel)
     {
-        printf("\n====Sending SCSI Miniport Firmware Request====\n");
+        print_str("\n====Sending SCSI Miniport Firmware Request====\n");
     }
 
     // First fill out the srb header and firmware request block since these are common for all requests.
@@ -3132,7 +3132,7 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
         }
         if (VERBOSITY_COMMAND_VERBOSE <= verboseLevel)
         {
-            printf("Firmware Miniport Status: ");
+            print_str("Firmware Miniport Status: ");
             print_Firmware_Miniport_SRB_Status(srbControl->ReturnCode);
         }
     }
@@ -3141,9 +3141,9 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
         // something else went wrong. Check Windows last error code. Likely an incompatibility in some way.
         if (VERBOSITY_COMMAND_VERBOSE <= verboseLevel)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(getLastError);
-            printf("Firmware Miniport Status: ");
+            print_str("Firmware Miniport Status: ");
             print_Firmware_Miniport_SRB_Status(srbControl->ReturnCode);
         }
     }
@@ -3198,7 +3198,7 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                 device->os_info.fwdlIOsupport.payloadAlignment = firmwareInfo->ImagePayloadAlignment;
                 device->os_info.fwdlIOsupport.maxXferSize      = firmwareInfo->ImagePayloadMaxSize;
 #        if defined(_DEBUG)
-                printf("Got Miniport V2 FWDL Info\n");
+                print_str("Got Miniport V2 FWDL Info\n");
                 printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
                 printf("\tPayload Alignment: %ld\n", firmwareInfo->ImagePayloadAlignment);
                 printf("\tmaxXferSize: %ld\n", firmwareInfo->ImagePayloadMaxSize);
@@ -3257,7 +3257,7 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool co
                             : 65536; // Set 64K in case this is not otherwise set...not great but will likely work since
                                      // this is the common transfer size limit in Windows - TJE
 #    if defined(_DEBUG)
-                    printf("Got Miniport V1 FWDL Info\n");
+                    print_str("Got Miniport V1 FWDL Info\n");
                     printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
                     // printf("\tPayload Alignment: %ld\n", firmwareInfo->ImagePayloadAlignment);
                     // printf("\tmaxXferSize: %ld\n", firmwareInfo->ImagePayloadMaxSize);
@@ -3319,13 +3319,13 @@ bus trace of the sequence.
 bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
 {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-    printf("Checking if FWDL Command is compatible with Win 10 API\n");
+    print_str("Checking if FWDL Command is compatible with Win 10 API\n");
 #    endif
     if (!scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported)
     {
         // OS doesn't support this IO on this device, so just say no!
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-        printf("\tFalse (not Supported)\n");
+        print_str("\tFalse (not Supported)\n");
 #    endif
         return false;
     }
@@ -3344,7 +3344,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
         bool     supportedCMD        = false;
         bool     isActivate          = false;
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-        printf("Flexible Win10 FWDL API allowed. Checking for supported commands\n");
+        print_str("Flexible Win10 FWDL API allowed. Checking for supported commands\n");
 #    endif
         if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == WRITE_BUFFER_CMD)
         {
@@ -3381,12 +3381,12 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
         if (supportedCMD)
         {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-            printf("\tDetected supported command\n");
+            print_str("\tDetected supported command\n");
 #    endif
             if (isActivate)
             {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-                printf("\tTrue - is an activate command\n");
+                print_str("\tTrue - is an activate command\n");
 #    endif
                 return true;
             }
@@ -3396,7 +3396,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
                     (transferLengthBytes % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
                 {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-                    printf("\tTrue - payload fits FWDL requirements from OS/Driver\n");
+                    print_str("\tTrue - payload fits FWDL requirements from OS/Driver\n");
 #    endif
                     return true;
                 }
@@ -3406,7 +3406,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
     else if (scsiIoCtx && scsiIoCtx->pAtaCmdOpts && scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
     {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-        printf("Checking ATA command info for FWDL support\n");
+        print_str("Checking ATA command info for FWDL support\n");
 #    endif
         // We're sending an ATA passthrough command, and the OS says the io is supported, so it SHOULD work. - TJE
         if (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD ||
@@ -3418,7 +3418,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0E)
             {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-                printf("Is deferred download mode Eh\n");
+                print_str("Is deferred download mode Eh\n");
 #    endif
                 // We know it's a download command, now we need to make sure it's a multiple of the Windows alignment
                 // requirement and that it isn't larger than the maximum allowed
@@ -3440,7 +3440,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
                      0))
                 {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-                    printf("\tTrue (0x0E)\n");
+                    print_str("\tTrue (0x0E)\n");
 #    endif
                     return true;
                 }
@@ -3448,7 +3448,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
             else if (scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature == 0x0F)
             {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-                printf("\tTrue (0x0F)\n");
+                print_str("\tTrue (0x0F)\n");
 #    endif
                 return true;
             }
@@ -3457,7 +3457,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
     else if (scsiIoCtx) // sending a SCSI command
     {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-        printf("Checking SCSI command info for FWDL Support\n");
+        print_str("Checking SCSI command info for FWDL Support\n");
 #    endif
         // Should we check that this is a SCSI Drive? Right now we'll just attempt the download and let the drive/SATL
         // handle translation check that it's a write buffer command for a firmware download & it's a deferred download
@@ -3474,14 +3474,14 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
                     (transferLength % scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment == 0))
                 {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-                    printf("\tTrue (SCSI Mode 0x0E)\n");
+                    print_str("\tTrue (SCSI Mode 0x0E)\n");
 #    endif
                     return true;
                 }
                 break;
             case SCSI_WB_ACTIVATE_DEFERRED_MICROCODE:
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-                printf("\tTrue (SCSI Mode 0x0F)\n");
+                print_str("\tTrue (SCSI Mode 0x0F)\n");
 #    endif
                 return true;
             default:
@@ -3490,7 +3490,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
         }
     }
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
-    printf("\tFalse\n");
+    print_str("\tFalse\n");
 #    endif
     return false;
 }
@@ -5074,7 +5074,7 @@ static eReturnValues open_Win_Handle(const char* filename, tDevice* device)
             else if (device->os_info.last_error == ERROR_SHARING_VIOLATION)
             {
                 ret = DEVICE_BUSY;
-                printf("Busy\n");
+                print_str("Busy\n");
                 break;
             }
             else if (device->os_info.last_error == ERROR_ACCESS_DENIED)
@@ -5087,7 +5087,7 @@ static eReturnValues open_Win_Handle(const char* filename, tDevice* device)
             {
                 printf("Error: opening dev %s. ", filename);
                 print_Windows_Error_To_Screen(device->os_info.last_error);
-                printf("\n");
+                print_str("\n");
             }
             ret = FAILURE;
             break;
@@ -5132,7 +5132,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
     else
     {
 #if defined(WIN_DEBUG)
-        printf("WIN: opened dev\n");
+        print_str("WIN: opened dev\n");
 #endif // WIN_DEBUG
 
         device->os_info.scsiSRBHandle = INVALID_HANDLE_VALUE; // set this to invalid ahead of anywhere that it might get
@@ -5188,7 +5188,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
         // names.
         //       There are very long names for a drive handle we can also support if a caller knows how to pass them in.
 #if defined(WIN_DEBUG)
-        printf("WIN: Checking for volumes\n");
+        print_str("WIN: Checking for volumes\n");
 #endif // WIN_DEBUG
        // map the drive to a volume letter
         DWORD    driveLetters  = DWORD_C(0);
@@ -5279,14 +5279,14 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
         // set the OS Type
         device->os_info.osType = OS_WINDOWS;
 #if defined(WIN_DEBUG)
-        printf("WIN: getting SCSI address\n");
+        print_str("WIN: getting SCSI address\n");
 #endif // WIN_DEBUG
 
         // Lets get the SCSI address
         win_Get_SCSI_Address(device->os_info.fd, &device->os_info.scsi_addr);
 
 #if defined(WIN_DEBUG)
-        printf("WIN: det adapter descriptor\n");
+        print_str("WIN: det adapter descriptor\n");
 #endif // WIN_DEBUG
        //  Lets get some properties.
         win_ret = win_Get_Adapter_Descriptor(device->os_info.fd, &adapter_desc);
@@ -5295,9 +5295,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
         {
             // TODO: Copy any of the adapter stuff.
 #if defined(WIN_DEBUG)
-            printf("Adapter BusType: ");
+            print_str("Adapter BusType: ");
             print_bus_type(adapter_desc->BusType);
-            printf(" \n");
+            print_str(" \n");
 #endif // WIN_DEBUG
        // saving max transfer size (in bytes)
             device->os_info.adapterMaxTransferSize = adapter_desc->MaximumTransferLength;
@@ -5317,7 +5317,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
             device->os_info.minimumAlignment = C_CAST(uint8_t, adapter_desc->AlignmentMask + 1);
             device->os_info.alignmentMask    = adapter_desc->AlignmentMask; // may be needed later....currently unused
 #if defined(WIN_DEBUG)
-            printf("WIN: get device descriptor\n");
+            print_str("WIN: get device descriptor\n");
 #endif // WIN_DEBUG
             win_ret = win_Get_Device_Descriptor(device->os_info.fd, &device_desc);
             if (win_ret == SUCCESS)
@@ -5332,13 +5332,13 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     uint8_t, device_desc->BusType); // NOTE: This enum seems to be a byte in definition today, but if we
                                                      // run into future issues, we may need to change it. - TJE
 #if defined(WIN_DEBUG)
-                printf("WIN: get adapter IDs (VID/PID for USB or PCIe)\n");
+                print_str("WIN: get adapter IDs (VID/PID for USB or PCIe)\n");
 #endif // WIN_DEBUG
                 get_Adapter_IDs(device, device_desc, device_desc->Size);
 
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined(IOCTL_SCSI_MINIPORT_FIRMWARE)
 #    if defined(WIN_DEBUG)
-                printf("WIN: Get MiniPort FWDL capabilities\n");
+                print_str("WIN: Get MiniPort FWDL capabilities\n");
 #    endif // WIN_DEBUG
                 fwdlResult =
                     get_Win_FWDL_Miniport_Capabilities(device, device_desc->BusType == BusTypeNvme ? true : false);
@@ -5348,7 +5348,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                 if (fwdlResult != SUCCESS)
                 {
 #    if defined(WIN_DEBUG)
-                    printf("WIN: get Win10 FWDL support\n");
+                    print_str("WIN: get Win10 FWDL support\n");
 #    endif // WIN_DEBUG
                     get_Windows_FWDL_IO_Support(device, device_desc->BusType);
                 }
@@ -5357,9 +5357,9 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                 device->os_info.fwdlIOsupport.fwdlIOSupported = false; // this API is not available before Windows 10
 #endif
 #if defined(WIN_DEBUG)
-                printf("Drive BusType: ");
+                print_str("Drive BusType: ");
                 print_bus_type(device_desc->BusType);
-                printf(" \n");
+                print_str(" \n");
 #endif // WIN_DEBUG
 
                 if (device_desc->BusType ==
@@ -5386,7 +5386,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     device->drive_info.interface_type = IDE_INTERFACE;
                     device->os_info.ioType            = WIN_IOCTL_ATA_PASSTHROUGH;
 #if defined(WIN_DEBUG)
-                    printf("WIN: get SMART IO support ATA\n");
+                    print_str("WIN: get SMART IO support ATA\n");
 #endif                                                    // WIN_DEBUG
                     get_Windows_SMART_IO_Support(device); // might be used later
                     checkForCSMI = true;
@@ -5404,7 +5404,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     // packet command, or we should try issuing only SCSI commands
                     device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
 #if defined(WIN_DEBUG)
-                    printf("WIN: get SMART IO support ATAPI\n");
+                    print_str("WIN: get SMART IO support ATAPI\n");
 #endif                                                    // WIN_DEBUG
                     get_Windows_SMART_IO_Support(device); // might be used later
                 }
@@ -5426,7 +5426,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     device->drive_info.passThroughHacks.someHacksSetByOSDiscovery   = true;
                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
 #if defined(WIN_DEBUG)
-                    printf("WIN: get SMART IO support SATA\n");
+                    print_str("WIN: get SMART IO support SATA\n");
 #endif                                                    // WIN_DEBUG
                     get_Windows_SMART_IO_Support(device); // might be used later
                 }
@@ -5453,7 +5453,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     if (device_desc->VendorIdOffset) // Open fabrics will set a vendorIDoffset, MSFT driver will not.
                     {
 #if defined(WIN_DEBUG)
-                        printf("WIN: checking for additional NVMe driver interfaces\n");
+                        print_str("WIN: checking for additional NVMe driver interfaces\n");
 #endif // WIN_DEBUG
                         if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE ||
                             SUCCESS == open_SCSI_SRB_Handle(device))
@@ -5464,7 +5464,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                             bool foundNVMePassthrough = false;
 #    if defined(ENABLE_OFNVME)
 #        if defined(WIN_DEBUG)
-                            printf("WIN: checking for open fabrics NVMe IOCTL\n");
+                            print_str("WIN: checking for open fabrics NVMe IOCTL\n");
 #        endif // WIN_DEBUG
                             if (!foundNVMePassthrough && supports_OFNVME_IO(device->os_info.scsiSRBHandle))
                             {
@@ -5498,13 +5498,13 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                                 device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
 
 #        if defined(WIN_DEBUG)
-                                printf("WIN: open fabrics NVMe supported\n");
+                                print_str("WIN: open fabrics NVMe supported\n");
 #        endif // WIN_DEBUG
                             }
 #    endif // ENABLE_OFNVME
 #    if defined(ENABLE_INTEL_RST)
 #        if defined(WIN_DEBUG)
-                            printf("WIN: Checking for Intel CSMI + RST NVMe support\n");
+                            print_str("WIN: Checking for Intel CSMI + RST NVMe support\n");
 #        endif // WIN_DEBUG
                             if (!foundNVMePassthrough && device_Supports_CSMI_With_RST(device))
                             {
@@ -5542,7 +5542,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                                 //       we do not have that level of detail to populate this list at this time-TJE
 
 #        if defined(WIN_DEBUG)
-                                printf("WIN: Intel CSMI + NVMe supported\n");
+                                print_str("WIN: Intel CSMI + NVMe supported\n");
 #        endif // WIN_DEBUG
                             }
 #    endif // ENABLE_INTEL_RST
@@ -5550,7 +5550,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
 #endif // ENABLE_OFNVME || ENABLE_INTEL_RST
                             {
 #if defined(WIN_DEBUG)
-                                printf("WIN: no NVMe passthrough found\n");
+                                print_str("WIN: no NVMe passthrough found\n");
 #endif // WIN_DEBUG
        // unable to do passthrough, and isn't in normal Win10 mode, this means it's some other driver that we don't know
        // how to use. Treat as SCSI
@@ -5564,7 +5564,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                         else
                         {
 #if defined(WIN_DEBUG)
-                            printf("WIN: treat as SCSI. Closing SCSI SRB handle\n");
+                            print_str("WIN: treat as SCSI. Closing SCSI SRB handle\n");
 #endif // WIN_DEBUG
        // close the handle that was opened. TODO: May need to remove this in the future.
                             close_SCSI_SRB_Handle(device);
@@ -5580,12 +5580,12 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     {
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 #    if defined(WIN_DEBUG)
-                        printf("WIN: Checking Win version for NVMe IOCTL support level\n");
+                        print_str("WIN: Checking Win version for NVMe IOCTL support level\n");
 #    endif // WIN_DEBUG
                         if (is_Windows_10_Or_Higher())
                         {
 #    if defined(WIN_DEBUG)
-                            printf("WIN: Win10+\n");
+                            print_str("WIN: Win10+\n");
 #    endif // WIN_DEBUG
                             device->drive_info.drive_type     = NVME_DRIVE;
                             device->drive_info.interface_type = NVME_INTERFACE;
@@ -5623,7 +5623,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                             if (is_Windows_10_Version_1903_Or_Higher())
                             {
 #    if defined(WIN_DEBUG)
-                                printf("WIN: 1903+\n");
+                                print_str("WIN: 1903+\n");
 #    endif // WIN_DEBUG
            // this is definitely blocked in 1809, so this seems to have started being available in 1903
            // NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so
@@ -5660,12 +5660,12 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                                 true; // Only 1 feature today. <--this is old. There is now a set features API, but I
                                       // don't see what it does or does not allow. Still needs implementing. - TJE
 #    if defined(WIN_DEBUG)
-                            printf("WIN: Checking for Win PE\n");
+                            print_str("WIN: Checking for Win PE\n");
 #    endif // WIN_DEBUG
                             if (is_Windows_PE())
                             {
 #    if defined(WIN_DEBUG)
-                                printf("WIN: PE environment found\n");
+                                print_str("WIN: PE environment found\n");
 #    endif // WIN_DEBUG
            // If in Windows PE, then these other commands become available
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
@@ -5690,7 +5690,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                             if (is_Windows_10_Version_21H1_Or_Higher())
                             {
 #    if defined(WIN_DEBUG)
-                                printf("WIN: 21H1+\n");
+                                print_str("WIN: 21H1+\n");
 #    endif // WIN_DEBUG
 #    if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
                                 if ((device->os_info.fileSystemInfo.fileSystemInfoValid &&
@@ -5712,7 +5712,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
 #endif // WINVER >= SEA_WIN32_WINNT_WIN10
                         {
 #if defined(WIN_DEBUG)
-                            printf("WIN: earlier Windows. Treating as SCSI\n");
+                            print_str("WIN: earlier Windows. Treating as SCSI\n");
 #endif // WIN_DEBUG
                             device->drive_info.drive_type     = SCSI_DRIVE;
                             device->drive_info.interface_type = SCSI_INTERFACE;
@@ -5736,7 +5736,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                     else if (device_desc->BusType == BusTypeRAID)
                     {
 #if defined(WIN_DEBUG)
-                        printf("WIN: RAID bus type. Need to check for additional NVMe/CSMI support\n");
+                        print_str("WIN: RAID bus type. Need to check for additional NVMe/CSMI support\n");
 #endif // WIN_DEBUG
        // TODO: Need to figure out a better way to decide this.
        //       Unfortunately, the Intel RST driver will show NVMe drives as RAID, but no vendor ID, so we need to check
@@ -5777,7 +5777,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                 {
                     DECLARE_ZERO_INIT_ARRAY(uint8_t, nvmeIdent, 4096);
 #if defined(WIN_DEBUG)
-                    printf("WIN: Additional check for Intel NVMe\n");
+                    print_str("WIN: Additional check for Intel NVMe\n");
 #endif // WIN_DEBUG
                     if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE ||
                         SUCCESS == open_SCSI_SRB_Handle(device))
@@ -5793,7 +5793,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                             device->os_info.osReadWriteRecommended = true;
                             checkForCSMI                           = false;
 #if defined(WIN_DEBUG)
-                            printf("WIN: Intel NVMe support found\n");
+                            print_str("WIN: Intel NVMe support found\n");
 #endif // WIN_DEBUG
        // TODO: This passthrough may be limited in commands allowed to be sent. If this is limited, need to fill in the
        // nvme hacks to show what is or is not supported.
@@ -5826,7 +5826,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                         else
                         {
 #if defined(WIN_DEBUG)
-                            printf("WIN: Does not support Intel NVMe passthrough\n");
+                            print_str("WIN: Does not support Intel NVMe passthrough\n");
 #endif // WIN_DEBUG
                             device->drive_info.drive_type                 = SCSI_DRIVE;
                             device->drive_info.interface_type             = SCSI_INTERFACE;
@@ -5837,7 +5837,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
 
                 // Lets fill out rest of info
 #if defined(WIN_DEBUG)
-                printf("WIN: filling device information\n");
+                print_str("WIN: filling device information\n");
 #endif // WIN_DEBUG
                 ret = fill_Drive_Info_Data(device);
 
@@ -5848,7 +5848,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                 if ((ret != SUCCESS) && (device->drive_info.interface_type == IDE_INTERFACE))
                 {
 #if defined(WIN_DEBUG)
-                    printf("WIN: Working around legacy passthrough issues\n");
+                    print_str("WIN: Working around legacy passthrough issues\n");
 #endif // WIN_DEBUG
        // we weren't successful getting device information...so now try switching to the other IOCTLs
        // NOLINTBEGIN(bugprone-branch-clone)
@@ -5903,18 +5903,18 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
                 if (checkForCSMI)
                 {
 #    if defined(WIN_DEBUG)
-                    printf("WIN: Additional CSMI check\n");
+                    print_str("WIN: Additional CSMI check\n");
 #    endif // WIN_DEBUG
                     if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE ||
                         SUCCESS == open_SCSI_SRB_Handle(device))
                     {
 #    if defined(WIN_DEBUG)
-                        printf("WIN: Looking for CSMI IO support\n");
+                        print_str("WIN: Looking for CSMI IO support\n");
 #    endif // WIN_DEBUG
                         if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
                         {
 #    if defined(WIN_DEBUG)
-                            printf("WIN: Setting up CSMI capabilities\n");
+                            print_str("WIN: Setting up CSMI capabilities\n");
 #    endif // WIN_DEBUG
            // open up the CSMI handle and populate the pointer to the csmidata structure. This may allow us to work
            // around other commands.
@@ -6042,7 +6042,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
         ULONG     locateNodeFlags = ULONG_C(0); // add flags here if we end up needing them
         if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
         {
-            printf("Running CM_Locate_Devnode on root to force system wide rescan\n");
+            print_str("Running CM_Locate_Devnode on root to force system wide rescan\n");
         }
         if (CR_SUCCESS == CM_Locate_DevNode(&deviceInstance, tree, locateNodeFlags))
         {
@@ -6127,7 +6127,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
     }
     else if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
     {
-        printf("CSMI Raid scan was skipped due to flag\n");
+        print_str("CSMI Raid scan was skipped due to flag\n");
     }
 #endif
 
@@ -6313,7 +6313,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
         }
         else if (VERBOSITY_COMMAND_NAMES <= winListVerbosity)
         {
-            printf("CSMI Scan skipped due to flag\n");
+            print_str("CSMI Scan skipped due to flag\n");
         }
 #endif
         if (found == failedGetDeviceCount)
@@ -6412,7 +6412,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoC
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("\nData Direction Unspecified.\n");
+            print_str("\nData Direction Unspecified.\n");
         }
         ret = FAILURE;
         break;
@@ -6537,7 +6537,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
             }
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
@@ -6632,7 +6632,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* 
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("\nData Direction Unspecified.\n");
+            print_str("\nData Direction Unspecified.\n");
         }
         ret = FAILURE;
         break;
@@ -6775,7 +6775,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
             }
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
@@ -6869,7 +6869,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx*    
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("\nData Direction Unspecified.\n");
+            print_str("\nData Direction Unspecified.\n");
         }
         ret = FAILURE;
         break;
@@ -6936,7 +6936,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiI
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("\nData Direction Unspecified.\n");
+            print_str("\nData Direction Unspecified.\n");
         }
         ret = FAILURE;
         break;
@@ -7064,7 +7064,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
             }
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
@@ -7208,7 +7208,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
             }
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
@@ -7353,7 +7353,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
     default:
         if (VERBOSITY_QUIET < p_scsiIoCtx->device->deviceVerbosity)
         {
-            printf("\nData Direction Unspecified.\n");
+            print_str("\nData Direction Unspecified.\n");
         }
         ret = BAD_PARAMETER;
         break;
@@ -7378,7 +7378,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
     default:
         if (VERBOSITY_QUIET < p_scsiIoCtx->device->deviceVerbosity)
         {
-            printf("\nProtocol Not Supported in ATA Pass Through.\n");
+            print_str("\nProtocol Not Supported in ATA Pass Through.\n");
         }
         return NOT_SUPPORTED;
     }
@@ -7516,7 +7516,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
             }
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
@@ -7622,7 +7622,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
     {
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Couldn't convert SCSI-To-IDE interface (direct)\n");
+            print_str("Couldn't convert SCSI-To-IDE interface (direct)\n");
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -7683,7 +7683,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
     default:
         if (VERBOSITY_QUIET < p_scsiIoCtx->device->deviceVerbosity)
         {
-            printf("\nData Direction Unspecified.\n");
+            print_str("\nData Direction Unspecified.\n");
         }
         ret = BAD_PARAMETER;
         break;
@@ -7709,7 +7709,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
     default:
         if (VERBOSITY_QUIET < p_scsiIoCtx->device->deviceVerbosity)
         {
-            printf("\nProtocol Not Supported in ATA Pass Through.\n");
+            print_str("\nProtocol Not Supported in ATA Pass Through.\n");
         }
         ret = NOT_SUPPORTED;
         break;
@@ -7870,7 +7870,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
             }
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
             scsiIoCtx->returnStatus.senseKey = 0x01;
@@ -7945,7 +7945,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
     {
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Couldn't convert SCSI-To-IDE interface (douuble buffered)\n");
+            print_str("Couldn't convert SCSI-To-IDE interface (douuble buffered)\n");
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -8025,7 +8025,7 @@ static eReturnValues convert_SCSI_CTX_To_IDE_PT(ScsiIoCtx* p_scsiIoCtx, ptrIDEDo
     default:
         if (VERBOSITY_QUIET < p_scsiIoCtx->device->deviceVerbosity)
         {
-            printf("\nProtocol Not Supported in ATA Pass Through.\n");
+            print_str("\nProtocol Not Supported in ATA Pass Through.\n");
         }
         return NOT_SUPPORTED;
         break;
@@ -8116,7 +8116,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
             }
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
@@ -8215,7 +8215,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
     {
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Couldn't convert SCSI-To-IDE interface (legacy IDE double buffered)\n");
+            print_str("Couldn't convert SCSI-To-IDE interface (legacy IDE double buffered)\n");
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -8299,7 +8299,7 @@ eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busT
         device->os_info.fwdlIOsupport.maxXferSize      = fwdlSupportedInfo->ImagePayloadMaxSize;
 
 #    if defined(_DEBUG)
-        printf("Got Win10 FWDL Info\n");
+        print_str("Got Win10 FWDL Info\n");
         printf("\tSupported: %d\n", fwdlSupportedInfo->SupportUpgrade);
         printf("\tPayload Alignment: %ld\n", fwdlSupportedInfo->ImagePayloadAlignment);
         printf("\tmaxXferSize: %ld\n", fwdlSupportedInfo->ImagePayloadMaxSize);
@@ -8335,7 +8335,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     }
     if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
-        printf("Sending firmware activate with Win10 API\n");
+        print_str("Sending firmware activate with Win10 API\n");
     }
     // send the activate IOCTL
     STORAGE_HW_FIRMWARE_ACTIVATE downloadActivate;
@@ -8486,7 +8486,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
             // pass-through as we would otherwise use.
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Win 10 FWDL API returned invalid function, retrying with passthrough\n");
+                print_str("Win 10 FWDL API returned invalid function, retrying with passthrough\n");
             }
             scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported = false;
             return send_IO(scsiIoCtx);
@@ -8496,7 +8496,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
         }
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
         }
     }
@@ -8522,7 +8522,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     uint32_t      dataLength = UINT32_C(0);
     if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
-        printf("Sending deferred download with Win10 API\n");
+        print_str("Sending deferred download with Win10 API\n");
     }
     if (scsiIoCtx->pAtaCmdOpts)
     {
@@ -8731,7 +8731,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
             // pass-through as we would otherwise use.
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Win 10 FWDL API returned invalid function, retrying with passthrough\n");
+                print_str("Win 10 FWDL API returned invalid function, retrying with passthrough\n");
             }
             scsiIoCtx->device->os_info.fwdlIOsupport.fwdlIOSupported = false;
             safe_free_hwfwdl(&downloadIO);
@@ -8742,7 +8742,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
         }
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
         }
     }
@@ -9122,7 +9122,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
             }
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
             scsiIoCtx->returnStatus.senseKey = 0x01;
@@ -9223,7 +9223,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
     {
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Couldn't convert SCSI-To-IDE interface (SMART IO)\n");
+            print_str("Couldn't convert SCSI-To-IDE interface (SMART IO)\n");
         }
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -11286,7 +11286,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
-        printf("Sending command with send_IO\n");
+        print_str("Sending command with send_IO\n");
     }
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined(IOCTL_SCSI_MINIPORT_FIRMWARE)
     if (is_Firmware_Download_Command_Compatible_With_Win_API(scsiIoCtx))
@@ -11392,7 +11392,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
             {
                 if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
                 {
-                    printf("Error: Unknown IOCTL type to issue ATA commands.\n");
+                    print_str("Error: Unknown IOCTL type to issue ATA commands.\n");
                 }
                 ret = BAD_PARAMETER;
             }
@@ -11419,7 +11419,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
             {
                 if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                 {
-                    printf("Raid PassThrough Interface is not supported for this device \n");
+                    print_str("Raid PassThrough Interface is not supported for this device \n");
                 }
                 ret = NOT_SUPPORTED;
             }
@@ -11427,7 +11427,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         default:
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("Target Device does not have a valid interface\n");
+                print_str("Target Device does not have a valid interface\n");
             }
             ret = BAD_PARAMETER;
             break;
@@ -11603,7 +11603,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
     {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
         ret = OS_PASSTHROUGH_FAILURE;
@@ -11651,7 +11651,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
             commandBuffer[protocolCommand->ErrorInfoOffset + 33], commandBuffer[protocolCommand->ErrorInfoOffset + 32]);
         if (errorCount > 0)
         {
-            printf("Win 10 VU IO Error Info:\n");
+            print_str("Win 10 VU IO Error Info:\n");
             printf("\tError Count: %" PRIu64 "\n", errorCount);
             printf("\tSQID: %" PRIu16 "\n", submissionQueueID);
             printf("\tCID: %" PRIu16 "\n", commandID);
@@ -11903,7 +11903,7 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx* nvmeIoCtx)
         {
             if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
             }
             ret = OS_PASSTHROUGH_FAILURE;
@@ -12082,7 +12082,7 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx* nvmeIoCtx)
     {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
         returnValue = OS_PASSTHROUGH_FAILURE;
@@ -12195,7 +12195,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
     {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
         returnValue = OS_PASSTHROUGH_FAILURE;
@@ -12311,7 +12311,7 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
     {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
         switch (nvmeIoCtx->device->os_info.last_error)
@@ -12451,7 +12451,7 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
     {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
         switch (nvmeIoCtx->device->os_info.last_error)
@@ -12645,7 +12645,7 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx* nvmeIoCtx)
             {
                 if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
                 {
-                    printf("Windows Error: ");
+                    print_str("Windows Error: ");
                     print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
                 }
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -12714,7 +12714,7 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx* nvmeIoCtx)
     {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
         }
         // Todo....set a better error condition
@@ -12802,7 +12802,7 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
         {
             if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
             }
             ret = OS_PASSTHROUGH_FAILURE;
@@ -13101,17 +13101,17 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
             DWORD returnedLength = DWORD_C(0);
             if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
-                printf("Sending IOCTL_STORAGE_REINITIALIZE_MEDIA for Sanitize ");
+                print_str("Sending IOCTL_STORAGE_REINITIALIZE_MEDIA for Sanitize ");
                 switch (reinitMedia.SanitizeOption.SanitizeMethod)
                 {
                 case StorageSanitizeMethodDefault:
-                    printf("Default method\n");
+                    print_str("Default method\n");
                     break;
                 case StorageSanitizeMethodBlockErase:
-                    printf("Block Erase method\n");
+                    print_str("Block Erase method\n");
                     break;
                 case StorageSanitizeMethodCryptoErase:
-                    printf("Crypto Erase method\n");
+                    print_str("Crypto Erase method\n");
                     break;
                 }
             }
@@ -13124,7 +13124,7 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
             {
                 if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
                 {
-                    printf("Windows Error: ");
+                    print_str("Windows Error: ");
                     print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
                 }
                 ret = OS_PASSTHROUGH_FAILURE;
@@ -13149,7 +13149,7 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
                 DWORD returnedLength = DWORD_C(0);
                 if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
                 {
-                    printf("Sending IOCTL_STORAGE_REINITIALIZE_MEDIA for Format/Sanitize Crypto\n");
+                    print_str("Sending IOCTL_STORAGE_REINITIALIZE_MEDIA for Format/Sanitize Crypto\n");
                 }
                 BOOL result = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_REINITIALIZE_MEDIA,
                                               M_NULLPTR, 0, M_NULLPTR, 0, &returnedLength, M_NULLPTR);
@@ -13160,7 +13160,7 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
                 {
                     if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
                     {
-                        printf("Windows Error: ");
+                        print_str("Windows Error: ");
                         print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
                     }
                     ret = OS_PASSTHROUGH_FAILURE;
@@ -14080,7 +14080,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
     {
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
         }
         returnValue = OS_PASSTHROUGH_FAILURE;
@@ -14184,7 +14184,7 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx)
     {
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
         }
         returnValue = OS_PASSTHROUGH_FAILURE;
@@ -14444,7 +14444,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         {
             if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
             {
-                printf("Raid PassThrough Interface is not supported for this device - NVMe\n");
+                print_str("Raid PassThrough Interface is not supported for this device - NVMe\n");
             }
             ret = NOT_SUPPORTED;
         }
@@ -14452,7 +14452,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     default:
         if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
         {
-            printf("Target Device does not have a valid interface\n");
+            print_str("Target Device does not have a valid interface\n");
         }
         ret = BAD_PARAMETER;
         break;
@@ -14477,7 +14477,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
     // otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Sending NVMe Reset\n");
+        print_str("Sending NVMe Reset\n");
     }
 #if defined(ENABLE_OFNVME)
     if (device->os_info.openFabricsNVMePassthroughSupported)
@@ -14499,7 +14499,7 @@ eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
     // otherwise compile without ifdefs
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Sending NVMe Subsystem Reset\n");
+        print_str("Sending NVMe Subsystem Reset\n");
     }
 #if defined(ENABLE_OFNVME)
     if (device->os_info.openFabricsNVMePassthroughSupported)
@@ -14783,7 +14783,7 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     HANDLE        handleToUse = device->os_info.fd;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
-        printf("Using Windows API to Read LBAs\n");
+        print_str("Using Windows API to Read LBAs\n");
     }
     if (forceUnitAccess)
     {
@@ -14871,7 +14871,7 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(device->os_info.last_error);
         }
     }
@@ -14882,9 +14882,9 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     DISABLE_NONNULL_COMPARE
     if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != M_NULLPTR)
     {
-        printf("\t  Data Buffer being returned:\n");
+        print_str("\t  Data Buffer being returned:\n");
         print_Data_Buffer(ptrData, dataSize, true);
-        printf("\n");
+        print_str("\n");
     }
     RESTORE_NONNULL_COMPARE
 
@@ -14915,7 +14915,7 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     HANDLE        handleToUse = device->os_info.fd;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
-        printf("Using Windows API to Write LBAs\n");
+        print_str("Using Windows API to Write LBAs\n");
     }
     if (forceUnitAccess)
     {
@@ -14975,9 +14975,9 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     DISABLE_NONNULL_COMPARE
     if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != M_NULLPTR)
     {
-        printf("\t  Data Buffer being sent:\n");
+        print_str("\t  Data Buffer being sent:\n");
         print_Data_Buffer(ptrData, dataSize, true);
-        printf("\n");
+        print_str("\n");
     }
     RESTORE_NONNULL_COMPARE
     start_Timer(&commandTimer);
@@ -15011,7 +15011,7 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(device->os_info.last_error);
         }
     }
@@ -15047,7 +15047,7 @@ eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
     eReturnValues ret = NOT_SUPPORTED;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
-        printf("Using Windows API to Verify LBAs\n");
+        print_str("Using Windows API to Verify LBAs\n");
     }
     VERIFY_INFORMATION verifyCmd;
     safe_memset(&verifyCmd, sizeof(VERIFY_INFORMATION), 0, sizeof(VERIFY_INFORMATION));
@@ -15091,7 +15091,7 @@ eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(device->os_info.last_error);
         }
     }
@@ -15147,7 +15147,7 @@ eReturnValues os_Flush(tDevice* device)
     eReturnValues ret = UNKNOWN;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
-        printf("Using Windows API to Flush Cache\n");
+        print_str("Using Windows API to Flush Cache\n");
     }
     // used for setting the timeout
     COMMTIMEOUTS comTimeout;
@@ -15186,7 +15186,7 @@ eReturnValues os_Flush(tDevice* device)
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
-            printf("Windows Error: ");
+            print_str("Windows Error: ");
             print_Windows_Error_To_Screen(device->os_info.last_error);
         }
         ret = FAILURE;

@@ -2290,8 +2290,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             // really old CHS drives since the LBA is simulated in software.
             if (device->deviceVerbosity <= VERBOSITY_DEFAULT)
             {
-                printf("WARNING: possible RTL 9210 detected and missed with all other checks.\n");
-                printf("         this may cause adverse behavior and require --forceSCSI\n");
+                print_str("WARNING: possible RTL 9210 detected and missed with all other checks.\n");
+                print_str("         this may cause adverse behavior and require --forceSCSI\n");
             }
         }
 
@@ -2633,72 +2633,72 @@ uint16_t ata_Is_One_Extended_Power_Conditions_Feature_Supported(uint16_t* pIdent
 
 void print_Verbose_ATA_Command_Information(ataPassthroughCommand* ataCommandOptions)
 {
-    printf("Sending SAT ATA Pass-Through Command:\n");
+    print_str("Sending SAT ATA Pass-Through Command:\n");
     // protocol
-    printf("\tProtocol: ");
+    print_str("\tProtocol: ");
     switch (ataCommandOptions->commadProtocol)
     {
     case ATA_PROTOCOL_PIO:
-        printf("PIO");
+        print_str("PIO");
         break;
     case ATA_PROTOCOL_DMA:
-        printf("DMA");
+        print_str("DMA");
         break;
     case ATA_PROTOCOL_NO_DATA:
-        printf("NON-Data");
+        print_str("NON-Data");
         break;
     case ATA_PROTOCOL_DEV_RESET:
-        printf("Device Reset");
+        print_str("Device Reset");
         break;
     case ATA_PROTOCOL_DEV_DIAG:
-        printf("Device Diagnostic");
+        print_str("Device Diagnostic");
         break;
     case ATA_PROTOCOL_DMA_QUE:
-        printf("DMA Queued");
+        print_str("DMA Queued");
         break;
     case ATA_PROTOCOL_PACKET:
     case ATA_PROTOCOL_PACKET_DMA:
-        printf("Packet");
+        print_str("Packet");
         break;
     case ATA_PROTOCOL_DMA_FPDMA:
-        printf("FPDMA");
+        print_str("FPDMA");
         break;
     case ATA_PROTOCOL_SOFT_RESET:
-        printf("Soft Reset");
+        print_str("Soft Reset");
         break;
     case ATA_PROTOCOL_HARD_RESET:
-        printf("Hard Reset");
+        print_str("Hard Reset");
         break;
     case ATA_PROTOCOL_RET_INFO:
-        printf("Return Response Information");
+        print_str("Return Response Information");
         break;
     case ATA_PROTOCOL_UDMA:
-        printf("UDMA");
+        print_str("UDMA");
         break;
     default:
         break;
     }
-    printf("\n");
-    printf("\tData Direction: ");
+    print_str("\n");
+    print_str("\tData Direction: ");
     // Data Direction:
     switch (ataCommandOptions->commandDirection)
     {
     case XFER_NO_DATA:
-        printf("No Data");
+        print_str("No Data");
         break;
     case XFER_DATA_IN:
-        printf("Data In");
+        print_str("Data In");
         break;
     case XFER_DATA_OUT:
-        printf("Data Out");
+        print_str("Data Out");
         break;
     default:
-        printf("Unknown");
+        print_str("Unknown");
         break;
     }
-    printf("\n");
+    print_str("\n");
     // TFRs:
-    printf("\tTask File Registers:\n");
+    print_str("\tTask File Registers:\n");
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
         ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
     {
@@ -2741,7 +2741,7 @@ void print_Verbose_ATA_Command_Information(ataPassthroughCommand* ataCommandOpti
     printf("\t[DeviceHead] = %02" PRIX8 "h\n", ataCommandOptions->tfr.DeviceHead);
     printf("\t[Command] = %02" PRIX8 "h\n", ataCommandOptions->tfr.CommandStatus);
     // printf("\t[Device Control] = %02"PRIX8"h\n", ataCommandOptions->tfr.DeviceControl);
-    printf("\n");
+    print_str("\n");
 }
 
 // is this a read/write command that the rtfr output needs to know might report a bit specific to these commands
@@ -2934,7 +2934,7 @@ static bool is_Streaming_Command(ataPassthroughCommand* ataCommandOptions)
 //       ex: bad block for ATA1, corr for up to ata 3 (or so), etc
 void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataCommandOptions, tDevice* device)
 {
-    printf("Return Task File Registers:\n");
+    print_str("Return Task File Registers:\n");
     printf("\t[Error] = %02" PRIX8 "h\n", ataCommandOptions->rtfr.error);
     if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR) // assuming NOT a packet command
     {
@@ -2949,15 +2949,15 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataComm
                                     (ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA ||
                                      ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA)))
             {
-                printf("\t\tInterface CRC error\n");
+                print_str("\t\tInterface CRC error\n");
             }
             else if (is_User_Data_Access_Command(ataCommandOptions))
             {
-                printf("\t\tBad Block (?)\n");
+                print_str("\t\tBad Block (?)\n");
             }
             else
             {
-                printf("\t\tUnknown Error bit 7\n");
+                print_str("\t\tUnknown Error bit 7\n");
             }
         }
         // bit6 means either uncorrectable data or write protected (removable medium)
@@ -2965,53 +2965,53 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataComm
         {
             if (is_Removable_Media(device))
             {
-                printf("\t\tWrite Protected\n");
+                print_str("\t\tWrite Protected\n");
             }
             else
             {
-                printf("\t\tUncorrectable Data\n");
+                print_str("\t\tUncorrectable Data\n");
             }
         }
         // bit5 means media change
         if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_MEDIA_CHANGE) // atapi only
         {
-            printf("\t\tMedia Change\n");
+            print_str("\t\tMedia Change\n");
         }
         // bit 4 means id not found
         if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_ID_NOT_FOUND)
         {
-            printf("\t\tID Not Found\n");
+            print_str("\t\tID Not Found\n");
         }
         // bit3 means media change request
         if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST) // atapi only
         {
-            printf("\t\tMedia Change\n");
+            print_str("\t\tMedia Change\n");
         }
         // bit2 means abort
         if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_ABORT)
         {
-            printf("\t\tAbort\n");
+            print_str("\t\tAbort\n");
         }
         // Bit 1 can mean Track zero not found, end of media, no media
         if (ataCommandOptions->rtfr.error & BIT1)
         {
             if (ataCommandOptions->tfr.CommandStatus == ATA_RECALIBRATE_CMD)
             {
-                printf("\t\tTrack 0 not found\n");
+                print_str("\t\tTrack 0 not found\n");
             }
             else if (ataCommandOptions->tfr.CommandStatus == ATA_NV_CACHE &&
                      ataCommandOptions->tfr.ErrorFeature == NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET)
             {
-                printf("\t\tInsufficient LBA Range Entries Remaining\n");
+                print_str("\t\tInsufficient LBA Range Entries Remaining\n");
             }
             else if (is_Removable_Media(device))
             {
-                printf("\t\tNo Media\n");
+                print_str("\t\tNo Media\n");
             }
             // atapi = end of media
             else
             {
-                printf("\t\tUnknown Error Bit 1\n");
+                print_str("\t\tUnknown Error Bit 1\n");
             }
         }
         // bit 0 can mean various things depending on the command that was issued
@@ -3022,31 +3022,31 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataComm
             // data access commands, but not seek)
             if (is_Streaming_Command(ataCommandOptions))
             {
-                printf("\t\tCommand Completion Time out (Streaming)\n");
+                print_str("\t\tCommand Completion Time out (Streaming)\n");
             }
             // more checks for specific commands here
             // nv cache commands
             else if (ataCommandOptions->tfr.CommandStatus == ATA_NV_CACHE &&
                      ataCommandOptions->tfr.ErrorFeature == NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET)
             {
-                printf("\t\tInsufficient NV Cache Space\n");
+                print_str("\t\tInsufficient NV Cache Space\n");
             }
             else if (ataCommandOptions->tfr.CommandStatus == ATA_NV_CACHE &&
                      ataCommandOptions->tfr.ErrorFeature == NV_REMOVE_LBAS_FROM_NV_CACHE_PINNED_SET)
             {
-                printf("\t\tAttempted Partial Range Removal\n");
+                print_str("\t\tAttempted Partial Range Removal\n");
             }
             else if (is_User_Data_Access_Command(ataCommandOptions) &&
                      ataCommandOptions->tfr.CommandStatus != ATA_SEEK_CMD)
             {
                 // if this is also set, for a user data access, possibly the old address mark not found bit
                 // not: does not apply to old seek commands
-                printf("\t\tAddress Mark Not Found\n");
+                print_str("\t\tAddress Mark Not Found\n");
             }
             // TODO: atapi illegal length indicator and media error
             else
             {
-                printf("\t\tUnknown Error Bit 0\n");
+                print_str("\t\tUnknown Error Bit 0\n");
             }
         }
     }
@@ -3081,12 +3081,12 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataComm
         ataCommandOptions->commadProtocol != ATA_PROTOCOL_DMA_QUE &&
         ataCommandOptions->rtfr.status & ATA_STATUS_BIT_BUSY)
     {
-        printf("\t\tBusy\n");
+        print_str("\t\tBusy\n");
     }
     // Bit 6 is ready
     if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_READY)
     {
-        printf("\t\tReady\n");
+        print_str("\t\tReady\n");
     }
     // bit5 is device fault, or stream error
     // Stream error only for streaming feature commands and read/write continuos set to 1 in the command
@@ -3096,32 +3096,32 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataComm
          ataCommandOptions->tfr.CommandStatus == ATA_READ_STREAM_EXT) &&
         ataCommandOptions->tfr.ErrorFeature & BIT6) // read or write continuous must be set!
     {
-        printf("\t\tStream Error\n");
+        print_str("\t\tStream Error\n");
     }
     else if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_DEVICE_FAULT)
     {
-        printf("\t\tDevice Fault\n");
+        print_str("\t\tDevice Fault\n");
     }
     // Bit 4 can be seek complete, service (dma queued), or deferred write error
     if (ataCommandOptions->rtfr.status & BIT4)
     {
         if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA_QUE)
         {
-            printf("\t\tService\n");
+            print_str("\t\tService\n");
         }
         else if (ataCommandOptions->tfr.CommandStatus == ATA_WRITE_STREAM_DMA_EXT ||
                  ataCommandOptions->tfr.CommandStatus == ATA_WRITE_STREAM_EXT)
         {
-            printf("\t\tDeferred Write Error\n");
+            print_str("\t\tDeferred Write Error\n");
         }
         else
         {
-            printf("\t\tSeek Complete\n");
+            print_str("\t\tSeek Complete\n");
         }
     }
     if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_DATA_REQUEST)
     {
-        printf("\t\tData Request\n");
+        print_str("\t\tData Request\n");
     }
     // Bit 2 is either corrected data or alignment error.
     //       corrected data only for read user data access
@@ -3133,22 +3133,22 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataComm
             // corr only for reads and alignment only for writes???
             if (ataCommandOptions->commandDirection == XFER_DATA_IN)
             {
-                printf("\t\tCorrected Data\n");
+                print_str("\t\tCorrected Data\n");
             }
             else if (ataCommandOptions->commandDirection == XFER_DATA_OUT)
             {
                 // todo: alignment error needs lps misalignment reporting to be supported and error reporting set to 01b
                 // or 10b and only on write commands
-                printf("\t\tAlignment Error\n");
+                print_str("\t\tAlignment Error\n");
             }
             else
             {
-                printf("\t\tUnknown Status bit 2 (CORR or ALIGNMENT?)\n");
+                print_str("\t\tUnknown Status bit 2 (CORR or ALIGNMENT?)\n");
             }
         }
         else
         {
-            printf("\t\tUnknown Status bit 2 (CORR or ALIGNMENT?)\n");
+            print_str("\t\tUnknown Status bit 2 (CORR or ALIGNMENT?)\n");
         }
     }
     // Bit 1 is either index (flips with rev) or sense data available. Sense data reporting must at least be supported
@@ -3157,20 +3157,20 @@ void print_Verbose_ATA_Command_Result_Information(ataPassthroughCommand* ataComm
     {
         if (device->drive_info.ata_Options.senseDataReportingEnabled)
         {
-            printf("\t\tSense Data Available\n");
+            print_str("\t\tSense Data Available\n");
         }
         else
         {
-            printf("\t\tUnknown Status bit 1\n");
+            print_str("\t\tUnknown Status bit 1\n");
         }
     }
     // Bit 0 is error...or for ATAPI it will be check condition Packet commands only
     if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR) // assuming not ATAPI
     {
-        printf("\t\tError\n");
+        print_str("\t\tError\n");
     }
 
-    printf("\n");
+    print_str("\n");
 }
 
 uint8_t calculate_ATA_Checksum(const uint8_t* ptrData)

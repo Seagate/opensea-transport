@@ -87,7 +87,7 @@ eReturnValues nvme_Cmd(tDevice* device, nvmeCmdCtx* cmdCtx)
 #if defined(_DEBUG)
         if (cmdCtx->cmd.nvmCmd.nsid != device->drive_info.namespaceID)
         {
-            printf("WARNING: NVM Cmd NSID does not match expected value in tDevice\n");
+            print_str("WARNING: NVM Cmd NSID does not match expected value in tDevice\n");
         }
 #endif //_DEBUG
     }
@@ -136,9 +136,9 @@ eReturnValues nvme_Cmd(tDevice* device, nvmeCmdCtx* cmdCtx)
             cmdCtx->commandDirection == XFER_DATA_OUT)
 #endif
         {
-            printf("\t  Data Buffer being sent:\n");
+            print_str("\t  Data Buffer being sent:\n");
             print_Data_Buffer(cmdCtx->ptrData, cmdCtx->dataSize, true);
-            printf("\n");
+            print_str("\n");
         }
     }
     switch (device->drive_info.passThroughHacks.passthroughType)
@@ -214,9 +214,9 @@ eReturnValues nvme_Cmd(tDevice* device, nvmeCmdCtx* cmdCtx)
             cmdCtx->commandDirection == XFER_DATA_IN)
 #endif
         {
-            printf("\t  Data Buffer being returned:\n");
+            print_str("\t  Data Buffer being returned:\n");
             print_Data_Buffer(cmdCtx->ptrData, cmdCtx->dataSize, true);
-            printf("\n");
+            print_str("\n");
         }
     }
     return ret;
@@ -234,7 +234,7 @@ eReturnValues nvme_Abort_Command(tDevice* device, uint16_t commandIdentifier, ui
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Abort Command\n");
+        print_str("Sending NVMe Abort Command\n");
     }
     ret = nvme_Cmd(device, &adminCommand);
     // Command specific return codes:
@@ -261,7 +261,7 @@ eReturnValues nvme_Asynchronous_Event_Request(tDevice* device,
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Asynchronous Event Request Command\n");
+        print_str("Sending NVMe Asynchronous Event Request Command\n");
     }
     ret = nvme_Cmd(device, &adminCommand);
     // Command specific return codes:
@@ -304,7 +304,7 @@ eReturnValues nvme_Device_Self_Test(tDevice* device, uint32_t nsid, uint8_t self
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Device Self Test Command\n");
+        print_str("Sending NVMe Device Self Test Command\n");
     }
     ret = nvme_Cmd(device, &adminCommand);
     // Command specific return codes:
@@ -347,7 +347,7 @@ eReturnValues nvme_Security_Send(tDevice* device,
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Security Send Command\n");
+        print_str("Sending NVMe Security Send Command\n");
     }
     ret = nvme_Cmd(device, &adminCommand);
 
@@ -381,7 +381,7 @@ eReturnValues nvme_Security_Receive(tDevice* device,
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Security Receive Command\n");
+        print_str("Sending NVMe Security Receive Command\n");
     }
     ret = nvme_Cmd(device, &adminCommand);
 
@@ -424,7 +424,7 @@ eReturnValues nvme_Verify(tDevice* device,
     nvmCommand.timeout = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Verify Command\n");
+        print_str("Sending NVMe Verify Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -451,7 +451,7 @@ eReturnValues nvme_Write_Uncorrectable(tDevice* device, uint64_t startingLBA, ui
     nvmCommand.timeout           = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Write Uncorrectable Command\n");
+        print_str("Sending NVMe Write Uncorrectable Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
 
@@ -498,7 +498,7 @@ eReturnValues nvme_Dataset_Management(tDevice* device,
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Dataset Management Command\n");
+        print_str("Sending NVMe Dataset Management Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
 
@@ -525,7 +525,7 @@ eReturnValues nvme_Flush(tDevice* device)
     nvmCommand.timeout           = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Flush Command\n");
+        print_str("Sending NVMe Flush Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
 
@@ -576,7 +576,7 @@ eReturnValues nvme_Write(tDevice* device,
     nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, directiveType & 0x0F) << 20;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Write Command\n");
+        print_str("Sending NVMe Write Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
 
@@ -625,7 +625,7 @@ eReturnValues nvme_Read(tDevice* device,
     nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, protectionInformationField & 0x0F) << 26;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Read Command\n");
+        print_str("Sending NVMe Read Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
 
@@ -674,7 +674,7 @@ eReturnValues nvme_Compare(tDevice* device,
     nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, protectionInformationField & 0x0F) << 26;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Compare Command\n");
+        print_str("Sending NVMe Compare Command\n");
     }
     ret = nvme_Cmd(device, &nvmCommand);
 
@@ -717,7 +717,7 @@ eReturnValues nvme_Firmware_Image_Dl(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Firmware Image Download Command\n");
+        print_str("Sending NVMe Firmware Image Download Command\n");
     }
     ret = nvme_Cmd(device, &ImageDl);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -754,7 +754,7 @@ eReturnValues nvme_Firmware_Commit(tDevice*           device,
     }
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Firmware Commit Command\n");
+        print_str("Sending NVMe Firmware Commit Command\n");
     }
     ret = nvme_Cmd(device, &FirmwareCommit);
 
@@ -783,7 +783,7 @@ eReturnValues nvme_Identify(tDevice* device, uint8_t* ptrData, uint32_t nvmeName
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Identify Command\n");
+        print_str("Sending NVMe Identify Command\n");
     }
     ret = nvme_Cmd(device, &identify);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -816,7 +816,7 @@ eReturnValues nvme_Get_Features(tDevice* device, nvmeFeaturesCmdOpt* featCmdOpts
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Get Features Command\n");
+        print_str("Sending NVMe Get Features Command\n");
     }
 
     ret = nvme_Cmd(device, &getFeatures);
@@ -861,7 +861,7 @@ eReturnValues nvme_Set_Features(tDevice* device, nvmeFeaturesCmdOpt* featCmdOpts
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Set Features Command\n");
+        print_str("Sending NVMe Set Features Command\n");
     }
 
     ret = nvme_Cmd(device, &setFeatures);
@@ -909,7 +909,7 @@ eReturnValues nvme_Sanitize(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Sanitize Command\n");
+        print_str("Sending NVMe Sanitize Command\n");
     }
 
     ret = nvme_Cmd(device, &nvmCommand);
@@ -958,7 +958,7 @@ eReturnValues nvme_Get_Log_Page(tDevice* device, nvmeGetLogPageCmdOpts* getLogPa
     getLogPage.timeout = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Get Log Page Command\n");
+        print_str("Sending NVMe Get Log Page Command\n");
     }
 
     ret = nvme_Cmd(device, &getLogPage);
@@ -1008,7 +1008,7 @@ eReturnValues nvme_Format(tDevice* device, nvmeFormatCmdOpts* formatCmdOpts)
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Format Command\n");
+        print_str("Sending NVMe Format Command\n");
     }
 
     ret = nvme_Cmd(device, &formatCmd);
@@ -1045,7 +1045,7 @@ eReturnValues nvme_Reservation_Report(tDevice* device, bool extendedDataStructur
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Reservation Report Command\n");
+        print_str("Sending NVMe Reservation Report Command\n");
     }
 
     ret = nvme_Cmd(device, &nvmCmd);
@@ -1087,7 +1087,7 @@ eReturnValues nvme_Reservation_Register(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Reservation Register Command\n");
+        print_str("Sending NVMe Reservation Register Command\n");
     }
 
     ret = nvme_Cmd(device, &nvmCmd);
@@ -1129,7 +1129,7 @@ eReturnValues nvme_Reservation_Acquire(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Reservation Acquire Command\n");
+        print_str("Sending NVMe Reservation Acquire Command\n");
     }
 
     ret = nvme_Cmd(device, &nvmCmd);
@@ -1171,7 +1171,7 @@ eReturnValues nvme_Reservation_Release(tDevice* device,
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending NVMe Reservation Release Command\n");
+        print_str("Sending NVMe Reservation Release Command\n");
     }
 
     ret = nvme_Cmd(device, &nvmCmd);
@@ -1198,7 +1198,7 @@ eReturnValues nvme_Read_Ctrl_Reg(tDevice* device, nvmeBarCtrlRegisters* ctrlRegs
         }
         if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
         {
-            printf("Reading PCI Bar Registers\n");
+            print_str("Reading PCI Bar Registers\n");
         }
         ret = pci_Read_Bar_Reg(device, barRegs, C_CAST(uint32_t, dataSize));
         if (ret == SUCCESS)

@@ -1627,32 +1627,32 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
         // its fields
         if (senseFields->deferredError)
         {
-            printf("Deferred error found.\n");
+            print_str("Deferred error found.\n");
         }
         if (senseFields->senseDataOverflow)
         {
-            printf("Sense Data Overflow detected! Request sense command is recommended to retrieve full sense data!\n");
+            print_str("Sense Data Overflow detected! Request sense command is recommended to retrieve full sense data!\n");
         }
         if (senseFields->filemark)
         {
-            printf("Filemark detected\n");
+            print_str("Filemark detected\n");
         }
         if (senseFields->endOfMedia)
         {
-            printf("End of media detected\n");
+            print_str("End of media detected\n");
         }
         if (senseFields->illegalLengthIndication)
         {
-            printf("Illegal Length detected\n");
+            print_str("Illegal Length detected\n");
         }
-        printf("Information");
+        print_str("Information");
         if (senseFields->valid)
         {
-            printf(" (Valid): ");
+            print_str(" (Valid): ");
         }
         else
         {
-            printf(": ");
+            print_str(": ");
         }
         if (senseFields->fixedFormat)
         {
@@ -1662,7 +1662,7 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
         {
             printf("%016" PRIX64 "h\n", senseFields->descriptorInformation);
         }
-        printf("Command Specific Information: ");
+        print_str("Command Specific Information: ");
         if (senseFields->fixedFormat)
         {
             printf("%08" PRIX32 "h\n", senseFields->fixedCommandSpecificInformation);
@@ -1673,7 +1673,7 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
         }
         if (senseFields->senseKeySpecificInformation.senseKeySpecificValid)
         {
-            printf("Sense Key Specific Information:\n\t");
+            print_str("Sense Key Specific Information:\n\t");
             switch (senseFields->senseKeySpecificInformation.type)
             {
             case SENSE_KEY_SPECIFIC_FIELD_POINTER:
@@ -1747,11 +1747,11 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
             case SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW:
                 if (senseFields->senseKeySpecificInformation.unitAttention.overflow)
                 {
-                    printf("Unit attention condition is due to Queue Overflow\n");
+                    print_str("Unit attention condition is due to Queue Overflow\n");
                 }
                 else
                 {
-                    printf("Unit attention condition is not due to a queue overflow\n");
+                    print_str("Unit attention condition is not due to a queue overflow\n");
                 }
                 break;
             case SENSE_KEY_SPECIFIC_UNKNOWN:
@@ -1768,15 +1768,15 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
             // look for other descriptor format data that we saved and can easily parse here
             if (senseFields->ataStatusReturnDescriptor.valid)
             {
-                printf("ATA Return Status:\n");
-                printf("\tExtend: ");
+                print_str("ATA Return Status:\n");
+                print_str("\tExtend: ");
                 if (senseFields->ataStatusReturnDescriptor.extend)
                 {
-                    printf("true\n");
+                    print_str("true\n");
                 }
                 else
                 {
-                    printf("false\n");
+                    print_str("false\n");
                 }
                 printf("\tError:            %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.error);
                 printf("\tSector Count Ext: %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCountExt);
@@ -1793,7 +1793,7 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
             // TODO: go through the other progress indications?
             if (senseFields->microCodeActivation.valid)
             {
-                printf("Microcode Activation Time:");
+                print_str("Microcode Activation Time:");
                 if (senseFields->microCodeActivation.microcodeActivationTimeSeconds > 0)
                 {
                     uint8_t hours   = UINT8_C(0);
@@ -1802,11 +1802,11 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
                     convert_Seconds_To_Displayable_Time(senseFields->microCodeActivation.microcodeActivationTimeSeconds,
                                                         M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
                     print_Time_To_Screen(M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
-                    printf("\n");
+                    print_str("\n");
                 }
                 else
                 {
-                    printf(" Unknown\n");
+                    print_str(" Unknown\n");
                 }
             }
         }
@@ -2084,7 +2084,7 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device)
                 // Setup flags for ATA passthrough if we know the SAT vendor/product/rev info
                 if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS    ") == 0)
                 {
-                    // printf("Found PMCS SATL\n");
+                    // print_str("Found PMCS SATL\n");
                     // PMCS is a PMC translator. Sometimes these also show up on HPE controllers.
                     // Tested:
                     // SAT Vendor ID: PMCS
@@ -2121,7 +2121,7 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device)
                 }
                 else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "LSI     ") == 0)
                 {
-                    // printf("Found LSI SATL\n");
+                    // print_str("Found LSI SATL\n");
                     // LSI/Avago/Broadcom HBAs
                     //  Got SAT Vendor ID as LSI
                     //  Got SAT Product ID as LSI SATL
@@ -2158,7 +2158,7 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device)
                     //  SAT Vendor ID: linux
                     //  SAT Product ID: libata
                     //  SAT Product Rev: 3.00
-                    // printf("Found linux SATL\n");
+                    // print_str("Found linux SATL\n");
                     device->drive_info.passThroughHacks.passthroughType            = ATA_PASSTHROUGH_SAT;
                     device->drive_info.passThroughHacks.hacksSetByReportedID       = true;
                     device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6    = true;
@@ -3269,7 +3269,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
         {
 #if defined(_DEBUG)
-            printf("Quiting device discovery early per DO_NOT_WAKE_DRIVE\n");
+            print_str("Quiting device discovery early per DO_NOT_WAKE_DRIVE\n");
 #endif
             // We actually need to try issuing an ATA/ATAPI identify to the drive to set the drive type...but I'm going
             // to try and ONLY do it for ATA drives with the if statement below...it should catch almost all cases
@@ -3656,7 +3656,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 {
                     if (device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
                     {
-                        // printf("VPD pages, check SAT info\n");
+                        // print_str("VPD pages, check SAT info\n");
                         // do not check the checkForSAT bool here. If we get here, then the device most likely reported
                         // support for it so it should be readable.
                         if (SUCCESS == check_SAT_Compliance_And_Set_Drive_Type(device))
@@ -3936,14 +3936,14 @@ eReturnValues fill_In_Device_Info(tDevice* device)
     {
         if (VERBOSITY_DEFAULT < device->deviceVerbosity)
         {
-            printf("Getting Standard Inquiry Data Failed\n");
+            print_str("Getting Standard Inquiry Data Failed\n");
         }
         ret = COMMAND_FAILURE;
     }
     safe_free_aligned(&inq_buf);
 
 #ifdef _DEBUG
-    printf("\nscsi helper\n");
+    print_str("\nscsi helper\n");
     printf("Drive type: %d\n", device->drive_info.drive_type);
     printf("Interface type: %d\n", device->drive_info.interface_type);
     printf("Media type: %d\n", device->drive_info.media_type);

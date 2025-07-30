@@ -81,7 +81,7 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             ptrSataH2DFis h2dFis = C_CAST(ptrSataH2DFis, fis);
             if (fisLengthBytes < H2D_FIS_LENGTH)
             {
-                printf("Invalid H2D length, cannot print.\n");
+                print_str("Invalid H2D length, cannot print.\n");
                 return;
             }
             printf("\tFisType:\t%02" PRIX8 " - H2D\n", h2dFis->fisType);
@@ -116,7 +116,7 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             ptrSataD2HFis d2hFis = C_CAST(ptrSataD2HFis, fis);
             if (fisLengthBytes < D2H_FIS_LENGTH)
             {
-                printf("Invalid D2H length, cannot print.\n");
+                print_str("Invalid D2H length, cannot print.\n");
                 return;
             }
             printf("\tFisType:\t%02" PRIX8 " - D2H\n", d2hFis->fisType);
@@ -152,7 +152,7 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             ptrSataPIOSetupFis d2hFis = C_CAST(ptrSataPIOSetupFis, fis);
             if (fisLengthBytes < PIO_SETUP_FIS_LENGTH)
             {
-                printf("Invalid PIO Setup length, cannot print.\n");
+                print_str("Invalid PIO Setup length, cannot print.\n");
                 return;
             }
             printf("\tFisType:\t%02" PRIX8 " - PIO Setup\n", d2hFis->fisType);
@@ -189,7 +189,7 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             ptrSataDMAActivateFis dmaActFis = C_CAST(ptrSataDMAActivateFis, fis);
             if (fisLengthBytes < DMA_ACTIVATE_FIS_LENGTH)
             {
-                printf("Invalid DMA Activate length, cannot print.\n");
+                print_str("Invalid DMA Activate length, cannot print.\n");
                 return;
             }
             printf("\tFisType:\t%02" PRIX8 " - DMA Activate\n", dmaActFis->fisType);
@@ -205,7 +205,7 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             ptrSataDMASetupFis dmaSetupFis = C_CAST(ptrSataDMASetupFis, fis);
             if (fisLengthBytes < DMA_SETUP_FIS_LENGTH)
             {
-                printf("Invalid DMA Setup length, cannot print.\n");
+                print_str("Invalid DMA Setup length, cannot print.\n");
                 return;
             }
             printf("\tFisType:\t%02" PRIX8 " - DMA Setup\n", dmaSetupFis->fisType);
@@ -230,7 +230,7 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             ptrSataDataFis dataFis = C_CAST(ptrSataDataFis, fis);
             if (fisLengthBytes < DATA_FIS_LENGTH_MIN || fisLengthBytes > DATA_FIS_LENGTH_MAX)
             {
-                printf("Invalid Data Fis length, cannot print.\n");
+                print_str("Invalid Data Fis length, cannot print.\n");
                 return;
             }
             printf("\tFisType:\t%02" PRIX8 " - Data\n", dataFis->fisType);
@@ -249,7 +249,7 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             ptrSataBISTActivateFis bistActFis = C_CAST(ptrSataBISTActivateFis, fis);
             if (fisLengthBytes < BIST_ACTIVATE_FIS_LENGTH)
             {
-                printf("Invalid BIST Activate length, cannot print.\n");
+                print_str("Invalid BIST Activate length, cannot print.\n");
                 return;
             }
             printf("\tFisType:\t%02" PRIX8 " - BIST Activate\n", bistActFis->fisType);
@@ -274,7 +274,7 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             ptrSataSetDeviceBitsFis devBitsFis = C_CAST(ptrSataSetDeviceBitsFis, fis);
             if (fisLengthBytes < SET_DEVICE_BITS_FIS_LENGTH)
             {
-                printf("Invalid Set Device Bits length, cannot print.\n");
+                print_str("Invalid Set Device Bits length, cannot print.\n");
                 return;
             }
             printf("\tFisType:\t%02" PRIX8 " - Set Device Bits\n", devBitsFis->fisType);
@@ -316,7 +316,7 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             {
                 printf("\tFIS[%2" PRIu8 "]:\t%02" PRIX8 "\n", fisIter, fisPtr[fisIter]);
             }
-            printf("\n");
+            print_str("\n");
             break;
         }
     }
