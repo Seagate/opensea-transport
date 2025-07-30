@@ -321,15 +321,38 @@ extern "C"
     typedef enum eATA_CMDSEnum
     {
         ATA_NOP_CMD                          = 0x00,
+        ATA_RESERVED_CMD_01                  = 0x01,
+        ATA_RESERVED_CMD_02                  = 0x02,
         ATA_CFA_REQUEST_SENSE                = 0x03,
         ATASET                               = 0x04,
+        ATA_RESERVED_CMD_04                  = 0x04,
+        ATA_RESERVED_CMD_05                  = 0x05,
         ATA_DATA_SET_MANAGEMENT_CMD          = 0x06,
         ATA_DATA_SET_MANAGEMENT_XL_CMD       = 0x07,
         ATAPI_RESET                          = 0x08,
         ATA_DEV_RESET                        = 0x08,
+        ATA_RESERVED_CMD_09                  = 0x09,
+        ATA_RESERVED_CMD_0A                  = 0x0A,
         ATA_REQUEST_SENSE_DATA               = 0x0B,
-        ATA_RECALIBRATE_CMD                  = 0x10,
+        ATA_RESERVED_CMD_0C                  = 0x0C,
+        ATA_RESERVED_CMD_0D                  = 0x0D,
+        ATA_RESERVED_CMD_0F                  = 0x0F,
+        ATA_RECALIBRATE_CMD                  = 0x10, // NOTE: low nibble use was retired
+        ATA_RESERVED_CMD_11                  = 0x11,
         ATA_GET_PHYSICAL_ELEMENT_STATUS      = 0x12,
+        ATA_RESERVED_CMD_13                  = 0x13,
+        ATA_RESERVED_CMD_14                  = 0x14,
+        ATA_RESERVED_CMD_15                  = 0x15,
+        ATA_RESERVED_CMD_16                  = 0x16,
+        ATA_RESERVED_CMD_17                  = 0x17,
+        ATA_RESERVED_CMD_18                  = 0x18,
+        ATA_RESERVED_CMD_19                  = 0x19,
+        ATA_RESERVED_CMD_1A                  = 0x1A,
+        ATA_RESERVED_CMD_1B                  = 0x1B,
+        ATA_RESERVED_CMD_1C                  = 0x1C,
+        ATA_RESERVED_CMD_1D                  = 0x1D,
+        ATA_RESERVED_CMD_1E                  = 0x1E,
+        ATA_RESERVED_CMD_1F                  = 0x1F,
         ATA_READ_SECT                        = 0x20,
         ATA_READ_SECT_NORETRY                = 0x21,
         ATA_READ_LONG_RETRY_CMD              = 0x22,
@@ -338,9 +361,13 @@ extern "C"
         ATA_READ_DMA_EXT                     = 0x25,
         ATA_READ_DMA_QUE_EXT                 = 0x26,
         ATA_READ_MAX_ADDRESS_EXT             = 0x27,
+        ATA_RESERVED_CMD_28                  = 0x28,
         ATA_READ_READ_MULTIPLE_EXT           = 0x29,
         ATA_READ_STREAM_DMA_EXT              = 0x2A,
         ATA_READ_STREAM_EXT                  = 0x2B,
+        ATA_RESERVED_CMD_2C                  = 0x2C,
+        ATA_RESERVED_CMD_2D                  = 0x2D,
+        ATA_RESERVED_CMD_2E                  = 0x2E,
         ATA_READ_LOG_EXT                     = 0x2F,
         ATA_WRITE_SECT                       = 0x30,
         ATA_WRITE_SECT_NORETRY               = 0x31,
@@ -361,13 +388,29 @@ extern "C"
         ATA_READ_VERIFY_RETRY                = 0x40,
         ATA_READ_VERIFY_NORETRY              = 0x41,
         ATA_READ_VERIFY_EXT                  = 0x42,
+        ATA_RESERVED_CMD_43                  = 0x43,
         ATA_ZEROS_EXT                        = 0x44,
         ATA_WRITE_UNCORRECTABLE_EXT          = 0x45,
+        ATA_RESERVED_CMD_46                  = 0x46,
         ATA_READ_LOG_EXT_DMA                 = 0x47,
+        ATA_RESERVED_CMD_48                  = 0x48,
+        ATA_RESERVED_CMD_49                  = 0x49,
         ATA_ZONE_MANAGEMENT_IN               = 0x4A,
+        ATA_RESERVED_CMD_4B                  = 0x4B,
+        ATA_RESERVED_CMD_4C                  = 0x4C,
+        ATA_RESERVED_CMD_4D                  = 0x4D,
+        ATA_RESERVED_CMD_4F                  = 0x4F,
         ATA_FORMAT_TRACK_CMD                 = 0x50,
         ATA_CONFIGURE_STREAM                 = 0x51,
+        ATA_RESERVED_CMD_52                  = 0x52,
+        ATA_RESERVED_CMD_53                  = 0x53,
+        ATA_RESERVED_CMD_54                  = 0x54,
+        ATA_RESERVED_CMD_55                  = 0x55,
+        ATA_RESERVED_CMD_56                  = 0x56,
         ATA_WRITE_LOG_EXT_DMA                = 0x57,
+        ATA_RESERVED_CMD_58                  = 0x58,
+        ATA_RESERVED_CMD_59                  = 0x59,
+        ATA_RESERVED_CMD_5A                  = 0x5A,
         ATA_TRUSTED_NON_DATA                 = 0x5B,
         ATA_TRUSTED_RECEIVE                  = 0x5C,
         ATA_TRUSTED_RECEIVE_DMA              = 0x5D,
@@ -375,16 +418,52 @@ extern "C"
         ATA_TRUSTED_SEND_DMA                 = 0x5F,
         ATA_READ_FPDMA_QUEUED_CMD            = 0x60, // Added _CMD because FreeBSD had a symbol conflict
         ATA_WRITE_FPDMA_QUEUED_CMD           = 0x61,
+        ATA_RESERVED_CMD_62                  = 0x62,
         ATA_FPDMA_NON_DATA                   = 0x63,
         ATA_SEND_FPDMA                       = 0x64,
         ATA_RECEIVE_FPDMA                    = 0x65,
-        ATA_SEEK_CMD                         = 0x70,
+        ATA_RESERVED_CMD_66                  = 0x66,
+        ATA_RESERVED_CMD_67                  = 0x67,
+        ATA_WRITE_GATHERED_EXT               = 0x68,
+        ATA_RESERVED_CMD_69                  = 0x69,
+        ATA_RESERVED_CMD_6A                  = 0x6A,
+        ATA_RESERVED_CMD_6B                  = 0x6B,
+        ATA_RESERVED_CMD_6C                  = 0x6C,
+        ATA_RESERVED_CMD_6D                  = 0x6D,
+        ATA_RESERVED_CMD_6E                  = 0x6E,
+        ATA_RESERVED_CMD_6F                  = 0x6F,
+        ATA_SEEK_CMD                         = 0x70, // low nibble use retired
+        ATA_RESERVED_CMD_71                  = 0x71,
+        ATA_RESERVED_CMD_72                  = 0x72,
+        ATA_RESERVED_CMD_73                  = 0x73,
+        ATA_RESERVED_CMD_74                  = 0x74,
+        ATA_RESERVED_CMD_75                  = 0x75,
+        ATA_RESERVED_CMD_76                  = 0x76,
         ATA_SET_DATE_AND_TIME_EXT            = 0x77,
         ATA_ACCESSABLE_MAX_ADDR              = 0x78,
+        ATA_RESERVED_CMD_79                  = 0x79,
+        ATA_RESERVED_CMD_7A                  = 0x7A,
+        ATA_RESERVED_CMD_7B                  = 0x7B,
         ATA_REMOVE_AND_TRUNCATE              = 0x7C,
         ATA_RESTORE_AND_REBUILD              = 0x7D,
         ATA_REMOVE_ELEMENT_AND_MODIFY_ZONES  = 0x7E,
+        ATA_RESERVED_CMD_7F                  = 0x7F,
+        ATA_VENDOR_SPECIFIC_CMD_80           = 0x80,
+        ATA_VENDOR_SPECIFIC_CMD_81           = 0x81,
+        ATA_VENDOR_SPECIFIC_CMD_82           = 0x82,
+        ATA_VENDOR_SPECIFIC_CMD_83           = 0x83,
+        ATA_VENDOR_SPECIFIC_CMD_84           = 0x84,
+        ATA_VENDOR_SPECIFIC_CMD_85           = 0x85,
+        ATA_VENDOR_SPECIFIC_CMD_86           = 0x86,
         ATA_CFA_TRANSLATE_SECTOR             = 0x87,
+        ATA_VENDOR_SPECIFIC_CMD_88           = 0x88,
+        ATA_VENDOR_SPECIFIC_CMD_89           = 0x89,
+        ATA_VENDOR_SPECIFIC_CMD_8A           = 0x8A,
+        ATA_VENDOR_SPECIFIC_CMD_8B           = 0x8B,
+        ATA_VENDOR_SPECIFIC_CMD_8C           = 0x8C,
+        ATA_VENDOR_SPECIFIC_CMD_8D           = 0x8D,
+        ATA_VENDOR_SPECIFIC_CMD_8E           = 0x8E,
+        ATA_VENDOR_SPECIFIC_CMD_8F           = 0x8F,
         ATA_EXEC_DRV_DIAG                    = 0x90,
         ATA_INIT_DRV_PARAM                   = 0x91,
         ATA_DLND_CODE                        = 0x92,
@@ -397,18 +476,48 @@ extern "C"
         ATA_LEGACY_ALT_IDLE                  = 0x97,
         ATA_LEGACY_ALT_CHECK_POWER_MODE      = 0x98,
         ATA_LEGACY_ALT_SLEEP                 = 0x99,
+        ATA_VENDOR_SPECIFIC_CMD_9A           = 0x9A,
+        ATA_RESERVED_CMD_9B                  = 0x9B,
+        ATA_RESERVED_CMD_9C                  = 0x9C,
+        ATA_RESERVED_CMD_9D                  = 0x9D,
+        ATA_RESERVED_CMD_9E                  = 0x9E,
         ATA_ZONE_MANAGEMENT_OUT              = 0x9F,
         ATAPI_COMMAND                        = 0xA0,
         ATAPI_IDENTIFY                       = 0xA1,
+        ATA_CMD_SERVICE                      = 0xA2,
+        ATA_RESERVED_CMD_A3                  = 0xA3,
+        ATA_RESERVED_CMD_A4                  = 0xA4,
+        ATA_RESERVED_CMD_A5                  = 0xA5,
+        ATA_RESERVED_CMD_A6                  = 0xA6,
+        ATA_RESERVED_CMD_A7                  = 0xA7,
+        ATA_RESERVED_CMD_A8                  = 0xA8,
+        ATA_RESERVED_CMD_A9                  = 0xA9,
+        ATA_RESERVED_CMD_AA                  = 0xAA,
+        ATA_RESERVED_CMD_AB                  = 0xAB,
+        ATA_RESERVED_CMD_AC                  = 0xAC,
+        ATA_RESERVED_CMD_AD                  = 0xAD,
+        ATA_RESERVED_CMD_AE                  = 0xAE,
+        ATA_RESERVED_CMD_AF                  = 0xAF,
         ATA_SMART_CMD                        = 0xB0,
         ATA_DCO                              = 0xB1,
         ATA_SET_SECTOR_CONFIG_EXT            = 0xB2,
+        ATA_RESERVED_CMD_B3                  = 0xB3,
         ATA_SANITIZE                         = 0xB4,
+        ATA_RESERVED_CMD_B5                  = 0xB5,
         ATA_NV_CACHE                         = 0xB6,
         ATA_CFA_EXTENDED_IDENTIFY            = 0xB7, // Feature 0x0001
+        ATA_RESERVED_CMD_CFA_B8              = 0xB8,
         ATA_CFA_KEY_MANAGEMENT               = 0xB9,
+        ATA_RESERVED_CMD_CFA_BA              = 0xBA,
         ATA_CFA_STREAMING_PERFORMANCE        = 0xBB,
+        ATA_RESERVED_CMD_BC                  = 0xBC,
+        ATA_RESERVED_CMD_BD                  = 0xBD,
+        ATA_RESERVED_CMD_BE                  = 0xBE,
+        ATA_RESERVED_CMD_BF                  = 0xBF,
         ATA_CFA_ERASE_SECTORS                = 0xC0,
+        ATA_VENDOR_SPECIFIC_CMD_C1           = 0xC1,
+        ATA_VENDOR_SPECIFIC_CMD_C2           = 0xC2,
+        ATA_VENDOR_SPECIFIC_CMD_C3           = 0xC3,
         ATA_READ_MULTIPLE_CMD                = 0xC4,
         ATA_WRITE_MULTIPLE_CMD               = 0xC5,
         ATA_SET_MULTIPLE                     = 0xC6,
@@ -418,8 +527,19 @@ extern "C"
         ATA_WRITE_DMA_RETRY_CMD              = 0xCA,
         ATA_WRITE_DMA_NORETRY                = 0xCB,
         ATA_WRITE_DMA_QUEUED_CMD             = 0xCC,
-        ATA_WRITE_MULTIPLE_FUA_EXT           = 0xCE,
         ATA_CFA_WRITE_MULTIPLE_WITHOUT_ERASE = 0xCD,
+        ATA_WRITE_MULTIPLE_FUA_EXT           = 0xCE,
+        ATA_RESERVED_CMD_CF                  = 0xCF,
+        ATA_RESERVED_CMD_D0                  = 0xD0,
+        ATA_CHECK_MEDIA_CARD_TYPE            = 0xD1,
+        ATA_RESERVED_CMD_D2                  = 0xD2,
+        ATA_RESERVED_CMD_D3                  = 0xD3,
+        ATA_RESERVED_CMD_D4                  = 0xD4,
+        ATA_RESERVED_CMD_D5                  = 0xD5,
+        ATA_RESERVED_CMD_D6                  = 0xD6,
+        ATA_RESERVED_CMD_D7                  = 0xD7,
+        ATA_RESERVED_CMD_D8                  = 0xD8,
+        ATA_RESERVED_CMD_D9                  = 0xD9,
         ATA_GET_MEDIA_STATUS                 = 0xDA,
         ATA_ACK_MEDIA_CHANGE                 = 0xDB,
         ATA_POST_BOOT                        = 0xDC,
@@ -443,6 +563,7 @@ extern "C"
         ATA_MEDIA_EJECT                      = 0xED,
         ATA_IDENTIFY_DMA                     = 0xEE,
         ATA_SET_FEATURE                      = 0xEF,
+        ATA_VENDOR_SPECIFIC_CMD_F0           = 0xF0,
         ATA_SECURITY_SET_PASS                = 0xF1,
         ATA_SECURITY_UNLOCK_CMD              = 0xF2,
         ATA_SECURITY_ERASE_PREP              = 0xF3,
@@ -451,10 +572,17 @@ extern "C"
         ATA_CFA_WEAR_LEVEL                   = 0xF5,
         ATA_SECURITY_DISABLE_PASS            = 0xF6,
         ATA_LEGACY_TRUSTED_RECEIVE           = 0xF7,
+        ATA_VENDOR_SPECIFIC_CMD_F7           = 0xF7,
         ATA_READ_MAX_ADDRESS                 = 0xF8,
         ATA_SET_MAX                          = 0xF9,
-        ATA_LEGACY_TRUSTED_SEND              = 0xFB,
-        ATA_SEEK_EXT                         = 0xFC,
+        ATA_VENDOR_SPECIFIC_CMD_FA           = 0xFA,
+        ATA_VENDOR_SPECIFIC_CMD_FB           = 0xFB,
+        ATA_LEGACY_TRUSTED_SEND              = 0xFB, // Seagate unique?
+        ATA_SEEK_EXT                         = 0xFC, // Seagate unique?
+        ATA_VENDOR_SPECIFIC_CMD_FC           = 0xFC,
+        ATA_VENDOR_SPECIFIC_CMD_FD           = 0xFD,
+        ATA_VENDOR_SPECIFIC_CMD_FE           = 0xFE,
+        ATA_VENDOR_SPECIFIC_CMD_FF           = 0xFF
     } eATA_CMDS;
 
     typedef enum eNCQNonDataSubCommandsEnum
@@ -496,7 +624,6 @@ extern "C"
         SCT_VENDOR                 = 0x06,
         SCT_RESERVED_FOR_SATA      = 0x07,
         // as new things are added to the ATA spec, add them from here
-        UNKNOWN_ACTION
     } eAtaSCTActionCodes;
 
     typedef enum eSCTRWLModeEnum
@@ -508,7 +635,6 @@ extern "C"
 
     typedef enum eAtaCmdTypeEnum
     {
-        ATA_CMD_TYPE_UNKNOWN,
         ATA_CMD_TYPE_TASKFILE,          // 28bit command
         ATA_CMD_TYPE_EXTENDED_TASKFILE, // 48bit command, minus AUX and ICC registers (which usually cannot be passed
                                         // through anyways)
@@ -516,9 +642,6 @@ extern "C"
                                         // 32B CDB. This is LIKELY not supported as it has yet to be seen "in the wild".
                                         // Avoid trying these commands since 90% of HBAs tested won't allow FPDMA
                                         // protocol to passthrough anyways - TJE
-        ATA_CMD_TYPE_SOFT_RESET,
-        ATA_CMD_TYPE_HARD_RESET,
-        ATA_CMD_TYPE_PACKET
     } eAtaCmdType;
 
     typedef enum eAtaProtocolEnum
@@ -881,18 +1004,18 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
     static M_INLINE ataPassthroughCommand create_ata_pio_cmd(tDevice*               device,
-                                                             uint8_t                opcode,
-                                                             bool                   ext,
+                                                             eATA_CMDS              opcode,
+                                                             eAtaCmdType            ext,
                                                              eDataTransferDirection direction,
                                                              uint16_t               sectorCount,
                                                              const uint8_t*         ptrdata,
                                                              uint32_t               dataSize)
     {
         ataPassthroughCommand pio;
-        pio.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        pio.commandType       = ext;
         pio.commandDirection  = direction;
         pio.commadProtocol    = ATA_PROTOCOL_PIO;
-        pio.tfr.CommandStatus = opcode;
+        pio.tfr.CommandStatus = M_STATIC_CAST(uint8_t, opcode);
         pio.tfr.ErrorFeature  = UINT8_C(0);
         pio.tfr.LbaLow        = UINT8_C(0);
         pio.tfr.LbaMid        = UINT8_C(0);
@@ -903,7 +1026,7 @@ extern "C"
         pio.tfr.LbaHi48       = UINT8_C(0);
         pio.tfr.Feature48     = UINT8_C(0);
         pio.tfr.SectorCount   = M_Byte0(sectorCount);
-        pio.tfr.SectorCount48 = ext ? M_Byte1(sectorCount) : UINT8_C(0);
+        pio.tfr.SectorCount48 = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte1(sectorCount) : UINT8_C(0);
         pio.tfr.icc           = UINT8_C(0);
         pio.tfr.DeviceControl = UINT8_C(0);
         pio.tfr.aux1          = UINT8_C(0);
@@ -945,8 +1068,8 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
     static M_INLINE ataPassthroughCommand create_ata_pio_in_cmd(tDevice*       device,
-                                                                uint8_t        opcode,
-                                                                bool           ext,
+                                                                eATA_CMDS      opcode,
+                                                                eAtaCmdType    ext,
                                                                 uint16_t       sectorCount,
                                                                 const uint8_t* ptrdata,
                                                                 uint32_t       dataSize)
@@ -959,7 +1082,7 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
     static M_INLINE ataPassthroughCommand create_ata_pio_out_cmd(tDevice*       device,
-                                                                 uint8_t        opcode,
+                                                                 eATA_CMDS      opcode,
                                                                  bool           ext,
                                                                  uint16_t       sectorCount,
                                                                  const uint8_t* ptrdata,
@@ -973,8 +1096,8 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(7, 8)
     static M_INLINE ataPassthroughCommand create_ata_pio_lba_cmd(tDevice*               device,
-                                                                 uint8_t                opcode,
-                                                                 bool                   ext,
+                                                                 eATA_CMDS              opcode,
+                                                                 eAtaCmdType            ext,
                                                                  eDataTransferDirection direction,
                                                                  uint16_t               sectorCount,
                                                                  uint64_t               lba,
@@ -982,44 +1105,44 @@ extern "C"
                                                                  uint32_t               dataSize)
     {
         ataPassthroughCommand pio;
-        pio.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
-        pio.commandDirection         = direction;
-        pio.commadProtocol           = ATA_PROTOCOL_PIO;
-        pio.tfr.CommandStatus        = opcode;
-        pio.tfr.ErrorFeature         = UINT8_C(0);
-        pio.tfr.LbaLow               = M_Byte0(lba);
-        pio.tfr.LbaMid               = M_Byte1(lba);
-        pio.tfr.LbaHi                = M_Byte2(lba);
-        pio.tfr.DeviceHead           = LBA_MODE_BIT | (ext ? UINT8_C(0) : M_Nibble6(lba));
-        pio.tfr.LbaLow48             = ext ? M_Byte3(lba) : UINT8_C(0);
-        pio.tfr.LbaMid48             = ext ? M_Byte4(lba) : UINT8_C(0);
-        pio.tfr.LbaHi48              = ext ? M_Byte5(lba) : UINT8_C(0);
-        pio.tfr.Feature48            = UINT8_C(0);
-        pio.tfr.SectorCount          = M_Byte0(sectorCount);
-        pio.tfr.SectorCount48        = ext ? M_Byte1(sectorCount) : UINT8_C(0);
-        pio.tfr.icc                  = UINT8_C(0);
-        pio.tfr.DeviceControl        = UINT8_C(0);
-        pio.tfr.aux1                 = UINT8_C(0);
-        pio.tfr.aux2                 = UINT8_C(0);
-        pio.tfr.aux3                 = UINT8_C(0);
-        pio.tfr.aux4                 = UINT8_C(0);
-        pio.rtfr.error               = UINT8_C(0);
-        pio.rtfr.secCntExt           = UINT8_C(0);
-        pio.rtfr.secCnt              = UINT8_C(0);
-        pio.rtfr.lbaLowExt           = UINT8_C(0);
-        pio.rtfr.lbaLow              = UINT8_C(0);
-        pio.rtfr.lbaMidExt           = UINT8_C(0);
-        pio.rtfr.lbaMid              = UINT8_C(0);
-        pio.rtfr.lbaHiExt            = UINT8_C(0);
-        pio.rtfr.lbaHi               = UINT8_C(0);
-        pio.rtfr.device              = UINT8_C(0);
-        pio.rtfr.status              = UINT8_C(0);
-        pio.ptrData                  = M_CONST_CAST(uint8_t*, ptrdata);
-        pio.dataSize                 = dataSize;
-        pio.ptrSenseData             = device->drive_info.lastCommandSenseData;
-        pio.senseDataSize            = SPC3_SENSE_LEN;
-        pio.timeout                  = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
-        pio.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
+        pio.commandType       = ext;
+        pio.commandDirection  = direction;
+        pio.commadProtocol    = ATA_PROTOCOL_PIO;
+        pio.tfr.CommandStatus = M_STATIC_CAST(uint8_t, opcode);
+        pio.tfr.ErrorFeature  = UINT8_C(0);
+        pio.tfr.LbaLow        = M_Byte0(lba);
+        pio.tfr.LbaMid        = M_Byte1(lba);
+        pio.tfr.LbaHi         = M_Byte2(lba);
+        pio.tfr.DeviceHead    = LBA_MODE_BIT | (ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? UINT8_C(0) : M_Nibble6(lba));
+        pio.tfr.LbaLow48      = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte3(lba) : UINT8_C(0);
+        pio.tfr.LbaMid48      = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte4(lba) : UINT8_C(0);
+        pio.tfr.LbaHi48       = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte5(lba) : UINT8_C(0);
+        pio.tfr.Feature48     = UINT8_C(0);
+        pio.tfr.SectorCount   = M_Byte0(sectorCount);
+        pio.tfr.SectorCount48 = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte1(sectorCount) : UINT8_C(0);
+        pio.tfr.icc           = UINT8_C(0);
+        pio.tfr.DeviceControl = UINT8_C(0);
+        pio.tfr.aux1          = UINT8_C(0);
+        pio.tfr.aux2          = UINT8_C(0);
+        pio.tfr.aux3          = UINT8_C(0);
+        pio.tfr.aux4          = UINT8_C(0);
+        pio.rtfr.error        = UINT8_C(0);
+        pio.rtfr.secCntExt    = UINT8_C(0);
+        pio.rtfr.secCnt       = UINT8_C(0);
+        pio.rtfr.lbaLowExt    = UINT8_C(0);
+        pio.rtfr.lbaLow       = UINT8_C(0);
+        pio.rtfr.lbaMidExt    = UINT8_C(0);
+        pio.rtfr.lbaMid       = UINT8_C(0);
+        pio.rtfr.lbaHiExt     = UINT8_C(0);
+        pio.rtfr.lbaHi        = UINT8_C(0);
+        pio.rtfr.device       = UINT8_C(0);
+        pio.rtfr.status       = UINT8_C(0);
+        pio.ptrData           = M_CONST_CAST(uint8_t*, ptrdata);
+        pio.dataSize          = dataSize;
+        pio.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        pio.senseDataSize     = SPC3_SENSE_LEN;
+        pio.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
+        pio.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
         pio.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT; /* NOTE: Unlikely this needs change, but may need
                                                                    changing in certain situations */
         pio.multipleCount    = UINT8_C(0);
@@ -1040,8 +1163,8 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
     static M_INLINE ataPassthroughCommand create_ata_pio_read_lba_cmd(tDevice*       device,
-                                                                      uint8_t        opcode,
-                                                                      bool           ext,
+                                                                      eATA_CMDS      opcode,
+                                                                      eAtaCmdType    ext,
                                                                       uint16_t       sectorCount,
                                                                       uint64_t       lba,
                                                                       const uint8_t* ptrdata,
@@ -1055,8 +1178,8 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
     static M_INLINE ataPassthroughCommand create_ata_pio_write_lba_cmd(tDevice*       device,
-                                                                       uint8_t        opcode,
-                                                                       bool           ext,
+                                                                       eATA_CMDS      opcode,
+                                                                       eAtaCmdType    ext,
                                                                        uint16_t       sectorCount,
                                                                        uint64_t       lba,
                                                                        const uint8_t* ptrdata,
@@ -1082,18 +1205,18 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
     static M_INLINE ataPassthroughCommand create_ata_dma_cmd(tDevice*               device,
-                                                             uint8_t                opcode,
-                                                             bool                   ext,
+                                                             eATA_CMDS              opcode,
+                                                             eAtaCmdType            ext,
                                                              eDataTransferDirection direction,
                                                              uint16_t               sectorCount,
                                                              const uint8_t*         ptrdata,
                                                              uint32_t               dataSize)
     {
         ataPassthroughCommand dma;
-        dma.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        dma.commandType       = ext;
         dma.commandDirection  = direction;
         dma.commadProtocol    = get_ata_pt_dma_protocol(device);
-        dma.tfr.CommandStatus = opcode;
+        dma.tfr.CommandStatus = M_STATIC_CAST(uint8_t, opcode);
         dma.tfr.ErrorFeature  = UINT8_C(0);
         dma.tfr.LbaLow        = UINT8_C(0);
         dma.tfr.LbaMid        = UINT8_C(0);
@@ -1104,7 +1227,7 @@ extern "C"
         dma.tfr.LbaHi48       = UINT8_C(0);
         dma.tfr.Feature48     = UINT8_C(0);
         dma.tfr.SectorCount   = M_Byte0(sectorCount);
-        dma.tfr.SectorCount48 = ext ? M_Byte1(sectorCount) : UINT8_C(0);
+        dma.tfr.SectorCount48 = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte1(sectorCount) : UINT8_C(0);
         dma.tfr.icc           = UINT8_C(0);
         dma.tfr.DeviceControl = UINT8_C(0);
         dma.tfr.aux1          = UINT8_C(0);
@@ -1144,8 +1267,8 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(7, 8)
     static M_INLINE ataPassthroughCommand create_ata_dma_lba_cmd(tDevice*               device,
-                                                                 uint8_t                opcode,
-                                                                 bool                   ext,
+                                                                 eATA_CMDS              opcode,
+                                                                 eAtaCmdType            ext,
                                                                  eDataTransferDirection direction,
                                                                  uint16_t               sectorCount,
                                                                  uint64_t               lba,
@@ -1153,44 +1276,44 @@ extern "C"
                                                                  uint32_t               dataSize)
     {
         ataPassthroughCommand dma;
-        dma.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
-        dma.commandDirection         = direction;
-        dma.commadProtocol           = get_ata_pt_dma_protocol(device);
-        dma.tfr.CommandStatus        = opcode;
-        dma.tfr.ErrorFeature         = UINT8_C(0);
-        dma.tfr.LbaLow               = M_Byte0(lba);
-        dma.tfr.LbaMid               = M_Byte1(lba);
-        dma.tfr.LbaHi                = M_Byte2(lba);
-        dma.tfr.DeviceHead           = LBA_MODE_BIT | (ext ? UINT8_C(0) : M_Nibble6(lba));
-        dma.tfr.LbaLow48             = ext ? M_Byte3(lba) : UINT8_C(0);
-        dma.tfr.LbaMid48             = ext ? M_Byte4(lba) : UINT8_C(0);
-        dma.tfr.LbaHi48              = ext ? M_Byte5(lba) : UINT8_C(0);
-        dma.tfr.Feature48            = UINT8_C(0);
-        dma.tfr.SectorCount          = M_Byte0(sectorCount);
-        dma.tfr.SectorCount48        = ext ? M_Byte1(sectorCount) : UINT8_C(0);
-        dma.tfr.icc                  = UINT8_C(0);
-        dma.tfr.DeviceControl        = UINT8_C(0);
-        dma.tfr.aux1                 = UINT8_C(0);
-        dma.tfr.aux2                 = UINT8_C(0);
-        dma.tfr.aux3                 = UINT8_C(0);
-        dma.tfr.aux4                 = UINT8_C(0);
-        dma.rtfr.error               = UINT8_C(0);
-        dma.rtfr.secCntExt           = UINT8_C(0);
-        dma.rtfr.secCnt              = UINT8_C(0);
-        dma.rtfr.lbaLowExt           = UINT8_C(0);
-        dma.rtfr.lbaLow              = UINT8_C(0);
-        dma.rtfr.lbaMidExt           = UINT8_C(0);
-        dma.rtfr.lbaMid              = UINT8_C(0);
-        dma.rtfr.lbaHiExt            = UINT8_C(0);
-        dma.rtfr.lbaHi               = UINT8_C(0);
-        dma.rtfr.device              = UINT8_C(0);
-        dma.rtfr.status              = UINT8_C(0);
-        dma.ptrData                  = M_CONST_CAST(uint8_t*, ptrdata);
-        dma.dataSize                 = dataSize;
-        dma.ptrSenseData             = device->drive_info.lastCommandSenseData;
-        dma.senseDataSize            = SPC3_SENSE_LEN;
-        dma.timeout                  = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
-        dma.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
+        dma.commandType       = ext;
+        dma.commandDirection  = direction;
+        dma.commadProtocol    = get_ata_pt_dma_protocol(device);
+        dma.tfr.CommandStatus = M_STATIC_CAST(uint8_t, opcode);
+        dma.tfr.ErrorFeature  = UINT8_C(0);
+        dma.tfr.LbaLow        = M_Byte0(lba);
+        dma.tfr.LbaMid        = M_Byte1(lba);
+        dma.tfr.LbaHi         = M_Byte2(lba);
+        dma.tfr.DeviceHead    = LBA_MODE_BIT | (ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? UINT8_C(0) : M_Nibble6(lba));
+        dma.tfr.LbaLow48      = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte3(lba) : UINT8_C(0);
+        dma.tfr.LbaMid48      = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte4(lba) : UINT8_C(0);
+        dma.tfr.LbaHi48       = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte5(lba) : UINT8_C(0);
+        dma.tfr.Feature48     = UINT8_C(0);
+        dma.tfr.SectorCount   = M_Byte0(sectorCount);
+        dma.tfr.SectorCount48 = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte1(sectorCount) : UINT8_C(0);
+        dma.tfr.icc           = UINT8_C(0);
+        dma.tfr.DeviceControl = UINT8_C(0);
+        dma.tfr.aux1          = UINT8_C(0);
+        dma.tfr.aux2          = UINT8_C(0);
+        dma.tfr.aux3          = UINT8_C(0);
+        dma.tfr.aux4          = UINT8_C(0);
+        dma.rtfr.error        = UINT8_C(0);
+        dma.rtfr.secCntExt    = UINT8_C(0);
+        dma.rtfr.secCnt       = UINT8_C(0);
+        dma.rtfr.lbaLowExt    = UINT8_C(0);
+        dma.rtfr.lbaLow       = UINT8_C(0);
+        dma.rtfr.lbaMidExt    = UINT8_C(0);
+        dma.rtfr.lbaMid       = UINT8_C(0);
+        dma.rtfr.lbaHiExt     = UINT8_C(0);
+        dma.rtfr.lbaHi        = UINT8_C(0);
+        dma.rtfr.device       = UINT8_C(0);
+        dma.rtfr.status       = UINT8_C(0);
+        dma.ptrData           = M_CONST_CAST(uint8_t*, ptrdata);
+        dma.dataSize          = dataSize;
+        dma.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        dma.senseDataSize     = SPC3_SENSE_LEN;
+        dma.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
+        dma.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
         dma.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
         dma.multipleCount            = UINT8_C(0);
         dma.needRTFRs                = false;
@@ -1210,8 +1333,8 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
     static M_INLINE ataPassthroughCommand create_ata_dma_in_cmd(tDevice*       device,
-                                                                uint8_t        opcode,
-                                                                bool           ext,
+                                                                eATA_CMDS      opcode,
+                                                                eAtaCmdType    ext,
                                                                 uint16_t       sectorCount,
                                                                 const uint8_t* ptrdata,
                                                                 uint32_t       dataSize)
@@ -1223,8 +1346,8 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     static M_INLINE ataPassthroughCommand create_ata_dma_out_cmd(tDevice*       device,
-                                                                 uint8_t        opcode,
-                                                                 bool           ext,
+                                                                 eATA_CMDS      opcode,
+                                                                 eAtaCmdType    ext,
                                                                  uint16_t       sectorCount,
                                                                  const uint8_t* ptrdata,
                                                                  uint32_t       dataSize)
@@ -1237,8 +1360,8 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
     static M_INLINE ataPassthroughCommand create_ata_dma_read_lba_cmd(tDevice*       device,
-                                                                      uint8_t        opcode,
-                                                                      bool           ext,
+                                                                      eATA_CMDS      opcode,
+                                                                      eAtaCmdType    ext,
                                                                       uint16_t       sectorCount,
                                                                       uint64_t       lba,
                                                                       const uint8_t* ptrdata,
@@ -1251,13 +1374,13 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_dma_write_lba_cmd(tDevice* device,
-                                                                       uint8_t  opcode,
-                                                                       bool     ext,
-                                                                       uint16_t sectorCount,
-                                                                       uint64_t lba,
-                                                                       uint8_t* ptrdata,
-                                                                       uint32_t dataSize)
+    static M_INLINE ataPassthroughCommand create_ata_dma_write_lba_cmd(tDevice*    device,
+                                                                       eATA_CMDS   opcode,
+                                                                       eAtaCmdType ext,
+                                                                       uint16_t    sectorCount,
+                                                                       uint64_t    lba,
+                                                                       uint8_t*    ptrdata,
+                                                                       uint32_t    dataSize)
     {
         return create_ata_dma_lba_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_OUT),
                                       sectorCount, lba, ptrdata, dataSize);
@@ -1265,16 +1388,16 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    static M_INLINE ataPassthroughCommand create_ata_nondata_cmd(tDevice* device,
-                                                                 uint8_t  opcode,
-                                                                 bool     ext,
-                                                                 bool     needRTFRs)
+    static M_INLINE ataPassthroughCommand create_ata_nondata_cmd(tDevice*    device,
+                                                                 eATA_CMDS   opcode,
+                                                                 eAtaCmdType ext,
+                                                                 bool        needRTFRs)
     {
         ataPassthroughCommand nodata;
-        nodata.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        nodata.commandType       = ext;
         nodata.commandDirection  = M_ACCESS_ENUM(eDataTransferDirection, XFER_NO_DATA);
         nodata.commadProtocol    = ATA_PROTOCOL_NO_DATA;
-        nodata.tfr.CommandStatus = opcode;
+        nodata.tfr.CommandStatus = M_STATIC_CAST(uint8_t, opcode);
         nodata.tfr.ErrorFeature  = UINT8_C(0);
         nodata.tfr.LbaLow        = UINT8_C(0);
         nodata.tfr.LbaMid        = UINT8_C(0);
@@ -1323,13 +1446,13 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    static M_INLINE ataPassthroughCommand create_ata_dev_diag_cmd(tDevice* device, uint8_t opcode, bool ext)
+    static M_INLINE ataPassthroughCommand create_ata_dev_diag_cmd(tDevice* device, eATA_CMDS opcode, eAtaCmdType ext)
     {
         ataPassthroughCommand nodata;
-        nodata.commandType       = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        nodata.commandType       = ext;
         nodata.commandDirection  = M_ACCESS_ENUM(eDataTransferDirection, XFER_NO_DATA);
         nodata.commadProtocol    = ATA_PROTOCOL_DEV_DIAG;
-        nodata.tfr.CommandStatus = opcode;
+        nodata.tfr.CommandStatus = M_STATIC_CAST(uint8_t, opcode);
         nodata.tfr.ErrorFeature  = UINT8_C(0);
         nodata.tfr.LbaLow        = UINT8_C(0);
         nodata.tfr.LbaMid        = UINT8_C(0);
@@ -1380,8 +1503,8 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(9, 10)
     static M_INLINE ataPassthroughCommand create_ata_queued_lba_cmd(tDevice*               device,
-                                                                    uint8_t                opcode,
-                                                                    bool                   ext,
+                                                                    eATA_CMDS              opcode,
+                                                                    eAtaCmdType            ext,
                                                                     bool                   ncq,
                                                                     uint8_t                tag,
                                                                     eDataTransferDirection direction,
@@ -1391,44 +1514,44 @@ extern "C"
                                                                     uint32_t               dataSize)
     {
         ataPassthroughCommand dmaq;
-        dmaq.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
-        dmaq.commandDirection         = direction;
-        dmaq.commadProtocol           = ncq ? ATA_PROTOCOL_DMA_FPDMA : ATA_PROTOCOL_DMA_QUE;
-        dmaq.tfr.CommandStatus        = opcode;
-        dmaq.tfr.ErrorFeature         = M_Byte0(sectorCount);
-        dmaq.tfr.LbaLow               = M_Byte0(lba);
-        dmaq.tfr.LbaMid               = M_Byte1(lba);
-        dmaq.tfr.LbaHi                = M_Byte2(lba);
-        dmaq.tfr.DeviceHead           = LBA_MODE_BIT | (ext ? UINT8_C(0) : M_Nibble6(lba));
-        dmaq.tfr.LbaLow48             = ext ? M_Byte3(lba) : UINT8_C(0);
-        dmaq.tfr.LbaMid48             = ext ? M_Byte4(lba) : UINT8_C(0);
-        dmaq.tfr.LbaHi48              = ext ? M_Byte5(lba) : UINT8_C(0);
-        dmaq.tfr.Feature48            = M_Byte1(sectorCount);
-        dmaq.tfr.SectorCount          = M_STATIC_CAST(uint8_t, tag << 3);
-        dmaq.tfr.SectorCount48        = UINT8_C(0);
-        dmaq.tfr.icc                  = UINT8_C(0);
-        dmaq.tfr.DeviceControl        = UINT8_C(0);
-        dmaq.tfr.aux1                 = UINT8_C(0);
-        dmaq.tfr.aux2                 = UINT8_C(0);
-        dmaq.tfr.aux3                 = UINT8_C(0);
-        dmaq.tfr.aux4                 = UINT8_C(0);
-        dmaq.rtfr.error               = UINT8_C(0);
-        dmaq.rtfr.secCntExt           = UINT8_C(0);
-        dmaq.rtfr.secCnt              = UINT8_C(0);
-        dmaq.rtfr.lbaLowExt           = UINT8_C(0);
-        dmaq.rtfr.lbaLow              = UINT8_C(0);
-        dmaq.rtfr.lbaMidExt           = UINT8_C(0);
-        dmaq.rtfr.lbaMid              = UINT8_C(0);
-        dmaq.rtfr.lbaHiExt            = UINT8_C(0);
-        dmaq.rtfr.lbaHi               = UINT8_C(0);
-        dmaq.rtfr.device              = UINT8_C(0);
-        dmaq.rtfr.status              = UINT8_C(0);
-        dmaq.ptrData                  = M_CONST_CAST(uint8_t*, ptrdata);
-        dmaq.dataSize                 = dataSize;
-        dmaq.ptrSenseData             = device->drive_info.lastCommandSenseData;
-        dmaq.senseDataSize            = SPC3_SENSE_LEN;
-        dmaq.timeout                  = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
-        dmaq.ataTransferBlocks        = ATA_PT_LOGICAL_SECTOR_SIZE;
+        dmaq.commandType       = ext;
+        dmaq.commandDirection  = direction;
+        dmaq.commadProtocol    = ncq ? ATA_PROTOCOL_DMA_FPDMA : ATA_PROTOCOL_DMA_QUE;
+        dmaq.tfr.CommandStatus = M_STATIC_CAST(uint8_t, opcode);
+        dmaq.tfr.ErrorFeature  = M_Byte0(sectorCount);
+        dmaq.tfr.LbaLow        = M_Byte0(lba);
+        dmaq.tfr.LbaMid        = M_Byte1(lba);
+        dmaq.tfr.LbaHi         = M_Byte2(lba);
+        dmaq.tfr.DeviceHead    = LBA_MODE_BIT | (ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? UINT8_C(0) : M_Nibble6(lba));
+        dmaq.tfr.LbaLow48      = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte3(lba) : UINT8_C(0);
+        dmaq.tfr.LbaMid48      = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte4(lba) : UINT8_C(0);
+        dmaq.tfr.LbaHi48       = ext >= ATA_CMD_TYPE_EXTENDED_TASKFILE ? M_Byte5(lba) : UINT8_C(0);
+        dmaq.tfr.Feature48     = M_Byte1(sectorCount);
+        dmaq.tfr.SectorCount   = M_STATIC_CAST(uint8_t, tag << 3);
+        dmaq.tfr.SectorCount48 = UINT8_C(0);
+        dmaq.tfr.icc           = UINT8_C(0);
+        dmaq.tfr.DeviceControl = UINT8_C(0);
+        dmaq.tfr.aux1          = UINT8_C(0);
+        dmaq.tfr.aux2          = UINT8_C(0);
+        dmaq.tfr.aux3          = UINT8_C(0);
+        dmaq.tfr.aux4          = UINT8_C(0);
+        dmaq.rtfr.error        = UINT8_C(0);
+        dmaq.rtfr.secCntExt    = UINT8_C(0);
+        dmaq.rtfr.secCnt       = UINT8_C(0);
+        dmaq.rtfr.lbaLowExt    = UINT8_C(0);
+        dmaq.rtfr.lbaLow       = UINT8_C(0);
+        dmaq.rtfr.lbaMidExt    = UINT8_C(0);
+        dmaq.rtfr.lbaMid       = UINT8_C(0);
+        dmaq.rtfr.lbaHiExt     = UINT8_C(0);
+        dmaq.rtfr.lbaHi        = UINT8_C(0);
+        dmaq.rtfr.device       = UINT8_C(0);
+        dmaq.rtfr.status       = UINT8_C(0);
+        dmaq.ptrData           = M_CONST_CAST(uint8_t*, ptrdata);
+        dmaq.dataSize          = dataSize;
+        dmaq.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        dmaq.senseDataSize     = SPC3_SENSE_LEN;
+        dmaq.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
+        dmaq.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
         dmaq.ataCommandLengthLocation = ATA_PT_LEN_FEATURES_REGISTER;
         dmaq.multipleCount            = UINT8_C(0);
         dmaq.needRTFRs                = false;
@@ -1448,8 +1571,8 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(8, 9)
     static M_INLINE ataPassthroughCommand create_ata_queued_cmd(tDevice*               device,
-                                                                uint8_t                opcode,
-                                                                bool                   ext,
+                                                                eATA_CMDS              opcode,
+                                                                eAtaCmdType            ext,
                                                                 bool                   ncq,
                                                                 uint8_t                tag,
                                                                 eDataTransferDirection direction,
@@ -1458,10 +1581,10 @@ extern "C"
                                                                 uint32_t               dataSize)
     {
         ataPassthroughCommand dmaq;
-        dmaq.commandType              = ext ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE;
+        dmaq.commandType              = ext;
         dmaq.commandDirection         = direction;
         dmaq.commadProtocol           = ncq ? ATA_PROTOCOL_DMA_FPDMA : ATA_PROTOCOL_DMA_QUE;
-        dmaq.tfr.CommandStatus        = opcode;
+        dmaq.tfr.CommandStatus        = M_STATIC_CAST(uint8_t, opcode);
         dmaq.tfr.ErrorFeature         = M_Byte0(sectorCount);
         dmaq.tfr.LbaLow               = UINT8_C(0);
         dmaq.tfr.LbaMid               = UINT8_C(0);
@@ -1746,7 +1869,7 @@ extern "C"
     // if the subcommand you are looking for is not in this enum, please add it
     typedef enum eATASetFeaturesSubcommandsEnum
     {
-        SF_RESERVED                                                    = 0x00,
+        SF_RESERVED_00                                                 = 0x00,
         SF_ENABLE_8_BIT_DATA_TRANSFERS                                 = 0x01, // retired in ATA4. Obsolete in ATA3
         SF_ENABLE_VOLITILE_WRITE_CACHE                                 = 0x02, // incorrect spelling
         SF_ENABLE_VOLATILE_WRITE_CACHE                                 = 0x02, // correct spelling
@@ -1755,17 +1878,63 @@ extern "C"
         SF_ENABLE_APM_FEATURE                                          = 0x05,
         SF_ENABLE_PUIS_FEATURE                                         = 0x06,
         SF_PUIS_DEVICE_SPIN_UP                                         = 0x07,
+        SF_RESERVED_08                                                 = 0x08,
         SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT        = 0x09, // Defined in ATA5, obsolete in ACS3
         SF_ENABLE_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT = 0x09, // Defined in ATA5, obsolete in ACS3
         SF_ENABLE_CFA_POWER_MODE1                                      = 0x0A,
         SF_ENABLE_WRITE_READ_VERIFY_FEATURE                            = 0x0B,
         SF_ENABLE_DEVICE_LIFE_CONTROL                                  = 0x0C,
         SF_CDL_FEATURE                                                 = 0x0D,
+        SF_RESERVED_0E                                                 = 0x0E,
+        SF_RESERVED_0F                                                 = 0x0F,
         SF_ENABLE_SATA_FEATURE                                         = 0x10,
+        SF_RESERVED_11                                                 = 0x11,
+        SF_RESERVED_12                                                 = 0x12,
+        SF_RESERVED_13                                                 = 0x13,
+        SF_RESERVED_14                                                 = 0x14,
+        SF_RESERVED_15                                                 = 0x15,
+        SF_RESERVED_16                                                 = 0x16,
+        SF_RESERVED_17                                                 = 0x17,
+        SF_RESERVED_18                                                 = 0x18,
+        SF_RESERVED_19                                                 = 0x19,
+        SF_RESERVED_1A                                                 = 0x1A,
+        SF_RESERVED_1B                                                 = 0x1B,
+        SF_RESERVED_1C                                                 = 0x1C,
+        SF_RESERVED_1D                                                 = 0x1D,
+        SF_RESERVED_1E                                                 = 0x1E,
+        SF_RESERVED_1F                                                 = 0x1F,
         SF_TLC_SET_CCTL                                                = 0x20, // Time Limited Commands Completion Time
         SF_TCL_SET_ERROR_HANDLING                       = 0x21, // Time Limited Commands read/write continuous mode
+        SF_RESERVED_22                                  = 0x22,
+        SF_RESERVED_23                                  = 0x23,
+        SF_RESERVED_24                                  = 0x24,
+        SF_RESERVED_25                                  = 0x25,
+        SF_RESERVED_26                                  = 0x26,
+        SF_RESERVED_27                                  = 0x27,
+        SF_RESERVED_28                                  = 0x28,
+        SF_RESERVED_29                                  = 0x29,
+        SF_RESERVED_2A                                  = 0x2A,
+        SF_RESERVED_2B                                  = 0x2B,
+        SF_RESERVED_2C                                  = 0x2C,
+        SF_RESERVED_2D                                  = 0x2D,
+        SF_RESERVED_2E                                  = 0x2E,
+        SF_RESERVED_2F                                  = 0x2F,
+        SF_RESERVED_20                                  = 0x30,
         SF_DISABLE_MEDIA_STATUS_NOTIFICATION            = 0x31, // Defined in ATA4, obsolete in ATA8/ACS
+        SF_RESERVED_32                                  = 0x32,
         SF_DISABLE_RETRY                                = 0x33, // Defined in ATA3, obsolete in ATA5
+        SF_RESERVED_34                                  = 0x34,
+        SF_RESERVED_35                                  = 0x35,
+        SF_RESERVED_36                                  = 0x36,
+        SF_RESERVED_37                                  = 0x37,
+        SF_RESERVED_38                                  = 0x38,
+        SF_RESERVED_39                                  = 0x39,
+        SF_RESERVED_3A                                  = 0x3A,
+        SF_RESERVED_3B                                  = 0x3B,
+        SF_RESERVED_3C                                  = 0x3C,
+        SF_RESERVED_3D                                  = 0x3D,
+        SF_RESERVED_3F                                  = 0x3F,
+        SF_RESERVED_40                                  = 0x40,
         SF_ENABLE_FREE_FALL_CONTROL_FEATURE             = 0x41,
         SF_ENABLE_AUTOMATIC_ACOUSTIC_MANAGEMENT_FEATURE = 0x42,
         SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES          = 0x43,
@@ -1773,8 +1942,18 @@ extern "C"
         SF_SET_RATE_BASIS                                           = 0x45,
         SF_ZAC_ZONE_ACTIVATION_CONTROL                              = 0x46, // ZAC2 to set the number of zones.
         SF_ZAC_UPDATE_UNRESTRICTED_READ_S_WHILE_READING_ZONES       = 0x47, // ZAC2 update URSWRZ
+        SF_RESERVED_48                                              = 0x48,
+        SF_RESERVED_49                                              = 0x49,
         SF_EXTENDED_POWER_CONDITIONS                                = 0x4A,
+        SF_RESERVED_4B                                              = 0x4B,
+        SF_RESERVED_4C                                              = 0x4C,
+        SF_RESERVED_4D                                              = 0x4D,
+        SF_RESERVED_4E                                              = 0x4E,
+        SF_RESERVED_4F                                              = 0x4F,
         SF_ADVANCED_BACKGROUND_OPERATIONS_CONTROL                   = 0x50,
+        SF_RESERVED_51                                              = 0x51,
+        SF_RESERVED_52                                              = 0x52,
+        SF_RESERVED_53                                              = 0x53,
         SF_SET_CACHE_SEGMENTS                                       = 0x54, // defined in ATA3, obsolete in ATA4
         SF_DISABLE_READ_LOOK_AHEAD_FEATURE                          = 0x55,
         // 56h - 5Ch are vendor unique
@@ -1788,24 +1967,57 @@ extern "C"
         SF_ENABLE_RELEASE_INTERRUPT                           = 0x5D, // TCQ related
         SF_ENABLE_SERVICE_INTERRUPT                           = 0x5E, // TCQ related
         SF_ENABLE_DISABLE_DATA_TRANSFER_AFTER_ERROR_DETECTION = 0x5F, // DDT feature...for some very specific old hosts
+        SF_RESERVED_60                                        = 0x60,
+        SF_RESERVED_61                                        = 0x61,
         SF_LONG_PHYSICAL_SECTOR_ALIGNMENT_ERROR_REPORTING     = 0x62,
         SF_ENABLE_DISABLE_DSN_FEATURE                         = 0x63,
+        SF_RESERVED_64                                        = 0x64,
+        SF_RESERVED_65                                        = 0x65,
         SF_DISABLE_REVERTING_TO_POWERON_DEFAULTS              = 0x66,
+        SF_RESERVED_67                                        = 0x67,
+        SF_RESERVED_68                                        = 0x68,
         SF_CFA_NOP_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY =
             0x69, // Likely defined in old manual if you can find it: SanDisk SDP Series OEM Manual, 1993
+        SF_RESERVED_6A                                                  = 0x6A,
+        SF_RESERVED_6B                                                  = 0x6B,
+        SF_RESERVED_6C                                                  = 0x6C,
+        SF_RESERVED_6D                                                  = 0x6D,
+        SF_RESERVED_6E                                                  = 0x6E,
+        SF_RESERVED_6F                                                  = 0x6F,
+        SF_RESERVED_70                                                  = 0x70,
+        SF_RESERVED_71                                                  = 0x71,
+        SF_RESERVED_72                                                  = 0x72,
+        SF_RESERVED_73                                                  = 0x73,
+        SF_RESERVED_74                                                  = 0x74,
+        SF_RESERVED_75                                                  = 0x75,
+        SF_RESERVED_76                                                  = 0x76,
         SF_DISABLE_ECC                                                  = 0x77, // defined in ATA3, obsolete in ATA4
+        SF_RESERVED_78                                                  = 0x78,
+        SF_RESERVED_79                                                  = 0x79,
+        SF_RESERVED_7A                                                  = 0x7A,
+        SF_RESERVED_7B                                                  = 0x7B,
+        SF_RESERVED_7C                                                  = 0x7C,
+        SF_RESERVED_7D                                                  = 0x7D,
+        SF_RESERVED_7E                                                  = 0x7E,
+        SF_RESERVED_7F                                                  = 0x7F,
+        SF_RESERVED_80                                                  = 0x80,
         SF_DISABLE_8_BIT_DATA_TRANSFERS                                 = 0x81, // defined in ATA, obsolete in ATA3
         SF_DISABLE_VOLITILE_WRITE_CACHE                                 = 0x82, // incorrect spelling
         SF_DISABLE_VOLATILE_WRITE_CACHE                                 = 0x82, // correct spelling
+        SF_RESERVED_83                                                  = 0x83,
         SF_DISABLE_ALL_AUTOMATIC_DEFECT_REASSIGNMENT                    = 0x84, // defined in ATA3, obsolete in ATA4
         SF_DISABLE_APM_FEATURE                                          = 0x85,
         SF_DISABLE_PUIS_FEATURE                                         = 0x86,
+        SF_RESERVED_87                                                  = 0x87,
         SF_ENABLE_ECC                                                   = 0x88, // defined in ATA3, obsolete in ATA6
         SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT_2       = 0x89, // Defined in ATA5, obsolete in ACS3
         SF_DISABLE_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT = 0x89, // Defined in ATA5, obsolete in ACS3
         SF_DISABLE_CFA_POWER_MODE_1                                     = 0x8A,
         SF_DISABLE_WRITE_READ_VERIFY_FEATURE                            = 0x8B,
         SF_DISABLE_DEVICE_LIFE_CONTROL                                  = 0x8C,
+        SF_RESERVED_8D                                                  = 0x8D,
+        SF_RESERVED_8E                                                  = 0x8E,
+        SF_RESERVED_8F                                                  = 0x8F,
         SF_DISABLE_SATA_FEATURE                                         = 0x90,
         SF_ENABLE_MEDIA_STATUS_NOTIFICATION                             = 0x95,
         SF_CFA_NOP_ACCEPTED_FOR_BACKWARDS_COMPATIBILITY_1 =
