@@ -1140,7 +1140,7 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
     uint8_t*      senseData      = M_NULLPTR; // only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool          localSenseData = false;
     bool          dmaRetry       = false;
-    if (!ataCommandOptions->ptrSenseData)
+    if (ataCommandOptions->ptrSenseData == M_NULLPTR)
     {
         senseData = M_REINTERPRET_CAST(
             uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
@@ -1155,7 +1155,8 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
     ataCommandOptions->timeout = M_Max(ataCommandOptions->timeout, device->drive_info.defaultTimeoutSeconds);
     if (ataCommandOptions->timeout == 0)
     {
-        ataCommandOptions->timeout = M_Max(15, device->drive_info.defaultTimeoutSeconds);
+        ataCommandOptions->timeout =
+            M_Max(ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT, device->drive_info.defaultTimeoutSeconds);
     }
     // First build the CDB
     ret = build_SAT_CDB(device, &satCDB, &satCDBLength, ataCommandOptions);
@@ -1163,25 +1164,30 @@ eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughComman
     {
         ScsiIoCtx       scsiIoCtx;
         senseDataFields senseFields;
+        safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
+        safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             // Print out ATA Command Information in appropriate verbose mode.
             print_Verbose_ATA_Command_Information(ataCommandOptions);
         }
         // Now setup the scsiioctx and send the CDB
-        safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
+        scsiIoCtx.device = device;
         safe_memcpy(scsiIoCtx.cdb, SCSI_IO_CTX_MAX_CDB_LEN, satCDB,
                     C_CAST(size_t, satCDBLength)); // should only ever be a known positive integer: 12, 16, or 32
-        safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
         scsiIoCtx.cdbLength     = C_CAST(uint8_t, satCDBLength);
-        scsiIoCtx.dataLength    = ataCommandOptions->dataSize;
-        scsiIoCtx.pdata         = ataCommandOptions->ptrData;
-        scsiIoCtx.device        = device;
         scsiIoCtx.direction     = ataCommandOptions->commandDirection;
-        scsiIoCtx.pAtaCmdOpts   = ataCommandOptions;
+        scsiIoCtx.pdata         = ataCommandOptions->ptrData;
+        scsiIoCtx.dataLength    = ataCommandOptions->dataSize;
         scsiIoCtx.psense        = ataCommandOptions->ptrSenseData;
         scsiIoCtx.senseDataSize = ataCommandOptions->senseDataSize;
-        scsiIoCtx.timeout       = ataCommandOptions->timeout;
+        scsiIoCtx.timeout          = ataCommandOptions->timeout;
+        scsiIoCtx.verbose          = 0;
+        scsiIoCtx.pAtaCmdOpts      = ataCommandOptions;
+        scsiIoCtx.isHardReset      = M_ToBool(ataCommandOptions->commadProtocol == ATA_PROTOCOL_HARD_RESET);
+        scsiIoCtx.isSoftReset      = M_ToBool(ataCommandOptions->commadProtocol == ATA_PROTOCOL_SOFT_RESET);
+        scsiIoCtx.fwdlFirstSegment = ataCommandOptions->fwdlFirstSegment;
+        scsiIoCtx.fwdlLastSegment  = ataCommandOptions->fwdlLastSegment;
         // clear the last command sense data every single time before we issue any commands
         safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
         device->drive_info.lastCommandTimeNanoSeconds = UINT64_C(0);
