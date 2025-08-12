@@ -16,6 +16,7 @@
 #    include "code_attributes.h"
 #    include "common_types.h"
 #    include "error_translation.h"
+#    include "io_utils.h"
 #    include "math_utils.h"
 #    include "memory_safety.h"
 #    include "precision_timer.h"
