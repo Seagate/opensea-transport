@@ -3061,7 +3061,8 @@ bool is_Blocksize_And_Capacity_In_Sync(tDevice* device)
         {
             insync = false;
         }
-        else if (device->drive_info.deviceMaxLba != device->drive_info.bridge_info.childDeviceMaxLba)
+        else if (device->drive_info.bridge_info.childDeviceMaxLba > 0 &&
+                 device->drive_info.deviceMaxLba != device->drive_info.bridge_info.childDeviceMaxLba)
         {
             insync = false;
         }
