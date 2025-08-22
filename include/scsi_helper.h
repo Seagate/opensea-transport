@@ -146,6 +146,23 @@ extern "C"
         // 0x80 - 0xFF are vendor specific
     } eSenseDescriptorType;
 
+#define SCSI_PROGRESS_INDICATOR_DIVISOR    UINT32_C(65536)
+#define SCSI_PROGRESS_INDICATOR_MULTIPLIER UINT32_C(100)
+
+    static M_INLINE uint32_t get_SCSI_Progress_Indicator_Percent(uint16_t progressIndicator)
+    {
+        return (M_STATIC_CAST(uint32_t, progressIndicator) * SCSI_PROGRESS_INDICATOR_MULTIPLIER) /
+               SCSI_PROGRESS_INDICATOR_DIVISOR;
+    }
+
+#define SCSI_PROGRESS_INDICATOR_DIVISOR_D    (65536.0)
+#define SCSI_PROGRESS_INDICATOR_MULTIPLIER_D (100.0)
+    static M_INLINE double get_SCSI_Progress_Indicator_PercentD(uint16_t progressIndicator)
+    {
+        return (M_STATIC_CAST(double, progressIndicator) * SCSI_PROGRESS_INDICATOR_MULTIPLIER_D) /
+               SCSI_PROGRESS_INDICATOR_DIVISOR_D;
+    }
+
 #define SCSI_SENSE_INFO_VALID_BIT_SET    (0x80)
 
 #define SCSI_SENSE_ADDT_LEN_INDEX        (7)
@@ -926,6 +943,21 @@ extern "C"
         AD_RESERVED                                            = 0x07
     } eSCSIAddressDescriptors;
 
+    typedef enum eSCSIAddressDescriptorTypeLenEnum
+    {
+        AD_LEN_SHORT_BLOCK_FORMAT_ADDRESS_DESCRIPTOR               = 4,
+        AD_LEN_EXTENDED_BYTES_FROM_INDEX_FORMAT_ADDRESS_DESCRIPTOR = 8,
+        AD_LEN_EXTENDED_PHYSICAL_SECTOR_FORMAT_ADDRESS_DESCRIPTOR  = 8,
+        AD_LEN_LONG_BLOCK_FORMAT_ADDRESS_DESCRIPTOR                = 8,
+        AD_LEN_BYTES_FROM_INDEX_FORMAT_ADDRESS_DESCRIPTOR          = 8,
+        AD_LEN_PHYSICAL_SECTOR_FORMAT_ADDRESS_DESCRIPTOR           = 8,
+        AD_LEN_VENDOR_SPECIFIC = 1, // Unknown, but using 1 since this may be used during division
+        AD_LEN_RESERVED        = 1  // Unknown, but using 1 since this may be used during division
+    } eSCSIAddressDescriptorTypeLen;
+
+#define SCSI_DEFECT_DATA_10_HEADER_LEN UINT32_C(4)
+#define SCSI_DEFECT_DATA_12_HEADER_LEN UINT32_C(8)
+
     // for the report supported operations command
     typedef enum eSCSIReportingOptionsEnum
     {
@@ -962,6 +994,18 @@ extern "C"
         DIAG_PAGE_DEVICE_STATUS     = 0x41, // obsolete since SBC2
         DIAG_PAGE_REBUILD_ASSIST    = 0x42,
     } eSCSIDiagnosticPages;
+
+    typedef enum eSCSISelfTestCodesEnum
+    {
+        SCSI_STC_UNUSED                        = 0x00, // unused/no self test requested in send diagnostic command
+        SCSI_STC_BACKGROUND_SHORT_SELF_TEST    = 0x01,
+        SCSI_STC_BACKGROUND_EXTENDED_SELF_TEST = 0x02,
+        SCSI_STC_BACKGROUND_RESERVED_3         = 0x03,
+        SCSI_STC_ABORT_SELF_TEST               = 0x04, // abort self test
+        SCSI_STC_FOREGROUND_SHORT_SELF_TEST    = 0x05,
+        SCSI_STC_FOREGROUND_EXTENDED_SELF_TEST = 0x06,
+        SCSI_STC_FOREGROUND_RESERVED_7         = 0x07 // reserved for future use
+    } eSCSISelfTestCodes;
 
 #define SCSI_LOG_PARAMETER_HEADER_LENGTH UINT8_C(4) // bytes
 #define SCSI_VPD_PAGE_HEADER_LENGTH      UINT8_C(4) // bytes

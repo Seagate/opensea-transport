@@ -80,8 +80,8 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice* device,
                                             bool     znr)
 {
     eReturnValues ret          = NOT_SUPPORTED;
-    uint8_t *patternPtr = pattern;
-    uint32_t shortPattern = UINT32_C(0);
+    uint8_t*      patternPtr   = pattern;
+    uint32_t      shortPattern = UINT32_C(0);
     if (pattern && patternLength >= UINT16_C(4))
     {
         shortPattern = M_BytesTo4ByteValue(pattern[3], pattern[2], pattern[1], pattern[0]);
@@ -89,7 +89,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice* device,
     else
     {
         // This is to satisfy the SCSI case below which expects a uint8_t* instead of uint32 like ATA and NVMe
-        patternPtr = M_REINTERPRET_CAST(uint8_t*, &shortPattern);
+        patternPtr    = M_REINTERPRET_CAST(uint8_t*, &shortPattern);
         patternLength = sizeof(shortPattern);
     }
     switch (device->drive_info.drive_type)
@@ -102,7 +102,8 @@ eReturnValues send_Sanitize_Overwrite_Erase(tDevice* device,
         //       When this is not supported/set then the device may or may not be consistent with this behavior...it's
         //       up to the firmware to decide. Because of this, this bit will be set when it is discovered as supported
         //       whenever possible -TJE
-        // Note: If we discover which devices don't output a definitive ending pattern without this bit, then we could write a
+        // Note: If we discover which devices don't output a definitive ending pattern without this bit, then we could
+        // write a
         //       table and handle this in software based on inversion and pass count rules. None known at this time -TJE
         ret = ata_Sanitize_Overwrite_Erase(device, exitFailureMode, invertBetweenPasses, overwritePasses & 0x0F,
                                            shortPattern, znr,

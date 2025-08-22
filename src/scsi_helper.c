@@ -1631,7 +1631,8 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
         }
         if (senseFields->senseDataOverflow)
         {
-            print_str("Sense Data Overflow detected! Request sense command is recommended to retrieve full sense data!\n");
+            print_str(
+                "Sense Data Overflow detected! Request sense command is recommended to retrieve full sense data!\n");
         }
         if (senseFields->filemark)
         {
@@ -1712,7 +1713,8 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
                 break;
             case SENSE_KEY_SPECIFIC_PROGRESS_INDICATION:
                 printf("Progress: %0.02f%%\n",
-                       C_CAST(double, senseFields->senseKeySpecificInformation.progress.progressIndication) / 65536.0);
+                       get_SCSI_Progress_Indicator_PercentD(
+                           senseFields->senseKeySpecificInformation.progress.progressIndication));
                 break;
             case SENSE_KEY_SPECIFIC_SEGMENT_POINTER:
                 if (senseFields->senseKeySpecificInformation.segment.segmentDescriptor)

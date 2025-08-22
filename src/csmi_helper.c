@@ -5155,7 +5155,8 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
     found = raidConfigDrivesFound;
     if (phyInfoDrivesFound > raidConfigDrivesFound)
     {
-        print_str("WARNING: Possible duplicate devices found due to incomplete RAID config response from CSMI driver\n");
+        print_str(
+            "WARNING: Possible duplicate devices found due to incomplete RAID config response from CSMI driver\n");
         found = phyInfoDrivesFound;
     }
     *numberOfDevices = found;
@@ -5682,7 +5683,8 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                             break;
                                                                         case CSMI_SAS_EDGE_EXPANDER_DEVICE:
 #    if defined(CSMI_DEBUG)
-                                                                            print_str("GDL: Edge expander. Skipping...\n");
+                                                                            print_str(
+                                                                                "GDL: Edge expander. Skipping...\n");
 #    endif // CSMI_DEBUG
                                                                             break;
                                                                         case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
