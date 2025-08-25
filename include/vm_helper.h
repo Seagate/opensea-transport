@@ -286,6 +286,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Lock_Device(tDevice* device);
 
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Get_Exclusive(tDevice* device);
+
     //-----------------------------------------------------------------------------
     //
     //  os_Unlock_Device(tDevice *device)

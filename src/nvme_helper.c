@@ -36,7 +36,7 @@ static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData,
                                              char     nvmSN[NVME_CTRL_IDENTIFY_SN_LEN + 1],
                                              char     nvmFW[NVME_CTRL_IDENTIFY_FW_LEN + 1])
 {
-    if (ptrCtrlData)
+    if (ptrCtrlData != M_NULLPTR)
     {
         nvmeIDCtrl* ctrlData = C_CAST(nvmeIDCtrl*, ptrCtrlData);
         // make sure buffers all all zeroed out before filling them
@@ -124,11 +124,18 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
                                                 // parts of code working correctly
         }
 
+        if (le16_to_host(ctrlData->vid) == PCI_VENDOR_LACIE)
+        {
+            char*  p1    = device->drive_info.serialNumber;
+            char** snptr = &p1;
+            seagate_External_SN_Cleanup(snptr, SERIAL_NUM_LEN + 1);
+        }
+
         // Do not overwrite this with non-NVMe interfaces. This is used by USB to figure out and track bridge chip
         // specific things that are stored in this location
         if (device->drive_info.interface_type == NVME_INTERFACE && !device->drive_info.adapter_info.vendorIDValid)
         {
-            device->drive_info.adapter_info.vendorID      = ctrlData->vid;
+            device->drive_info.adapter_info.vendorID      = le16_to_host(ctrlData->vid);
             device->drive_info.adapter_info.vendorIDValid = true;
         }
         // set the IEEE OUI into the WWN since we use the WWN for detecting if the drive is a Seagate drive.

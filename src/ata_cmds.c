@@ -3214,7 +3214,13 @@ eReturnValues ata_Zeros_Ext(tDevice* device, uint16_t numberOfLogicalSectors, ui
 
     return ret;
 }
-#define DEFAULT_SET_SECTOR_CONFIG_TIMEOUT (3600)
+
+// Changing to a 5 hour timeout due to new information showing larger capacities taking even longer to complete.
+// While it is a long time it is still faster than a full reformat of the drive.
+// This time is more than double what is expected, but that leaves room for error in case some drives are taking
+// longer than expected.
+#define DEFAULT_SET_SECTOR_CONFIG_TIMEOUT (3600 * 5)
+
 eReturnValues ata_Set_Sector_Configuration_Ext(tDevice* device,
                                                uint16_t commandCheck,
                                                uint8_t  sectorConfigurationDescriptorIndex)
@@ -3226,10 +3232,6 @@ eReturnValues ata_Set_Sector_Configuration_Ext(tDevice* device,
     ataCommandOptions.tfr.Feature48    = M_Byte1(commandCheck);
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(commandCheck);
     ataCommandOptions.timeout          = DEFAULT_SET_SECTOR_CONFIG_TIMEOUT;
-    // Setting a 1 hour timeout. This should be way more than enough to complete while allowing a way to handle a
-    // failing command due to a timeout instead of using infinite which would never return. Using 1 hour since there are
-    // a few rare cases where a drive may be in a state of processing something in the background which could make this
-    // take longer than expected, but should still complete long before 1 hour has elapsed.
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_str("Sending ATA Set Sector Configuration Ext\n");
@@ -3319,6 +3321,7 @@ eReturnValues ata_Remove_Element_And_Modify_Zones(tDevice* device, uint32_t elem
     ataCommandOptions.tfr.SectorCount48 = M_Byte1(elementIdentifier);
     ataCommandOptions.tfr.ErrorFeature  = M_Byte2(elementIdentifier);
     ataCommandOptions.tfr.Feature48     = M_Byte3(elementIdentifier);
+    ataCommandOptions.tfr.DeviceHead |= LBA_MODE_BIT;
     if (os_Is_Infinite_Timeout_Supported())
     {
         ataCommandOptions.timeout = INFINITE_TIMEOUT_VALUE;

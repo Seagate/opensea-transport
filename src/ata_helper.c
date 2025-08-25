@@ -1890,6 +1890,12 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             fill_ATA_Strings_From_Identify_Data(identifyData, device->drive_info.bridge_info.childDriveMN,
                                                 device->drive_info.bridge_info.childDriveSN,
                                                 device->drive_info.bridge_info.childDriveFW);
+            if (is_Seagate_Family(device))
+            {
+                char*  p1    = device->drive_info.bridge_info.childDriveSN;
+                char** snptr = &p1;
+                seagate_External_SN_Cleanup(snptr, SERIAL_NUM_LEN + 1);
+            }
         }
         else
         {
@@ -1954,10 +1960,12 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             }
         }
 
+        bool sanitizeSupported = false;
         if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[59])))
         {
             // set the number of logical sectors per DRQ data block (current setting)
             device->drive_info.ata_Options.logicalSectorsPerDRQDataBlock = M_Byte0(le16_to_host(ident_word[59]));
+            sanitizeSupported = M_ToBool(le16_to_host(ident_word[59]) & BIT12);
         }
         else
         {
@@ -2058,6 +2066,13 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
                 device->drive_info.ata_Options.sataReadLogDMASameAsPIO = true;
             }
         }
+
+        bool smartSupported = false;
+        if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[82])))
+        {
+            smartSupported = M_ToBool(le16_to_host(ident_word[82]) & BIT0);
+        }
+
         bool words119to120Valid = false;
         if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(ident_word[83])) &&
             is_ATA_Identify_Word_Valid(le16_to_host(ident_word[86])))
@@ -2232,9 +2247,11 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         // but it is an SSD. So this match will catch it when this happens. It should be uncommon to find though -TJE
         if (device->drive_info.media_type != MEDIA_SSD &&
             safe_strlen(device->drive_info.bridge_info.childDriveMN) > 0 &&
-            (strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != M_NULLPTR) &&
+            ((strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != M_NULLPTR) ||
+             (strstr(device->drive_info.bridge_info.childDriveMN, "Rugged SSD") != M_NULLPTR)) &&
             safe_strlen(device->drive_info.bridge_info.childDriveFW) > 0 &&
-            (strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != M_NULLPTR))
+            ((strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != M_NULLPTR) ||
+             (strstr(device->drive_info.bridge_info.childDriveFW, "ULFS") != M_NULLPTR)))
         {
             device->drive_info.media_type = MEDIA_SSD;
         }
@@ -2284,7 +2301,9 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         }
         else if ((!device->drive_info.ata_Options.dmaSupported &&
                   device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 &&
-                  device->drive_info.drive_type != ATAPI_DRIVE))
+                  device->drive_info.drive_type != ATAPI_DRIVE) &&
+                 word84Valid == false && word87Valid == false && words119to120Valid == false &&
+                 sanitizeSupported == false && smartSupported == false)
         {
             // This very likely is emulated since a valid ATA device will have fillMaxLba set to SOMETHING even in
             // really old CHS drives since the LBA is simulated in software.
@@ -2293,6 +2312,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
                 print_str("WARNING: possible RTL 9210 detected and missed with all other checks.\n");
                 print_str("         this may cause adverse behavior and require --forceSCSI\n");
             }
+            device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe = true;
         }
 
         if (device->drive_info.interface_type == SCSI_INTERFACE)
