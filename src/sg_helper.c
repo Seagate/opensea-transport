@@ -3612,13 +3612,21 @@ eReturnValues os_Get_Exclusive(tDevice* device)
 eReturnValues os_Lock_Device(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (!lock_unlock_handle(device->os_info.fd, true, device->deviceVerbosity))
+    if (device->os_info.lockCount == UINT16_C(0))
     {
-        ret = FAILURE;
+        if (!lock_unlock_handle(device->os_info.fd, true, device->deviceVerbosity))
+        {
+            ret = FAILURE;
+        }
+        if (device->os_info.secondHandleValid && device->os_info.secondHandleOpened)
+        {
+            lock_unlock_handle(device->os_info.fd2, true, device->deviceVerbosity);
+        }
     }
-    if (device->os_info.secondHandleValid && device->os_info.secondHandleOpened)
+    if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
     {
-        lock_unlock_handle(device->os_info.fd2, true, device->deviceVerbosity);
+        // Always increment this so we know how many times we've been requested to lock
+        ++device->os_info.lockCount;
     }
     return ret;
 }
@@ -3626,13 +3634,21 @@ eReturnValues os_Lock_Device(tDevice* device)
 eReturnValues os_Unlock_Device(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (!lock_unlock_handle(device->os_info.fd, false, device->deviceVerbosity))
+    if (device->os_info.lockCount == UINT16_C(1))
     {
-        ret = FAILURE;
+        // only unlock once the number of requests gets back down to here so it will decrement to zero
+        if (!lock_unlock_handle(device->os_info.fd, false, device->deviceVerbosity))
+        {
+            ret = FAILURE;
+        }
+        if (device->os_info.secondHandleValid && device->os_info.secondHandleOpened)
+        {
+            lock_unlock_handle(device->os_info.fd2, false, device->deviceVerbosity);
+        }
     }
-    if (device->os_info.secondHandleValid && device->os_info.secondHandleOpened)
+    if (ret == SUCCESS && device->os_info.lockCount > 0)
     {
-        lock_unlock_handle(device->os_info.fd2, false, device->deviceVerbosity);
+        --device->os_info.lockCount;
     }
     return ret;
 }
