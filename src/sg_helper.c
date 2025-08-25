@@ -267,7 +267,8 @@ static int get_Partition_Count(const char* blockDeviceName)
     if (mount)
     {
         struct mntent* entry = M_NULLPTR;
-#if defined(_BSD_SOURCE) || defined(_SVID_SOURCE) // getmntent_r lists these feature test macros to look for - TJE
+#if defined(_BSD_SOURCE) || defined(_SVID_SOURCE) ||                                                                   \
+    !defined(NO_GETMNTENT_R) // getmntent_r lists these feature test macros to look for - TJE
         struct mntent entBuf;
         DECLARE_ZERO_INIT_ARRAY(char, lineBuf, GETMNTENT_R_LINE_BUF_SIZE);
         while (M_NULLPTR != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
@@ -3495,46 +3496,64 @@ eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
+#define DRIVE_HANDLE_LOCK_RANGE_START  (0)
+#define DRIVE_HANDLE_LOCK_RANGE_LENGTH (0) // 0 means full drive/file
 static bool lock_unlock_handle(int fd, bool lock, eVerbosityLevels verboseLevel)
 {
     struct flock locks;
-    int          lockflags = 0;
-    bool         success   = true;
+    bool         success = true;
     safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
     if (lock)
     {
         locks.l_type = F_WRLCK;
-        lockflags    = LOCK_EX | LOCK_NB;
     }
     else
     {
         locks.l_type = F_UNLCK;
-        lockflags    = LOCK_UN | LOCK_NB;
     }
     locks.l_whence = SEEK_SET;
-    locks.l_start  = 0;
-    locks.l_len    = 0; // all bytes
-    if (fcntl(fd, F_SETLK, &locks) < 0)
+    locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
+    locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
+#if defined(F_OFD_SETLK)
+    OSVersionNumber linver;
+    safe_memset(&linver, sizeof(OSVersionNumber), 0, sizeof(OSVersionNumber));
+    eReturnValues getVer        = get_Operating_System_Version_And_Name(&linver, M_NULLPTR);
+    bool          retryPOSIXstd = false;
+    if (getVer == SUCCESS &&
+        ((linver.versionType.linuxVersion.kernelVersion > 3) ||
+         (linver.versionType.linuxVersion.kernelVersion == 3 && linver.versionType.linuxVersion.majorVersion >= 15)))
     {
-        if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+        if (fcntl(fd, F_OFD_SETLK, &locks) < 0)
         {
-            printf("Failed to set locking flags with fcntl\n");
-            print_Errno_To_Screen(errno);
+            if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+            {
+                printf("Failed to set Linux F_OFD_SETLK %s flags with fcntl\n", lock == true ? "lock" : "unlock");
+                printf("Will retry with the standard POSIX method\n");
+                print_Errno_To_Screen(errno);
+            }
+            retryPOSIXstd = true;
         }
-        success = false;
     }
-    // Linux kernel 2.0 and higher only. Prior it just called fcntl internally.
-    // NOTE: For other OS's, we need to check what the interactions between these locks are
-    // https://www.kernel.org/doc/Documentation/filesystems/locks.txt
-    if (flock(fd, lockflags) < 0)
+    else
     {
-        if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
-        {
-            printf("Failed to set flock\n");
-            print_Errno_To_Screen(errno);
-        }
-        success = false;
+        // less than kernel 3.15
+        retryPOSIXstd = true;
     }
+    if (retryPOSIXstd)
+    {
+#endif // F_OFD_SETLK
+        if (fcntl(fd, F_SETLK, &locks) < 0)
+        {
+            if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+            {
+                printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", lock == true ? "lock" : "unlock");
+                print_Errno_To_Screen(errno);
+            }
+            success = false;
+        }
+#if defined(F_OFD_SETLK)
+    }
+#endif // F_OFD_SETLK
     return success;
 }
 
@@ -3639,9 +3658,6 @@ eReturnValues os_Update_File_System_Cache(tDevice* device)
 #endif
     if (ioctl(*fdToRescan, BLKRRPART) < 0)
     {
-#if defined(_DEBUG)
-        printf("\tCould not update partition table\n");
-#endif
         device->os_info.last_error = errno;
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
         {
