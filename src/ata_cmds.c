@@ -3276,11 +3276,11 @@ eReturnValues ata_Set_Sector_Configuration_Ext(tDevice* device,
     ataCommandOptions.tfr.SectorCount       = sectorConfigurationDescriptorIndex & 0x07;
     ataCommandOptions.tfr.Feature48         = M_Byte1(commandCheck);
     ataCommandOptions.tfr.ErrorFeature      = M_Byte0(commandCheck);
-    ataCommandOptions.timeout               = 3600;
-    // Setting a 1 hour timeout. This should be way more than enough to complete while allowing a way to handle a
-    // failing command due to a timeout instead of using infinite which would never return. Using 1 hour since there are
-    // a few rare cases where a drive may be in a state of processing something in the background which could make this
-    // take longer than expected, but should still complete long before 1 hour has elapsed.
+    ataCommandOptions.timeout               = 3600 * 5;
+    // Changing to a 5 hour timeout due to new information showing larger capacities taking even longer to complete.
+    // While it is a long time it is still faster than a full reformat of the drive.
+    // This time is more than double what is expected, but that leaves room for error in case some drives are taking
+    // longer than expected.
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         printf("Sending ATA Set Sector Configuration Ext\n");
