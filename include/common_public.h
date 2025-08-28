@@ -1321,7 +1321,8 @@ extern "C"
         uint8_t minimumAlignment; // This is a power of 2 value representing the byte alignment required. 0 - no
                                   // requirement, 1 - single byte alignment, 2 - word, 4 - dword, 8 - qword, 16 - 128bit
                                   // aligned
-        uint8_t padd0[3];
+        uint16_t lockCount; // Tracks lock/unlock requests.
+        uint8_t padd0;
 #if defined(UEFI_C_SOURCE)
         EFI_HANDLE   fd;
         EFI_DEV_PATH devicePath; // This type being used is a union of all the different possible device paths. - This

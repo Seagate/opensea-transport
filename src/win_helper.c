@@ -9411,12 +9411,20 @@ eReturnValues os_Get_Exclusive(tDevice* device)
 eReturnValues os_Lock_Device(tDevice* device)
 {
     eReturnValues ret           = SUCCESS;
-    DWORD         returnedBytes = DWORD_C(0);
-    if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
-                                        &returnedBytes, M_NULLPTR)))
+    if (device->os_info.lockCount == UINT16_C(0))
     {
-        // This can fail if files are open, it's a system disk, or has a pagefile.
-        ret = FAILURE;
+        DWORD         returnedBytes = DWORD_C(0);
+        if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
+                                            &returnedBytes, M_NULLPTR)))
+        {
+            // This can fail if files are open, it's a system disk, or has a pagefile.
+            ret = FAILURE;
+        }
+    }
+    if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
+    {
+        // Always increment this so we know how many times we've been requested to lock
+        ++device->os_info.lockCount;
     }
     return ret;
 }
@@ -9424,11 +9432,18 @@ eReturnValues os_Lock_Device(tDevice* device)
 eReturnValues os_Unlock_Device(tDevice* device)
 {
     eReturnValues ret           = SUCCESS;
-    DWORD         returnedBytes = DWORD_C(0);
-    if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
-                                        &returnedBytes, M_NULLPTR)))
+    if (device->os_info.lockCount == UINT16_C(1))
     {
-        ret = FAILURE;
+        DWORD         returnedBytes = DWORD_C(0);
+        if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
+                                            &returnedBytes, M_NULLPTR)))
+        {
+            ret = FAILURE;
+        }
+    }
+    if (ret == SUCCESS && device->os_info.lockCount > 0)
+    {
+        --device->os_info.lockCount;
     }
     return ret;
 }

@@ -534,6 +534,11 @@ eReturnValues os_Lock_Device(tDevice* device)
 {
     // flock?
     M_USE_UNUSED(device);
+    if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
+    {
+        // Always increment this so we know how many times we've been requested to lock
+        ++device->os_info.lockCount;
+    }
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
@@ -541,6 +546,10 @@ eReturnValues os_Unlock_Device(tDevice* device)
 {
     // flock?
     M_USE_UNUSED(device);
+    if (ret == SUCCESS && device->os_info.lockCount > 0)
+    {
+        --device->os_info.lockCount;
+    }
     return OS_COMMAND_NOT_AVAILABLE;
 }
 

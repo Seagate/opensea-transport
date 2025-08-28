@@ -1606,12 +1606,21 @@ eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
 eReturnValues os_Lock_Device(M_ATTR_UNUSED tDevice* device)
 {
     // There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
+    if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
+    {
+        // Always increment this so we know how many times we've been requested to lock
+        ++device->os_info.lockCount;
+    }
     return SUCCESS;
 }
 
 eReturnValues os_Unlock_Device(M_ATTR_UNUSED tDevice* device)
 {
     // There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
+    if (ret == SUCCESS && device->os_info.lockCount > 0)
+    {
+        --device->os_info.lockCount;
+    }
     return SUCCESS;
 }
 
