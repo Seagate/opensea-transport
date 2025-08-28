@@ -3373,23 +3373,31 @@ eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
 eReturnValues os_Lock_Device(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (!device->os_info.diagnosticModeFlagInUse)
+    if (device->os_info.lockCount == UINT16_C(0))
     {
-        close(device->os_info.fd); // this must be done first or the openx will fail!
-        // try opening with the diagnostic flag.
-        long extensionFlag = SC_DIAGNOSTIC;
-        device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
-        if (device->os_info.fd >= 0)
+        if (!device->os_info.diagnosticModeFlagInUse)
         {
-            device->os_info.diagnosticModeFlagInUse = true;
-        }
-        else
-        {
-            // reopen original fd without SC_DIAGNOSTIC
-            extensionFlag      = 0;
+            close(device->os_info.fd); // this must be done first or the openx will fail!
+            // try opening with the diagnostic flag.
+            long extensionFlag = SC_DIAGNOSTIC;
             device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
-            ret                = FAILURE;
+            if (device->os_info.fd >= 0)
+            {
+                device->os_info.diagnosticModeFlagInUse = true;
+            }
+            else
+            {
+                // reopen original fd without SC_DIAGNOSTIC
+                extensionFlag      = 0;
+                device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+                ret                = FAILURE;
+            }
         }
+    }
+    if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
+    {
+        // Always increment this so we know how many times we've been requested to lock
+        ++device->os_info.lockCount;
     }
     return ret;
 }
@@ -3398,23 +3406,30 @@ eReturnValues os_Lock_Device(tDevice* device)
 eReturnValues os_Unlock_Device(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->os_info.diagnosticModeFlagInUse)
+    if (device->os_info.lockCount == UINT16_C(1))
     {
-        close(device->os_info.fd); // this must be done first or the openx will fail!
-        // try opening without the diagnostic flag.
-        long extensionFlag = 0L;
-        device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
-        if (device->os_info.fd >= 0)
+        if (device->os_info.diagnosticModeFlagInUse)
         {
-            device->os_info.diagnosticModeFlagInUse = false;
-        }
-        else
-        {
-            // reopen original fd without SC_DIAGNOSTIC
-            extensionFlag      = SC_DIAGNOSTIC;
+            close(device->os_info.fd); // this must be done first or the openx will fail!
+            // try opening without the diagnostic flag.
+            long extensionFlag = 0L;
             device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
-            ret                = FAILURE;
+            if (device->os_info.fd >= 0)
+            {
+                device->os_info.diagnosticModeFlagInUse = false;
+            }
+            else
+            {
+                // reopen original fd without SC_DIAGNOSTIC
+                extensionFlag      = SC_DIAGNOSTIC;
+                device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+                ret                = FAILURE;
+            }
         }
+    }
+    if (ret == SUCCESS && device->os_info.lockCount > 0)
+    {
+        --device->os_info.lockCount;
     }
     return ret;
 }

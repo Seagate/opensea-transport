@@ -1560,18 +1560,35 @@ eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
 eReturnValues os_Lock_Device(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->drive_info.drive_type == NVME_DRIVE)
+    if (device->os_info.lockCount == UINT16_C(0))
     {
-        // Not sure what to do
+        if (device->drive_info.drive_type == NVME_DRIVE)
+        {
+            // Not sure what to do
+        }
+        else
+        {
+            struct flock locks;
+            safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+            locks.l_type = F_WRLCK;
+            locks.l_whence = SEEK_SET;
+            locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
+            locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
+            if (fcntl(fd, F_SETLK, &locks) < 0)
+            {
+                if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+                {
+                    printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", lock == true ? "lock" : "unlock");
+                    print_Errno_To_Screen(errno);
+                }
+                ret = FAILURE;
+            }
+        }
     }
-    else
+    if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
     {
-        // Get flags
-        int flags = fcntl(device->os_info.fd, F_GETFL);
-        // disable O_NONBLOCK
-        flags &= ~O_NONBLOCK;
-        // Set Flags
-        fcntl(device->os_info.fd, F_SETFL, flags);
+        // Always increment this so we know how many times we've been requested to lock
+        ++device->os_info.lockCount;
     }
     return ret;
 }
@@ -1579,18 +1596,34 @@ eReturnValues os_Lock_Device(tDevice* device)
 eReturnValues os_Unlock_Device(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->drive_info.drive_type == NVME_DRIVE)
+    if (device->os_info.lockCount == UINT16_C(1))
     {
-        // Not sure what to do
+        if (device->drive_info.drive_type == NVME_DRIVE)
+        {
+            // Not sure what to do
+        }
+        else
+        {
+            struct flock locks;
+            safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+            locks.l_type = F_UNLCK;
+            locks.l_whence = SEEK_SET;
+            locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
+            locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
+            if (fcntl(fd, F_SETLK, &locks) < 0)
+            {
+                if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+                {
+                    printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", lock == true ? "lock" : "unlock");
+                    print_Errno_To_Screen(errno);
+                }
+                ret = FAILURE;
+            }
+        }
     }
-    else
+    if (ret == SUCCESS && device->os_info.lockCount > 0)
     {
-        // Get flags
-        int flags = fcntl(device->os_info.fd, F_GETFL);
-        // enable O_NONBLOCK
-        flags |= O_NONBLOCK;
-        // Set Flags
-        fcntl(device->os_info.fd, F_SETFL, flags);
+        --device->os_info.lockCount;
     }
     return ret;
 }
