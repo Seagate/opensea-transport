@@ -83,7 +83,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -98,7 +98,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -113,7 +113,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -187,7 +187,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(2, 3) eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSize);
 
@@ -204,7 +204,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx);
 
     OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_nvme_Reset(tDevice* device);
 
