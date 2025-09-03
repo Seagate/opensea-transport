@@ -1930,27 +1930,7 @@ eReturnValues io_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     case SD_INTERFACE:
     case IEEE_1394_INTERFACE:
         // perform SCSI reads
-        if (device->drive_info.drive_type == SCSI_DRIVE || is_Blocksize_And_Capacity_In_Sync(device))
-        {
-            return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
-        }
-        else
-        {
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                return ata_Read(device, lba, forceUnitAccess, ptrData, dataSize);
-            }
-            else if (device->drive_info.drive_type == NVME_DRIVE)
-            {
-                return nvme_Read(device, lba,
-                                 C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)),
-                                 false, forceUnitAccess, 0, ptrData, dataSize);
-            }
-            else
-            {
-                return NOT_SUPPORTED;
-            }
-        }
+        return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
     case NVME_INTERFACE:
         return nvme_Read(device, lba,
                          C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)), false,
@@ -1982,27 +1962,7 @@ eReturnValues io_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     case SD_INTERFACE:
     case IEEE_1394_INTERFACE:
         // perform SCSI writes
-        if (device->drive_info.drive_type == SCSI_DRIVE || is_Blocksize_And_Capacity_In_Sync(device))
-        {
-            return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
-        }
-        else
-        {
-            if (device->drive_info.drive_type == ATA_DRIVE)
-            {
-                return ata_Write(device, lba, forceUnitAccess, ptrData, dataSize);
-            }
-            else if (device->drive_info.drive_type == NVME_DRIVE)
-            {
-                return nvme_Write(device, lba,
-                                  C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)),
-                                  false, forceUnitAccess, 0, 0, ptrData, dataSize);
-            }
-            else
-            {
-                return NOT_SUPPORTED;
-            }
-        }
+        return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
     case NVME_INTERFACE:
         return nvme_Write(device, lba,
                           C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)), false,
