@@ -2162,25 +2162,7 @@ eReturnValues verify_LBA(tDevice* device, uint64_t lba, uint32_t range)
         case SD_INTERFACE:
         case IEEE_1394_INTERFACE:
             // perform SCSI verifies
-            if (device->drive_info.drive_type == SCSI_DRIVE || is_Blocksize_And_Capacity_In_Sync(device))
-            {
-                return scsi_Verify(device, lba, range);
-            }
-            else
-            {
-                if (device->drive_info.drive_type == ATA_DRIVE)
-                {
-                    return ata_Read_Verify(device, lba, range);
-                }
-                else if (device->drive_info.drive_type == NVME_DRIVE)
-                {
-                    return nvme_Verify_LBA(device, lba, range);
-                }
-                else
-                {
-                    return NOT_SUPPORTED;
-                }
-            }
+            return scsi_Verify(device, lba, range);
         case NVME_INTERFACE:
             return nvme_Verify_LBA(device, lba, range);
         case RAID_INTERFACE:
