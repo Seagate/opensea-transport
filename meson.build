@@ -75,6 +75,8 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wreturn-type',
   '-Wpointer-bool-conversion',
   '-fvisibility=hidden', #to work similarly to Window's DLL import/export
+  '-Wmismatched-dealloc',
+  '-Wfree-nonheap-object',
   ]
 
   if c.get_id().contains('gcc') and c.version().version_compare('>=10.0')
