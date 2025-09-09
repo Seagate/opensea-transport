@@ -169,13 +169,14 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice*               device,
 {
     eReturnValues ret = UNKNOWN;
     ScsiIoCtx     scsiIoCtx;
-    uint8_t*      senseBuffer = senseData;
+    uint8_t*      senseBuffer    = senseData;
+    uint32_t      senseBufferLen = senseDataLen;
     safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
 
-    if (senseBuffer == M_NULLPTR || senseDataLen == UINT32_C(0))
+    if (senseData == M_NULLPTR || senseDataLen == UINT32_C(0))
     {
-        senseBuffer  = device->drive_info.lastCommandSenseData;
-        senseDataLen = SPC3_SENSE_LEN;
+        senseBuffer    = device->drive_info.lastCommandSenseData;
+        senseBufferLen = SPC3_SENSE_LEN;
     }
     else
     {
@@ -206,7 +207,7 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice*               device,
     // set up the context
     scsiIoCtx.device        = device;
     scsiIoCtx.psense        = senseBuffer;
-    scsiIoCtx.senseDataSize = senseDataLen;
+    scsiIoCtx.senseDataSize = senseBufferLen;
     safe_memcpy(&scsiIoCtx.cdb[0], SCSI_IO_CTX_MAX_CDB_LEN, &cdb[0],
                 C_CAST(size_t, cdbLen)); // this cast to size_t should be safe since cdbLen should never be negative and
                                          // should match a common value in the enum-TJE
@@ -225,9 +226,10 @@ static eReturnValues scsi_Send_Cdb_Int(tDevice*               device,
 
     ret = private_SCSI_Send_CDB(&scsiIoCtx, M_NULLPTR);
 
-    if (senseData && senseDataLen > 0 && senseData != device->drive_info.lastCommandSenseData)
+    if (senseData != M_NULLPTR && senseDataLen > 0 &&
+        M_STATIC_CAST(uintptr_t, senseData) != M_STATIC_CAST(uintptr_t, device->drive_info.lastCommandSenseData))
     {
-        safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, senseBuffer,
+        safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, senseData,
                     M_Min(SPC3_SENSE_LEN, senseDataLen));
     }
 
