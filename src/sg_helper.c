@@ -1334,6 +1334,10 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
     }
 }
 
+M_NONNULL_PARAM_LIST(1, 2)
+M_NULL_TERM_STRING(1)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
 {
     sysFSLowLevelDeviceInfo sysFsInfo;
@@ -1575,6 +1579,8 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
 // This is used to open device->os_info.fd2 which is where we will store
 // a /dev/sd handle which is a block device handle for SCSI devices.
 // This will do nothing on NVMe as it is not needed. - TJE
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static eReturnValues open_fd2(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
@@ -1637,6 +1643,8 @@ static eReturnValues open_fd2(tDevice* device)
     return ret;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static eReturnValues set_Device_Partition_Info(tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
@@ -1697,6 +1705,10 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
 }
 
 #define LIN_MAX_HANDLE_LENGTH 16
+M_NONNULL_PARAM_LIST(1, 2)
+M_NULL_TERM_STRING(1)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
 {
     char*         deviceHandle = M_NULLPTR;
@@ -1979,6 +1991,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 // http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
 // sgResetType should be one of the values from the link above...so bus or device...controller will work but that
 // shouldn't be done ever.
+M_FILE_DESCRIPTOR(1)
 static eReturnValues sg_reset(int fd, int resetType)
 {
     eReturnValues ret = UNKNOWN;
@@ -3255,6 +3268,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH) && defined(NVME_IOCTL_SUBSYS_RESET) && defined(NVME_IOCTL_RESET)
@@ -3403,6 +3418,7 @@ eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
 #if defined(_DEBUG)
 // making this a debug flagged call since it is currently an unused function. We should look into how to appropriately
 // support this.-TJE
+M_FILE_DESCRIPTOR(1)
 static eReturnValues nvme_Namespace_Rescan(int fd)
 {
 #    if defined(NVME_IOCTL_RESCAN) // This IOCTL is not available on older kernels, which is why this is checked like
@@ -3498,6 +3514,7 @@ eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
 
 #define DRIVE_HANDLE_LOCK_RANGE_START  (0)
 #define DRIVE_HANDLE_LOCK_RANGE_LENGTH (0) // 0 means full drive/file
+M_FILE_DESCRIPTOR(1)
 static bool lock_unlock_handle(int fd, bool lock, eVerbosityLevels verboseLevel)
 {
     struct flock locks;

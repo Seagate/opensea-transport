@@ -24,7 +24,7 @@ extern "C"
     // \brief Function to send a ioctl after converting it from the ScsiIoCtx to OS tSPTIoContext
     // \param ScsiIoCtx
     // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
 
     // This is the maximum timeout a command can use in UEFI...which is nearly infinite to begin with
     // NOTE: UEFI also supports an infinite timeout, but that is checked in a separate function

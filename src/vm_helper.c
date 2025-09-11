@@ -181,6 +181,10 @@ static void get_VMV_SYS_FS_Info(const char* handle, sysVMLowLevelDeviceInfo* sys
     }
 }
 
+M_NONNULL_PARAM_LIST(1, 2)
+M_NULL_TERM_STRING(1)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
 {
     sysVMLowLevelDeviceInfo sysVmInfo;
@@ -472,7 +476,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 // http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
 // sgResetType should be one of the values from the link above...so bus or device...controller will work but that
 // shouldn't be done ever.
-eReturnValues sg_reset(int fd, int resetType)
+M_FILE_DESCRIPTOR(1)
+static eReturnValues sg_reset(int fd, int resetType)
 {
     eReturnValues ret = UNKNOWN;
 

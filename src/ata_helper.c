@@ -1131,6 +1131,8 @@ eReturnValues get_Identify_Data(tDevice* device, uint8_t* ptrData, uint32_t data
 }
 
 // This function attempts numerous workarounds to get working identify data (to work around SAT issues)
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static eReturnValues initial_Identify_Device(tDevice* device)
 {
     eReturnValues ret           = NOT_SUPPORTED;

@@ -272,7 +272,7 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RW(2)
     M_PARAM_RW(3)
-    M_PARAM_RO(4)
+    M_PARAM_RW(4)
     eReturnValues build_SAT_CDB(tDevice*               device,
                                 uint8_t**              satCDB,
                                 eCDBLen*               cdbLen,
@@ -294,7 +294,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_RW(2) eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughCommand* ataCommandOptions);
 
     //-----------------------------------------------------------------------------

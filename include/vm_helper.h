@@ -175,7 +175,7 @@ extern "C"
     // \fn send_IO(scsiIoCtx * scsiIoCtx)
     // \brief Function to send IO to the device.
     // \param scsiIoCtx
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -260,15 +260,6 @@ extern "C"
     M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_nvme_Subsystem_Reset(tDevice* device);
 
     // eReturnValues map_Block_To_Generic_Handle(char *handle, char **genericHandle, char **blockHandle);
-
-    M_FILE_DESCRIPTOR(1)
-    eReturnValues device_Reset(int fd);
-
-    M_FILE_DESCRIPTOR(1)
-    eReturnValues bus_Reset(int fd);
-
-    M_FILE_DESCRIPTOR(1)
-    eReturnValues host_Reset(int fd);
 
     //-----------------------------------------------------------------------------
     //

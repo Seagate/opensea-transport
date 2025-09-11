@@ -2245,6 +2245,8 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device)
     return ret;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
 {
     bool passthroughTypeSet = false;

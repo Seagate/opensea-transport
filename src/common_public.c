@@ -3594,6 +3594,8 @@ bool is_Removable_Media(tDevice* device)
     return result;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet                                   = false;
@@ -5127,6 +5129,8 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5384,6 +5388,8 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_Maxtor_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5475,6 +5481,8 @@ static bool set_Maxtor_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5633,6 +5641,8 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_ASMedia_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5720,6 +5730,8 @@ static bool set_ASMedia_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_Realtek_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5774,6 +5786,8 @@ static bool set_Realtek_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5885,6 +5899,8 @@ static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_Prolific_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5923,6 +5939,8 @@ static bool set_Prolific_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_Cypress_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -5953,6 +5971,8 @@ static bool set_Cypress_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_TI_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -6001,6 +6021,8 @@ static bool set_TI_USB_Hacks_By_PID(tDevice* device)
 
 // https://usb-ids.gowdy.us/
 // http://www.linux-usb.org/usb.ids
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -6418,6 +6440,8 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
 
 // Vendor ID's, or OUI's, can be found here:
 // https://regauth.standards.ieee.org/standards-ra-web/pub/view.html#registries
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
 {
     bool passthroughHacksSet = false;
@@ -6504,6 +6528,8 @@ static bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
 // https://pcisig.com/membership/member-companies?combine=&order=field_vendor_id&sort=asc
 // https://www.pcilookup.com/
 // https://pci-ids.ucw.cz/
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_PCI_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
 {
     bool passthroughHacksSet = false;

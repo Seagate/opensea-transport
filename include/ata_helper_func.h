@@ -2045,7 +2045,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2860,7 +2860,7 @@ extern "C"
     // They will automatically try DMA if it is supported, then retry with PIO mode if the Translator or Driver doesn't
     // support issuing DMA mode commands.
     M_NONNULL_PARAM_LIST(1, 4)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_WO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues send_ATA_Read_Log_Ext_Cmd(tDevice* device,
                                                                   uint8_t  logAddress,
@@ -2870,7 +2870,7 @@ extern "C"
                                                                   uint16_t featureRegister);
 
     M_NONNULL_PARAM_LIST(1, 4)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_RO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues send_ATA_Write_Log_Ext_Cmd(tDevice* device,
                                                                    uint8_t  logAddress,
@@ -2880,7 +2880,7 @@ extern "C"
                                                                    bool     forceRTFRs);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_NONNULL_IF_NONZERO_PARAM(5, 6)
     M_PARAM_RO_SIZE(5, 6)
     OPENSEA_TRANSPORT_API eReturnValues send_ATA_Download_Microcode_Cmd(tDevice*                   device,
@@ -2894,7 +2894,7 @@ extern "C"
                                                                         uint32_t                   timeoutSeconds);
 
     M_NONNULL_PARAM_LIST(1, 4)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_RO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues send_ATA_Trusted_Send_Cmd(tDevice* device,
                                                                   uint8_t  securityProtocol,
@@ -2903,7 +2903,7 @@ extern "C"
                                                                   uint32_t dataSize);
 
     M_NONNULL_PARAM_LIST(1, 4)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_WO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues send_ATA_Trusted_Receive_Cmd(tDevice* device,
                                                                      uint8_t  securityProtocol,
@@ -2912,15 +2912,15 @@ extern "C"
                                                                      uint32_t dataSize);
 
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_WO(2) OPENSEA_TRANSPORT_API eReturnValues send_ATA_Read_Buffer_Cmd(tDevice* device, uint8_t* ptrData);
 
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_RO(2) OPENSEA_TRANSPORT_API eReturnValues send_ATA_Write_Buffer_Cmd(tDevice* device, uint8_t* ptrData);
 
     M_NONNULL_PARAM_LIST(1, 7)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_WO_SIZE(7, 8)
     OPENSEA_TRANSPORT_API eReturnValues send_ATA_Read_Stream_Cmd(tDevice* device,
                                                                  uint8_t  streamID,
@@ -2932,7 +2932,7 @@ extern "C"
                                                                  uint32_t dataSize);
 
     M_NONNULL_PARAM_LIST(1, 7)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_RO_SIZE(7, 8)
     OPENSEA_TRANSPORT_API eReturnValues send_ATA_Write_Stream_Cmd(tDevice* device,
                                                                   uint8_t  streamID,

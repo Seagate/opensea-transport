@@ -528,6 +528,8 @@ static eSCSICmdSupport is_SCSI_Operation_Code_Supported_ReportOP(tDevice*       
     return cmdsupport;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool check_inq_cmddt(tDevice* device)
 {
     bool     cmddtSupported = false;

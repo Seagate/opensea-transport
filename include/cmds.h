@@ -483,7 +483,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 4)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_WO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues
     os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
@@ -507,15 +507,15 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 4)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_RO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues
     os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -584,7 +584,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 4)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_RO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues
     scsi_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
@@ -608,7 +608,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 4)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_WO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues
     scsi_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
@@ -632,7 +632,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 4)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_RO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues
     ata_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
@@ -656,7 +656,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 4)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_WO_SIZE(4, 5)
     OPENSEA_TRANSPORT_API eReturnValues
     ata_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);

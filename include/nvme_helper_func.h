@@ -57,7 +57,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) M_PARAM_RW(2) OPENSEA_TRANSPORT_API eReturnValues nvme_Cmd(tDevice* device, nvmeCmdCtx* cmdCtx);
+    M_PARAM_RW(1) M_PARAM_RW(2) OPENSEA_TRANSPORT_API eReturnValues nvme_Cmd(tDevice* device, nvmeCmdCtx* cmdCtx);
 
     //-----------------------------------------------------------------------------
     //

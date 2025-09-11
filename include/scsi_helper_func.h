@@ -755,7 +755,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 7)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_PARAM_WO_SIZE(7, 6)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Operation_Codes(tDevice* device,
                                                                               bool     rctd,
@@ -834,7 +834,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 8)
     M_PARAM_WO_SIZE(7, 8)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Sense_Cmd(tDevice* device,
@@ -1090,7 +1090,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 3)
     M_PARAM_WO_SIZE(7, 3)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_6(tDevice*             device,
@@ -1122,7 +1122,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 7)
     M_PARAM_WO_SIZE(6, 7)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_10(tDevice* device,

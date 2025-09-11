@@ -1103,15 +1103,20 @@ static void print_CuDv_Struct(struct CuDv* cudv)
     printf("\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
 }
 
-static int get_Adapter_IDs(tDevice* device, char* name)
+M_NONNULL_PARAM_LIST(1,2)
+M_PARAM_RW(1)
+M_NULL_TERM_STRING(2)
+M_PARAM_RO(2)
+static int get_Adapter_IDs(tDevice* device, const char* name)
 {
     int          ret = 0;
     struct CuDv  cudv;
-    struct CuDv* ptrcudv;
+    struct CuDv* ptrcudv = M_NULLPTR;
     safe_memset(&cudv, sizeof(struct CuDv), 0, sizeof(struct CuDv));
 
     // odm_initialize();
     DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT); // 256
+    DISABLE_NONNULL_COMPARE
     if (name && safe_strlen(name) > 0)
     {
         snprintf_err_handle(odmCriteria, MAX_ODMI_CRIT, "name='%s'", name);
@@ -1175,6 +1180,7 @@ static int get_Adapter_IDs(tDevice* device, char* name)
     {
         ret = -1;
     }
+    RESTORE_NONNULL_COMPARE
     return ret;
 }
 

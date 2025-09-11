@@ -160,6 +160,8 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
     return result;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static eReturnValues set_Device_Partition_Info(tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
@@ -331,6 +333,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     return ret;
 }
 
+M_FILE_DESCRIPTOR(1)
 static eReturnValues uscsi_Reset(int fd, int resetFlag)
 {
     struct uscsi_cmd uscsi_io;

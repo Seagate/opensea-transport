@@ -163,12 +163,12 @@ DEFINE_GUID(GUID_DEVINTERFACE_DISK, 0x53f56307L, 0xb6bf, 0x11d0, 0x94, 0xf2, 0x0
 
 extern bool validate_Device_Struct(versionBlock);
 
-eReturnValues get_Windows_SMART_IO_Support(tDevice* device);
+M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues get_Windows_SMART_IO_Support(tDevice* device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busType);
+M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busType);
 bool          is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx);
-eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx);
-eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx);
+M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx);
+M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx);
 #endif
 #if defined(WIN_DEBUG)
 // \fn print_bus_type (BYTE type)
@@ -284,6 +284,9 @@ void print_bus_type(BYTE type)
 //     }
 // }
 
+M_NONNULL_PARAM_LIST(2, 4)
+M_PARAM_RW_SIZE(2, 3)
+M_PARAM_RW(4)
 static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bufferLength, tDevice* device)
 {
     bool      success = true;
@@ -3167,6 +3170,8 @@ static M_INLINE void safe_free_firmwareinfo(PSTORAGE_FIRMWARE_INFO* info)
     safe_free_core(M_REINTERPRET_CAST(void**, info));
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool controllerRequest)
 {
     eReturnValues ret = NOT_SUPPORTED;
@@ -4289,10 +4294,13 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
 
 #endif // WINVER >= SEA_WIN32_WINNT_WINBLUE
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static eReturnValues close_SCSI_SRB_Handle(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device)
+    DISABLE_NONNULL_COMPARE
+    if (device != M_NULLPTR)
     {
         if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE)
         {
@@ -4308,6 +4316,7 @@ static eReturnValues close_SCSI_SRB_Handle(tDevice* device)
             device->os_info.last_error = GetLastError();
         }
     }
+    RESTORE_NONNULL_COMPARE
     return ret;
 }
 
@@ -5083,6 +5092,10 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
 #define MAX_VOL_STR_LEN  (8U)
 #define MAX_DISK_EXTENTS (32U)
 
+M_NONNULL_PARAM_LIST(1, 2)
+M_NULL_TERM_STRING(1)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 static eReturnValues open_Win_Handle(const char* filename, tDevice* device)
 {
     eReturnValues ret      = SUCCESS;
@@ -5172,6 +5185,10 @@ static eReturnValues open_Win_Handle(const char* filename, tDevice* device)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
+M_NONNULL_PARAM_LIST(1, 2)
+M_NULL_TERM_STRING(1)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 static eReturnValues get_Win_Device(const char* filename, tDevice* device)
 {
     eReturnValues               ret          = FAILURE;
@@ -6059,6 +6076,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
     // printf("%s <--\n",__FUNCTION__);
     return ret; // if we didn't get to fill_In_Device_Info FAILURE
 }
+
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
 #if defined(ENABLE_CSMI)
@@ -9343,11 +9361,11 @@ eReturnValues os_Device_Reset(tDevice* device)
     // ULONG_C(0);
     BOOL success = FALSE;
     SetLastError(NO_ERROR);
-    device->os_info.last_error = NO_ERROR;
+    DWORD error = NO_ERROR;
     success = DeviceIoControl(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_DEVICE, M_NULLPTR, 0, M_NULLPTR, 0,
                               M_NULLPTR, FALSE);
-    device->os_info.last_error = GetLastError();
-    if (MSFT_BOOL_TRUE(success) && device->os_info.last_error == NO_ERROR)
+    error = GetLastError();
+    if (MSFT_BOOL_TRUE(success) && error == NO_ERROR)
     {
         ret = SUCCESS;
     }
@@ -9369,11 +9387,11 @@ eReturnValues os_Bus_Reset(tDevice* device)
     safe_memset(&reset, sizeof(STORAGE_BUS_RESET_REQUEST), 0, sizeof(STORAGE_BUS_RESET_REQUEST));
     reset.PathId = device->os_info.scsi_addr.PathId;
     SetLastError(NO_ERROR);
-    device->os_info.last_error = NO_ERROR;
+    DWORD error = NO_ERROR;
     success = DeviceIoControl(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_BUS, &reset, sizeof(reset), &reset,
                               sizeof(reset), &returned_data, FALSE);
-    device->os_info.last_error = GetLastError();
-    if (MSFT_BOOL_TRUE(success) && device->os_info.last_error == NO_ERROR)
+    error = GetLastError();
+    if (MSFT_BOOL_TRUE(success) && error == NO_ERROR)
     {
         ret = SUCCESS;
     }
@@ -12582,6 +12600,7 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
     return ret;
 }
 
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Security_Send(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret         = OS_COMMAND_NOT_AVAILABLE;
@@ -12602,6 +12621,7 @@ static eReturnValues win10_Translate_Security_Send(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Security_Receive(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret         = OS_COMMAND_NOT_AVAILABLE;
@@ -12622,6 +12642,7 @@ static eReturnValues win10_Translate_Security_Receive(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret         = OS_COMMAND_NOT_AVAILABLE;
@@ -12662,6 +12683,7 @@ static eReturnValues win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx* n
     return ret;
 }
 
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret               = OS_COMMAND_NOT_AVAILABLE;
@@ -12707,6 +12729,7 @@ static eReturnValues win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx* nvmeIo
     return ret;
 }
 
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret               = OS_COMMAND_NOT_AVAILABLE;
@@ -12770,6 +12793,7 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
+M_PARAM_RW(1)
 static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -12841,6 +12865,7 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx* nvmeIoCtx)
 }
 
 #    if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
+M_PARAM_RW(1)
 static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret              = OS_COMMAND_NOT_AVAILABLE;
@@ -12960,6 +12985,8 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
 }
 #    endif
 
+M_PARAM_RO(1)
+M_PARAM_WO(1)
 static eReturnValues send_NVMe_Set_Features_Win10(nvmeCmdCtx* nvmeIoCtx, bool* useNVMPassthrough)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -13021,7 +13048,7 @@ static eReturnValues send_NVMe_Set_Features_Win10(nvmeCmdCtx* nvmeIoCtx, bool* u
             if (featureID >= 0xC0 /* && featureID <= 0xFF */)
             {
                 // call the vendor specific pass-through function to try and issue this command
-                if (useNVMPassthrough)
+                if (useNVMPassthrough != M_NULLPTR)
                 {
                     *useNVMPassthrough = true;
                 }
@@ -13066,13 +13093,14 @@ typedef enum eNVM_ReInit_CompatibleEnum
     NVM_REINIT_COMPATIBLE_SANITIZE_BLOCK
 } eNVM_ReInit_Compatible;
 
-static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOCTL(nvmeCmdCtx* nvmeIoCtx)
+M_PARAM_RO(1)
+static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOCTL(const nvmeCmdCtx* nvmeIoCtx)
 {
     eNVM_ReInit_Compatible compat = NVM_REINIT_INCOMPATIBLE_CMD;
     if (is_Windows_10_Version_1607_Or_Higher())
     {
         // check a couple basic requirements....valid pointer and an admin command
-        if (nvmeIoCtx && nvmeIoCtx->commandType == NVM_ADMIN_CMD)
+        if (nvmeIoCtx != M_NULLPTR && nvmeIoCtx->commandType == NVM_ADMIN_CMD)
         {
             // first check for format crypto erase.
             if (nvmeIoCtx->cmd.adminCmd.opcode == NVME_ADMIN_CMD_FORMAT_NVM)
@@ -13101,7 +13129,6 @@ static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOC
                         uint8_t  pi                  = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 7, 5);
                         bool     mset                = nvmeIoCtx->cmd.adminCmd.cdw10 & BIT4;
                         uint8_t  lbaFormat           = get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 3, 0);
-                        nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
                         if (reservedBitsDWord10 == 0 && !pil && !mset && pi == 0)
                         {
                             // now make sure LBA size matches current settings
@@ -13172,6 +13199,7 @@ static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOC
     return compat;
 }
 
+M_PARAM_RW(1)
 static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -13296,6 +13324,7 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
 // Also, microsoft updated some online documentation to show this and it clarified that the sanitize CDB issues the
 // sanitize command. It is possible that some earlier version of Windows 10 supported format translation or handled
 // sanitize differently, but that information is not available.
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Format(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret                 = OS_COMMAND_NOT_AVAILABLE;
@@ -13427,6 +13456,7 @@ static eReturnValues win10_Translate_Format(nvmeCmdCtx* nvmeIoCtx)
 }
 #    endif // ENABLE_TRANSLATE_FORMAT
 
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Write_Uncorrectable(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret               = OS_COMMAND_NOT_AVAILABLE;
@@ -13455,6 +13485,7 @@ static eReturnValues win10_Translate_Write_Uncorrectable(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Flush(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret               = OS_COMMAND_NOT_AVAILABLE;
@@ -13466,6 +13497,7 @@ static eReturnValues win10_Translate_Flush(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Read(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret         = OS_COMMAND_NOT_AVAILABLE;
@@ -13545,6 +13577,7 @@ static eReturnValues win10_Translate_Read(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Write(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret         = OS_COMMAND_NOT_AVAILABLE;
@@ -13626,7 +13659,7 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx* nvmeIoCtx)
 }
 
 // MSFT documentation does not show this translation as available. Code left here in case someone wants to test it in
-// the future. static eReturnValues win10_Translate_Compare(nvmeCmdCtx *nvmeIoCtx)
+// the future. M_PARAM_RW(1) static eReturnValues win10_Translate_Compare(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
@@ -13693,6 +13726,7 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx* nvmeIoCtx)
 // uncomment this to enable returning a not supported value when a context attribute is set
 // #define WIN_NVME_DEALLOCATE_CONTEXT_FAILURE
 
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues    ret            = OS_COMMAND_NOT_AVAILABLE;
@@ -13814,6 +13848,7 @@ static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx* nvmeIoCtx)
 // the docs to show the SCSI Sanitize CDB as supported for Block and Crypto erase. Since this IOCTL is not working in
 // Win 10 22H2 for some unknown reason, this code will issue the SCSI CDB instead. If we need to we can update this code
 // to calling that IOCTL again, but the SSCI CDB's work the same without random errors. -TJE
+M_PARAM_RW(1)
 static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -13861,7 +13896,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 }
 
 // These commands are not supported VIA SCSI translation. There are however other Windows IOCTLs that may work
-// static eReturnValues win10_Translate_Reservation_Register(nvmeCmdCtx *nvmeIoCtx)
+//M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Register(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
@@ -13945,7 +13980,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     return ret;
 // }
 //
-// static eReturnValues win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
+//M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
@@ -13963,7 +13998,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     return ret;
 // }
 //
-// static eReturnValues win10_Translate_Reservation_Acquire(nvmeCmdCtx *nvmeIoCtx)
+//M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Acquire(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
@@ -14052,7 +14087,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     return ret;
 // }
 //
-// static eReturnValues win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
+//M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
@@ -14128,6 +14163,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 
 // Windows 10 added a way to query for ATA identify data. Seems to work ok.
 // Note: Any odd parameters like a change in TFRs from the spec will not work here.
+M_PARAM_RW(1)
 eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues returnValue    = SUCCESS;
@@ -14232,6 +14268,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
     return returnValue;
 }
 
+M_PARAM_RW(1)
 eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues returnValue    = SUCCESS;
@@ -14347,6 +14384,7 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx)
 // support: https://docs.microsoft.com/en-us/windows-hardware/drivers/storage/stornvme-feature-support Most of the code
 // below has been updated according to these docs, however some things may be missing and those enhancements should be
 // made to better improve support.
+M_PARAM_RO(1)
 static eReturnValues send_Win_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -14635,6 +14673,7 @@ eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice* device,
     return NOT_SUPPORTED;
 }
 
+M_PARAM_RW(1)
 static eReturnValues open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
@@ -14665,6 +14704,7 @@ static eReturnValues open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice*
     return ret;
 }
 
+M_PARAM_RW(1)
 static void set_Command_Completion_For_OS_Read_Write_NVMe(tDevice* device, DWORD lastError)
 {
     // For nvme, set the NVMe status as best we can, then fall through and set SCSI style sense data as well.
@@ -14745,6 +14785,7 @@ static void set_Command_Completion_For_OS_Read_Write_NVMe(tDevice* device, DWORD
     }
 }
 
+M_PARAM_RW(1)
 static void set_Command_Completion_For_OS_Read_Write_ATA(tDevice* device, DWORD lastError)
 {
     device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
@@ -14779,6 +14820,7 @@ static void set_Command_Completion_For_OS_Read_Write_ATA(tDevice* device, DWORD 
     }
 }
 
+M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1)
 static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, DWORD lastError)
 {
     eReturnValues ret = SUCCESS;
