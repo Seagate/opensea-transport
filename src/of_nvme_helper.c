@@ -464,7 +464,10 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
             ioctl->DataBufferLen =
                 nvmeIoCtx->dataSize; // NOTE: This size is supposed to include metadata! It also depends on if metadata
                                      // is interleaved or at the beginning of the buffer
-            safe_memcpy(ioctl->DataBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            if (nvmeIoCtx->dataSize > 0 && nvmeIoCtx->ptrData != M_NULLPTR)
+            {
+                safe_memcpy(ioctl->DataBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            }
             break;
         case XFER_DATA_IN_OUT:
         case XFER_DATA_OUT_IN:
@@ -514,7 +517,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
             }
             if (ioctl->SrbIoCtrl.ReturnCode == NVME_IOCTL_SUCCESS)
             {
-                if (nvmeIoCtx->commandDirection == XFER_DATA_IN)
+                if (nvmeIoCtx->commandDirection == XFER_DATA_IN && nvmeIoCtx->dataSize > 0 && nvmeIoCtx->ptrData != M_NULLPTR)
                 {
                     // copy back in the data that was read from the device.
                     safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, ioctl->DataBuffer,
