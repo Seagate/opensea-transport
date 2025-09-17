@@ -136,7 +136,7 @@ extern "C"
                 uint16_t Word019;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idSNwords or something-TJE
-        }; // anonymous to make access to SN or SN words easier
+        };     // anonymous to make access to SN or SN words easier
         uint16_t Word020;
         uint16_t Word021;
         uint16_t Word022;
@@ -151,7 +151,7 @@ extern "C"
                 uint16_t Word026;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idFWwords or something-TJE
-        }; // anonymous to make access to FW or FW words easier
+        };     // anonymous to make access to FW or FW words easier
         union
         {
             uint8_t ModelNum[ATA_IDENTIFY_MN_LENGTH]; // 27 ... 46
@@ -179,7 +179,7 @@ extern "C"
                 uint16_t Word046;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idMNwords or something-TJE
-        }; // anonymous to make access to MN or MN words easier
+        };     // anonymous to make access to MN or MN words easier
         uint16_t Word047;
         uint16_t Word048;
         uint16_t Word049;
@@ -675,7 +675,6 @@ extern "C"
         VS_OFF_4088 = 1016,
         VS_OFF_4095 = 1023
     } eNVMeCtrlVSOffsets;
-
 
     typedef struct s_nvmeLBAF
     {
@@ -1460,8 +1459,8 @@ extern "C"
         uint8_t minimumAlignment; // This is a power of 2 value representing the byte alignment required. 0 - no
                                   // requirement, 1 - single byte alignment, 2 - word, 4 - dword, 8 - qword, 16 - 128bit
                                   // aligned
-        uint16_t lockCount; // Tracks lock/unlock requests.
-        uint8_t padd0;
+        uint16_t lockCount;       // Tracks lock/unlock requests.
+        uint8_t  padd0;
 #if defined(UEFI_C_SOURCE)
         EFI_HANDLE   fd;
         EFI_DEV_PATH devicePath; // This type being used is a union of all the different possible device paths. - This
@@ -1616,10 +1615,10 @@ extern "C"
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
     int fd; // used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but
             // kept here just in case)
-    struct cam_device* cam_dev; // holds fd inside for CAM devices among other information
+    struct cam_device* cam_dev;             // holds fd inside for CAM devices among other information
 #    if defined(__x86_64__) || defined(__amd64__) || defined(__aarch64__) || defined(__ia64__) ||                      \
         defined(__itanium__) || defined(__powerpc64__) || defined(__ppc64__) || defined(__spark__)
-    uint8_t freeBSDPadding[102]; // padding on 64bit OS
+    uint8_t            freeBSDPadding[102]; // padding on 64bit OS
 #    else
     uint8_t freeBSDPadding[106]; // padding on 32bit OS
 #    endif
@@ -2179,6 +2178,40 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity);
+
+#define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
+    typedef struct s_scanDriveInfo
+    {
+        char displayHandle[SCAN_DISPLAY_HANDLE_STRING_LENGTH];
+        char vendor[T10_VENDOR_ID_LEN + 1];
+        char modelNumber[MODEL_NUM_LEN + 1]; // not INQ
+        char serialNumber[SERIAL_NUM_LEN + 1];
+        char firmwareVersion[FW_REV_LEN + 1];
+    } scanDriveInfo;
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Devs_For_Scan_And_Print()
+    //
+    //! \brief   Description:  Scan for devices on the supported interfaces & print info.
+    //!                        Function that scans for valid devices on all interfaces.
+    //                         IMPORTANT: Try best to not send a command to the device.
+    //
+    //  Entry:
+    //!   \param[in] flags = Flags for future use to control the scan
+    //!   \param[in] scanVerbosity = the verbosity to run the scan at
+    //!   \param[out] numberOfDevices = number of devices that needed to be displayed
+    //!   \param[out] deviceList = list for the device information
+    //
+    //  Exit:
+    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //-----------------------------------------------------------------------------
+    M_PARAM_RW(3)
+    M_PARAM_RW(4)
+    OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
+                                                                    eVerbosityLevels scanVerbosity,
+                                                                    uint32_t*        numberOfDevices,
+                                                                    scanDriveInfo**  deviceList);
 
     //-----------------------------------------------------------------------------
     //
