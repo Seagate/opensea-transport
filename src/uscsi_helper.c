@@ -829,7 +829,7 @@ eReturnValues os_Lock_Device(tDevice* device)
         locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
         if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
         {
-            if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
             {
                 printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", "lock");
                 print_Errno_To_Screen(errno);
@@ -858,7 +858,7 @@ eReturnValues os_Unlock_Device(tDevice* device)
         locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
         if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
         {
-            if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
             {
                 printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", "unlock");
                 print_Errno_To_Screen(errno);
