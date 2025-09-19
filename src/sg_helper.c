@@ -3514,6 +3514,7 @@ static bool lock_unlock_handle(int fd, bool lock, eVerbosityLevels verboseLevel)
     locks.l_whence = SEEK_SET;
     locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
     locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
+    fsync(fd);
 #if defined(F_OFD_SETLK)
     OSVersionNumber linver;
     safe_memset(&linver, sizeof(OSVersionNumber), 0, sizeof(OSVersionNumber));
@@ -3667,6 +3668,7 @@ eReturnValues os_Update_File_System_Cache(tDevice* device)
 #endif
         fdToRescan = &device->os_info.fd2;
     }
+    fsync(fdToRescan);
 
     // Now, call BLKRRPART
 #if defined(_DEBUG)
@@ -3701,6 +3703,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
     {
         blockHandle = device->os_info.secondName;
     }
+    fsync(blockHandle);
     partitionCount = get_Partition_Count(blockHandle);
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
     {
@@ -3722,6 +3725,14 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
                     {
                         printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
                     }
+                    // Try syncing the FS first by opening the mount point and calling fsync on it.
+                    int mntfs = open((parts + iter)->mntPath, O_DIRECTORY | O_RDONLY);
+                    if (mntfs > 0)
+                    {
+                        fsync(mntfs);
+                        close(mntfs);
+                    }
+
                     // Now that we have a name, unmount the file system
                     // Linux 2.1.116 added the umount2()
                     if (0 > umount2((parts + iter)->mntPath, MNT_FORCE))
@@ -3737,6 +3748,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
                     }
                 }
             }
+            fsync(blockHandle);
             safe_free_spartition_info(&parts);
         }
         else
