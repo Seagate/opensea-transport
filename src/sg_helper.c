@@ -1605,7 +1605,7 @@ static eReturnValues open_fd2(tDevice* device)
                     continue;
                 }
                 perror("open");
-                device->os_info.last_error = errno;
+                set_Device_Last_Error(device, errno);
                 printf("open failure\n");
                 printf("Error: ");
                 print_Errno_To_Screen(errno);
@@ -1784,7 +1784,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
                 continue;
             }
             perror("open");
-            device->os_info.last_error = errno;
+            set_Device_Last_Error(device, errno);
             printf("open failure\n");
             printf("Error: ");
             print_Errno_To_Screen(errno);
@@ -2030,17 +2030,17 @@ static eReturnValues sg_reset(int fd, int resetType)
     return ret;
 }
 
-eReturnValues os_Device_Reset(tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_DEVICE);
 }
 
-eReturnValues os_Bus_Reset(tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_BUS);
 }
 
-eReturnValues os_Controller_Reset(tDevice* device)
+eReturnValues os_Controller_Reset(const tDevice* device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
 }
@@ -2228,8 +2228,8 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
     stop_Timer(&commandTimer);
     if (ioctlResult < 0)
     {
-        scsiIoCtx->device->os_info.last_error = errno;
-        ret                                   = OS_PASSTHROUGH_FAILURE;
+        set_Device_Last_Error(scsiIoCtx->device, errno);
+        ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
         {
             if (scsiIoCtx->device->os_info.last_error != 0)
@@ -3120,8 +3120,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         stop_Timer(&commandTimer);
         if (ioctlResult < 0)
         {
-            nvmeIoCtx->device->os_info.last_error = errno;
-            ret                                   = OS_PASSTHROUGH_FAILURE;
+            set_Device_Last_Error(nvmeIoCtx->device, errno);
+            ret = OS_PASSTHROUGH_FAILURE;
             if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
             {
                 if (nvmeIoCtx->device->os_info.last_error != 0)
@@ -3168,8 +3168,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             stop_Timer(&commandTimer);
             if (ioctlResult < 0)
             {
-                nvmeIoCtx->device->os_info.last_error = errno;
-                ret                                   = OS_PASSTHROUGH_FAILURE;
+                set_Device_Last_Error(nvmeIoCtx->device, errno);
+                ret = OS_PASSTHROUGH_FAILURE;
                 if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
                 {
                     if (nvmeIoCtx->device->os_info.last_error != 0)
@@ -3221,8 +3221,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             stop_Timer(&commandTimer);
             if (ioctlResult < 0)
             {
-                nvmeIoCtx->device->os_info.last_error = errno;
-                ret                                   = OS_PASSTHROUGH_FAILURE;
+                set_Device_Last_Error(nvmeIoCtx->device, errno);
+                ret = OS_PASSTHROUGH_FAILURE;
                 if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
                 {
                     if (nvmeIoCtx->device->os_info.last_error != 0)
@@ -3313,7 +3313,7 @@ static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
     snprintf_err_handle(controllerHandle, 40, "/dev/nvme%lu", controller);
     if ((handleToReset = open(controllerHandle, O_RDWR | O_NONBLOCK)) < 0)
     {
-        device->os_info.last_error = errno;
+        set_Device_Last_Error(device, errno);
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
         {
             printf("Error opening controller handle for nvme reset: ");
@@ -3328,8 +3328,8 @@ static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
             return OS_PASSTHROUGH_FAILURE;
         }
     }
-    openedControllerHandle     = true;
-    device->os_info.last_error = 0;
+    openedControllerHandle = true;
+    set_Device_Last_Error(device, 0);
     if (subsystemReset)
     {
         start_Timer(&commandTimer);
@@ -3342,9 +3342,6 @@ static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
         ioRes = ioctl(handleToReset, NVME_IOCTL_RESET);
         stop_Timer(&commandTimer);
     }
-    device->drive_info.lastCommandTimeNanoSeconds             = get_Nano_Seconds(commandTimer);
-    device->drive_info.lastNVMeResult.lastNVMeStatus          = 0;
-    device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
@@ -3352,7 +3349,7 @@ static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
     if (ioRes < 0)
     {
         // failed!
-        device->os_info.last_error = errno;
+        set_Device_Last_Error(device, errno);
         if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
         {
             printf("Error: ");
@@ -3375,7 +3372,7 @@ static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Reset(tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = SUCCESS;
@@ -3383,7 +3380,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
     {
         printf("Sending NVMe Reset\n");
     }
-    ret = linux_NVMe_Reset(device, false);
+    ret = linux_NVMe_Reset(M_CONST_CAST(tDevice*, device), false);
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         print_Return_Enum("NVMe Reset", ret);
@@ -3394,7 +3391,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = SUCCESS;
@@ -3402,7 +3399,7 @@ eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
     {
         printf("Sending NVMe Subsystem Reset\n");
     }
-    ret = linux_NVMe_Reset(device, false);
+    ret = linux_NVMe_Reset(M_CONST_CAST(tDevice*, device), false);
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
         print_Return_Enum("NVMe Subsystem Reset", ret);
@@ -3445,7 +3442,7 @@ static eReturnValues nvme_Namespace_Rescan(int fd)
 
 // Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c
 
-eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret     = UNKNOWN;
@@ -3483,30 +3480,30 @@ eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSiz
 #endif
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED tDevice* device,
-                      M_ATTR_UNUSED uint64_t lba,
-                      M_ATTR_UNUSED bool     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* ptrData,
-                      M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
+                      M_ATTR_UNUSED uint64_t       lba,
+                      M_ATTR_UNUSED bool           forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t*       ptrData,
+                      M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED tDevice* device,
-                       M_ATTR_UNUSED uint64_t lba,
-                       M_ATTR_UNUSED bool     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* ptrData,
-                       M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
+                       M_ATTR_UNUSED uint64_t       lba,
+                       M_ATTR_UNUSED bool           forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t*       ptrData,
+                       M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
 {
     // BLKFLSBUF
     return NOT_SUPPORTED;
@@ -3531,6 +3528,7 @@ static bool lock_unlock_handle(int fd, bool lock, eVerbosityLevels verboseLevel)
     locks.l_whence = SEEK_SET;
     locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
     locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
+    fsync(fd);
 #if defined(F_OFD_SETLK)
     OSVersionNumber linver;
     safe_memset(&linver, sizeof(OSVersionNumber), 0, sizeof(OSVersionNumber));
@@ -3626,7 +3624,7 @@ eReturnValues os_Get_Exclusive(tDevice* device)
     return ret;
 }
 
-eReturnValues os_Lock_Device(tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
@@ -3643,12 +3641,12 @@ eReturnValues os_Lock_Device(tDevice* device)
     if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
     {
         // Always increment this so we know how many times we've been requested to lock
-        ++device->os_info.lockCount;
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return ret;
 }
 
-eReturnValues os_Unlock_Device(tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -3665,25 +3663,26 @@ eReturnValues os_Unlock_Device(tDevice* device)
     }
     if (ret == SUCCESS && device->os_info.lockCount > 0)
     {
-        --device->os_info.lockCount;
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return ret;
 }
 
-eReturnValues os_Update_File_System_Cache(tDevice* device)
+eReturnValues os_Update_File_System_Cache(const tDevice* device)
 {
     eReturnValues ret        = SUCCESS;
-    int*          fdToRescan = &device->os_info.fd;
+    int*          fdToRescan = M_CONST_CAST(int*, &device->os_info.fd);
 #if defined(_DEBUG)
     printf("Updating file system cache\n");
 #endif
-    if (device->os_info.secondHandleValid && SUCCESS == open_fd2(device))
+    if (device->os_info.secondHandleValid && SUCCESS == open_fd2(M_CONST_CAST(tDevice*, device)))
     {
 #if defined(_DEBUG)
         printf("using fd2: %s\n", device->os_info.secondName);
 #endif
-        fdToRescan = &device->os_info.fd2;
+        fdToRescan = M_CONST_CAST(int*, &device->os_info.fd2);
     }
+    fsync(fdToRescan);
 
     // Now, call BLKRRPART
 #if defined(_DEBUG)
@@ -3691,7 +3690,7 @@ eReturnValues os_Update_File_System_Cache(tDevice* device)
 #endif
     if (ioctl(*fdToRescan, BLKRRPART) < 0)
     {
-        device->os_info.last_error = errno;
+        set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
         {
             printf("Error update partition table: \n");
@@ -3703,21 +3702,22 @@ eReturnValues os_Update_File_System_Cache(tDevice* device)
     return ret;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 {
     // TODO: if BLKZEROOUT available, use this to write zeroes to begining and end of the drive???
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
     int           partitionCount = 0;
-    char*         blockHandle    = device->os_info.name;
+    const char*   blockHandle    = device->os_info.name;
     if (device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))
     {
         blockHandle = device->os_info.secondName;
     }
+    fsync(blockHandle);
     partitionCount = get_Partition_Count(blockHandle);
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
     {
@@ -3739,12 +3739,20 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
                     {
                         printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
                     }
+                    // Try syncing the FS first by opening the mount point and calling fsync on it.
+                    int mntfs = open((parts + iter)->mntPath, O_DIRECTORY | O_RDONLY);
+                    if (mntfs > 0)
+                    {
+                        fsync(mntfs);
+                        close(mntfs);
+                    }
+
                     // Now that we have a name, unmount the file system
                     // Linux 2.1.116 added the umount2()
                     if (0 > umount2((parts + iter)->mntPath, MNT_FORCE))
                     {
-                        ret                        = FAILURE;
-                        device->os_info.last_error = errno;
+                        ret = FAILURE;
+                        set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
                         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                         {
                             printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
@@ -3754,6 +3762,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
                     }
                 }
             }
+            fsync(blockHandle);
             safe_free_spartition_info(&parts);
         }
         else

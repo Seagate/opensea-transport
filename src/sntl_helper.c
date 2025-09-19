@@ -369,11 +369,11 @@ static void sntl_Set_Sense_Data_For_Translation(
     }
 }
 
-static void set_Sense_Data_By_Generic_NVMe_Status(tDevice* device,
-                                                  uint8_t  nvmeStatus,
-                                                  uint8_t* sensePtr,
-                                                  uint32_t senseDataLength,
-                                                  bool     doNotRetry)
+static void set_Sense_Data_By_Generic_NVMe_Status(const tDevice* device,
+                                                  uint8_t        nvmeStatus,
+                                                  uint8_t*       sensePtr,
+                                                  uint32_t       senseDataLength,
+                                                  bool           doNotRetry)
 {
     // first check if sense data reporting is supported
     uint8_t senseKey                   = UINT8_C(0);
@@ -553,10 +553,10 @@ static void set_Sense_Data_By_Generic_NVMe_Status(tDevice* device,
 }
 
 // the completion queue will tell us if the error is specific to a command versus a generic error
-static void set_Sense_Data_By_Command_Specific_NVMe_Status(tDevice* device,
-                                                           uint8_t  nvmeStatus,
-                                                           uint8_t* sensePtr,
-                                                           uint32_t senseDataLength)
+static void set_Sense_Data_By_Command_Specific_NVMe_Status(const tDevice* device,
+                                                           uint8_t        nvmeStatus,
+                                                           uint8_t*       sensePtr,
+                                                           uint32_t       senseDataLength)
 {
     // first check if sense data reporting is supported
     uint8_t senseKey                   = UINT8_C(0);
@@ -675,10 +675,10 @@ static void set_Sense_Data_By_Command_Specific_NVMe_Status(tDevice* device,
     }
 }
 
-static void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice* device,
-                                                       uint8_t  nvmeStatus,
-                                                       uint8_t* sensePtr,
-                                                       uint32_t senseDataLength)
+static void set_Sense_Data_By_Media_Errors_NVMe_Status(const tDevice* device,
+                                                       uint8_t        nvmeStatus,
+                                                       uint8_t*       sensePtr,
+                                                       uint32_t       senseDataLength)
 {
     // first check if sense data reporting is supported
     uint8_t senseKey                   = UINT8_C(0);
@@ -770,10 +770,10 @@ static void set_Sense_Data_By_Media_Errors_NVMe_Status(tDevice* device,
     }
 }
 
-static void set_Sense_Data_By_NVMe_Status(tDevice* device,
-                                          uint32_t completionDWord3,
-                                          uint8_t* sensePtr,
-                                          uint32_t senseDataLength)
+static void set_Sense_Data_By_NVMe_Status(const tDevice* device,
+                                          uint32_t       completionDWord3,
+                                          uint8_t*       sensePtr,
+                                          uint32_t       senseDataLength)
 {
     uint8_t statusCodeType = get_8bit_range_uint32(completionDWord3, 27, 25);
     uint8_t statusCode     = get_8bit_range_uint32(completionDWord3, 24, 17);
@@ -851,7 +851,7 @@ static eReturnValues sntl_Translate_Supported_VPD_Pages_00h(ScsiIoCtx* scsiIoCtx
 
 #define SNTL_UNIT_SERIAL_NUMBER_VPD_MAX_LENGTH 44
 
-static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(
@@ -967,7 +967,7 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(tDevice* dev
 // SCSI Name String designator
 // EUI64 designator
 // Spec strongly recommends at least one EUI64 designator
-static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     // naa designator
@@ -1549,7 +1549,7 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(tDevice* 
     return ret;
 }
 
-static eReturnValues sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, extendedInquiry, 64);
@@ -1631,7 +1631,7 @@ static eReturnValues sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(tDevice* 
     return ret;
 }
 
-static eReturnValues sntl_Translate_Block_Limits_VPD_Page_B0h(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Block_Limits_VPD_Page_B0h(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, blockLimits, 64);
@@ -1791,7 +1791,7 @@ static eReturnValues sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(Sc
     return ret;
 }
 
-static eReturnValues sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, logicalBlockProvisioning, 8);
@@ -1854,7 +1854,7 @@ static eReturnValues sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(tDev
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Inquiry_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Inquiry_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret          = SUCCESS;
     uint8_t       bitPointer   = UINT8_C(0);
@@ -2053,9 +2053,9 @@ static eReturnValues sntl_Translate_SCSI_Inquiry_Command(tDevice* device, ScsiIo
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(tDevice*   device,
-                                                               bool       readCapacity16,
-                                                               ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(const tDevice* device,
+                                                               bool           readCapacity16,
+                                                               ScsiIoCtx*     scsiIoCtx)
 {
     eReturnValues ret          = SUCCESS;
     uint16_t      fieldPointer = UINT16_C(0);
@@ -2199,7 +2199,7 @@ static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(tDevice*   device
     return ret;
 }
 
-static eReturnValues sntl_Translate_Supported_Log_Pages(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Supported_Log_Pages(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret           = SUCCESS;
     bool          subpageFormat = false;
@@ -2299,7 +2299,7 @@ static eReturnValues sntl_Translate_Supported_Log_Pages(tDevice* device, ScsiIoC
     return ret;
 }
 
-static eReturnValues sntl_Translate_Temperature_Log_0x0D(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Temperature_Log_0x0D(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, temperatureLog, 16);
@@ -2395,7 +2395,7 @@ static eReturnValues sntl_Translate_Temperature_Log_0x0D(tDevice* device, ScsiIo
     return ret;
 }
 
-static eReturnValues sntl_Translate_Solid_State_Media_Log_0x11(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Solid_State_Media_Log_0x11(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, solidStateMediaLog, 12);
@@ -2464,7 +2464,7 @@ static eReturnValues sntl_Translate_Solid_State_Media_Log_0x11(tDevice* device, 
     return ret;
 }
 
-static eReturnValues sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Informational_Exceptions_Log_Page_2F(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, informationalExceptions, 11);
@@ -2524,7 +2524,7 @@ static eReturnValues sntl_Translate_Informational_Exceptions_Log_Page_2F(tDevice
 }
 
 #if defined(SNTL_EXT)
-static eReturnValues sntl_Translate_Background_Scan_Results_Log_0x15(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Background_Scan_Results_Log_0x15(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, backgroundResults, 20);
@@ -2606,7 +2606,8 @@ static eReturnValues sntl_Translate_Background_Scan_Results_Log_0x15(tDevice* de
     return ret;
 }
 
-static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(const tDevice* device,
+                                                                                ScsiIoCtx*     scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, generalStatisticsAndPerformance, 72);
@@ -2768,7 +2769,7 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
     return ret;
 }
 
-static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, startStopLog, 20);
@@ -2903,7 +2904,7 @@ static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(tDevice* device, S
     return ret;
 }
 
-static eReturnValues sntl_Translate_Self_Test_Results_Log_0x10(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Self_Test_Results_Log_0x10(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, selfTestResults, 404);
@@ -3080,7 +3081,7 @@ static eReturnValues sntl_Translate_Self_Test_Results_Log_0x10(tDevice* device, 
 }
 #endif
 
-static eReturnValues sntl_Translate_SCSI_Log_Sense_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Log_Sense_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     // we ignore the sp bit since it doesn't matter to us
@@ -3348,15 +3349,15 @@ static eReturnValues sntl_Translate_SCSI_Log_Sense_Command(tDevice* device, Scsi
 // mode parameter header must be 4 bytes for short format and 8 bytes for long format (longHeader set to true)
 // dataBlockDescriptor must be non-null when returnDataBlockDescriiptor is true. When non null, it must be 8 bytes for
 // short, or 16 for long (when longLBABit is set to true)
-static eReturnValues sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDevice*   device,
-                                                                             ScsiIoCtx* scsiIoCtx,
-                                                                             uint8_t    pageControl,
-                                                                             bool       returnDataBlockDescriptor,
-                                                                             bool       longLBABit,
-                                                                             uint8_t*   dataBlockDescriptor,
-                                                                             bool       longHeader,
-                                                                             uint8_t*   modeParameterHeader,
-                                                                             uint16_t   allocationLength)
+static eReturnValues sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(const tDevice* device,
+                                                                             ScsiIoCtx*     scsiIoCtx,
+                                                                             uint8_t        pageControl,
+                                                                             bool           returnDataBlockDescriptor,
+                                                                             bool           longLBABit,
+                                                                             uint8_t*       dataBlockDescriptor,
+                                                                             bool           longHeader,
+                                                                             uint8_t*       modeParameterHeader,
+                                                                             uint16_t       allocationLength)
 {
     eReturnValues ret                    = SUCCESS;
     uint8_t*      readWriteErrorRecovery = M_NULLPTR; // will be allocated later
@@ -3497,15 +3498,15 @@ static eReturnValues sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(tDe
 // mode parameter header must be 4 bytes for short format and 8 bytes for long format (longHeader set to true)
 // dataBlockDescriptor must be non-null when returnDataBlockDescriiptor is true. When non null, it must be 8 bytes for
 // short, or 16 for long (when longLBABit is set to true)
-static eReturnValues sntl_Translate_Mode_Sense_Caching_08h(tDevice*   device,
-                                                           ScsiIoCtx* scsiIoCtx,
-                                                           uint8_t    pageControl,
-                                                           bool       returnDataBlockDescriptor,
-                                                           bool       longLBABit,
-                                                           uint8_t*   dataBlockDescriptor,
-                                                           bool       longHeader,
-                                                           uint8_t*   modeParameterHeader,
-                                                           uint16_t   allocationLength)
+static eReturnValues sntl_Translate_Mode_Sense_Caching_08h(const tDevice* device,
+                                                           ScsiIoCtx*     scsiIoCtx,
+                                                           uint8_t        pageControl,
+                                                           bool           returnDataBlockDescriptor,
+                                                           bool           longLBABit,
+                                                           uint8_t*       dataBlockDescriptor,
+                                                           bool           longHeader,
+                                                           uint8_t*       modeParameterHeader,
+                                                           uint16_t       allocationLength)
 {
     eReturnValues ret     = SUCCESS;
     uint8_t*      caching = M_NULLPTR;    // will be allocated later
@@ -4115,7 +4116,7 @@ static void fill_Mode_Data_Block_Descriptor(uint8_t  dataBlockDescriptor[SNTL_DA
     }
 }
 
-static eReturnValues sntl_Translate_SCSI_Mode_Sense_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Mode_Sense_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                 = SUCCESS;
     bool    returnDataBlockDescriptor = true; // true means return a data block descriptor, false means don't return one
@@ -4353,7 +4354,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Sense_Command(tDevice* device, Scs
     return ret;
 }
 
-static eReturnValues sntl_Translate_Mode_Select_Caching_08h(tDevice*       device,
+static eReturnValues sntl_Translate_Mode_Select_Caching_08h(const tDevice* device,
                                                             ScsiIoCtx*     scsiIoCtx,
                                                             const uint8_t* ptrToBeginningOfModePage,
                                                             uint16_t       pageLength)
@@ -4491,7 +4492,7 @@ static eReturnValues sntl_Translate_Mode_Select_Caching_08h(tDevice*       devic
 }
 
 // TODO: a way to cache changes from the incoming block descriptor to change sector size in a format command.
-static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret        = SUCCESS;
     bool          pageFormat = false;
@@ -4999,7 +5000,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(tDevice* device, Sc
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Synchronize_Cache_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Synchronize_Cache_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     // check the read command and get the LBA from it
@@ -5058,7 +5059,7 @@ static eReturnValues sntl_Translate_SCSI_Synchronize_Cache_Command(tDevice* devi
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Read_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Read_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     uint64_t lba            = UINT64_C(0);
     uint32_t transferLength = UINT32_C(0);
@@ -5293,7 +5294,7 @@ static eReturnValues sntl_Translate_SCSI_Read_Command(tDevice* device, ScsiIoCtx
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Write_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Write_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     bool     fua            = false;
     uint64_t lba            = UINT64_C(0);
@@ -5524,7 +5525,7 @@ static eReturnValues sntl_Translate_SCSI_Write_Command(tDevice* device, ScsiIoCt
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Verify_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Verify_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                = SUCCESS;
     uint8_t       byteCheck          = UINT8_C(0);
@@ -5757,7 +5758,7 @@ static eReturnValues sntl_Translate_SCSI_Verify_Command(tDevice* device, ScsiIoC
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Security_Protocol_In_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Security_Protocol_In_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                      = SUCCESS;
     uint8_t       securityProtocol         = scsiIoCtx->cdb[1];
@@ -5834,7 +5835,7 @@ static eReturnValues sntl_Translate_SCSI_Security_Protocol_In_Command(tDevice* d
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Security_Protocol_Out_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Security_Protocol_Out_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                      = SUCCESS;
     uint8_t       securityProtocol         = scsiIoCtx->cdb[1];
@@ -5906,7 +5907,7 @@ static eReturnValues sntl_Translate_SCSI_Security_Protocol_Out_Command(tDevice* 
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                  = SUCCESS;
     uint8_t*      reportLunsData       = M_NULLPTR;
@@ -6057,7 +6058,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(tDevice* device, Sc
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Test_Unit_Ready_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH);
@@ -6130,7 +6131,7 @@ static eReturnValues sntl_Translate_SCSI_Test_Unit_Ready_Command(tDevice* device
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Write_Long(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Write_Long(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH);
@@ -6320,7 +6321,7 @@ static eReturnValues sntl_Translate_SCSI_Write_Long(tDevice* device, ScsiIoCtx* 
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Send_Diagnostic_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Send_Diagnostic_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                 = SUCCESS;
     uint8_t       selfTestCode        = (scsiIoCtx->cdb[1] >> 5) & 0x07;
@@ -6453,7 +6454,7 @@ static eReturnValues sntl_Translate_SCSI_Send_Diagnostic_Command(tDevice* device
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                 = SUCCESS;
     uint8_t       mode                = scsiIoCtx->cdb[1] & 0x1F;
@@ -6724,7 +6725,7 @@ static eReturnValues sntl_Translate_SCSI_Write_Buffer_Command(tDevice* device, S
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Start_Stop_Unit_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                    = SUCCESS;
     uint8_t       powerConditionModifier = M_Nibble0(scsiIoCtx->cdb[3]);
@@ -7001,7 +7002,7 @@ static eReturnValues sntl_Translate_SCSI_Start_Stop_Unit_Command(tDevice* device
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Unmap_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH);
@@ -7224,7 +7225,7 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(tDevice* device, ScsiIoCt
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
@@ -7367,7 +7368,7 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(tDevice* device, 
     return ret;
 }
 
-static eReturnValues sntl_Translate_Persistent_Reserve_In(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Persistent_Reserve_In(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                         = SUCCESS;
     uint8_t*      persistentReserveData       = M_NULLPTR;
@@ -7550,7 +7551,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_In(tDevice* device, ScsiI
     case 2: // report capabilities
     {
         // send NVMe identify command, CNS set to 0, current namespace being queried.
-        if (SUCCESS != nvme_Identify(device, M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.nvme.ns),
+        if (SUCCESS != nvme_Identify(device, M_CONST_CAST(uint8_t*, &device->drive_info.IdentifyData.nvme.ns),
                                      device->drive_info.namespaceID, 0))
         {
             set_Sense_Data_By_NVMe_Status(device, device->drive_info.lastNVMeResult.lastNVMeStatus, scsiIoCtx->psense,
@@ -7755,7 +7756,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_In(tDevice* device, ScsiI
     return ret;
 }
 
-static eReturnValues sntl_Translate_Persistent_Reserve_Out(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_Persistent_Reserve_Out(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                         = SUCCESS;
     uint8_t*      persistentReserveData       = M_NULLPTR;
@@ -8211,7 +8212,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(tDevice* device, Scsi
 }
 
 #if defined(SNTL_EXT)
-static eReturnValues sntl_Translate_SCSI_Sanitize_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Sanitize_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, SNTL_SENSE_KEY_SPECIFIC_DESCRIPTOR_LENGTH);
@@ -8666,11 +8667,11 @@ static void sntl_Set_Command_Timeouts_Descriptor(uint32_t  nominalCommandProcess
     *offset += 12;
 }
 
-static eReturnValues sntl_Check_Operation_Code(tDevice*  device,
-                                               uint8_t   operationCode,
-                                               bool      rctd,
-                                               uint8_t** pdata,
-                                               uint32_t* dataLength)
+static eReturnValues sntl_Check_Operation_Code(const tDevice* device,
+                                               uint8_t        operationCode,
+                                               bool           rctd,
+                                               uint8_t**      pdata,
+                                               uint32_t*      dataLength)
 {
     eReturnValues ret  = SUCCESS;
     *dataLength        = 4; // add onto this for each of the different commands below, then allocate memory accordingly
@@ -9361,12 +9362,12 @@ static eReturnValues sntl_Check_Operation_Code(tDevice*  device,
     return ret;
 }
 
-static eReturnValues sntl_Check_Operation_Code_and_Service_Action(tDevice*  device,
-                                                                  uint8_t   operationCode,
-                                                                  uint16_t  serviceAction,
-                                                                  bool      rctd,
-                                                                  uint8_t** pdata,
-                                                                  uint32_t* dataLength)
+static eReturnValues sntl_Check_Operation_Code_and_Service_Action(const tDevice* device,
+                                                                  uint8_t        operationCode,
+                                                                  uint16_t       serviceAction,
+                                                                  bool           rctd,
+                                                                  uint8_t**      pdata,
+                                                                  uint32_t*      dataLength)
 {
     eReturnValues ret  = SUCCESS;
     *dataLength        = 4; // add onto this for each of the different commands below, then allocate memory accordingly
@@ -9754,10 +9755,10 @@ static eReturnValues sntl_Check_Operation_Code_and_Service_Action(tDevice*  devi
     return ret;
 }
 
-static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
-                                                               bool      rctd,
-                                                               uint8_t** pdata,
-                                                               uint32_t* dataLength)
+static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(const tDevice* device,
+                                                               bool           rctd,
+                                                               uint8_t**      pdata,
+                                                               uint32_t*      dataLength)
 {
     eReturnValues ret                = SUCCESS;
     uint32_t      reportAllMaxLength = UINT32_C(4) * LEGACY_DRIVE_SEC_SIZE;
@@ -10666,7 +10667,8 @@ static eReturnValues sntl_Create_All_Supported_Op_Codes_Buffer(tDevice*  device,
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Report_Supported_Operation_Codes_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Report_Supported_Operation_Codes_Command(const tDevice* device,
+                                                                                  ScsiIoCtx*     scsiIoCtx)
 {
     eReturnValues ret                    = SUCCESS;
     bool          rctd                   = false;
@@ -10772,7 +10774,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Supported_Operation_Codes_Comman
 }
 
 // always sets Descriptor type sense data
-eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
+eReturnValues sntl_Translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     static bool   deviceInfoAvailable  = false;
     eReturnValues ret                  = UNKNOWN;
@@ -10788,7 +10790,7 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
     // if we weren't given a sense data pointer, use the sense data in the device structure
     if (!scsiIoCtx->psense)
     {
-        scsiIoCtx->psense        = device->drive_info.lastCommandSenseData;
+        scsiIoCtx->psense        = M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData);
         scsiIoCtx->senseDataSize = SPC3_SENSE_LEN;
     }
     safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
@@ -10829,7 +10831,7 @@ eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx)
         if (memcmp(&device->drive_info.IdentifyData.nvme.ctrl, zeroData, LEGACY_DRIVE_SEC_SIZE) == 0)
         {
             // call fill ata drive info to set up vars inside the device struct which the other commands will use.
-            if (SUCCESS != fill_In_NVMe_Device_Info(device))
+            if (SUCCESS != fill_In_NVMe_Device_Info(M_CONST_CAST(tDevice*, device)))
             {
                 return FAILURE;
             }

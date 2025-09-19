@@ -86,7 +86,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  supports_Intel_Firmware_Download(tDevice *device)
+    //  supports_Intel_Firmware_Download(const tDevice *device)
     //
     //! \brief   Description:  Checks if the provided device supports Intel's Firmware update IOCTLs. Due to how this
     //! works, CSMI may be necessary to make this work properly
@@ -99,7 +99,8 @@ extern "C"
     //!   \return true = supports Intel RST firmware update IOCTLs, false = not supported.
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //

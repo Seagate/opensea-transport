@@ -489,7 +489,7 @@ extern "C"
 #    if defined(_WIN32)
     //-----------------------------------------------------------------------------
     //
-    //  device_Supports_CSMI_With_RST(tDevice *device)
+    //  device_Supports_CSMI_With_RST(const tDevice *device)
     //
     //! \brief   Description:  Checks if CSMI and Intel's RST IOCTLs are supported. This is for Windows only. This uses
     //! Intel's FWDL API to check if Intel IOCTLs are supported. It does not do a complete check of each Intel IOCTL.
@@ -503,7 +503,8 @@ extern "C"
     //!   \return true = CSMI and RST calls supported, false = RST calls not supported. CSMI may or may not be supported
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool device_Supports_CSMI_With_RST(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool device_Supports_CSMI_With_RST(const tDevice* device);
 #    endif
 
     //-----------------------------------------------------------------------------
@@ -574,8 +575,8 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  get_CSMI_RAID_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t
-    //  flags, char **checkHandleList, uint32_t checkHandleListLength)
+    //  get_CSMI_RAID_Device_List(const tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver,
+    //  uint64_t flags, char **checkHandleList, uint32_t checkHandleListLength)
     //
     //! \brief   Description:  Get the list of CSMI RAID devices. This is intended to only discover drives configured in
     //! a RAID. Those not configured in RAID should use the OS passthrough with CSMI as a backup with
@@ -626,7 +627,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  close_CSMI_RAID_Device(tDevice *device)
+    //  close_CSMI_RAID_Device(const tDevice *device)
     //
     //! \brief   Description:  Closes a handle to CSMI RAID device. Should only be used for those opened with
     //! get_CSMI_RAID_Device(). This also free's the memory allocated for CSMI devices.
@@ -639,7 +640,8 @@ extern "C"
     //!   a handle for.
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_CSMI_RAID_Device(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_CSMI_RAID_Device(tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -666,7 +668,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  print_CSMI_Device_Info(tDevice *device)
+    //  print_CSMI_Device_Info(const tDevice *device)
     //
     //! \brief   Description:  Prints out some CSMI Device info which may be helpful for debugging.
     //
@@ -676,7 +678,7 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //

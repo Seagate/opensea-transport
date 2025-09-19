@@ -102,7 +102,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 continue;
             }
             perror("open");
-            device->os_info.last_error = errno;
+            set_Device_Last_Error(device, errno);
             printf("open failure\n");
             printf("Error: ");
             print_Errno_To_Screen(errno);
@@ -247,7 +247,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 }
 
 #define BSD_DEV_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
+eReturnValues get_Device_List(const tDevice* const   ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)
@@ -426,30 +426,30 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED tDevice* device,
-                      M_ATTR_UNUSED uint64_t lba,
-                      M_ATTR_UNUSED bool     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* ptrData,
-                      M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
+                      M_ATTR_UNUSED uint64_t       lba,
+                      M_ATTR_UNUSED bool           forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t*       ptrData,
+                      M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED tDevice* device,
-                       M_ATTR_UNUSED uint64_t lba,
-                       M_ATTR_UNUSED bool     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* ptrData,
-                       M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
+                       M_ATTR_UNUSED uint64_t       lba,
+                       M_ATTR_UNUSED bool           forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t*       ptrData,
+                       M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
@@ -467,7 +467,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-eReturnValues os_Device_Reset(tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* device)
 {
     switch (device->os_info.passthroughType)
     {
@@ -480,7 +480,7 @@ eReturnValues os_Device_Reset(tDevice* device)
     }
 }
 
-eReturnValues os_Bus_Reset(tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* device)
 {
     switch (device->os_info.passthroughType)
     {
@@ -493,13 +493,13 @@ eReturnValues os_Bus_Reset(tDevice* device)
     }
 }
 
-eReturnValues os_Controller_Reset(tDevice* device)
+eReturnValues os_Controller_Reset(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize)
 {
     M_USE_UNUSED(device);
     M_USE_UNUSED(pData);
@@ -513,58 +513,58 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Reset(tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Lock_Device(tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* device)
 {
     // flock?
     M_USE_UNUSED(device);
-    if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
+    if (device->os_info.lockCount < UINT16_MAX)
     {
         // Always increment this so we know how many times we've been requested to lock
-        ++device->os_info.lockCount;
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Unlock_Device(tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* device)
 {
     // flock?
     M_USE_UNUSED(device);
-    if (ret == SUCCESS && device->os_info.lockCount > 0)
+    if (device->os_info.lockCount > 0)
     {
-        --device->os_info.lockCount;
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Update_File_System_Cache(tDevice* device)
+eReturnValues os_Update_File_System_Cache(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     return bsd_Unmount_From_Matching_Dev(device);
 }
 
-eReturnValues os_Erase_Boot_Sectors(tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;

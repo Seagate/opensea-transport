@@ -31,12 +31,14 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues get_RTFRs_From_CSMI_Legacy(tDevice* device, ataPassthroughCommand* ataCommandOptions, int commandRet);
+    eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice*         device,
+                                             ataPassthroughCommand* ataCommandOptions,
+                                             int                    commandRet);
 
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues send_CSMI_Legacy_ATA_Passthrough(tDevice* device, ataPassthroughCommand* ataCommandOptions);
+    eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* device, ataPassthroughCommand* ataCommandOptions);
 
 #if defined(__cplusplus)
 }

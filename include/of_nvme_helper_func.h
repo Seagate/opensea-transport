@@ -45,12 +45,12 @@ extern "C"
     M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(tDevice* device);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(const tDevice* device);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(tDevice* device);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(const tDevice* device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(const tDevice* device);
 
 #    if defined(__cplusplus)
 }

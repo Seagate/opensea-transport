@@ -362,7 +362,7 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     return ret;
 }
 
-static eReturnValues jm_NVMe_Normal_Shutdown(tDevice* device)
+static eReturnValues jm_NVMe_Normal_Shutdown(const tDevice* device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JMICRON_NVME_CDB_SIZE);
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -382,7 +382,7 @@ static eReturnValues jm_NVMe_Normal_Shutdown(tDevice* device)
     return ret;
 }
 
-static eReturnValues jm_NVMe_MCU_Reset(tDevice* device)
+static eReturnValues jm_NVMe_MCU_Reset(const tDevice* device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JMICRON_NVME_CDB_SIZE);
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -401,7 +401,7 @@ static eReturnValues jm_NVMe_MCU_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues jm_nvme_Reset(tDevice* device)
+eReturnValues jm_nvme_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -426,7 +426,7 @@ eReturnValues jm_nvme_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues jm_nvme_Subsystem_Reset(tDevice* device)
+eReturnValues jm_nvme_Subsystem_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)

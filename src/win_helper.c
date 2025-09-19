@@ -165,8 +165,9 @@ extern bool validate_Device_Struct(versionBlock);
 
 M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues get_Windows_SMART_IO_Support(tDevice* device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busType);
-bool          is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx);
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busType);
+bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx);
 M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx);
 M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx);
 #endif
@@ -2654,8 +2655,9 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 /*/
                                                                 //*/
 
-                                                                if (!get_IDs_From_TCHAR_String(parentInst, parentBuffer,
-                                                                                               parentLen, device))
+                                                                if (!get_IDs_From_TCHAR_String(
+                                                                        parentInst, parentBuffer, parentLen,
+                                                                        M_CONST_CAST(tDevice*, device)))
                                                                 {
                                                                     // try the parent's parent. There are some cases
                                                                     // where this seems to be necessary to get this
@@ -2684,7 +2686,9 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
 
                                                                                     if (!get_IDs_From_TCHAR_String(
                                                                                             pparentInst, pparentBuffer,
-                                                                                            pparentLen, device))
+                                                                                            pparentLen,
+                                                                                            M_CONST_CAST(tDevice*,
+                                                                                                         device)))
                                                                                     {
 #if defined(_DEBUG)
                                                                                         printf("Fatal error getting "
@@ -4313,7 +4317,8 @@ static eReturnValues close_SCSI_SRB_Handle(tDevice* device)
             {
                 ret = FAILURE;
             }
-            device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+            ;
         }
     }
     RESTORE_NONNULL_COMPARE
@@ -4399,7 +4404,8 @@ static eReturnValues open_SCSI_SRB_Handle(tDevice* device)
 #endif
                                                    M_NULLPTR);
 
-        device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+        ;
 
         // Check if we get a invalid handle back.
         if (device->os_info.fd == INVALID_HANDLE_VALUE)
@@ -4757,7 +4763,7 @@ static eReturnValues win_Update_Disk_Properties(HANDLE* deviceHandle)
 
 #endif // for IOCTL_DISK_UPDATE_PROPERTIES
 
-eReturnValues os_Update_File_System_Cache(tDevice* device)
+eReturnValues os_Update_File_System_Cache(const tDevice* device)
 {
 #if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP && defined(IOCTL_DISK_UPDATE_PROPERTIES)
     // TODO: Need to find a way to support other things like RAID or CSMI, etc in the future - TJE
@@ -4786,7 +4792,7 @@ static eReturnValues win_Delete_Drive_Layout(HANDLE* deviceHandle)
 
 #endif // for IOCTL_DISK_UPDATE_PROPERTIES
 
-eReturnValues os_Erase_Boot_Sectors(tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(const tDevice* device)
 {
 #if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP && defined(IOCTL_DISK_UPDATE_PROPERTIES)
     if (device->raid_device || device->issue_io || device->issue_nvme_io)
@@ -5130,7 +5136,8 @@ static eReturnValues open_Win_Handle(const char* filename, tDevice* device)
 #endif
                                         M_NULLPTR);
 
-        device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+        ;
         if (device->os_info.fd == INVALID_HANDLE_VALUE)
         {
             // retry if asking for exclusive
@@ -6071,7 +6078,8 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
         }
     }
     // Just in case we bailed out in any way.
-    device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
 
     // printf("%s <--\n",__FUNCTION__);
     return ret; // if we didn't get to fill_In_Device_Info FAILURE
@@ -6576,9 +6584,9 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
     if (SUCCESS == ret)
     {
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
-        scsiIoCtx->device->os_info.last_error = 0;
-        DWORD sptBufInLen                     = sizeof(scsiPassThroughEXIOStruct);
-        DWORD sptBufOutLen                    = sizeof(scsiPassThroughEXIOStruct);
+        set_Device_Last_Error(scsiIoCtx->device, 0);
+        DWORD sptBufInLen  = sizeof(scsiPassThroughEXIOStruct);
+        DWORD sptBufOutLen = sizeof(scsiPassThroughEXIOStruct);
         switch (scsiIoCtx->direction)
         {
         case XFER_DATA_IN:
@@ -6603,14 +6611,14 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
         success =
             DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_SCSI_PASS_THROUGH_EX, &sptdioEx->scsiPassThroughEX,
                             sptBufInLen, &sptdioEx->scsiPassThroughEX, sptBufOutLen, &returned_data, &overlappedStruct);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         if (ERROR_IO_PENDING ==
             scsiIoCtx->device->os_info
                 .last_error) // This will only happen for overlapped commands. If the drive is opened without the
                              // overlapped flag, everything will work like old synchronous code.-TJE
         {
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-            scsiIoCtx->device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
         else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
         {
@@ -6832,8 +6840,8 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
     if (SUCCESS == ret)
     {
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
-        scsiIoCtx->device->os_info.last_error = 0;
-        DWORD      sptBufLen                  = sizeof(scsiPassThroughEXIOStruct);
+        set_Device_Last_Error(scsiIoCtx->device, 0);
+        DWORD      sptBufLen = sizeof(scsiPassThroughEXIOStruct);
         OVERLAPPED overlappedStruct;
         safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
@@ -6841,14 +6849,14 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_SCSI_PASS_THROUGH_DIRECT_EX,
                                   &sptdio->scsiPassThroughEXDirect, sptBufLen, &sptdio->scsiPassThroughEXDirect,
                                   sptBufLen, &returned_data, &overlappedStruct);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         if (ERROR_IO_PENDING ==
             scsiIoCtx->device->os_info
                 .last_error) // This will only happen for overlapped commands. If the drive is opened without the
                              // overlapped flag, everything will work like old synchronous code.-TJE
         {
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-            scsiIoCtx->device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
         else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
         {
@@ -7101,9 +7109,9 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
     if (SUCCESS == ret)
     {
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
-        scsiIoCtx->device->os_info.last_error = 0;
-        DWORD scsiPassThroughInLength         = sizeof(scsiPassThroughIOStruct);
-        DWORD scsiPassThroughOutLength        = sizeof(scsiPassThroughIOStruct);
+        set_Device_Last_Error(scsiIoCtx->device, 0);
+        DWORD scsiPassThroughInLength  = sizeof(scsiPassThroughIOStruct);
+        DWORD scsiPassThroughOutLength = sizeof(scsiPassThroughIOStruct);
         switch (scsiIoCtx->direction)
         {
         case XFER_DATA_IN:
@@ -7132,14 +7140,14 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_SCSI_PASS_THROUGH, &sptdioDB->scsiPassthrough,
                                   scsiPassThroughInLength, &sptdioDB->scsiPassthrough, scsiPassThroughOutLength,
                                   &returned_data, &overlappedStruct);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         if (ERROR_IO_PENDING ==
             scsiIoCtx->device->os_info
                 .last_error) // This will only happen for overlapped commands. If the drive is opened without the
                              // overlapped flag, everything will work like old synchronous code.-TJE
         {
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-            scsiIoCtx->device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
         else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
         {
@@ -7267,8 +7275,8 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
     if (SUCCESS == ret)
     {
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
-        scsiIoCtx->device->os_info.last_error = 0;
-        DWORD      scsiPassThroughBufLen      = sizeof(scsiPassThroughIOStruct);
+        set_Device_Last_Error(scsiIoCtx->device, 0);
+        DWORD      scsiPassThroughBufLen = sizeof(scsiPassThroughIOStruct);
         OVERLAPPED overlappedStruct;
         safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
@@ -7276,14 +7284,14 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_SCSI_PASS_THROUGH_DIRECT,
                                   &sptdio.scsiPassthroughDirect, scsiPassThroughBufLen, &sptdio.scsiPassthroughDirect,
                                   scsiPassThroughBufLen, &returned_data, &overlappedStruct);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         if (ERROR_IO_PENDING ==
             scsiIoCtx->device->os_info
                 .last_error) // This will only happen for overlapped commands. If the drive is opened without the
                              // overlapped flag, everything will work like old synchronous code.-TJE
         {
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-            scsiIoCtx->device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
         else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
         {
@@ -7591,7 +7599,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
     ret = convert_SCSI_CTX_To_ATA_PT_Direct(scsiIoCtx, &ataPassThroughDirect, alignedPointer);
     if (SUCCESS == ret)
     {
-        scsiIoCtx->device->os_info.last_error = 0;
+        set_Device_Last_Error(scsiIoCtx->device, 0);
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
         safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
@@ -7600,14 +7608,14 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_ATA_PASS_THROUGH_DIRECT, &ataPassThroughDirect,
                                   sizeof(ATA_PASS_THROUGH_DIRECT), &ataPassThroughDirect,
                                   sizeof(ATA_PASS_THROUGH_DIRECT), &returned_data, &overlappedStruct);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         if (ERROR_IO_PENDING ==
             scsiIoCtx->device->os_info
                 .last_error) // This will only happen for overlapped commands. If the drive is opened without the
                              // overlapped flag, everything will work like old synchronous code.-TJE
         {
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-            scsiIoCtx->device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
         else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
         {
@@ -7914,23 +7922,23 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
         default:
             break;
         }
-        scsiIoCtx->device->os_info.last_error = 0;
+        set_Device_Last_Error(scsiIoCtx->device, 0);
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
         safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
-        success                               = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_ATA_PASS_THROUGH,
-                                                                &doubleBufferedIO->ataPTCommand, inBufferLength, &doubleBufferedIO->ataPTCommand,
-                                                                outBufferLength, &returned_data, &overlappedStruct);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_ATA_PASS_THROUGH,
+                                  &doubleBufferedIO->ataPTCommand, inBufferLength, &doubleBufferedIO->ataPTCommand,
+                                  outBufferLength, &returned_data, &overlappedStruct);
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         if (ERROR_IO_PENDING ==
             scsiIoCtx->device->os_info
                 .last_error) // This will only happen for overlapped commands. If the drive is opened without the
                              // overlapped flag, everything will work like old synchronous code.-TJE
         {
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-            scsiIoCtx->device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
         else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
         {
@@ -8197,7 +8205,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
         default:
             break;
         }
-        scsiIoCtx->device->os_info.last_error = 0;
+        set_Device_Last_Error(scsiIoCtx->device, 0);
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
         safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
@@ -8205,14 +8213,14 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_IDE_PASS_THROUGH, doubleBufferedIO,
                                   inBufferLength, doubleBufferedIO, outBufferLength, &returned_data, &overlappedStruct);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         if (ERROR_IO_PENDING ==
             scsiIoCtx->device->os_info
                 .last_error) // This will only happen for overlapped commands. If the drive is opened without the
                              // overlapped flag, everything will work like old synchronous code.-TJE
         {
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-            scsiIoCtx->device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
         else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
         {
@@ -8483,14 +8491,14 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_STORAGE_FIRMWARE_ACTIVATE, &downloadActivate,
                                  sizeof(STORAGE_HW_FIRMWARE_ACTIVATE), M_NULLPTR, 0, &returned_data, &overlappedStruct);
-    scsiIoCtx->device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(scsiIoCtx->device, GetLastError());
     if (ERROR_IO_PENDING ==
         scsiIoCtx->device->os_info
             .last_error) // This will only happen for overlapped commands. If the drive is opened without the overlapped
                          // flag, everything will work like old synchronous code.-TJE
     {
         fwdlIO = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
     }
     else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
     {
@@ -8721,14 +8729,14 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_STORAGE_FIRMWARE_DOWNLOAD, downloadIO,
                                  downloadStructureSize, M_NULLPTR, 0, &returned_data, &overlappedStruct);
-    scsiIoCtx->device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(scsiIoCtx->device, GetLastError());
     if (ERROR_IO_PENDING ==
         scsiIoCtx->device->os_info
             .last_error) // This will only happen for overlapped commands. If the drive is opened without the overlapped
                          // flag, everything will work like old synchronous code.-TJE
     {
         fwdlIO = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
     }
     else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
     {
@@ -9179,24 +9187,24 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
         default:
             break;
         }
-        scsiIoCtx->device->os_info.last_error = 0;
+        set_Device_Last_Error(scsiIoCtx->device, 0);
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
         safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
-        success                               = DeviceIoControl(scsiIoCtx->device->os_info.fd,
-                                                                io_For_SMART_Cmd(scsiIoCtx), // This function gets the correct IOCTL for us
-                                                                smartIOin, inBufferLength, smartIOout, outBufferLength + magicPadding, &returned_data,
-                                                                &overlappedStruct);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
+                                  io_For_SMART_Cmd(scsiIoCtx), // This function gets the correct IOCTL for us
+                                  smartIOin, inBufferLength, smartIOout, outBufferLength + magicPadding, &returned_data,
+                                  &overlappedStruct);
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         if (ERROR_IO_PENDING ==
             scsiIoCtx->device->os_info
                 .last_error) // This will only happen for overlapped commands. If the drive is opened without the
                              // overlapped flag, everything will work like old synchronous code.-TJE
         {
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-            scsiIoCtx->device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
         else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
         {
@@ -9351,7 +9359,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-eReturnValues os_Device_Reset(tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* device)
 {
     eReturnValues ret = FAILURE;
     // this IOCTL is only supported for non-scsi devices, which includes anything (ata or scsi) attached to a USB or
@@ -9362,9 +9370,9 @@ eReturnValues os_Device_Reset(tDevice* device)
     BOOL success = FALSE;
     SetLastError(NO_ERROR);
     DWORD error = NO_ERROR;
-    success = DeviceIoControl(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_DEVICE, M_NULLPTR, 0, M_NULLPTR, 0,
-                              M_NULLPTR, FALSE);
-    error = GetLastError();
+    success     = DeviceIoControl(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_DEVICE, M_NULLPTR, 0, M_NULLPTR, 0,
+                                  M_NULLPTR, FALSE);
+    error       = GetLastError();
     if (MSFT_BOOL_TRUE(success) && error == NO_ERROR)
     {
         ret = SUCCESS;
@@ -9376,7 +9384,7 @@ eReturnValues os_Device_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues os_Bus_Reset(tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* device)
 {
     eReturnValues ret = FAILURE;
     // This does not seem to work since it is obsolete and likely not implemented in modern drivers
@@ -9388,9 +9396,9 @@ eReturnValues os_Bus_Reset(tDevice* device)
     reset.PathId = device->os_info.scsi_addr.PathId;
     SetLastError(NO_ERROR);
     DWORD error = NO_ERROR;
-    success = DeviceIoControl(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_BUS, &reset, sizeof(reset), &reset,
-                              sizeof(reset), &returned_data, FALSE);
-    error = GetLastError();
+    success     = DeviceIoControl(device->os_info.fd, OBSOLETE_IOCTL_STORAGE_RESET_BUS, &reset, sizeof(reset), &reset,
+                                  sizeof(reset), &returned_data, FALSE);
+    error       = GetLastError();
     if (MSFT_BOOL_TRUE(success) && error == NO_ERROR)
     {
         ret = SUCCESS;
@@ -9402,7 +9410,7 @@ eReturnValues os_Bus_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
@@ -9423,12 +9431,12 @@ eReturnValues os_Get_Exclusive(tDevice* device)
 
 // TODO: We may need to switch between locking fd and scsiSrbHandle in some way...for now just locking fd value.
 // https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume
-eReturnValues os_Lock_Device(tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* device)
 {
-    eReturnValues ret           = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
     {
-        DWORD         returnedBytes = DWORD_C(0);
+        DWORD returnedBytes = DWORD_C(0);
         if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_LOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
                                             &returnedBytes, M_NULLPTR)))
         {
@@ -9439,17 +9447,17 @@ eReturnValues os_Lock_Device(tDevice* device)
     if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
     {
         // Always increment this so we know how many times we've been requested to lock
-        ++device->os_info.lockCount;
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return ret;
 }
 
-eReturnValues os_Unlock_Device(tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* device)
 {
-    eReturnValues ret           = SUCCESS;
+    eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
     {
-        DWORD         returnedBytes = DWORD_C(0);
+        DWORD returnedBytes = DWORD_C(0);
         if (MSFT_BOOL_FALSE(DeviceIoControl(device->os_info.fd, FSCTL_UNLOCK_VOLUME, M_NULLPTR, 0, M_NULLPTR, 0,
                                             &returnedBytes, M_NULLPTR)))
         {
@@ -9458,12 +9466,12 @@ eReturnValues os_Unlock_Device(tDevice* device)
     }
     if (ret == SUCCESS && device->os_info.lockCount > 0)
     {
-        --device->os_info.lockCount;
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return ret;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     eReturnValues ret = SUCCESS;
     // If the volume bitfield is blank, then there is nothing to unmount - TJE
@@ -11700,7 +11708,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
 
     // Command has been set up, so send it!
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
-    nvmeIoCtx->device->os_info.last_error = 0;
+    set_Device_Last_Error(nvmeIoCtx->device, 0);
     OVERLAPPED overlappedStruct;
     safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
@@ -11710,14 +11718,14 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
     BOOL success = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_PROTOCOL_COMMAND, commandBuffer,
                                    nvmePassthroughDataSize, commandBuffer, nvmePassthroughDataSize, &returned_data,
                                    &overlappedStruct);
-    nvmeIoCtx->device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(nvmeIoCtx->device, GetLastError());
     if (ERROR_IO_PENDING ==
         nvmeIoCtx->device->os_info
             .last_error) // This will only happen for overlapped commands. If the drive is opened without the overlapped
                          // flag, everything will work like old synchronous code.-TJE
     {
         success = GetOverlappedResult(nvmeIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-        nvmeIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(nvmeIoCtx->device, GetLastError());
     }
     else if (nvmeIoCtx->device->os_info.last_error != ERROR_SUCCESS)
     {
@@ -12408,14 +12416,14 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_FIRMWARE_ACTIVATE, &downloadActivate,
                                  sizeof(STORAGE_HW_FIRMWARE_ACTIVATE), M_NULLPTR, 0, &returned_data, &overlappedStruct);
-    nvmeIoCtx->device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(nvmeIoCtx->device, GetLastError());
     if (ERROR_IO_PENDING ==
         nvmeIoCtx->device->os_info
             .last_error) // This will only happen for overlapped commands. If the drive is opened without the overlapped
                          // flag, everything will work like old synchronous code.-TJE
     {
         fwdlIO = GetOverlappedResult(nvmeIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-        nvmeIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(nvmeIoCtx->device, GetLastError());
     }
     else if (nvmeIoCtx->device->os_info.last_error != ERROR_SUCCESS)
     {
@@ -12546,14 +12554,14 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_FIRMWARE_DOWNLOAD, downloadIO,
                                  downloadStructureSize, M_NULLPTR, 0, &returned_data, &overlappedStruct);
-    nvmeIoCtx->device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(nvmeIoCtx->device, GetLastError());
     if (ERROR_IO_PENDING ==
         nvmeIoCtx->device->os_info
             .last_error) // This will only happen for overlapped commands. If the drive is opened without the overlapped
                          // flag, everything will work like old synchronous code.-TJE
     {
         fwdlIO = GetOverlappedResult(nvmeIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
-        nvmeIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(nvmeIoCtx->device, GetLastError());
     }
     else if (nvmeIoCtx->device->os_info.last_error != ERROR_SUCCESS)
     {
@@ -13896,7 +13904,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 }
 
 // These commands are not supported VIA SCSI translation. There are however other Windows IOCTLs that may work
-//M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Register(nvmeCmdCtx *nvmeIoCtx)
+// M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Register(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
@@ -13980,7 +13988,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     return ret;
 // }
 //
-//M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
+// M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
@@ -13998,7 +14006,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     return ret;
 // }
 //
-//M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Acquire(nvmeCmdCtx *nvmeIoCtx)
+// M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Acquire(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
@@ -14087,7 +14095,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     return ret;
 // }
 //
-//M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
+// M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
 //     eVerbosityLevels inVerbosity = nvmeIoCtx->device->deviceVerbosity;
@@ -14622,7 +14630,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
-eReturnValues os_nvme_Reset(tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     // This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code
@@ -14644,7 +14652,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     // This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code
@@ -14666,9 +14674,9 @@ eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice* device,
-                               M_ATTR_UNUSED uint8_t* pData,
-                               M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
+                               M_ATTR_UNUSED uint8_t*       pData,
+                               M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
@@ -14820,8 +14828,8 @@ static void set_Command_Completion_For_OS_Read_Write_ATA(tDevice* device, DWORD 
     }
 }
 
-M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1)
-static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, DWORD lastError)
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1) static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, DWORD lastError)
 {
     eReturnValues ret = SUCCESS;
     // clear the last command sense data and rtfrs. We'll dummy them up in a minute
@@ -14932,7 +14940,7 @@ static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, D
 // The overlapped structure used here changes it to asynchronous IO, but the synchronous portions of code are left here
 // in case the device responds as a synchronous device and ignores the overlapped strucutre...it SHOULD work on any
 // device like this. See here: https://msdn.microsoft.com/en-us/library/windows/desktop/aa365683(v=vs.85).aspx
-eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues ret         = UNKNOWN;
     eReturnValues openFUA     = SUCCESS;
@@ -14943,7 +14951,7 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     }
     if (forceUnitAccess)
     {
-        openFUA = open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(device);
+        openFUA = open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(M_CONST_CAST(tDevice*, device));
         if (openFUA == SUCCESS)
         {
             handleToUse = device->os_info.forceUnitAccessRWfd;
@@ -14968,7 +14976,8 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     }
     /*BOOL timeoutSet = */
     SetCommTimeouts(handleToUse, &comTimeout);
-    device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
     // for use by the setFilePointerEx function
     LARGE_INTEGER liDistanceToMove;
     safe_memset(&liDistanceToMove, sizeof(LARGE_INTEGER), 0, sizeof(LARGE_INTEGER));
@@ -15002,8 +15011,9 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
         // could not get a FUA handle...so emulate with a verify command before the read - TJE
         os_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
     }
-    retStatus                  = ReadFile(handleToUse, ptrData, dataSize, &bytesReturned, &overlappedStruct);
-    device->os_info.last_error = GetLastError();
+    retStatus = ReadFile(handleToUse, ptrData, dataSize, &bytesReturned, &overlappedStruct);
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
     if (ERROR_IO_PENDING ==
         device->os_info.last_error) // This will only happen for overlapped commands. If the drive is opened without the
                                     // overlapped flag, everything will work like old synchronous code.-TJE
@@ -15015,13 +15025,14 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&commandTimer);
-    device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
     if (MSFT_BOOL_FALSE(retStatus)) // not successful
     {
@@ -15050,7 +15061,7 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
         ret = FAILURE;
     }
 
-    ret = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
+    ret = set_Command_Completion_For_OS_Read_Write(M_CONST_CAST(tDevice*, device), device->os_info.last_error);
 
     // check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) >= timeoutInSeconds)
@@ -15064,7 +15075,7 @@ eReturnValues os_Read(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8
     return ret;
 }
 
-eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues ret         = UNKNOWN;
     eReturnValues openFUA     = SUCCESS;
@@ -15075,7 +15086,7 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     }
     if (forceUnitAccess)
     {
-        openFUA = open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(device);
+        openFUA = open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(M_CONST_CAST(tDevice*, device));
         if (openFUA == SUCCESS)
         {
             handleToUse = device->os_info.forceUnitAccessRWfd;
@@ -15100,7 +15111,8 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     }
     /*BOOL timeoutSet = */
     SetCommTimeouts(handleToUse, &comTimeout);
-    device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
     // for use by the setFilePointerEx function
     LARGE_INTEGER liDistanceToMove;
     safe_memset(&liDistanceToMove, sizeof(LARGE_INTEGER), 0, sizeof(LARGE_INTEGER));
@@ -15137,8 +15149,9 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
     }
     RESTORE_NONNULL_COMPARE
     start_Timer(&commandTimer);
-    retStatus                  = WriteFile(handleToUse, ptrData, dataSize, &bytesReturned, &overlappedStruct);
-    device->os_info.last_error = GetLastError();
+    retStatus = WriteFile(handleToUse, ptrData, dataSize, &bytesReturned, &overlappedStruct);
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
     if (ERROR_IO_PENDING ==
         device->os_info.last_error) // This will only happen for overlapped commands. If the drive is opened without the
                                     // overlapped flag, everything will work like old synchronous code.-TJE
@@ -15155,13 +15168,14 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
         os_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
     }
     stop_Timer(&commandTimer);
-    device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
     if (overlappedStruct.hEvent != M_NULLPTR && overlappedStruct.hEvent != INVALID_HANDLE_VALUE)
     {
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
     }
-    overlappedStruct.hEvent                       = M_NULLPTR;
-    device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    overlappedStruct.hEvent                                               = M_NULLPTR;
+    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
 
     if (MSFT_BOOL_FALSE(retStatus)) // not successful
     {
@@ -15181,7 +15195,7 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
         ret = FAILURE;
     }
 
-    ret = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
+    ret = set_Command_Completion_For_OS_Read_Write(M_CONST_CAST(tDevice*, device), device->os_info.last_error);
 
     // check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) >= timeoutInSeconds)
@@ -15198,7 +15212,7 @@ eReturnValues os_Write(tDevice* device, uint64_t lba, bool forceUnitAccess, uint
 // IOCTL is for Win XP and higher
 // Seems to work. Needs some enhancements with timers and checking return codes more closely to dummy up better sense
 // data.
-eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
+eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = NOT_SUPPORTED;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
@@ -15230,7 +15244,8 @@ eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
     start_Timer(&verifyTimer);
     BOOL success = DeviceIoControl(device->os_info.fd, IOCTL_DISK_VERIFY, &verifyCmd, sizeof(VERIFY_INFORMATION),
                                    M_NULLPTR, 0, &returnedBytes, &overlappedStruct);
-    device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
     if (ERROR_IO_PENDING ==
         device->os_info.last_error) // This will only happen for overlapped commands. If the drive is opened without the
                                     // overlapped flag, everything will work like old synchronous code.-TJE
@@ -15242,7 +15257,8 @@ eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
         ret = OS_PASSTHROUGH_FAILURE;
     }
     stop_Timer(&verifyTimer);
-    device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
     if (MSFT_BOOL_FALSE(success)) // not successful
     {
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -15256,8 +15272,8 @@ eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    ret = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
-    device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(verifyTimer);
+    ret = set_Command_Completion_For_OS_Read_Write(M_CONST_CAST(tDevice*, device), device->os_info.last_error);
+    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(verifyTimer);
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
@@ -15275,7 +15291,7 @@ eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
 }
 #else
 // verify IOTCL is not available so we need to just do a flush and a read.
-eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
+eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
 {
     // flush the cache first to make sure we aren't reading something that is in cache than disk (as close as we can get
     // right here)
@@ -15298,7 +15314,7 @@ eReturnValues os_Verify(tDevice* device, uint64_t lba, uint32_t range)
 #endif
 
 // This is for Windows XP and higher. This should issue a flush cache or synchronize cache command for us
-eReturnValues os_Flush(tDevice* device)
+eReturnValues os_Flush(const tDevice* device)
 {
     eReturnValues ret = UNKNOWN;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
@@ -15324,15 +15340,17 @@ eReturnValues os_Flush(tDevice* device)
     }
     /*BOOL timeoutSet = */
     SetCommTimeouts(device->os_info.fd, &comTimeout);
-    device->os_info.last_error = GetLastError();
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
     // DWORD bytesReturned = DWORD_C(0);
 
     // this api call will need some changes when asynchronous support is added in
     DECLARE_SEATIMER(commandTimer);
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     start_Timer(&commandTimer);
-    BOOL retStatus             = FlushFileBuffers(device->os_info.fd);
-    device->os_info.last_error = GetLastError();
+    BOOL retStatus = FlushFileBuffers(device->os_info.fd);
+    set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+    ;
     if (device->os_info.last_error != ERROR_SUCCESS)
     {
         ret = OS_PASSTHROUGH_FAILURE;
@@ -15352,12 +15370,12 @@ eReturnValues os_Flush(tDevice* device)
         ret = SUCCESS;
     }
 
-    device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
     }
-    ret = set_Command_Completion_For_OS_Read_Write(device, device->os_info.last_error);
+    ret = set_Command_Completion_For_OS_Read_Write(M_CONST_CAST(tDevice*, device), device->os_info.last_error);
 
     // check for command timeout
     if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) >= timeoutInSeconds)

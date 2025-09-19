@@ -162,7 +162,7 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
 
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static eReturnValues set_Device_Partition_Info(tDevice* device)
+static eReturnValues set_Device_Partition_Info(const tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
     int           partitionCount = 0;
@@ -252,7 +252,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 continue;
             }
             perror("open");
-            device->os_info.last_error = errno;
+            set_Device_Last_Error(device, errno);
             printf("open failure\n");
             printf("Error: ");
             print_Errno_To_Screen(errno);
@@ -354,20 +354,20 @@ static eReturnValues uscsi_Reset(int fd, int resetFlag)
     return ret;
 }
 
-eReturnValues os_Device_Reset(tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* device)
 {
     // NOTE: USCSI_RESET is the same thing, but for legacy versions
     // Also USCSI_RESET_LUN is available. Maybe it would be better?
     return uscsi_Reset(device->os_info.fd, USCSI_RESET_TARGET);
 }
 
-eReturnValues os_Bus_Reset(tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* device)
 {
     // USCSI_RESET_ALL seems to imply a bus reset
     return uscsi_Reset(device->os_info.fd, USCSI_RESET_ALL);
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
@@ -533,13 +533,13 @@ static int uscsi_filter(const struct dirent* entry)
     }
 }
 
-eReturnValues close_Device(tDevice* device)
+eReturnValues close_Device(const tDevice* device)
 {
     int retValue = 0;
     if (device)
     {
-        retValue                   = close(device->os_info.fd);
-        device->os_info.last_error = errno;
+        retValue = close(device->os_info.fd);
+        set_Device_Last_Error(device, errno);
         if (retValue == 0)
         {
             device->os_info.fd = -1;
@@ -617,7 +617,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //
 //-----------------------------------------------------------------------------
 #define USCSI_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
+eReturnValues get_Device_List(const tDevice* const   ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)
@@ -762,30 +762,30 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED tDevice* device,
-                      M_ATTR_UNUSED uint64_t lba,
-                      M_ATTR_UNUSED bool     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* ptrData,
-                      M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
+                      M_ATTR_UNUSED uint64_t       lba,
+                      M_ATTR_UNUSED bool           forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t*       ptrData,
+                      M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED tDevice* device,
-                       M_ATTR_UNUSED uint64_t lba,
-                       M_ATTR_UNUSED bool     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* ptrData,
-                       M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
+                       M_ATTR_UNUSED uint64_t       lba,
+                       M_ATTR_UNUSED bool           forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t*       ptrData,
+                       M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
@@ -795,46 +795,46 @@ eReturnValues send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx* nvmeIoCtx)
     return NOT_SUPPORTED;
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice* device,
-                               M_ATTR_UNUSED uint8_t* pData,
-                               M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
+                               M_ATTR_UNUSED uint8_t*       pData,
+                               M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_nvme_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
 #define DRIVE_HANDLE_LOCK_RANGE_START  (0)
 #define DRIVE_HANDLE_LOCK_RANGE_LENGTH (0) // 0 means full drive/file
-eReturnValues os_Lock_Device(tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
     {
         struct flock locks;
         safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
-        locks.l_type = F_WRLCK;
+        locks.l_type   = F_WRLCK;
         locks.l_whence = SEEK_SET;
         locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
         locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
-        if (fcntl(fd, F_SETLK, &locks) < 0)
+        if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
         {
-            if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
             {
-                printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", lock == true ? "lock" : "unlock");
+                printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", "lock");
                 print_Errno_To_Screen(errno);
             }
             ret = FAILURE;
@@ -843,27 +843,27 @@ eReturnValues os_Lock_Device(tDevice* device)
     if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
     {
         // Always increment this so we know how many times we've been requested to lock
-        ++device->os_info.lockCount;
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return ret;
 }
 
-eReturnValues os_Unlock_Device(tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
     {
         struct flock locks;
         safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
-        locks.l_type = F_UNLCK;
+        locks.l_type   = F_UNLCK;
         locks.l_whence = SEEK_SET;
         locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
         locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
-        if (fcntl(fd, F_SETLK, &locks) < 0)
+        if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
         {
-            if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
             {
-                printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", lock == true ? "lock" : "unlock");
+                printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", "unlock");
                 print_Errno_To_Screen(errno);
             }
             ret = FAILURE;
@@ -871,22 +871,22 @@ eReturnValues os_Unlock_Device(tDevice* device)
     }
     if (ret == SUCCESS && device->os_info.lockCount > 0)
     {
-        --device->os_info.lockCount;
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return ret;
 }
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
     int           partitionCount = 0;
@@ -924,8 +924,8 @@ eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
                         }
                         if (0 > umountResult)
                         {
-                            ret                        = FAILURE;
-                            device->os_info.last_error = errno;
+                            ret = FAILURE;
+                            set_Device_Last_Error(device, errno);
                             if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                             {
                                 printf("Unable to unmount %s: \n", (parts + iter)->mntPath);

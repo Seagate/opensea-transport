@@ -161,7 +161,9 @@ eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH
     return ret;
 }
 
-eReturnValues get_RTFRs_From_CSMI_Legacy(tDevice* device, ataPassthroughCommand* ataCommandOptions, int commandRet)
+eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice*         device,
+                                         ataPassthroughCommand* ataCommandOptions,
+                                         int                    commandRet)
 {
     // TODO: Whenever a driver is found using this legacy CDB, we need to figure out how RTFRs are returned, IF there is
     // a way that they are returned.
@@ -171,7 +173,7 @@ eReturnValues get_RTFRs_From_CSMI_Legacy(tDevice* device, ataPassthroughCommand*
     return NOT_SUPPORTED;
 }
 
-eReturnValues send_CSMI_Legacy_ATA_Passthrough(tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, csmiCDB, CSMI_PASSTHROUGH_CDB_LENGTH);
@@ -233,12 +235,13 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(tDevice* device, ataPassthroughCo
         // }
     }
     // before we get rid of the sense data, copy it back to the last command sense data
-    safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0,
+    safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(&device->drive_info.lastCommandSenseData[0], SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
-                M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
-    // safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
-    // sizeof(ataReturnTFRs));
+    safe_memcpy(M_CONST_CAST(uint8_t*, &device->drive_info.lastCommandSenseData[0]), SPC3_SENSE_LEN,
+                &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
+    // safe_memcpy(M_CONST_CAST(ataReturnTFRs*, &device->drive_info.lastCommandRTFRs), sizeof(ataReturnTFRs),
+    // &ataCommandOptions->rtfr,
+    //             sizeof(ataReturnTFRs));
     safe_free_aligned(&senseData);
     if (localSenseData)
     {
