@@ -49,6 +49,13 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSe
     // clear the last command sense data every single time before we issue any commands
     safe_memset(M_CONST_CAST(uint8_t*, scsiIoCtx->device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN);
+    if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0 &&
+        M_STATIC_CAST(uintptr_t, scsiIoCtx->psense) !=
+            M_STATIC_CAST(uintptr_t, scsiIoCtx->device->drive_info.lastCommandSenseData))
+    {
+        // set sense data to zero to make sure there is no extra data left over in this buffer
+        safe_memset(M_CONST_CAST(uint8_t*, scsiIoCtx->psense), scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+    }
     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
     {
         printf("\n  CDB:\n");
@@ -77,6 +84,16 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSe
         print_Data_Buffer(scsiIoCtx->psense, get_Returned_Sense_Data_Length(scsiIoCtx->psense), false);
         printf("\n");
     }
+
+    if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0 &&
+        M_STATIC_CAST(uintptr_t, scsiIoCtx->psense) !=
+            M_STATIC_CAST(uintptr_t, scsiIoCtx->device->drive_info.lastCommandSenseData))
+    {
+        // sense pointer is not the same as last command sense data, so memcpy it to that location as well.
+        safe_memcpy(M_CONST_CAST(uint8_t*, scsiIoCtx->device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
+                    scsiIoCtx->psense, M_Min(SPC3_SENSE_LEN, scsiIoCtx->senseDataSize));
+    }
+
     get_Sense_Data_Fields(scsiIoCtx->psense, scsiIoCtx->senseDataSize, pSenseFields);
     ret = check_Sense_Key_ASC_ASCQ_And_FRU(scsiIoCtx->device, pSenseFields->scsiStatusCodes.senseKey,
                                            pSenseFields->scsiStatusCodes.asc, pSenseFields->scsiStatusCodes.ascq,
@@ -226,13 +243,6 @@ static eReturnValues scsi_Send_Cdb_Int(const tDevice*         device,
     }
 
     ret = private_SCSI_Send_CDB(&scsiIoCtx, M_NULLPTR);
-
-    if (senseData != M_NULLPTR && senseDataLen > 0 &&
-        M_STATIC_CAST(uintptr_t, senseData) != M_STATIC_CAST(uintptr_t, device->drive_info.lastCommandSenseData))
-    {
-        safe_memcpy(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, senseData,
-                    M_Min(SPC3_SENSE_LEN, senseDataLen));
-    }
 
     return ret;
 }
