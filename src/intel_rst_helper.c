@@ -10,7 +10,7 @@
 //
 // ******************************************************************************************
 //
-#    include "code_attributes.h"
+#include "code_attributes.h"
 #if defined(ENABLE_INTEL_RST)
 #    include "bit_manip.h"
 #    include "common_types.h"
@@ -1129,6 +1129,8 @@ eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx)
 }
 
 #else
-M_ATTR_UNUSED static void suppress_empty_intel_rst_helper(void) {}
+M_ATTR_UNUSED static void suppress_empty_intel_rst_helper(void)
+{
+}
 
 #endif // ENABLE_INTEL_RST
