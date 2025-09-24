@@ -3682,7 +3682,8 @@ eReturnValues os_Update_File_System_Cache(const tDevice* device)
 #endif
         fdToRescan = M_CONST_CAST(int*, &device->os_info.fd2);
     }
-    fsync(fdToRescan);
+    fsync(*fdToRescan);
+    syncfs(*fdToRescan);
 
     // Now, call BLKRRPART
 #if defined(_DEBUG)
@@ -3717,7 +3718,6 @@ eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
     {
         blockHandle = device->os_info.secondName;
     }
-    fsync(blockHandle);
     partitionCount = get_Partition_Count(blockHandle);
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
     {
@@ -3762,7 +3762,6 @@ eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
                     }
                 }
             }
-            fsync(blockHandle);
             safe_free_spartition_info(&parts);
         }
         else
