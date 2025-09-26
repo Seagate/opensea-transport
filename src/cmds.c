@@ -1709,25 +1709,28 @@ typedef enum
 typedef enum
 {
     SCSI_READ_CMD,
-    SCSI_WRITE_CMD
-    // verify?
-    // flush?
+    SCSI_WRITE_CMD,
+    SCSI_VERIFY_CMD,
+    SCSI_SYNC_CMD,        // SCSI 2, but mentioned in SCSI 1 for future standardization
+    SCSI_WRITE_VERIFY_CMD // Optional Since SCSI 1 for 10B+
+    // Add seek and pre-fetch???
 } eSCSICmdType;
 
 M_NONNULL_PARAM_LIST(1)
-M_NONNULL_IF_NONZERO_SIZE(5, 6)
+M_NONNULL_IF_NONZERO_SIZE(6, 7)
 M_PARAM_RW(1)
-M_PARAM_RW_SIZE(5, 6)
+M_PARAM_RW_SIZE(6, 7)
+M_NODISCARD
 static eReturnValues determine_scsi_read_write_cmd(tDevice*     device,
                                                    eSCSICmdType type,
                                                    uint64_t     lba,
                                                    bool         forceUnitAccess,
+                                                   uint32_t     sectors,
                                                    uint8_t*     ptrData,
                                                    uint32_t     dataSize)
 {
     eSCSICmdSize  cmdSize = SCSI_CMD_SIZE_16; // default to read 16
     eReturnValues ret     = SUCCESS;
-    uint32_t      sectors = dataSize / device->drive_info.deviceBlockSize;
     if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3) // SBC2 introduced read 16 command, so checking for SPC3
     {
         // there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care
@@ -1750,47 +1753,96 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice*     device,
         switch (cmdSize)
         {
         case SCSI_CMD_SIZE_16:
-            if (type == SCSI_READ_CMD)
+            switch (type)
             {
+            case SCSI_READ_CMD:
                 ret = scsi_Read_16(device, 0, false, forceUnitAccess, false, lba, 0, sectors, ptrData, dataSize);
-            }
-            else
-            {
-                ret = scsi_Read_16(device, 0, false, forceUnitAccess, false, lba, 0, sectors, ptrData, dataSize);
+                break;
+            case SCSI_WRITE_CMD:
+                ret = scsi_Write_16(device, 0, false, forceUnitAccess, lba, 0, sectors, ptrData, dataSize);
+                break;
+            case SCSI_VERIFY_CMD:
+                ret = scsi_Verify_16(device, 0, false, 0, lba, 0, sectors, M_NULLPTR, 0);
+                break;
+            case SCSI_SYNC_CMD:
+                ret = scsi_Synchronize_Cache_16(device, false, lba, 0, sectors);
+                break;
+            case SCSI_WRITE_VERIFY_CMD:
+                ret = scsi_Write_And_Verify_16(device, 0, false, 0, lba, 0, sectors, ptrData, dataSize);
+                break;
             }
             break;
         case SCSI_CMD_SIZE_12:
-            if (type == SCSI_READ_CMD)
+            switch (type)
             {
+            case SCSI_READ_CMD:
                 ret = scsi_Read_12(device, 0, false, forceUnitAccess, false, C_CAST(uint32_t, lba), 0, sectors, ptrData,
                                    dataSize);
-            }
-            else
-            {
-                ret = scsi_Read_12(device, 0, false, forceUnitAccess, false, C_CAST(uint32_t, lba), 0, sectors, ptrData,
-                                   dataSize);
+                break;
+            case SCSI_WRITE_CMD:
+                ret = scsi_Write_12(device, 0, false, forceUnitAccess, C_CAST(uint32_t, lba), 0, sectors, ptrData,
+                                    dataSize);
+                break;
+            case SCSI_VERIFY_CMD:
+                ret = scsi_Verify_12(device, 0, false, 0, C_CAST(uint32_t, lba), 0, sectors, M_NULLPTR, 0);
+                break;
+            case SCSI_SYNC_CMD:
+                // no 12B command, so issue the 10B instead
+                ret = scsi_Synchronize_Cache_10(device, false, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, sectors));
+                break;
+            case SCSI_WRITE_VERIFY_CMD:
+                ret =
+                    scsi_Write_And_Verify_12(device, 0, false, 0, C_CAST(uint32_t, lba), 0, sectors, ptrData, dataSize);
+                break;
             }
             break;
         case SCSI_CMD_SIZE_10:
-            if (type == SCSI_READ_CMD)
+            switch (type)
             {
+            case SCSI_READ_CMD:
                 ret = scsi_Read_10(device, 0, false, forceUnitAccess, false, C_CAST(uint32_t, lba), 0,
                                    C_CAST(uint16_t, sectors), ptrData, dataSize);
-            }
-            else
-            {
-                ret = scsi_Read_10(device, 0, false, forceUnitAccess, false, C_CAST(uint32_t, lba), 0,
-                                   C_CAST(uint16_t, sectors), ptrData, dataSize);
+                break;
+            case SCSI_WRITE_CMD:
+                ret = scsi_Write_10(device, 0, false, forceUnitAccess, C_CAST(uint32_t, lba), 0,
+                                    C_CAST(uint16_t, sectors), ptrData, dataSize);
+                break;
+            case SCSI_VERIFY_CMD:
+                ret = scsi_Verify_10(device, 0, false, 0, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, sectors),
+                                     M_NULLPTR, 0);
+                break;
+            case SCSI_SYNC_CMD:
+                ret = scsi_Synchronize_Cache_10(device, false, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, sectors));
+                break;
+            case SCSI_WRITE_VERIFY_CMD:
+                ret = scsi_Write_And_Verify_10(device, 0, false, 0, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, sectors),
+                                               ptrData, dataSize);
+                break;
             }
             break;
         case SCSI_CMD_SIZE_6:
-            if (type == SCSI_READ_CMD)
+            switch (type)
             {
+            case SCSI_READ_CMD:
                 ret = scsi_Read_6(device, C_CAST(uint32_t, lba), C_CAST(uint8_t, sectors), ptrData, dataSize);
-            }
-            else
-            {
+                break;
+            case SCSI_WRITE_CMD:
                 ret = scsi_Write_6(device, C_CAST(uint32_t, lba), C_CAST(uint8_t, sectors), ptrData, dataSize);
+                break;
+            case SCSI_WRITE_VERIFY_CMD:
+                device->drive_info.passThroughHacks.scsiHacks.writeAndVerifyCmdSize = INT8_C(-1);
+                cmdSize                                                             = SCSI_CMD_SIZE_UNDETERMINED;
+                ret                                                                 = NOT_SUPPORTED;
+                break;
+            case SCSI_VERIFY_CMD:
+                cmdSize = SCSI_CMD_SIZE_UNDETERMINED;
+                ret     = NOT_SUPPORTED;
+                break;
+            case SCSI_SYNC_CMD:
+                device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize = INT8_C(-1);
+                cmdSize                                                        = SCSI_CMD_SIZE_UNDETERMINED;
+                ret                                                            = NOT_SUPPORTED;
+                break;
             }
             break;
         default:
@@ -1819,27 +1871,70 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice*     device,
             else
             {
                 // success, so set the hacks and exit
-                switch (cmdSize)
+                // NOTE: Only do this for read, write, or verify!
+                // For synchronize there are enough weird system specific things where we don't want to assume
+                // things and are best off retrying as needed. Example: Windows NVMe supports 16B read/write, but only
+                // 10B sync
+                if (type == SCSI_READ_CMD || type == SCSI_WRITE_CMD || type == SCSI_VERIFY_CMD)
                 {
-                case SCSI_CMD_SIZE_16:
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16      = true;
-                    break;
-                case SCSI_CMD_SIZE_12:
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12      = true;
-                    break;
-                case SCSI_CMD_SIZE_10:
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10      = true;
-                    break;
-                case SCSI_CMD_SIZE_6:
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6       = true;
-                    break;
-                case SCSI_CMD_SIZE_UNDETERMINED:
-                    // shouldn't happen
-                    break;
+                    switch (cmdSize)
+                    {
+                    case SCSI_CMD_SIZE_16:
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16      = true;
+                        break;
+                    case SCSI_CMD_SIZE_12:
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12      = true;
+                        break;
+                    case SCSI_CMD_SIZE_10:
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10      = true;
+                        break;
+                    case SCSI_CMD_SIZE_6:
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
+                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6       = true;
+                        break;
+                    case SCSI_CMD_SIZE_UNDETERMINED:
+                        // shouldn't happen
+                        break;
+                    }
+                }
+                else if (type == SCSI_SYNC_CMD)
+                {
+                    switch (cmdSize)
+                    {
+                    case SCSI_CMD_SIZE_16:
+                        device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize = INT8_C(16);
+                        break;
+                    case SCSI_CMD_SIZE_12:
+                    case SCSI_CMD_SIZE_10:
+                        device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize = INT8_C(10);
+                        break;
+                    case SCSI_CMD_SIZE_6:
+                    case SCSI_CMD_SIZE_UNDETERMINED:
+                        // shouldn't happen
+                        break;
+                    }
+                }
+                else if (type == SCSI_WRITE_VERIFY_CMD)
+                {
+                    switch (cmdSize)
+                    {
+                    case SCSI_CMD_SIZE_16:
+                        device->drive_info.passThroughHacks.scsiHacks.writeAndVerifyCmdSize = INT8_C(16);
+                        break;
+                    case SCSI_CMD_SIZE_12:
+                        device->drive_info.passThroughHacks.scsiHacks.writeAndVerifyCmdSize = INT8_C(12);
+                        break;
+                    case SCSI_CMD_SIZE_10:
+                        device->drive_info.passThroughHacks.scsiHacks.writeAndVerifyCmdSize = INT8_C(10);
+                        break;
+                    case SCSI_CMD_SIZE_6:
+                    case SCSI_CMD_SIZE_UNDETERMINED:
+                        // shouldn't happen
+                        break;
+                    }
                 }
                 cmdSize = SCSI_CMD_SIZE_UNDETERMINED; // exit the loop
             }
@@ -1895,19 +1990,23 @@ eReturnValues scsi_Read(const tDevice* device, uint64_t lba, bool forceUnitAcces
             else
             {
                 // This shouldn't happen...
-                ret = determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_READ_CMD, lba, fua, ptrData,
-                                                    dataSize);
+                ret = determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_READ_CMD, lba, fua, sectors,
+                                                    ptrData, dataSize);
             }
         }
         else // Use the generic rules below to issue what will most likely be the correct commands...-TJE
         {
-            ret = determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_READ_CMD, lba, fua, ptrData,
-                                                dataSize);
+            ret = determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_READ_CMD, lba, fua, sectors,
+                                                ptrData, dataSize);
         }
     }
     return ret;
 }
 
+// TODO: If FUA not supported, use write and verify instead??? More or less the same as what we do as a workaround
+// already - TJE
+// Other option is if neither write and verify or verify are supported (since both are optional) to use synchronize
+// cache with lba and range values that match the write command.
 eReturnValues scsi_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
@@ -1948,14 +2047,14 @@ eReturnValues scsi_Write(const tDevice* device, uint64_t lba, bool forceUnitAcce
         else
         {
             // This shouldn't happen...
-            ret = determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_WRITE_CMD, lba, fua, ptrData,
-                                                dataSize);
+            ret = determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_WRITE_CMD, lba, fua, sectors,
+                                                ptrData, dataSize);
         }
     }
     else // Use the generic rules below to issue what will most likely be the correct commands...-TJE
     {
-        ret =
-            determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_WRITE_CMD, lba, fua, ptrData, dataSize);
+        ret = determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_WRITE_CMD, lba, fua, sectors, ptrData,
+                                            dataSize);
     }
     if (forceUnitAccess && !device->drive_info.dpoFUA)
     {
@@ -2153,17 +2252,38 @@ eReturnValues ata_Read_Verify(const tDevice* device, uint64_t lba, uint32_t rang
 eReturnValues scsi_Verify(const tDevice* device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = SUCCESS; // assume success
-    // there's no real way to tell when scsi drive supports verify 10 vs verify 16 (which are all we will care about in
-    // here), so just based on transfer length and the maxLBA
-    if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && range <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
+    if (device->drive_info.passThroughHacks.scsiHacks.readWrite.available)
     {
-        // use verify 10
-        ret = scsi_Verify_10(device, 0, false, 00, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, range), M_NULLPTR, 0);
+        // This device is in the database or the command support has been determined some other way to allow us to
+        // issue a correct command without any other issues.
+        if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16)
+        {
+            ret = scsi_Verify_16(device, 0, false, 0, lba, 0, range, M_NULLPTR, 0);
+        }
+        else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12)
+        {
+            ret = scsi_Verify_12(device, 0, false, 0, C_CAST(uint32_t, lba), 0, range, M_NULLPTR, 0);
+        }
+        else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10)
+        {
+            ret = scsi_Verify_10(device, 0, false, 0, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, range), M_NULLPTR, 0);
+        }
+        else if (device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6)
+        {
+            // no 6byte verify command, so try 10 byte
+            ret = scsi_Verify_10(device, 0, false, 0, C_CAST(uint32_t, lba), 0, C_CAST(uint16_t, range), M_NULLPTR, 0);
+        }
+        else
+        {
+            // This shouldn't happen...
+            ret = determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_VERIFY_CMD, lba, false, range,
+                                                M_NULLPTR, 0);
+        }
     }
-    else
+    else // Use the generic rules below to issue what will most likely be the correct commands...-TJE
     {
-        // use verify 16 (SPC3-SBC2 brought this command in)
-        ret = scsi_Verify_16(device, 0, false, 00, lba, 0, range, M_NULLPTR, 0);
+        ret = determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_VERIFY_CMD, lba, false, range,
+                                            M_NULLPTR, 0);
     }
     return ret;
 }
@@ -2241,23 +2361,21 @@ eReturnValues ata_Flush_Cache_Command(const tDevice* device)
 
 eReturnValues scsi_Synchronize_Cache_Command(const tDevice* device)
 {
-    // synch/flush cache introduced in SCSI2. Not going to check for it though since some USB drives do support this
-    // command and report SCSI or no version. - TJE there's no real way to tell when SCSI drive supports synchronize
-    // cache 10 vs synchronize cache 16 (which are all we will care about in here), so just based on the maxLBA
     eReturnValues ret = SUCCESS;
-    if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA)
+    switch (device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize)
     {
-        ret = scsi_Synchronize_Cache_10(device, false, 0, 0, 0);
-    }
-    else
-    {
+    case INT8_C(16):
         ret = scsi_Synchronize_Cache_16(device, false, 0, 0, 0);
-        if (ret == NOT_SUPPORTED)
-        {
-            // Some devices/adapters only support the 10B command
-            // Need to retry with 10B if this happens
-            ret = scsi_Synchronize_Cache_10(device, false, 0, 0, 0);
-        }
+        break;
+    case INT8_C(10):
+        ret = scsi_Synchronize_Cache_10(device, false, 0, 0, 0);
+        break;
+    case INT8_C(-1):
+        ret = NOT_SUPPORTED;
+        break;
+    default:
+        ret = determine_scsi_read_write_cmd(M_CONST_CAST(tDevice*, device), SCSI_SYNC_CMD, 0, false, 0, M_NULLPTR, 0);
+        break;
     }
     return ret;
 }

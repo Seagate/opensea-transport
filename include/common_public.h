@@ -1113,12 +1113,15 @@ extern "C"
                                  // codes. This is here so it can be checked in a function and stored while running
             bool cmdDTSupported; // If above bool is true, then this holds if cmdDT is supported and can be used to
                                  // check if commands are supported or not. Really only for old drives -TJE
-            uint8_t  reserved[1];
+            int8_t   readBufferCmdSize; // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
             uint32_t maxTransferLength; // Maximum SCSI command transfer length in bytes. Mostly here for USB where
                                         // translations aren't accurate or don't show this properly.
             bool noSATVPDPage; // when this is set, the SAT VPD is not available and should not be read, skipping ahead
                                // to instead directly trying a passthrough command
-            uint8_t reserved2[3];
+            int8_t syncCacheCmdSize;      // 0 = not set, <0 = not supported, 10 = 10B version, 16 = 16B version
+            int8_t writeAndVerifyCmdSize; // 0 = not set, <0 = not supported, 10 = 10B version, 12 = 12B version, 16 =
+                                          // 16B version
+            int8_t writeBufferCmdSize;    // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
         } scsiHacks;
         // ATA Hacks refer to SAT translation issues or workarounds.
         struct
