@@ -1149,7 +1149,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 //
 //-----------------------------------------------------------------------------
 #define CAM_DEV_NAME_LEN 80
-eReturnValues get_Device_List(const tDevice* const   ptrToDeviceList,
+eReturnValues get_Device_List(tDevice* const   ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)
@@ -1553,10 +1553,6 @@ eReturnValues os_nvme_Reset(const tDevice* device)
     start_Timer(&commandTimer);
     ioRes = ioctl(handleToReset, NVME_RESET_CONTROLLER);
     stop_Timer(&commandTimer);
-
-    device->drive_info.lastCommandTimeNanoSeconds             = get_Nano_Seconds(commandTimer);
-    device->drive_info.lastNVMeResult.lastNVMeStatus          = 0;
-    device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
 
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {

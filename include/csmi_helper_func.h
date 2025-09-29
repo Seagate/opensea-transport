@@ -504,7 +504,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool device_Supports_CSMI_With_RST(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool device_Supports_CSMI_With_RST(const tDevice* device);
 #    endif
 
     //-----------------------------------------------------------------------------

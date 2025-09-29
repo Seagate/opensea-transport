@@ -108,7 +108,7 @@ eReturnValues get_BSD_Partition_List(const char* blockDeviceName, ptrsPartitionI
     return result;
 }
 
-eReturnValues set_BSD_Device_Partition_Info(const tDevice* device)
+eReturnValues set_BSD_Device_Partition_Info(tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
     int           partitionCount = 0;

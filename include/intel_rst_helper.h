@@ -100,7 +100,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //

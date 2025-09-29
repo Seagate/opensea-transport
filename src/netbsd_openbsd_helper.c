@@ -247,7 +247,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 }
 
 #define BSD_DEV_NAME_LEN 80
-eReturnValues get_Device_List(const tDevice* const   ptrToDeviceList,
+eReturnValues get_Device_List(tDevice* const   ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)

@@ -77,8 +77,8 @@ eReturnValues get_BSD_Partition_List(const char* blockDeviceName, ptrsPartitionI
 
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-eReturnValues set_BSD_Device_Partition_Info(const tDevice* device);
+eReturnValues set_BSD_Device_Partition_Info(tDevice* device);
 
 M_NONNULL_PARAM_LIST(1)
-M_PARAM_RW(1)
+M_PARAM_RO(1)
 eReturnValues bsd_Unmount_From_Matching_Dev(const tDevice* device);

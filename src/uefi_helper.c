@@ -2272,7 +2272,7 @@ uint32_t get_ATA_Device_Count()
     return deviceCount;
 }
 
-eReturnValues get_ATA_Devices(const tDevice* const ptrToDeviceList,
+eReturnValues get_ATA_Devices(tDevice* const ptrToDeviceList,
                               uint32_t             sizeInBytes,
                               versionBlock         ver,
                               uint32_t*            index)
@@ -2414,7 +2414,7 @@ uint32_t get_SCSI_Device_Count()
     return deviceCount;
 }
 
-eReturnValues get_SCSI_Devices(const tDevice* const ptrToDeviceList,
+eReturnValues get_SCSI_Devices(tDevice* const ptrToDeviceList,
                                uint32_t             sizeInBytes,
                                versionBlock         ver,
                                uint32_t*            index)
@@ -2551,7 +2551,7 @@ uint32_t get_SCSIEx_Device_Count()
     return deviceCount;
 }
 
-eReturnValues get_SCSIEx_Devices(const tDevice* const ptrToDeviceList,
+eReturnValues get_SCSIEx_Devices(tDevice* const ptrToDeviceList,
                                  uint32_t             sizeInBytes,
                                  versionBlock         ver,
                                  uint32_t*            index)
@@ -2696,7 +2696,7 @@ uint32_t get_NVMe_Device_Count()
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues get_NVMe_Devices(const tDevice* const ptrToDeviceList,
+eReturnValues get_NVMe_Devices(tDevice* const ptrToDeviceList,
                                uint32_t             sizeInBytes,
                                versionBlock         ver,
                                uint32_t*            index)
@@ -2824,7 +2824,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_List(const tDevice* const   ptrToDeviceList,
+eReturnValues get_Device_List(tDevice* const   ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)
