@@ -1562,7 +1562,7 @@ eReturnValues os_nvme_Reset(const tDevice* device)
     if (ioRes < 0)
     {
         // failed
-        device->os_info.last_error = errno;
+        set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
         if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
         {
             printf("Error :");
