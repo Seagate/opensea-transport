@@ -212,7 +212,7 @@ static M_INLINE void safe_free_irst_raid_fw_buffer(IOCTL_RAID_FIRMWARE_BUFFER** 
 
 // generic function to handle taking in the various RAID FW Requests to keep code from being duplicated
 M_NONNULL_PARAM_LIST(1, 8)
-M_PARAM_RW(1)
+M_PARAM_RO(1)
 M_NONNULL_IF_NONZERO_SIZE(2, 3)
 M_PARAM_RO_SIZE(2, 3)
 static eReturnValues intel_RAID_FW_Request(const tDevice* device,
