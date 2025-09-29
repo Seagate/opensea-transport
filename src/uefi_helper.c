@@ -2199,7 +2199,7 @@ eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues close_Device(const tDevice* device)
+eReturnValues close_Device(tDevice* device)
 {
     return NOT_SUPPORTED;
 }

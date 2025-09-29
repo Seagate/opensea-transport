@@ -162,7 +162,7 @@ static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartiti
 
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static eReturnValues set_Device_Partition_Info(const tDevice* device)
+static eReturnValues set_Device_Partition_Info(tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
     int           partitionCount = 0;
@@ -533,7 +533,7 @@ static int uscsi_filter(const struct dirent* entry)
     }
 }
 
-eReturnValues close_Device(const tDevice* device)
+eReturnValues close_Device(tDevice* device)
 {
     int retValue = 0;
     if (device)
