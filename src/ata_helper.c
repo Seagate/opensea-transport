@@ -129,7 +129,7 @@ static bool is_Buffer_Non_Zero(const uint8_t* ptrData, uint32_t dataLen)
 
 M_NONNULL_PARAM_LIST(1, 4)
 M_PARAM_RW(1)
-M_PARAM_WO_SIZE(4, 5)
+M_PARAM_RW_SIZE(4, 5)
 static M_INLINE eReturnValues send_ATA_Read_Log_Ext_Cmd_impl(tDevice* device,
                                                              uint8_t  logAddress,
                                                              uint16_t pageNumber,
@@ -811,7 +811,7 @@ eReturnValues send_ATA_Trusted_Send_Cmd(const tDevice* device,
 
 M_NONNULL_PARAM_LIST(1, 4)
 M_PARAM_RW(1)
-M_PARAM_WO_SIZE(4, 5)
+M_PARAM_RW_SIZE(4, 5)
 static M_INLINE eReturnValues send_ATA_Trusted_Receive_Cmd_impl(tDevice* device,
                                                                 uint8_t  securityProtocol,
                                                                 uint16_t securityProtocolSpecific,
@@ -873,7 +873,7 @@ eReturnValues send_ATA_Trusted_Receive_Cmd(const tDevice* device,
 
 M_NONNULL_PARAM_LIST(1, 2)
 M_PARAM_RW(1)
-M_PARAM_WO(2)
+M_PARAM_RW(2)
 static M_INLINE eReturnValues send_ATA_Read_Buffer_Cmd_impl(tDevice* device, uint8_t* ptrData)
 {
     eReturnValues ret      = NOT_SUPPORTED;
@@ -977,7 +977,7 @@ eReturnValues send_ATA_Write_Buffer_Cmd(const tDevice* device, uint8_t* ptrData)
 
 M_NONNULL_PARAM_LIST(1, 7)
 M_PARAM_RW(1)
-M_PARAM_WO_SIZE(7, 8)
+M_PARAM_RW_SIZE(7, 8)
 static M_INLINE eReturnValues send_ATA_Read_Stream_Cmd_impl(tDevice* device,
                                                             uint8_t  streamID,
                                                             bool     notSequential,
@@ -1222,7 +1222,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
 
 M_NONNULL_PARAM_LIST(1, 2)
 M_PARAM_RW(1)
-M_PARAM_WO_SIZE(2, 3)
+M_PARAM_RW_SIZE(2, 3)
 static M_INLINE eReturnValues get_Identify_Data_impl(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues ret = FAILURE;

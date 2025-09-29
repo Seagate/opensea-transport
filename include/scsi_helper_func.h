@@ -3379,7 +3379,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(7, 6)
+    M_PARAM_RW_SIZE(7, 6)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Query(const tDevice* device,
                                                         bool           all,
                                                         uint64_t       zoneID,
@@ -3390,7 +3390,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(7, 6)
+    M_PARAM_RW_SIZE(7, 6)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Activate(const tDevice* device,
                                                            bool           all,
                                                            uint64_t       zoneID,
@@ -3484,7 +3484,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 3)
-    M_PARAM_WO_SIZE(6, 3)
+    M_PARAM_RW_SIZE(6, 3)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Physical_Element_Status(const tDevice* device,
                                                                          uint32_t       startingElement,
                                                                          uint32_t       allocationLength,
@@ -3553,7 +3553,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(4, 3)
-    M_PARAM_WO_SIZE(4, 3)
+    M_PARAM_RW_SIZE(4, 3)
     OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_In(const tDevice* device,
                                                                    uint8_t        serviceAction,
                                                                    uint16_t       allocationLength,

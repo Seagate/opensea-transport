@@ -225,7 +225,9 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* device,
                                            uint32_t*      returnCode)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
-    if (device)
+    DISABLE_NONNULL_COMPARE
+    if (device != M_NULLPTR)
+    RESTORE_NONNULL_COMPARE
     {
         size_t                      allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
         IOCTL_RAID_FIRMWARE_BUFFER* raidFirmwareRequest =

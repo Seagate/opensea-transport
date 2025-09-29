@@ -1347,7 +1347,8 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
     sysFsInfo.interface_type = SCSI_INTERFACE;
     get_Linux_SYS_FS_Info(handle, &sysFsInfo);
     // now copy the saved data to tDevice. -TJE
-    if (device)
+    DISABLE_NONNULL_COMPARE
+    if (device != M_NULLPTR)
     {
         device->drive_info.drive_type     = sysFsInfo.drive_type;
         device->drive_info.interface_type = sysFsInfo.interface_type;
@@ -1369,6 +1370,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
             device->os_info.secondHandleValid = true;
         }
     }
+    RESTORE_NONNULL_COMPARE
 }
 
 // map a block handle (sd) to a generic handle (sg or bsg)

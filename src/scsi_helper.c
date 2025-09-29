@@ -2011,10 +2011,12 @@ static eReturnValues private_Scsi_Read_Cap_10(const tDevice* device, readCapacit
 eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* device, readCapacityData* outputData)
 {
     safe_memset(outputData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
+    DISABLE_NONNULL_COMPARE
     if (device == M_NULLPTR || outputData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
     if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)
     {
         // 16B command added in SBC2. Not a better way to check, so using SPC3 version to decide at the moment since
