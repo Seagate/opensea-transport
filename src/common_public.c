@@ -1266,7 +1266,7 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
     {
         printf("Unable to get number of devices from OS\n");
     }
-    safe_free_aligned_core(C_CAST(void**, &scanDeviceList));
+    safe_free(C_CAST(void**, &scanDeviceList));
 }
 
 eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
@@ -1451,6 +1451,8 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                     close_Device(&deviceList[deviceIter]);
                 }
             }
+
+            safe_free_aligned_core(C_CAST(void**, &deviceList));
         }
     }
 
