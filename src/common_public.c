@@ -1232,11 +1232,49 @@ bool scan_Interface_Type_Filter(tDevice* device, uint32_t scanFlags)
 // this is the "generic" scan. It uses the OS defined "get device count" and "get device list" calls to do the scan.
 void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
 {
-    uint32_t deviceCount = UINT32_C(0);
-#if defined(ENABLE_CSMI)
-    uint32_t csmiDeviceCount      = UINT32_C(0);
-    bool     csmiDeviceCountValid = false;
-#endif
+    uint32_t       deviceCount    = UINT32_C(0);
+    scanDriveInfo* scanDeviceList = M_NULLPTR;
+    eReturnValues  ret            = get_Devs_For_Scan_And_Print(flags, scanVerbosity, &deviceCount, &scanDeviceList);
+    if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
+    {
+        if (deviceCount > 0)
+        {
+            // print device list
+            printf("%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
+            for (uint32_t devIter = UINT32_C(0); devIter < deviceCount; ++devIter)
+            {
+                printf("%-8s %-12s %-23s %-22s %-10s\n", scanDeviceList[devIter].vendor,
+                       scanDeviceList[devIter].displayHandle, scanDeviceList[devIter].modelNumber,
+                       scanDeviceList[devIter].serialNumber, scanDeviceList[devIter].firmwareVersion);
+                flush_stdout();
+            }
+        }
+        else
+        {
+            printf("No devices found\n");
+        }
+    }
+    else if (ret == PERMISSION_DENIED)
+    {
+        printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
+    }
+    else if (ret == DEVICE_BUSY)
+    {
+        printf("All devices reported as busy at this time.\n");
+    }
+    else
+    {
+        printf("Unable to get number of devices from OS\n");
+    }
+    safe_free(C_CAST(void**, &scanDeviceList));
+}
+
+eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
+                                          eVerbosityLevels scanVerbosity,
+                                          uint32_t*        numberOfDevices,
+                                          scanDriveInfo**  scanDeviceList)
+{
+    uint32_t deviceCount    = UINT32_C(0);
     uint64_t getCountFlags  = UINT64_C(0);
     uint64_t getDeviceflags = FAST_SCAN;
     if (flags & AGRESSIVE_SCAN)
@@ -1261,21 +1299,22 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
     default:
         break;
     }
+
     eReturnValues ret = get_Device_Count(&deviceCount, getCountFlags);
     if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
     {
         if (deviceCount > 0)
         {
             tDevice* deviceList = M_REINTERPRET_CAST(tDevice*, safe_calloc_aligned(deviceCount, sizeof(tDevice), 8));
-            versionBlock version;
             if (!deviceList)
             {
                 DECLARE_ZERO_INIT_ARRAY(char, errorMessage, 50);
                 snprintf_err_handle(errorMessage, 50, "calloc failure in scan to get %" PRIu32 " devices!",
                                     deviceCount);
                 perror(errorMessage);
-                return;
+                return MEMORY_FAILURE;
             }
+            versionBlock version;
             safe_memset(&version, sizeof(versionBlock), 0, sizeof(versionBlock));
             version.size    = sizeof(tDevice);
             version.version = DEVICE_BLOCK_VERSION;
@@ -1292,10 +1331,20 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                 getDeviceflags |= GET_DEVICE_FUNCS_IGNORE_CSMI;
             }
 #endif
-            ret = get_Device_List(deviceList, deviceCount * sizeof(tDevice), version, getDeviceflags);
+            ret = get_Device_List(deviceList, (deviceCount * sizeof(tDevice)), version, getDeviceflags);
             if (ret == SUCCESS || ret == WARN_NOT_ALL_DEVICES_ENUMERATED)
             {
-                printf("%-8s %-12s %-23s %-22s %-10s\n", "Vendor", "Handle", "Model Number", "Serial Number", "FwRev");
+                uint32_t deviceCountToBeShown = UINT32_C(0);
+                *scanDeviceList = M_REINTERPRET_CAST(scanDriveInfo*, safe_calloc(deviceCount, sizeof(scanDriveInfo)));
+                if (!*scanDeviceList)
+                {
+                    DECLARE_ZERO_INIT_ARRAY(char, errorMessage, 50);
+                    snprintf_err_handle(errorMessage, 50, "calloc failure in scan to get %" PRIu32 " scanDeviceList!",
+                                        deviceCount);
+                    perror(errorMessage);
+                    return MEMORY_FAILURE;
+                }
+
                 for (uint32_t devIter = UINT32_C(0); devIter < deviceCount; ++devIter)
                 {
                     if (ret == WARN_NOT_ALL_DEVICES_ENUMERATED &&
@@ -1325,64 +1374,33 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                             continue;
                         }
                     }
-#if defined(ENABLE_CSMI)
-                    if (csmiDeviceCountValid &&
-                        devIter >= (deviceCount -
-                                    csmiDeviceCount)) // if the csmi device count is valid then we found some for the
-                                                      // scan and need to see if we need to check for duplicates.
-                    {
-                        // check if we are being asked to show duplicates or not.
-                        if (!(flags & ALLOW_DUPLICATE_DEVICE))
-                        {
-                            bool skipThisDevice = false;
-                            for (uint32_t dupCheck = UINT32_C(0); dupCheck < (deviceCount - csmiDeviceCount);
-                                 ++dupCheck)
-                            {
-                                // check if the WWN is valid (non-zero value) and then check if it matches anything else
-                                // already in the list...this should be faster than the SN comparison below. - TJE
-                                // check if the SN is valid (non-zero length) and then check if it matches anything
-                                // already seen in the list... - TJE
-                                if ((deviceList[devIter].drive_info.worldWideName != 0 &&
-                                     deviceList[devIter].drive_info.worldWideName ==
-                                         deviceList[dupCheck].drive_info.worldWideName) ||
-                                    (safe_strlen(deviceList[devIter].drive_info.serialNumber) &&
-                                     strcmp(deviceList[devIter].drive_info.serialNumber,
-                                            deviceList[dupCheck].drive_info.serialNumber) == 0))
-                                {
-                                    skipThisDevice = true;
-                                    break;
-                                }
-                            }
-                            if (skipThisDevice)
-                            {
-                                continue;
-                            }
-                        }
-                    }
-#endif
+
                     if (scan_Drive_Type_Filter(&deviceList[devIter], flags) &&
                         scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
-                        DECLARE_ZERO_INIT_ARRAY(char, printable_sn, SERIAL_NUM_LEN + 1);
-#define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
-                        DECLARE_ZERO_INIT_ARRAY(char, displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
+                        // vendor ID
+                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].vendor, T10_VENDOR_ID_LEN + 1, "%s",
+                                            deviceList[devIter].drive_info.T10_vendor_ident);
+
+                        // drive handle
 #if defined(_WIN32)
-                        snprintf_err_handle(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s",
+                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                            SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s",
                                             deviceList[devIter].os_info.friendlyName);
 #else
-                        snprintf_err_handle(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s",
-                                            deviceList[devIter].os_info.name);
+                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                            SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s", deviceList[devIter].os_info.name);
 #endif
 #if defined(__linux__) && !defined(VMK_CROSS_COMP) && !defined(UEFI_C_SOURCE)
                         if ((flags & SG_TO_SD) > 0)
                         {
                             char* genName   = M_NULLPTR;
                             char* blockName = M_NULLPTR;
+                            DECLARE_ZERO_INIT_ARRAY(char, displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
                             if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                             {
-                                safe_memset(displayHandle, sizeof(displayHandle), 0, sizeof(displayHandle));
-                                snprintf_err_handle(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s",
-                                                    genName, blockName);
+                                snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                                    SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
                             }
                             safe_free(&genName);
                             safe_free(&blockName);
@@ -1391,70 +1409,54 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
                         {
                             char* genName   = M_NULLPTR;
                             char* blockName = M_NULLPTR;
+                            DECLARE_ZERO_INIT_ARRAY(char, displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
                             if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
                             {
-                                safe_memset(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, 0,
-                                            SCAN_DISPLAY_HANDLE_STRING_LENGTH);
-                                snprintf_err_handle(displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s",
-                                                    blockName);
+                                snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                                    SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
                             }
                             safe_free(&genName);
                             safe_free(&blockName);
                         }
 #endif
-                        snprintf_err_handle(printable_sn, SERIAL_NUM_LEN + 1, "%s",
-                                            deviceList[devIter].drive_info.serialNumber);
+
+                        // model number
+                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].modelNumber, MODEL_NUM_LEN + 1,
+                                            "%s", deviceList[devIter].drive_info.product_identification);
+
+                        // serial number
+                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1,
+                                            "%s", deviceList[devIter].drive_info.serialNumber);
                         // if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE &&
                             is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
                         {
-                            safe_memset(printable_sn, SERIAL_NUM_LEN + 1, 0, SERIAL_NUM_LEN);
-                            safe_memcpy(printable_sn, SERIAL_NUM_LEN + 1, deviceList[devIter].drive_info.serialNumber,
-                                        8);
+                            safe_memset((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1, 0,
+                                        SERIAL_NUM_LEN);
+                            safe_memcpy((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1,
+                                        deviceList[devIter].drive_info.serialNumber, 8);
                         }
-                        printf("%-8s %-12s %-23s %-22s %-10s\n", deviceList[devIter].drive_info.T10_vendor_ident,
-                               displayHandle, deviceList[devIter].drive_info.product_identification, printable_sn,
-                               deviceList[devIter].drive_info.product_revision);
-                        flush_stdout();
+
+                        // firmware version
+                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].firmwareVersion, FW_REV_LEN + 1,
+                                            "%s", deviceList[devIter].drive_info.product_revision);
+
+                        *numberOfDevices = ++deviceCountToBeShown;
                     }
                 }
+
                 // close all device handles
                 for (uint32_t deviceIter = UINT32_C(0); deviceIter < deviceCount; ++deviceIter)
                 {
                     close_Device(&deviceList[deviceIter]);
                 }
             }
-            else if (ret == PERMISSION_DENIED)
-            {
-                printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
-            }
-            else if (ret == DEVICE_BUSY)
-            {
-                printf("All devices reported as busy at this time.\n");
-            }
-            else
-            {
-                printf("Unknown failure occurred trying to get device list\n");
-            }
+
             safe_free_aligned_core(C_CAST(void**, &deviceList));
         }
-        else
-        {
-            printf("No devices found\n");
-        }
     }
-    else if (ret == PERMISSION_DENIED)
-    {
-        printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
-    }
-    else if (ret == DEVICE_BUSY)
-    {
-        printf("All devices reported as busy at this time.\n");
-    }
-    else
-    {
-        printf("Unable to get number of devices from OS\n");
-    }
+
+    return ret;
 }
 
 bool validate_Device_Struct(versionBlock sanity)
