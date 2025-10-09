@@ -22,7 +22,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device)
+    //  set_ATA_Passthrough_Type_By_Trial_And_Error(const tDevice * device)
     //
     //! \brief   Description:  Attempts to figure out the ATA passthrough method of external (USB and IEEE1394) products
     //! by issueing identify commands with different passthrough types until success is found
@@ -35,7 +35,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1)
+    M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device);
 
 #if defined(__cplusplus)

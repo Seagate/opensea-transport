@@ -59,7 +59,7 @@ extern "C"
     M_PARAM_RW_SIZE(4, 5)
     M_NONNULL_IF_NONZERO_PARAM(7, 8)
     M_PARAM_WO_SIZE(7, 8)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Cdb(tDevice*               device,
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Cdb(const tDevice*         device,
                                                       uint8_t*               cdb,
                                                       eCDBLen                cdbLen,
                                                       uint8_t*               pdata,
@@ -114,7 +114,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues
-    check_Sense_Key_ASC_ASCQ_And_FRU(tDevice* device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru);
+    check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* device, uint8_t senseKey, uint8_t asc, uint8_t ascq, uint8_t fru);
 
     // this is meant to only be called by check_Sense_Key_asc_And_ascq()
     M_NONNULL_PARAM_LIST(1, 2)
@@ -122,7 +122,7 @@ extern "C"
     M_NULL_TERM_STRING(2)
     M_PARAM_RO(2)
     OPENSEA_TRANSPORT_API
-    void print_Field_Replacable_Unit_Code(tDevice* device, const char* fruMessage, uint8_t fruCode);
+    void print_Field_Replacable_Unit_Code(const tDevice* device, const char* fruMessage, uint8_t fruCode);
 
     // this is meant to only be called by check_Sense_Key_asc_And_ascq()
     M_NONNULL_PARAM_LIST(1)
@@ -454,11 +454,11 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1)
+    M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(2, 3)
     M_PARAM_WO_SIZE(2, 3)
     OPENSEA_TRANSPORT_API eReturnValues
-    scsi_Inquiry(tDevice* device, uint8_t* pdata, uint32_t dataLength, uint8_t pageCode, bool evpd, bool cmdDt);
+    scsi_Inquiry(const tDevice* device, uint8_t* pdata, uint32_t dataLength, uint8_t pageCode, bool evpd, bool cmdDt);
 
     //-----------------------------------------------------------------------------
     //
@@ -560,7 +560,8 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_WO(2)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_Cmd_Helper(tDevice* device, readCapacityData* outputData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice*    device,
+                                                                      readCapacityData* outputData);
 
     //-----------------------------------------------------------------------------
     //
@@ -575,7 +576,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = not an ATA device, or SAT not supported
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -601,7 +602,7 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 6)
     M_PARAM_RO_SIZE(7, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Cmd(tDevice*             device,
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Cmd(const tDevice*       device,
                                                           eScsiSanitizeFeature sanitizeFeature,
                                                           bool                 immediate,
                                                           bool                 znr,
@@ -637,11 +638,11 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Overwrite(tDevice* device,
-                                                                bool     allowUnrestrictedSanitizeExit,
-                                                                bool     znr,
-                                                                bool     immediate,
-                                                                bool     invertBetweenPasses,
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Overwrite(const tDevice* device,
+                                                                bool           allowUnrestrictedSanitizeExit,
+                                                                bool           znr,
+                                                                bool           immediate,
+                                                                bool           invertBetweenPasses,
                                                                 eScsiSanitizeOverwriteTest test,
                                                                 uint8_t                    overwritePasses,
                                                                 uint8_t*                   pattern,
@@ -661,7 +662,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Exit_Failure_Mode(tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Exit_Failure_Mode(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -682,10 +683,10 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Cryptographic_Erase(tDevice* device,
-                                                                          bool     allowUnrestrictedSanitizeExit,
-                                                                          bool     immediate,
-                                                                          bool     znr);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Cryptographic_Erase(const tDevice* device,
+                                                                          bool           allowUnrestrictedSanitizeExit,
+                                                                          bool           immediate,
+                                                                          bool           znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -706,10 +707,10 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Block_Erase(tDevice* device,
-                                                                  bool     allowUnrestrictedSanitizeExit,
-                                                                  bool     immediate,
-                                                                  bool     znr);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Block_Erase(const tDevice* device,
+                                                                  bool           allowUnrestrictedSanitizeExit,
+                                                                  bool           immediate,
+                                                                  bool           znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -730,10 +731,10 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(3, 4)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Request_Sense_Cmd(tDevice* device,
-                                                               bool     descriptorBit,
-                                                               uint8_t* pdata,
-                                                               uint16_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Request_Sense_Cmd(const tDevice* device,
+                                                               bool           descriptorBit,
+                                                               uint8_t*       pdata,
+                                                               uint16_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -757,13 +758,13 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(7, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Operation_Codes(tDevice* device,
-                                                                              bool     rctd,
-                                                                              uint8_t  reportingOptions,
-                                                                              uint8_t  requestedOperationCode,
-                                                                              uint16_t reequestedServiceAction,
-                                                                              uint32_t allocationLength,
-                                                                              uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Operation_Codes(const tDevice* device,
+                                                                              bool           rctd,
+                                                                              uint8_t        reportingOptions,
+                                                                              uint8_t        requestedOperationCode,
+                                                                              uint16_t       reequestedServiceAction,
+                                                                              uint32_t       allocationLength,
+                                                                              uint8_t*       ptrData);
 
     typedef enum eSCSICmdSupportEnum
     {
@@ -794,7 +795,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  is_SCSI_Operation_Code_Supported(tDevice *device, ptrScsiOperationCodeInfoRequest request)
+    //  is_SCSI_Operation_Code_Supported(const tDevice *device, ptrScsiOperationCodeInfoRequest request)
     //
     //! \brief   Description: Sends either report supported operation codes or inquiry cmddt to check if a operation
     //! code is supported or not.
@@ -810,7 +811,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    OPENSEA_TRANSPORT_API eSCSICmdSupport is_SCSI_Operation_Code_Supported(tDevice*                        device,
+    OPENSEA_TRANSPORT_API eSCSICmdSupport is_SCSI_Operation_Code_Supported(const tDevice*                  device,
                                                                            ptrScsiOperationCodeInfoRequest request);
 
     //-----------------------------------------------------------------------------
@@ -837,14 +838,14 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 8)
     M_PARAM_WO_SIZE(7, 8)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Sense_Cmd(tDevice* device,
-                                                           bool     saveParameters,
-                                                           uint8_t  pageControl,
-                                                           uint8_t  pageCode,
-                                                           uint8_t  subpageCode,
-                                                           uint16_t paramPointer,
-                                                           uint8_t* ptrData,
-                                                           uint16_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Sense_Cmd(const tDevice* device,
+                                                           bool           saveParameters,
+                                                           uint8_t        pageControl,
+                                                           uint8_t        pageCode,
+                                                           uint8_t        subpageCode,
+                                                           uint16_t       paramPointer,
+                                                           uint8_t*       ptrData,
+                                                           uint16_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -871,15 +872,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Select_Cmd(tDevice* device,
-                                                            bool     pcr,
-                                                            bool     sp,
-                                                            uint8_t  pageControl,
-                                                            uint8_t  pageCode,
-                                                            uint8_t  subpageCode,
-                                                            uint16_t parameterListLength,
-                                                            uint8_t* ptrData,
-                                                            uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Select_Cmd(const tDevice* device,
+                                                            bool           pcr,
+                                                            bool           sp,
+                                                            uint8_t        pageControl,
+                                                            uint8_t        pageCode,
+                                                            uint8_t        subpageCode,
+                                                            uint16_t       parameterListLength,
+                                                            uint8_t*       ptrData,
+                                                            uint32_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -907,16 +908,16 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Diagnostic(tDevice* device,
-                                                             uint8_t  selfTestCode,
-                                                             uint8_t  pageFormat,
-                                                             uint8_t  selfTestBit,
-                                                             uint8_t  deviceOffLIne,
-                                                             uint8_t  unitOffLine,
-                                                             uint16_t parameterListLength,
-                                                             uint8_t* pdata,
-                                                             uint16_t dataSize,
-                                                             uint32_t timeoutSeconds);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Diagnostic(const tDevice* device,
+                                                             uint8_t        selfTestCode,
+                                                             uint8_t        pageFormat,
+                                                             uint8_t        selfTestBit,
+                                                             uint8_t        deviceOffLIne,
+                                                             uint8_t        unitOffLine,
+                                                             uint16_t       parameterListLength,
+                                                             uint8_t*       pdata,
+                                                             uint16_t       dataSize,
+                                                             uint32_t       timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -937,7 +938,7 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(2, 3)
     M_PARAM_WO_SIZE(2, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_10(tDevice* device, uint8_t* pdata, uint16_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_10(const tDevice* device, uint8_t* pdata, uint16_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -958,7 +959,7 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(2, 3)
     M_PARAM_WO_SIZE(2, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_16(tDevice* device, uint8_t* pdata, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_16(const tDevice* device, uint8_t* pdata, uint32_t dataSize);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO_SIZE(1, 2)
@@ -1061,7 +1062,7 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 3)
     M_PARAM_WO_SIZE(8, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_10(tDevice*             device,
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_10(const tDevice*       device,
                                                            uint8_t              pageCode,
                                                            uint32_t             allocationLength,
                                                            uint8_t              subPageCode,
@@ -1093,7 +1094,7 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 3)
     M_PARAM_WO_SIZE(7, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_6(tDevice*             device,
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_6(const tDevice*       device,
                                                           uint8_t              pageCode,
                                                           uint8_t              allocationLength,
                                                           uint8_t              subPageCode,
@@ -1125,13 +1126,13 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 7)
     M_PARAM_WO_SIZE(6, 7)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_10(tDevice* device,
-                                                            uint16_t parameterListLength,
-                                                            bool     pageFormat,
-                                                            bool     savePages,
-                                                            bool     resetToDefaults,
-                                                            uint8_t* ptrData,
-                                                            uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_10(const tDevice* device,
+                                                            uint16_t       parameterListLength,
+                                                            bool           pageFormat,
+                                                            bool           savePages,
+                                                            bool           resetToDefaults,
+                                                            uint8_t*       ptrData,
+                                                            uint32_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1157,13 +1158,13 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 7)
     M_PARAM_WO_SIZE(6, 7)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_6(tDevice* device,
-                                                           uint8_t  parameterListLength,
-                                                           bool     pageFormat,
-                                                           bool     savePages,
-                                                           bool     resetToDefaults,
-                                                           uint8_t* ptrData,
-                                                           uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_6(const tDevice* device,
+                                                           uint8_t        parameterListLength,
+                                                           bool           pageFormat,
+                                                           bool           savePages,
+                                                           bool           resetToDefaults,
+                                                           uint8_t*       ptrData,
+                                                           uint32_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1193,7 +1194,7 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 6)
     M_PARAM_RO_SIZE(7, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Buffer(tDevice*         device,
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Buffer(const tDevice*   device,
                                                           eWriteBufferMode mode,
                                                           uint8_t          modeSpecific,
                                                           uint8_t          bufferID,
@@ -1224,9 +1225,9 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(3, 2)
     M_PARAM_WO_SIZE(3, 2)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Media_Serial_Number(tDevice* device,
-                                                                      uint32_t allocationLength,
-                                                                      uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Media_Serial_Number(const tDevice* device,
+                                                                      uint32_t       allocationLength,
+                                                                      uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1253,15 +1254,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(9, 7)
     M_PARAM_WO_SIZE(9, 7)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Attribute(tDevice* device,
-                                                            uint8_t  serviceAction,
-                                                            uint32_t restricted,
-                                                            uint8_t  logicalVolumeNumber,
-                                                            uint8_t  partitionNumber,
-                                                            uint16_t firstAttributeIdentifier,
-                                                            uint32_t allocationLength,
-                                                            bool     cacheBit,
-                                                            uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Attribute(const tDevice* device,
+                                                            uint8_t        serviceAction,
+                                                            uint32_t       restricted,
+                                                            uint8_t        logicalVolumeNumber,
+                                                            uint8_t        partitionNumber,
+                                                            uint16_t       firstAttributeIdentifier,
+                                                            uint32_t       allocationLength,
+                                                            bool           cacheBit,
+                                                            uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1285,16 +1286,16 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 5)
     M_PARAM_WO_SIZE(6, 5)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Buffer(tDevice* device,
-                                                         uint8_t  mode,
-                                                         uint8_t  bufferID,
-                                                         uint32_t bufferOffset,
-                                                         uint32_t allocationLength,
-                                                         uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Buffer(const tDevice* device,
+                                                         uint8_t        mode,
+                                                         uint8_t        bufferID,
+                                                         uint32_t       bufferOffset,
+                                                         uint32_t       allocationLength,
+                                                         uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Read_Buffer_16(tDevice *device, uint8_t mode, uint8_t modeSpecific, uint8_t bufferID, uint64_t
+    //  scsi_Read_Buffer_16(const tDevice *device, uint8_t mode, uint8_t modeSpecific, uint8_t bufferID, uint64_t
     //  bufferOffset, uint32_t allocationLength, uint8_t *ptrData)
     //
     //! \brief   Description:  Function to Send a SCSI Read Buffer 16 command (SPC5)
@@ -1315,13 +1316,13 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 6)
     M_PARAM_WO_SIZE(7, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Buffer_16(tDevice* device,
-                                                            uint8_t  mode,
-                                                            uint8_t  modeSpecific,
-                                                            uint8_t  bufferID,
-                                                            uint64_t bufferOffset,
-                                                            uint32_t allocationLength,
-                                                            uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Buffer_16(const tDevice* device,
+                                                            uint8_t        mode,
+                                                            uint8_t        modeSpecific,
+                                                            uint8_t        bufferID,
+                                                            uint64_t       bufferOffset,
+                                                            uint32_t       allocationLength,
+                                                            uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1346,12 +1347,12 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(5, 4)
     M_PARAM_WO_SIZE(5, 4)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Receive_Diagnostic_Results(tDevice* device,
-                                                                        bool     pcv,
-                                                                        uint8_t  pageCode,
-                                                                        uint16_t allocationLength,
-                                                                        uint8_t* ptrData,
-                                                                        uint32_t timeoutSeconds);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Receive_Diagnostic_Results(const tDevice* device,
+                                                                        bool           pcv,
+                                                                        uint8_t        pageCode,
+                                                                        uint16_t       allocationLength,
+                                                                        uint8_t*       ptrData,
+                                                                        uint32_t       timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -1373,10 +1374,10 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(3, 4)
     M_PARAM_RO_SIZE(3, 4)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_I_T_Nexus(tDevice* device,
-                                                              uint32_t parameterListLength,
-                                                              uint8_t* ptrData,
-                                                              uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_I_T_Nexus(const tDevice* device,
+                                                              uint32_t       parameterListLength,
+                                                              uint8_t*       ptrData,
+                                                              uint32_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1397,9 +1398,9 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(3, 2)
     M_PARAM_WO_SIZE(3, 2)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Aliases(tDevice* device,
-                                                            uint32_t allocationLength,
-                                                            uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Aliases(const tDevice* device,
+                                                            uint32_t       allocationLength,
+                                                            uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1423,11 +1424,11 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(5, 3)
     M_PARAM_WO_SIZE(5, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Identifying_Information(tDevice* device,
-                                                                            uint16_t restricted,
-                                                                            uint32_t allocationLength,
-                                                                            uint8_t  identifyingInformationType,
-                                                                            uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Identifying_Information(const tDevice* device,
+                                                                            uint16_t       restricted,
+                                                                            uint32_t       allocationLength,
+                                                                            uint8_t        identifyingInformationType,
+                                                                            uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1449,10 +1450,10 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(4, 3)
     M_PARAM_WO_SIZE(4, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Luns(tDevice* device,
-                                                         uint8_t  selectReport,
-                                                         uint32_t allocationLength,
-                                                         uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Luns(const tDevice* device,
+                                                         uint8_t        selectReport,
+                                                         uint32_t       allocationLength,
+                                                         uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1474,10 +1475,10 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(4, 3)
     M_PARAM_WO_SIZE(4, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Priority(tDevice* device,
-                                                             uint8_t  priorityReported,
-                                                             uint32_t allocationLength,
-                                                             uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Priority(const tDevice* device,
+                                                             uint8_t        priorityReported,
+                                                             uint32_t       allocationLength,
+                                                             uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1499,10 +1500,10 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(4, 3)
     M_PARAM_WO_SIZE(4, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Task_Management_Functions(tDevice* device,
-                                                                                        bool     repd,
-                                                                                        uint32_t allocationLength,
-                                                                                        uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Task_Management_Functions(const tDevice* device,
+                                                                                        bool           repd,
+                                                                                        uint32_t       allocationLength,
+                                                                                        uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1523,9 +1524,9 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(3, 2)
     M_PARAM_WO_SIZE(3, 2)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Timestamp(tDevice* device,
-                                                              uint32_t allocationLength,
-                                                              uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Timestamp(const tDevice* device,
+                                                              uint32_t       allocationLength,
+                                                              uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1548,12 +1549,12 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 5)
     M_PARAM_WO(6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_SecurityProtocol_In(tDevice* device,
-                                                                 uint8_t  securityProtocol,
-                                                                 uint16_t securityProtocolSpecific,
-                                                                 bool     inc512,
-                                                                 uint32_t allocationLength,
-                                                                 uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_SecurityProtocol_In(const tDevice* device,
+                                                                 uint8_t        securityProtocol,
+                                                                 uint16_t       securityProtocolSpecific,
+                                                                 bool           inc512,
+                                                                 uint32_t       allocationLength,
+                                                                 uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1577,13 +1578,13 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 5)
     M_PARAM_RO(6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_SecurityProtocol_Out(tDevice* device,
-                                                                  uint8_t  securityProtocol,
-                                                                  uint16_t securityProtocolSpecific,
-                                                                  bool     inc512,
-                                                                  uint32_t transferLength,
-                                                                  uint8_t* ptrData,
-                                                                  uint32_t timeout);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_SecurityProtocol_Out(const tDevice* device,
+                                                                  uint8_t        securityProtocol,
+                                                                  uint16_t       securityProtocolSpecific,
+                                                                  bool           inc512,
+                                                                  uint32_t       transferLength,
+                                                                  uint8_t*       ptrData,
+                                                                  uint32_t       timeout);
 
     //-----------------------------------------------------------------------------
     //
@@ -1607,12 +1608,12 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(5, 6)
     M_PARAM_RO_SIZE(5, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Identifying_Information(tDevice* device,
-                                                                         uint16_t restricted,
-                                                                         uint32_t parameterListLength,
-                                                                         uint8_t  identifyingInformationType,
-                                                                         uint8_t* ptrData,
-                                                                         uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Identifying_Information(const tDevice* device,
+                                                                         uint16_t       restricted,
+                                                                         uint32_t       parameterListLength,
+                                                                         uint8_t        identifyingInformationType,
+                                                                         uint8_t*       ptrData,
+                                                                         uint32_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1635,11 +1636,11 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(4, 5)
     M_PARAM_RO_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Priority(tDevice* device,
-                                                          uint8_t  I_T_L_NexusToSet,
-                                                          uint32_t parameterListLength,
-                                                          uint8_t* ptrData,
-                                                          uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Priority(const tDevice* device,
+                                                          uint8_t        I_T_L_NexusToSet,
+                                                          uint32_t       parameterListLength,
+                                                          uint8_t*       ptrData,
+                                                          uint32_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1661,10 +1662,10 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(3, 4)
     M_PARAM_RO_SIZE(3, 4)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Target_Port_Groups(tDevice* device,
-                                                                    uint32_t parameterListLength,
-                                                                    uint8_t* ptrData,
-                                                                    uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Target_Port_Groups(const tDevice* device,
+                                                                    uint32_t       parameterListLength,
+                                                                    uint8_t*       ptrData,
+                                                                    uint32_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -1685,9 +1686,9 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(3, 2)
     M_PARAM_RO_SIZE(3, 2)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Timestamp(tDevice* device,
-                                                           uint32_t parameterListLength,
-                                                           uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Timestamp(const tDevice* device,
+                                                           uint32_t       parameterListLength,
+                                                           uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1706,7 +1707,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    M_PARAM_WO(2) OPENSEA_TRANSPORT_API eReturnValues scsi_Test_Unit_Ready(tDevice* device, scsiStatus* pReturnStatus);
+    M_PARAM_WO(2)
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Test_Unit_Ready(const tDevice* device, scsiStatus* pReturnStatus);
 
     //-----------------------------------------------------------------------------
     //
@@ -1731,13 +1733,13 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 6)
     M_PARAM_RO_SIZE(7, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Attribute(tDevice* device,
-                                                             bool     wtc,
-                                                             uint32_t restricted,
-                                                             uint8_t  logicalVolumeNumber,
-                                                             uint8_t  partitionNumber,
-                                                             uint32_t parameterListLength,
-                                                             uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Attribute(const tDevice* device,
+                                                             bool           wtc,
+                                                             uint32_t       restricted,
+                                                             uint8_t        logicalVolumeNumber,
+                                                             uint8_t        partitionNumber,
+                                                             uint32_t       parameterListLength,
+                                                             uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1764,15 +1766,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Compare_And_Write(tDevice* device,
-                                                               uint8_t  wrprotect,
-                                                               bool     dpo,
-                                                               bool     fua,
-                                                               uint64_t logicalBlockAddress,
-                                                               uint8_t  numberOfLogicalBlocks,
-                                                               uint8_t  groupNumber,
-                                                               uint8_t* ptrData,
-                                                               uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Compare_And_Write(const tDevice* device,
+                                                               uint8_t        wrprotect,
+                                                               bool           dpo,
+                                                               bool           fua,
+                                                               uint64_t       logicalBlockAddress,
+                                                               uint8_t        numberOfLogicalBlocks,
+                                                               uint8_t        groupNumber,
+                                                               uint8_t*       ptrData,
+                                                               uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1802,22 +1804,25 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Format_Unit(tDevice* device,
-                                                         uint8_t  fmtpInfo,
-                                                         bool     longList,
-                                                         bool     fmtData,
-                                                         bool     cmplst,
-                                                         uint8_t  defectListFormat,
-                                                         uint8_t  vendorSpecific,
-                                                         uint8_t* ptrData,
-                                                         uint32_t dataSize,
-                                                         uint8_t  ffmt,
-                                                         uint32_t timeoutSeconds);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Format_Unit(const tDevice* device,
+                                                         uint8_t        fmtpInfo,
+                                                         bool           longList,
+                                                         bool           fmtData,
+                                                         bool           cmplst,
+                                                         uint8_t        defectListFormat,
+                                                         uint8_t        vendorSpecific,
+                                                         uint8_t*       ptrData,
+                                                         uint32_t       dataSize,
+                                                         uint8_t        ffmt,
+                                                         uint32_t       timeoutSeconds);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues
-    scsi_Format_With_Preset(tDevice* device, bool immed, bool fmtmaxlba, uint32_t presetID, uint32_t timeoutSeconds);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Format_With_Preset(const tDevice* device,
+                                                                bool           immed,
+                                                                bool           fmtmaxlba,
+                                                                uint32_t       presetID,
+                                                                uint32_t       timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -1839,10 +1844,10 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(4, 3)
     M_PARAM_WO_SIZE(4, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Lba_Status(tDevice* device,
-                                                            uint64_t logicalBlockAddress,
-                                                            uint32_t allocationLength,
-                                                            uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Lba_Status(const tDevice* device,
+                                                            uint64_t       logicalBlockAddress,
+                                                            uint32_t       allocationLength,
+                                                            uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -1869,15 +1874,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Orwrite_16(tDevice* device,
-                                                        uint8_t  orProtect,
-                                                        bool     dpo,
-                                                        bool     fua,
-                                                        uint64_t logicalBlockAddress,
-                                                        uint32_t transferLengthBlocks,
-                                                        uint8_t  groupNumber,
-                                                        uint8_t* ptrData,
-                                                        uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Orwrite_16(const tDevice* device,
+                                                        uint8_t        orProtect,
+                                                        bool           dpo,
+                                                        bool           fua,
+                                                        uint64_t       logicalBlockAddress,
+                                                        uint32_t       transferLengthBlocks,
+                                                        uint8_t        groupNumber,
+                                                        uint8_t*       ptrData,
+                                                        uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1908,19 +1913,19 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(12, 13)
     M_PARAM_RO_SIZE(12, 13)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Orwrite_32(tDevice* device,
-                                                        uint8_t  bmop,
-                                                        uint8_t  previousGenProcessing,
-                                                        uint8_t  groupNumber,
-                                                        uint8_t  orProtect,
-                                                        bool     dpo,
-                                                        bool     fua,
-                                                        uint64_t logicalBlockAddress,
-                                                        uint32_t expectedORWgen,
-                                                        uint32_t newORWgen,
-                                                        uint32_t transferLengthBlocks,
-                                                        uint8_t* ptrData,
-                                                        uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Orwrite_32(const tDevice* device,
+                                                        uint8_t        bmop,
+                                                        uint8_t        previousGenProcessing,
+                                                        uint8_t        groupNumber,
+                                                        uint8_t        orProtect,
+                                                        bool           dpo,
+                                                        bool           fua,
+                                                        uint64_t       logicalBlockAddress,
+                                                        uint32_t       expectedORWgen,
+                                                        uint32_t       newORWgen,
+                                                        uint32_t       transferLengthBlocks,
+                                                        uint8_t*       ptrData,
+                                                        uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -1941,11 +1946,11 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Prefetch_10(tDevice* device,
-                                                         bool     immediate,
-                                                         uint32_t logicalBlockAddress,
-                                                         uint8_t  groupNumber,
-                                                         uint16_t prefetchLength);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Prefetch_10(const tDevice* device,
+                                                         bool           immediate,
+                                                         uint32_t       logicalBlockAddress,
+                                                         uint8_t        groupNumber,
+                                                         uint16_t       prefetchLength);
 
     //-----------------------------------------------------------------------------
     //
@@ -1966,11 +1971,11 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Prefetch_16(tDevice* device,
-                                                         bool     immediate,
-                                                         uint64_t logicalBlockAddress,
-                                                         uint8_t  groupNumber,
-                                                         uint32_t prefetchLength);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Prefetch_16(const tDevice* device,
+                                                         bool           immediate,
+                                                         uint64_t       logicalBlockAddress,
+                                                         uint8_t        groupNumber,
+                                                         uint32_t       prefetchLength);
 
     //-----------------------------------------------------------------------------
     //
@@ -1988,11 +1993,11 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Prevent_Allow_Medium_Removal(tDevice* device, uint8_t prevent);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Prevent_Allow_Medium_Removal(const tDevice* device, uint8_t prevent);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Read_6(tDevice *device, uint32_t logicalBlockAddress, uint8_t transferLengthBlocks, uint8_t* ptrData,
+    //  scsi_Read_6(const tDevice *device, uint32_t logicalBlockAddress, uint8_t transferLengthBlocks, uint8_t* ptrData,
     //  uint32_t transferLengthBytes);
     //
     //! \brief   Description:  Send a SCSI Read 6 command
@@ -2012,11 +2017,11 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_6(tDevice* device,
-                                                    uint32_t logicalBlockAddress,
-                                                    uint8_t  transferLengthBlocks,
-                                                    uint8_t* ptrData,
-                                                    uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_6(const tDevice* device,
+                                                    uint32_t       logicalBlockAddress,
+                                                    uint8_t        transferLengthBlocks,
+                                                    uint8_t*       ptrData,
+                                                    uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2045,16 +2050,16 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(9, 10)
     M_PARAM_WO_SIZE(9, 10)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_10(tDevice* device,
-                                                     uint8_t  rdProtect,
-                                                     bool     dpo,
-                                                     bool     fua,
-                                                     bool     rarc,
-                                                     uint32_t logicalBlockAddress,
-                                                     uint8_t  groupNumber,
-                                                     uint16_t transferLengthBlocks,
-                                                     uint8_t* ptrData,
-                                                     uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_10(const tDevice* device,
+                                                     uint8_t        rdProtect,
+                                                     bool           dpo,
+                                                     bool           fua,
+                                                     bool           rarc,
+                                                     uint32_t       logicalBlockAddress,
+                                                     uint8_t        groupNumber,
+                                                     uint16_t       transferLengthBlocks,
+                                                     uint8_t*       ptrData,
+                                                     uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2083,16 +2088,16 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(9, 10)
     M_PARAM_WO_SIZE(9, 10)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_12(tDevice* device,
-                                                     uint8_t  rdProtect,
-                                                     bool     dpo,
-                                                     bool     fua,
-                                                     bool     rarc,
-                                                     uint32_t logicalBlockAddress,
-                                                     uint8_t  groupNumber,
-                                                     uint32_t transferLengthBlocks,
-                                                     uint8_t* ptrData,
-                                                     uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_12(const tDevice* device,
+                                                     uint8_t        rdProtect,
+                                                     bool           dpo,
+                                                     bool           fua,
+                                                     bool           rarc,
+                                                     uint32_t       logicalBlockAddress,
+                                                     uint8_t        groupNumber,
+                                                     uint32_t       transferLengthBlocks,
+                                                     uint8_t*       ptrData,
+                                                     uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2121,16 +2126,16 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(9, 10)
     M_PARAM_WO_SIZE(9, 10)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_16(tDevice* device,
-                                                     uint8_t  rdProtect,
-                                                     bool     dpo,
-                                                     bool     fua,
-                                                     bool     rarc,
-                                                     uint64_t logicalBlockAddress,
-                                                     uint8_t  groupNumber,
-                                                     uint32_t transferLengthBlocks,
-                                                     uint8_t* ptrData,
-                                                     uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_16(const tDevice* device,
+                                                     uint8_t        rdProtect,
+                                                     bool           dpo,
+                                                     bool           fua,
+                                                     bool           rarc,
+                                                     uint64_t       logicalBlockAddress,
+                                                     uint8_t        groupNumber,
+                                                     uint32_t       transferLengthBlocks,
+                                                     uint8_t*       ptrData,
+                                                     uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2161,19 +2166,19 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(9, 13)
     M_PARAM_WO_SIZE(9, 13)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_32(tDevice* device,
-                                                     uint8_t  rdProtect,
-                                                     bool     dpo,
-                                                     bool     fua,
-                                                     bool     rarc,
-                                                     uint64_t logicalBlockAddress,
-                                                     uint8_t  groupNumber,
-                                                     uint32_t transferLengthBlocks,
-                                                     uint8_t* ptrData,
-                                                     uint32_t expectedInitialLogicalBlockRefTag,
-                                                     uint16_t expectedLogicalBlockAppTag,
-                                                     uint16_t logicalBlockAppTagMask,
-                                                     uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_32(const tDevice* device,
+                                                     uint8_t        rdProtect,
+                                                     bool           dpo,
+                                                     bool           fua,
+                                                     bool           rarc,
+                                                     uint64_t       logicalBlockAddress,
+                                                     uint8_t        groupNumber,
+                                                     uint32_t       transferLengthBlocks,
+                                                     uint8_t*       ptrData,
+                                                     uint32_t       expectedInitialLogicalBlockRefTag,
+                                                     uint16_t       expectedLogicalBlockAppTag,
+                                                     uint16_t       logicalBlockAppTagMask,
+                                                     uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2198,12 +2203,12 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 5)
     M_PARAM_WO_SIZE(6, 5)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Defect_Data_10(tDevice* device,
-                                                                 bool     requestPList,
-                                                                 bool     requestGList,
-                                                                 uint8_t  defectListFormat,
-                                                                 uint16_t allocationLength,
-                                                                 uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Defect_Data_10(const tDevice* device,
+                                                                 bool           requestPList,
+                                                                 bool           requestGList,
+                                                                 uint8_t        defectListFormat,
+                                                                 uint16_t       allocationLength,
+                                                                 uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2228,13 +2233,13 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 6)
     M_PARAM_WO_SIZE(7, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Defect_Data_12(tDevice* device,
-                                                                 bool     requestPList,
-                                                                 bool     requestGList,
-                                                                 uint8_t  defectListFormat,
-                                                                 uint32_t addressDescriptorIndex,
-                                                                 uint32_t allocationLength,
-                                                                 uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Defect_Data_12(const tDevice* device,
+                                                                 bool           requestPList,
+                                                                 bool           requestGList,
+                                                                 uint8_t        defectListFormat,
+                                                                 uint32_t       addressDescriptorIndex,
+                                                                 uint32_t       allocationLength,
+                                                                 uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2258,12 +2263,12 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 5)
     M_PARAM_WO_SIZE(6, 5)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Long_10(tDevice* device,
-                                                          bool     physicalBlock,
-                                                          bool     correctBit,
-                                                          uint32_t logicalBlockAddress,
-                                                          uint16_t byteTransferLength,
-                                                          uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Long_10(const tDevice* device,
+                                                          bool           physicalBlock,
+                                                          bool           correctBit,
+                                                          uint32_t       logicalBlockAddress,
+                                                          uint16_t       byteTransferLength,
+                                                          uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2287,12 +2292,12 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 5)
     M_PARAM_WO_SIZE(6, 5)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Long_16(tDevice* device,
-                                                          bool     physicalBlock,
-                                                          bool     correctBit,
-                                                          uint64_t logicalBlockAddress,
-                                                          uint16_t byteTransferLength,
-                                                          uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Long_16(const tDevice* device,
+                                                          bool           physicalBlock,
+                                                          bool           correctBit,
+                                                          uint64_t       logicalBlockAddress,
+                                                          uint16_t       byteTransferLength,
+                                                          uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2316,7 +2321,7 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 4)
     OPENSEA_TRANSPORT_API eReturnValues
-    scsi_Reassign_Blocks(tDevice* device, bool longLBA, bool longList, uint32_t dataSize, uint8_t* ptrData);
+    scsi_Reassign_Blocks(const tDevice* device, bool longLBA, bool longList, uint32_t dataSize, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2339,11 +2344,11 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(5, 3)
     M_PARAM_WO_SIZE(5, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Referrals(tDevice* device,
-                                                              uint64_t logicalBlockAddress,
-                                                              uint32_t allocationLength,
-                                                              bool     one_seg,
-                                                              uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Referrals(const tDevice* device,
+                                                              uint64_t       logicalBlockAddress,
+                                                              uint32_t       allocationLength,
+                                                              bool           one_seg,
+                                                              uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2365,13 +2370,13 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Start_Stop_Unit(tDevice* device,
-                                                             bool     immediate,
-                                                             uint8_t  powerConditionModifier,
-                                                             uint8_t  powerCondition,
-                                                             bool     noFlush,
-                                                             bool     loej,
-                                                             bool     start);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Start_Stop_Unit(const tDevice* device,
+                                                             bool           immediate,
+                                                             uint8_t        powerConditionModifier,
+                                                             uint8_t        powerCondition,
+                                                             bool           noFlush,
+                                                             bool           loej,
+                                                             bool           start);
 
     //-----------------------------------------------------------------------------
     //
@@ -2393,11 +2398,11 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_10(tDevice* device,
-                                                                  bool     immediate,
-                                                                  uint32_t logicalBlockAddress,
-                                                                  uint8_t  groupNumber,
-                                                                  uint16_t numberOfLogicalBlocks);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_10(const tDevice* device,
+                                                                  bool           immediate,
+                                                                  uint32_t       logicalBlockAddress,
+                                                                  uint8_t        groupNumber,
+                                                                  uint16_t       numberOfLogicalBlocks);
 
     //-----------------------------------------------------------------------------
     //
@@ -2419,11 +2424,11 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_16(tDevice* device,
-                                                                  bool     immediate,
-                                                                  uint64_t logicalBlockAddress,
-                                                                  uint8_t  groupNumber,
-                                                                  uint32_t numberOfLogicalBlocks);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_16(const tDevice* device,
+                                                                  bool           immediate,
+                                                                  uint64_t       logicalBlockAddress,
+                                                                  uint8_t        groupNumber,
+                                                                  uint32_t       numberOfLogicalBlocks);
 
     //-----------------------------------------------------------------------------
     //
@@ -2447,7 +2452,7 @@ extern "C"
     M_NONNULL_IF_NONZERO_PARAM(5, 4)
     M_PARAM_WO_SIZE(5, 4)
     OPENSEA_TRANSPORT_API eReturnValues
-    scsi_Unmap(tDevice* device, bool anchor, uint8_t groupNumber, uint16_t parameterListLength, uint8_t* ptrData);
+    scsi_Unmap(const tDevice* device, bool anchor, uint8_t groupNumber, uint16_t parameterListLength, uint8_t* ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2474,15 +2479,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_10(tDevice* device,
-                                                       uint8_t  vrprotect,
-                                                       bool     dpo,
-                                                       uint8_t  byteCheck,
-                                                       uint32_t logicalBlockAddress,
-                                                       uint8_t  groupNumber,
-                                                       uint16_t verificationLength,
-                                                       uint8_t* ptrData,
-                                                       uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_10(const tDevice* device,
+                                                       uint8_t        vrprotect,
+                                                       bool           dpo,
+                                                       uint8_t        byteCheck,
+                                                       uint32_t       logicalBlockAddress,
+                                                       uint8_t        groupNumber,
+                                                       uint16_t       verificationLength,
+                                                       uint8_t*       ptrData,
+                                                       uint32_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2509,15 +2514,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_12(tDevice* device,
-                                                       uint8_t  vrprotect,
-                                                       bool     dpo,
-                                                       uint8_t  byteCheck,
-                                                       uint32_t logicalBlockAddress,
-                                                       uint8_t  groupNumber,
-                                                       uint32_t verificationLength,
-                                                       uint8_t* ptrData,
-                                                       uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_12(const tDevice* device,
+                                                       uint8_t        vrprotect,
+                                                       bool           dpo,
+                                                       uint8_t        byteCheck,
+                                                       uint32_t       logicalBlockAddress,
+                                                       uint8_t        groupNumber,
+                                                       uint32_t       verificationLength,
+                                                       uint8_t*       ptrData,
+                                                       uint32_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2544,15 +2549,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_16(tDevice* device,
-                                                       uint8_t  vrprotect,
-                                                       bool     dpo,
-                                                       uint8_t  byteCheck,
-                                                       uint64_t logicalBlockAddress,
-                                                       uint8_t  groupNumber,
-                                                       uint32_t verificationLength,
-                                                       uint8_t* ptrData,
-                                                       uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_16(const tDevice* device,
+                                                       uint8_t        vrprotect,
+                                                       bool           dpo,
+                                                       uint8_t        byteCheck,
+                                                       uint64_t       logicalBlockAddress,
+                                                       uint8_t        groupNumber,
+                                                       uint32_t       verificationLength,
+                                                       uint8_t*       ptrData,
+                                                       uint32_t       dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2580,23 +2585,23 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_32(tDevice* device,
-                                                       uint8_t  vrprotect,
-                                                       bool     dpo,
-                                                       uint8_t  byteCheck,
-                                                       uint64_t logicalBlockAddress,
-                                                       uint8_t  groupNumber,
-                                                       uint32_t verificationLength,
-                                                       uint8_t* ptrData,
-                                                       uint32_t dataSize,
-                                                       uint32_t expectedInitialLogicalBlockRefTag,
-                                                       uint16_t expectedLogicalBlockAppTag,
-                                                       uint16_t logicalBlockAppTagMask);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_32(const tDevice* device,
+                                                       uint8_t        vrprotect,
+                                                       bool           dpo,
+                                                       uint8_t        byteCheck,
+                                                       uint64_t       logicalBlockAddress,
+                                                       uint8_t        groupNumber,
+                                                       uint32_t       verificationLength,
+                                                       uint8_t*       ptrData,
+                                                       uint32_t       dataSize,
+                                                       uint32_t       expectedInitialLogicalBlockRefTag,
+                                                       uint16_t       expectedLogicalBlockAppTag,
+                                                       uint16_t       logicalBlockAppTagMask);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Write_6(tDevice *device, uint32_t logicalBlockAddress, uint8_t transferLengthBlocks, uint8_t* ptrData,
-    //  uint32_t transferLengthBytes)
+    //  scsi_Write_6(const tDevice *device, uint32_t logicalBlockAddress, uint8_t transferLengthBlocks, uint8_t*
+    //  ptrData, uint32_t transferLengthBytes)
     //
     //! \brief   Description:  Send a SCSI Write 6 command
     //
@@ -2614,11 +2619,11 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_6(tDevice* device,
-                                                     uint32_t logicalBlockAddress,
-                                                     uint8_t  transferLengthBlocks,
-                                                     uint8_t* ptrData,
-                                                     uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_6(const tDevice* device,
+                                                     uint32_t       logicalBlockAddress,
+                                                     uint8_t        transferLengthBlocks,
+                                                     uint8_t*       ptrData,
+                                                     uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2646,15 +2651,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_10(tDevice* device,
-                                                      uint8_t  wrprotect,
-                                                      bool     dpo,
-                                                      bool     fua,
-                                                      uint32_t logicalBlockAddress,
-                                                      uint8_t  groupNumber,
-                                                      uint16_t transferLengthBlocks,
-                                                      uint8_t* ptrData,
-                                                      uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_10(const tDevice* device,
+                                                      uint8_t        wrprotect,
+                                                      bool           dpo,
+                                                      bool           fua,
+                                                      uint32_t       logicalBlockAddress,
+                                                      uint8_t        groupNumber,
+                                                      uint16_t       transferLengthBlocks,
+                                                      uint8_t*       ptrData,
+                                                      uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2682,15 +2687,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_12(tDevice* device,
-                                                      uint8_t  wrprotect,
-                                                      bool     dpo,
-                                                      bool     fua,
-                                                      uint32_t logicalBlockAddress,
-                                                      uint8_t  groupNumber,
-                                                      uint32_t transferLengthBlocks,
-                                                      uint8_t* ptrData,
-                                                      uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_12(const tDevice* device,
+                                                      uint8_t        wrprotect,
+                                                      bool           dpo,
+                                                      bool           fua,
+                                                      uint32_t       logicalBlockAddress,
+                                                      uint8_t        groupNumber,
+                                                      uint32_t       transferLengthBlocks,
+                                                      uint8_t*       ptrData,
+                                                      uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2718,15 +2723,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_16(tDevice* device,
-                                                      uint8_t  wrprotect,
-                                                      bool     dpo,
-                                                      bool     fua,
-                                                      uint64_t logicalBlockAddress,
-                                                      uint8_t  groupNumber,
-                                                      uint32_t transferLengthBlocks,
-                                                      uint8_t* ptrData,
-                                                      uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_16(const tDevice* device,
+                                                      uint8_t        wrprotect,
+                                                      bool           dpo,
+                                                      bool           fua,
+                                                      uint64_t       logicalBlockAddress,
+                                                      uint8_t        groupNumber,
+                                                      uint32_t       transferLengthBlocks,
+                                                      uint8_t*       ptrData,
+                                                      uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2757,18 +2762,18 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 12)
     M_PARAM_RO_SIZE(8, 12)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_32(tDevice* device,
-                                                      uint8_t  wrprotect,
-                                                      bool     dpo,
-                                                      bool     fua,
-                                                      uint64_t logicalBlockAddress,
-                                                      uint8_t  groupNumber,
-                                                      uint32_t transferLengthBlocks,
-                                                      uint8_t* ptrData,
-                                                      uint32_t expectedInitialLogicalBlockRefTag,
-                                                      uint16_t expectedLogicalBlockAppTag,
-                                                      uint16_t logicalBlockAppTagMask,
-                                                      uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_32(const tDevice* device,
+                                                      uint8_t        wrprotect,
+                                                      bool           dpo,
+                                                      bool           fua,
+                                                      uint64_t       logicalBlockAddress,
+                                                      uint8_t        groupNumber,
+                                                      uint32_t       transferLengthBlocks,
+                                                      uint8_t*       ptrData,
+                                                      uint32_t       expectedInitialLogicalBlockRefTag,
+                                                      uint16_t       expectedLogicalBlockAppTag,
+                                                      uint16_t       logicalBlockAppTagMask,
+                                                      uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2795,15 +2800,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_10(tDevice* device,
-                                                                 uint8_t  wrprotect,
-                                                                 bool     dpo,
-                                                                 uint8_t  byteCheck,
-                                                                 uint32_t logicalBlockAddress,
-                                                                 uint8_t  groupNumber,
-                                                                 uint16_t transferLengthBlocks,
-                                                                 uint8_t* ptrData,
-                                                                 uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_10(const tDevice* device,
+                                                                 uint8_t        wrprotect,
+                                                                 bool           dpo,
+                                                                 uint8_t        byteCheck,
+                                                                 uint32_t       logicalBlockAddress,
+                                                                 uint8_t        groupNumber,
+                                                                 uint16_t       transferLengthBlocks,
+                                                                 uint8_t*       ptrData,
+                                                                 uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2830,15 +2835,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_12(tDevice* device,
-                                                                 uint8_t  wrprotect,
-                                                                 bool     dpo,
-                                                                 uint8_t  byteCheck,
-                                                                 uint32_t logicalBlockAddress,
-                                                                 uint8_t  groupNumber,
-                                                                 uint32_t transferLengthBlocks,
-                                                                 uint8_t* ptrData,
-                                                                 uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_12(const tDevice* device,
+                                                                 uint8_t        wrprotect,
+                                                                 bool           dpo,
+                                                                 uint8_t        byteCheck,
+                                                                 uint32_t       logicalBlockAddress,
+                                                                 uint8_t        groupNumber,
+                                                                 uint32_t       transferLengthBlocks,
+                                                                 uint8_t*       ptrData,
+                                                                 uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2865,15 +2870,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_16(tDevice* device,
-                                                                 uint8_t  wrprotect,
-                                                                 bool     dpo,
-                                                                 uint8_t  byteCheck,
-                                                                 uint64_t logicalBlockAddress,
-                                                                 uint8_t  groupNumber,
-                                                                 uint32_t transferLengthBlocks,
-                                                                 uint8_t* ptrData,
-                                                                 uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_16(const tDevice* device,
+                                                                 uint8_t        wrprotect,
+                                                                 bool           dpo,
+                                                                 uint8_t        byteCheck,
+                                                                 uint64_t       logicalBlockAddress,
+                                                                 uint8_t        groupNumber,
+                                                                 uint32_t       transferLengthBlocks,
+                                                                 uint8_t*       ptrData,
+                                                                 uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2903,18 +2908,18 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 12)
     M_PARAM_RO_SIZE(8, 12)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_32(tDevice* device,
-                                                                 uint8_t  wrprotect,
-                                                                 bool     dpo,
-                                                                 uint8_t  byteCheck,
-                                                                 uint64_t logicalBlockAddress,
-                                                                 uint8_t  groupNumber,
-                                                                 uint32_t transferLengthBlocks,
-                                                                 uint8_t* ptrData,
-                                                                 uint32_t expectedInitialLogicalBlockRefTag,
-                                                                 uint16_t expectedLogicalBlockAppTag,
-                                                                 uint16_t logicalBlockAppTagMask,
-                                                                 uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_32(const tDevice* device,
+                                                                 uint8_t        wrprotect,
+                                                                 bool           dpo,
+                                                                 uint8_t        byteCheck,
+                                                                 uint64_t       logicalBlockAddress,
+                                                                 uint8_t        groupNumber,
+                                                                 uint32_t       transferLengthBlocks,
+                                                                 uint8_t*       ptrData,
+                                                                 uint32_t       expectedInitialLogicalBlockRefTag,
+                                                                 uint16_t       expectedLogicalBlockAppTag,
+                                                                 uint16_t       logicalBlockAppTagMask,
+                                                                 uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -2939,13 +2944,13 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 6)
     M_PARAM_RO_SIZE(7, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Long_10(tDevice* device,
-                                                           bool     correctionDisabled,
-                                                           bool     writeUncorrectable,
-                                                           bool     physicalBlock,
-                                                           uint32_t logicalBlockAddress,
-                                                           uint16_t byteTransferLength,
-                                                           uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Long_10(const tDevice* device,
+                                                           bool           correctionDisabled,
+                                                           bool           writeUncorrectable,
+                                                           bool           physicalBlock,
+                                                           uint32_t       logicalBlockAddress,
+                                                           uint16_t       byteTransferLength,
+                                                           uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -2970,13 +2975,13 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(7, 6)
     M_PARAM_RO_SIZE(7, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Long_16(tDevice* device,
-                                                           bool     correctionDisabled,
-                                                           bool     writeUncorrectable,
-                                                           bool     physicalBlock,
-                                                           uint64_t logicalBlockAddress,
-                                                           uint16_t byteTransferLength,
-                                                           uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Long_16(const tDevice* device,
+                                                           bool           correctionDisabled,
+                                                           bool           writeUncorrectable,
+                                                           bool           physicalBlock,
+                                                           uint64_t       logicalBlockAddress,
+                                                           uint16_t       byteTransferLength,
+                                                           uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -3004,15 +3009,15 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 9)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_10(tDevice* device,
-                                                           uint8_t  wrprotect,
-                                                           bool     anchor,
-                                                           bool     unmap,
-                                                           uint32_t logicalBlockAddress,
-                                                           uint8_t  groupNumber,
-                                                           uint16_t numberOfLogicalBlocks,
-                                                           uint8_t* ptrData,
-                                                           uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_10(const tDevice* device,
+                                                           uint8_t        wrprotect,
+                                                           bool           anchor,
+                                                           bool           unmap,
+                                                           uint32_t       logicalBlockAddress,
+                                                           uint8_t        groupNumber,
+                                                           uint16_t       numberOfLogicalBlocks,
+                                                           uint8_t*       ptrData,
+                                                           uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -3041,16 +3046,16 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(9, 10)
     M_PARAM_RO_SIZE(9, 10)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_16(tDevice* device,
-                                                           uint8_t  wrprotect,
-                                                           bool     anchor,
-                                                           bool     unmap,
-                                                           bool     noDataOut,
-                                                           uint64_t logicalBlockAddress,
-                                                           uint8_t  groupNumber,
-                                                           uint32_t numberOfLogicalBlocks,
-                                                           uint8_t* ptrData,
-                                                           uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_16(const tDevice* device,
+                                                           uint8_t        wrprotect,
+                                                           bool           anchor,
+                                                           bool           unmap,
+                                                           bool           noDataOut,
+                                                           uint64_t       logicalBlockAddress,
+                                                           uint8_t        groupNumber,
+                                                           uint32_t       numberOfLogicalBlocks,
+                                                           uint8_t*       ptrData,
+                                                           uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -3080,19 +3085,19 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(9, 13)
     M_PARAM_RO_SIZE(9, 13)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_32(tDevice* device,
-                                                           uint8_t  wrprotect,
-                                                           bool     anchor,
-                                                           bool     unmap,
-                                                           bool     noDataOut,
-                                                           uint64_t logicalBlockAddress,
-                                                           uint8_t  groupNumber,
-                                                           uint32_t numberOfLogicalBlocks,
-                                                           uint8_t* ptrData,
-                                                           uint32_t expectedInitialLogicalBlockRefTag,
-                                                           uint16_t expectedLogicalBlockAppTag,
-                                                           uint16_t logicalBlockAppTagMask,
-                                                           uint32_t transferLengthBytes);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_32(const tDevice* device,
+                                                           uint8_t        wrprotect,
+                                                           bool           anchor,
+                                                           bool           unmap,
+                                                           bool           noDataOut,
+                                                           uint64_t       logicalBlockAddress,
+                                                           uint8_t        groupNumber,
+                                                           uint32_t       numberOfLogicalBlocks,
+                                                           uint8_t*       ptrData,
+                                                           uint32_t       expectedInitialLogicalBlockRefTag,
+                                                           uint16_t       expectedLogicalBlockAppTag,
+                                                           uint16_t       logicalBlockAppTagMask,
+                                                           uint32_t       transferLengthBytes);
 
     //-----------------------------------------------------------------------------
     //
@@ -3118,14 +3123,14 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 7)
     M_PARAM_RO_SIZE(8, 7)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_xp_Write_10(tDevice* device,
-                                                         bool     dpo,
-                                                         bool     fua,
-                                                         bool     xoprinfo,
-                                                         uint32_t logicalBlockAddress,
-                                                         uint8_t  groupNumber,
-                                                         uint16_t transferLength,
-                                                         uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_xp_Write_10(const tDevice* device,
+                                                         bool           dpo,
+                                                         bool           fua,
+                                                         bool           xoprinfo,
+                                                         uint32_t       logicalBlockAddress,
+                                                         uint8_t        groupNumber,
+                                                         uint16_t       transferLength,
+                                                         uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
@@ -3151,18 +3156,18 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 7)
     M_PARAM_RO_SIZE(8, 7)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_xp_Write_32(tDevice* device,
-                                                         bool     dpo,
-                                                         bool     fua,
-                                                         bool     xoprinfo,
-                                                         uint64_t logicalBlockAddress,
-                                                         uint8_t  groupNumber,
-                                                         uint32_t transferLength,
-                                                         uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_xp_Write_32(const tDevice* device,
+                                                         bool           dpo,
+                                                         bool           fua,
+                                                         bool           xoprinfo,
+                                                         uint64_t       logicalBlockAddress,
+                                                         uint8_t        groupNumber,
+                                                         uint32_t       transferLength,
+                                                         uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
-    //  eReturnValues scsi_Zone_Management_In_Report(tDevice* device, eZMAction action, uint8_t actionSpecific1,
+    //  eReturnValues scsi_Zone_Management_In_Report(const tDevice * device, eZMAction action, uint8_t actionSpecific1,
     //  uint64_t location, bool partial, uint8_t reportingOptions, uint32_t allocationLength, uint8_t* ptrData)//95h
     //
     //! \brief   Description:  Sends a zone management in command to a device for report zones, report realms, and
@@ -3187,14 +3192,14 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 7)
     M_PARAM_WO_SIZE(8, 7)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_In_Report(tDevice*  device,
-                                                                       eZMAction action,
-                                                                       uint8_t   actionSpecific1,
-                                                                       uint64_t  location,
-                                                                       bool      partial,
-                                                                       uint8_t   reportingOptions,
-                                                                       uint32_t  allocationLength,
-                                                                       uint8_t*  ptrData); // 95h
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_In_Report(const tDevice* device,
+                                                                       eZMAction      action,
+                                                                       uint8_t        actionSpecific1,
+                                                                       uint64_t       location,
+                                                                       bool           partial,
+                                                                       uint8_t        reportingOptions,
+                                                                       uint32_t       allocationLength,
+                                                                       uint8_t*       ptrData); // 95h
 
     // Command to help with zone activate and zone query since they have mostly common formatting. Recommend using
     // helper function below
@@ -3202,19 +3207,19 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(8, 7)
     M_PARAM_RO_SIZE(8, 7)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_In_ZD(tDevice*  device,
-                                                                   eZMAction action,
-                                                                   bool      all,
-                                                                   uint64_t  zoneID,
-                                                                   uint16_t  numberOfZones,
-                                                                   uint8_t   otherZoneDomainID,
-                                                                   uint16_t  allocationLength,
-                                                                   uint8_t*  ptrData); // 95h
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_In_ZD(const tDevice* device,
+                                                                   eZMAction      action,
+                                                                   bool           all,
+                                                                   uint64_t       zoneID,
+                                                                   uint16_t       numberOfZones,
+                                                                   uint8_t        otherZoneDomainID,
+                                                                   uint16_t       allocationLength,
+                                                                   uint8_t*       ptrData); // 95h
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Zone_Management_Out_Std_Format_CDB(tDevice *device, eZMAction action, uint8_t actionSpecific, uint32_t
-    //  allocationLength, uint64_t actionSpecificLBA, uint8_t *ptrData)
+    //  scsi_Zone_Management_Out_Std_Format_CDB(const tDevice *device, eZMAction action, uint8_t actionSpecific,
+    //  uint32_t allocationLength, uint64_t actionSpecificLBA, uint8_t *ptrData)
     //
     //! \brief   Description:  Sends a zone management out command to a device that uses the common format for certain
     //! commands (recommend using helper functions below)
@@ -3238,18 +3243,18 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_Out_Std_Format_CDB(tDevice*  device,
-                                                                                eZMAction action,
-                                                                                uint64_t  zoneID,
-                                                                                uint16_t  zoneCount,
-                                                                                bool      all,
-                                                                                uint16_t  commandSPecific_10_11,
-                                                                                uint8_t   cmdSpecificBits1,
-                                                                                uint8_t   actionSpecific14); // 94h
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_Out_Std_Format_CDB(const tDevice* device,
+                                                                                eZMAction      action,
+                                                                                uint64_t       zoneID,
+                                                                                uint16_t       zoneCount,
+                                                                                bool           all,
+                                                                                uint16_t       commandSPecific_10_11,
+                                                                                uint8_t        cmdSpecificBits1,
+                                                                                uint8_t        actionSpecific14); // 94h
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Close_Zone_Ext(tDevice *device, bool closeAll, uint64_t zoneID)
+    //  scsi_Close_Zone_Ext(const tDevice *device, bool closeAll, uint64_t zoneID)
     //
     //! \brief   Description:  Sends a close zone command to a device.
     //
@@ -3266,14 +3271,14 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Close_Zone(tDevice* device,
-                                                        bool     closeAll,
-                                                        uint64_t zoneID,
-                                                        uint16_t zoneCount);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Close_Zone(const tDevice* device,
+                                                        bool           closeAll,
+                                                        uint64_t       zoneID,
+                                                        uint16_t       zoneCount);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Finish_Zone_Ext(tDevice *device, bool finishAll, uint64_t zoneID)
+    //  scsi_Finish_Zone_Ext(const tDevice *device, bool finishAll, uint64_t zoneID)
     //
     //! \brief   Description:  Sends a finish zone command to a device.
     //
@@ -3290,14 +3295,14 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Finish_Zone(tDevice* device,
-                                                         bool     finishAll,
-                                                         uint64_t zoneID,
-                                                         uint16_t zoneCount);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Finish_Zone(const tDevice* device,
+                                                         bool           finishAll,
+                                                         uint64_t       zoneID,
+                                                         uint16_t       zoneCount);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Open_Zone_Ext(tDevice *device, bool openAll, uint64_t zoneID)
+    //  scsi_Open_Zone_Ext(const tDevice *device, bool openAll, uint64_t zoneID)
     //
     //! \brief   Description:  Sends a open zone command to a device.
     //
@@ -3314,21 +3319,21 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Open_Zone(tDevice* device,
-                                                       bool     openAll,
-                                                       uint64_t zoneID,
-                                                       uint16_t zoneCount);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Open_Zone(const tDevice* device,
+                                                       bool           openAll,
+                                                       uint64_t       zoneID,
+                                                       uint16_t       zoneCount);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Sequentialize_Zone(tDevice* device,
-                                                                bool     all,
-                                                                uint64_t zoneID,
-                                                                uint16_t zoneCount);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Sequentialize_Zone(const tDevice* device,
+                                                                bool           all,
+                                                                uint64_t       zoneID,
+                                                                uint16_t       zoneCount);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Report_Zones_Ext(tDevice *device, eZoneReportingOptions reportingOptions, uint32_t allocationLength,
+    //  scsi_Report_Zones_Ext(const tDevice *device, eZoneReportingOptions reportingOptions, uint32_t allocationLength,
     //  uint64_t zoneLocator, uint8_t *ptrData)
     //
     //! \brief   Description:  Sends a report zones ext command to a device.
@@ -3347,7 +3352,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(6, 4)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Zones(tDevice*              device,
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Zones(const tDevice*        device,
                                                           eZoneReportingOptions reportingOptions,
                                                           bool                  partial,
                                                           uint32_t              allocationLength,
@@ -3357,7 +3362,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(5, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Realms(tDevice*                device,
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Realms(const tDevice*          device,
                                                            eRealmsReportingOptions reportingOptions,
                                                            uint32_t                allocationLength,
                                                            uint64_t                realmLocator,
@@ -3366,7 +3371,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(5, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Zone_Domains(tDevice*                    device,
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Zone_Domains(const tDevice*              device,
                                                                  eZoneDomainReportingOptions reportingOptions,
                                                                  uint32_t                    allocationLength,
                                                                  uint64_t                    zoneDomainLocator,
@@ -3374,29 +3379,29 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(7, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Query(tDevice* device,
-                                                        bool     all,
-                                                        uint64_t zoneID,
-                                                        uint16_t numberOfZones,
-                                                        uint8_t  otherZoneDomainID,
-                                                        uint16_t allocationLength,
-                                                        uint8_t* ptrData);
+    M_PARAM_RW_SIZE(7, 6)
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Query(const tDevice* device,
+                                                        bool           all,
+                                                        uint64_t       zoneID,
+                                                        uint16_t       numberOfZones,
+                                                        uint8_t        otherZoneDomainID,
+                                                        uint16_t       allocationLength,
+                                                        uint8_t*       ptrData);
 
     M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(7, 6)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Activate(tDevice* device,
-                                                           bool     all,
-                                                           uint64_t zoneID,
-                                                           uint16_t numberOfZones,
-                                                           uint8_t  otherZoneDomainID,
-                                                           uint16_t allocationLength,
-                                                           uint8_t* ptrData);
+    M_PARAM_RW_SIZE(7, 6)
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Activate(const tDevice* device,
+                                                           bool           all,
+                                                           uint64_t       zoneID,
+                                                           uint16_t       numberOfZones,
+                                                           uint8_t        otherZoneDomainID,
+                                                           uint16_t       allocationLength,
+                                                           uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Reset_Write_Pointers_Ext(tDevice *device, bool resetAll, uint64_t zoneID)
+    //  scsi_Reset_Write_Pointers_Ext(const tDevice *device, bool resetAll, uint64_t zoneID)
     //
     //! \brief   Description:  Sends a reset write pointers command to a device.
     //
@@ -3413,10 +3418,10 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Reset_Write_Pointers(tDevice* device,
-                                                                  bool     resetAll,
-                                                                  uint64_t zoneID,
-                                                                  uint16_t zoneCount);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Reset_Write_Pointers(const tDevice* device,
+                                                                  bool           resetAll,
+                                                                  uint64_t       zoneID,
+                                                                  uint16_t       zoneCount);
 
 #define MAX_VERSION_DESCRIPTOR_STRING_LENGTH 65
     //-----------------------------------------------------------------------------
@@ -3459,8 +3464,8 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Get_Physical_Element_Status(tDevice *device, uint32_t startingElement, uint32_t allocationLength, uint8_t
-    //  filter, uint8_t reportType, uint8_t *ptrData)
+    //  scsi_Get_Physical_Element_Status(const tDevice *device, uint32_t startingElement, uint32_t allocationLength,
+    //  uint8_t filter, uint8_t reportType, uint8_t *ptrData)
     //
     //! \brief   Description:  Sends the SCSI Get Physical Element Status command
     //
@@ -3479,17 +3484,17 @@ extern "C"
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 3)
-    M_PARAM_WO_SIZE(6, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Physical_Element_Status(tDevice* device,
-                                                                         uint32_t startingElement,
-                                                                         uint32_t allocationLength,
-                                                                         uint8_t  filter,
-                                                                         uint8_t  reportType,
-                                                                         uint8_t* ptrData);
+    M_PARAM_RW_SIZE(6, 3)
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Physical_Element_Status(const tDevice* device,
+                                                                         uint32_t       startingElement,
+                                                                         uint32_t       allocationLength,
+                                                                         uint8_t        filter,
+                                                                         uint8_t        reportType,
+                                                                         uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Remove_And_Truncate(tDevice *device, uint64_t requestedCapacity, uint32_t elementIdentifier)
+    //  scsi_Remove_And_Truncate(const tDevice *device, uint64_t requestedCapacity, uint32_t elementIdentifier)
     //
     //! \brief   Description:  Sends the SCSI Remove and Truncate command
     //
@@ -3504,18 +3509,18 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_And_Truncate(tDevice* device,
-                                                                 uint64_t requestedCapacity,
-                                                                 uint32_t elementIdentifier);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_And_Truncate(const tDevice* device,
+                                                                 uint64_t       requestedCapacity,
+                                                                 uint32_t       elementIdentifier);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_Element_And_Modify_Zones(tDevice* device,
-                                                                             uint32_t elementIdentifier);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_Element_And_Modify_Zones(const tDevice* device,
+                                                                             uint32_t       elementIdentifier);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Restore_Elements_And_Rebuild(tDevice *device)
+    //  scsi_Restore_Elements_And_Rebuild(const tDevice *device)
     //
     //! \brief   Description:  Sends the SCSI Restore Elements and Rebuild command
     //
@@ -3527,11 +3532,12 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Restore_Elements_And_Rebuild(tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Restore_Elements_And_Rebuild(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Persistent_Reserve_In(tDevice *device, uint8_t serviceAction, uint16_t allocationLength, uint8_t *ptrData)
+    //  scsi_Persistent_Reserve_In(const tDevice *device, uint8_t serviceAction, uint16_t allocationLength, uint8_t
+    //  *ptrData)
     //
     //! \brief   Description:  Sends the SCSI Persistent reserve in command
     //
@@ -3547,15 +3553,15 @@ extern "C"
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(4, 3)
-    M_PARAM_WO_SIZE(4, 3)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_In(tDevice* device,
-                                                                   uint8_t  serviceAction,
-                                                                   uint16_t allocationLength,
-                                                                   uint8_t* ptrData);
+    M_PARAM_RW_SIZE(4, 3)
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_In(const tDevice* device,
+                                                                   uint8_t        serviceAction,
+                                                                   uint16_t       allocationLength,
+                                                                   uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Persistent_Reserve_Out(tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type,  uint32_t
+    //  scsi_Persistent_Reserve_Out(const tDevice *device, uint8_t serviceAction, uint8_t scope, uint8_t type,  uint32_t
     //  parameterListLength, uint8_t *ptrData)
     //
     //! \brief   Description:  Sends the SCSI Persistent reserve out command
@@ -3576,16 +3582,16 @@ extern "C"
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(6, 5)
     M_PARAM_RO_SIZE(6, 5)
-    OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_Out(tDevice* device,
-                                                                    uint8_t  serviceAction,
-                                                                    uint8_t  scope,
-                                                                    uint8_t  type,
-                                                                    uint32_t parameterListLength,
-                                                                    uint8_t* ptrData);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_Out(const tDevice* device,
+                                                                    uint8_t        serviceAction,
+                                                                    uint8_t        scope,
+                                                                    uint8_t        type,
+                                                                    uint32_t       parameterListLength,
+                                                                    uint8_t*       ptrData);
 
     //-----------------------------------------------------------------------------
     //
-    //  scsi_Rezero_Unit(tDevice* device)
+    //  scsi_Rezero_Unit(const tDevice * device)
     //
     //! \brief   Description:  Sends the SCSI Rezero Unit command. SCSI 2 mentions that this returns the unit to a good
     //! state.
@@ -3597,7 +3603,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Rezero_Unit(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Rezero_Unit(const tDevice* device);
 
 #if defined(__cplusplus)
 }

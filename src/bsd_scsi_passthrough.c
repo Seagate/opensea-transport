@@ -198,8 +198,8 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
             if (iocret < 0)
             {
                 // something went wrong with the ioctl.
-                scsiIoCtx->device->os_info.last_error = errno;
-                ret                                   = OS_PASSTHROUGH_FAILURE;
+                set_Device_Last_Error(scsiIoCtx->device, errno);
+                ret = OS_PASSTHROUGH_FAILURE;
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
                     if (scsiIoCtx->device->os_info.last_error != 0)

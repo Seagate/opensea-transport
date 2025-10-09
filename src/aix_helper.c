@@ -126,7 +126,7 @@ extern bool validate_Device_Struct(versionBlock);
 // }
 
 // //in future, when code is written, use internal API used by the other FS/unmount options to figure this out.-TJE
-// static int set_Device_Partition_Info(M_ATTR_UNUSED tDevice* device)
+// static int set_Device_Partition_Info(M_ATTR_UNUSED const tDevice* device)
 // {
 //     return NOT_SUPPORTED;
 // }
@@ -1103,15 +1103,20 @@ static void print_CuDv_Struct(struct CuDv* cudv)
     printf("\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
 }
 
-static int get_Adapter_IDs(tDevice* device, char* name)
+M_NONNULL_PARAM_LIST(1, 2)
+M_PARAM_RW(1)
+M_NULL_TERM_STRING(2)
+M_PARAM_RO(2)
+static int get_Adapter_IDs(const tDevice* device, const char* name)
 {
     int          ret = 0;
     struct CuDv  cudv;
-    struct CuDv* ptrcudv;
+    struct CuDv* ptrcudv = M_NULLPTR;
     safe_memset(&cudv, sizeof(struct CuDv), 0, sizeof(struct CuDv));
 
     // odm_initialize();
     DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT); // 256
+    DISABLE_NONNULL_COMPARE
     if (name && safe_strlen(name) > 0)
     {
         snprintf_err_handle(odmCriteria, MAX_ODMI_CRIT, "name='%s'", name);
@@ -1175,6 +1180,7 @@ static int get_Adapter_IDs(tDevice* device, char* name)
     {
         ret = -1;
     }
+    RESTORE_NONNULL_COMPARE
     return ret;
 }
 
@@ -1244,7 +1250,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         }
         else
         {
-            device->os_info.last_error = errno;
+            set_Device_Last_Error(device, errno);
             if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
             {
                 printf("Device IOCINFO Error: ");
@@ -1469,18 +1475,18 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     return ret;
 }
 
-eReturnValues os_Device_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Device_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Bus_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Bus_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     // if unable to find another way to do this, can close and reopen with SC_FORCED_OPEN
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
@@ -1837,7 +1843,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         start_Timer(&commandTimer);
 //         ret = ioctl(scsiIoCtx->device->os_info.fd, ioctlCode, &aixIoCmd);
 //         stop_Timer(&commandTimer);
-//         scsiIoCtx->device->os_info.last_error = errno;
+//         set_Device_Last_Error(scsiIoCtx->device, errno);
 //         if (ret < 0)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
@@ -1950,7 +1956,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         start_Timer(&commandTimer);
 //         ret = ioctl(scsiIoCtx->device->os_info.fd, DKIOCMD16, &aixIoCmd);
 //         stop_Timer(&commandTimer);
-//         scsiIoCtx->device->os_info.last_error = errno;
+//         set_Device_Last_Error(scsiIoCtx->device, errno);
 //         if (ret < 0)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
@@ -2035,7 +2041,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         start_Timer(&commandTimer);
 //         ret = ioctl(scsiIoCtx->device->os_info.fd, ioctlCode, &aixIoCmd);
 //         stop_Timer(&commandTimer);
-//         scsiIoCtx->device->os_info.last_error = errno;
+//         set_Device_Last_Error(scsiIoCtx->device, errno);
 //         if (ret < 0)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
@@ -2174,7 +2180,7 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
     int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, DK_PASSTHRU, &aixPassthrough);
     stop_Timer(&commandTimer);
 
-    scsiIoCtx->device->os_info.last_error = errno;
+    set_Device_Last_Error(scsiIoCtx->device, errno);
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
@@ -2360,7 +2366,7 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, IDEPASSTHRU, &idePassthrough);
     stop_Timer(&commandTimer);
 
-    scsiIoCtx->device->os_info.last_error = errno;
+    set_Device_Last_Error(scsiIoCtx->device, errno);
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
@@ -2473,7 +2479,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
     int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, IDEPASSTHRU, &idePassthrough);
     stop_Timer(&commandTimer);
 
-    scsiIoCtx->device->os_info.last_error = errno;
+    set_Device_Last_Error(scsiIoCtx->device, errno);
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
@@ -2696,7 +2702,7 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, SATAPASSTHRU, &sataPassthrough);
     stop_Timer(&commandTimer);
 
-    scsiIoCtx->device->os_info.last_error = errno;
+    set_Device_Last_Error(scsiIoCtx->device, errno);
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
@@ -3197,7 +3203,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     int ioctlResult = ioctl(fdForNVMePassthru, NVME_PASSTHRU, &nvmePassthrough);
     stop_Timer(&commandTimer);
 
-    nvmeIoCtx->device->os_info.last_error = errno;
+    set_Device_Last_Error(nvmeIoCtx->device, errno);
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
@@ -3274,7 +3280,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif
 }
 
-eReturnValues os_nvme_Reset(tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues    ret = SUCCESS;
@@ -3289,7 +3295,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
     int ioctlResult = ioctl(nvmeIoCtx->device->os_info.ctrlfd, NVME_CNTL, &nvmeReset);
     stop_Timer(&commandTimer);
 
-    nvmeIoCtx->device->os_info.last_error = errno;
+    set_Device_Last_Error(nvmeIoCtx->device, errno);
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
@@ -3310,7 +3316,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
@@ -3320,9 +3326,9 @@ eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice* device,
-                               M_ATTR_UNUSED uint8_t* pData,
-                               M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
+                               M_ATTR_UNUSED uint8_t*       pData,
+                               M_ATTR_UNUSED uint32_t       dataSize)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
@@ -3334,35 +3340,35 @@ eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice* device,
 // supposedly, when not in diagnostic mode, the read(), write(), lseek() can all be used.
 // This is currently not needed though.
 // Another thing we may want to implement here is the read/write ioctl codes that are available.
-eReturnValues os_Read(M_ATTR_UNUSED tDevice* device,
-                      M_ATTR_UNUSED uint64_t lba,
-                      M_ATTR_UNUSED bool     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* ptrData,
-                      M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
+                      M_ATTR_UNUSED uint64_t       lba,
+                      M_ATTR_UNUSED bool           forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t*       ptrData,
+                      M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED tDevice* device,
-                       M_ATTR_UNUSED uint64_t lba,
-                       M_ATTR_UNUSED bool     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* ptrData,
-                       M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
+                       M_ATTR_UNUSED uint64_t       lba,
+                       M_ATTR_UNUSED bool           forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t*       ptrData,
+                       M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
 {
     // TODO: Not sure if this is correct or not. If you look at locking below it opens with a diagnostic flag which is
     // extremely similar in behavior which is why this function is empty. -TJE
@@ -3370,62 +3376,77 @@ eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
 }
 
 // add SC_DIAGNOSTIC flag
-eReturnValues os_Lock_Device(tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (!device->os_info.diagnosticModeFlagInUse)
+    if (device->os_info.lockCount == UINT16_C(0))
     {
-        close(device->os_info.fd); // this must be done first or the openx will fail!
-        // try opening with the diagnostic flag.
-        long extensionFlag = SC_DIAGNOSTIC;
-        device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
-        if (device->os_info.fd >= 0)
+        if (!device->os_info.diagnosticModeFlagInUse)
         {
-            device->os_info.diagnosticModeFlagInUse = true;
-        }
-        else
-        {
-            // reopen original fd without SC_DIAGNOSTIC
-            extensionFlag      = 0;
+            close(device->os_info.fd); // this must be done first or the openx will fail!
+            // try opening with the diagnostic flag.
+            long extensionFlag = SC_DIAGNOSTIC;
             device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
-            ret                = FAILURE;
+            if (device->os_info.fd >= 0)
+            {
+                device->os_info.diagnosticModeFlagInUse = true;
+            }
+            else
+            {
+                // reopen original fd without SC_DIAGNOSTIC
+                extensionFlag      = 0;
+                device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+                ret                = FAILURE;
+            }
         }
+    }
+    if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
+    {
+        // Always increment this so we know how many times we've been requested to lock
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return ret;
 }
 
 // remove SC_DIAGNOSTIC flag
-eReturnValues os_Unlock_Device(tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->os_info.diagnosticModeFlagInUse)
+    if (device->os_info.lockCount == UINT16_C(1))
     {
-        close(device->os_info.fd); // this must be done first or the openx will fail!
-        // try opening without the diagnostic flag.
-        long extensionFlag = 0L;
-        device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
-        if (device->os_info.fd >= 0)
+        if (device->os_info.diagnosticModeFlagInUse)
         {
-            device->os_info.diagnosticModeFlagInUse = false;
-        }
-        else
-        {
-            // reopen original fd without SC_DIAGNOSTIC
-            extensionFlag      = SC_DIAGNOSTIC;
+            close(device->os_info.fd); // this must be done first or the openx will fail!
+            // try opening without the diagnostic flag.
+            long extensionFlag = 0L;
             device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
-            ret                = FAILURE;
+            if (device->os_info.fd >= 0)
+            {
+                device->os_info.diagnosticModeFlagInUse = false;
+            }
+            else
+            {
+                // reopen original fd without SC_DIAGNOSTIC
+                extensionFlag      = SC_DIAGNOSTIC;
+                device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+                ret                = FAILURE;
+            }
         }
+    }
+    if (ret == SUCCESS && device->os_info.lockCount > 0)
+    {
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return ret;
 }
 
 // use mount/vmount with the remount option??? (see links below)
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
@@ -3435,7 +3456,7 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
 // https://www.ibm.com/docs/en/aix/7.3?topic=files-fullstath-file
 // https://www.ibm.com/docs/en/aix/7.3?topic=u-umount-uvmount-subroutine#umount
 // https://www.ibm.com/docs/en/aix/7.3?topic=m-mntctl-subroutine
-eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
