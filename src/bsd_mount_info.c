@@ -162,7 +162,7 @@ eReturnValues set_BSD_Device_Partition_Info(tDevice* device)
     return ret;
 }
 
-// eReturnValues reload_BSD_From_Matching_Dev(tDevice* device)
+// eReturnValues reload_BSD_From_Matching_Dev(const tDevice * device)
 // {
 //     eReturnValues ret            = SUCCESS;
 //     int           partitionCount = 0;
@@ -212,7 +212,7 @@ eReturnValues set_BSD_Device_Partition_Info(tDevice* device)
 //     return ret;
 // }
 
-eReturnValues bsd_Unmount_From_Matching_Dev(tDevice* device)
+eReturnValues bsd_Unmount_From_Matching_Dev(const tDevice* device)
 {
     eReturnValues ret            = SUCCESS;
     int           partitionCount = 0;
@@ -240,8 +240,8 @@ eReturnValues bsd_Unmount_From_Matching_Dev(tDevice* device)
                     // https://www.freebsd.org/cgi/man.cgi?query=unmount&sektion=2&apropos=0&manpath=FreeBSD+13.0-RELEASE
                     if (0 > unmount((parts + iter)->mntPath, MNT_FORCE))
                     {
-                        ret                        = FAILURE;
-                        device->os_info.last_error = errno;
+                        ret = FAILURE;
+                        set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
                         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                         {
                             printf("Unable to unmount %s: \n", (parts + iter)->mntPath);

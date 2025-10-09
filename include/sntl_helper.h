@@ -22,7 +22,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+    //  translate_SCSI_Command(const tDevice *device, ScsiIoCtx *scsiIoCtx)
     //
     //! \brief   Description:  This function attempts to perform SCSI to NVMe translation according to the SNTL white
     //! paper from nvmexpress.org
@@ -38,7 +38,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_RO(1) M_PARAM_RW(2) eReturnValues sntl_Translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx);
+    M_PARAM_RO(1) M_PARAM_RW(2) eReturnValues sntl_Translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx);
 
 #if defined(__cplusplus)
 }

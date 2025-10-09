@@ -741,7 +741,7 @@ const char* nvme_cmd_to_string(int admin, uint8_t opcode)
     return "Unknown";
 }
 
-eReturnValues nvme_Get_SMART_Log_Page(tDevice* device, uint32_t nsid, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_SMART_Log_Page(const tDevice* device, uint32_t nsid, uint8_t* pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -772,7 +772,7 @@ eReturnValues nvme_Get_SMART_Log_Page(tDevice* device, uint32_t nsid, uint8_t* p
     return ret;
 }
 
-eReturnValues nvme_Get_ERROR_Log_Page(tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -799,7 +799,7 @@ eReturnValues nvme_Get_ERROR_Log_Page(tDevice* device, uint8_t* pData, uint32_t 
     return ret;
 }
 
-eReturnValues nvme_Get_FWSLOTS_Log_Page(tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -826,7 +826,7 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(tDevice* device, uint8_t* pData, uint32_
     return ret;
 }
 
-eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -853,7 +853,7 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice* device, uint8_t* pData, uint
     return ret;
 }
 
-eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -881,7 +881,7 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice* device, uint8_t* pData, uin
 }
 
 // Seagate unique?
-eReturnValues nvme_Read_Ext_Smt_Log(tDevice* device, EXTENDED_SMART_INFO_T* ExtdSMARTInfo)
+eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* device, EXTENDED_SMART_INFO_T* ExtdSMARTInfo)
 {
     eReturnValues         ret = SUCCESS;
     nvmeGetLogPageCmdOpts getExtSMARTLog;

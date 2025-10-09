@@ -63,11 +63,7 @@ static M_INLINE void safe_free_csmi_raid_config(CSMI_SAS_RAID_CONFIG_BUFFER** ra
     safe_free_core(M_REINTERPRET_CAST(void**, raidconfig));
 }
 
-#    if defined(_WIN32)
-void print_Last_Error(DWORD lastError);
-#    else
-void print_Last_Error(int lastError);
-#    endif
+void print_Last_Error(lasterror_t lastError);
 
 static void print_IOCTL_Return_Code(uint32_t returnCode)
 {
@@ -149,17 +145,14 @@ static void print_IOCTL_Return_Code(uint32_t returnCode)
     }
 }
 
+void print_Last_Error(lasterror_t lastError)
+{
 #    if defined(_WIN32)
-void print_Last_Error(DWORD lastError)
-{
     print_Windows_Error_To_Screen(lastError);
-}
-#    else  //_WIN32
-void print_Last_Error(int lastError)
-{
+#    else
     print_Errno_To_Screen(lastError);
-}
 #    endif //_WIN32
+}
 
 static eReturnValues csmi_Return_To_OpenSea_Result(uint32_t returnCode)
 {
@@ -3414,7 +3407,7 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosit
 }
 
 #    if defined(_WIN32)
-bool device_Supports_CSMI_With_RST(tDevice* device)
+bool device_Supports_CSMI_With_RST(const tDevice* device)
 {
     bool csmiWithRSTSupported = false;
     if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
@@ -3443,7 +3436,8 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
                                    uint8_t                   targetID,
                                    uint8_t                   lun)
 {
-    eReturnValues ret              = SUCCESS;
+    eReturnValues ret = SUCCESS;
+    M_USE_UNUSED(deviceHandle);
     device->os_info.csmiDeviceData = M_REINTERPRET_CAST(ptrCsmiDeviceInfo, safe_calloc(1, sizeof(csmiDeviceInfo)));
     if (device->os_info.csmiDeviceData)
     {
@@ -3909,24 +3903,28 @@ eReturnValues close_CSMI_RAID_Device(tDevice* device)
     if (device != M_NULLPTR)
     {
 #    if defined(_WIN32)
-        CloseHandle(device->os_info.fd);
-        device->os_info.last_error = GetLastError();
-        safe_free_csmi_dev_info(&device->os_info.csmiDeviceData);
-        device->os_info.last_error = 0;
-        device->os_info.fd         = INVALID_HANDLE_VALUE;
-#    else  //_WIN32
-        if (close(device->os_info.fd))
+        if (CloseHandle(device->os_info.fd))
         {
-            device->os_info.last_error = errno;
+            set_Device_Last_Error(device, 0);
         }
         else
         {
-            device->os_info.last_error = 0;
+            set_Device_Last_Error(device, GetLastError());
+        }
+        safe_free_csmi_dev_info(&device->os_info.csmiDeviceData);
+        device->os_info.fd = INVALID_HANDLE_VALUE;
+#    else  //_WIN32
+        if (close(device->os_info.fd))
+        {
+            set_Device_Last_Error(device, errno);
+        }
+        else
+        {
+            set_Device_Last_Error(device, 0);
         }
         device->os_info.fd = -1;
 #    endif //_WIN32
         safe_free_csmi_dev_info(&device->os_info.csmiDeviceData);
-        device->os_info.last_error = 0;
         return SUCCESS;
     }
     else
@@ -6634,7 +6632,7 @@ eReturnValues send_CSMI_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-void print_CSMI_Device_Info(tDevice* device)
+void print_CSMI_Device_Info(const tDevice* device)
 {
     if (device->os_info.csmiDeviceData && device->os_info.csmiDeviceData->csmiDeviceInfoValid)
     {
