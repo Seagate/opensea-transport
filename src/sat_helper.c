@@ -8144,7 +8144,7 @@ static eReturnValues translate_SCSI_Send_Diagnostic_Command(const tDevice* devic
                 if (smartEnabled)
                 {
                     DECLARE_ZERO_INIT_ARRAY(uint8_t, smartReadData, LEGACY_DRIVE_SEC_SIZE);
-                    uint16_t timeout = UINT16_C(DEFAULT_COMMAND_TIMEOUT);
+                    uint16_t timeout = DEFAULT_COMMAND_TIMEOUT;
                     switch (selfTestCode)
                     {
                     case 0: // default self test
