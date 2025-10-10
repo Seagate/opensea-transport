@@ -313,8 +313,8 @@ int smartpqi_filter(const struct dirent* entry)
 // may be different. -TJE
 
 /*
-static eReturnValues ciss_Scsi_Report_Logical_LUNs(tDevice *device, uint8_t extendedDataType, uint8_t* ptrData, uint32_t
-dataLength)
+static eReturnValues ciss_Scsi_Report_Logical_LUNs(const tDevice *device, uint8_t extendedDataType, uint8_t* ptrData,
+uint32_t dataLength)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -335,12 +335,12 @@ dataLength)
     if(ptrData && dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, ptrData, dataLength, XFER_DATA_IN,
-device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
+M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA,
-device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
+M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
     return ret;
 }
@@ -358,10 +358,10 @@ device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT
 // NOTE: "Other physical device info" does not indicate a length that I can see different from the 16B node data, but
 // may be different. -TJE
 
-static eReturnValues ciss_Scsi_Report_Physical_LUNs(tDevice* device,
-                                                    uint8_t  extendedDataType,
-                                                    uint8_t* ptrData,
-                                                    uint32_t dataLength)
+static eReturnValues ciss_Scsi_Report_Physical_LUNs(const tDevice* device,
+                                                    uint8_t        extendedDataType,
+                                                    uint8_t*       ptrData,
+                                                    uint32_t       dataLength)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -382,20 +382,20 @@ static eReturnValues ciss_Scsi_Report_Physical_LUNs(tDevice* device,
     if (ptrData && dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, ptrData, dataLength, XFER_DATA_IN,
-                            device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
+                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA,
-                            device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
+                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
     return ret;
 }
 
 // This is a reworked old function from first internal code to support CISS...is this still needed like this?-TJE
-static eReturnValues get_Physical_Device_Location_Data(tDevice* device,
-                                                       uint8_t* physicalLocationData,
-                                                       uint32_t physicalLocationDataLength)
+static eReturnValues get_Physical_Device_Location_Data(const tDevice* device,
+                                                       uint8_t*       physicalLocationData,
+                                                       uint32_t       physicalLocationDataLength)
 {
     eReturnValues ret            = UNKNOWN;
     uint32_t      dataLength     = UINT32_C(8) + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
@@ -537,8 +537,8 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                 stop_Timer(&commandTimer);
                 if (ioctlRet < 0)
                 {
-                    ret                                   = OS_PASSTHROUGH_FAILURE;
-                    scsiIoCtx->device->os_info.last_error = errno;
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    set_Device_Last_Error(scsiIoCtx->device, errno);
                     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                     {
                         print_Errno_To_Screen(errno);
@@ -771,8 +771,8 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                 stop_Timer(&commandTimer);
                 if (ioctlRet < 0)
                 {
-                    ret                                   = OS_PASSTHROUGH_FAILURE;
-                    scsiIoCtx->device->os_info.last_error = errno;
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    set_Device_Last_Error(scsiIoCtx->device, errno);
                     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                     {
                         print_Errno_To_Screen(errno);
@@ -994,8 +994,8 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
             stop_Timer(&commandTimer);
             if (ioctlRet < 0)
             {
-                ret                                   = OS_PASSTHROUGH_FAILURE;
-                scsiIoCtx->device->os_info.last_error = errno;
+                ret = OS_PASSTHROUGH_FAILURE;
+                set_Device_Last_Error(scsiIoCtx->device, errno);
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
                     print_Errno_To_Screen(errno);
@@ -1534,7 +1534,7 @@ eReturnValues close_CISS_RAID_Device(tDevice* device)
     {
         if (close(device->os_info.cissDeviceData->cissHandle))
         {
-            device->os_info.last_error = errno;
+            set_Device_Last_Error(device, errno);
         }
         else
         {

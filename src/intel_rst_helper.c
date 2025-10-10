@@ -10,9 +10,9 @@
 //
 // ******************************************************************************************
 //
+#include "code_attributes.h"
 #if defined(ENABLE_INTEL_RST)
 #    include "bit_manip.h"
-#    include "code_attributes.h"
 #    include "common_types.h"
 #    include "error_translation.h"
 #    include "io_utils.h"
@@ -210,18 +210,24 @@ static M_INLINE void safe_free_irst_raid_fw_buffer(IOCTL_RAID_FIRMWARE_BUFFER** 
     safe_free_aligned_core(M_REINTERPRET_CAST(void**, buf));
 }
 
-// generic function to handle taking in the various RAID FW Requests to keep code from being dumplicated
-static eReturnValues intel_RAID_FW_Request(tDevice*  device,
-                                           void*     ptrDataRequest,
-                                           uint32_t  dataRequestLength,
-                                           uint32_t  timeoutSeconds,
-                                           uint32_t  intelFirmwareFunction,
-                                           uint32_t  intelFirmwareFlags,
-                                           bool      readFirmwareInfo,
-                                           uint32_t* returnCode)
+// generic function to handle taking in the various RAID FW Requests to keep code from being duplicated
+M_NONNULL_PARAM_LIST(1, 8)
+M_PARAM_RO(1)
+M_NONNULL_IF_NONZERO_SIZE(2, 3)
+M_PARAM_RO_SIZE(2, 3)
+static eReturnValues intel_RAID_FW_Request(const tDevice* device,
+                                           void*          ptrDataRequest,
+                                           uint32_t       dataRequestLength,
+                                           uint32_t       timeoutSeconds,
+                                           uint32_t       intelFirmwareFunction,
+                                           uint32_t       intelFirmwareFlags,
+                                           bool           readFirmwareInfo,
+                                           uint32_t*      returnCode)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
-    if (device)
+    DISABLE_NONNULL_COMPARE
+    if (device != M_NULLPTR)
+    RESTORE_NONNULL_COMPARE
     {
         size_t                      allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
         IOCTL_RAID_FIRMWARE_BUFFER* raidFirmwareRequest =
@@ -315,7 +321,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
             BOOL success =
                 DeviceIoControl(handleToUse, IOCTL_SCSI_MINIPORT, raidFirmwareRequest, C_CAST(DWORD, allocationSize),
                                 raidFirmwareRequest, C_CAST(DWORD, allocationSize), &bytesReturned, &overlappedStruct);
-            device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
             if (ERROR_IO_PENDING ==
                 device->os_info
                     .last_error) // This will only happen for overlapped commands. If the drive is opened without the
@@ -343,10 +349,12 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
             }
             else
             {
+                DISABLE_NONNULL_COMPARE
                 if (returnCode != M_NULLPTR)
                 {
                     *returnCode = raidFirmwareRequest->Header.ReturnCode;
                 }
+                RESTORE_NONNULL_COMPARE
                 ret = SUCCESS; // IO sent successfully in the system...BUT we need to check the SRB return code to
                                // determine if the command went through to the device
                 switch (raidFirmwareRequest->Header.ReturnCode)
@@ -405,7 +413,7 @@ static M_INLINE void safe_free_irst_fw_info(INTEL_STORAGE_FIRMWARE_INFO_V2** inf
     safe_free_core(M_REINTERPRET_CAST(void**, info));
 }
 
-bool supports_Intel_Firmware_Download(tDevice* device)
+bool supports_Intel_Firmware_Download(const tDevice* device)
 {
     bool supported = false;
 #    if defined(INTRST_DEBUG)
@@ -475,14 +483,14 @@ static M_INLINE void safe_free_irst_fwdl(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2** fw
 }
 
 // The idea with this function is that it can handle NVMe or SCSI with generic inputs that will work to reduce code
-static eReturnValues internal_Intel_FWDL_Function_Download(tDevice*  device,
-                                                           uint32_t  flags,
-                                                           uint32_t* returnCode,
-                                                           uint8_t*  imagePtr,
-                                                           uint32_t  imageDataLength,
-                                                           uint32_t  imageOffset,
-                                                           uint8_t   firmwareSlot,
-                                                           uint32_t  timeoutSeconds)
+static eReturnValues internal_Intel_FWDL_Function_Download(const tDevice* device,
+                                                           uint32_t       flags,
+                                                           uint32_t*      returnCode,
+                                                           uint8_t*       imagePtr,
+                                                           uint32_t       imageDataLength,
+                                                           uint32_t       imageOffset,
+                                                           uint8_t        firmwareSlot,
+                                                           uint32_t       timeoutSeconds)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device && imagePtr)
@@ -524,11 +532,11 @@ static M_INLINE void safe_free_irst_fw_activate(INTEL_STORAGE_FIRMWARE_ACTIVATE*
     safe_free_core(M_REINTERPRET_CAST(void**, activate));
 }
 
-static eReturnValues internal_Intel_FWDL_Function_Activate(tDevice*  device,
-                                                           uint32_t  flags,
-                                                           uint32_t* returnCode,
-                                                           uint8_t   firmwareSlot,
-                                                           uint32_t  timeoutSeconds)
+static eReturnValues internal_Intel_FWDL_Function_Activate(const tDevice* device,
+                                                           uint32_t       flags,
+                                                           uint32_t*      returnCode,
+                                                           uint8_t        firmwareSlot,
+                                                           uint32_t       timeoutSeconds)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device)
@@ -831,7 +839,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
             BOOL success = DeviceIoControl(handleToUse, IOCTL_SCSI_MINIPORT, nvmPassthroughCommand,
                                            C_CAST(DWORD, allocationSize), nvmPassthroughCommand,
                                            C_CAST(DWORD, allocationSize), &bytesReturned, &overlappedStruct);
-            nvmeIoCtx->device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(nvmeIoCtx->device, GetLastError());
             if (ERROR_IO_PENDING ==
                 nvmeIoCtx->device->os_info
                     .last_error) // This will only happen for overlapped commands. If the drive is opened without the
@@ -1122,6 +1130,11 @@ eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx)
     printf("Intel: Translated command result: %d\n", ret);
 #    endif // INTRST_DEBUG
     return ret;
+}
+
+#else
+M_ATTR_UNUSED static void suppress_empty_intel_rst_helper(void)
+{
 }
 
 #endif // ENABLE_INTEL_RST

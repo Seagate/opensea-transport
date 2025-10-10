@@ -968,7 +968,7 @@ void print_acs_ascq(const char* acsAndascqStringToPrint, uint8_t ascValue, uint8
 }
 
 // this is meant to only be called by check_Sense_Key_asc_And_ascq()
-void print_Field_Replacable_Unit_Code(tDevice* device, const char* fruMessage, uint8_t fruCode)
+void print_Field_Replacable_Unit_Code(const tDevice* device, const char* fruMessage, uint8_t fruCode)
 {
     // we'll only print out a translatable string for seagate drives since fru is vendor specific
     DISABLE_NONNULL_COMPARE
@@ -1007,11 +1007,11 @@ static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
     }
 }
 
-eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(tDevice* device,
-                                               uint8_t  senseKey,
-                                               uint8_t  asc,
-                                               uint8_t  ascq,
-                                               uint8_t  fru)
+eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* device,
+                                               uint8_t        senseKey,
+                                               uint8_t        asc,
+                                               uint8_t        ascq,
+                                               uint8_t        fru)
 {
     eReturnValues   ret = UNKNOWN; // if this gets returned from this function, then something is not right...
     ascAscqRetDesc* asc_ascq_result = M_NULLPTR;
@@ -1939,7 +1939,7 @@ void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
     }
 }
 
-static eReturnValues private_Scsi_Read_Cap_16(tDevice* device, readCapacityData* outputData)
+static eReturnValues private_Scsi_Read_Cap_16(const tDevice* device, readCapacityData* outputData)
 {
     uint8_t* readCapData = M_STATIC_CAST(
         uint8_t*, safe_calloc_aligned(READ_CAPACITY_16_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
@@ -1981,7 +1981,7 @@ static eReturnValues private_Scsi_Read_Cap_16(tDevice* device, readCapacityData*
     return ret;
 }
 
-static eReturnValues private_Scsi_Read_Cap_10(tDevice* device, readCapacityData* outputData)
+static eReturnValues private_Scsi_Read_Cap_10(const tDevice* device, readCapacityData* outputData)
 {
     uint8_t* readCapData = M_STATIC_CAST(
         uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
@@ -2010,7 +2010,7 @@ static eReturnValues private_Scsi_Read_Cap_10(tDevice* device, readCapacityData*
 // There is a lot going on in this function. That is because old drives need the 10B command, new need 16B....but right
 // in between the two there were some drives produced with SBC2+ support, but still only supported the 10B command. Due
 // to this there are a few retries/fallbacks in here, but it will figure this out for the caller to make life easier
-eReturnValues scsi_Read_Capacity_Cmd_Helper(tDevice* device, readCapacityData* outputData)
+eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* device, readCapacityData* outputData)
 {
     safe_memset(outputData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
     DISABLE_NONNULL_COMPARE
@@ -2042,7 +2042,156 @@ eReturnValues scsi_Read_Capacity_Cmd_Helper(tDevice* device, readCapacityData* o
     return private_Scsi_Read_Cap_10(device, outputData);
 }
 
-eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device)
+M_NONNULL_PARAM_LIST(1, 2, 3)
+M_PARAM_RW(1)
+M_PARAM_RW(2)
+M_PARAM_RO_SIZE(3, 4)
+static void set_SAT_Flags_From_ATA_Info(tDevice*             device,
+                                        bool*                issueSATIdentify,
+                                        const uint8_t*       ataInformation,
+                                        M_ATTR_UNUSED size_t ataInfoLen)
+{
+    // set some of the bridge info in the device structure
+    safe_memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], 9, &ataInformation[SAT_ATA_VPD_T10_VENDOR_OFFSET],
+                SAT_ATA_VPD_T10_VENDOR_LENGTH);
+    safe_memcpy(&device->drive_info.bridge_info.SATproductID[0], 17, &ataInformation[SAT_ATA_VPD_T10_PRODUCT_ID_OFFSET],
+                SAT_ATA_VPD_T10_PRODUCT_ID_LENGTH);
+    safe_memcpy(&device->drive_info.bridge_info.SATfwRev[0], 9, &ataInformation[SAT_ATA_VPD_T10_PRODUCT_REV_OFFSET],
+                SAT_ATA_VPD_T10_PRODUCT_REV_LENGTH);
+
+    // Setup flags for ATA passthrough if we know the SAT vendor/product/rev info
+    if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS    ") == 0)
+    {
+        // printf("Found PMCS SATL\n");
+        // PMCS is a PMC translator. Sometimes these also show up on HPE controllers.
+        // Tested:
+        // SAT Vendor ID: PMCS
+        // SAT Product ID: SRC73208_01
+        // SAT Product Rev: 0106
+        // NOTE: There is a weird case where a 1TB drive cannot report native maxLBA, but a 10TB can on this
+        // controller.
+        //       I'm guessing there is some logic to how sense data is handled based on capacity or some
+        //       other factor affecting this. The control mode page's d_sense bit changes between the 1TB
+        //       (0) and 10TB (1), so this seems to be related to the behavior differences -TJE Need to try
+        //       changing the mode page value for d-sense to see if it gets around this issue.
+        // This translator properly handles 0 length transfers for RW10, 12, & 16
+        // Tested this same translator on an HPE controller with HPSA driver and non-HPE with smartpqi
+        // driver The SAT level info did not change and most behavior was the same, but there were a few odd
+        // results between them both. Leaving the below rules since they seem to work in both despite
+        // slightly different behavior. NOTE: Seems that the translators both report SAT-3 and ACS-2
+        // compliance in inquiry, but there are slight variations in support.
+        //       One ran self-test and discovered the feature properly, whereas the other did not. Possibly
+        //       different minor versions of these standards compliance or possibly some other limitation in
+        //       the translator that cannot be revealed by looking at the revision on this page alone -TJE
+        device->drive_info.passThroughHacks.passthroughType                          = ATA_PASSTHROUGH_SAT;
+        device->drive_info.passThroughHacks.hacksSetByReportedID                     = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.noModeSubPages                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations    = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength              = 65024;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA     = true;
+        // debugging in a RAID environment is giving a few odd results with max transfer length, so not
+        // setting that for now-TJE
+    }
+    else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "LSI     ") == 0)
+    {
+        // printf("Found LSI SATL\n");
+        // LSI/Avago/Broadcom HBAs
+        //  Got SAT Vendor ID as LSI
+        //  Got SAT Product ID as LSI SATL
+        //  Got SAT Product Revision as 0008
+        //  SCSI Hacks: RW6, RW10, RW12, RW16, NRSUPOP, SECPROT, MXFER:1052160
+        //  ATA Hacks:  SAT, A1, TPSIU, CHK, MPTXFER:1052160
+        // NOTE: Handles zero length transfers for rw10,12,16 properly it seems
+        // Should be retested in Linux. Results are from Windows, which may be more limited, but cannot
+        // confirm
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
+        device->drive_info.passThroughHacks.hacksSetByReportedID                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported =
+            true; // note: Need to enable this with kernel param
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength              = 1052160;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 1052160;
+        // device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while
+        // supported, not necessary to use
+    }
+    else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "linux   ") == 0)
+    {
+        // libATA provides SAT translation.
+        // There are changes between kernel versions, but this should be pretty accurate
+        // This code may not currently be used due to how the low-level passthrough detects capabilities,
+        // but this will not hurt to setup
+        //  Tested:
+        //  SAT Vendor ID: linux
+        //  SAT Product ID: libata
+        //  SAT Product Rev: 3.00
+        // printf("Found linux SATL\n");
+        device->drive_info.passThroughHacks.passthroughType            = ATA_PASSTHROUGH_SAT;
+        device->drive_info.passThroughHacks.hacksSetByReportedID       = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6    = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10   = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16   = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages       = true;
+        device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = true;
+        device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported =
+            true; // note: Need to enable this with kernel param
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength =
+            2097152; // may vary depending on OS/kernel config among other things
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength =
+            2097152; // may vary depending on OS/kernel config among other things
+        // device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while
+        // supported, not necessary to use
+    }
+
+    if (ataInformation[SAT_ATA_VPD_SIGNATURE_OFFSET] == 0) // checking for PATA drive
+    {
+        if (ataInformation[43] &
+            DEVICE_SELECT_BIT) // ATA signature device register is here. Checking for the device select bit
+                               // being set to know it's device 1 (Not that we really need it)
+        {
+            device->drive_info.ata_Options.isDevice1 = true;
+        }
+    }
+
+    if (ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATA_IDENTIFY ||
+        ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATA_READ_LOG_EXT ||
+        ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] ==
+            ATA_READ_LOG_EXT_DMA) // Added read log commands here since they are in SAT4. Only HDD/SSD
+                                  // should use these.
+    {
+        *issueSATIdentify             = true;
+        device->drive_info.media_type = MEDIA_HDD;
+        device->drive_info.drive_type = ATA_DRIVE;
+    }
+    else if (ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATAPI_IDENTIFY)
+    {
+        *issueSATIdentify = false; // Do not read it since we want to treat ATAPI as SCSI/with SCSI commands
+                                   // (at least for now)-TJE
+        device->drive_info.media_type = MEDIA_OPTICAL;
+        device->drive_info.drive_type = ATAPI_DRIVE;
+    }
+    else
+    {
+        *issueSATIdentify = true;
+    }
+}
+
+static M_INLINE void set_No_SAT_VPD(tDevice* device)
+{
+    device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+}
+
+eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device)
 {
     eReturnValues ret              = FAILURE;
     bool          issueSATIdentify = true; // default to ALWAYS reading this unless something else says not to. - TJE
@@ -2064,152 +2213,20 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device)
              .noSATVPDPage) // if this is set, then the device is known to not support VPD pages, so just skip to the
                             // SAT identify
     {
-        uint8_t* ataInformation = C_CAST(
-            uint8_t*, safe_calloc_aligned(VPD_ATA_INFORMATION_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint32_t ataInfoLen = VPD_ATA_INFORMATION_LEN;
+        uint8_t* ataInformation =
+            C_CAST(uint8_t*, safe_calloc_aligned(ataInfoLen, sizeof(uint8_t), device->os_info.minimumAlignment));
         if (!ataInformation)
         {
             perror("Error allocating memory to read the ATA Information VPD page");
             return MEMORY_FAILURE;
         }
-        if (SUCCESS == scsi_Inquiry(device, ataInformation, VPD_ATA_INFORMATION_LEN, ATA_INFORMATION, true, false))
+        if (SUCCESS == scsi_Inquiry(device, ataInformation, ataInfoLen, ATA_INFORMATION, true, false))
         {
             if (ataInformation[1] == ATA_INFORMATION)
             {
-                // set some of the bridge info in the device structure
-                safe_memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], 9,
-                            &ataInformation[SAT_ATA_VPD_T10_VENDOR_OFFSET], SAT_ATA_VPD_T10_VENDOR_LENGTH);
-                safe_memcpy(&device->drive_info.bridge_info.SATproductID[0], 17,
-                            &ataInformation[SAT_ATA_VPD_T10_PRODUCT_ID_OFFSET], SAT_ATA_VPD_T10_PRODUCT_ID_LENGTH);
-                safe_memcpy(&device->drive_info.bridge_info.SATfwRev[0], 9,
-                            &ataInformation[SAT_ATA_VPD_T10_PRODUCT_REV_OFFSET], SAT_ATA_VPD_T10_PRODUCT_REV_LENGTH);
-
-                // Setup flags for ATA passthrough if we know the SAT vendor/product/rev info
-                if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS    ") == 0)
-                {
-                    // print_str("Found PMCS SATL\n");
-                    // PMCS is a PMC translator. Sometimes these also show up on HPE controllers.
-                    // Tested:
-                    // SAT Vendor ID: PMCS
-                    // SAT Product ID: SRC73208_01
-                    // SAT Product Rev: 0106
-                    // NOTE: There is a weird case where a 1TB drive cannot report native maxLBA, but a 10TB can on this
-                    // controller.
-                    //       I'm guessing there is some logic to how sense data is handled based on capacity or some
-                    //       other factor affecting this. The control mode page's d_sense bit changes between the 1TB
-                    //       (0) and 10TB (1), so this seems to be related to the behavior differences -TJE Need to try
-                    //       changing the mode page value for d-sense to see if it gets around this issue.
-                    // This translator properly handles 0 length transfers for RW10, 12, & 16
-                    // Tested this same translator on an HPE controller with HPSA driver and non-HPE with smartpqi
-                    // driver The SAT level info did not change and most behavior was the same, but there were a few odd
-                    // results between them both. Leaving the below rules since they seem to work in both despite
-                    // slightly different behavior. NOTE: Seems that the translators both report SAT-3 and ACS-2
-                    // compliance in inquiry, but there are slight variations in support.
-                    //       One ran self-test and discovered the feature properly, whereas the other did not. Possibly
-                    //       different minor versions of these standards compliance or possibly some other limitation in
-                    //       the translator that cannot be revealed by looking at the revision on this page alone -TJE
-                    device->drive_info.passThroughHacks.passthroughType                          = ATA_PASSTHROUGH_SAT;
-                    device->drive_info.passThroughHacks.hacksSetByReportedID                     = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6                  = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10                 = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12                 = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16                 = true;
-                    device->drive_info.passThroughHacks.scsiHacks.noModeSubPages                 = true;
-                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations    = true;
-                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength              = 65024;
-                    device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-                    device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA     = true;
-                    // debugging in a RAID environment is giving a few odd results with max transfer length, so not
-                    // setting that for now-TJE
-                }
-                else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "LSI     ") == 0)
-                {
-                    // print_str("Found LSI SATL\n");
-                    // LSI/Avago/Broadcom HBAs
-                    //  Got SAT Vendor ID as LSI
-                    //  Got SAT Product ID as LSI SATL
-                    //  Got SAT Product Revision as 0008
-                    //  SCSI Hacks: RW6, RW10, RW12, RW16, NRSUPOP, SECPROT, MXFER:1052160
-                    //  ATA Hacks:  SAT, A1, TPSIU, CHK, MPTXFER:1052160
-                    // NOTE: Handles zero length transfers for rw10,12,16 properly it seems
-                    // Should be retested in Linux. Results are from Windows, which may be more limited, but cannot
-                    // confirm
-                    device->drive_info.passThroughHacks.passthroughType          = ATA_PASSTHROUGH_SAT;
-                    device->drive_info.passThroughHacks.hacksSetByReportedID     = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6  = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10 = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12 = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16 = true;
-                    // if reporting SAT, SAT-2, or SAT-3, report supported operation codes is not supported.
-                    // TODO: SAT-4 and higher reporting HBAs seem to support this. -TJE
-                    device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
-                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported =
-                        true; // note: Need to enable this with kernel param
-                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength              = 1052160;
-                    device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-                    device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 1052160;
-                    // device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while
-                    // supported, not necessary to use
-                }
-                else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "linux   ") == 0)
-                {
-                    // libATA provides SAT translation.
-                    // There are changes between kernel versions, but this should be pretty accurate
-                    // This code may not currently be used due to how the low-level passthrough detects capabilities,
-                    // but this will not hurt to setup
-                    //  Tested:
-                    //  SAT Vendor ID: linux
-                    //  SAT Product ID: libata
-                    //  SAT Product Rev: 3.00
-                    // print_str("Found linux SATL\n");
-                    device->drive_info.passThroughHacks.passthroughType            = ATA_PASSTHROUGH_SAT;
-                    device->drive_info.passThroughHacks.hacksSetByReportedID       = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6    = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10   = true;
-                    device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16   = true;
-                    device->drive_info.passThroughHacks.scsiHacks.noLogPages       = true;
-                    device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = true;
-                    device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported =
-                        true; // note: Need to enable this with kernel param
-                    device->drive_info.passThroughHacks.scsiHacks.maxTransferLength =
-                        2097152; // may vary depending on OS/kernel config among other things
-                    device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-                    device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength =
-                        2097152; // may vary depending on OS/kernel config among other things
-                    // device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while
-                    // supported, not necessary to use
-                }
-
-                if (ataInformation[SAT_ATA_VPD_SIGNATURE_OFFSET] == 0) // checking for PATA drive
-                {
-                    if (ataInformation[43] &
-                        DEVICE_SELECT_BIT) // ATA signature device register is here. Checking for the device select bit
-                                           // being set to know it's device 1 (Not that we really need it)
-                    {
-                        device->drive_info.ata_Options.isDevice1 = true;
-                    }
-                }
-
-                if (ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATA_IDENTIFY ||
-                    ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATA_READ_LOG_EXT ||
-                    ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] ==
-                        ATA_READ_LOG_EXT_DMA) // Added read log commands here since they are in SAT4. Only HDD/SSD
-                                              // should use these.
-                {
-                    issueSATIdentify              = true;
-                    device->drive_info.media_type = MEDIA_HDD;
-                    device->drive_info.drive_type = ATA_DRIVE;
-                }
-                else if (ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATAPI_IDENTIFY)
-                {
-                    issueSATIdentify = false; // Do not read it since we want to treat ATAPI as SCSI/with SCSI commands
-                                              // (at least for now)-TJE
-                    device->drive_info.media_type = MEDIA_OPTICAL;
-                    device->drive_info.drive_type = ATAPI_DRIVE;
-                }
-                else
-                {
-                    issueSATIdentify = true;
-                }
+                set_SAT_Flags_From_ATA_Info(M_CONST_CAST(tDevice*, device), &issueSATIdentify, ataInformation,
+                                            ataInfoLen);
                 ret = SUCCESS;
             }
             else
@@ -2225,26 +2242,28 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(tDevice* device)
         }
         else
         {
-            device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+            set_No_SAT_VPD(M_CONST_CAST(tDevice*, device));
         }
         safe_free_aligned(&ataInformation);
     }
     if (issueSATIdentify)
     {
-        if (SUCCESS == fill_In_ATA_Drive_Info(device))
+        if (SUCCESS == fill_In_ATA_Drive_Info(M_CONST_CAST(tDevice*, device)))
         {
             ret = SUCCESS;
         }
         else
         {
             // It's most likely SCSI/non-SAT compliant translator
-            device->drive_info.drive_type = SCSI_DRIVE;
-            ret                           = FAILURE;
+            M_CONST_CAST(tDevice*, device)->drive_info.drive_type = SCSI_DRIVE;
+            ret                                                   = FAILURE;
         }
     }
     return ret;
 }
 
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
 {
     bool passthroughTypeSet = false;

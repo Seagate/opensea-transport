@@ -1128,7 +1128,8 @@ extern "C"
     }
 
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_RW(1) M_PARAM_RO(2) static M_INLINE void set_ata_pt_device_bits(ataPassthroughCommand* cmd, tDevice* device)
+    M_PARAM_RW(1)
+    M_PARAM_RO(2) static M_INLINE void set_ata_pt_device_bits(ataPassthroughCommand* cmd, const tDevice* device)
     {
         DISABLE_NONNULL_COMPARE
         if (cmd != M_NULLPTR && device != M_NULLPTR)
@@ -1179,7 +1180,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RW(1)
-    M_PARAM_RO(2) static M_INLINE void set_ata_pt_multipleCount(ataPassthroughCommand* cmd, tDevice* device)
+    M_PARAM_RO(2) static M_INLINE void set_ata_pt_multipleCount(ataPassthroughCommand* cmd, const tDevice* device)
     {
         // multipleLogicalSectors should be greater than 1 so that we get the proper 2^X
         // power value for the SAT command.
@@ -1221,7 +1222,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_pio_cmd(tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_cmd(const tDevice*         device,
                                                              eATA_CMDS              opcode,
                                                              eAtaCmdType            ext,
                                                              eDataTransferDirection direction,
@@ -1264,7 +1265,7 @@ extern "C"
         pio.rtfr.status       = UINT8_C(0);
         pio.ptrData           = M_CONST_CAST(uint8_t*, ptrdata);
         pio.dataSize          = dataSize;
-        pio.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        pio.ptrSenseData      = M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData);
         pio.senseDataSize     = SPC3_SENSE_LEN;
         pio.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         pio.ataTransferBlocks = M_ACCESS_ENUM(
@@ -1285,7 +1286,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
-    static M_INLINE ataPassthroughCommand create_ata_pio_in_cmd(tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_in_cmd(const tDevice*       device,
                                                                 eATA_CMDS      opcode,
                                                                 eAtaCmdType    ext,
                                                                 uint16_t       sectorCount,
@@ -1299,7 +1300,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
-    static M_INLINE ataPassthroughCommand create_ata_pio_out_cmd(tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_out_cmd(const tDevice*       device,
                                                                  eATA_CMDS      opcode,
                                                                  bool           ext,
                                                                  uint16_t       sectorCount,
@@ -1313,7 +1314,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(7, 8)
-    static M_INLINE ataPassthroughCommand create_ata_pio_lba_cmd(tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_lba_cmd(const tDevice*               device,
                                                                  eATA_CMDS              opcode,
                                                                  eAtaCmdType            ext,
                                                                  eDataTransferDirection direction,
@@ -1357,7 +1358,7 @@ extern "C"
         pio.rtfr.status       = UINT8_C(0);
         pio.ptrData           = M_CONST_CAST(uint8_t*, ptrdata);
         pio.dataSize          = dataSize;
-        pio.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        pio.ptrSenseData      = M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData);
         pio.senseDataSize     = SPC3_SENSE_LEN;
         pio.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         pio.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -1380,7 +1381,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_pio_read_lba_cmd(tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_read_lba_cmd(const tDevice*       device,
                                                                       eATA_CMDS      opcode,
                                                                       eAtaCmdType    ext,
                                                                       uint16_t       sectorCount,
@@ -1395,7 +1396,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_pio_write_lba_cmd(tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_write_lba_cmd(const tDevice*       device,
                                                                        eATA_CMDS      opcode,
                                                                        eAtaCmdType    ext,
                                                                        uint16_t       sectorCount,
@@ -1407,7 +1408,7 @@ extern "C"
                                       sectorCount, lba, ptrdata, dataSize);
     }
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) static M_INLINE eAtaProtocol get_ata_pt_dma_protocol(tDevice* device)
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) static M_INLINE eAtaProtocol get_ata_pt_dma_protocol(const tDevice* device)
     {
         eAtaProtocol dmaProtocol = ATA_PROTOCOL_DMA;
         DISABLE_NONNULL_COMPARE
@@ -1422,7 +1423,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_dma_cmd(tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_cmd(const tDevice*               device,
                                                              eATA_CMDS              opcode,
                                                              eAtaCmdType            ext,
                                                              eDataTransferDirection direction,
@@ -1465,7 +1466,7 @@ extern "C"
         dma.rtfr.status       = UINT8_C(0);
         dma.ptrData           = M_CONST_CAST(uint8_t*, ptrdata);
         dma.dataSize          = dataSize;
-        dma.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        dma.ptrSenseData      = M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData);
         dma.senseDataSize     = SPC3_SENSE_LEN;
         dma.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         dma.ataTransferBlocks =
@@ -1484,7 +1485,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(7, 8)
-    static M_INLINE ataPassthroughCommand create_ata_dma_lba_cmd(tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_lba_cmd(const tDevice*               device,
                                                                  eATA_CMDS              opcode,
                                                                  eAtaCmdType            ext,
                                                                  eDataTransferDirection direction,
@@ -1528,7 +1529,7 @@ extern "C"
         dma.rtfr.status       = UINT8_C(0);
         dma.ptrData           = M_CONST_CAST(uint8_t*, ptrdata);
         dma.dataSize          = dataSize;
-        dma.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        dma.ptrSenseData      = M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData);
         dma.senseDataSize     = SPC3_SENSE_LEN;
         dma.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         dma.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -1550,7 +1551,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
-    static M_INLINE ataPassthroughCommand create_ata_dma_in_cmd(tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_in_cmd(const tDevice*       device,
                                                                 eATA_CMDS      opcode,
                                                                 eAtaCmdType    ext,
                                                                 uint16_t       sectorCount,
@@ -1563,7 +1564,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
-    static M_INLINE ataPassthroughCommand create_ata_dma_out_cmd(tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_out_cmd(const tDevice*       device,
                                                                  eATA_CMDS      opcode,
                                                                  eAtaCmdType    ext,
                                                                  uint16_t       sectorCount,
@@ -1577,7 +1578,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_dma_read_lba_cmd(tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_read_lba_cmd(const tDevice*       device,
                                                                       eATA_CMDS      opcode,
                                                                       eAtaCmdType    ext,
                                                                       uint16_t       sectorCount,
@@ -1592,7 +1593,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_dma_write_lba_cmd(tDevice*    device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_write_lba_cmd(const tDevice*    device,
                                                                        eATA_CMDS   opcode,
                                                                        eAtaCmdType ext,
                                                                        uint16_t    sectorCount,
@@ -1606,7 +1607,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    static M_INLINE ataPassthroughCommand create_ata_nondata_cmd(tDevice*    device,
+    static M_INLINE ataPassthroughCommand create_ata_nondata_cmd(const tDevice*    device,
                                                                  eATA_CMDS   opcode,
                                                                  eAtaCmdType ext,
                                                                  bool        needRTFRs)
@@ -1646,7 +1647,7 @@ extern "C"
         nodata.rtfr.status       = UINT8_C(0);
         nodata.ptrData           = M_NULLPTR;
         nodata.dataSize          = UINT32_C(0);
-        nodata.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        nodata.ptrSenseData      = M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData);
         nodata.senseDataSize     = SPC3_SENSE_LEN;
         nodata.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         nodata.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;   /* NOTE: This is most common, but may need adjusting
@@ -1664,7 +1665,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    static M_INLINE ataPassthroughCommand create_ata_dev_diag_cmd(tDevice* device, eATA_CMDS opcode, eAtaCmdType ext)
+    static M_INLINE ataPassthroughCommand create_ata_dev_diag_cmd(const tDevice* device, eATA_CMDS opcode, eAtaCmdType ext)
     {
         ataPassthroughCommand nodata;
         nodata.commandType       = ext;
@@ -1701,7 +1702,7 @@ extern "C"
         nodata.rtfr.status       = UINT8_C(0);
         nodata.ptrData           = M_NULLPTR;
         nodata.dataSize          = UINT32_C(0);
-        nodata.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        nodata.ptrSenseData      = M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData);
         nodata.senseDataSize     = SPC3_SENSE_LEN;
         nodata.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         nodata.ataTransferBlocks = ATA_PT_NO_DATA_TRANSFER;   /* NOTE: This is most common, but may need adjusting
@@ -1720,7 +1721,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 9)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(9, 10)
-    static M_INLINE ataPassthroughCommand create_ata_queued_lba_cmd(tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_queued_lba_cmd(const tDevice*               device,
                                                                     eATA_CMDS              opcode,
                                                                     eAtaCmdType            ext,
                                                                     bool                   ncq,
@@ -1766,7 +1767,7 @@ extern "C"
         dmaq.rtfr.status       = UINT8_C(0);
         dmaq.ptrData           = M_CONST_CAST(uint8_t*, ptrdata);
         dmaq.dataSize          = dataSize;
-        dmaq.ptrSenseData      = device->drive_info.lastCommandSenseData;
+        dmaq.ptrSenseData      = M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData);
         dmaq.senseDataSize     = SPC3_SENSE_LEN;
         dmaq.timeout           = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         dmaq.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -1788,7 +1789,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 8)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(8, 9)
-    static M_INLINE ataPassthroughCommand create_ata_queued_cmd(tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_queued_cmd(const tDevice*               device,
                                                                 eATA_CMDS              opcode,
                                                                 eAtaCmdType            ext,
                                                                 bool                   ncq,
@@ -1833,7 +1834,7 @@ extern "C"
         dmaq.rtfr.status              = UINT8_C(0);
         dmaq.ptrData                  = M_CONST_CAST(uint8_t*, ptrdata);
         dmaq.dataSize                 = dataSize;
-        dmaq.ptrSenseData             = device->drive_info.lastCommandSenseData;
+        dmaq.ptrSenseData             = M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData);
         dmaq.senseDataSize            = SPC3_SENSE_LEN;
         dmaq.timeout                  = ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT;
         dmaq.ataTransferBlocks        = ATA_PT_512B_BLOCKS;

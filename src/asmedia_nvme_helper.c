@@ -607,7 +607,7 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     return ret;
 }
 
-static eReturnValues asm_nvme_Shutdown(tDevice* device, bool withShutdownProcessing)
+static eReturnValues asm_nvme_Shutdown(const tDevice* device, bool withShutdownProcessing)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -627,7 +627,7 @@ static eReturnValues asm_nvme_Shutdown(tDevice* device, bool withShutdownProcess
     return ret;
 }
 
-static eReturnValues asm_nvme_Reset_Bridge(tDevice* device)
+static eReturnValues asm_nvme_Reset_Bridge(const tDevice* device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -646,7 +646,7 @@ static eReturnValues asm_nvme_Reset_Bridge(tDevice* device)
     return ret;
 }
 
-static eReturnValues asm_nvme_Relink_Bridge(tDevice* device, bool normalShutdownBeforeDisconnect)
+static eReturnValues asm_nvme_Relink_Bridge(const tDevice* device, bool normalShutdownBeforeDisconnect)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -666,7 +666,7 @@ static eReturnValues asm_nvme_Relink_Bridge(tDevice* device, bool normalShutdown
     return ret;
 }
 
-eReturnValues asm_nvme_Reset(tDevice* device)
+eReturnValues asm_nvme_Reset(const tDevice* device)
 {
     // shutdown, then reset bridge
     if (SUCCESS == asm_nvme_Shutdown(device, true))
@@ -694,7 +694,7 @@ eReturnValues asm_nvme_Reset(tDevice* device)
     }
 }
 
-eReturnValues asm_nvme_Subsystem_Reset(tDevice* device)
+eReturnValues asm_nvme_Subsystem_Reset(const tDevice* device)
 {
     // relink USB command
     return asm_nvme_Relink_Bridge(device, true);

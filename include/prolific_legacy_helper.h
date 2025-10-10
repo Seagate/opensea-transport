@@ -74,7 +74,7 @@ extern 'C'
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice * device, ataPassthroughCommand * ataCommandOptions,
+    eReturnValues get_RTFRs_From_Prolific_Legacy(const tDevice* device, ataPassthroughCommand* ataCommandOptions,
                                                  eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
@@ -95,7 +95,8 @@ extern 'C'
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice * device, ataPassthroughCommand * ataCommandOptions);
+    eReturnValues send_Prolific_Legacy_Passthrough_Command(const tDevice*         device,
+                                                           ataPassthroughCommand* ataCommandOptions);
 
 #if defined(__cplusplus)
 }

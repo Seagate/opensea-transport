@@ -177,7 +177,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         continue;
                     }
                     perror("open");
-                    device->os_info.last_error = errno;
+                    set_Device_Last_Error(device, errno);
                     print_str("open failure\n");
                     print_str("Error: ");
                     print_Errno_To_Screen(errno);
@@ -1149,7 +1149,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 //
 //-----------------------------------------------------------------------------
 #define CAM_DEV_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
+eReturnValues get_Device_List(tDevice* const   ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)
@@ -1333,35 +1333,35 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED tDevice* device,
-                      M_ATTR_UNUSED uint64_t lba,
-                      M_ATTR_UNUSED bool     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* ptrData,
-                      M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
+                      M_ATTR_UNUSED uint64_t       lba,
+                      M_ATTR_UNUSED bool           forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t*       ptrData,
+                      M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED tDevice* device,
-                       M_ATTR_UNUSED uint64_t lba,
-                       M_ATTR_UNUSED bool     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* ptrData,
-                       M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
+                       M_ATTR_UNUSED uint64_t       lba,
+                       M_ATTR_UNUSED bool           forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t*       ptrData,
+                       M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Device_Reset(tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
@@ -1385,7 +1385,7 @@ eReturnValues os_Device_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues os_Bus_Reset(tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
@@ -1409,7 +1409,7 @@ eReturnValues os_Bus_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
@@ -1497,8 +1497,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     stop_Timer(&commandTimer);
     if (ioctlResult < 0)
     {
-        nvmeIoCtx->device->os_info.last_error = errno;
-        ret                                   = OS_PASSTHROUGH_FAILURE;
+        set_Device_Last_Error(nvmeIoCtx->device, errno);
+        ret = OS_PASSTHROUGH_FAILURE;
         printf("\nError : %d", nvmeIoCtx->device->os_info.last_error);
         printf("Error %s\n", strerror(C_CAST(int, nvmeIoCtx->device->os_info.last_error)));
         print_str("\n OS_PASSTHROUGH_FAILURE. ");
@@ -1542,7 +1542,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Reset(tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret           = OS_PASSTHROUGH_FAILURE;
@@ -1554,10 +1554,6 @@ eReturnValues os_nvme_Reset(tDevice* device)
     ioRes = ioctl(handleToReset, NVME_RESET_CONTROLLER);
     stop_Timer(&commandTimer);
 
-    device->drive_info.lastCommandTimeNanoSeconds             = get_Nano_Seconds(commandTimer);
-    device->drive_info.lastNVMeResult.lastNVMeStatus          = 0;
-    device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
-
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
@@ -1566,7 +1562,7 @@ eReturnValues os_nvme_Reset(tDevice* device)
     if (ioRes < 0)
     {
         // failed
-        device->os_info.last_error = errno;
+        set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
         if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
         {
             print_str("Error :");
@@ -1586,40 +1582,40 @@ eReturnValues os_nvme_Reset(tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice* device,
-                               M_ATTR_UNUSED uint8_t* pData,
-                               M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
+                               M_ATTR_UNUSED uint8_t*       pData,
+                               M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
 {
     return SUCCESS;
 }
 
-eReturnValues os_Lock_Device(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* device)
 {
     // There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
-    if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
+    if (device->os_info.lockCount < UINT16_MAX)
     {
         // Always increment this so we know how many times we've been requested to lock
-        ++device->os_info.lockCount;
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return SUCCESS;
 }
 
-eReturnValues os_Unlock_Device(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* device)
 {
     // There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
-    if (ret == SUCCESS && device->os_info.lockCount > 0)
+    if (device->os_info.lockCount > 0)
     {
-        --device->os_info.lockCount;
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return SUCCESS;
 }
@@ -1632,7 +1628,7 @@ eReturnValues os_Unlock_Device(M_ATTR_UNUSED tDevice* device)
 // looks very similar to the Linux getmntent: getfsent
 // ???https://www.freebsd.org/cgi/man.cgi?query=getfsent&sektion=3&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
 {
     // TODO: I have not found an analog to Linux which is usually the most helpful for figuring out what to do.
     //       I haven't found any other API or IOCTL that reloads the partition table on the disk (which is pretty close)
@@ -1644,12 +1640,12 @@ eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     return bsd_Unmount_From_Matching_Dev(device);
 }

@@ -76,7 +76,7 @@ eReturnValues build_TI_Legacy_CDB(uint8_t                cdb[CDB_16],
     return ret;
 }
 
-eReturnValues send_TI_Legacy_Passthrough_Command(tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
 {
     eReturnValues ret            = UNKNOWN;
     uint8_t*      senseData      = M_NULLPTR; // only allocate if the pointer in the ataCommandOptions is M_NULLPTR
@@ -140,10 +140,12 @@ eReturnValues send_TI_Legacy_Passthrough_Command(tDevice* device, ataPassthrough
             print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
         }
     }
-    safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, ataCommandOptions->ptrSenseData,
-                M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
-    safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
-                sizeof(ataReturnTFRs));
+    safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
+                SPC3_SENSE_LEN); // clear before copying over data
+    safe_memcpy(M_CONST_CAST(uint8_t*, &device->drive_info.lastCommandSenseData[0]), SPC3_SENSE_LEN,
+                &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
+    safe_memcpy(M_CONST_CAST(ataReturnTFRs*, &device->drive_info.lastCommandRTFRs), sizeof(ataReturnTFRs),
+                &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
     safe_free_aligned(&senseData);
     if (localSenseData)
     {

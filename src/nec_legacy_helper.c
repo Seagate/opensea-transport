@@ -99,7 +99,7 @@ eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand* a
     return ret;
 }
 
-eReturnValues get_RTFRs_From_NEC_Legacy(tDevice*               device,
+eReturnValues get_RTFRs_From_NEC_Legacy(const tDevice*         device,
                                         ataPassthroughCommand* ataCommandOptions,
                                         eReturnValues          commandRet)
 {
@@ -133,7 +133,7 @@ eReturnValues get_RTFRs_From_NEC_Legacy(tDevice*               device,
     return ret;
 }
 
-eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_NEC_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, necCDB, CDB_LEN_16);
@@ -196,12 +196,12 @@ eReturnValues send_NEC_Legacy_Passthrough_Command(tDevice* device, ataPassthroug
         }
     }
     // before we get rid of the sense data, copy it back to the last command sense data
-    safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0,
+    safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
-                M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
-    safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
-                sizeof(ataReturnTFRs));
+    safe_memcpy(M_CONST_CAST(uint8_t*, &device->drive_info.lastCommandSenseData[0]), SPC3_SENSE_LEN,
+                &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
+    safe_memcpy(M_CONST_CAST(ataReturnTFRs*, &device->drive_info.lastCommandRTFRs), sizeof(ataReturnTFRs),
+                &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
     safe_free_aligned(&senseData);
     if (localSenseData)
     {
