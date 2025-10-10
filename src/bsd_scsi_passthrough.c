@@ -17,6 +17,7 @@
 #include "math_utils.h"
 #include "precision_timer.h"
 #include "type_conversion.h"
+#include "io_utils.h"
 
 #include "common_public.h"
 #include "scsi_helper.h"
