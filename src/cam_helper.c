@@ -100,8 +100,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         {
             perror("open");
             device->os_info.fd = errno;
-            printf("open failure");
-            printf("Error:");
+            print_str("open failure");
+            print_str("Error:");
             print_Errno_To_Screen(errno);
             if (device->os_info.fd == EACCES)
             {
@@ -178,8 +178,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                     }
                     perror("open");
                     set_Device_Last_Error(device, errno);
-                    printf("open failure\n");
-                    printf("Error: ");
+                    print_str("open failure\n");
+                    print_str("Error: ");
                     print_Errno_To_Screen(errno);
                     if (device->os_info.last_error == EACCES)
                     {
@@ -336,7 +336,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                 }
                                 else
                                 {
-                                    printf("WARN: XPT_PATH_INQ I/O status failed\n");
+                                    print_str("WARN: XPT_PATH_INQ I/O status failed\n");
                                 }
                             }
                             // let the library now go out and set up the device struct after sending some commands.
@@ -353,19 +353,19 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         }
                         else
                         {
-                            printf("WARN: XPT_GDEV_TYPE I/O status failed\n");
+                            print_str("WARN: XPT_GDEV_TYPE I/O status failed\n");
                             ret = FAILURE;
                         }
                     }
                     else
                     {
-                        printf("WARN: XPT_GDEV_TYPE I/O failed\n");
+                        print_str("WARN: XPT_GDEV_TYPE I/O failed\n");
                         ret = FAILURE;
                     }
                 }
                 else
                 {
-                    printf("WARN: Could not allocate CCB\n");
+                    print_str("WARN: Could not allocate CCB\n");
                     ret = FAILURE;
                 }
             }
@@ -423,7 +423,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         {
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("No Raid PassThrough IO Routine present for this device\n");
+                print_str("No Raid PassThrough IO Routine present for this device\n");
             }
         }
     }
@@ -517,7 +517,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                camTimeout = UINT32_C(15) * UINT32_C(1000); // default to 15 second timeout
+                camTimeout = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
 
@@ -647,7 +647,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             else
             {
                 ret = BAD_PARAMETER;
-                printf("WARN: Unsupported ATA Command type\n");
+                print_str("WARN: Unsupported ATA Command type\n");
             }
 
             if (ret == SUCCESS)
@@ -697,7 +697,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
                         {
                             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
-                                printf("WARN: I/O CAM_CMD_TIMEOUT occured\n");
+                                print_str("WARN: I/O CAM_CMD_TIMEOUT occured\n");
                             }
                         }
                         else
@@ -781,7 +781,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
     }
     else
     {
-        printf("WARN: couldn't allocate CCB");
+        print_str("WARN: couldn't allocate CCB");
     }
 
     return ret;
@@ -856,7 +856,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                camTimeout = UINT32_C(15) * UINT32_C(1000); // default to 15 second timeout
+                camTimeout = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
         csio->ccb_h.timeout = camTimeout;
@@ -898,7 +898,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
         ccb->ccb_h.flags |= CAM_DEV_QFRZDIS;
         // ccb->ccb_h.flags |= CAM_PASS_ERR_RECOVER; // Needed?
 
-        safe_memcpy(&csio->cdb_io.cdb_bytes[0], IOCDBLEN, &scsiIoCtx->cdb[0], IOCDBLEN);
+        safe_memcpy(&csio->cdb_io.cdb_bytes[0], IOCDBLEN, &scsiIoCtx->cdb[CDB_OPERATION_CODE], IOCDBLEN);
 #if defined(_DEBUG)
         printf("%s cdb [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
                [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",
@@ -977,7 +977,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
     }
     else
     {
-        printf("ccb is Null\n");
+        print_str("ccb is Null\n");
         ret = BAD_PARAMETER; // Should this be MEMORY FAILURE?
     }
 
@@ -1501,7 +1501,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
         printf("\nError : %d", nvmeIoCtx->device->os_info.last_error);
         printf("Error %s\n", strerror(C_CAST(int, nvmeIoCtx->device->os_info.last_error)));
-        printf("\n OS_PASSTHROUGH_FAILURE. ");
+        print_str("\n OS_PASSTHROUGH_FAILURE. ");
         print_Errno_To_Screen(C_CAST(int, nvmeIoCtx->device->os_info.last_error));
     }
     else
@@ -1565,7 +1565,7 @@ eReturnValues os_nvme_Reset(const tDevice* device)
         set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
         if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
         {
-            printf("Error :");
+            print_str("Error :");
             print_Errno_To_Screen(C_CAST(int, device->os_info.last_error));
         }
     }

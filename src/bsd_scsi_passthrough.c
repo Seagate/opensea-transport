@@ -17,6 +17,7 @@
 #include "math_utils.h"
 #include "precision_timer.h"
 #include "type_conversion.h"
+#include "io_utils.h"
 
 #include "common_public.h"
 #include "scsi_helper.h"
@@ -184,7 +185,7 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
                 }
                 else
                 {
-                    scsicmd.timeout = 15000UL; // default to 15 second timeout
+                    scsicmd.timeout = DEFAULT_COMMAND_TIMEOUT * 1000UL; // default to 15 second timeout
                 }
             }
             safe_memcpy(scsicmd.cmd, CMDBUFLEN, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
@@ -204,7 +205,7 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
                 {
                     if (scsiIoCtx->device->os_info.last_error != 0)
                     {
-                        printf("Error: ");
+                        print_str("Error: ");
                         print_Errno_To_Screen(errno);
                     }
                 }

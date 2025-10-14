@@ -18,6 +18,7 @@
 #include "ata_helper.h"
 #include "common_public.h"
 #include "common_types.h"
+#include "scsi_helper.h"
 
 #if defined(__cplusplus)
 extern 'C'
@@ -50,7 +51,7 @@ extern 'C'
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RW(1)
     M_PARAM_RO(2)
-    eReturnValues build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand * ataCommandOptions, bool olderOpCode,
+    eReturnValues build_TI_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand * ataCommandOptions, bool olderOpCode,
                                       bool forceMode, uint8_t modeValue);
 
     //-----------------------------------------------------------------------------

@@ -159,7 +159,7 @@ static void print_io_hdr(sg_io_hdr_t* pIo)
     printf("type int resid %d\n", pIo->resid);                                  /* [o] */
     printf("type unsigned int duration %d\n", pIo->duration);                   /* [o] */
     printf("type unsigned int info 0x%x\n", pIo->info);                         /* [o] */
-    printf("-----------------------------------------\n");
+    print_str("-----------------------------------------\n");
 }
 #endif //_DEBUG
 
@@ -640,7 +640,7 @@ static bool read_sysfs_file_uint32(FILE* sysfsfile, uint32_t* value)
 static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInfo* sysFsInfo)
 {
 #if defined(_DEBUG)
-    printf("ATA interface!\n");
+    print_str("ATA interface!\n");
 #endif
     sysFsInfo->interface_type = IDE_INTERFACE;
     sysFsInfo->drive_type     = ATA_DRIVE;
@@ -735,7 +735,7 @@ static M_INLINE bool get_usb_file_id_hex(FILE* usbFile, uint32_t* hexvalue)
 static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInfo* sysFsInfo)
 {
 #if defined(_DEBUG)
-    printf("USB interface!\n");
+    print_str("USB interface!\n");
 #endif
     sysFsInfo->interface_type = USB_INTERFACE;
     sysFsInfo->drive_type     = SCSI_DRIVE; // changed later depending on what passthrough the USB adapter supports
@@ -910,7 +910,7 @@ static bool get_ieee1394_ids(FILE*     idFile,
 static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceInfo* sysFsInfo)
 {
 #if defined(_DEBUG)
-    printf("FireWire interface!\n");
+    print_str("FireWire interface!\n");
 #endif
     sysFsInfo->interface_type = IEEE_1394_INTERFACE;
     sysFsInfo->drive_type     = SCSI_DRIVE; // changed later if detected as ATA
@@ -973,7 +973,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
 static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceInfo* sysFsInfo)
 {
 #if defined(_DEBUG)
-    printf("SCSI interface!\n");
+    print_str("SCSI interface!\n");
 #endif
     sysFsInfo->interface_type = SCSI_INTERFACE;
     sysFsInfo->drive_type     = SCSI_DRIVE;
@@ -1048,7 +1048,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
 
 static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDeviceInfo* sysFsInfo)
 {
-    // printf("getting SCSI address\n");
+    // print_str("getting SCSI address\n");
     // set the scsi address field
     char* handle = M_NULLPTR;
     if (0 != safe_strdup(&handle, inHandleLink))
@@ -1068,7 +1068,7 @@ static void get_SYS_FS_SCSI_Address(const char* inHandleLink, sysFSLowLevelDevic
             if (0 != safe_strtoul(&temp, token, M_NULLPTR, BASE_10_DECIMAL) || temp > UINT8_MAX)
             {
 #if defined(_DEBUG)
-                printf("Error parsing HCTL\n");
+                print_str("Error parsing HCTL\n");
 #endif //_DEBUG
                 break;
             }
@@ -1268,7 +1268,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                         }
 
                         get_SYS_FS_SCSI_Address(inHandleLink, sysFsInfo);
-                        // printf("attempting to map the handle\n");
+                        // print_str("attempting to map the handle\n");
                         // Lastly, call the mapping function to get the matching block handle and check what we got to
                         // set ATAPI, TAPE or leave as-is. Setting these is necessary to prevent talking to ATAPI as HDD
                         // due to overlapping A1h opcode
@@ -1315,7 +1315,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                                 // scsi enclosure services
                             }
                         }
-                        // printf("Finish handle mapping\n");
+                        // print_str("Finish handle mapping\n");
                         safe_free(&block);
                         safe_free(&gen);
                     }
@@ -1444,7 +1444,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                     }
                     else
                     {
-                        // printf ("could not map to generic class");
+                        // print_str("could not map to generic class");
                         safe_free(&dupHandle);
                         return NOT_SUPPORTED;
                     }
@@ -1455,7 +1455,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
                     snprintf_err_handle(classPath, PATH_MAX, "%s", blockClass);
                     if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
                     {
-                        // printf ("could not map to block class");
+                        // print_str("could not map to block class");
                         safe_free(&dupHandle);
                         return NOT_SUPPORTED;
                     }
@@ -1608,8 +1608,8 @@ static eReturnValues open_fd2(tDevice* device)
                 }
                 perror("open");
                 set_Device_Last_Error(device, errno);
-                printf("open failure\n");
-                printf("Error: ");
+                print_str("open failure\n");
+                print_str("Error: ");
                 print_Errno_To_Screen(errno);
                 if (device->os_info.last_error == EACCES)
                 {
@@ -1685,7 +1685,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
                     {
                         device->os_info.fileSystemInfo.isSystemDisk = true;
 #if defined(_DEBUG)
-                        printf("found system disk\n");
+                        print_str("found system disk\n");
 #endif
                     }
                 }
@@ -1723,7 +1723,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
 
     if (is_Block_Device_Handle(filename))
     {
-        // printf("\tBlock handle found, mapping...\n");
+        // print_str("\tBlock handle found, mapping...\n");
         char*         genHandle   = M_NULLPTR;
         char*         blockHandle = M_NULLPTR;
         eReturnValues mapResult   = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle);
@@ -1733,7 +1733,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
         if (mapResult == SUCCESS && genHandle != M_NULLPTR)
         {
             deviceHandle = M_REINTERPRET_CAST(char*, safe_calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
-            // printf("Changing filename to SG device....\n");
+            // print_str("Changing filename to SG device....\n");
             if (is_SCSI_Generic_Handle(genHandle))
             {
                 snprintf_err_handle(deviceHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", genHandle);
@@ -1869,14 +1869,14 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
 
             ret = fill_Drive_Info_Data(device);
 #    if defined(_DEBUG)
-            printf("\nsg helper-nvmedev\n");
+            print_str("\nsg helper-nvmedev\n");
             printf("Drive type: %d\n", device->drive_info.drive_type);
             printf("Interface type: %d\n", device->drive_info.interface_type);
             printf("Media type: %d\n", device->drive_info.media_type);
 #    endif // DEBUG
 #else      // DISABLE_NVME_PASSTHROUGH
 #    if defined(_DEBUG)
-            printf("\nsg helper-nvmedev --  NVME Passthrough disabled, device not supported\n");
+            print_str("\nsg helper-nvmedev --  NVME Passthrough disabled, device not supported\n");
 #    endif // DEBUG
             return NOT_SUPPORTED; // return not supported since NVMe-passthrough is disabled
 #endif     // DISABLE_NVME_PASSTHROUGH
@@ -1884,7 +1884,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
         else // not an NVMe handle
         {
 #if defined(_DEBUG)
-            printf("Getting SG SCSI address\n");
+            print_str("Getting SG SCSI address\n");
 #endif
             struct sg_scsi_id hctlInfo;
             safe_memset(&hctlInfo, sizeof(struct sg_scsi_id), 0, sizeof(struct sg_scsi_id));
@@ -1892,7 +1892,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
             int getHctl = ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo);
             if (getHctl == 0 && errno == 0) // when this succeeds, both of these will be zeros
             {
-                // printf("Got hctlInfo\n");
+                // print_str("Got hctlInfo\n");
                 device->os_info.scsiAddress.host    = C_CAST(uint8_t, hctlInfo.host_no);
                 device->os_info.scsiAddress.channel = C_CAST(uint8_t, hctlInfo.channel);
                 device->os_info.scsiAddress.target  = C_CAST(uint8_t, hctlInfo.scsi_id);
@@ -1908,7 +1908,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
             }
 
 #if defined(_DEBUG)
-            printf("Getting SG driver version\n");
+            print_str("Getting SG driver version\n");
 #endif
             // Check we have a valid device by trying an ioctl
             // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
@@ -1938,7 +1938,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
                 device->drive_info.media_type     = MEDIA_HDD;
                 // now have the device information fields set
 #if defined(_DEBUG)
-                printf("Setting interface, drive type, secondary handles\n");
+                print_str("Setting interface, drive type, secondary handles\n");
 #endif
                 set_Device_Fields_From_Handle(deviceHandle, device);
                 setup_Passthrough_Hacks_By_ID(device);
@@ -1967,7 +1967,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
                 ret = fill_Drive_Info_Data(device);
 
 #if defined(_DEBUG)
-                printf("\nsg helper\n");
+                print_str("\nsg helper\n");
                 printf("Drive type: %d\n", device->drive_info.drive_type);
                 printf("Interface type: %d\n", device->drive_info.interface_type);
                 printf("Media type: %d\n", device->drive_info.media_type);
@@ -2019,7 +2019,7 @@ static eReturnValues sg_reset(int fd, int resetType)
     {
         // poll for reset completion
 #if defined(_DEBUG)
-        printf("Reset in progress, polling for completion!\n");
+        print_str("Reset in progress, polling for completion!\n");
 #endif
         resetType = SG_SCSI_RESET_NOTHING;
         while (errno == EBUSY)
@@ -2027,7 +2027,7 @@ static eReturnValues sg_reset(int fd, int resetType)
             ioctlResult = ioctl(fd, SG_SCSI_RESET, &resetType);
         }
         ret = SUCCESS;
-        // printf("Reset Success!\n");
+        // print_str("Reset Success!\n");
     }
     return ret;
 }
@@ -2073,7 +2073,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         {
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("No Raid PassThrough IO Routine present for this device\n");
+                print_str("No Raid PassThrough IO Routine present for this device\n");
             }
         }
         break;
@@ -2116,7 +2116,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
 
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
-        printf("Sending command with send_IO\n");
+        print_str("Sending command with send_IO\n");
     }
 
     // Set up the io_hdr
@@ -2214,7 +2214,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            io_hdr.timeout = 15 * 1000; // default to 15 second timeout
+            io_hdr.timeout = DEFAULT_COMMAND_TIMEOUT * 1000; // default to 15 second timeout
         }
     }
 
@@ -2236,7 +2236,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         {
             if (scsiIoCtx->device->os_info.last_error != 0)
             {
-                printf("Error: ");
+                print_str("Error: ");
                 print_Errno_To_Screen(errno);
             }
         }
@@ -2263,16 +2263,16 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         switch (io_hdr.info & SG_INFO_DIRECT_IO_MASK)
         {
         case SG_INFO_INDIRECT_IO:
-            printf("SG IO Issued as Indirect IO\n");
+            print_str("SG IO Issued as Indirect IO\n");
             break;
         case SG_INFO_DIRECT_IO:
-            printf("SG IO Issued as Direct IO\n");
+            print_str("SG IO Issued as Direct IO\n");
             break;
         case SG_INFO_MIXED_IO:
-            printf("SG IO Issued as Mixed IO\n");
+            print_str("SG IO Issued as Mixed IO\n");
             break;
         default:
-            printf("SG IO Issued as Unknown IO type\n");
+            print_str("SG IO Issued as Unknown IO type\n");
             break;
         }
     }
@@ -2289,41 +2289,41 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
                 switch (io_hdr.masked_status)
                 {
                 case GOOD:
-                    printf(" - Good\n");
+                    print_str(" - Good\n");
                     break;
                 case CHECK_CONDITION:
-                    printf(" - Check Condition\n");
+                    print_str(" - Check Condition\n");
                     break;
                 case CONDITION_GOOD:
-                    printf(" - Condition Good\n");
+                    print_str(" - Condition Good\n");
                     break;
                 case BUSY:
-                    printf(" - Busy\n");
+                    print_str(" - Busy\n");
                     break;
                 case INTERMEDIATE_GOOD:
-                    printf(" - Intermediate Good\n");
+                    print_str(" - Intermediate Good\n");
                     break;
                 case INTERMEDIATE_C_GOOD:
-                    printf(" - Intermediate C Good\n");
+                    print_str(" - Intermediate C Good\n");
                     break;
                 case RESERVATION_CONFLICT:
-                    printf(" - Reservation Conflict\n");
+                    print_str(" - Reservation Conflict\n");
                     break;
                 case COMMAND_TERMINATED:
-                    printf(" - Command Terminated\n");
+                    print_str(" - Command Terminated\n");
                     break;
                 case QUEUE_FULL:
-                    printf(" - Queue Full\n");
+                    print_str(" - Queue Full\n");
                     break;
 #if defined(TASK_ABORTED)
                 case TASK_ABORTED:
 #else
                 case 0x20:
 #endif
-                    printf(" - Task Aborted\n");
+                    print_str(" - Task Aborted\n");
                     break;
                 default:
-                    printf(" - Unknown Masked Status\n");
+                    print_str(" - Unknown Masked Status\n");
                     break;
                 }
             }
@@ -2331,7 +2331,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
             {
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
-                    printf("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                    print_str("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
                 }
                 // No sense data back. We need to set an error since the layers above are going to look for sense data
                 // and we don't have any.
@@ -2353,43 +2353,43 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
                 switch (io_hdr.host_status)
                 {
                 case OPENSEA_SG_ERR_DID_OK:
-                    printf(" - No Error\n");
+                    print_str(" - No Error\n");
                     break;
                 case OPENSEA_SG_ERR_DID_NO_CONNECT:
-                    printf(" - Could Not Connect\n");
+                    print_str(" - Could Not Connect\n");
                     break;
                 case OPENSEA_SG_ERR_DID_BUS_BUSY:
-                    printf(" - Bus Busy\n");
+                    print_str(" - Bus Busy\n");
                     break;
                 case OPENSEA_SG_ERR_DID_TIME_OUT:
-                    printf(" - Timed Out\n");
+                    print_str(" - Timed Out\n");
                     break;
                 case OPENSEA_SG_ERR_DID_BAD_TARGET:
-                    printf(" - Bad Target Device\n");
+                    print_str(" - Bad Target Device\n");
                     break;
                 case OPENSEA_SG_ERR_DID_ABORT:
-                    printf(" - Abort\n");
+                    print_str(" - Abort\n");
                     break;
                 case OPENSEA_SG_ERR_DID_PARITY:
-                    printf(" - Parity Error\n");
+                    print_str(" - Parity Error\n");
                     break;
                 case OPENSEA_SG_ERR_DID_ERROR:
-                    printf(" - Internal Adapter Error\n");
+                    print_str(" - Internal Adapter Error\n");
                     break;
                 case OPENSEA_SG_ERR_DID_RESET:
-                    printf(" - SCSI Bus/Device Has Been Reset\n");
+                    print_str(" - SCSI Bus/Device Has Been Reset\n");
                     break;
                 case OPENSEA_SG_ERR_DID_BAD_INTR:
-                    printf(" - Bad Interrupt\n");
+                    print_str(" - Bad Interrupt\n");
                     break;
                 case OPENSEA_SG_ERR_DID_PASSTHROUGH:
-                    printf(" - Forced Passthrough Past Mid-Layer\n");
+                    print_str(" - Forced Passthrough Past Mid-Layer\n");
                     break;
                 case OPENSEA_SG_ERR_DID_SOFT_ERROR:
-                    printf(" - Soft Error, Retry?\n");
+                    print_str(" - Soft Error, Retry?\n");
                     break;
                 default:
-                    printf(" - Unknown Host Status\n");
+                    print_str(" - Unknown Host Status\n");
                     break;
                 }
             }
@@ -2402,12 +2402,12 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
                 // TODO: Need to test and see if SAT passthrough trusted send/receive are also blocked to add them to
                 // this case. -TJE
                 if (io_hdr.host_status == OPENSEA_SG_ERR_DID_ERROR &&
-                    (scsiIoCtx->cdb[OPERATION_CODE] == SECURITY_PROTOCOL_IN ||
-                     scsiIoCtx->cdb[OPERATION_CODE] == SECURITY_PROTOCOL_OUT))
+                    (scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_IN ||
+                     scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_OUT))
                 {
                     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                     {
-                        printf("\tSpecial Case: Security Protocol Command Blocked\n");
+                        print_str("\tSpecial Case: Security Protocol Command Blocked\n");
                     }
                     ret = OS_COMMAND_BLOCKED;
                 }
@@ -2415,7 +2415,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
                 {
                     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                     {
-                        printf("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                        print_str("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
                     }
                     ret = OS_PASSTHROUGH_FAILURE;
                 }
@@ -2429,34 +2429,34 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
                 switch (io_hdr.driver_status & OPENSEA_SG_ERR_DRIVER_MASK)
                 {
                 case OPENSEA_SG_ERR_DRIVER_OK:
-                    printf(" - Driver OK");
+                    print_str(" - Driver OK");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_BUSY:
-                    printf(" - Driver Busy");
+                    print_str(" - Driver Busy");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_SOFT:
-                    printf(" - Driver Soft Error");
+                    print_str(" - Driver Soft Error");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_MEDIA:
-                    printf(" - Driver Media Error");
+                    print_str(" - Driver Media Error");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_ERROR:
-                    printf(" - Driver Error");
+                    print_str(" - Driver Error");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_INVALID:
-                    printf(" - Driver Invalid");
+                    print_str(" - Driver Invalid");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_TIMEOUT:
-                    printf(" - Driver Timeout");
+                    print_str(" - Driver Timeout");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_HARD:
-                    printf(" - Driver Hard Error");
+                    print_str(" - Driver Hard Error");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_SENSE:
-                    printf(" - Driver Sense Data Available");
+                    print_str(" - Driver Sense Data Available");
                     break;
                 default:
-                    printf(" - Unknown Driver Error");
+                    print_str(" - Unknown Driver Error");
                     break;
                 }
                 // now error suggestions
@@ -2465,31 +2465,31 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
                 case OPENSEA_SG_ERR_SUGGEST_NONE:
                     break; // no suggestions, nothing necessary to print
                 case OPENSEA_SG_ERR_SUGGEST_RETRY:
-                    printf(" - Suggest Retry");
+                    print_str(" - Suggest Retry");
                     break;
                 case OPENSEA_SG_ERR_SUGGEST_ABORT:
-                    printf(" - Suggest Abort");
+                    print_str(" - Suggest Abort");
                     break;
                 case OPENSEA_SG_ERR_SUGGEST_REMAP:
-                    printf(" - Suggest Remap");
+                    print_str(" - Suggest Remap");
                     break;
                 case OPENSEA_SG_ERR_SUGGEST_DIE:
-                    printf(" - Suggest Die");
+                    print_str(" - Suggest Die");
                     break;
                 case OPENSEA_SG_ERR_SUGGEST_SENSE:
-                    printf(" - Suggest Sense");
+                    print_str(" - Suggest Sense");
                     break;
                 default:
-                    printf(" - Unknown suggestion");
+                    print_str(" - Unknown suggestion");
                     break;
                 }
-                printf("\n");
+                print_str("\n");
             }
             if (io_hdr.sb_len_wr == 0)
             {
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
-                    printf("\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                    print_str("\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
                 }
                 // No sense data back. We need to set an error since the layers above are going to look for sense data
                 // and we don't have any.
@@ -2567,7 +2567,7 @@ static void linux_Rescan_SCSI_Hosts(void)
                     {
                         printf("Error rescanning %s\n", hostFileName);
                     }
-                    fclose(scsiHostFile);
+                    M_STATIC_CAST(void, fclose(scsiHostFile));
                 }
                 handler = set_Constraint_Handler(handler);
                 safe_free(&hostFileName);
@@ -3114,7 +3114,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         adminCmd.cdw13        = nvmeIoCtx->cmd.adminCmd.cdw13;
         adminCmd.cdw14        = nvmeIoCtx->cmd.adminCmd.cdw14;
         adminCmd.cdw15        = nvmeIoCtx->cmd.adminCmd.cdw15;
-        adminCmd.timeout_ms   = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
+        adminCmd.timeout_ms   = (nvmeIoCtx->timeout ? nvmeIoCtx->timeout : DEFAULT_COMMAND_TIMEOUT) * 1000;
         start_Timer(&commandTimer);
         DISABLE_WARNING_SIGN_CONVERSION
         ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_ADMIN_CMD, &adminCmd);
@@ -3128,7 +3128,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             {
                 if (nvmeIoCtx->device->os_info.last_error != 0)
                 {
-                    printf("Error: ");
+                    print_str("Error: ");
                     print_Errno_To_Screen(errno);
                 }
             }
@@ -3176,7 +3176,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
                 {
                     if (nvmeIoCtx->device->os_info.last_error != 0)
                     {
-                        printf("Error: ");
+                        print_str("Error: ");
                         print_Errno_To_Screen(errno);
                     }
                 }
@@ -3213,9 +3213,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             passThroughCmd->cdw13      = nvmeIoCtx->cmd.nvmCmd.cdw13;
             passThroughCmd->cdw14      = nvmeIoCtx->cmd.nvmCmd.cdw14;
             passThroughCmd->cdw15      = nvmeIoCtx->cmd.nvmCmd.cdw15;
-            passThroughCmd->timeout_ms = nvmeIoCtx->timeout
-                                             ? nvmeIoCtx->timeout * 1000
-                                             : 15000; // timeout is in seconds, so converting to milliseconds
+            passThroughCmd->timeout_ms = (nvmeIoCtx->timeout ? nvmeIoCtx->timeout : DEFAULT_COMMAND_TIMEOUT) *
+                                         1000; // timeout is in seconds, so converting to milliseconds
             start_Timer(&commandTimer);
             DISABLE_WARNING_SIGN_CONVERSION
             ioctlResult = ioctl(nvmeIoCtx->device->os_info.fd, NVME_IOCTL_IO_CMD, passThroughCmd);
@@ -3229,7 +3228,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
                 {
                     if (nvmeIoCtx->device->os_info.last_error != 0)
                     {
-                        printf("Error: ");
+                        print_str("Error: ");
                         print_Errno_To_Screen(errno);
                     }
                 }
@@ -3318,7 +3317,7 @@ static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
         set_Device_Last_Error(device, errno);
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
         {
-            printf("Error opening controller handle for nvme reset: ");
+            print_str("Error opening controller handle for nvme reset: ");
             print_Errno_To_Screen(errno);
         }
         if (errno == EACCES)
@@ -3354,7 +3353,7 @@ static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
         set_Device_Last_Error(device, errno);
         if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
         {
-            printf("Error: ");
+            print_str("Error: ");
             print_Errno_To_Screen(errno);
         }
     }
@@ -3380,7 +3379,7 @@ eReturnValues os_nvme_Reset(const tDevice* device)
     eReturnValues ret = SUCCESS;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Sending NVMe Reset\n");
+        print_str("Sending NVMe Reset\n");
     }
     ret = linux_NVMe_Reset(M_CONST_CAST(tDevice*, device), false);
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -3399,7 +3398,7 @@ eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
     eReturnValues ret = SUCCESS;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Sending NVMe Subsystem Reset\n");
+        print_str("Sending NVMe Subsystem Reset\n");
     }
     ret = linux_NVMe_Reset(M_CONST_CAST(tDevice*, device), false);
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -3675,7 +3674,7 @@ eReturnValues os_Update_File_System_Cache(const tDevice* device)
     eReturnValues ret        = SUCCESS;
     int*          fdToRescan = M_CONST_CAST(int*, &device->os_info.fd);
 #if defined(_DEBUG)
-    printf("Updating file system cache\n");
+    print_str("Updating file system cache\n");
 #endif
     if (device->os_info.secondHandleValid && SUCCESS == open_fd2(M_CONST_CAST(tDevice*, device)))
     {
@@ -3689,16 +3688,16 @@ eReturnValues os_Update_File_System_Cache(const tDevice* device)
 
     // Now, call BLKRRPART
 #if defined(_DEBUG)
-    printf("Rescanning partition table\n");
+    print_str("Rescanning partition table\n");
 #endif
     if (ioctl(*fdToRescan, BLKRRPART) < 0)
     {
         set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
         {
-            printf("Error update partition table: \n");
+            print_str("Error update partition table: \n");
             print_Errno_To_Screen(errno);
-            printf("\n");
+            print_str("\n");
         }
         ret = FAILURE;
     }
@@ -3759,7 +3758,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
                         {
                             printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
                             print_Errno_To_Screen(errno);
-                            printf("\n");
+                            print_str("\n");
                         }
                     }
                 }

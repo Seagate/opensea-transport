@@ -836,7 +836,7 @@ eReturnValues request_Return_TFRs_From_Device(const tDevice* device, ataReturnTF
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Sending SAT Return Response Information\n");
+        print_str("Sending SAT Return Response Information\n");
     }
 
     if (SUCCESS ==
@@ -1136,7 +1136,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
 {
     eReturnValues ret            = UNKNOWN;
     uint8_t*      satCDB         = M_NULLPTR;
-    eCDBLen       satCDBLength   = 0;
+    eCDBLen       satCDBLength   = CDB_LEN_NOT_SET;
     uint8_t*      senseData      = M_NULLPTR; // only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool          localSenseData = false;
     bool          dmaRetry       = false;
@@ -1155,8 +1155,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
     ataCommandOptions->timeout = M_Max(ataCommandOptions->timeout, device->drive_info.defaultTimeoutSeconds);
     if (ataCommandOptions->timeout == 0)
     {
-        ataCommandOptions->timeout =
-            M_Max(ATA_PASSTHROUGH_DEFAULT_COMMAND_TIMEOUT, device->drive_info.defaultTimeoutSeconds);
+        ataCommandOptions->timeout = M_Max(DEFAULT_COMMAND_TIMEOUT, device->drive_info.defaultTimeoutSeconds);
     }
     // First build the CDB
     ret = build_SAT_CDB(device, &satCDB, &satCDBLength, ataCommandOptions);
@@ -1559,7 +1558,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
                             ataAdditionalSenseCodeQualifier;
                         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
                         {
-                            printf("\t  ATA Sense Data reported:\n");
+                            print_str("\t  ATA Sense Data reported:\n");
                         }
                         ataSenseRet = check_Sense_Key_ASC_ASCQ_And_FRU(device, ataSenseKey, ataAdditionalSenseCode,
                                                                        ataAdditionalSenseCodeQualifier, 0);
@@ -3526,7 +3525,7 @@ static eReturnValues translate_SCSI_Inquiry_Command(const tDevice* device, ScsiI
     uint16_t      fieldPointer = UINT16_C(0);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     // Check to make sure cmdDT and reserved bits aren't set
-    if (scsiIoCtx->cdb[1] & 0xFE)
+    if (scsiIoCtx->cdb[CDB_1] & 0xFE)
     {
         uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
         uint8_t counter         = UINT8_C(0);
@@ -3550,10 +3549,10 @@ static eReturnValues translate_SCSI_Inquiry_Command(const tDevice* device, ScsiI
     else
     {
         // check EVPD bit
-        if (scsiIoCtx->cdb[1] & BIT0)
+        if (scsiIoCtx->cdb[CDB_1] & BIT0)
         {
             // check the VPD page to set up that data correctly
-            switch (scsiIoCtx->cdb[2])
+            switch (scsiIoCtx->cdb[CDB_2])
             {
             case SUPPORTED_VPD_PAGES:
                 // update this as more supported pages are added!
@@ -3673,7 +3672,7 @@ static eReturnValues translate_SCSI_Inquiry_Command(const tDevice* device, ScsiI
             DECLARE_ZERO_INIT_ARRAY(char, ataFW, ATA_IDENTIFY_FW_LENGTH + 1);
             uint16_t versionOffset = UINT16_C(58);
 
-            if (scsiIoCtx->cdb[2] != 0) // if page code is non-zero, we need to return an error
+            if (scsiIoCtx->cdb[CDB_2] != 0) // if page code is non-zero, we need to return an error
             {
                 fieldPointer = UINT16_C(2);
                 bitPointer   = UINT8_C(7);
@@ -3911,12 +3910,12 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(const tDevice* device,
     if (readCapacity16)
     {
         // 16byte field filter
-        if ((fieldPointer = 1 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0) ||
-            (fieldPointer = 2 && scsiIoCtx->cdb[2] != 0) || (fieldPointer = 3 && scsiIoCtx->cdb[3] != 0) ||
-            (fieldPointer = 4 && scsiIoCtx->cdb[4] != 0) || (fieldPointer = 5 && scsiIoCtx->cdb[5] != 0) ||
-            (fieldPointer = 6 && scsiIoCtx->cdb[6] != 0) || (fieldPointer = 7 && scsiIoCtx->cdb[7] != 0) ||
-            (fieldPointer = 8 && scsiIoCtx->cdb[8] != 0) || (fieldPointer = 9 && scsiIoCtx->cdb[9] != 0) ||
-            (fieldPointer = 14 && scsiIoCtx->cdb[14] != 0))
+        if ((fieldPointer = 1 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0) ||
+            (fieldPointer = 2 && scsiIoCtx->cdb[CDB_2] != 0) || (fieldPointer = 3 && scsiIoCtx->cdb[CDB_3] != 0) ||
+            (fieldPointer = 4 && scsiIoCtx->cdb[CDB_4] != 0) || (fieldPointer = 5 && scsiIoCtx->cdb[CDB_5] != 0) ||
+            (fieldPointer = 6 && scsiIoCtx->cdb[CDB_6] != 0) || (fieldPointer = 7 && scsiIoCtx->cdb[CDB_7] != 0) ||
+            (fieldPointer = 8 && scsiIoCtx->cdb[CDB_8] != 0) || (fieldPointer = 9 && scsiIoCtx->cdb[CDB_9] != 0) ||
+            (fieldPointer = 14 && scsiIoCtx->cdb[CDB_14] != 0))
         {
             // invalid field in CDB
             uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
@@ -3942,10 +3941,10 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(const tDevice* device,
         uint8_t counter = UINT8_C(0);
 
         // 10 byte field filter
-        if ((fieldPointer = 1 && scsiIoCtx->cdb[1] != 0) || (fieldPointer = 2 && scsiIoCtx->cdb[2] != 0) ||
-            (fieldPointer = 3 && scsiIoCtx->cdb[3] != 0) || (fieldPointer = 4 && scsiIoCtx->cdb[4] != 0) ||
-            (fieldPointer = 5 && scsiIoCtx->cdb[5] != 0) || (fieldPointer = 6 && scsiIoCtx->cdb[6] != 0) ||
-            (fieldPointer = 7 && scsiIoCtx->cdb[7] != 0) || (fieldPointer = 8 && scsiIoCtx->cdb[8] != 0))
+        if ((fieldPointer = 1 && scsiIoCtx->cdb[CDB_1] != 0) || (fieldPointer = 2 && scsiIoCtx->cdb[CDB_2] != 0) ||
+            (fieldPointer = 3 && scsiIoCtx->cdb[CDB_3] != 0) || (fieldPointer = 4 && scsiIoCtx->cdb[CDB_4] != 0) ||
+            (fieldPointer = 5 && scsiIoCtx->cdb[CDB_5] != 0) || (fieldPointer = 6 && scsiIoCtx->cdb[CDB_6] != 0) ||
+            (fieldPointer = 7 && scsiIoCtx->cdb[CDB_7] != 0) || (fieldPointer = 8 && scsiIoCtx->cdb[CDB_8] != 0))
         {
             // invalid field in CDB
             ret             = NOT_SUPPORTED;
@@ -4198,21 +4197,22 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
     uint8_t               bitPointer   = UINT8_C(0);
     uint16_t              fieldPointer = UINT16_C(0);
     ataPassthroughCommand ataCommand;
-    uint8_t*              protocolByte         = &scsiIoCtx->cdb[1];
-    uint8_t*              transferInfoByte     = &scsiIoCtx->cdb[2];
+    uint8_t*              protocolByte         = &scsiIoCtx->cdb[CDB_1];
+    uint8_t*              transferInfoByte     = &scsiIoCtx->cdb[CDB_2];
     bool                  thirtyTwoByteCommand = false;
     uint8_t               protocol;
     safe_memset(&ataCommand, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
 
-    if (scsiIoCtx->cdb[OPERATION_CODE] != ATA_PASS_THROUGH_12 && scsiIoCtx->cdb[OPERATION_CODE] != ATA_PASS_THROUGH_16)
+    if (scsiIoCtx->cdb[CDB_OPERATION_CODE] != ATA_PASS_THROUGH_12 &&
+        scsiIoCtx->cdb[CDB_OPERATION_CODE] != ATA_PASS_THROUGH_16)
     {
         // check if it's the 32byte command
-        uint16_t serviceAction = M_BytesTo2ByteValue(scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        if (scsiIoCtx->cdb[OPERATION_CODE] == 0x7F && serviceAction == 0x1FF0)
+        uint16_t serviceAction = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+        if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x7F && serviceAction == 0x1FF0)
         {
             thirtyTwoByteCommand = true;
-            protocolByte         = &scsiIoCtx->cdb[10];
-            transferInfoByte     = &scsiIoCtx->cdb[11];
+            protocolByte         = &scsiIoCtx->cdb[CDB_10];
+            transferInfoByte     = &scsiIoCtx->cdb[CDB_11];
         }
         else
         {
@@ -4230,12 +4230,12 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
     {
         // make sure reserved bits (which are multiple count in 16&12 byte) aren't set. That command was made obsolete
         // so don't need it here...let's follow the spec.
-        uint8_t reservedBits = get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 5);
+        uint8_t reservedBits = get_bit_range_uint8(scsiIoCtx->cdb[CDB_10], 7, 5);
         if (reservedBits > 0)
         {
             // invalid field in cdb
             uint8_t reservedByteVal =
-                scsiIoCtx->cdb[10] & 0xE0; // don't care about lower bits...those are checked elsewhere
+                scsiIoCtx->cdb[CDB_10] & 0xE0; // don't care about lower bits...those are checked elsewhere
             uint8_t counter = UINT8_C(0);
             while (reservedByteVal > 0 && counter < 8)
             {
@@ -4254,18 +4254,18 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
     }
     else
     {
-        uint8_t multipleCount = get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5);
+        uint8_t multipleCount = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5);
         if (multipleCount > 0)
         {
             // This can only be non-zero if it's a read or write multiple command operation code!
             uint8_t commandOpCodeToCheck = UINT8_C(0);
-            if (scsiIoCtx->cdb[OPERATION_CODE] == ATA_PASS_THROUGH_12)
+            if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == ATA_PASS_THROUGH_12)
             {
-                commandOpCodeToCheck = scsiIoCtx->cdb[9];
+                commandOpCodeToCheck = scsiIoCtx->cdb[CDB_9];
             }
             else // 16byte
             {
-                commandOpCodeToCheck = scsiIoCtx->cdb[14];
+                commandOpCodeToCheck = scsiIoCtx->cdb[CDB_14];
             }
             switch (commandOpCodeToCheck)
             {
@@ -4392,19 +4392,19 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
         break;
     }
     // create the ata_Passthrough command structure first, then issue the io
-    if (scsiIoCtx->cdb[OPERATION_CODE] == ATA_PASS_THROUGH_12)
+    if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == ATA_PASS_THROUGH_12)
     {
         // get registers
-        ataCommand.tfr.ErrorFeature  = scsiIoCtx->cdb[3];
-        ataCommand.tfr.SectorCount   = scsiIoCtx->cdb[4];
-        ataCommand.tfr.LbaLow        = scsiIoCtx->cdb[5];
-        ataCommand.tfr.LbaMid        = scsiIoCtx->cdb[6];
-        ataCommand.tfr.LbaHi         = scsiIoCtx->cdb[7];
-        ataCommand.tfr.DeviceHead    = scsiIoCtx->cdb[8];
-        ataCommand.tfr.CommandStatus = scsiIoCtx->cdb[9];
-        if (scsiIoCtx->cdb[10])
+        ataCommand.tfr.ErrorFeature  = scsiIoCtx->cdb[CDB_3];
+        ataCommand.tfr.SectorCount   = scsiIoCtx->cdb[CDB_4];
+        ataCommand.tfr.LbaLow        = scsiIoCtx->cdb[CDB_5];
+        ataCommand.tfr.LbaMid        = scsiIoCtx->cdb[CDB_6];
+        ataCommand.tfr.LbaHi         = scsiIoCtx->cdb[CDB_7];
+        ataCommand.tfr.DeviceHead    = scsiIoCtx->cdb[CDB_8];
+        ataCommand.tfr.CommandStatus = scsiIoCtx->cdb[CDB_9];
+        if (scsiIoCtx->cdb[CDB_10])
         {
-            uint8_t reservedByteVal = scsiIoCtx->cdb[10];
+            uint8_t reservedByteVal = scsiIoCtx->cdb[CDB_10];
             uint8_t counter         = UINT8_C(0);
             while (reservedByteVal > 0 && counter < 8)
             {
@@ -4423,58 +4423,58 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
             return NOT_SUPPORTED;
         }
     }
-    else if (scsiIoCtx->cdb[OPERATION_CODE] == ATA_PASS_THROUGH_16)
+    else if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == ATA_PASS_THROUGH_16)
     {
         // get registers
-        ataCommand.tfr.ErrorFeature  = scsiIoCtx->cdb[4];
-        ataCommand.tfr.SectorCount   = scsiIoCtx->cdb[6];
-        ataCommand.tfr.LbaLow        = scsiIoCtx->cdb[8];
-        ataCommand.tfr.LbaMid        = scsiIoCtx->cdb[10];
-        ataCommand.tfr.LbaHi         = scsiIoCtx->cdb[12];
-        ataCommand.tfr.DeviceHead    = scsiIoCtx->cdb[13];
-        ataCommand.tfr.CommandStatus = scsiIoCtx->cdb[14];
+        ataCommand.tfr.ErrorFeature  = scsiIoCtx->cdb[CDB_4];
+        ataCommand.tfr.SectorCount   = scsiIoCtx->cdb[CDB_6];
+        ataCommand.tfr.LbaLow        = scsiIoCtx->cdb[CDB_8];
+        ataCommand.tfr.LbaMid        = scsiIoCtx->cdb[CDB_10];
+        ataCommand.tfr.LbaHi         = scsiIoCtx->cdb[CDB_12];
+        ataCommand.tfr.DeviceHead    = scsiIoCtx->cdb[CDB_13];
+        ataCommand.tfr.CommandStatus = scsiIoCtx->cdb[CDB_14];
         // get ext registers if the ext bit is set.
         if (*protocolByte & BIT0)
         {
-            ataCommand.tfr.Feature48     = scsiIoCtx->cdb[3];
-            ataCommand.tfr.SectorCount48 = scsiIoCtx->cdb[5];
-            ataCommand.tfr.LbaLow48      = scsiIoCtx->cdb[7];
-            ataCommand.tfr.LbaMid48      = scsiIoCtx->cdb[9];
-            ataCommand.tfr.LbaHi48       = scsiIoCtx->cdb[11];
+            ataCommand.tfr.Feature48     = scsiIoCtx->cdb[CDB_3];
+            ataCommand.tfr.SectorCount48 = scsiIoCtx->cdb[CDB_5];
+            ataCommand.tfr.LbaLow48      = scsiIoCtx->cdb[CDB_7];
+            ataCommand.tfr.LbaMid48      = scsiIoCtx->cdb[CDB_9];
+            ataCommand.tfr.LbaHi48       = scsiIoCtx->cdb[CDB_11];
             ataCommand.commandType       = ATA_CMD_TYPE_EXTENDED_TASKFILE;
         }
     }
     else if (thirtyTwoByteCommand)
     {
         // get registers
-        ataCommand.tfr.ErrorFeature  = scsiIoCtx->cdb[21];
-        ataCommand.tfr.SectorCount   = scsiIoCtx->cdb[23];
-        ataCommand.tfr.LbaLow        = scsiIoCtx->cdb[19];
-        ataCommand.tfr.LbaMid        = scsiIoCtx->cdb[18];
-        ataCommand.tfr.LbaHi         = scsiIoCtx->cdb[17];
-        ataCommand.tfr.DeviceHead    = scsiIoCtx->cdb[24];
-        ataCommand.tfr.CommandStatus = scsiIoCtx->cdb[25];
+        ataCommand.tfr.ErrorFeature  = scsiIoCtx->cdb[CDB_21];
+        ataCommand.tfr.SectorCount   = scsiIoCtx->cdb[CDB_23];
+        ataCommand.tfr.LbaLow        = scsiIoCtx->cdb[CDB_19];
+        ataCommand.tfr.LbaMid        = scsiIoCtx->cdb[CDB_18];
+        ataCommand.tfr.LbaHi         = scsiIoCtx->cdb[CDB_17];
+        ataCommand.tfr.DeviceHead    = scsiIoCtx->cdb[CDB_24];
+        ataCommand.tfr.CommandStatus = scsiIoCtx->cdb[CDB_25];
         // get ext registers if the ext bit is set.
         if (*protocolByte & BIT0)
         {
-            ataCommand.tfr.Feature48     = scsiIoCtx->cdb[20];
-            ataCommand.tfr.SectorCount48 = scsiIoCtx->cdb[22];
-            ataCommand.tfr.LbaLow48      = scsiIoCtx->cdb[16];
-            ataCommand.tfr.LbaMid48      = scsiIoCtx->cdb[15];
-            ataCommand.tfr.LbaHi48       = scsiIoCtx->cdb[14];
+            ataCommand.tfr.Feature48     = scsiIoCtx->cdb[CDB_20];
+            ataCommand.tfr.SectorCount48 = scsiIoCtx->cdb[CDB_22];
+            ataCommand.tfr.LbaLow48      = scsiIoCtx->cdb[CDB_16];
+            ataCommand.tfr.LbaMid48      = scsiIoCtx->cdb[CDB_15];
+            ataCommand.tfr.LbaHi48       = scsiIoCtx->cdb[CDB_14];
             ataCommand.commandType       = ATA_CMD_TYPE_EXTENDED_TASKFILE;
-            ataCommand.tfr.icc           = scsiIoCtx->cdb[27];
-            ataCommand.tfr.aux4          = scsiIoCtx->cdb[28];
-            ataCommand.tfr.aux3          = scsiIoCtx->cdb[29];
-            ataCommand.tfr.aux2          = scsiIoCtx->cdb[30];
-            ataCommand.tfr.aux1          = scsiIoCtx->cdb[31];
+            ataCommand.tfr.icc           = scsiIoCtx->cdb[CDB_27];
+            ataCommand.tfr.aux4          = scsiIoCtx->cdb[CDB_28];
+            ataCommand.tfr.aux3          = scsiIoCtx->cdb[CDB_29];
+            ataCommand.tfr.aux2          = scsiIoCtx->cdb[CDB_30];
+            ataCommand.tfr.aux1          = scsiIoCtx->cdb[CDB_31];
         }
         // If any of the ICC or AUX registers are set, we need to return an error since we cannot issue that command
         // since OS passthrough doesn't support it
         if ((fieldPointer = 27 && ataCommand.tfr.icc) || (fieldPointer = 28 && ataCommand.tfr.aux4) ||
             (fieldPointer = 29 && ataCommand.tfr.aux3) || (fieldPointer = 30 && ataCommand.tfr.aux2) ||
-            (fieldPointer = 31 && ataCommand.tfr.aux1) || (fieldPointer = 26 && scsiIoCtx->cdb[26]) ||
-            (fieldPointer = 12 && scsiIoCtx->cdb[12]) || (fieldPointer = 13 && scsiIoCtx->cdb[13]))
+            (fieldPointer = 31 && ataCommand.tfr.aux1) || (fieldPointer = 26 && scsiIoCtx->cdb[CDB_26]) ||
+            (fieldPointer = 12 && scsiIoCtx->cdb[CDB_12]) || (fieldPointer = 13 && scsiIoCtx->cdb[CDB_13]))
         {
             bitPointer = UINT8_C(7);
             if (fieldPointer == 26 || fieldPointer == 12 || fieldPointer == 13)
@@ -4503,14 +4503,14 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
 
     // now we need to dummy up sense data if we are on the IDE_INTERFACE (ATA) and it was unsuccessful or the check
     // condition bit was set, otherwise the SATL (USB or SAS) will do this for us
-    if ((ret != SUCCESS || scsiIoCtx->cdb[2] & BIT5) && device->drive_info.interface_type == IDE_INTERFACE)
+    if ((ret != SUCCESS || scsiIoCtx->cdb[CDB_2] & BIT5) && device->drive_info.interface_type == IDE_INTERFACE)
     {
         DECLARE_ZERO_INIT_ARRAY(uint8_t, ataReturnDescriptor,
                                 15); // making this 1 byte larger than it needs to be. This is done so that the log
                                      // index can be set for fixed format sense data.
         ataReturnDescriptor[0] = 0x09;
         ataReturnDescriptor[1] = 0x0C;
-        if (scsiIoCtx->cdb[1] & BIT0)
+        if (scsiIoCtx->cdb[CDB_1] & BIT0)
         {
             ataReturnDescriptor[2] |= BIT0;
         }
@@ -4562,12 +4562,12 @@ static eReturnValues translate_SCSI_Read_Command(const tDevice* device, ScsiIoCt
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // check the read command and get the LBA from it
-    switch (scsiIoCtx->cdb[OPERATION_CODE])
+    switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
     {
     case 0x08: // read 6
-        lba            = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[1] & 0x1F), scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
-        transferLength = scsiIoCtx->cdb[4];
-        if (get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0)
+        lba = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[CDB_1] & 0x1F), scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3]);
+        transferLength = scsiIoCtx->cdb[CDB_4];
+        if (get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0)
         {
             fieldPointer = UINT16_C(1);
             bitPointer   = UINT8_C(0);
@@ -4580,49 +4580,55 @@ static eReturnValues translate_SCSI_Read_Command(const tDevice* device, ScsiIoCt
         }
         break;
     case 0x28: // read 10
-        lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        lba            = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                             scsiIoCtx->cdb[CDB_5]);
+        transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
         if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 &&
-             scsiIoCtx->cdb[1] & BIT0) // reladr bit. Obsolete.
-                                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] &
-                                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+             scsiIoCtx->cdb[CDB_1] &
+                 BIT0) // reladr bit. Obsolete.
+                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] &
+                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
             || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 &&
-                scsiIoCtx->cdb[1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
-            || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[6], 7, 6) != 0))
+                scsiIoCtx->cdb[CDB_1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
+            ||
+            ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_6], 7, 6) != 0))
         {
             invalidField = true;
         }
         break;
     case 0xA8: // read 12
-        lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        transferLength =
-            M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        lba            = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                             scsiIoCtx->cdb[CDB_5]);
+        transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8],
+                                             scsiIoCtx->cdb[CDB_9]);
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
         if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 &&
-             scsiIoCtx->cdb[1] & BIT0) // reladr bit. Obsolete.
-                                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] &
-                                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+             scsiIoCtx->cdb[CDB_1] &
+                 BIT0) // reladr bit. Obsolete.
+                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] &
+                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
             || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 &&
-                scsiIoCtx->cdb[1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
-            ||
-            ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 6) != 0))
+                scsiIoCtx->cdb[CDB_1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
+            || ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 &&
+                get_bit_range_uint8(scsiIoCtx->cdb[CDB_10], 7, 6) != 0))
         {
             invalidField = true;
         }
         break;
     case 0x88: // read 16
-        lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                                  scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        transferLength =
-            M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        lba            = M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                             scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                             scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+        transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11], scsiIoCtx->cdb[CDB_12],
+                                             scsiIoCtx->cdb[CDB_13]);
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
@@ -4630,13 +4636,14 @@ static eReturnValues translate_SCSI_Read_Command(const tDevice* device, ScsiIoCt
         // We don't support RARC since was cannot do FPDMA in software SAT
         // We don't support DLD bits either
         if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 &&
-             scsiIoCtx->cdb[1] & BIT0) // reladr bit. Obsolete.
-                                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] &
-                                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+             scsiIoCtx->cdb[CDB_1] &
+                 BIT0) // reladr bit. Obsolete.
+                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] &
+                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
             || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 &&
-                scsiIoCtx->cdb[1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
-            ||
-            ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 6) != 0))
+                scsiIoCtx->cdb[CDB_1] & BIT2) // cannot support RACR bit in this translation since we cannot do fpdma
+            || ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 &&
+                get_bit_range_uint8(scsiIoCtx->cdb[CDB_14], 7, 6) != 0))
         {
             invalidField = true;
         }
@@ -4679,7 +4686,7 @@ static eReturnValues translate_SCSI_Read_Command(const tDevice* device, ScsiIoCt
     else if (transferLength > UINT32_C(65536))
     {
         // return an error
-        switch (scsiIoCtx->cdb[OPERATION_CODE])
+        switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
         {
         case 0x28: // read 10
             fieldPointer = UINT16_C(7);
@@ -4713,12 +4720,12 @@ static eReturnValues translate_SCSI_Write_Command(const tDevice* device, ScsiIoC
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // check the read command and get the LBA from it
-    switch (scsiIoCtx->cdb[OPERATION_CODE])
+    switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
     {
     case 0x0A: // write 6
-        lba            = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[1] & 0x1F), scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
-        transferLength = scsiIoCtx->cdb[4];
-        if (get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0)
+        lba = M_BytesTo4ByteValue(0, (scsiIoCtx->cdb[CDB_1] & 0x1F), scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3]);
+        transferLength = scsiIoCtx->cdb[CDB_4];
+        if (get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0)
         {
             bitPointer   = UINT8_C(0);
             fieldPointer = UINT16_C(1);
@@ -4730,59 +4737,66 @@ static eReturnValues translate_SCSI_Write_Command(const tDevice* device, ScsiIoC
         }
         break;
     case 0x2A: // write 10
-        lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        lba            = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                             scsiIoCtx->cdb[CDB_5]);
+        transferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
         if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 &&
-             scsiIoCtx->cdb[1] & BIT0) // reladr bit. Obsolete.
-                                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] &
-                                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
-            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2) // reserved bit
-            || ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[6], 7, 6) != 0))
+             scsiIoCtx->cdb[CDB_1] &
+                 BIT0) // reladr bit. Obsolete.
+                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] &
+                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[CDB_1] & BIT2) // reserved bit
+            ||
+            ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_6], 7, 6) != 0))
         {
             invalidField = true;
         }
         break;
     case 0xAA: // write 12
-        lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        transferLength =
-            M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        lba            = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                             scsiIoCtx->cdb[CDB_5]);
+        transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8],
+                                             scsiIoCtx->cdb[CDB_9]);
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
         if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 &&
-             scsiIoCtx->cdb[1] & BIT0) // reladr bit. Obsolete.
-                                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] &
-                                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
-            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2) // reserved bit
-            ||
-            ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 6) != 0))
+             scsiIoCtx->cdb[CDB_1] &
+                 BIT0) // reladr bit. Obsolete.
+                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] &
+                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[CDB_1] & BIT2) // reserved bit
+            || ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 &&
+                get_bit_range_uint8(scsiIoCtx->cdb[CDB_10], 7, 6) != 0))
         {
             invalidField = true;
         }
         break;
     case 0x8A: // write 16
-        lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                                  scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        transferLength =
-            M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
-        if (scsiIoCtx->cdb[1] & BIT3)
+        lba            = M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                             scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                             scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+        transferLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11], scsiIoCtx->cdb[CDB_12],
+                                             scsiIoCtx->cdb[CDB_13]);
+        if (scsiIoCtx->cdb[CDB_1] & BIT3)
         {
             fua = true;
         }
         // sbc2 fua_nv bit can be ignored according to SAT.
         // We don't support DLD bits either
         if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 &&
-             scsiIoCtx->cdb[1] & BIT0) // reladr bit. Obsolete. also now the DLD2 bit
-                                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] &
-                                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
-            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[1] & BIT2) // reserved bit
-            ||
-            ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 6) != 0))
+             scsiIoCtx->cdb[CDB_1] &
+                 BIT0) // reladr bit. Obsolete. also now the DLD2 bit
+                       //|| ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] &
+                       // BIT1)//FUA_NV bit. Can be ignored by SATLs or implemented
+            || ((fieldPointer = 1) != 0 && (bitPointer = 2) != 0 && scsiIoCtx->cdb[CDB_1] & BIT2) // reserved bit
+            || ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 &&
+                get_bit_range_uint8(scsiIoCtx->cdb[CDB_14], 7, 6) != 0))
         {
             invalidField = true;
         }
@@ -4825,7 +4839,7 @@ static eReturnValues translate_SCSI_Write_Command(const tDevice* device, ScsiIoC
     else if (transferLength > UINT32_C(65536))
     {
         // return an error
-        switch (scsiIoCtx->cdb[OPERATION_CODE])
+        switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
         {
         case 0x2A: // write 10
             fieldPointer = UINT16_C(7);
@@ -4852,12 +4866,12 @@ static eReturnValues translate_SCSI_Write_Command(const tDevice* device, ScsiIoC
 static eReturnValues translate_SCSI_Write_Same_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                   = SUCCESS;
-    uint8_t       wrprotect             = get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5);
-    bool          anchor                = scsiIoCtx->cdb[1] & BIT4;
-    bool          unmap                 = scsiIoCtx->cdb[1] & BIT3;
-    bool          logicalBlockData      = scsiIoCtx->cdb[1] & BIT1; // Obsolete (SAT2 supports this)
-    bool          physicalBlockData     = scsiIoCtx->cdb[1] & BIT2; // Obsolete (SAT2 supports this)
-    bool          relativeAddress       = false;                    // Long obsolete.
+    uint8_t       wrprotect             = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5);
+    bool          anchor                = scsiIoCtx->cdb[CDB_1] & BIT4;
+    bool          unmap                 = scsiIoCtx->cdb[CDB_1] & BIT3;
+    bool          logicalBlockData      = scsiIoCtx->cdb[CDB_1] & BIT1; // Obsolete (SAT2 supports this)
+    bool          physicalBlockData     = scsiIoCtx->cdb[CDB_1] & BIT2; // Obsolete (SAT2 supports this)
+    bool          relativeAddress       = false;                        // Long obsolete.
     bool          ndob                  = false;
     uint64_t      logicalBlockAddress   = UINT64_C(0);
     uint64_t      numberOflogicalBlocks = UINT64_C(0);
@@ -4884,16 +4898,16 @@ static eReturnValues translate_SCSI_Write_Same_Command(const tDevice* device, Sc
         return NOT_SUPPORTED;
     }
 
-    if (scsiIoCtx->cdb[OPERATION_CODE] == 0x41) // write same 10
+    if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x41) // write same 10
     {
-        relativeAddress = scsiIoCtx->cdb[1] & BIT0;
-        logicalBlockAddress =
-            M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        numberOflogicalBlocks = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-        groupNumber           = get_bit_range_uint8(scsiIoCtx->cdb[6], 5, 0);
+        relativeAddress       = scsiIoCtx->cdb[CDB_1] & BIT0;
+        logicalBlockAddress   = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                                    scsiIoCtx->cdb[CDB_5]);
+        numberOflogicalBlocks = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
+        groupNumber           = get_bit_range_uint8(scsiIoCtx->cdb[CDB_6], 5, 0);
         if (((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && relativeAddress) ||
-            ((fieldPointer = 6) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->cdb[6] & BIT7) ||
-            ((fieldPointer = 6) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[6] & BIT6) ||
+            ((fieldPointer = 6) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->cdb[CDB_6] & BIT7) ||
+            ((fieldPointer = 6) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[CDB_6] & BIT6) ||
             ((fieldPointer = 6) != 0 && (bitPointer = 5) != 0 && groupNumber != 0))
         {
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer,
@@ -4904,18 +4918,18 @@ static eReturnValues translate_SCSI_Write_Same_Command(const tDevice* device, Sc
             return NOT_SUPPORTED;
         }
     }
-    else if (scsiIoCtx->cdb[OPERATION_CODE] == 0x93) // write same 16
+    else if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x93) // write same 16
     {
-        ndob = scsiIoCtx->cdb[1] & BIT0;
-        logicalBlockAddress =
-            M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                                scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        numberOflogicalBlocks =
-            M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
-        groupNumber = get_bit_range_uint8(scsiIoCtx->cdb[14], 5, 0);
+        ndob                  = scsiIoCtx->cdb[CDB_1] & BIT0;
+        logicalBlockAddress   = M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                                    scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                                    scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+        numberOflogicalBlocks = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11],
+                                                    scsiIoCtx->cdb[CDB_12], scsiIoCtx->cdb[CDB_13]);
+        groupNumber           = get_bit_range_uint8(scsiIoCtx->cdb[CDB_14], 5, 0);
         if (((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && (logicalBlockData && ndob)) ||
-            ((fieldPointer = 14) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->cdb[6] & BIT7) ||
-            ((fieldPointer = 14) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[6] & BIT6) ||
+            ((fieldPointer = 14) != 0 && (bitPointer = 7) != 0 && scsiIoCtx->cdb[CDB_6] & BIT7) ||
+            ((fieldPointer = 14) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[CDB_6] & BIT6) ||
             ((fieldPointer = 14) != 0 && (bitPointer = 5) != 0 && groupNumber != 0))
         {
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer,
@@ -5063,10 +5077,11 @@ static eReturnValues translate_SCSI_Synchronize_Cache_Command(const tDevice* dev
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
-    switch (scsiIoCtx->cdb[OPERATION_CODE])
+    switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
     {
     case 0x35: // synchronize cache 10
-        if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] != 0) || ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[6] != 0))
+        if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] != 0) ||
+            ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[CDB_6] != 0))
         {
             // can't support these bits (including immediate)
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24,
@@ -5076,8 +5091,8 @@ static eReturnValues translate_SCSI_Synchronize_Cache_Command(const tDevice* dev
         }
         break;
     case 0x91: // synchronize cache 16
-        if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] != 0) ||
-            ((fieldPointer = 14) != 0 && scsiIoCtx->cdb[14] != 0))
+        if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] != 0) ||
+            ((fieldPointer = 14) != 0 && scsiIoCtx->cdb[CDB_14] != 0))
         {
             if (bitPointer == 0)
             {
@@ -5132,40 +5147,45 @@ static eReturnValues translate_SCSI_Verify_Command(const tDevice* device, ScsiIo
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // check the read command and get the LBA from it
-    switch (scsiIoCtx->cdb[OPERATION_CODE])
+    switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
     {
     case 0x2F: // verify 10
-        byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
-        lba       = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3) ||
-            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0) ||
-            ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[6], 7, 6) != 0))
+        byteCheck          = (scsiIoCtx->cdb[CDB_1] >> 1) & 0x03;
+        lba                = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                                 scsiIoCtx->cdb[CDB_5]);
+        verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
+        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[CDB_1] & BIT3) ||
+            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_1] & BIT0) ||
+            ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_6], 7, 6) != 0))
         {
             invalidField = true;
         }
         break;
     case 0xAF: // verify 12
-        byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
-        lba       = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        verificationLength =
-            M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3) ||
-            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0) ||
-            ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 6) != 0))
+        byteCheck          = (scsiIoCtx->cdb[CDB_1] >> 1) & 0x03;
+        lba                = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                                 scsiIoCtx->cdb[CDB_5]);
+        verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8],
+                                                 scsiIoCtx->cdb[CDB_9]);
+        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[CDB_1] & BIT3) ||
+            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_1] & BIT0) ||
+            ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 &&
+             get_bit_range_uint8(scsiIoCtx->cdb[CDB_10], 7, 6) != 0))
         {
             invalidField = true;
         }
         break;
     case 0x8F: // verify 16
-        byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
-        lba       = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                                        scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        verificationLength =
-            M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
-        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3) ||
-            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0) ||
-            ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 6) != 0))
+        byteCheck          = (scsiIoCtx->cdb[CDB_1] >> 1) & 0x03;
+        lba                = M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                                 scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                                 scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+        verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11], scsiIoCtx->cdb[CDB_12],
+                                                 scsiIoCtx->cdb[CDB_13]);
+        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[CDB_1] & BIT3) ||
+            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_1] & BIT0) ||
+            ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 &&
+             get_bit_range_uint8(scsiIoCtx->cdb[CDB_14], 7, 6) != 0))
         {
             invalidField = true;
         }
@@ -5208,7 +5228,7 @@ static eReturnValues translate_SCSI_Verify_Command(const tDevice* device, ScsiIo
     else if (verificationLength > UINT32_C(65536))
     {
         // return an error
-        switch (scsiIoCtx->cdb[OPERATION_CODE])
+        switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
         {
         case 0x2F: // verify 10
             fieldPointer = UINT16_C(7);
@@ -5262,40 +5282,45 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(const tDevice* devi
     }
     bool invalidField = false;
     // check the read command and get the LBA from it
-    switch (scsiIoCtx->cdb[OPERATION_CODE])
+    switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
     {
     case 0x2E: // write and verify 10
-        byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
-        lba       = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3) ||
-            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0) ||
-            ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[6], 7, 6) != 0))
+        byteCheck          = (scsiIoCtx->cdb[CDB_1] >> 1) & 0x03;
+        lba                = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                                 scsiIoCtx->cdb[CDB_5]);
+        verificationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
+        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[CDB_1] & BIT3) ||
+            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_1] & BIT0) ||
+            ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_6], 7, 6) != 0))
         {
             invalidField = true;
         }
         break;
     case 0xAE: // write and verify 12
-        byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
-        lba       = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-        verificationLength =
-            M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3) ||
-            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0) ||
-            ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[10], 7, 6) != 0))
+        byteCheck          = (scsiIoCtx->cdb[CDB_1] >> 1) & 0x03;
+        lba                = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                                 scsiIoCtx->cdb[CDB_5]);
+        verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8],
+                                                 scsiIoCtx->cdb[CDB_9]);
+        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[CDB_1] & BIT3) ||
+            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_1] & BIT0) ||
+            ((fieldPointer = 10) != 0 && (bitPointer = 0) == 0 &&
+             get_bit_range_uint8(scsiIoCtx->cdb[CDB_10], 7, 6) != 0))
         {
             invalidField = true;
         }
         break;
     case 0x8E: // write and verify 16
-        byteCheck = (scsiIoCtx->cdb[1] >> 1) & 0x03;
-        lba       = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                                        scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-        verificationLength =
-            M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
-        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3) ||
-            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0) ||
-            ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 && get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 6) != 0))
+        byteCheck          = (scsiIoCtx->cdb[CDB_1] >> 1) & 0x03;
+        lba                = M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                                 scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                                 scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+        verificationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11], scsiIoCtx->cdb[CDB_12],
+                                                 scsiIoCtx->cdb[CDB_13]);
+        if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[CDB_1] & BIT3) ||
+            ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_1] & BIT0) ||
+            ((fieldPointer = 14) != 0 && (bitPointer = 0) == 0 &&
+             get_bit_range_uint8(scsiIoCtx->cdb[CDB_14], 7, 6) != 0))
         {
             invalidField = true;
         }
@@ -5338,7 +5363,7 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(const tDevice* devi
     else if (verificationLength > UINT32_C(65536))
     {
         // return an error
-        switch (scsiIoCtx->cdb[OPERATION_CODE])
+        switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
         {
         case 0x2E: // write & verify 10
             fieldPointer = UINT16_C(7);
@@ -5574,17 +5599,17 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
     uint8_t       bitPointer   = UINT8_C(0);
     uint16_t      fieldPointer = UINT16_C(0);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
-    bool    longList         = scsiIoCtx->cdb[1] & BIT5;
-    bool    formatData       = scsiIoCtx->cdb[1] & BIT4;
-    uint8_t defectListFormat = get_bit_range_uint8(scsiIoCtx->cdb[1], 2, 0);
+    bool    longList         = scsiIoCtx->cdb[CDB_1] & BIT5;
+    bool    formatData       = scsiIoCtx->cdb[CDB_1] & BIT4;
+    uint8_t defectListFormat = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 2, 0);
     // Other bytes are newer than SBC3 or really old and obsolete (error checking is done top to bottom, left bit to
     // right bit)
-    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 6)) ||
-        ((bitPointer = 3) != 0 && (fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT3) ||
+    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 6)) ||
+        ((bitPointer = 3) != 0 && (fieldPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] & BIT3) ||
         ((fieldPointer = 2) != 0 &&
          (bitPointer = 0 /*reset this value since we changed it in the previous comparison*/) == 0 &&
-         scsiIoCtx->cdb[2]) ||
-        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3]) || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4]))
+         scsiIoCtx->cdb[CDB_2]) ||
+        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[CDB_3]) || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[CDB_4]))
     {
         if (bitPointer == 0)
         {
@@ -6093,8 +6118,10 @@ static eReturnValues translate_SCSI_Test_Unit_Ready_Command(const tDevice* devic
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // filter out invalid fields
-    if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] != 0) || ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0) ||
-        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0) || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0))
+    if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] != 0) ||
+        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[CDB_2] != 0) ||
+        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[CDB_3] != 0) ||
+        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[CDB_4] != 0))
     {
         if (bitPointer == 0)
         {
@@ -6188,9 +6215,10 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(const tDevice* devic
     uint16_t fieldPointer = UINT16_C(0);
     uint8_t* writeData    = M_NULLPTR;
     // filter out invalid fields
-    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 2) != 0) ||
-        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0) || ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0) ||
-        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0))
+    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 2) != 0) ||
+        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[CDB_2] != 0) ||
+        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[CDB_3] != 0) ||
+        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[CDB_4] != 0))
     {
         if (bitPointer == 0)
         {
@@ -6219,7 +6247,7 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(const tDevice* devic
     {
         return MEMORY_FAILURE;
     }
-    if (scsiIoCtx->cdb[1] & BIT0) // check for the "long list" bit
+    if (scsiIoCtx->cdb[CDB_1] & BIT0) // check for the "long list" bit
     {
         reassignLBALength =
             M_BytesTo4ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1], scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]);
@@ -6228,7 +6256,7 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(const tDevice* devic
     {
         reassignLBALength = M_BytesTo2ByteValue(scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]);
     }
-    if (scsiIoCtx->cdb[1] & BIT1)
+    if (scsiIoCtx->cdb[CDB_1] & BIT1)
     {
         longLba = true;
         reassignLBALength =
@@ -6296,17 +6324,18 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(const tDevice* devic
 static eReturnValues translate_SCSI_Security_Protocol_In_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                      = SUCCESS;
-    uint8_t       securityProtocol         = scsiIoCtx->cdb[1];
-    uint16_t      securityProtocolSpecific = M_BytesTo2ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
+    uint8_t       securityProtocol         = scsiIoCtx->cdb[CDB_1];
+    uint16_t      securityProtocolSpecific = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3]);
     uint32_t      allocationLength =
-        M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+        M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
     bool inc512 = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // filter out invalid fields
-    if (((fieldPointer = 4) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[4], 6, 0) != 0) ||
-        ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0) || ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0))
+    if (((fieldPointer = 4) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_4], 6, 0) != 0) ||
+        ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[CDB_5] != 0) ||
+        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[CDB_10] != 0))
     {
         if (bitPointer == 0)
         {
@@ -6335,7 +6364,7 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(const tDevice* 
     {
         safe_memset(scsiIoCtx->pdata, scsiIoCtx->dataLength, 0, scsiIoCtx->dataLength);
     }
-    if (scsiIoCtx->cdb[4] & BIT7)
+    if (scsiIoCtx->cdb[CDB_4] & BIT7)
     {
         inc512 = true;
         if (allocationLength > 0xFFFF)
@@ -6708,17 +6737,18 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(const tDevice* 
 static eReturnValues translate_SCSI_Security_Protocol_Out_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                      = SUCCESS;
-    uint8_t       securityProtocol         = scsiIoCtx->cdb[1];
-    uint16_t      securityProtocolSpecific = M_BytesTo2ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3]);
+    uint8_t       securityProtocol         = scsiIoCtx->cdb[CDB_1];
+    uint16_t      securityProtocolSpecific = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3]);
     uint32_t      transferLength =
-        M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+        M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
     bool inc512 = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // filter out invalid fields
-    if (((fieldPointer = 4) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[4], 6, 0) != 0) ||
-        ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0) || ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0))
+    if (((fieldPointer = 4) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_4], 6, 0) != 0) ||
+        ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[CDB_5] != 0) ||
+        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[CDB_10] != 0))
     {
         if (bitPointer == 0)
         {
@@ -6743,7 +6773,7 @@ static eReturnValues translate_SCSI_Security_Protocol_Out_Command(const tDevice*
     }
     set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0x00, 0x00,
                                    device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
-    if (scsiIoCtx->cdb[4] & BIT7)
+    if (scsiIoCtx->cdb[CDB_4] & BIT7)
     {
         inc512 = true;
         if (transferLength > 0xFFFF)
@@ -7014,9 +7044,9 @@ static eReturnValues translate_SCSI_Write_Long(const tDevice* device, ScsiIoCtx*
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // filter out invalid fields
-    if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_LONG_10_CMD &&
-        (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0) != 0) ||
-         ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[6] != 0)))
+    if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == WRITE_LONG_10_CMD &&
+        (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 4, 0) != 0) ||
+         ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[CDB_6] != 0)))
     {
         // invalid field in CDB
         if (bitPointer == 0)
@@ -7039,10 +7069,10 @@ static eReturnValues translate_SCSI_Write_Long(const tDevice* device, ScsiIoCtx*
                                        senseKeySpecificDescriptor, 1);
         return ret;
     }
-    else if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_LONG_16_CMD &&
-             (((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0) ||
-              ((fieldPointer = 11) != 0 && scsiIoCtx->cdb[11] != 0) ||
-              ((fieldPointer = 14) != 0 && scsiIoCtx->cdb[14] != 0)))
+    else if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == WRITE_LONG_16_CMD &&
+             (((fieldPointer = 10) != 0 && scsiIoCtx->cdb[CDB_10] != 0) ||
+              ((fieldPointer = 11) != 0 && scsiIoCtx->cdb[CDB_11] != 0) ||
+              ((fieldPointer = 14) != 0 && scsiIoCtx->cdb[CDB_14] != 0)))
     {
         if (bitPointer == 0)
         {
@@ -7078,40 +7108,42 @@ static eReturnValues translate_SCSI_Write_Long(const tDevice* device, ScsiIoCtx*
         bool     physicalBlock           = false;
         uint64_t lba                     = UINT64_C(0);
         uint16_t byteTransferLength      = UINT16_C(0);
-        switch (scsiIoCtx->cdb[OPERATION_CODE])
+        switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
         {
         case WRITE_LONG_10_CMD:
-            if (scsiIoCtx->cdb[1] & BIT7)
+            if (scsiIoCtx->cdb[CDB_1] & BIT7)
             {
                 correctionDisabled = true;
             }
-            if (scsiIoCtx->cdb[1] & BIT6)
+            if (scsiIoCtx->cdb[CDB_1] & BIT6)
             {
                 writeUncorrectableError = true;
             }
-            if (scsiIoCtx->cdb[1] & BIT5)
+            if (scsiIoCtx->cdb[CDB_1] & BIT5)
             {
                 physicalBlock = true;
             }
-            lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-            byteTransferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            lba = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                      scsiIoCtx->cdb[CDB_5]);
+            byteTransferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
             break;
         case WRITE_LONG_16_CMD: // skipping checking service action as it should already be checked by now.-TJE
-            if (scsiIoCtx->cdb[1] & BIT7)
+            if (scsiIoCtx->cdb[CDB_1] & BIT7)
             {
                 correctionDisabled = true;
             }
-            if (scsiIoCtx->cdb[1] & BIT6)
+            if (scsiIoCtx->cdb[CDB_1] & BIT6)
             {
                 writeUncorrectableError = true;
             }
-            if (scsiIoCtx->cdb[1] & BIT5)
+            if (scsiIoCtx->cdb[CDB_1] & BIT5)
             {
                 physicalBlock = true;
             }
-            lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                                      scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-            byteTransferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+            lba = M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4],
+                                      scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7],
+                                      scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+            byteTransferLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_12], scsiIoCtx->cdb[CDB_13]);
             break;
         default:
             bitPointer   = UINT8_C(7);
@@ -7223,13 +7255,13 @@ static eReturnValues translate_SCSI_Sanitize_Command(const tDevice* device, Scsi
     // filter out invalid fields
     if (
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED < 4
-        ((fieldPointer = 1) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[1] & BIT6) ||
+        ((fieldPointer = 1) != 0 && (bitPointer = 6) != 0 && scsiIoCtx->cdb[CDB_1] & BIT6) ||
 #endif // SAT_SPEC_SUPPORTED
-        ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[2] != 0) ||
-        ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[3] != 0) ||
-        ((fieldPointer = 4) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[4] != 0) ||
-        ((fieldPointer = 5) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[5] != 0) ||
-        ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[6] != 0))
+        ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_2] != 0) ||
+        ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_3] != 0) ||
+        ((fieldPointer = 4) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_4] != 0) ||
+        ((fieldPointer = 5) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_5] != 0) ||
+        ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_6] != 0))
     {
         if (bitPointer == 0)
         {
@@ -7255,20 +7287,20 @@ static eReturnValues translate_SCSI_Sanitize_Command(const tDevice* device, Scsi
     if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word059)) &&
         le16_to_host(device->drive_info.IdentifyData.ata.Word059) & BIT12)
     {
-        uint8_t serviceAction = UINT8_C(0x1F) & scsiIoCtx->cdb[1];
+        uint8_t serviceAction = UINT8_C(0x1F) & scsiIoCtx->cdb[CDB_1];
         bool immediate = false; // this is ignored for now since there is no way to handle this without multi-threading
         bool znr       = false;
         bool ause      = false;
-        uint16_t parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-        if (scsiIoCtx->cdb[1] & BIT7)
+        uint16_t parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
+        if (scsiIoCtx->cdb[CDB_1] & BIT7)
         {
             immediate = true;
         }
-        if (scsiIoCtx->cdb[1] & BIT6)
+        if (scsiIoCtx->cdb[CDB_1] & BIT6)
         {
             znr = true;
         }
-        if (scsiIoCtx->cdb[1] & BIT5)
+        if (scsiIoCtx->cdb[CDB_1] & BIT5)
         {
             ause = true;
         }
@@ -7561,16 +7593,17 @@ static eReturnValues translate_SCSI_Sanitize_Command(const tDevice* device, Scsi
 static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret  = SUCCESS;
-    uint8_t       mode = UINT8_C(0x1F) & scsiIoCtx->cdb[1];
+    uint8_t       mode = UINT8_C(0x1F) & scsiIoCtx->cdb[CDB_1];
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3 && SAT_4_ERROR_HISTORY_FEATURE
-    // uint8_t modeSpecific = (scsiIoCtx->cdb[1] >> 5) & 0x07;
+    // uint8_t modeSpecific = (scsiIoCtx->cdb[CDB_1] >> 5) & 0x07;
 #endif // SAT_SPEC_SUPPORTED
-    uint8_t  bufferID         = scsiIoCtx->cdb[2];
-    uint32_t bufferOffset     = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-    uint32_t allocationLength = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+    uint8_t  bufferID     = scsiIoCtx->cdb[CDB_2];
+    uint32_t bufferOffset = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4], scsiIoCtx->cdb[CDB_5]);
+    uint32_t allocationLength =
+        M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
     switch (mode)
     {
     case 0x02: // data mode
@@ -7992,16 +8025,16 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, S
 static eReturnValues translate_SCSI_Send_Diagnostic_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                 = SUCCESS;
-    uint8_t       selfTestCode        = (scsiIoCtx->cdb[1] >> 5) & 0x07;
+    uint8_t       selfTestCode        = (scsiIoCtx->cdb[CDB_1] >> 5) & 0x07;
     bool          selfTest            = false;
-    uint16_t      parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[3], scsiIoCtx->cdb[4]);
+    uint16_t      parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4]);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
-    if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[1] & BIT3)    // reserved
-        || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[1] & BIT1) // devoffline
-        || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[1] & BIT0) // unitoffline
-        || ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[2] != 0)   // reserved
+    if (((fieldPointer = 1) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[CDB_1] & BIT3)    // reserved
+        || ((fieldPointer = 1) != 0 && (bitPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] & BIT1) // devoffline
+        || ((fieldPointer = 1) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_1] & BIT0) // unitoffline
+        || ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_2] != 0)   // reserved
     )
     {
         if (bitPointer == 0)
@@ -8025,7 +8058,7 @@ static eReturnValues translate_SCSI_Send_Diagnostic_Command(const tDevice* devic
                                        senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (scsiIoCtx->cdb[1] & BIT2)
+    if (scsiIoCtx->cdb[CDB_1] & BIT2)
     {
         selfTest = true;
     }
@@ -8111,7 +8144,7 @@ static eReturnValues translate_SCSI_Send_Diagnostic_Command(const tDevice* devic
                 if (smartEnabled)
                 {
                     DECLARE_ZERO_INIT_ARRAY(uint8_t, smartReadData, LEGACY_DRIVE_SEC_SIZE);
-                    uint16_t timeout = UINT16_C(15);
+                    uint16_t timeout = DEFAULT_COMMAND_TIMEOUT;
                     switch (selfTestCode)
                     {
                     case 0: // default self test
@@ -8227,10 +8260,12 @@ static eReturnValues translate_SCSI_Report_Luns_Command(const tDevice* device, S
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     uint32_t allocationLength =
-        M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-    if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] != 0) || ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0) ||
-        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0) || ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0) ||
-        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0))
+        M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+    if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] != 0) ||
+        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[CDB_3] != 0) ||
+        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[CDB_4] != 0) ||
+        ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[CDB_5] != 0) ||
+        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[CDB_10] != 0))
     {
         if (bitPointer == 0)
         {
@@ -8253,7 +8288,7 @@ static eReturnValues translate_SCSI_Report_Luns_Command(const tDevice* device, S
                                        senseKeySpecificDescriptor, 1);
         return ret;
     }
-    switch (scsiIoCtx->cdb[2])
+    switch (scsiIoCtx->cdb[CDB_2])
     {
     case 0x00:
         // set list length to 16 bytes
@@ -8299,8 +8334,9 @@ static eReturnValues translate_SCSI_Request_Sense_Command(const tDevice* device,
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // filter out invalid fields
-    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 1) != 0) ||
-        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0) || ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0))
+    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 1) != 0) ||
+        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[CDB_2] != 0) ||
+        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[CDB_3] != 0))
     {
         if (bitPointer == 0)
         {
@@ -8323,7 +8359,7 @@ static eReturnValues translate_SCSI_Request_Sense_Command(const tDevice* device,
                                        senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (scsiIoCtx->cdb[1] & BIT0)
+    if (scsiIoCtx->cdb[CDB_1] & BIT0)
     {
         descriptorFormat = true;
     }
@@ -8472,23 +8508,24 @@ static eReturnValues translate_SCSI_Request_Sense_Command(const tDevice* device,
     // copy back whatever data we set
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData, M_Min(scsiIoCtx->cdb[4], SPC3_SENSE_LEN));
+        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData, M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN));
     }
     return ret;
 }
 
 static eReturnValues translate_SCSI_Write_Buffer_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
-    eReturnValues ret                 = SUCCESS;
-    uint8_t       mode                = scsiIoCtx->cdb[1] & 0x1F;
-    uint8_t       modeSpecific        = (scsiIoCtx->cdb[1] >> 5) & 0x07;
-    uint8_t       bufferID            = scsiIoCtx->cdb[2];
-    uint32_t      bufferOffset        = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
-    uint32_t      parameterListLength = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
-    uint16_t      blockCount          = C_CAST(uint16_t, parameterListLength >> 9); // need bits 23:9
-    uint16_t      offset              = C_CAST(uint16_t, bufferOffset >> 9);        // need bits 23:9
-    bool          downloadCommandSupported = false;
-    bool          downloadMode3Supported   = false;
+    eReturnValues ret          = SUCCESS;
+    uint8_t       mode         = scsiIoCtx->cdb[CDB_1] & 0x1F;
+    uint8_t       modeSpecific = (scsiIoCtx->cdb[CDB_1] >> 5) & 0x07;
+    uint8_t       bufferID     = scsiIoCtx->cdb[CDB_2];
+    uint32_t bufferOffset = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4], scsiIoCtx->cdb[CDB_5]);
+    uint32_t parameterListLength =
+        M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
+    uint16_t blockCount               = C_CAST(uint16_t, parameterListLength >> 9); // need bits 23:9
+    uint16_t offset                   = C_CAST(uint16_t, bufferOffset >> 9);        // need bits 23:9
+    bool     downloadCommandSupported = false;
+    bool     downloadMode3Supported   = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
@@ -8821,8 +8858,8 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
 {
     eReturnValues ret                    = SUCCESS;
     bool          immediate              = false;
-    uint8_t       powerConditionModifier = M_Nibble0(scsiIoCtx->cdb[3]);
-    uint8_t       powerCondition         = M_Nibble1(scsiIoCtx->cdb[4]);
+    uint8_t       powerConditionModifier = M_Nibble0(scsiIoCtx->cdb[CDB_3]);
+    uint8_t       powerCondition         = M_Nibble1(scsiIoCtx->cdb[CDB_4]);
     bool          noFlush                = false;
     bool          loej                   = false;
     bool          start                  = false;
@@ -8833,10 +8870,10 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // filter out invalid fields
-    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 1) != 0) ||
-        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0) ||
-        ((fieldPointer = 3) != 0 && M_Nibble1(scsiIoCtx->cdb[3]) != 0) ||
-        ((fieldPointer = 4) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[4] & BIT3))
+    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 1) != 0) ||
+        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[CDB_2] != 0) ||
+        ((fieldPointer = 3) != 0 && M_Nibble1(scsiIoCtx->cdb[CDB_3]) != 0) ||
+        ((fieldPointer = 4) != 0 && (bitPointer = 3) != 0 && scsiIoCtx->cdb[CDB_4] & BIT3))
     {
         if (bitPointer == 0)
         {
@@ -8859,19 +8896,19 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
                                        senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (scsiIoCtx->cdb[1] & BIT0)
+    if (scsiIoCtx->cdb[CDB_1] & BIT0)
     {
         immediate = true;
     }
-    if (scsiIoCtx->cdb[4] & BIT2)
+    if (scsiIoCtx->cdb[CDB_4] & BIT2)
     {
         noFlush = true;
     }
-    if (scsiIoCtx->cdb[4] & BIT1)
+    if (scsiIoCtx->cdb[CDB_4] & BIT1)
     {
         loej = true;
     }
-    if (scsiIoCtx->cdb[4] & BIT0)
+    if (scsiIoCtx->cdb[CDB_4] & BIT0)
     {
         start = true;
     }
@@ -8989,7 +9026,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
             }
             break;
         case 0x01: // active
-            if (SUCCESS != ata_EPC_Set_Power_Condition_State(device, 0xFF, false, false) && !immediate)
+            if (SUCCESS != ata_SF_EPC_Set_Power_Condition_State(device, 0xFF, false, false) && !immediate)
             {
                 ret = ABORTED;
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND,
@@ -9068,7 +9105,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
                                 return ABORTED;
                             }
                         }
-                        if (SUCCESS != ata_EPC_Set_Power_Condition_State(device, 0xFF, enable, false))
+                        if (SUCCESS != ata_SF_EPC_Set_Power_Condition_State(device, 0xFF, enable, false))
                         {
                             if (!immediate)
                             {
@@ -9084,7 +9121,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
                             }
                         }
                         if (SUCCESS !=
-                                ata_EPC_Go_To_Power_Condition(device, powerConditionModifier + 0x81, false, false) &&
+                                ata_SF_EPC_Go_To_Power_Condition(device, powerConditionModifier + 0x81, false, false) &&
                             !immediate)
                         {
                             set_Sense_Data_For_Translation(
@@ -9160,7 +9197,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
                                 return ABORTED;
                             }
                         }
-                        if (SUCCESS != ata_EPC_Set_Power_Condition_State(device, 0xFF, enable, false))
+                        if (SUCCESS != ata_SF_EPC_Set_Power_Condition_State(device, 0xFF, enable, false))
                         {
                             if (!immediate)
                             {
@@ -9176,7 +9213,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
                             }
                         }
                         if (SUCCESS !=
-                                ata_EPC_Go_To_Power_Condition(device, powerConditionModifier + 0x01, false, false) &&
+                                ata_SF_EPC_Go_To_Power_Condition(device, powerConditionModifier + 0x01, false, false) &&
                             !immediate)
                         {
                             set_Sense_Data_For_Translation(
@@ -9210,7 +9247,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
         case 0x07: // LU Control
             if (powerConditionModifier == 0)
             {
-                if (SUCCESS != ata_EPC_Set_Power_Condition_State(device, 0xFF, true, false) && !immediate)
+                if (SUCCESS != ata_SF_EPC_Set_Power_Condition_State(device, 0xFF, true, false) && !immediate)
                 {
                     set_Sense_Data_For_Translation(
                         scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ABORTED_COMMAND, 0x2C, 0,
@@ -9580,7 +9617,7 @@ static eReturnValues translate_Supported_Log_Pages(const tDevice* device, ScsiIo
     DECLARE_ZERO_INIT_ARRAY(uint8_t, supportedPages, LEGACY_DRIVE_SEC_SIZE); // this should be plenty big for now
     uint16_t offset    = UINT16_C(4);
     uint8_t  increment = UINT8_C(1);
-    if (scsiIoCtx->cdb[3] == 0xFF)
+    if (scsiIoCtx->cdb[CDB_3] == 0xFF)
     {
         subpageFormat = true;
         increment     = 2;
@@ -9749,7 +9786,7 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(const tDevice* device,
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, selfTestResults, 404);
-    uint16_t parameterCode = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint16_t parameterCode = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6]);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
@@ -10197,7 +10234,7 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(const tDevice* device,
 static eReturnValues translate_Read_Error_Counters_Log_0x03(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret              = SUCCESS;
-    uint16_t      parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint16_t      parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6]);
     // only parameters 4 and 6 are supported all others will be ommitted
     DECLARE_ZERO_INIT_ARRAY(uint8_t, readErrorCountersLog, 20);
     uint8_t offset = UINT8_C(4);
@@ -10304,7 +10341,7 @@ static eReturnValues translate_Temperature_Log_0x0D(const tDevice* device, ScsiI
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, temperatureLog, 16);
-    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6]);
     uint8_t  offset           = UINT8_C(4);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, LEGACY_DRIVE_SEC_SIZE);
     uint64_t* qwordPtr       = C_CAST(uint64_t*, &logPage[0]);
@@ -10408,7 +10445,7 @@ static eReturnValues translate_Solid_State_Media_Log_0x11(const tDevice* device,
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, solidStateMediaLog, 12);
-    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6]);
     uint8_t  offset           = UINT8_C(4);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, LEGACY_DRIVE_SEC_SIZE);
     uint64_t* qwordPtr       = C_CAST(uint64_t*, &logPage[0]);
@@ -10484,7 +10521,7 @@ static eReturnValues translate_Background_Scan_Results_Log_0x15(const tDevice* d
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, backgroundResults, 20);
-    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6]);
     uint8_t  offset           = UINT8_C(4);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, LEGACY_DRIVE_SEC_SIZE);
     uint64_t* qwordPtr = (uint64_t*)&logPage[0];
@@ -10569,7 +10606,7 @@ static eReturnValues translate_General_Statistics_And_Performance_Log_0x19(const
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, generalStatisticsAndPerformance, 72);
-    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6]);
     uint8_t  offset           = UINT8_C(4);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, LEGACY_DRIVE_SEC_SIZE);
     uint64_t* qwordPtr                   = (uint64_t*)&logPage[0];
@@ -10699,7 +10736,7 @@ static eReturnValues translate_ATA_Passthrough_Results_Log_Page_16(const tDevice
     DECLARE_ZERO_INIT_ARRAY(uint8_t, ataPassthroughResults,
                             274); // 15 (number of results) * (14 + 4) (size of pass-through results descriptor and
                                   // parameter header) + 4 (log header)
-    uint16_t parameterCode = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint16_t parameterCode = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6]);
     uint16_t offset        = UINT16_C(4);
     if (parameterCode > 0x000E)
     {
@@ -10763,8 +10800,8 @@ static eReturnValues translate_ATA_Passthrough_Results_Log_Page_16(const tDevice
 static eReturnValues translate_Application_Client_Log_Sense_0x0F(const tDevice* device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret              = SUCCESS;
-    uint16_t      parameterCode    = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
-    uint16_t      allocationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+    uint16_t      parameterCode    = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6]);
+    uint16_t      allocationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
@@ -10964,16 +11001,16 @@ static eReturnValues translate_SCSI_Log_Sense_Command(const tDevice* device, Scs
 {
     eReturnValues ret = SUCCESS;
     // we ignore the sp bit since it doesn't matter to us
-    uint8_t  pageControl      = (scsiIoCtx->cdb[2] & 0xC0) >> 6;
-    uint8_t  pageCode         = scsiIoCtx->cdb[2] & 0x3F;
-    uint8_t  subpageCode      = scsiIoCtx->cdb[3];
-    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[5], scsiIoCtx->cdb[6]);
+    uint8_t  pageControl      = (scsiIoCtx->cdb[CDB_2] & 0xC0) >> 6;
+    uint8_t  pageCode         = scsiIoCtx->cdb[CDB_2] & 0x3F;
+    uint8_t  subpageCode      = scsiIoCtx->cdb[CDB_3];
+    uint16_t parameterPointer = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_5], scsiIoCtx->cdb[CDB_6]);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // filter out unsupported bits
-    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 1) != 0) ||
-        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0))
+    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 1) != 0) ||
+        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[CDB_4] != 0))
     {
         if (bitPointer == 0)
         {
@@ -10996,7 +11033,7 @@ static eReturnValues translate_SCSI_Log_Sense_Command(const tDevice* device, Scs
     }
     else
     {
-        // uint16_t allocationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+        // uint16_t allocationLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
         if (pageControl == LPC_CUMULATIVE_VALUES)
         {
             // check the pagecode
@@ -11734,16 +11771,17 @@ static eReturnValues translate_SCSI_Log_Select_Command(const tDevice* device, Sc
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
 
-    parameterCodeReset  = scsiIoCtx->cdb[1] & BIT1;
-    saveParameters      = scsiIoCtx->cdb[1] & BIT0;
-    pageControl         = (scsiIoCtx->cdb[2] & 0xC0) >> 6;
-    pageCode            = scsiIoCtx->cdb[2] & 0x3F;
-    subpageCode         = scsiIoCtx->cdb[3];
-    parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+    parameterCodeReset  = scsiIoCtx->cdb[CDB_1] & BIT1;
+    saveParameters      = scsiIoCtx->cdb[CDB_1] & BIT0;
+    pageControl         = (scsiIoCtx->cdb[CDB_2] & 0xC0) >> 6;
+    pageCode            = scsiIoCtx->cdb[CDB_2] & 0x3F;
+    subpageCode         = scsiIoCtx->cdb[CDB_3];
+    parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
 
-    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 2) != 0) ||
-        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0) || ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0) ||
-        ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[6] != 0))
+    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 2) != 0) ||
+        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[CDB_4] != 0) ||
+        ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[CDB_5] != 0) ||
+        ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[CDB_6] != 0))
     {
         if (bitPointer == 0)
         {
@@ -11850,11 +11888,14 @@ static eReturnValues translate_SCSI_Unmap_Command(const tDevice* device, ScsiIoC
     uint16_t fieldPointer = UINT16_C(0);
     // not supporting the ancor bit
     // group number should be zero
-    uint16_t parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+    uint16_t parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
     // filter out invalid fields
-    if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[1] != 0) || ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0) ||
-        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0) || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0) ||
-        ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0) || ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[6] != 0))
+    if (((fieldPointer = 1) != 0 && scsiIoCtx->cdb[CDB_1] != 0) ||
+        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[CDB_2] != 0) ||
+        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[CDB_3] != 0) ||
+        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[CDB_4] != 0) ||
+        ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[CDB_5] != 0) ||
+        ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[CDB_6] != 0))
     {
         if (bitPointer == 0)
         {
@@ -13386,9 +13427,9 @@ static eReturnValues translate_SCSI_Mode_Sense_Command(const tDevice* device, Sc
     bool    longLBABit                = false; // true = longlba format, false = standard format for block descriptor
     bool    longHeader                = false; // false for mode sense 6, true for mode sense 10
     uint8_t pageControl =
-        (scsiIoCtx->cdb[2] & 0xC0) >> 6; // only current values needs to be supported...anything else is unspecified
-    uint8_t  pageCode         = scsiIoCtx->cdb[2] & 0x3F;
-    uint8_t  subpageCode      = scsiIoCtx->cdb[3];
+        (scsiIoCtx->cdb[CDB_2] & 0xC0) >> 6; // only current values needs to be supported...anything else is unspecified
+    uint8_t  pageCode         = scsiIoCtx->cdb[CDB_2] & 0x3F;
+    uint8_t  subpageCode      = scsiIoCtx->cdb[CDB_3];
     uint16_t allocationLength = UINT16_C(0);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, dataBlockDescriptor, 16);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, modeParameterHeader, 8);
@@ -13396,14 +13437,14 @@ static eReturnValues translate_SCSI_Mode_Sense_Command(const tDevice* device, Sc
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
-    uint8_t  byte1        = scsiIoCtx->cdb[1];
-    if (scsiIoCtx->cdb[1] & BIT3)
+    uint8_t  byte1        = scsiIoCtx->cdb[CDB_1];
+    if (scsiIoCtx->cdb[CDB_1] & BIT3)
     {
         returnDataBlockDescriptor = false;
     }
-    if (scsiIoCtx->cdb[OPERATION_CODE] == MODE_SENSE_6_CMD)
+    if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == MODE_SENSE_6_CMD)
     {
-        allocationLength       = scsiIoCtx->cdb[5];
+        allocationLength       = scsiIoCtx->cdb[CDB_5];
         modeParameterHeader[1] = 0;     // medium type
         modeParameterHeader[2] |= BIT4; // set the DPOFUA bit
         if (returnDataBlockDescriptor)
@@ -13417,14 +13458,14 @@ static eReturnValues translate_SCSI_Mode_Sense_Command(const tDevice* device, Sc
             invalidField = true;
         }
     }
-    else if (scsiIoCtx->cdb[OPERATION_CODE] == MODE_SENSE10)
+    else if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == MODE_SENSE10)
     {
         // mode sense 10
-        allocationLength       = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+        allocationLength       = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
         longHeader             = true;
         modeParameterHeader[2] = 0;     // medium type
         modeParameterHeader[3] |= BIT4; // set the DPOFUA bit
-        if (scsiIoCtx->cdb[1] & BIT4)
+        if (scsiIoCtx->cdb[CDB_1] & BIT4)
         {
             longLBABit = true;
             modeParameterHeader[4] |= BIT0; // set the longlba bit
@@ -13444,8 +13485,9 @@ static eReturnValues translate_SCSI_Mode_Sense_Command(const tDevice* device, Sc
         }
         byte1 &= 0xE7; // removing llbaa and DBD bits since we can support those
         // check for invalid fields
-        if (((fieldPointer = 1) != 0 && byte1 != 0) || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0) ||
-            ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0) || ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[6] != 0))
+        if (((fieldPointer = 1) != 0 && byte1 != 0) || ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[CDB_4] != 0) ||
+            ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[CDB_5] != 0) ||
+            ((fieldPointer = 6) != 0 && scsiIoCtx->cdb[CDB_6] != 0))
         {
             invalidField = true;
         }
@@ -13999,7 +14041,7 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(const tDevice* de
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
-    if (scsiIoCtx->cdb[1] & BIT0)
+    if (scsiIoCtx->cdb[CDB_1] & BIT0)
     {
         saveParameters = true;
     }
@@ -14252,8 +14294,8 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(const tDevice* de
                         timerUnits = true;
                         ata_idle_a = UINT16_C(0xFFFF);
                     }
-                    ret =
-                        ata_EPC_Set_Power_Condition_Timer(device, 0x81, ata_idle_a, timerUnits, idle_a, saveParameters);
+                    ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x81, ata_idle_a, timerUnits, idle_a,
+                                                               saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14304,8 +14346,8 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(const tDevice* de
                         timerUnits = true;
                         ata_idle_b = UINT16_C(0xFFFF);
                     }
-                    ret =
-                        ata_EPC_Set_Power_Condition_Timer(device, 0x82, ata_idle_b, timerUnits, idle_b, saveParameters);
+                    ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x82, ata_idle_b, timerUnits, idle_b,
+                                                               saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14355,8 +14397,8 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(const tDevice* de
                         timerUnits = true;
                         ata_idle_c = UINT16_C(0xFFFF);
                     }
-                    ret =
-                        ata_EPC_Set_Power_Condition_Timer(device, 0x83, ata_idle_c, timerUnits, idle_c, saveParameters);
+                    ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x83, ata_idle_c, timerUnits, idle_c,
+                                                               saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14408,8 +14450,8 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(const tDevice* de
                         timerUnits    = true;
                         ata_standby_y = UINT16_C(0xFFFF);
                     }
-                    ret = ata_EPC_Set_Power_Condition_Timer(device, 0x01, ata_standby_y, timerUnits, standby_y,
-                                                            saveParameters);
+                    ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x01, ata_standby_y, timerUnits, standby_y,
+                                                               saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14461,8 +14503,8 @@ static eReturnValues translate_Mode_Select_Power_Conditions_1A(const tDevice* de
                         timerUnits    = true;
                         ata_standby_z = UINT16_C(0xFFFF);
                     }
-                    ret = ata_EPC_Set_Power_Condition_Timer(device, 0x00, ata_standby_z, timerUnits, standby_z,
-                                                            saveParameters);
+                    ret = ata_SF_EPC_Set_Power_Condition_Timer(device, 0x00, ata_standby_z, timerUnits, standby_z,
+                                                               saveParameters);
                     if (ret != SUCCESS)
                     {
                         commandSequenceError = true;
@@ -14703,24 +14745,24 @@ static eReturnValues translate_SCSI_Mode_Select_Command(const tDevice* device, S
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
-    if (scsiIoCtx->cdb[OPERATION_CODE] == 0x15 || scsiIoCtx->cdb[OPERATION_CODE] == 0x55)
+    if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x15 || scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x55)
     {
-        if (scsiIoCtx->cdb[1] & BIT4)
+        if (scsiIoCtx->cdb[CDB_1] & BIT4)
         {
             pageFormat = true;
         }
-        //      if (scsiIoCtx->cdb[1] & BIT0)
+        //      if (scsiIoCtx->cdb[CDB_1] & BIT0)
         //      {
         //          saveParameters = true;
         //      }
-        parameterListLength = scsiIoCtx->cdb[4];
-        if (scsiIoCtx->cdb[OPERATION_CODE] == 0x15) // mode select 6
+        parameterListLength = scsiIoCtx->cdb[CDB_4];
+        if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x15) // mode select 6
         {
-            uint8_t byte1 =
-                scsiIoCtx->cdb[1] & 0x11; // removing PF and SP bits since we can handle those, but not any other bits
+            uint8_t byte1 = scsiIoCtx->cdb[CDB_1] &
+                            0x11; // removing PF and SP bits since we can handle those, but not any other bits
             if (((fieldPointer = 1) != 0 && byte1 != 0) ||
-                ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[2] != 0) ||
-                ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[3] != 0))
+                ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_2] != 0) ||
+                ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_3] != 0))
             {
                 if (bitPointer == 0)
                 {
@@ -14750,19 +14792,19 @@ static eReturnValues translate_SCSI_Mode_Select_Command(const tDevice* device, S
                 return ret;
             }
         }
-        else if (scsiIoCtx->cdb[OPERATION_CODE] == 0x55) // mode select 10
+        else if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x55) // mode select 10
         {
-            uint8_t byte1 =
-                scsiIoCtx->cdb[1] & 0x11; // removing PF and SP bits since we can handle those, but not any other bits
+            uint8_t byte1 = scsiIoCtx->cdb[CDB_1] &
+                            0x11; // removing PF and SP bits since we can handle those, but not any other bits
             tenByteCommand      = true;
-            parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            parameterListLength = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
 
             if (((fieldPointer = 1) != 0 && byte1 != 0) ||
-                ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[2] != 0) ||
-                ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[3] != 0) ||
-                ((fieldPointer = 4) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[4] != 0) ||
-                ((fieldPointer = 5) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[5] != 0) ||
-                ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[6] != 0))
+                ((fieldPointer = 2) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_2] != 0) ||
+                ((fieldPointer = 3) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_3] != 0) ||
+                ((fieldPointer = 4) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_4] != 0) ||
+                ((fieldPointer = 5) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_5] != 0) ||
+                ((fieldPointer = 6) != 0 && (bitPointer = 0) == 0 && scsiIoCtx->cdb[CDB_6] != 0))
             {
                 if (bitPointer == 0)
                 {
@@ -15262,23 +15304,23 @@ static eReturnValues translate_SCSI_Zone_Management_In_Command(const tDevice* de
     // 95
     bool      partialBit    = false;
     bool      localMemory   = false;
-    eZMAction serviceAction = scsiIoCtx->cdb[1] & 0x1F;
+    eZMAction serviceAction = scsiIoCtx->cdb[CDB_1] & 0x1F;
     uint64_t  zoneStartLBA =
-        M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                            scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-    uint8_t  reportingOptions = scsiIoCtx->cdb[14] & 0x3f;
+        M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4], scsiIoCtx->cdb[CDB_5],
+                            scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+    uint8_t  reportingOptions = scsiIoCtx->cdb[CDB_14] & 0x3f;
     uint8_t* dataBuf          = M_NULLPTR;
     uint32_t dataBufLength    = UINT32_C(0);
-    uint32_t allocationLength =
-        M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12], scsiIoCtx->cdb[13]);
+    uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11],
+                                                    scsiIoCtx->cdb[CDB_12], scsiIoCtx->cdb[CDB_13]);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
-    if (scsiIoCtx->cdb[14] & BIT7)
+    if (scsiIoCtx->cdb[CDB_14] & BIT7)
     {
         partialBit = true;
     }
-    if ((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0)
+    if ((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0)
     {
         if (bitPointer == 0)
         {
@@ -15329,7 +15371,7 @@ static eReturnValues translate_SCSI_Zone_Management_In_Command(const tDevice* de
     switch (serviceAction)
     {
     case ZM_ACTION_REPORT_ZONES:
-        if ((fieldPointer = 14) != 0 && (bitPointer = 6) != 0 && (scsiIoCtx->cdb[14] & BIT6) != 0)
+        if ((fieldPointer = 14) != 0 && (bitPointer = 6) != 0 && (scsiIoCtx->cdb[CDB_14] & BIT6) != 0)
         {
             // reserved bit is set
             set_Sense_Key_Specific_Descriptor_Invalid_Field(senseKeySpecificDescriptor, true, true, bitPointer,
@@ -15400,14 +15442,15 @@ static eReturnValues translate_SCSI_Zone_Management_Out_Command(const tDevice* d
     // 94
     bool allBit = false;
     // bool localMemory = false;
-    eZMAction serviceAction = scsiIoCtx->cdb[1] & 0x1F;
-    uint64_t  zoneID = M_BytesTo8ByteValue(scsiIoCtx->cdb[2], scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5],
-                                           scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
-    // uint8_t reportingOptions = scsiIoCtx->cdb[14] & 0x3f;
+    eZMAction serviceAction = scsiIoCtx->cdb[CDB_1] & 0x1F;
+    uint64_t  zoneID =
+        M_BytesTo8ByteValue(scsiIoCtx->cdb[CDB_2], scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4], scsiIoCtx->cdb[CDB_5],
+                            scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
+    // uint8_t reportingOptions = scsiIoCtx->cdb[CDB_14] & 0x3f;
     // uint8_t *dataBuf = M_NULLPTR;
     // uint32_t dataBufLength = UINT32_C(0);
-    // uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[10], scsiIoCtx->cdb[11], scsiIoCtx->cdb[12],
-    // scsiIoCtx->cdb[13]); if (scsiIoCtx->cdb[14] & BIT0)
+    // uint32_t allocationLength = M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_10], scsiIoCtx->cdb[CDB_11],
+    // scsiIoCtx->cdb[CDB_12], scsiIoCtx->cdb[CDB_13]); if (scsiIoCtx->cdb[CDB_14] & BIT0)
     //{
     //     allBit = true;
     // }
@@ -15432,12 +15475,12 @@ static eReturnValues translate_SCSI_Zone_Management_Out_Command(const tDevice* d
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
-    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0) ||
-        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0) ||
-        ((fieldPointer = 11) != 0 && scsiIoCtx->cdb[11] != 0) ||
-        ((fieldPointer = 12) != 0 && scsiIoCtx->cdb[12] != 0) ||
-        ((fieldPointer = 13) != 0 && scsiIoCtx->cdb[13] != 0) ||
-        ((fieldPointer = 14) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[14], 7, 1) != 0))
+    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0) ||
+        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[CDB_10] != 0) ||
+        ((fieldPointer = 11) != 0 && scsiIoCtx->cdb[CDB_11] != 0) ||
+        ((fieldPointer = 12) != 0 && scsiIoCtx->cdb[CDB_12] != 0) ||
+        ((fieldPointer = 13) != 0 && scsiIoCtx->cdb[CDB_13] != 0) ||
+        ((fieldPointer = 14) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_14], 7, 1) != 0))
     {
         if (bitPointer == 0)
         {
@@ -15517,16 +15560,18 @@ static eReturnValues translate_SCSI_Set_Timestamp_Command(const tDevice* device,
 {
     eReturnValues ret = SUCCESS;
     uint32_t      parameterListLength =
-        M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+        M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, dataBuf, 12);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // filter out invalid fields
-    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0) ||
-        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0) || ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0) ||
-        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0) || ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0) ||
-        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0))
+    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0) ||
+        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[CDB_2] != 0) ||
+        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[CDB_3] != 0) ||
+        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[CDB_4] != 0) ||
+        ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[CDB_5] != 0) ||
+        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[CDB_10] != 0))
     {
         if (bitPointer == 0)
         {
@@ -15575,15 +15620,17 @@ static eReturnValues translate_SCSI_Report_Timestamp_Command(const tDevice* devi
     DECLARE_ZERO_INIT_ARRAY(uint8_t, dataBuf, 12);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, generalStats, LEGACY_DRIVE_SEC_SIZE);
     uint32_t allocationLength =
-        M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+        M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // filter out invalid fields
-    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0) ||
-        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[2] != 0) || ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[3] != 0) ||
-        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[4] != 0) || ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[5] != 0) ||
-        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0))
+    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0) ||
+        ((fieldPointer = 2) != 0 && scsiIoCtx->cdb[CDB_2] != 0) ||
+        ((fieldPointer = 3) != 0 && scsiIoCtx->cdb[CDB_3] != 0) ||
+        ((fieldPointer = 4) != 0 && scsiIoCtx->cdb[CDB_4] != 0) ||
+        ((fieldPointer = 5) != 0 && scsiIoCtx->cdb[CDB_5] != 0) ||
+        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[CDB_10] != 0))
     {
         if (bitPointer == 0)
         {
@@ -15650,12 +15697,12 @@ static eReturnValues translate_SCSI_Read_Media_Serial_Number_Command(const tDevi
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, mediaSerialNumberPage, 65);
     uint32_t allocationLength =
-        M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+        M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
     // filter out unsupported fields/bits (SPC3)
-    if ((fieldPointer = 1 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0) ||
-        (fieldPointer = 2 && scsiIoCtx->cdb[2] != 0) || (fieldPointer = 3 && scsiIoCtx->cdb[3] != 0) ||
-        (fieldPointer = 4 && scsiIoCtx->cdb[4] != 0) || (fieldPointer = 5 && scsiIoCtx->cdb[5] != 0) ||
-        (fieldPointer = 10 && scsiIoCtx->cdb[10] != 0))
+    if ((fieldPointer = 1 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0) ||
+        (fieldPointer = 2 && scsiIoCtx->cdb[CDB_2] != 0) || (fieldPointer = 3 && scsiIoCtx->cdb[CDB_3] != 0) ||
+        (fieldPointer = 4 && scsiIoCtx->cdb[CDB_4] != 0) || (fieldPointer = 5 && scsiIoCtx->cdb[CDB_5] != 0) ||
+        (fieldPointer = 10 && scsiIoCtx->cdb[CDB_10] != 0))
     {
         // invalid field in CDB
         uint8_t reservedByteVal = scsiIoCtx->cdb[fieldPointer];
@@ -18355,20 +18402,20 @@ static eReturnValues translate_SCSI_Report_Supported_Operation_Codes_Command(con
 {
     eReturnValues ret                    = SUCCESS;
     bool          rctd                   = false;
-    uint8_t       reportingOptions       = scsiIoCtx->cdb[2] & 0x07;
-    uint8_t       requestedOperationCode = scsiIoCtx->cdb[3];
-    uint16_t      requestedServiceAction = M_BytesTo2ByteValue(scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+    uint8_t       reportingOptions       = scsiIoCtx->cdb[CDB_2] & 0x07;
+    uint8_t       requestedOperationCode = scsiIoCtx->cdb[CDB_3];
+    uint16_t      requestedServiceAction = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_4], scsiIoCtx->cdb[CDB_5]);
     uint32_t      allocationLength =
-        M_BytesTo4ByteValue(scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+        M_BytesTo4ByteValue(scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
     uint8_t* supportedOpData       = M_NULLPTR;
     uint32_t supportedOpDataLength = UINT32_C(0);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseKeySpecificDescriptor, 8);
     uint8_t  bitPointer   = UINT8_C(0);
     uint16_t fieldPointer = UINT16_C(0);
     // filter out invalid fields
-    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[1], 7, 5) != 0) ||
-        ((fieldPointer = 2) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[2], 6, 3) != 0) ||
-        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[10] != 0))
+    if (((fieldPointer = 1) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5) != 0) ||
+        ((fieldPointer = 2) != 0 && get_bit_range_uint8(scsiIoCtx->cdb[CDB_2], 6, 3) != 0) ||
+        ((fieldPointer = 10) != 0 && scsiIoCtx->cdb[CDB_10] != 0))
     {
         if (bitPointer == 0)
         {
@@ -18395,7 +18442,7 @@ static eReturnValues translate_SCSI_Report_Supported_Operation_Codes_Command(con
                                        senseKeySpecificDescriptor, 1);
         return ret;
     }
-    if (scsiIoCtx->cdb[2] & BIT7)
+    if (scsiIoCtx->cdb[CDB_2] & BIT7)
     {
         rctd = true;
     }
@@ -18482,7 +18529,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
     }
     safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
     controlByteOffset = scsiIoCtx->cdbLength - 1;
-    if (scsiIoCtx->cdb[OPERATION_CODE] == 0x7E || scsiIoCtx->cdb[OPERATION_CODE] == 0x7F)
+    if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x7E || scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x7F)
     {
         // variable length and 32byte CDBs have the control byte at offset 1
         controlByteOffset = 1;
@@ -18560,7 +18607,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
     {
         // start checking the scsi command and call the function to translate it
         // All functions within this switch-case should dummy up their own sense data specific to the translation!
-        switch (scsiIoCtx->cdb[OPERATION_CODE])
+        switch (scsiIoCtx->cdb[CDB_OPERATION_CODE])
         {
         case INQUIRY_CMD: // mostly identify information, but some log info for some pages.
             ret = translate_SCSI_Inquiry_Command(device, scsiIoCtx);
@@ -18570,7 +18617,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
             break;
         case 0xAB:
             // check the service action
-            switch (scsiIoCtx->cdb[1] & 0x1F)
+            switch (scsiIoCtx->cdb[CDB_1] & 0x1F)
             {
             case 0x01: // Read Media Serial Number
                 ret = translate_SCSI_Read_Media_Serial_Number_Command(device, scsiIoCtx);
@@ -18584,7 +18631,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
             break;
         case 0x9E:
             // check the service action
-            switch (scsiIoCtx->cdb[1] & 0x1F)
+            switch (scsiIoCtx->cdb[CDB_1] & 0x1F)
             {
             case 0x10: // Read Capacity 16
                 ret = translate_SCSI_Read_Capacity_Command(device, true, scsiIoCtx);
@@ -18600,7 +18647,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
         case 0x7F:
             // 32byte CDB...check service action. We're looking for ATA Pass-through 32
             {
-                uint16_t serviceAction = M_BytesTo2ByteValue(scsiIoCtx->cdb[8], scsiIoCtx->cdb[9]);
+                uint16_t serviceAction = M_BytesTo2ByteValue(scsiIoCtx->cdb[CDB_8], scsiIoCtx->cdb[CDB_9]);
                 switch (serviceAction)
                 {
                 case 0x1FF0: // ATA pass-through 32
@@ -18661,7 +18708,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
             break;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
         case 0xA3: // check the service action for this one!
-            switch (scsiIoCtx->cdb[1] & 0x1F)
+            switch (scsiIoCtx->cdb[CDB_1] & 0x1F)
             {
             case 0x0C: // report supported op codes <- this is essentially returning either a massive table of supported
                        // commands, or it is sending back data or an error based off a switch statement
@@ -18710,7 +18757,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
             break;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
         case 0xA4: // Check the service action for this one!
-            switch (scsiIoCtx->cdb[1] & 0x1F)
+            switch (scsiIoCtx->cdb[CDB_1] & 0x1F)
             {
             case 0x0F: // set timestamp - ATA Set Date and Timestamp
                 if (device->drive_info.softSATFlags.deviceStatsPages.dateAndTimeTimestampSupported)
@@ -18783,7 +18830,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
             ret = translate_SCSI_Write_Long(device, scsiIoCtx);
             break;
         case 0x9F: // write uncorrectable ext-check service action for 11h
-            switch (scsiIoCtx->cdb[1] & 0x1F)
+            switch (scsiIoCtx->cdb[CDB_1] & 0x1F)
             {
             case 0x11: // write uncorrectable ext
                 ret = translate_SCSI_Write_Long(device, scsiIoCtx);

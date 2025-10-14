@@ -1627,32 +1627,33 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
         // its fields
         if (senseFields->deferredError)
         {
-            printf("Deferred error found.\n");
+            print_str("Deferred error found.\n");
         }
         if (senseFields->senseDataOverflow)
         {
-            printf("Sense Data Overflow detected! Request sense command is recommended to retrieve full sense data!\n");
+            print_str(
+                "Sense Data Overflow detected! Request sense command is recommended to retrieve full sense data!\n");
         }
         if (senseFields->filemark)
         {
-            printf("Filemark detected\n");
+            print_str("Filemark detected\n");
         }
         if (senseFields->endOfMedia)
         {
-            printf("End of media detected\n");
+            print_str("End of media detected\n");
         }
         if (senseFields->illegalLengthIndication)
         {
-            printf("Illegal Length detected\n");
+            print_str("Illegal Length detected\n");
         }
-        printf("Information");
+        print_str("Information");
         if (senseFields->valid)
         {
-            printf(" (Valid): ");
+            print_str(" (Valid): ");
         }
         else
         {
-            printf(": ");
+            print_str(": ");
         }
         if (senseFields->fixedFormat)
         {
@@ -1662,7 +1663,7 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
         {
             printf("%016" PRIX64 "h\n", senseFields->descriptorInformation);
         }
-        printf("Command Specific Information: ");
+        print_str("Command Specific Information: ");
         if (senseFields->fixedFormat)
         {
             printf("%08" PRIX32 "h\n", senseFields->fixedCommandSpecificInformation);
@@ -1673,7 +1674,7 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
         }
         if (senseFields->senseKeySpecificInformation.senseKeySpecificValid)
         {
-            printf("Sense Key Specific Information:\n\t");
+            print_str("Sense Key Specific Information:\n\t");
             switch (senseFields->senseKeySpecificInformation.type)
             {
             case SENSE_KEY_SPECIFIC_FIELD_POINTER:
@@ -1712,7 +1713,8 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
                 break;
             case SENSE_KEY_SPECIFIC_PROGRESS_INDICATION:
                 printf("Progress: %0.02f%%\n",
-                       C_CAST(double, senseFields->senseKeySpecificInformation.progress.progressIndication) / 65536.0);
+                       get_SCSI_Progress_Indicator_PercentD(
+                           senseFields->senseKeySpecificInformation.progress.progressIndication));
                 break;
             case SENSE_KEY_SPECIFIC_SEGMENT_POINTER:
                 if (senseFields->senseKeySpecificInformation.segment.segmentDescriptor)
@@ -1747,11 +1749,11 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
             case SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW:
                 if (senseFields->senseKeySpecificInformation.unitAttention.overflow)
                 {
-                    printf("Unit attention condition is due to Queue Overflow\n");
+                    print_str("Unit attention condition is due to Queue Overflow\n");
                 }
                 else
                 {
-                    printf("Unit attention condition is not due to a queue overflow\n");
+                    print_str("Unit attention condition is not due to a queue overflow\n");
                 }
                 break;
             case SENSE_KEY_SPECIFIC_UNKNOWN:
@@ -1768,15 +1770,15 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
             // look for other descriptor format data that we saved and can easily parse here
             if (senseFields->ataStatusReturnDescriptor.valid)
             {
-                printf("ATA Return Status:\n");
-                printf("\tExtend: ");
+                print_str("ATA Return Status:\n");
+                print_str("\tExtend: ");
                 if (senseFields->ataStatusReturnDescriptor.extend)
                 {
-                    printf("true\n");
+                    print_str("true\n");
                 }
                 else
                 {
-                    printf("false\n");
+                    print_str("false\n");
                 }
                 printf("\tError:            %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.error);
                 printf("\tSector Count Ext: %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCountExt);
@@ -1793,7 +1795,7 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
             // TODO: go through the other progress indications?
             if (senseFields->microCodeActivation.valid)
             {
-                printf("Microcode Activation Time:");
+                print_str("Microcode Activation Time:");
                 if (senseFields->microCodeActivation.microcodeActivationTimeSeconds > 0)
                 {
                     uint8_t hours   = UINT8_C(0);
@@ -1802,11 +1804,11 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
                     convert_Seconds_To_Displayable_Time(senseFields->microCodeActivation.microcodeActivationTimeSeconds,
                                                         M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
                     print_Time_To_Screen(M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
-                    printf("\n");
+                    print_str("\n");
                 }
                 else
                 {
-                    printf(" Unknown\n");
+                    print_str(" Unknown\n");
                 }
             }
         }
@@ -2027,13 +2029,7 @@ eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* device, readCapacityD
         }
         else
         {
-            uint8_t senseKey = UINT8_C(0);
-            uint8_t asc      = UINT8_C(0);
-            uint8_t ascq     = UINT8_C(0);
-            uint8_t fru      = UINT8_C(0);
-            get_Sense_Key_ASC_ASCQ_FRU(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &senseKey, &asc, &ascq,
-                                       &fru);
-            if (senseKey == SENSE_KEY_MEDIUM_ERROR && asc == 0x31 && ascq == 0)
+            if (is_Format_Corrupt(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN))
             {
                 // since format corrupt, do not attempt to fallback to read capacity 10 since that will do the exact
                 // same thing
@@ -3225,7 +3221,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE)
         {
 #if defined(_DEBUG)
-            printf("Quiting device discovery early per DO_NOT_WAKE_DRIVE\n");
+            print_str("Quiting device discovery early per DO_NOT_WAKE_DRIVE\n");
 #endif
             // We actually need to try issuing an ATA/ATAPI identify to the drive to set the drive type...but I'm going
             // to try and ONLY do it for ATA drives with the if statement below...it should catch almost all cases
@@ -3612,7 +3608,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 {
                     if (device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
                     {
-                        // printf("VPD pages, check SAT info\n");
+                        // print_str("VPD pages, check SAT info\n");
                         // do not check the checkForSAT bool here. If we get here, then the device most likely reported
                         // support for it so it should be readable.
                         if (SUCCESS == check_SAT_Compliance_And_Set_Drive_Type(device))
@@ -3894,14 +3890,14 @@ eReturnValues fill_In_Device_Info(tDevice* device)
     {
         if (VERBOSITY_DEFAULT < device->deviceVerbosity)
         {
-            printf("Getting Standard Inquiry Data Failed\n");
+            print_str("Getting Standard Inquiry Data Failed\n");
         }
         ret = COMMAND_FAILURE;
     }
     safe_free_aligned(&inq_buf);
 
 #ifdef _DEBUG
-    printf("\nscsi helper\n");
+    print_str("\nscsi helper\n");
     printf("Drive type: %d\n", device->drive_info.drive_type);
     printf("Interface type: %d\n", device->drive_info.interface_type);
     printf("Media type: %d\n", device->drive_info.media_type);
@@ -5257,4 +5253,99 @@ void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
         }
     }
     RESTORE_NONNULL_COMPARE
+}
+
+bool check_Sense_For_Specific_Info(const uint8_t* senseData, uint32_t senseLen, senseToCheck check)
+{
+    bool             match = true;
+    eSenseMatchDepth depth = SENSE_MATCH_SENSE_KEY;
+    senseDataFields  readSense;
+    safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    get_Sense_Data_Fields(senseData, senseLen, &readSense);
+    while (depth <= check.checkDepth && match == true)
+    {
+        switch (depth)
+        {
+        case SENSE_MATCH_SENSE_KEY:
+            if (readSense.scsiStatusCodes.senseKey != check.senseKey)
+            {
+                match = false;
+            }
+            break;
+        case SENSE_MATCH_ASC:
+            if (readSense.scsiStatusCodes.asc != check.asc)
+            {
+                match = false;
+            }
+            break;
+        case SENSE_MATCH_ASCQ:
+            if (readSense.scsiStatusCodes.ascq != check.ascq)
+            {
+                match = false;
+            }
+            break;
+        case SENSE_MATCH_FRU:
+            if (readSense.scsiStatusCodes.fru != check.fru)
+            {
+                match = false;
+            }
+            break;
+        }
+        ++depth;
+    }
+    return match;
+}
+
+bool is_Invalid_Opcode(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, 0x00};
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Invalid_Field_In_CDB(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, 0x00};
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Invalid_Field_In_Parameter(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x25, 0x00, 0x00};
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Format_Corrupt(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x00, 0x00};
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Media_Present(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASC, SENSE_KEY_MEDIUM_ERROR, 0x3A, 0x00, 0x00};
+    return !check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool did_Reset_Occur(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASC, SENSE_KEY_UNIT_ATTENTION, 0x29, 0x00, 0x00};
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Microcode_Activation_Required(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_NOT_READY, 0x04, 0x1E, 0x00};
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Command_Sequence_Error(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x2C, 0x00, 0x00};
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_Unaligned_Write(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0x04, 0x00};
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }

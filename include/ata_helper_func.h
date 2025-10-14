@@ -1864,43 +1864,261 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Restore_Power_Condition_Settings(const tDevice* device,
-                                                                                 uint8_t        powerConditionID,
-                                                                                 bool           defaultBit,
-                                                                                 bool           save);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_8_Bit_Data_Transfers(const tDevice* device, eSimpleATAFeat state);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Go_To_Power_Condition(const tDevice* device,
-                                                                      uint8_t        powerConditionID,
-                                                                      bool           delayedEntry,
-                                                                      bool           holdPowerCondition);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Volatile_Write_Cache(const tDevice* device, eSimpleATAFeat state);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Set_Power_Condition_Timer(const tDevice* device,
-                                                                          uint8_t        powerConditionID,
-                                                                          uint16_t       timerValue,
-                                                                          bool           timerUnits,
-                                                                          bool           enable,
-                                                                          bool           save);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Set_Transfer_Mode(const tDevice*                      device,
+                                                                 eSetTransferModeTransferModes type,
+                                                                 uint8_t                       mode);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Set_Power_Condition_State(const tDevice* device,
-                                                                          uint8_t        powerConditionID,
-                                                                          bool           enable,
-                                                                          bool           save);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Auto_Defect_Reassignment(const tDevice* device, eSimpleATAFeat state);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Enable_EPC_Feature_Set(const tDevice* device);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_APM(const tDevice* device, eSimpleATAFeat state, uint8_t level);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Disable_EPC_Feature_Set(const tDevice* device);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_PUIS(const tDevice* device, eSimpleATAFeat state);
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_PUIS_Spinup(const tDevice* device);
+
+    // address offset reserved boot area method technical report.
+    // identify word 83, bit 7
+    // identify word 86, bit 7
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Address_Offset_Boot_Area(const tDevice* device, eSimpleATAFeat state);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_CFA_Power_Mode1(const tDevice* device, eSimpleATAFeat state);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Write_Read_Verify(const tDevice*       device,
+                                                                 eSimpleATAFeat state,
+                                                                 eWRVMode       wrvmode,
+                                                                 uint8_t        sectorsX1024);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_DLC(const tDevice* device, eSimpleATAFeat state);
+    // TODO: CDL feature here
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Nonzero_Buffer_Offsets(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_DMA_Setup_Auto_Activate_Optimization(const tDevice*       device,
+                                                                                         eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Dev_Initiated_Power_State_Transitions(const tDevice*       device,
+                                                                                          eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Guaranteed_In_Order_Data_Delivery(const tDevice*       device,
+                                                                                      eSimpleATAFeat state);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Asynchronous_Notification(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Software_Settings_Preservation(const tDevice*       device,
+                                                                                   eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Dev_Auto_Partial_To_Slumber_Transitions(const tDevice*       device,
+                                                                                            eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Hardware_Feature_Control(const tDevice*                     device,
+                                                                             eSimpleATAFeat               state,
+                                                                             eSATAHardwareFeaturesControl feature);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Dev_Sleep(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Hybrid_Information(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Hybrid_Information(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Power_Disable(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_TLC_Set_CCTL(const tDevice* device, uint8_t timeLimit);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_TLC_Set_Error_Handling(const tDevice* device, eTLCErrorHandling handling);
+
+    // TODO: Return outputs from this command's enable completion
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Media_Status_Notification(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Retries(const tDevice* device, eSimpleATAFeat state);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Free_Fall_Control(const tDevice*       device,
+                                                                 eSimpleATAFeat state,
+                                                                 uint8_t        sensitivity);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_AAM(const tDevice* device, eSimpleATAFeat state, uint8_t level);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Set_Max_Host_Interface_Sector_Times(const tDevice* device,
+                                                                                   uint16_t typicalPIOTime,
+                                                                                   uint16_t typicalDMATime);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_VU_ECC_Bytes_Long_Cmds(const tDevice*       device,
+                                                                      eSimpleATAFeat state,
+                                                                      uint8_t        bytes);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Set_Rate_Basis(const tDevice* device, uint8_t basis);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Revert_To_Defaults(const tDevice* device, eSimpleATAFeat state);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Sense_Data_Reporting(const tDevice* device, eSimpleATAFeat state);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Sense_Data_Reporting_Successful_NCQ(const tDevice*       device,
+                                                                                   eSimpleATAFeat state);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_LPS_Alignment_Error_Reporting_CTL(const tDevice*                  device,
+                                                                                 eLPSErrorReportingControl state);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Restore_Power_Condition_Settings(const tDevice* device,
+                                                                                    uint8_t  powerConditionID,
+                                                                                    bool     defaultBit,
+                                                                                    bool     save);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Go_To_Power_Condition(const tDevice* device,
+                                                                         uint8_t  powerConditionID,
+                                                                         bool     delayedEntry,
+                                                                         bool     holdPowerCondition);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_Power_Condition_Timer(const tDevice* device,
+                                                                             uint8_t  powerConditionID,
+                                                                             uint16_t timerValue,
+                                                                             bool     timerUnits,
+                                                                             bool     enable,
+                                                                             bool     save);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_Power_Condition_State(const tDevice* device,
+                                                                             uint8_t  powerConditionID,
+                                                                             bool     enable,
+                                                                             bool     save);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Enable_EPC_Feature_Set(const tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Disable_EPC_Feature_Set(const tDevice* device);
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Set_EPC_Power_Source(const tDevice* device, uint8_t powerSource);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_DSN(const tDevice* device, eSimpleATAFeat state);
+    // TODO: if IR is false, we need a way to set the command timeout
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_ABO(const tDevice* device, eABOControl control, bool ir, uint16_t timelimit);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Set_Cache_Segments(const tDevice* device, uint8_t sizeInSectors);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Read_Look_Ahead(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Release_Interrupt(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_Service_Interrupt(const tDevice* device, eSimpleATAFeat state);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_DDT(const tDevice* device, eSimpleATAFeat state);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Restore_Power_Condition_Settings(const tDevice* device,
+                                                                                    uint8_t  powerConditionID,
+                                                                                    bool     defaultBit,
+                                                                                    bool     save);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Go_To_Power_Condition(const tDevice* device,
+                                                                         uint8_t  powerConditionID,
+                                                                         bool     delayedEntry,
+                                                                         bool     holdPowerCondition);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_Power_Condition_Timer(const tDevice* device,
+                                                                             uint8_t  powerConditionID,
+                                                                             uint16_t timerValue,
+                                                                             bool     timerUnits,
+                                                                             bool     enable,
+                                                                             bool     save);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_Power_Condition_State(const tDevice* device,
+                                                                             uint8_t  powerConditionID,
+                                                                             bool     enable,
+                                                                             bool     save);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Enable_EPC_Feature_Set(const tDevice* device);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Disable_EPC_Feature_Set(const tDevice* device);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_EPC_Power_Source(const tDevice* device, uint8_t powerSource);
 
     //-----------------------------------------------------------------------------
     //

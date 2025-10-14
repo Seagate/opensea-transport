@@ -201,7 +201,7 @@ static eReturnValues set_Device_Partition_Info(tDevice* device)
                     {
                         device->os_info.fileSystemInfo.isSystemDisk = true;
 #if defined(_DEBUG)
-                        printf("found system disk\n");
+                        print_str("found system disk\n");
 #endif
                     }
                 }
@@ -253,8 +253,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             }
             perror("open");
             set_Device_Last_Error(device, errno);
-            printf("open failure\n");
-            printf("Error: ");
+            print_str("open failure\n");
+            print_str("Error: ");
             print_Errno_To_Screen(errno);
             if (device->os_info.last_error == EACCES)
             {
@@ -391,7 +391,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         {
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("No Raid PassThrough IO Routine present for this device\n");
+                print_str("No Raid PassThrough IO Routine present for this device\n");
             }
         }
         break;
@@ -427,7 +427,7 @@ eReturnValues send_uscsi_io(ScsiIoCtx* scsiIoCtx)
     safe_memset(&uscsi_io, sizeof(uscsi_io), 0, sizeof(uscsi_io));
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
-        printf("Sending command with send_IO\n");
+        print_str("Sending command with send_IO\n");
     }
 
     if (scsiIoCtx->timeout > USCSI_MAX_CMD_TIMEOUT_SECONDS ||
@@ -447,7 +447,7 @@ eReturnValues send_uscsi_io(ScsiIoCtx* scsiIoCtx)
         uscsi_io.uscsi_timeout = scsiIoCtx->timeout;
         if (scsiIoCtx->timeout == UINT32_C(0))
         {
-            uscsi_io.uscsi_timeout = UINT32_C(15); // default to 15 second timeout
+            uscsi_io.uscsi_timeout = DEFAULT_COMMAND_TIMEOUT; // default to 15 second timeout
         }
     }
     uscsi_io.uscsi_cdb     = C_CAST(caddr_t, scsiIoCtx->cdb);
@@ -502,7 +502,7 @@ eReturnValues send_uscsi_io(ScsiIoCtx* scsiIoCtx)
 
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
-        printf("USCSI Results\n");
+        print_str("USCSI Results\n");
         printf("\tSCSI Status: %hu\n", uscsi_io.uscsi_status);
         printf("\tResid: %zu\n", uscsi_io.uscsi_resid);
         printf("\tRQS SCSI Status: %hu\n", uscsi_io.uscsi_rqstatus);
@@ -930,7 +930,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
                             {
                                 printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
                                 print_Errno_To_Screen(errno);
-                                printf("\n");
+                                print_str("\n");
                             }
                         }
                     }

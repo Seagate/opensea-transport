@@ -173,6 +173,65 @@ extern "C"
                                                      uint32_t           senseDataLength,
                                                      ptrSenseDataFields senseFields);
 
+    typedef enum eSenseMatchDepthEnum
+    {
+        SENSE_MATCH_SENSE_KEY,
+        SENSE_MATCH_ASC,
+        SENSE_MATCH_ASCQ,
+        SENSE_MATCH_FRU
+    } eSenseMatchDepth;
+
+    typedef struct tSenseToCheck
+    {
+        eSenseMatchDepth checkDepth;
+        eSenseKeyValues  senseKey;
+        uint8_t          asc;
+        uint8_t          ascq;
+        uint8_t          fru;
+    } senseToCheck;
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool check_Sense_For_Specific_Info(const uint8_t* senseData,
+                                                             uint32_t       senseLen,
+                                                             senseToCheck   check);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_Invalid_Opcode(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_Invalid_Field_In_CDB(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_Invalid_Field_In_Parameter(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_Format_Corrupt(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_Media_Present(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool did_Reset_Occur(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_Microcode_Activation_Required(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_Command_Sequence_Error(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_Unaligned_Write(const uint8_t* senseData, uint32_t senseLen);
+
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields senseFields);
 
@@ -260,12 +319,12 @@ extern "C"
                                                             uint8_t  length,
                                                             uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = M_Byte2(lba) & UINT8_C(0x1F);
-        cdb[2]              = M_Byte1(lba);
-        cdb[3]              = M_Byte0(lba);
-        cdb[4]              = length;
-        cdb[5]              = controlByte;
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB_1]              = M_Byte2(lba) & UINT8_C(0x1F);
+        cdb[CDB_2]              = M_Byte1(lba);
+        cdb[CDB_3]              = M_Byte0(lba);
+        cdb[CDB_4]              = length;
+        cdb[CDB6_CONTROL]       = controlByte;
         return cdb;
     }
 
@@ -278,16 +337,16 @@ extern "C"
                                                              uint16_t length,
                                                              uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = serviceAction;
-        cdb[2]              = M_Byte3(lba);
-        cdb[3]              = M_Byte2(lba);
-        cdb[4]              = M_Byte1(lba);
-        cdb[5]              = M_Byte0(lba);
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB_1]              = serviceAction;
+        cdb[CDB_2]              = M_Byte3(lba);
+        cdb[CDB_3]              = M_Byte2(lba);
+        cdb[CDB_4]              = M_Byte1(lba);
+        cdb[CDB_5]              = M_Byte0(lba);
         // bytes 6 is misc
-        cdb[7] = M_Byte1(length);
-        cdb[8] = M_Byte0(length);
-        cdb[9] = controlByte;
+        cdb[CDB_7]         = M_Byte1(length);
+        cdb[CDB_8]         = M_Byte0(length);
+        cdb[CDB10_CONTROL] = controlByte;
         return cdb;
     }
 
@@ -300,18 +359,18 @@ extern "C"
                                                              uint32_t length,
                                                              uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = serviceAction;
-        cdb[2]              = M_Byte3(lba);
-        cdb[3]              = M_Byte2(lba);
-        cdb[4]              = M_Byte1(lba);
-        cdb[5]              = M_Byte0(lba);
-        cdb[6]              = M_Byte3(length);
-        cdb[7]              = M_Byte2(length);
-        cdb[8]              = M_Byte1(length);
-        cdb[9]              = M_Byte0(length);
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB_1]              = serviceAction;
+        cdb[CDB_2]              = M_Byte3(lba);
+        cdb[CDB_3]              = M_Byte2(lba);
+        cdb[CDB_4]              = M_Byte1(lba);
+        cdb[CDB_5]              = M_Byte0(lba);
+        cdb[CDB_6]              = M_Byte3(length);
+        cdb[CDB_7]              = M_Byte2(length);
+        cdb[CDB_8]              = M_Byte1(length);
+        cdb[CDB_9]              = M_Byte0(length);
         // 10 is misc
-        cdb[11] = controlByte;
+        cdb[CDB12_CONTROL] = controlByte;
         return cdb;
     }
 
@@ -324,19 +383,19 @@ extern "C"
                                                                        uint32_t length,
                                                                        uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = serviceAction;
-        cdb[2]              = M_Byte3(lba);
-        cdb[3]              = M_Byte2(lba);
-        cdb[4]              = M_Byte1(lba);
-        cdb[5]              = M_Byte0(lba);
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB_1]              = serviceAction;
+        cdb[CDB_2]              = M_Byte3(lba);
+        cdb[CDB_3]              = M_Byte2(lba);
+        cdb[CDB_4]              = M_Byte1(lba);
+        cdb[CDB_5]              = M_Byte0(lba);
         // 6 - 9 is misc
-        cdb[10] = M_Byte3(length);
-        cdb[11] = M_Byte2(length);
-        cdb[12] = M_Byte1(length);
-        cdb[13] = M_Byte0(length);
+        cdb[CDB_10] = M_Byte3(length);
+        cdb[CDB_11] = M_Byte2(length);
+        cdb[CDB_12] = M_Byte1(length);
+        cdb[CDB_13] = M_Byte0(length);
         // 14 is misc
-        cdb[15] = controlByte;
+        cdb[CDB16_CONTROL] = controlByte;
         return cdb;
     }
 
@@ -349,22 +408,22 @@ extern "C"
                                                                        uint32_t length,
                                                                        uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = serviceAction;
-        cdb[2]              = M_Byte7(lba);
-        cdb[3]              = M_Byte6(lba);
-        cdb[4]              = M_Byte5(lba);
-        cdb[5]              = M_Byte4(lba);
-        cdb[6]              = M_Byte3(lba);
-        cdb[7]              = M_Byte2(lba);
-        cdb[8]              = M_Byte1(lba);
-        cdb[9]              = M_Byte0(lba);
-        cdb[10]             = M_Byte3(length);
-        cdb[11]             = M_Byte2(length);
-        cdb[12]             = M_Byte1(length);
-        cdb[13]             = M_Byte0(length);
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB_1]              = serviceAction;
+        cdb[CDB_2]              = M_Byte7(lba);
+        cdb[CDB_3]              = M_Byte6(lba);
+        cdb[CDB_4]              = M_Byte5(lba);
+        cdb[CDB_5]              = M_Byte4(lba);
+        cdb[CDB_6]              = M_Byte3(lba);
+        cdb[CDB_7]              = M_Byte2(lba);
+        cdb[CDB_8]              = M_Byte1(lba);
+        cdb[CDB_9]              = M_Byte0(lba);
+        cdb[CDB_10]             = M_Byte3(length);
+        cdb[CDB_11]             = M_Byte2(length);
+        cdb[CDB_12]             = M_Byte1(length);
+        cdb[CDB_13]             = M_Byte0(length);
         // 14 is misc
-        cdb[15] = controlByte;
+        cdb[CDB16_CONTROL] = controlByte;
         return cdb;
     }
 
@@ -377,26 +436,26 @@ extern "C"
                                                             uint32_t length,
                                                             uint8_t  controlByte)
     {
-        cdb[OPERATION_CODE] = operationCode;
-        cdb[1]              = controlByte;
+        cdb[CDB_OPERATION_CODE] = operationCode;
+        cdb[CDB32_CONTROL]      = controlByte;
         // skip misc
-        cdb[7] = UINT8_C(0x18);
-        cdb[8] = M_Byte1(serviceAction);
-        cdb[9] = M_Byte0(serviceAction);
+        cdb[CDB_7] = UINT8_C(0x18);
+        cdb[CDB_8] = M_Byte1(serviceAction);
+        cdb[CDB_9] = M_Byte0(serviceAction);
         // skip misc
-        cdb[12] = M_Byte7(lba);
-        cdb[13] = M_Byte6(lba);
-        cdb[14] = M_Byte5(lba);
-        cdb[15] = M_Byte4(lba);
-        cdb[16] = M_Byte3(lba);
-        cdb[17] = M_Byte2(lba);
-        cdb[18] = M_Byte1(lba);
-        cdb[19] = M_Byte0(lba);
+        cdb[CDB_12] = M_Byte7(lba);
+        cdb[CDB_13] = M_Byte6(lba);
+        cdb[CDB_14] = M_Byte5(lba);
+        cdb[CDB_15] = M_Byte4(lba);
+        cdb[CDB_16] = M_Byte3(lba);
+        cdb[CDB_17] = M_Byte2(lba);
+        cdb[CDB_18] = M_Byte1(lba);
+        cdb[CDB_19] = M_Byte0(lba);
         // skip misc
-        cdb[28] = M_Byte3(length);
-        cdb[29] = M_Byte2(length);
-        cdb[30] = M_Byte1(length);
-        cdb[31] = M_Byte0(length);
+        cdb[CDB_28] = M_Byte3(length);
+        cdb[CDB_29] = M_Byte2(length);
+        cdb[CDB_30] = M_Byte1(length);
+        cdb[CDB_31] = M_Byte0(length);
         return cdb;
     }
 
@@ -423,16 +482,16 @@ extern "C"
                                                 uint16_t expectedLogicalBlockAppTag,
                                                 uint16_t logicalBlockAppTagMask)
     {
-        cdb[6]  = GET_GROUP_CODE(groupNumber);
-        cdb[10] = GET_PROTECT_VAL(protect);
-        cdb[20] = M_Byte3(expectedInitialLogicalBlockRefTag);
-        cdb[21] = M_Byte2(expectedInitialLogicalBlockRefTag);
-        cdb[22] = M_Byte1(expectedInitialLogicalBlockRefTag);
-        cdb[23] = M_Byte0(expectedInitialLogicalBlockRefTag);
-        cdb[24] = M_Byte1(expectedLogicalBlockAppTag);
-        cdb[25] = M_Byte0(expectedLogicalBlockAppTag);
-        cdb[26] = M_Byte1(logicalBlockAppTagMask);
-        cdb[27] = M_Byte0(logicalBlockAppTagMask);
+        cdb[CDB_6]  = GET_GROUP_CODE(groupNumber);
+        cdb[CDB_10] = GET_PROTECT_VAL(protect);
+        cdb[CDB_20] = M_Byte3(expectedInitialLogicalBlockRefTag);
+        cdb[CDB_21] = M_Byte2(expectedInitialLogicalBlockRefTag);
+        cdb[CDB_22] = M_Byte1(expectedInitialLogicalBlockRefTag);
+        cdb[CDB_23] = M_Byte0(expectedInitialLogicalBlockRefTag);
+        cdb[CDB_24] = M_Byte1(expectedLogicalBlockAppTag);
+        cdb[CDB_25] = M_Byte0(expectedLogicalBlockAppTag);
+        cdb[CDB_26] = M_Byte1(logicalBlockAppTagMask);
+        cdb[CDB_27] = M_Byte0(logicalBlockAppTagMask);
     }
 
     //-----------------------------------------------------------------------------

@@ -84,6 +84,7 @@ extern "C"
 #define MODEL_NUM_LEN              (40)
 #define FW_REV_LEN                 (8)
 #define T10_VENDOR_ID_LEN          (8)
+#define DEFAULT_COMMAND_TIMEOUT    (15) // Seconds
 
     typedef struct s_apiVersionInfo
     {
@@ -1113,9 +1114,10 @@ extern "C"
                                  // codes. This is here so it can be checked in a function and stored while running
             bool cmdDTSupported; // If above bool is true, then this holds if cmdDT is supported and can be used to
                                  // check if commands are supported or not. Really only for old drives -TJE
+            bool     noCompareLogicalBlocks; // when set, the verify with bytecheck = 1 is not supported
+            uint32_t maxTransferLength;      // Maximum SCSI command transfer length in bytes. Mostly here for USB where
+                                             // translations aren't accurate or don't show this properly.
             int8_t   readBufferCmdSize; // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
-            uint32_t maxTransferLength; // Maximum SCSI command transfer length in bytes. Mostly here for USB where
-                                        // translations aren't accurate or don't show this properly.
             bool noSATVPDPage; // when this is set, the SAT VPD is not available and should not be read, skipping ahead
                                // to instead directly trying a passthrough command
             int8_t syncCacheCmdSize;      // 0 = not set, <0 = not supported, 10 = 10B version, 16 = 16B version
