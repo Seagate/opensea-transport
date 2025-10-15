@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-project('opensea-transport', 'c', license: 'MPL-2.0', version: '10.0.1', default_options : ['warning_level=2'])
+project('opensea-transport', 'c', license: 'MPL-2.0', version: '10.2.0', default_options : ['warning_level=2'])
 
 c = meson.get_compiler('c')
 
@@ -43,7 +43,7 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wint-to-pointer-cast',
   '-Wimplicit-fallthrough',
   '-D_GLIBCXX_ASSERTIONS',
-  '-fstrict-flex-arrays=1', #NOTE: Using level 1 since Windows often uses [1] at the end of it's structures. opensea-*libs has used this in a few places too.
+  '-fstrict-flex-arrays=3',
   '-fno-delete-null-pointer-checks',
   '-fno-strict-overflow',
   '-fno-strict-aliasing',
@@ -75,6 +75,8 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wreturn-type',
   '-Wpointer-bool-conversion',
   '-fvisibility=hidden', #to work similarly to Window's DLL import/export
+  '-Wmismatched-dealloc',
+  '-Wfree-nonheap-object',
   ]
 
   if c.get_id().contains('gcc') and c.version().version_compare('>=10.0')

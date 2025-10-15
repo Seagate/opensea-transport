@@ -18,6 +18,7 @@
 #include "ata_helper.h"
 #include "common_public.h"
 #include "common_types.h"
+#include "scsi_helper.h"
 
 #if defined(__cplusplus)
 extern 'C'
@@ -40,7 +41,8 @@ extern 'C'
         PSP_FUNC_DISABLE_ATA_PASSTHROUGH    = 15,
     } ePSPATAPTFunctions;
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues enable_Disable_ATA_Passthrough(tDevice * device, bool enable);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) eReturnValues enable_Disable_ATA_Passthrough(const tDevice* device, bool enable);
 
     //-----------------------------------------------------------------------------
     //
@@ -82,7 +84,7 @@ extern 'C'
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues get_RTFRs_From_PSP_Legacy(tDevice * device, ataPassthroughCommand * ataCommandOptions,
+    eReturnValues get_RTFRs_From_PSP_Legacy(const tDevice* device, ataPassthroughCommand* ataCommandOptions,
                                             eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
@@ -103,7 +105,7 @@ extern 'C'
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues send_PSP_Legacy_Passthrough_Command(tDevice * device, ataPassthroughCommand * ataCommandOptions);
+    eReturnValues send_PSP_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions);
 
 #if defined(__cplusplus)
 }

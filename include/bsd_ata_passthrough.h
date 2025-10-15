@@ -17,6 +17,7 @@
 
 #pragma once
 
+M_FILE_DESCRIPTOR(1)
 eReturnValues send_BSD_ATA_Reset(int fd);
 
 M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_BSD_ATA_IO(ScsiIoCtx* scsiIoCtx);

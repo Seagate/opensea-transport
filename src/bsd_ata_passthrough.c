@@ -16,6 +16,7 @@
 #include "error_translation.h"
 #include "precision_timer.h"
 #include "type_conversion.h"
+#include "io_utils.h"
 
 #include "ata_helper.h"
 #include "common_public.h"
@@ -119,7 +120,7 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                timeoutmilliseconds = UINT32_C(15000); // default to 15 second timeout
+                timeoutmilliseconds = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
         atacmd.timeout = timeoutmilliseconds > INT_MAX ? INT_MAX : M_STATIC_CAST(int, timeoutmilliseconds);
@@ -130,13 +131,13 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
         if (iocret < 0)
         {
             // something went wrong with the ioctl.
-            scsiIoCtx->device->os_info.last_error = errno;
-            ret                                   = OS_PASSTHROUGH_FAILURE;
+            set_Device_Last_Error(scsiIoCtx->device, errno);
+            ret = OS_PASSTHROUGH_FAILURE;
             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
                 if (scsiIoCtx->device->os_info.last_error != 0)
                 {
-                    printf("Error: ");
+                    print_str("Error: ");
                     print_Errno_To_Screen(errno);
                 }
             }

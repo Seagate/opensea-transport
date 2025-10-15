@@ -44,26 +44,26 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
         else
         {
             safe_memset(dataPtr, REALTEK_NVME_CMD_PAYLOAD_LEN, 0, REALTEK_NVME_CMD_PAYLOAD_LEN);
-            cdb[OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_OUT;
+            cdb[CDB_OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_OUT;
             // set length to 0x40 - aka 64 bytes
-            cdb[1] = M_Byte0(REALTEK_NVME_CMD_PAYLOAD_LEN); // length
-            cdb[2] = M_Byte1(REALTEK_NVME_CMD_PAYLOAD_LEN); // length
-            cdb[3] = C_CAST(uint8_t, REALTEK_PHASE_COMMAND);
+            cdb[CDB_1] = M_Byte0(REALTEK_NVME_CMD_PAYLOAD_LEN); // length
+            cdb[CDB_2] = M_Byte1(REALTEK_NVME_CMD_PAYLOAD_LEN); // length
+            cdb[CDB_3] = C_CAST(uint8_t, REALTEK_PHASE_COMMAND);
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
                 // set the cmd set field cdb 4-7
-                cdb[4] = M_Byte0(REALTEK_NVME_ADMIN_CMD);
-                cdb[5] = M_Byte1(REALTEK_NVME_ADMIN_CMD);
-                cdb[6] = M_Byte2(REALTEK_NVME_ADMIN_CMD);
-                cdb[7] = M_Byte3(REALTEK_NVME_ADMIN_CMD);
+                cdb[CDB_4] = M_Byte0(REALTEK_NVME_ADMIN_CMD);
+                cdb[CDB_5] = M_Byte1(REALTEK_NVME_ADMIN_CMD);
+                cdb[CDB_6] = M_Byte2(REALTEK_NVME_ADMIN_CMD);
+                cdb[CDB_7] = M_Byte3(REALTEK_NVME_ADMIN_CMD);
             }
             else
             {
                 // set the cmd set field cdb 4-7
-                cdb[4] = M_Byte0(REALTEK_NVME_IO_CMD);
-                cdb[5] = M_Byte1(REALTEK_NVME_IO_CMD);
-                cdb[6] = M_Byte2(REALTEK_NVME_IO_CMD);
-                cdb[7] = M_Byte3(REALTEK_NVME_IO_CMD);
+                cdb[CDB_4] = M_Byte0(REALTEK_NVME_IO_CMD);
+                cdb[CDB_5] = M_Byte1(REALTEK_NVME_IO_CMD);
+                cdb[CDB_6] = M_Byte2(REALTEK_NVME_IO_CMD);
+                cdb[CDB_7] = M_Byte3(REALTEK_NVME_IO_CMD);
             }
             // Now setup the remaining command fields.
             // CDW0 is bytes 3:0
@@ -152,38 +152,38 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
         // read uses in, write and non-data use out
         if (nvmCmd->commandDirection == XFER_DATA_IN)
         {
-            cdb[OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_IN;
-            *cdbDataDirection   = XFER_DATA_IN;
-            cdb[6]              = M_Byte0(REALTEK_DATA_IN);
-            cdb[7]              = M_Byte1(REALTEK_DATA_IN);
+            cdb[CDB_OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_IN;
+            *cdbDataDirection       = XFER_DATA_IN;
+            cdb[CDB_6]              = M_Byte0(REALTEK_DATA_IN);
+            cdb[CDB_7]              = M_Byte1(REALTEK_DATA_IN);
         }
         else
         {
-            cdb[OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_OUT;
-            *cdbDataDirection   = XFER_DATA_OUT;
-            cdb[6]              = M_Byte0(REALTEK_DATA_OUT);
-            cdb[7]              = M_Byte1(REALTEK_DATA_OUT);
+            cdb[CDB_OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_OUT;
+            *cdbDataDirection       = XFER_DATA_OUT;
+            cdb[CDB_6]              = M_Byte0(REALTEK_DATA_OUT);
+            cdb[CDB_7]              = M_Byte1(REALTEK_DATA_OUT);
         }
         // length of transfer can be zero to 256KiB
-        cdb[1] = M_Byte0(nvmCmd->dataSize); // length
-        cdb[2] = M_Byte1(nvmCmd->dataSize); // length
-        cdb[4] = M_Byte2(nvmCmd->dataSize); // length
-        cdb[5] = M_Byte3(nvmCmd->dataSize); // length
+        cdb[CDB_1] = M_Byte0(nvmCmd->dataSize); // length
+        cdb[CDB_2] = M_Byte1(nvmCmd->dataSize); // length
+        cdb[CDB_4] = M_Byte2(nvmCmd->dataSize); // length
+        cdb[CDB_5] = M_Byte3(nvmCmd->dataSize); // length
         if (nvmCmd->dataSize == UINT32_C(0))
         {
             *cdbDataDirection = XFER_NO_DATA;
-            cdb[6]            = M_Byte0(REALTEK_NO_DATA);
-            cdb[7]            = M_Byte1(REALTEK_NO_DATA);
+            cdb[CDB_6]        = M_Byte0(REALTEK_NO_DATA);
+            cdb[CDB_7]        = M_Byte1(REALTEK_NO_DATA);
         }
-        cdb[3] = C_CAST(uint8_t, REALTEK_PHASE_DATA);
+        cdb[CDB_3] = C_CAST(uint8_t, REALTEK_PHASE_DATA);
         break;
     case REALTEK_PHASE_COMPLETION:
-        *cdbDataDirection   = XFER_DATA_IN;
-        cdb[OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_IN;
+        *cdbDataDirection       = XFER_DATA_IN;
+        cdb[CDB_OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_IN;
         // length must be 16 bytes
-        cdb[1] = M_Byte0(REALTEK_NVME_COMPLETION_PAYLOAD_LEN);
-        cdb[2] = M_Byte1(REALTEK_NVME_COMPLETION_PAYLOAD_LEN);
-        cdb[3] = C_CAST(uint8_t, REALTEK_PHASE_COMPLETION);
+        cdb[CDB_1] = M_Byte0(REALTEK_NVME_COMPLETION_PAYLOAD_LEN);
+        cdb[CDB_2] = M_Byte1(REALTEK_NVME_COMPLETION_PAYLOAD_LEN);
+        cdb[CDB_3] = C_CAST(uint8_t, REALTEK_PHASE_COMPLETION);
         break;
     default:
         return BAD_PARAMETER;
@@ -218,7 +218,7 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
         return ret;
     }
     ret = scsi_Send_Cdb(nvmCmd->device, realtekCDB, REALTEK_NVME_CDB_SIZE, realtekPayload, REALTEK_NVME_CMD_PAYLOAD_LEN,
-                        realtekCDBDir, NULL, 0, 15);
+                        realtekCDBDir, NULL, 0, DEFAULT_COMMAND_TIMEOUT);
     if (SUCCESS != ret)
     {
         return ret;
