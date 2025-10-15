@@ -2283,7 +2283,7 @@ eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* device, bool USBchildDr
 eFirecuda_Drive is_Firecuda_Drive(const tDevice* device, bool USBchildDrive)
 {
     eFirecuda_Drive isFirecudaDrive = NON_FIRECUDA_DRIVE;
-    char* modelNumber     = &device->drive_info.product_identification[0];
+    char*           modelNumber     = &device->drive_info.product_identification[0];
     if (USBchildDrive)
     {
         modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
