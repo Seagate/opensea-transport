@@ -10,9 +10,9 @@
 //
 // ******************************************************************************************
 //
+#include "code_attributes.h"
 #if defined(ENABLE_INTEL_RST)
 #    include "bit_manip.h"
-#    include "code_attributes.h"
 #    include "common_types.h"
 #    include "error_translation.h"
 #    include "io_utils.h"
@@ -36,101 +36,101 @@
 
 static void print_Intel_SRB_Status(uint32_t srbStatus)
 {
-    printf("SRB Status: ");
+    print_str("SRB Status: ");
     switch (srbStatus)
     {
     case INTEL_SRB_STATUS_PENDING:
-        printf("Pending\n");
+        print_str("Pending\n");
         break;
     case INTEL_SRB_STATUS_SUCCESS:
-        printf("Success\n");
+        print_str("Success\n");
         break;
     case INTEL_SRB_STATUS_ABORTED:
-        printf("Aborted\n");
+        print_str("Aborted\n");
         break;
     case INTEL_SRB_STATUS_ABORT_FAILED:
-        printf("Abort Failed\n");
+        print_str("Abort Failed\n");
         break;
     case INTEL_SRB_STATUS_ERROR:
-        printf("Error\n");
+        print_str("Error\n");
         break;
     case INTEL_SRB_STATUS_BUSY:
-        printf("Busy\n");
+        print_str("Busy\n");
         break;
     case INTEL_SRB_STATUS_INVALID_REQUEST:
-        printf("Invalid Request\n");
+        print_str("Invalid Request\n");
         break;
     case INTEL_SRB_STATUS_INVALID_PATH_ID:
-        printf("Invalid Path ID\n");
+        print_str("Invalid Path ID\n");
         break;
     case INTEL_SRB_STATUS_NO_DEVICE:
-        printf("No Device\n");
+        print_str("No Device\n");
         break;
     case INTEL_SRB_STATUS_TIMEOUT:
-        printf("Timeout\n");
+        print_str("Timeout\n");
         break;
     case INTEL_SRB_STATUS_SELECTION_TIMEOUT:
-        printf("Selection Timeout\n");
+        print_str("Selection Timeout\n");
         break;
     case INTEL_SRB_STATUS_COMMAND_TIMEOUT:
-        printf("Command Timeout\n");
+        print_str("Command Timeout\n");
         break;
     case INTEL_SRB_STATUS_MESSAGE_REJECTED:
-        printf("Message Rejected\n");
+        print_str("Message Rejected\n");
         break;
     case INTEL_SRB_STATUS_BUS_RESET:
-        printf("Bus Reset\n");
+        print_str("Bus Reset\n");
         break;
     case INTEL_SRB_STATUS_PARITY_ERROR:
-        printf("Parity Error\n");
+        print_str("Parity Error\n");
         break;
     case INTEL_SRB_STATUS_REQUEST_SENSE_FAILED:
-        printf("Request Sense Failed\n");
+        print_str("Request Sense Failed\n");
         break;
     case INTEL_SRB_STATUS_NO_HBA:
-        printf("No HBA\n");
+        print_str("No HBA\n");
         break;
     case INTEL_SRB_STATUS_DATA_OVERRUN:
-        printf("Data Overrun\n");
+        print_str("Data Overrun\n");
         break;
     case INTEL_SRB_STATUS_UNEXPECTED_BUS_FREE:
-        printf("Unexpected Bus Free\n");
+        print_str("Unexpected Bus Free\n");
         break;
     case INTEL_SRB_STATUS_PHASE_SEQUENCE_FAILURE:
-        printf("Phase Sequence Failure\n");
+        print_str("Phase Sequence Failure\n");
         break;
     case INTEL_SRB_STATUS_BAD_SRB_BLOCK_LENGTH:
-        printf("Bad SRB Block Length\n");
+        print_str("Bad SRB Block Length\n");
         break;
     case INTEL_SRB_STATUS_REQUEST_FLUSHED:
-        printf("Request Flushed\n");
+        print_str("Request Flushed\n");
         break;
     case INTEL_SRB_STATUS_INVALID_LUN:
-        printf("Invalid LUN\n");
+        print_str("Invalid LUN\n");
         break;
     case INTEL_SRB_STATUS_INVALID_TARGET_ID:
-        printf("Invalid Target ID\n");
+        print_str("Invalid Target ID\n");
         break;
     case INTEL_SRB_STATUS_BAD_FUNCTION:
-        printf("Bad Function\n");
+        print_str("Bad Function\n");
         break;
     case INTEL_SRB_STATUS_ERROR_RECOVERY:
-        printf("Error Recovery\n");
+        print_str("Error Recovery\n");
         break;
     case INTEL_SRB_STATUS_NOT_POWERED:
-        printf("Not Powered\n");
+        print_str("Not Powered\n");
         break;
     case INTEL_SRB_STATUS_LINK_DOWN:
-        printf("Link Down\n");
+        print_str("Link Down\n");
         break;
     case INTEL_SRB_STATUS_INSUFFICIENT_RESOURCES:
-        printf("Insufficient Resources\n");
+        print_str("Insufficient Resources\n");
         break;
     case INTEL_SRB_STATUS_THROTTLED_REQUEST:
-        printf("Throttled Request\n");
+        print_str("Throttled Request\n");
         break;
     case INTEL_SRB_STATUS_INVALID_PARAMETER:
-        printf("Invalid Parameter\n");
+        print_str("Invalid Parameter\n");
         break;
     default:
         printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
@@ -143,61 +143,61 @@ static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
     switch (srbStatus)
     {
     case INTEL_FIRMWARE_STATUS_SUCCESS:
-        printf("Success\n");
+        print_str("Success\n");
         break;
     case INTEL_FIRMWARE_STATUS_ERROR:
-        printf("Error\n");
+        print_str("Error\n");
         break;
     case INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST:
-        printf("Illegal Request\n");
+        print_str("Illegal Request\n");
         break;
     case INTEL_FIRMWARE_STATUS_INVALID_PARAMETER:
-        printf("Invalid Parameter\n");
+        print_str("Invalid Parameter\n");
         break;
     case INTEL_FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
-        printf("Input Buffer Too Big\n");
+        print_str("Input Buffer Too Big\n");
         break;
     case INTEL_FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
-        printf("Output Buffer Too Small\n");
+        print_str("Output Buffer Too Small\n");
         break;
     case INTEL_FIRMWARE_STATUS_INVALID_SLOT:
-        printf("Invalid Slot\n");
+        print_str("Invalid Slot\n");
         break;
     case INTEL_FIRMWARE_STATUS_INVALID_IMAGE:
-        printf("Invalid Image\n");
+        print_str("Invalid Image\n");
         break;
     case INTEL_FIRMWARE_STATUS_CONTROLLER_ERROR:
-        printf("Controller Error\n");
+        print_str("Controller Error\n");
         break;
     case INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
-        printf("Power Cycle Required\n");
+        print_str("Power Cycle Required\n");
         break;
     case INTEL_FIRMWARE_STATUS_DEVICE_ERROR:
-        printf("Device Error\n");
+        print_str("Device Error\n");
         break;
     case INTEL_FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
-        printf("Interface CRC Error\n");
+        print_str("Interface CRC Error\n");
         break;
     case INTEL_FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
-        printf("Uncorrectable Data Error\n");
+        print_str("Uncorrectable Data Error\n");
         break;
     case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE:
-        printf("Media Change\n");
+        print_str("Media Change\n");
         break;
     case INTEL_FIRMWARE_STATUS_ID_NOT_FOUND:
-        printf("ID Not Found\n");
+        print_str("ID Not Found\n");
         break;
     case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
-        printf("Media Change Request\n");
+        print_str("Media Change Request\n");
         break;
     case INTEL_FIRMWARE_STATUS_COMMAND_ABORT:
-        printf("Command Abort\n");
+        print_str("Command Abort\n");
         break;
     case INTEL_FIRMWARE_STATUS_END_OF_MEDIA:
-        printf("End of Media\n");
+        print_str("End of Media\n");
         break;
     case INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH:
-        printf("Illegal Length\n");
+        print_str("Illegal Length\n");
         break;
     default:
         printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
@@ -210,18 +210,24 @@ static M_INLINE void safe_free_irst_raid_fw_buffer(IOCTL_RAID_FIRMWARE_BUFFER** 
     safe_free_aligned_core(M_REINTERPRET_CAST(void**, buf));
 }
 
-// generic function to handle taking in the various RAID FW Requests to keep code from being dumplicated
-static eReturnValues intel_RAID_FW_Request(tDevice*  device,
-                                           void*     ptrDataRequest,
-                                           uint32_t  dataRequestLength,
-                                           uint32_t  timeoutSeconds,
-                                           uint32_t  intelFirmwareFunction,
-                                           uint32_t  intelFirmwareFlags,
-                                           bool      readFirmwareInfo,
-                                           uint32_t* returnCode)
+// generic function to handle taking in the various RAID FW Requests to keep code from being duplicated
+M_NONNULL_PARAM_LIST(1, 8)
+M_PARAM_RO(1)
+M_NONNULL_IF_NONZERO_SIZE(2, 3)
+M_PARAM_RO_SIZE(2, 3)
+static eReturnValues intel_RAID_FW_Request(const tDevice* device,
+                                           void*          ptrDataRequest,
+                                           uint32_t       dataRequestLength,
+                                           uint32_t       timeoutSeconds,
+                                           uint32_t       intelFirmwareFunction,
+                                           uint32_t       intelFirmwareFlags,
+                                           bool           readFirmwareInfo,
+                                           uint32_t*      returnCode)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
-    if (device)
+    DISABLE_NONNULL_COMPARE
+    if (device != M_NULLPTR)
+    RESTORE_NONNULL_COMPARE
     {
         size_t                      allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
         IOCTL_RAID_FIRMWARE_BUFFER* raidFirmwareRequest =
@@ -248,7 +254,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
                 }
                 else
                 {
-                    raidFirmwareRequest->Header.Timeout = 15;
+                    raidFirmwareRequest->Header.Timeout = DEFAULT_COMMAND_TIMEOUT;
                 }
             }
             raidFirmwareRequest->Header.ControlCode = C_CAST(ULONG, IOCTL_RAID_FIRMWARE);
@@ -298,7 +304,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
 
             if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
             {
-                printf("\n====Sending Intel Raid Firmware Request====\n");
+                print_str("\n====Sending Intel Raid Firmware Request====\n");
             }
 
             // send the command
@@ -315,7 +321,7 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
             BOOL success =
                 DeviceIoControl(handleToUse, IOCTL_SCSI_MINIPORT, raidFirmwareRequest, C_CAST(DWORD, allocationSize),
                                 raidFirmwareRequest, C_CAST(DWORD, allocationSize), &bytesReturned, &overlappedStruct);
-            device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
             if (ERROR_IO_PENDING ==
                 device->os_info
                     .last_error) // This will only happen for overlapped commands. If the drive is opened without the
@@ -332,9 +338,9 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
             overlappedStruct.hEvent = M_NULLPTR;
             if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
             {
-                printf("Windows Error: ");
+                print_str("Windows Error: ");
                 print_Windows_Error_To_Screen(device->os_info.last_error);
-                printf("Intel RAID Firmware: ");
+                print_str("Intel RAID Firmware: ");
                 printf_Intel_Firmware_SRB_Status(raidFirmwareRequest->Header.ReturnCode);
             }
             if (MSFT_BOOL_FALSE(success))
@@ -343,10 +349,12 @@ static eReturnValues intel_RAID_FW_Request(tDevice*  device,
             }
             else
             {
+                DISABLE_NONNULL_COMPARE
                 if (returnCode != M_NULLPTR)
                 {
                     *returnCode = raidFirmwareRequest->Header.ReturnCode;
                 }
+                RESTORE_NONNULL_COMPARE
                 ret = SUCCESS; // IO sent successfully in the system...BUT we need to check the SRB return code to
                                // determine if the command went through to the device
                 switch (raidFirmwareRequest->Header.ReturnCode)
@@ -405,11 +413,11 @@ static M_INLINE void safe_free_irst_fw_info(INTEL_STORAGE_FIRMWARE_INFO_V2** inf
     safe_free_core(M_REINTERPRET_CAST(void**, info));
 }
 
-bool supports_Intel_Firmware_Download(tDevice* device)
+bool supports_Intel_Firmware_Download(const tDevice* device)
 {
     bool supported = false;
 #    if defined(INTRST_DEBUG)
-    printf("Intel: Checking FWDL IOCTL support\n");
+    print_str("Intel: Checking FWDL IOCTL support\n");
 #    endif // INTRST_DEBUG
     uint32_t allocationSize =
         sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2) + (sizeof(INTEL_STORAGE_FIRMWARE_SLOT_INFO_V2) * 7); // max of 7 slots
@@ -430,7 +438,7 @@ bool supports_Intel_Firmware_Download(tDevice* device)
         firmwareInfo->Size    = sizeof(INTEL_STORAGE_FIRMWARE_INFO_V2);
         // nothing else needs setup, just issue the command
 #    if defined(INTRST_DEBUG)
-        printf("Attempting to get Intel FWDL support\n");
+        print_str("Attempting to get Intel FWDL support\n");
 #    endif // INTRST_DEBUG
         if (SUCCESS == intel_RAID_FW_Request(device, firmwareInfo, allocationSize, 15, INTEL_FIRMWARE_FUNCTION_GET_INFO,
                                              flags, true, &returnCode))
@@ -444,7 +452,7 @@ bool supports_Intel_Firmware_Download(tDevice* device)
                 device->os_info.csmiDeviceData->intelRSTSupport.payloadAlignment  = firmwareInfo->ImagePayloadAlignment;
             }
 #    if defined(INTRST_DEBUG)
-            printf("Got Intel FWDL Info\n");
+            print_str("Got Intel FWDL Info\n");
             printf("\tSupported: %d\n", firmwareInfo->UpgradeSupport);
             printf("\tPayload Alignment: %ld\n", firmwareInfo->ImagePayloadAlignment);
             printf("\tmaxXferSize: %ld\n", firmwareInfo->ImagePayloadMaxSize);
@@ -475,14 +483,14 @@ static M_INLINE void safe_free_irst_fwdl(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2** fw
 }
 
 // The idea with this function is that it can handle NVMe or SCSI with generic inputs that will work to reduce code
-static eReturnValues internal_Intel_FWDL_Function_Download(tDevice*  device,
-                                                           uint32_t  flags,
-                                                           uint32_t* returnCode,
-                                                           uint8_t*  imagePtr,
-                                                           uint32_t  imageDataLength,
-                                                           uint32_t  imageOffset,
-                                                           uint8_t   firmwareSlot,
-                                                           uint32_t  timeoutSeconds)
+static eReturnValues internal_Intel_FWDL_Function_Download(const tDevice* device,
+                                                           uint32_t       flags,
+                                                           uint32_t*      returnCode,
+                                                           uint8_t*       imagePtr,
+                                                           uint32_t       imageDataLength,
+                                                           uint32_t       imageOffset,
+                                                           uint8_t        firmwareSlot,
+                                                           uint32_t       timeoutSeconds)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device && imagePtr)
@@ -524,11 +532,11 @@ static M_INLINE void safe_free_irst_fw_activate(INTEL_STORAGE_FIRMWARE_ACTIVATE*
     safe_free_core(M_REINTERPRET_CAST(void**, activate));
 }
 
-static eReturnValues internal_Intel_FWDL_Function_Activate(tDevice*  device,
-                                                           uint32_t  flags,
-                                                           uint32_t* returnCode,
-                                                           uint8_t   firmwareSlot,
-                                                           uint32_t  timeoutSeconds)
+static eReturnValues internal_Intel_FWDL_Function_Activate(const tDevice* device,
+                                                           uint32_t       flags,
+                                                           uint32_t*      returnCode,
+                                                           uint8_t        firmwareSlot,
+                                                           uint32_t       timeoutSeconds)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device)
@@ -567,13 +575,14 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx* scsiIoCtx, bool* isActivate)
     uint32_t transferLengthBytes = UINT32_C(0);
     // check if this is a SCSI Write buffer command or ATA download microcode. Can only support deferred and activate
     // subcommands.
-    if (scsiIoCtx->cdb[OPERATION_CODE] == WRITE_BUFFER_CMD)
+    if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == WRITE_BUFFER_CMD)
     {
-        uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[1], 4, 0);
+        uint8_t wbMode = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 4, 0);
         if (wbMode == SCSI_WB_DL_MICROCODE_OFFSETS_SAVE_DEFER)
         {
-            compatible          = true;
-            transferLengthBytes = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[6], scsiIoCtx->cdb[7], scsiIoCtx->cdb[8]);
+            compatible = true;
+            transferLengthBytes =
+                M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_6], scsiIoCtx->cdb[CDB_7], scsiIoCtx->cdb[CDB_8]);
         }
         else if (wbMode == SCSI_WB_ACTIVATE_DEFERRED_MICROCODE)
         {
@@ -648,7 +657,7 @@ eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* scsiIoCtx)
             {
                 // assume SCSI write buffer if we made it this far. The is_Compatible_SCSI_FWDL_IO will filter out other
                 // commands since the opcode won't match
-                firmwareSlot = scsiIoCtx->cdb[2]; // firmware slot or buffer ID are "the same" in SNTL
+                firmwareSlot = scsiIoCtx->cdb[CDB_2]; // firmware slot or buffer ID are "the same" in SNTL
             }
             ret = internal_Intel_FWDL_Function_Activate(scsiIoCtx->device, flags, &returnCode, firmwareSlot, timeout);
             // TODO: Dummy up sense data!
@@ -681,8 +690,9 @@ eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* scsiIoCtx)
             {
                 // assume SCSI write buffer if we made it this far. The is_Compatible_SCSI_FWDL_IO will filter out other
                 // commands since the opcode won't match
-                firmwareSlot = scsiIoCtx->cdb[2]; // firmware slot or buffer ID are "the same" in SNTL
-                imageOffset  = M_BytesTo4ByteValue(0, scsiIoCtx->cdb[3], scsiIoCtx->cdb[4], scsiIoCtx->cdb[5]);
+                firmwareSlot = scsiIoCtx->cdb[CDB_2]; // firmware slot or buffer ID are "the same" in SNTL
+                imageOffset =
+                    M_BytesTo4ByteValue(0, scsiIoCtx->cdb[CDB_3], scsiIoCtx->cdb[CDB_4], scsiIoCtx->cdb[CDB_5]);
             }
             ret = internal_Intel_FWDL_Function_Download(scsiIoCtx->device, flags, &returnCode, imagePtr,
                                                         imageDataLength, imageOffset, firmwareSlot, timeout);
@@ -714,7 +724,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
                    safe_calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
         if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
         {
-            printf("\n====Sending Intel RST NVMe Command====\n");
+            print_str("\n====Sending Intel RST NVMe Command====\n");
         }
         if (nvmPassthroughCommand)
         {
@@ -735,7 +745,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
                 }
                 else
                 {
-                    nvmPassthroughCommand->Header.Timeout = 15;
+                    nvmPassthroughCommand->Header.Timeout = DEFAULT_COMMAND_TIMEOUT;
                 }
             }
             nvmPassthroughCommand->Header.ControlCode = C_CAST(ULONG, IOCTL_NVME_PASSTHROUGH);
@@ -829,7 +839,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
             BOOL success = DeviceIoControl(handleToUse, IOCTL_SCSI_MINIPORT, nvmPassthroughCommand,
                                            C_CAST(DWORD, allocationSize), nvmPassthroughCommand,
                                            C_CAST(DWORD, allocationSize), &bytesReturned, &overlappedStruct);
-            nvmeIoCtx->device->os_info.last_error = GetLastError();
+            set_Device_Last_Error(nvmeIoCtx->device, GetLastError());
             if (ERROR_IO_PENDING ==
                 nvmeIoCtx->device->os_info
                     .last_error) // This will only happen for overlapped commands. If the drive is opened without the
@@ -1060,7 +1070,7 @@ eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #    if defined(INTRST_DEBUG)
-    printf("Intel: NVM passthrough request\n");
+    print_str("Intel: NVM passthrough request\n");
 #    endif // INTRST_DEBUG
     DISABLE_NONNULL_COMPARE
     if (nvmeIoCtx != M_NULLPTR)
@@ -1072,13 +1082,13 @@ eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx)
             case NVME_ADMIN_CMD_DOWNLOAD_FW:
             case NVME_ADMIN_CMD_ACTIVATE_FW:
 #    if defined(INTRST_DEBUG)
-                printf("Intel: NVM firmware command\n");
+                print_str("Intel: NVM firmware command\n");
 #    endif // INTRST_DEBUG
                 ret = send_Intel_NVM_Firmware_Download(nvmeIoCtx);
                 break;
             default:
 #    if defined(INTRST_DEBUG)
-                printf("Intel: NVM generic passthrough command\n");
+                print_str("Intel: NVM generic passthrough command\n");
 #    endif // INTRST_DEBUG
                 ret = send_Intel_NVM_Passthrough_Command(nvmeIoCtx);
                 break;
@@ -1104,7 +1114,7 @@ eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #    if defined(INTRST_DEBUG)
-    printf("Intel: Received SCSI command for translation\n");
+    print_str("Intel: Received SCSI command for translation\n");
 #    endif // INTRST_DEBUG
     DISABLE_NONNULL_COMPARE
     if (scsiIoCtx != M_NULLPTR)
@@ -1120,6 +1130,11 @@ eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx)
     printf("Intel: Translated command result: %d\n", ret);
 #    endif // INTRST_DEBUG
     return ret;
+}
+
+#else
+M_ATTR_UNUSED static void suppress_empty_intel_rst_helper(void)
+{
 }
 
 #endif // ENABLE_INTEL_RST

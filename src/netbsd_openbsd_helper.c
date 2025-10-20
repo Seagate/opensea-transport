@@ -102,9 +102,9 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 continue;
             }
             perror("open");
-            device->os_info.last_error = errno;
-            printf("open failure\n");
-            printf("Error: ");
+            set_Device_Last_Error(device, errno);
+            print_str("open failure\n");
+            print_str("Error: ");
             print_Errno_To_Screen(errno);
             if (device->os_info.last_error == EACCES)
             {
@@ -247,7 +247,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 }
 
 #define BSD_DEV_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
+eReturnValues get_Device_List(tDevice* const   ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)
@@ -258,6 +258,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     uint32_t      found                 = UINT32_C(0);
     uint32_t      failedGetDeviceCount  = UINT32_C(0);
     uint32_t      permissionDeniedCount = UINT32_C(0);
+    uint32_t      busyDevCount          = UINT32_C(0);
     DECLARE_ZERO_INIT_ARRAY(char, name, BSD_DEV_NAME_LEN);
     int      fd          = 0;
     tDevice* d           = M_NULLPTR;
@@ -269,6 +270,20 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     struct dirent** sdnamelist = M_NULLPTR;
     struct dirent** wdnamelist = M_NULLPTR;
     // struct dirent** nvmenamelist = M_NULLPTR;
+
+    eVerbosityLevels listVerbosity = VERBOSITY_DEFAULT;
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        listVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        listVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        listVerbosity = VERBOSITY_BUFFERS;
+    }
 
     scandirres = scandir("/dev", &sdnamelist, rsd_filter, alphasort);
     if (scandirres > 0)
@@ -357,65 +372,84 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                 eReturnValues ret  = get_Device(name, d);
                 if (ret != SUCCESS)
                 {
-                    failedGetDeviceCount++;
+                    ++failedGetDeviceCount;
                 }
-                found++;
-                d++;
-            }
-            else if (errno == EACCES) // quick fix for opening drives without sudo
-            {
-                ++permissionDeniedCount;
-                failedGetDeviceCount++;
+                ++found;
+                ++d;
             }
             else
             {
-                failedGetDeviceCount++;
+                if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
+                {
+                    printf("Failed open, reason: ");
+                    print_Errno_To_Screen(errno);
+                }
+                ++failedGetDeviceCount;
+                switch (errno)
+                {
+                case EACCES:
+                    ++permissionDeniedCount;
+                    break;
+                case EBUSY:
+                    ++busyDevCount;
+                    break;
+                default:
+                    break;
+                }
             }
             // free the dev[deviceNumber] since we are done with it now.
             safe_free(&devs[driveNumber]);
         }
-        if (found == failedGetDeviceCount)
-        {
-            returnValue = FAILURE;
-        }
-        else if (permissionDeniedCount == totalDevs)
+        if (permissionDeniedCount == totalDevs)
         {
             returnValue = PERMISSION_DENIED;
         }
-        else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
+        else if (busyDevCount == totalDevs)
+        {
+            returnValue = DEVICE_BUSY;
+        }
+        else if (failedGetDeviceCount == totalDevs)
+        {
+            returnValue = FAILURE;
+        }
+        else if (failedGetDeviceCount > 0)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
     RESTORE_NONNULL_COMPARE
     safe_free(M_REINTERPRET_CAST(void**, &devs));
+    if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
+    {
+        printf("Get device list returning %d\n", returnValue);
+    }
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED tDevice* device,
-                      M_ATTR_UNUSED uint64_t lba,
-                      M_ATTR_UNUSED bool     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* ptrData,
-                      M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
+                      M_ATTR_UNUSED uint64_t       lba,
+                      M_ATTR_UNUSED bool           forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t*       ptrData,
+                      M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED tDevice* device,
-                       M_ATTR_UNUSED uint64_t lba,
-                       M_ATTR_UNUSED bool     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* ptrData,
-                       M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
+                       M_ATTR_UNUSED uint64_t       lba,
+                       M_ATTR_UNUSED bool           forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t*       ptrData,
+                       M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
@@ -433,7 +467,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-eReturnValues os_Device_Reset(tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* device)
 {
     switch (device->os_info.passthroughType)
     {
@@ -446,7 +480,7 @@ eReturnValues os_Device_Reset(tDevice* device)
     }
 }
 
-eReturnValues os_Bus_Reset(tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* device)
 {
     switch (device->os_info.passthroughType)
     {
@@ -459,13 +493,13 @@ eReturnValues os_Bus_Reset(tDevice* device)
     }
 }
 
-eReturnValues os_Controller_Reset(tDevice* device)
+eReturnValues os_Controller_Reset(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize)
 {
     M_USE_UNUSED(device);
     M_USE_UNUSED(pData);
@@ -479,44 +513,58 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Reset(tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Lock_Device(tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
 {
-    // flock?
-    M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Unlock_Device(tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* device)
 {
     // flock?
     M_USE_UNUSED(device);
+    if (device->os_info.lockCount < UINT16_MAX)
+    {
+        // Always increment this so we know how many times we've been requested to lock
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
+    }
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Update_File_System_Cache(tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* device)
+{
+    // flock?
+    M_USE_UNUSED(device);
+    if (device->os_info.lockCount > 0)
+    {
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
+    }
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
+eReturnValues os_Update_File_System_Cache(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     return bsd_Unmount_From_Matching_Dev(device);
 }
 
-eReturnValues os_Erase_Boot_Sectors(tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;

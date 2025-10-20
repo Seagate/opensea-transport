@@ -18,7 +18,7 @@ FILE_OUTPUT_DIR=lib
 #Change the Major version when major interface changes are made. E.g. tDevice changes
 MAJOR=10
 #Change the Minor version when new features are added. 
-MINOR=0
+MINOR=2
 #Change the patch version when only bug fixes are made.
 PATCH=0
 VERSION=$(MAJOR).$(MINOR).$(PATCH)
@@ -36,7 +36,7 @@ COMPILER_VERSION := $(shell $(CC) --version)
 ifneq (,$(findstring clang,$(COMPILER_VERSION)))
 	#setup clang specific warnings/flags (centos 7's old version supports -Wno-unknown-warning-option so enabling all of them)
 	CFLAGS += -Wno-unknown-warning-option -Wcast-align=strict -Wvla -Wfloat-equal -Wnull-dereference -Wunused-const-variable \
-	-Wduplicated-cond -Wjump-misses-init -Wstringop-overflow -Wlogical-op -Wshift-overflow=2 -Wdouble-promotion -Wformat-security \
+	-Wduplicated-cond -Wjump-misses-init -Wstringop-overflow -Wlogical-op -Wshift-overflow=2 -Wdouble-promotion -Wformat -Wformat-security \
 	-Wold-style-definition -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
 else 
 	ifneq (,$(findstring GCC,$(COMPILER_VERSION)))
@@ -94,11 +94,11 @@ else
 			CFLAGS += -std=gnu99
 		endif
 		
-		CFLAGS += -Wvla -Wfloat-equal -Wjump-misses-init -Wlogical-op -Wdouble-promotion -Wformat-security \
+		CFLAGS += -Wvla -Wfloat-equal -Wjump-misses-init -Wlogical-op -Wdouble-promotion -Wformat -Wformat-security \
 			-Wold-style-definition -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
 	else
 		CFLAGS += -std=gnu99
-		CFLAGS += -Wvla -Wfloat-equal -Wjump-misses-init -Wlogical-op -Wdouble-promotion -Wformat-security \
+		CFLAGS += -Wvla -Wfloat-equal -Wjump-misses-init -Wlogical-op -Wdouble-promotion -Wformat -Wformat-security \
 				-Wold-style-definition -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes
 	endif
 endif

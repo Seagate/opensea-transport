@@ -100,8 +100,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         {
             perror("open");
             device->os_info.fd = errno;
-            printf("open failure");
-            printf("Error:");
+            print_str("open failure");
+            print_str("Error:");
             print_Errno_To_Screen(errno);
             if (device->os_info.fd == EACCES)
             {
@@ -177,9 +177,9 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         continue;
                     }
                     perror("open");
-                    device->os_info.last_error = errno;
-                    printf("open failure\n");
-                    printf("Error: ");
+                    set_Device_Last_Error(device, errno);
+                    print_str("open failure\n");
+                    print_str("Error: ");
                     print_Errno_To_Screen(errno);
                     if (device->os_info.last_error == EACCES)
                     {
@@ -336,7 +336,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                 }
                                 else
                                 {
-                                    printf("WARN: XPT_PATH_INQ I/O status failed\n");
+                                    print_str("WARN: XPT_PATH_INQ I/O status failed\n");
                                 }
                             }
                             // let the library now go out and set up the device struct after sending some commands.
@@ -353,19 +353,19 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         }
                         else
                         {
-                            printf("WARN: XPT_GDEV_TYPE I/O status failed\n");
+                            print_str("WARN: XPT_GDEV_TYPE I/O status failed\n");
                             ret = FAILURE;
                         }
                     }
                     else
                     {
-                        printf("WARN: XPT_GDEV_TYPE I/O failed\n");
+                        print_str("WARN: XPT_GDEV_TYPE I/O failed\n");
                         ret = FAILURE;
                     }
                 }
                 else
                 {
-                    printf("WARN: Could not allocate CCB\n");
+                    print_str("WARN: Could not allocate CCB\n");
                     ret = FAILURE;
                 }
             }
@@ -423,7 +423,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         {
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("No Raid PassThrough IO Routine present for this device\n");
+                print_str("No Raid PassThrough IO Routine present for this device\n");
             }
         }
     }
@@ -517,7 +517,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                camTimeout = UINT32_C(15) * UINT32_C(1000); // default to 15 second timeout
+                camTimeout = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
 
@@ -647,7 +647,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             else
             {
                 ret = BAD_PARAMETER;
-                printf("WARN: Unsupported ATA Command type\n");
+                print_str("WARN: Unsupported ATA Command type\n");
             }
 
             if (ret == SUCCESS)
@@ -697,7 +697,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
                         {
                             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
-                                printf("WARN: I/O CAM_CMD_TIMEOUT occured\n");
+                                print_str("WARN: I/O CAM_CMD_TIMEOUT occured\n");
                             }
                         }
                         else
@@ -781,7 +781,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
     }
     else
     {
-        printf("WARN: couldn't allocate CCB");
+        print_str("WARN: couldn't allocate CCB");
     }
 
     return ret;
@@ -856,7 +856,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                camTimeout = UINT32_C(15) * UINT32_C(1000); // default to 15 second timeout
+                camTimeout = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
         csio->ccb_h.timeout = camTimeout;
@@ -898,7 +898,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
         ccb->ccb_h.flags |= CAM_DEV_QFRZDIS;
         // ccb->ccb_h.flags |= CAM_PASS_ERR_RECOVER; // Needed?
 
-        safe_memcpy(&csio->cdb_io.cdb_bytes[0], IOCDBLEN, &scsiIoCtx->cdb[0], IOCDBLEN);
+        safe_memcpy(&csio->cdb_io.cdb_bytes[0], IOCDBLEN, &scsiIoCtx->cdb[CDB_OPERATION_CODE], IOCDBLEN);
 #if defined(_DEBUG)
         printf("%s cdb [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
                [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",
@@ -977,7 +977,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
     }
     else
     {
-        printf("ccb is Null\n");
+        print_str("ccb is Null\n");
         ret = BAD_PARAMETER; // Should this be MEMORY FAILURE?
     }
 
@@ -1149,7 +1149,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 //
 //-----------------------------------------------------------------------------
 #define CAM_DEV_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
+eReturnValues get_Device_List(tDevice* const   ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)
@@ -1160,6 +1160,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     uint32_t      found                 = UINT32_C(0);
     uint32_t      failedGetDeviceCount  = UINT32_C(0);
     uint32_t      permissionDeniedCount = UINT32_C(0);
+    uint32_t      busyDevCount          = UINT32_C(0);
     DECLARE_ZERO_INIT_ARRAY(char, name, CAM_DEV_NAME_LEN);
     int      fd            = 0;
     tDevice* d             = M_NULLPTR;
@@ -1171,6 +1172,20 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     struct dirent** danamelist   = M_NULLPTR;
     struct dirent** adanamelist  = M_NULLPTR;
     struct dirent** nvmenamelist = M_NULLPTR;
+
+    eVerbosityLevels listVerbosity = VERBOSITY_DEFAULT;
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
+    {
+        listVerbosity = VERBOSITY_COMMAND_NAMES;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
+    {
+        listVerbosity = VERBOSITY_COMMAND_VERBOSE;
+    }
+    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
+    {
+        listVerbosity = VERBOSITY_BUFFERS;
+    }
 
     scandirres = scandir("/dev", &danamelist, da_filter, alphasort);
     if (scandirres > 0)
@@ -1264,70 +1279,89 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                 eReturnValues ret  = get_Device(name, d);
                 if (ret != SUCCESS)
                 {
-                    failedGetDeviceCount++;
+                    ++failedGetDeviceCount;
                 }
-                found++;
-                d++;
-            }
-            else if (errno == EACCES) // quick fix for opening drives without sudo
-            {
-                ++permissionDeniedCount;
-                failedGetDeviceCount++;
+                ++found;
+                ++d;
             }
             else
             {
-                failedGetDeviceCount++;
+                if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
+                {
+                    printf("Failed open, reason: ");
+                    print_Errno_To_Screen(errno);
+                }
+                ++failedGetDeviceCount;
+                switch (errno)
+                {
+                case EACCES:
+                    ++permissionDeniedCount;
+                    break;
+                case EBUSY:
+                    ++busyDevCount;
+                    break;
+                default:
+                    break;
+                }
             }
             // free the dev[deviceNumber] since we are done with it now.
             safe_free(&devs[driveNumber]);
         }
-        if (found == failedGetDeviceCount)
-        {
-            returnValue = FAILURE;
-        }
-        else if (permissionDeniedCount == (num_da_devs + num_ada_devs + num_nvme_devs))
+        if (permissionDeniedCount == totalDevs)
         {
             returnValue = PERMISSION_DENIED;
         }
-        else if (failedGetDeviceCount && returnValue != PERMISSION_DENIED)
+        else if (busyDevCount == totalDevs)
+        {
+            returnValue = DEVICE_BUSY;
+        }
+        else if (failedGetDeviceCount == totalDevs)
+        {
+            returnValue = FAILURE;
+        }
+        else if (failedGetDeviceCount > 0)
         {
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
     RESTORE_NONNULL_COMPARE
     safe_free(M_REINTERPRET_CAST(void**, &devs));
+    if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
+    {
+        printf("Get device list returning %d\n", returnValue);
+    }
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED tDevice* device,
-                      M_ATTR_UNUSED uint64_t lba,
-                      M_ATTR_UNUSED bool     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* ptrData,
-                      M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
+                      M_ATTR_UNUSED uint64_t       lba,
+                      M_ATTR_UNUSED bool           forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t*       ptrData,
+                      M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED tDevice* device,
-                       M_ATTR_UNUSED uint64_t lba,
-                       M_ATTR_UNUSED bool     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* ptrData,
-                       M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
+                       M_ATTR_UNUSED uint64_t       lba,
+                       M_ATTR_UNUSED bool           forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t*       ptrData,
+                       M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Device_Reset(tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
@@ -1351,7 +1385,7 @@ eReturnValues os_Device_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues os_Bus_Reset(tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
@@ -1375,7 +1409,7 @@ eReturnValues os_Bus_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
@@ -1463,11 +1497,11 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     stop_Timer(&commandTimer);
     if (ioctlResult < 0)
     {
-        nvmeIoCtx->device->os_info.last_error = errno;
-        ret                                   = OS_PASSTHROUGH_FAILURE;
+        set_Device_Last_Error(nvmeIoCtx->device, errno);
+        ret = OS_PASSTHROUGH_FAILURE;
         printf("\nError : %d", nvmeIoCtx->device->os_info.last_error);
         printf("Error %s\n", strerror(C_CAST(int, nvmeIoCtx->device->os_info.last_error)));
-        printf("\n OS_PASSTHROUGH_FAILURE. ");
+        print_str("\n OS_PASSTHROUGH_FAILURE. ");
         print_Errno_To_Screen(C_CAST(int, nvmeIoCtx->device->os_info.last_error));
     }
     else
@@ -1508,7 +1542,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Reset(tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret           = OS_PASSTHROUGH_FAILURE;
@@ -1520,10 +1554,6 @@ eReturnValues os_nvme_Reset(tDevice* device)
     ioRes = ioctl(handleToReset, NVME_RESET_CONTROLLER);
     stop_Timer(&commandTimer);
 
-    device->drive_info.lastCommandTimeNanoSeconds             = get_Nano_Seconds(commandTimer);
-    device->drive_info.lastNVMeResult.lastNVMeStatus          = 0;
-    device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
-
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
@@ -1532,10 +1562,10 @@ eReturnValues os_nvme_Reset(tDevice* device)
     if (ioRes < 0)
     {
         // failed
-        device->os_info.last_error = errno;
+        set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
         if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
         {
-            printf("Error :");
+            print_str("Error :");
             print_Errno_To_Screen(C_CAST(int, device->os_info.last_error));
         }
     }
@@ -1552,27 +1582,41 @@ eReturnValues os_nvme_Reset(tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice* device,
-                               M_ATTR_UNUSED uint8_t* pData,
-                               M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
+                               M_ATTR_UNUSED uint8_t*       pData,
+                               M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Lock_Device(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
 {
-    // There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
     return SUCCESS;
 }
 
-eReturnValues os_Unlock_Device(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* device)
+{
+    // There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
+    if (device->os_info.lockCount < UINT16_MAX)
+    {
+        // Always increment this so we know how many times we've been requested to lock
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
+    }
+    return SUCCESS;
+}
+
+eReturnValues os_Unlock_Device(const tDevice* device)
 {
     // There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
+    if (device->os_info.lockCount > 0)
+    {
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
+    }
     return SUCCESS;
 }
 
@@ -1584,7 +1628,7 @@ eReturnValues os_Unlock_Device(M_ATTR_UNUSED tDevice* device)
 // looks very similar to the Linux getmntent: getfsent
 // ???https://www.freebsd.org/cgi/man.cgi?query=getfsent&sektion=3&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
 {
     // TODO: I have not found an analog to Linux which is usually the most helpful for figuring out what to do.
     //       I haven't found any other API or IOCTL that reloads the partition table on the disk (which is pretty close)
@@ -1596,12 +1640,12 @@ eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     return bsd_Unmount_From_Matching_Dev(device);
 }

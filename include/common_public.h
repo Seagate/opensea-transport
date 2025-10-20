@@ -74,8 +74,6 @@ extern "C"
 #    define OPENSEA_TRANSPORT_API
 #endif
 
-#define SEAGATE_VENDOR_ID          (0x1BB1)
-
 #define OPENSEA_MAX_CONTROLLERS    (8U)
 #define MAX_DEVICES_PER_CONTROLLER (256U)
 #define MAX_DEVICES_TO_SCAN        (OPENSEA_MAX_CONTROLLERS * MAX_DEVICES_PER_CONTROLLER)
@@ -86,6 +84,7 @@ extern "C"
 #define MODEL_NUM_LEN              (40)
 #define FW_REV_LEN                 (8)
 #define T10_VENDOR_ID_LEN          (8)
+#define DEFAULT_COMMAND_TIMEOUT    (15) // Seconds
 
     typedef struct s_apiVersionInfo
     {
@@ -138,7 +137,7 @@ extern "C"
                 uint16_t Word019;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idSNwords or something-TJE
-        }; // anonymous to make access to SN or SN words easier
+        };     // anonymous to make access to SN or SN words easier
         uint16_t Word020;
         uint16_t Word021;
         uint16_t Word022;
@@ -153,7 +152,7 @@ extern "C"
                 uint16_t Word026;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idFWwords or something-TJE
-        }; // anonymous to make access to FW or FW words easier
+        };     // anonymous to make access to FW or FW words easier
         union
         {
             uint8_t ModelNum[ATA_IDENTIFY_MN_LENGTH]; // 27 ... 46
@@ -181,7 +180,7 @@ extern "C"
                 uint16_t Word046;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idMNwords or something-TJE
-        }; // anonymous to make access to MN or MN words easier
+        };     // anonymous to make access to MN or MN words easier
         uint16_t Word047;
         uint16_t Word048;
         uint16_t Word049;
@@ -538,6 +537,145 @@ extern "C"
     } nvmeIDCtrl;
 
     M_STATIC_ASSERT(sizeof(nvmeIDCtrl) == 4096, nvme_ctrl_identify_must_be_4096_bytes);
+
+    M_STATIC_ASSERT(offsetof(nvmeIDCtrl, vs) == 3072, nvme_ctrl_vendor_specific_start_3072);
+
+    //! \enum eNVMeCtrlVSOffsets
+    //! \brief Offsets for the nvmeIDCtrl.vs field. Written how the spec offsets are listed.
+    //! Idea is to make the offsets in the array easier to access and read when looking at the spec.
+    //! \note Offsets are every 8 bytes to keep this from getting too long
+    typedef enum eNVMeCtrlVSOffsetsEnum
+    {
+        VS_OFF_3072 = 0,
+        VS_OFF_3080 = 8,
+        VS_OFF_3088 = 16,
+        VS_OFF_3096 = 24,
+        VS_OFF_3104 = 32,
+        VS_OFF_3112 = 40,
+        VS_OFF_3120 = 48,
+        VS_OFF_3128 = 56,
+        VS_OFF_3136 = 64,
+        VS_OFF_3144 = 72,
+        VS_OFF_3152 = 80,
+        VS_OFF_3160 = 88,
+        VS_OFF_3168 = 96,
+        VS_OFF_3176 = 104,
+        VS_OFF_3184 = 112,
+        VS_OFF_3192 = 120,
+        VS_OFF_3200 = 128,
+        VS_OFF_3208 = 136,
+        VS_OFF_3216 = 144,
+        VS_OFF_3224 = 152,
+        VS_OFF_3232 = 160,
+        VS_OFF_3240 = 168,
+        VS_OFF_3248 = 176,
+        VS_OFF_3256 = 184,
+        VS_OFF_3264 = 192,
+        VS_OFF_3272 = 200,
+        VS_OFF_3280 = 208,
+        VS_OFF_3288 = 216,
+        VS_OFF_3296 = 224,
+        VS_OFF_3304 = 232,
+        VS_OFF_3312 = 240,
+        VS_OFF_3320 = 248,
+        VS_OFF_3328 = 256,
+        VS_OFF_3336 = 264,
+        VS_OFF_3344 = 272,
+        VS_OFF_3352 = 280,
+        VS_OFF_3360 = 288,
+        VS_OFF_3368 = 296,
+        VS_OFF_3376 = 304,
+        VS_OFF_3384 = 312,
+        VS_OFF_3392 = 320,
+        VS_OFF_3400 = 328,
+        VS_OFF_3408 = 336,
+        VS_OFF_3416 = 344,
+        VS_OFF_3424 = 352,
+        VS_OFF_3432 = 360,
+        VS_OFF_3440 = 368,
+        VS_OFF_3448 = 376,
+        VS_OFF_3456 = 384,
+        VS_OFF_3464 = 392,
+        VS_OFF_3472 = 400,
+        VS_OFF_3480 = 408,
+        VS_OFF_3488 = 416,
+        VS_OFF_3496 = 424,
+        VS_OFF_3504 = 432,
+        VS_OFF_3512 = 440,
+        VS_OFF_3520 = 448,
+        VS_OFF_3528 = 456,
+        VS_OFF_3536 = 464,
+        VS_OFF_3544 = 472,
+        VS_OFF_3552 = 480,
+        VS_OFF_3560 = 488,
+        VS_OFF_3568 = 496,
+        VS_OFF_3576 = 504,
+        VS_OFF_3584 = 512,
+        VS_OFF_3592 = 520,
+        VS_OFF_3600 = 528,
+        VS_OFF_3608 = 536,
+        VS_OFF_3616 = 544,
+        VS_OFF_3624 = 552,
+        VS_OFF_3632 = 560,
+        VS_OFF_3640 = 568,
+        VS_OFF_3648 = 576,
+        VS_OFF_3656 = 584,
+        VS_OFF_3664 = 592,
+        VS_OFF_3672 = 600,
+        VS_OFF_3680 = 608,
+        VS_OFF_3688 = 616,
+        VS_OFF_3696 = 624,
+        VS_OFF_3704 = 632,
+        VS_OFF_3712 = 640,
+        VS_OFF_3720 = 648,
+        VS_OFF_3728 = 656,
+        VS_OFF_3736 = 664,
+        VS_OFF_3744 = 672,
+        VS_OFF_3752 = 680,
+        VS_OFF_3760 = 688,
+        VS_OFF_3768 = 696,
+        VS_OFF_3776 = 704,
+        VS_OFF_3784 = 712,
+        VS_OFF_3792 = 720,
+        VS_OFF_3800 = 728,
+        VS_OFF_3808 = 736,
+        VS_OFF_3816 = 744,
+        VS_OFF_3824 = 752,
+        VS_OFF_3832 = 760,
+        VS_OFF_3840 = 768,
+        VS_OFF_3848 = 776,
+        VS_OFF_3856 = 784,
+        VS_OFF_3864 = 792,
+        VS_OFF_3872 = 800,
+        VS_OFF_3880 = 808,
+        VS_OFF_3888 = 816,
+        VS_OFF_3896 = 824,
+        VS_OFF_3904 = 832,
+        VS_OFF_3912 = 840,
+        VS_OFF_3920 = 848,
+        VS_OFF_3928 = 856,
+        VS_OFF_3936 = 864,
+        VS_OFF_3944 = 872,
+        VS_OFF_3952 = 880,
+        VS_OFF_3960 = 888,
+        VS_OFF_3968 = 896,
+        VS_OFF_3976 = 904,
+        VS_OFF_3984 = 912,
+        VS_OFF_3992 = 920,
+        VS_OFF_4000 = 928,
+        VS_OFF_4008 = 936,
+        VS_OFF_4016 = 944,
+        VS_OFF_4024 = 952,
+        VS_OFF_4032 = 960,
+        VS_OFF_4040 = 968,
+        VS_OFF_4048 = 976,
+        VS_OFF_4056 = 984,
+        VS_OFF_4064 = 992,
+        VS_OFF_4072 = 1000,
+        VS_OFF_4080 = 1008,
+        VS_OFF_4088 = 1016,
+        VS_OFF_4095 = 1023
+    } eNVMeCtrlVSOffsets;
 
     typedef struct s_nvmeLBAF
     {
@@ -980,12 +1118,16 @@ extern "C"
                                  // codes. This is here so it can be checked in a function and stored while running
             bool cmdDTSupported; // If above bool is true, then this holds if cmdDT is supported and can be used to
                                  // check if commands are supported or not. Really only for old drives -TJE
-            uint8_t  reserved[1];
-            uint32_t maxTransferLength; // Maximum SCSI command transfer length in bytes. Mostly here for USB where
-                                        // translations aren't accurate or don't show this properly.
+            bool     noCompareLogicalBlocks; // when set, the verify with bytecheck = 1 is not supported
+            uint32_t maxTransferLength;      // Maximum SCSI command transfer length in bytes. Mostly here for USB where
+                                             // translations aren't accurate or don't show this properly.
+            int8_t   readBufferCmdSize; // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
             bool noSATVPDPage; // when this is set, the SAT VPD is not available and should not be read, skipping ahead
                                // to instead directly trying a passthrough command
-            uint8_t reserved2[3];
+            int8_t syncCacheCmdSize;      // 0 = not set, <0 = not supported, 10 = 10B version, 16 = 16B version
+            int8_t writeAndVerifyCmdSize; // 0 = not set, <0 = not supported, 10 = 10B version, 12 = 12B version, 16 =
+                                          // 16B version
+            int8_t writeBufferCmdSize;    // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
         } scsiHacks;
         // ATA Hacks refer to SAT translation issues or workarounds.
         struct
@@ -1058,6 +1200,7 @@ extern "C"
             bool possilbyEmulatedNVMe; // realtek's USB to M.2 adapter can do AHCI or NVMe. Since nothing changes in IDs
                                        // and it emulates ATA identify data, need this to work around how it reports.
                                        // -TJE
+            bool smartEnabled;         // Override check of ATA word 85, bit0 since some USB adapters don't set this.
             bool retryWithJMicronPT;   // Needed for some JMicron adapters. Newer may support SAT, older support their
                                        // lagacy passthrough, so this is to retry on these devices.
             bool jmPTDevSet; // for JMicron's passthrough we need to set dev 0 or 1. This gets turned to true once set
@@ -1314,6 +1457,12 @@ extern "C"
         HANDLE_FLAGS_EXCLUSIVE
     } eHandleOpenFlags;
 
+#if defined(_WIN32)
+    typedef DWORD lasterror_t; // GetLastError in Windows
+#else
+typedef errno_t lasterror_t; // errno in POSIX OSs
+#endif
+
 #define OS_HANDLE_NAME_MAX_LENGTH          256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
 #define OS_SECOND_HANDLE_NAME_LENGTH       30
@@ -1327,7 +1476,8 @@ extern "C"
         uint8_t minimumAlignment; // This is a power of 2 value representing the byte alignment required. 0 - no
                                   // requirement, 1 - single byte alignment, 2 - word, 4 - dword, 8 - qword, 16 - 128bit
                                   // aligned
-        uint8_t padd0[3];
+        uint16_t lockCount;       // Tracks lock/unlock requests.
+        uint8_t  padd0;
 #if defined(UEFI_C_SOURCE)
         EFI_HANDLE   fd;
         EFI_DEV_PATH devicePath; // This type being used is a union of all the different possible device paths. - This
@@ -1449,6 +1599,13 @@ extern "C"
                               // least sector size. When this value is set to 0, this means that this value is invalid.
         uint32_t maxXferSize; // From MSDN: The image payload maximum size, this is used for a single command
         // expand this struct if we need other data when we check for firmware download support on a device.
+        struct
+        {
+            bool switchNoReset;         // 10.0.26100.0
+            bool replaceAndSwitchReset; // 10.0.26100.0
+            bool replaceExisting;       // 10.0.22621.0
+            bool switchToExisting;      // always true
+        } activateSupport;
     } fwdlIOsupport;
     uint32_t adapterMaxTransferSize; // Bytes. Returned by querying for adapter properties. Can be used to know when
                                      // trying to request more than the adapter or driver supports.
@@ -1475,10 +1632,10 @@ extern "C"
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
     int fd; // used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but
             // kept here just in case)
-    struct cam_device* cam_dev; // holds fd inside for CAM devices among other information
+    struct cam_device* cam_dev;             // holds fd inside for CAM devices among other information
 #    if defined(__x86_64__) || defined(__amd64__) || defined(__aarch64__) || defined(__ia64__) ||                      \
         defined(__itanium__) || defined(__powerpc64__) || defined(__ppc64__) || defined(__spark__)
-    uint8_t freeBSDPadding[102]; // padding on 64bit OS
+    uint8_t            freeBSDPadding[102]; // padding on 64bit OS
 #    else
     uint8_t freeBSDPadding[106]; // padding on 32bit OS
 #    endif
@@ -1514,11 +1671,8 @@ extern "C"
         bool osReadWriteRecommended; // This will be set to true when it is recommended that OS read/write calls are
                                      // used instead of IO read/write (typically when using SMART or IDE IOCTLs in
                                      // Windows since they may not work right for read/write)
-#if defined(_WIN32)
-        DWORD last_error; // GetLastError in Windows.
-#else
-    errno_t last_error; // errno in Linux
-#endif
+        lasterror_t last_error; // This is the last error from the OS specific calls. This is not cleared automatically,
+                                // so it will hold the last error until it is overwritten by another OS call.
         struct
         {
             bool fileSystemInfoValid; // This must be set to true for the other bools to have any meaning. This is here
@@ -1595,7 +1749,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RW(1)
-    M_PARAM_RO(2) static M_INLINE void copy_ata_identify_to_tdevice(tDevice* device, uint8_t* identifyData)
+    M_PARAM_RO(2) static M_INLINE void copy_ata_identify_to_tdevice(tDevice* device, const uint8_t* identifyData)
     {
         DISABLE_NONNULL_COMPARE
         if (device != M_NULLPTR && identifyData != M_NULLPTR &&
@@ -1603,6 +1757,18 @@ extern "C"
                 M_REINTERPRET_CAST(uintptr_t, identifyData))
         {
             safe_memcpy(M_REINTERPRET_CAST(void*, &device->drive_info.IdentifyData.ata), 512, identifyData, 512);
+        }
+        RESTORE_NONNULL_COMPARE
+    }
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1)
+    static M_INLINE void set_Device_Last_Error(tDevice* device, lasterror_t error)
+    {
+        DISABLE_NONNULL_COMPARE
+        if (device != M_NULLPTR)
+        {
+            device->os_info.last_error = error;
         }
         RESTORE_NONNULL_COMPARE
     }
@@ -1739,6 +1905,7 @@ extern "C"
         PCI_VENDOR_HIGHPOINT     = 0x1103,
         PCI_VENDOR_MICROCHIP     = 0x11F8, // or PMC?
         PCI_VENDOR_SEAGATE       = 0x1BB1,
+        PCI_VENDOR_LACIE         = 0x1C19,
         PCI_VENDOR_3WARE         = 0x13C1,
         PCI_VENDOR_BROADCOM      = 0x14E4,
         PCI_VENDOR_HPE           = 0x1590,
@@ -1752,6 +1919,9 @@ extern "C"
         PCI_VENDOR_ADAPTEC       = 0x9004,
         PCI_VENDOR_ADAPTEC_2     = 0x9005,
     } ePCIVendorIDs;
+
+#define SEAGATE_VENDOR_ID PCI_VENDOR_SEAGATE
+#define LACIE_VENDOR_ID   PCI_VENDOR_LACIE
 
     typedef enum eSeagateFamilyEnum
     {
@@ -2036,6 +2206,40 @@ extern "C"
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity);
 
+#define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
+    typedef struct s_scanDriveInfo
+    {
+        char displayHandle[SCAN_DISPLAY_HANDLE_STRING_LENGTH];
+        char vendor[T10_VENDOR_ID_LEN + 1];
+        char modelNumber[MODEL_NUM_LEN + 1]; // not INQ
+        char serialNumber[SERIAL_NUM_LEN + 1];
+        char firmwareVersion[FW_REV_LEN + 1];
+    } scanDriveInfo;
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Devs_For_Scan_And_Print()
+    //
+    //! \brief   Description:  Scan for devices on the supported interfaces & print info.
+    //!                        Function that scans for valid devices on all interfaces.
+    //                         IMPORTANT: Try best to not send a command to the device.
+    //
+    //  Entry:
+    //!   \param[in] flags = Flags for future use to control the scan
+    //!   \param[in] scanVerbosity = the verbosity to run the scan at
+    //!   \param[out] numberOfDevices = number of devices that needed to be displayed
+    //!   \param[out] deviceList = list for the device information
+    //
+    //  Exit:
+    //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
+    //-----------------------------------------------------------------------------
+    M_PARAM_RW(3)
+    M_PARAM_RW(4)
+    OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
+                                                                    eVerbosityLevels scanVerbosity,
+                                                                    uint32_t*        numberOfDevices,
+                                                                    scanDriveInfo**  deviceList);
+
     //-----------------------------------------------------------------------------
     //
     //  load_Bin_Buf()
@@ -2070,7 +2274,7 @@ extern "C"
     //!   \return true = show drive, false = don't show drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) bool scan_Drive_Type_Filter(tDevice* device, uint32_t scanFlags);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) bool scan_Drive_Type_Filter(const tDevice* device, uint32_t scanFlags);
 
     //-----------------------------------------------------------------------------
     //
@@ -2088,7 +2292,7 @@ extern "C"
     //!   \return true = show drive, false = don't show drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) bool scan_Interface_Type_Filter(tDevice* device, uint32_t scanFlags);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) bool scan_Interface_Type_Filter(const tDevice* device, uint32_t scanFlags);
 
     //-----------------------------------------------------------------------------
     //
@@ -2104,7 +2308,7 @@ extern "C"
     //!   \return eSeagateFamily enum value. See enum for meanings
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eSeagateFamily is_Seagate_Family(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eSeagateFamily is_Seagate_Family(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2136,7 +2340,7 @@ extern "C"
     //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_VendorID(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_VendorID(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2153,7 +2357,11 @@ extern "C"
     //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate(const tDevice* device, bool USBchildDrive);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** sn, size_t snlen);
 
     //-----------------------------------------------------------------------------
     //
@@ -2168,7 +2376,7 @@ extern "C"
     //!   \return 1 = It is a LaCie Drive, 0 - Not a LaCie Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_LaCie(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_LaCie(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2202,7 +2410,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Samsung_HDD(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2235,7 +2443,8 @@ extern "C"
     //!   \return 1 = It is a Maxtor Drive, 0 - Not a Maxtor Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Maxtor(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Maxtor(const tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2250,7 +2459,7 @@ extern "C"
     //!   \return 1 = It is a Seagate Partner Drive, 0 - Not a Seagate-Partner Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Vendor_A(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Vendor_A(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2267,55 +2476,66 @@ extern "C"
     //!   \return 1 = It is a Partner Drive, 0 - Not a Partner Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Vendor_A(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Vendor_A(const tDevice* device, bool USBchildDrive);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Conner_Model_Number(const char* mn);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Conner_VendorID(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Conner_VendorID(const tDevice* device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Connor(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Connor(const tDevice* device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CDC_VendorID(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CDC_VendorID(const tDevice* device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_DEC_VendorID(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_DEC_VendorID(const tDevice* device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_MiniScribe_VendorID(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_MiniScribe_VendorID(const tDevice* device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Quantum_VendorID(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Quantum_VendorID(const tDevice* device);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Quantum_Model_Number(const char* string);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Quantum(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Quantum(const tDevice* device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_PrarieTek_VendorID(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_PrarieTek_VendorID(const tDevice* device);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_B(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_B(const tDevice* device, bool USBchildDrive);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_C(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_C(const tDevice* device, bool USBchildDrive);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_D(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_D(const tDevice* device, bool USBchildDrive);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_E(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_E(const tDevice* device, bool USBchildDrive);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_SSD_PJ(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_SSD_PJ(const tDevice* device, bool USBchildDrive);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(const tDevice* device, bool USBchildDrive);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(const tDevice* device, bool USBchildDrive);
 
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(const tDevice* device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Vendor_K(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Vendor_K(const tDevice* device);
 
     typedef enum eIronwolf_NAS_DriveEnum
     {
@@ -2326,7 +2546,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Ironwolf_NAS_Drive(tDevice *device, bool USBchildDrive)
+    //  is_Ironwolf_NAS_Drive(const tDevice *device, bool USBchildDrive)
     //
     //! \brief   Checks if the device is a Ironwolf or Ironwolf Pro NAS drive
     //
@@ -2340,11 +2560,12 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Firecuda_Drive(tDevice *device, bool USBchildDrive)
+    //  is_Firecuda_Drive(const tDevice *device, bool USBchildDrive)
     //
     //! \brief   Checks if the device is a Firecuda drive
     //
@@ -2358,7 +2579,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Firecuda_Drive(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Firecuda_Drive(const tDevice* device, bool USBchildDrive);
 
     typedef enum eSkyhawk_DriveEnum
     {
@@ -2369,7 +2590,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Skyhawk_Drive(tDevice *device, bool USBchildDrive)
+    //  is_Skyhawk_Drive(const tDevice *device, bool USBchildDrive)
     //
     //! \brief   Checks if the device is a Skyhawk or Skyhawk AI drive
     //
@@ -2383,11 +2604,11 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(const tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Nytro_Drive(tDevice *device, bool USBchildDrive)
+    //  is_Nytro_Drive(const tDevice *device, bool USBchildDrive)
     //
     //! \brief   Checks if the device is a Firecuda drive
     //
@@ -2401,11 +2622,11 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Nytro_Drive(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Nytro_Drive(const tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Exos_Drive(tDevice *device, bool USBchildDrive)
+    //  is_Exos_Drive(const tDevice *device, bool USBchildDrive)
     //
     //! \brief   Checks if the device is a Firecuda drive
     //
@@ -2418,11 +2639,12 @@ extern "C"
     //!   \return 1 = It is a Exos Drive, 0 - Not a Exos Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Exos_Drive(tDevice* device, bool USBchildDrive);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Exos_Drive(const tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Barracuda_Drive(tDevice *device, bool USBchildDrive)
+    //  is_Barracuda_Drive(const tDevice *device, bool USBchildDrive)
     //
     //! \brief   Checks if the device is a Firecuda drive
     //
@@ -2436,7 +2658,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Barracuda_Drive(tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Barracuda_Drive(const tDevice* device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2452,9 +2674,9 @@ extern "C"
     //!   \return 1 = It is a SSD Drive, 0 - Not a SSD Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_SSD(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_SSD(const tDevice* device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_SATA(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_SATA(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2473,7 +2695,8 @@ extern "C"
     //!   block size = device reported block size
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Sector_Size_Emulation_Active(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Sector_Size_Emulation_Active(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2493,7 +2716,8 @@ extern "C"
     //!   block size = device reported block size
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Blocksize_And_Capacity_In_Sync(tDevice* device);
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Blocksize_And_Capacity_In_Sync(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2520,7 +2744,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  get_Sector_Count_For_Read_Write(tDevice *device)
+    //  get_Sector_Count_For_Read_Write(const tDevice *device)
     //
     //! \brief  Gets the sectorCount based on the device interface. The value set is one that is most compatible across
     //! controllers/bridges and OSs
@@ -2534,11 +2758,11 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
-    //  get_Sector_Count_For_512B_Based_XFers(tDevice *device)
+    //  get_Sector_Count_For_512B_Based_XFers(const tDevice *device)
     //
     //! \brief  Gets the sectorCount based on the device interface for commands that are based on 512B transfer blocks.
     //!         The value set is one that is most compatible across controllers/bridges and OSs
@@ -2552,11 +2776,11 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
-    //  get_Sector_Count_For_4096B_Based_XFers(tDevice *device)
+    //  get_Sector_Count_For_4096B_Based_XFers(const tDevice *device)
     //
     //! \brief  Gets the sectorCount based on the device interface for commands that are based on 4096B (4K) transfer
     //! blocks.
@@ -2571,7 +2795,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2588,7 +2812,7 @@ extern "C"
     //!   \return The aligned LBA
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint64_t align_LBA(tDevice* device, uint64_t LBA);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint64_t align_LBA(const tDevice* device, uint64_t LBA);
 
     OPENSEA_TRANSPORT_API void print_Command_Time(uint64_t timeInNanoSeconds);
 
@@ -2614,9 +2838,9 @@ extern "C"
                                                       uint32_t           driveToRemoveIdx,
                                                       volatile uint32_t* numberOfDevices);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CSMI_Device(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CSMI_Device(const tDevice* device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Removable_Media(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Removable_Media(const tDevice* device);
 
     M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) bool setup_Passthrough_Hacks_By_ID(tDevice* device);
 
@@ -2632,7 +2856,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  print_Low_Level_Info(tDevice* device)
+    //  print_Low_Level_Info(const tDevice * device)
     //
     //! \brief   Description:  Printfs out useful low-level information from the device structure to the screen
     //
@@ -2642,7 +2866,7 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Low_Level_Info(tDevice* device);
+    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Low_Level_Info(const tDevice* device);
 
 #if defined(__cplusplus)
 } // extern "C"

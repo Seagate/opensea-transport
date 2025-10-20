@@ -142,6 +142,27 @@ extern "C"
         NVME_SELF_TEST_REPORTS    = 20,
     };
 
+    typedef enum eNvmeSelfTestCodeEnum
+    {
+        NVME_STC_RESERVED = 0x00,
+        NVME_STC_SHORT    = 0x01, // Short self-test
+        NVME_STC_EXTENDED = 0x02, // Extended self-test
+        // 0x03 - 0x0D are reserved
+        NVME_STC_RESERVED_3 = 0x03,
+        NVME_STC_RESERVED_4 = 0x04,
+        NVME_STC_RESERVED_5 = 0x05,
+        NVME_STC_RESERVED_6 = 0x06,
+        NVME_STC_RESERVED_7 = 0x07,
+        NVME_STC_RESERVED_8 = 0x08,
+        NVME_STC_RESERVED_9 = 0x09,
+        NVME_STC_RESERVED_A = 0x0A,
+        NVME_STC_RESERVED_B = 0x0B,
+        NVME_STC_RESERVED_C = 0x0C,
+        NVME_STC_RESERVED_D = 0x0D,
+        NVME_STC_VENDOR     = 0x0E, // Vendor specific self-test
+        NVME_STC_ABORT      = 0x0F  // Abort self-test
+    } eNvmeSelfTestCode;
+
     M_PACK_ALIGN_STRUCT(nvmeSelfTestRes, 1, uint8_t deviceSelfTestStatus; uint8_t segmentNum;
                         uint8_t  validDiagnosticInfo;
                         uint8_t  rsvd;
@@ -308,23 +329,21 @@ extern "C"
         NVME_CMD_RESERVATION_RELEASE  = 0x15,
     } eNvmeOPCodes;
 
-    M_PACK_ALIGN_STRUCT(nvmCommand,
-                        1,
-                        uint8_t  opcode;    // CDW0
-                        uint8_t  flags;     // CDW0
-                        uint16_t commandId; // CDW0
-                        uint32_t nsid;      // CDW1
-                        uint32_t cdw2;      // CDW2
-                        uint32_t cdw3;      // CDW3
-                        uint64_t metadata;  // CDW4 & 5
-                        uint64_t prp1;      // CDW6 & 7
-                        uint64_t prp2;      // CDW8 & 9
-                        uint32_t cdw10;     // CDW10
-                        uint32_t cdw11;     // CDW11
-                        uint32_t cdw12;     // CDW12
-                        uint32_t cdw13;     // CDW13
-                        uint32_t cdw14;     // CDW14
-                        uint32_t cdw15;     // CDW15
+    M_PACK_ALIGN_STRUCT(nvmCommand, 1, uint8_t opcode; /* CDW0  */
+                        uint8_t  flags;                /* CDW0  */
+                        uint16_t commandId;            /* CDW0  */
+                        uint32_t nsid;                 /* CDW1  */
+                        uint32_t cdw2;                 /* CDW2  */
+                        uint32_t cdw3;                 /* CDW3  */
+                        uint64_t metadata;             /* CDW4 & 5  */
+                        uint64_t prp1;                 /* CDW6 & 7  */
+                        uint64_t prp2;                 /* CDW8 & 9  */
+                        uint32_t cdw10;                /* CDW10  */
+                        uint32_t cdw11;                /* CDW11  */
+                        uint32_t cdw12;                /* CDW12  */
+                        uint32_t cdw13;                /* CDW13  */
+                        uint32_t cdw14;                /* CDW14  */
+                        uint32_t cdw15;                /* CDW15  */
     );
 
     // NVMe Spec - Figure 62: Firmware Commit - Command Dword 10
@@ -334,6 +353,8 @@ extern "C"
         NVME_CA_REPLACE_ACTIVITE_ON_RST          = 1,
         NVME_CA_ACTIVITE_ON_RST                  = 2,
         NVME_CA_ACTIVITE_IMMEDIATE               = 3,
+        NVME_CA_RESERVED_4                       = 4,
+        NVME_CA_RESERVED_5                       = 5,
         NVME_CA_DOWNLOAD_REP_BOOT_PART_W_PART_ID = 6,
         NVME_CA_MARK_BOOT_PART_AS_ACTIVE         = 7
     } nvmeFWCommitAction;
@@ -451,6 +472,25 @@ extern "C"
         NVME_LOG_RESERVATION_ID                              = 0x80,
         NVME_LOG_SANITIZE_ID                                 = 0x81,
     } eNvmeLogs;
+
+    // NVMe logs with fixed sizes are here
+    // Some of these lengths may only be the header length, not the entire log length since this may be read first
+    // to determine the length of the log.
+    typedef enum eNvmeLogSizeEnum
+    {
+        NVME_LOG_SIZE_SMART           = 512,
+        NVME_LOG_SIZE_FW_SLOT         = 512,
+        NVME_LOG_SIZE_SELF_TEST       = 564,
+        NVME_LOG_SIZE_COMMAND_EFFECTS = 4096,
+        // Telemetry log: only first 512B are standardized, so this size is listed here
+        NVME_LOG_SIZE_TELEMETRY_HOST_HEADER           = 512,
+        NVME_LOG_SIZE_TELEMETRY_CTRL_HEADER           = 512,
+        NVME_LOG_SIZE_ENDURANCE_GROUP_INFO            = 512,
+        NVME_LOG_SIZE_PREDICTABLE_LATENCY_PER_NVM_SET = 512,
+        NVME_LOG_SIZE_PERSISTENT_EVENT_LOG_HEADER     = 512, // This is the size of the log header, not the entire log
+        NVME_LOG_SIZE_LBA_STATUS_HEADER               = 16,
+        NVME_LOG_SIZE_SANITIZE_STATUS                 = 512,
+    } eNvmeLogSize;
 
     typedef enum eNvmeFeaturesSelectValueEnum
     {

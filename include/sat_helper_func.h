@@ -22,7 +22,8 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  get_Return_TFRs_From_Passthrough_Results_Log(tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t parameterCode)
+    //  get_Return_TFRs_From_Passthrough_Results_Log(const tDevice *device, ataReturnTFRs *ataRTFRs, uint16_t
+    //  parameterCode)
     //
     //! \brief   Description:  This will pull the passthrough results log and parse the rtfrs out of it.
     //
@@ -36,9 +37,9 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_RW(1)
+    M_PARAM_RO(1)
     M_PARAM_WO(2)
-    eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(tDevice*       device,
+    eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(const tDevice* device,
                                                                ataReturnTFRs* ataRTFRs,
                                                                uint16_t       parameterCode);
 
@@ -66,7 +67,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  get_RTFRs_From_Fixed_Format_Sense_Data(tDevice *device, uint8_t *ptrSenseData, uint32_t senseDataSize,
+    //  get_RTFRs_From_Fixed_Format_Sense_Data(const tDevice *device, uint8_t *ptrSenseData, uint32_t senseDataSize,
     //  ataReturnTFRs *rtfr)
     //
     //! \brief   Description:  This will retrieve the rtfrs from Fixed Format Sense Data
@@ -86,14 +87,14 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(2, 3)
     M_PARAM_RW(4)
-    eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(tDevice*               device,
+    eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(const tDevice*         device,
                                                          const uint8_t*         ptrSenseData,
                                                          uint32_t               senseDataSize,
                                                          ataPassthroughCommand* ataCmd);
 
     //-----------------------------------------------------------------------------
     //
-    //  get_Return_TFRs_From_Sense_Data(tDevice *device, ataPassthroughCommand *ataCommandOptions, int senseRet)
+    //  get_Return_TFRs_From_Sense_Data(const tDevice *device, ataPassthroughCommand *ataCommandOptions, int senseRet)
     //
     //! \brief   Description:  This will parse the returned sense data and in some cases issue a follow up command to
     //! get the rtfrs from a device
@@ -112,7 +113,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    bool get_Return_TFRs_From_Sense_Data(tDevice*               device,
+    bool get_Return_TFRs_From_Sense_Data(const tDevice*         device,
                                          ataPassthroughCommand* ataCommandOptions,
                                          eReturnValues          ioRet,
                                          eReturnValues          senseRet);
@@ -236,7 +237,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  request_Return_TFRs_From_Device(tDevice *device, ataReturnTFRs *rtfr)
+    //  request_Return_TFRs_From_Device(const tDevice *device, ataReturnTFRs *rtfr)
     //
     //! \brief   Description:  Send the SAT CDB to request the RTFRs. This command is not "pure" to the SAT spec as
     //! T_DIR is set to help USB bridges work with this command
@@ -250,11 +251,13 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_RO(1) M_PARAM_WO(2) eReturnValues request_Return_TFRs_From_Device(tDevice* device, ataReturnTFRs* rtfr);
+    M_PARAM_RO(1)
+    M_PARAM_WO(2) eReturnValues request_Return_TFRs_From_Device(const tDevice* device, ataReturnTFRs* rtfr);
 
     //-----------------------------------------------------------------------------
     //
-    //  build_SAT_CDB(tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthroughCommand *ataCommandOptions)
+    //  build_SAT_CDB(const tDevice *device, uint8_t **satCDB, eCDBLen *cdbLen, ataPassthroughCommand
+    //  *ataCommandOptions)
     //
     //! \brief   Description:  Function to construct a SAT Pass-through CDB based on the ATA Command Options
     //
@@ -272,15 +275,15 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RW(2)
     M_PARAM_RW(3)
-    M_PARAM_RO(4)
-    eReturnValues build_SAT_CDB(tDevice*               device,
+    M_PARAM_RW(4)
+    eReturnValues build_SAT_CDB(const tDevice*         device,
                                 uint8_t**              satCDB,
                                 eCDBLen*               cdbLen,
                                 ataPassthroughCommand* ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
-    //  send_SAT_Passthrough_Command(tDevice *device, ataPassthroughCommand  *ataCommandOptions)
+    //  send_SAT_Passthrough_Command(const tDevice *device, ataPassthroughCommand  *ataCommandOptions)
     //
     //! \brief   Description:  Function to send a SAT Pass-through command. This will automatically call the function to
     //! build the command, then send it to the drive.
@@ -295,11 +298,12 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_PARAM_RW(2) eReturnValues send_SAT_Passthrough_Command(tDevice* device, ataPassthroughCommand* ataCommandOptions);
+    M_PARAM_RW(2)
+    eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
-    //  translate_SCSI_Command(tDevice *device, ScsiIoCtx *scsiIoCtx)
+    //  translate_SCSI_Command(const tDevice *device, ScsiIoCtx *scsiIoCtx)
     //
     //! \brief   Description:  This function attempts to perform SCSI to ATA translation according to the SAT4 spec. It
     //! is not 100% complete at this time.
@@ -316,7 +320,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_RO(1) M_PARAM_RW(2) eReturnValues translate_SCSI_Command(tDevice* device, ScsiIoCtx* scsiIoCtx);
+    M_PARAM_RO(1) M_PARAM_RW(2) eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx);
 
 #if defined(__cplusplus)
 }

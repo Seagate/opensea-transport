@@ -56,11 +56,12 @@ extern "C"
 
     typedef enum eCDBLenEnum
     {
-        CDB_LEN_6  = 6,
-        CDB_LEN_10 = 10,
-        CDB_LEN_12 = 12,
-        CDB_LEN_16 = 16,
-        CDB_LEN_32 = 32,
+        CDB_LEN_NOT_SET = 0,
+        CDB_LEN_6       = 6,
+        CDB_LEN_10      = 10,
+        CDB_LEN_12      = 12,
+        CDB_LEN_16      = 16,
+        CDB_LEN_32      = 32,
         // NOTE: Variable length CDBs range between 12 and 260 bytes in length
         CDB_LEN_MAX = 260, // See SAM6. 260 is the defined maximum length.
         CDB_LEN_UNKNOWN
@@ -147,6 +148,23 @@ extern "C"
         // 0x10 - 0x7F are reserved
         // 0x80 - 0xFF are vendor specific
     } eSenseDescriptorType;
+
+#define SCSI_PROGRESS_INDICATOR_DIVISOR    UINT32_C(65536)
+#define SCSI_PROGRESS_INDICATOR_MULTIPLIER UINT32_C(100)
+
+    static M_INLINE uint32_t get_SCSI_Progress_Indicator_Percent(uint16_t progressIndicator)
+    {
+        return (M_STATIC_CAST(uint32_t, progressIndicator) * SCSI_PROGRESS_INDICATOR_MULTIPLIER) /
+               SCSI_PROGRESS_INDICATOR_DIVISOR;
+    }
+
+#define SCSI_PROGRESS_INDICATOR_DIVISOR_D    (65536.0)
+#define SCSI_PROGRESS_INDICATOR_MULTIPLIER_D (100.0)
+    static M_INLINE double get_SCSI_Progress_Indicator_PercentD(uint16_t progressIndicator)
+    {
+        return (M_STATIC_CAST(double, progressIndicator) * SCSI_PROGRESS_INDICATOR_MULTIPLIER_D) /
+               SCSI_PROGRESS_INDICATOR_DIVISOR_D;
+    }
 
 #define SCSI_SENSE_INFO_VALID_BIT_SET    (0x80)
 
@@ -317,7 +335,7 @@ extern "C"
 // \struct ScsiIoCtx
 // \param device file descriptor
 // \param cdb SCSI Command block to send
-// \param cdbLength length of the perticular cdb being sent
+// \param cdbLength length of the particular cdb being sent
 // \param direction is it XFER_DATA_IN (from the drive) XFER_DATA_OUT (to the device)
 // \param pdata pointer to the user data to be read/written
 // \param dataLength length of the data to be read/written
@@ -348,7 +366,51 @@ extern "C"
         bool                   fwdlLastSegment;
     } ScsiIoCtx;
 
-#define OPERATION_CODE                  (0)
+#define OPERATION_CODE (0)
+
+    enum eCDBOffsets
+    {
+        CDB_OPERATION_CODE = 0,
+        CDB_1              = 1,
+        CDBVAR_CONTROL     = 1,
+        CDB32_CONTROL      = 1,
+        CDB_2              = 2,
+        CDB_3              = 3,
+        CDB_4              = 4,
+        CDB_5              = 5,
+        CDB6_CONTROL       = 5,
+        CDB_6              = 6,
+        CDB_7              = 7,
+        CDB_8              = 8,
+        CDB_9              = 9,
+        CDB10_CONTROL      = 9,
+        CDB_10             = 10,
+        CDB_11             = 11,
+        CDB12_CONTROL      = 11,
+        CDB_12             = 12,
+        CDB_13             = 13,
+        CDB_14             = 14,
+        CDB_15             = 15,
+        CDB16_CONTROL      = 15,
+        CDB_16             = 16,
+        CDB_17             = 17,
+        CDB_18             = 18,
+        CDB_19             = 19,
+        CDB_20             = 20,
+        CDB_21             = 21,
+        CDB_22             = 22,
+        CDB_23             = 23,
+        CDB_24             = 24,
+        CDB_25             = 25,
+        CDB_26             = 26,
+        CDB_27             = 27,
+        CDB_28             = 28,
+        CDB_29             = 29,
+        CDB_30             = 30,
+        CDB_31             = 31,
+        CDB_32             = 32
+        // NOTE: Stopping at 32B since that is highest we've seen so far -TJE
+    };
 
 #define SCSI_REQUEST_SENSE_DESC_BIT_SET (0x01)
 
@@ -444,6 +506,15 @@ extern "C"
         SCSI_PERSISTENT_RESERVE_OUT_REGISTER_AND_MOVE                = 7, // SPC3
         SCSI_PERSISTENT_RESERVE_OUT_REPLACE_LOST_RESERVATION         = 8, // SPC4
     } ePersistentReserveOutServiceActions;
+
+    typedef enum eVerifyByteCheckEnum
+    {
+        SCSI_VERIFY_NODATA         = 0, // standard verify command without data comparison
+        SCSI_VERIFY_LOGICAL_BLOCKS = 1,
+        SCSI_VERIFY_RESERVED = 2, // SBC originally had this as blank check, but assume this was not supported since it
+                                  // changed to reserved in the next revision
+        SCSI_VERIFY_SINGLE_BLOCK = 3 // send single logical block to compare to multiple blocks
+    } eVerifyByteCheck;
 
     // some of these commands have something like _CMD in the name or a missing underscore in order
     // to avoid conflict with a system header somewhere in linux or windows. - TJE
@@ -608,10 +679,11 @@ extern "C"
 
     typedef enum eScsiModePageControlEnum
     {
-        MPC_CURRENT_VALUES   = 0x0,
-        MPC_CHANGABLE_VALUES = 0x1,
-        MPC_DEFAULT_VALUES   = 0x2,
-        MPC_SAVED_VALUES     = 0x3
+        MPC_CURRENT_VALUES    = 0x0,
+        MPC_CHANGABLE_VALUES  = 0x1, // incorrect spelling
+        MPC_CHANGEABLE_VALUES = 0x1, // correct spelling
+        MPC_DEFAULT_VALUES    = 0x2,
+        MPC_SAVED_VALUES      = 0x3
     } eScsiModePageControl;
 
     typedef enum eScsiLogPageControlEnum
@@ -625,24 +697,26 @@ extern "C"
 
     typedef enum eScsiModeParametersEnum // does not do subpage codes...only page codes. Add more as needed
     {
-        MP_READ_WRITE_ERROR_RECOVERY      = 0x01,
-        MP_DISCONNECT_RECONNECT           = 0x02,
-        MP_RIGID_DISK_GEOMETRY            = 0x04, // This is long obsolete.
-        MP_FLEXIBLE_DISK_GEOMETRY         = 0x05, // Long obsolete
-        MP_VERIFY_ERROR_RECOVERY          = 0x07,
-        MP_CACHING                        = 0x08,
-        MP_PERIPHERAL_DEVICE              = 0x09, // Obsolete
-        MP_CONTROL                        = 0x0A,
-        MP_MEDIUM_TYPES_SUPPORTED         = 0x0B, // Obsolete
-        MP_NOTCH_AND_PARTITION            = 0x0C, // Obsolete
-        MP_OBS_POWER_CONDITION            = 0x0D, // Obsolete page. Named different than power condition page below.
+        MP_READ_WRITE_ERROR_RECOVERY = 0x01,
+        MP_DISCONNECT_RECONNECT      = 0x02,
+        MP_RIGID_DISK_GEOMETRY       = 0x04, // This is long obsolete.
+        MP_FLEXIBLE_DISK_GEOMETRY    = 0x05, // Long obsolete
+        MP_VERIFY_ERROR_RECOVERY     = 0x07,
+        MP_CACHING                   = 0x08,
+        MP_PERIPHERAL_DEVICE         = 0x09, // Obsolete
+        MP_CONTROL                   = 0x0A,
+        MP_MEDIUM_TYPES_SUPPORTED    = 0x0B, // Obsolete
+        MP_NOTCH_AND_PARTITION       = 0x0C, // Obsolete
+        MP_OBS_POWER_CONDITION =
+            0x0D, // Obsolete page. Named different than power condition page below. SCSI2ish only. 1A is preferred
         MP_XOR_CONTROL                    = 0x10, // Obsolete
         MP_ENCLOSURE_SERVICES_MANAGEMENT  = 0x14,
         MP_EXTENDED                       = 0x15,
         MP_EXTENDED_DEVICE_TYPE_SPECIFIC  = 0x16,
         MP_PROTOCOL_SPECIFIC_LOGICAL_UNIT = 0x18,
         MP_PROTOCOL_SPECIFIC_PORT         = 0x19,
-        MP_POWER_CONDTION                 = 0x1A,
+        MP_POWER_CONDTION                 = 0x1A, // incorrect spelling
+        MP_POWER_CONDITION                = 0x1A, // correct spelling
         MP_POWER_CONSUMPTION              = 0x1A,
         MP_BACKGROUND_CONTROL             = 0x1C,
         MP_INFORMATION_EXCEPTIONS_CONTROL = 0x1C,
@@ -872,6 +946,21 @@ extern "C"
         AD_RESERVED                                            = 0x07
     } eSCSIAddressDescriptors;
 
+    typedef enum eSCSIAddressDescriptorTypeLenEnum
+    {
+        AD_LEN_SHORT_BLOCK_FORMAT_ADDRESS_DESCRIPTOR               = 4,
+        AD_LEN_EXTENDED_BYTES_FROM_INDEX_FORMAT_ADDRESS_DESCRIPTOR = 8,
+        AD_LEN_EXTENDED_PHYSICAL_SECTOR_FORMAT_ADDRESS_DESCRIPTOR  = 8,
+        AD_LEN_LONG_BLOCK_FORMAT_ADDRESS_DESCRIPTOR                = 8,
+        AD_LEN_BYTES_FROM_INDEX_FORMAT_ADDRESS_DESCRIPTOR          = 8,
+        AD_LEN_PHYSICAL_SECTOR_FORMAT_ADDRESS_DESCRIPTOR           = 8,
+        AD_LEN_VENDOR_SPECIFIC = 1, // Unknown, but using 1 since this may be used during division
+        AD_LEN_RESERVED        = 1  // Unknown, but using 1 since this may be used during division
+    } eSCSIAddressDescriptorTypeLen;
+
+#define SCSI_DEFECT_DATA_10_HEADER_LEN UINT32_C(4)
+#define SCSI_DEFECT_DATA_12_HEADER_LEN UINT32_C(8)
+
     // for the report supported operations command
     typedef enum eSCSIReportingOptionsEnum
     {
@@ -908,6 +997,18 @@ extern "C"
         DIAG_PAGE_DEVICE_STATUS     = 0x41, // obsolete since SBC2
         DIAG_PAGE_REBUILD_ASSIST    = 0x42,
     } eSCSIDiagnosticPages;
+
+    typedef enum eSCSISelfTestCodesEnum
+    {
+        SCSI_STC_UNUSED                        = 0x00, // unused/no self test requested in send diagnostic command
+        SCSI_STC_BACKGROUND_SHORT_SELF_TEST    = 0x01,
+        SCSI_STC_BACKGROUND_EXTENDED_SELF_TEST = 0x02,
+        SCSI_STC_BACKGROUND_RESERVED_3         = 0x03,
+        SCSI_STC_ABORT_SELF_TEST               = 0x04, // abort self test
+        SCSI_STC_FOREGROUND_SHORT_SELF_TEST    = 0x05,
+        SCSI_STC_FOREGROUND_EXTENDED_SELF_TEST = 0x06,
+        SCSI_STC_FOREGROUND_RESERVED_7         = 0x07 // reserved for future use
+    } eSCSISelfTestCodes;
 
 #define SCSI_LOG_PARAMETER_HEADER_LENGTH UINT8_C(4) // bytes
 #define SCSI_VPD_PAGE_HEADER_LENGTH      UINT8_C(4) // bytes

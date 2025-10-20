@@ -79,11 +79,11 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    eReturnValues jm_nvme_Reset(tDevice* device);
+    eReturnValues jm_nvme_Reset(const tDevice* device);
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    eReturnValues jm_nvme_Subsystem_Reset(tDevice* device);
+    eReturnValues jm_nvme_Subsystem_Reset(const tDevice* device);
 
 #if defined(__cplusplus)
 }
