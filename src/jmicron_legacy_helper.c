@@ -91,7 +91,7 @@ eReturnValues build_JMicron_Legacy_PT_CDB(uint8_t cdb[JM_PROLIFIC_CDB_LEN], ataP
     return ret;
 }
 
-eReturnValues read_Adapter_Register(tDevice*                 device,
+eReturnValues read_Adapter_Register(const tDevice*                 device,
                                     eJMicronAdapterRegisters jmregister,
                                     uint8_t*                 ptrData,
                                     uint32_t                 dataSize)
@@ -117,7 +117,7 @@ eReturnValues read_Adapter_Register(tDevice*                 device,
                          device->drive_info.passThroughHacks.passthroughType == ATA_PASSTHROUGH_JMICRON_PROLIFIC
                              ? M_STATIC_CAST(eCDBLen, JM_PROLIFIC_CDB_LEN)
                              : M_STATIC_CAST(eCDBLen, JM_CDB_LEN),
-                         ptrData, dataSize, XFER_DATA_IN, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0);
+                         ptrData, dataSize, XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0);
 }
 
 eReturnValues set_JM_Dev(tDevice* device)
@@ -147,7 +147,7 @@ eReturnValues set_JM_Dev(tDevice* device)
 }
 
 #define JM_REGISTER_BUF_LEN (16)
-eReturnValues get_RTFRs_From_JMicron_Legacy(tDevice*               device,
+eReturnValues get_RTFRs_From_JMicron_Legacy(const tDevice*               device,
                                             ataPassthroughCommand* ataCommandOptions,
                                             eReturnValues          commandRet)
 {
@@ -193,7 +193,7 @@ static M_INLINE bool is_Valid_Smart_Return_Status_For_JMicron_USB(uint8_t status
     return valid;
 }
 
-eReturnValues send_JMicron_Legacy_Passthrough_Command(tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmCDB, JM_PROLIFIC_CDB_LEN);
@@ -206,7 +206,7 @@ eReturnValues send_JMicron_Legacy_Passthrough_Command(tDevice* device, ataPassth
     if (device->drive_info.passThroughHacks.ataPTHacks.jmPTDevSet == false)
     {
         // before issuing anything, we need to try setting the device number
-        ret = set_JM_Dev(device);
+        ret = set_JM_Dev(M_CONST_CAST(tDevice*, device));
         if (ret != SUCCESS)
         {
             return ret;
@@ -296,12 +296,12 @@ eReturnValues send_JMicron_Legacy_Passthrough_Command(tDevice* device, ataPassth
             }
         }
         // before we get rid of the sense data, copy it back to the last command sense data
-        safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0,
-                    SPC3_SENSE_LEN); // clear before copying over data
-        safe_memcpy(&device->drive_info.lastCommandSenseData[0], SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
-                    M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
-        safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
-                    sizeof(ataReturnTFRs));
+        safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
+                SPC3_SENSE_LEN); // clear before copying over data
+        safe_memcpy(M_CONST_CAST(uint8_t*, &device->drive_info.lastCommandSenseData[0]), SPC3_SENSE_LEN,
+                    &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
+        safe_memcpy(M_CONST_CAST(ataReturnTFRs*, &device->drive_info.lastCommandRTFRs), sizeof(ataReturnTFRs),
+                    &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
     }
     safe_free_aligned(&senseData);
     if (localSenseData)

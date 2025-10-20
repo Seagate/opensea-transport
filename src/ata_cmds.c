@@ -66,10 +66,10 @@ eReturnValues ata_Passthrough_Command(const tDevice* device, const ataPassthroug
     case ATA_PASSTHROUGH_JMICRON:
         M_FALLTHROUGH;
     case ATA_PASSTHROUGH_JMICRON_PROLIFIC:
-        ret = send_JMicron_Legacy_Passthrough_Command(device, ataCommandOptions);
+        ret = send_JMicron_Legacy_Passthrough_Command(device, M_CONST_CAST(ataPassthroughCommand*, ataCommandOptions));
         break;
     case ATA_PASSTHROUGH_SUNPLUS:
-        ret = send_Sunplus_Legacy_Passthrough_Command(device, ataCommandOptions);
+        ret = send_Sunplus_Legacy_Passthrough_Command(device, M_CONST_CAST(ataPassthroughCommand*, ataCommandOptions));
         break;
     default:
         ret = BAD_PARAMETER;
