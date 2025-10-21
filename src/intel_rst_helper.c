@@ -227,182 +227,181 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* device,
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     DISABLE_NONNULL_COMPARE
     if (device != M_NULLPTR)
+    {
+        RESTORE_NONNULL_COMPARE
+        size_t                      allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
+        IOCTL_RAID_FIRMWARE_BUFFER* raidFirmwareRequest =
+            C_CAST(IOCTL_RAID_FIRMWARE_BUFFER*,
+                   safe_calloc_aligned(allocationSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+        if (raidFirmwareRequest)
         {
-            RESTORE_NONNULL_COMPARE
-            size_t                      allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
-            IOCTL_RAID_FIRMWARE_BUFFER* raidFirmwareRequest =
-                C_CAST(IOCTL_RAID_FIRMWARE_BUFFER*,
-                       safe_calloc_aligned(allocationSize, sizeof(uint8_t), device->os_info.minimumAlignment));
-            if (raidFirmwareRequest)
+            DECLARE_SEATIMER(commandTimer);
+            HANDLE handleToUse = device->os_info.fd; // start with this in case of CSMI RAID
+            // fill in SRB_IO_HEADER first
+            raidFirmwareRequest->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
+            safe_memcpy(raidFirmwareRequest->Header.Signature, 8, INTEL_RAID_FW_SIGNATURE, 8);
+            raidFirmwareRequest->Header.Timeout = timeoutSeconds;
+            if (device->drive_info.defaultTimeoutSeconds > 0 &&
+                device->drive_info.defaultTimeoutSeconds > timeoutSeconds)
             {
-                DECLARE_SEATIMER(commandTimer);
-                HANDLE handleToUse = device->os_info.fd; // start with this in case of CSMI RAID
-                // fill in SRB_IO_HEADER first
-                raidFirmwareRequest->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
-                safe_memcpy(raidFirmwareRequest->Header.Signature, 8, INTEL_RAID_FW_SIGNATURE, 8);
-                raidFirmwareRequest->Header.Timeout = timeoutSeconds;
-                if (device->drive_info.defaultTimeoutSeconds > 0 &&
-                    device->drive_info.defaultTimeoutSeconds > timeoutSeconds)
-                {
-                    raidFirmwareRequest->Header.Timeout = device->drive_info.defaultTimeoutSeconds;
-                }
-                else
-                {
-                    if (timeoutSeconds != 0)
-                    {
-                        raidFirmwareRequest->Header.Timeout = timeoutSeconds;
-                    }
-                    else
-                    {
-                        raidFirmwareRequest->Header.Timeout = DEFAULT_COMMAND_TIMEOUT;
-                    }
-                }
-                raidFirmwareRequest->Header.ControlCode = C_CAST(ULONG, IOCTL_RAID_FIRMWARE);
-                raidFirmwareRequest->Header.Length      = C_CAST(ULONG, allocationSize - sizeof(SRB_IO_CONTROL));
-                // Next fill in IOCTL_RAID_FIRMWARE_BUFFER, then work down from there and memcpy the input data to this
-                // function since it will have the specific download function data in it
-                raidFirmwareRequest->Request.Version  = RAID_FIRMWARE_REQUEST_BLOCK_VERSION;
-                raidFirmwareRequest->Request.TargetId = RESERVED;
-                raidFirmwareRequest->Request.Lun      = RESERVED;
-                if (device->os_info.csmiDeviceData && device->os_info.csmiDeviceData->csmiDeviceInfoValid)
-                {
-                    if (device->os_info.csmiDeviceData->scsiAddressValid)
-                    {
-                        raidFirmwareRequest->Request.PathId   = device->os_info.csmiDeviceData->scsiAddress.pathId;
-                        raidFirmwareRequest->Request.TargetId = device->os_info.csmiDeviceData->scsiAddress.targetId;
-                        raidFirmwareRequest->Request.Lun      = device->os_info.csmiDeviceData->scsiAddress.lun;
-                    }
-                    else
-                    {
-                        raidFirmwareRequest->Request.PathId = device->os_info.csmiDeviceData->portIdentifier;
-                    }
-                }
-                else
-                {
-                    handleToUse = device->os_info.scsiSRBHandle;
-                    // use Windows pathId
-                    raidFirmwareRequest->Request.PathId = device->os_info.scsi_addr.PathId;
-                    // may need to add in remaining scsi address in the future, but for now these other fields are
-                    // reserved
-                }
-                // setup the firmware request
-                raidFirmwareRequest->Request.FwRequestBlock.Version  = INTEL_FIRMWARE_REQUEST_BLOCK_STRUCTURE_VERSION;
-                raidFirmwareRequest->Request.FwRequestBlock.Size     = sizeof(INTEL_FIRMWARE_REQUEST_BLOCK);
-                raidFirmwareRequest->Request.FwRequestBlock.Function = intelFirmwareFunction;
-                raidFirmwareRequest->Request.FwRequestBlock.Flags    = intelFirmwareFlags;
-                if (ptrDataRequest)
-                {
-                    // NOTE: The offset should be a multiple of sizeof(void), which reading the structure types
-                    // indicated that this should be the case for 64bit and 32bit builds. Anything else will need
-                    // additional byte padding.
-                    raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset =
-                        sizeof(SRB_IO_CONTROL) + sizeof(RAID_FIRMWARE_REQUEST_BLOCK);
-                    raidFirmwareRequest->Request.FwRequestBlock.DataBufferLength = dataRequestLength;
-                    safe_memcpy(&raidFirmwareRequest->ioctlBuffer,
-                                allocationSize - sizeof(SRB_IO_CONTROL) - sizeof(RAID_FIRMWARE_REQUEST_BLOCK),
-                                ptrDataRequest, dataRequestLength);
-                }
-
-                if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-                {
-                    print_str("\n====Sending Intel Raid Firmware Request====\n");
-                }
-
-                // send the command
-                DWORD      bytesReturned = DWORD_C(0);
-                OVERLAPPED overlappedStruct;
-                safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
-                overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
-                if (overlappedStruct.hEvent == M_NULLPTR)
-                {
-                    safe_free_irst_raid_fw_buffer(&raidFirmwareRequest);
-                    return OS_PASSTHROUGH_FAILURE;
-                }
-                start_Timer(&commandTimer);
-                BOOL success = DeviceIoControl(handleToUse, IOCTL_SCSI_MINIPORT, raidFirmwareRequest,
-                                               C_CAST(DWORD, allocationSize), raidFirmwareRequest,
-                                               C_CAST(DWORD, allocationSize), &bytesReturned, &overlappedStruct);
-                set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
-                if (ERROR_IO_PENDING ==
-                    device->os_info
-                        .last_error) // This will only happen for overlapped commands. If the drive is opened without
-                                     // the overlapped flag, everything will work like old synchronous code.-TJE
-                {
-                    success = GetOverlappedResult(handleToUse, &overlappedStruct, &bytesReturned, TRUE);
-                }
-                else if (device->os_info.last_error != ERROR_SUCCESS)
-                {
-                    ret = OS_PASSTHROUGH_FAILURE;
-                }
-                stop_Timer(&commandTimer);
-                CloseHandle(
-                    overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
-                overlappedStruct.hEvent = M_NULLPTR;
-                if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-                {
-                    print_str("Windows Error: ");
-                    print_Windows_Error_To_Screen(device->os_info.last_error);
-                    print_str("Intel RAID Firmware: ");
-                    printf_Intel_Firmware_SRB_Status(raidFirmwareRequest->Header.ReturnCode);
-                }
-                if (MSFT_BOOL_FALSE(success))
-                {
-                    ret = FAILURE;
-                }
-                else
-                {
-                    DISABLE_NONNULL_COMPARE
-                    if (returnCode != M_NULLPTR)
-                    {
-                        *returnCode = raidFirmwareRequest->Header.ReturnCode;
-                    }
-                    RESTORE_NONNULL_COMPARE
-                    ret = SUCCESS; // IO sent successfully in the system...BUT we need to check the SRB return code to
-                                   // determine if the command went through to the device
-                    switch (raidFirmwareRequest->Header.ReturnCode)
-                    {
-                    case INTEL_FIRMWARE_STATUS_SUCCESS:
-                        // should have completion data here
-                        if (readFirmwareInfo && ptrDataRequest)
-                        {
-                            safe_memcpy(ptrDataRequest, dataRequestLength,
-                                        C_CAST(uint8_t*, raidFirmwareRequest) +
-                                            raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset,
-                                        dataRequestLength);
-                        }
-                        break;
-                    case INTEL_FIRMWARE_STATUS_ERROR:
-                    case INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST:
-                    case INTEL_FIRMWARE_STATUS_INVALID_PARAMETER:
-                    case INTEL_FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
-                    case INTEL_FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
-                    case INTEL_FIRMWARE_STATUS_INVALID_SLOT:
-                    case INTEL_FIRMWARE_STATUS_INVALID_IMAGE:
-                    case INTEL_FIRMWARE_STATUS_CONTROLLER_ERROR:
-                    case INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
-                    case INTEL_FIRMWARE_STATUS_DEVICE_ERROR:
-                    case INTEL_FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
-                    case INTEL_FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
-                    case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE:
-                    case INTEL_FIRMWARE_STATUS_ID_NOT_FOUND:
-                    case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
-                    case INTEL_FIRMWARE_STATUS_COMMAND_ABORT:
-                    case INTEL_FIRMWARE_STATUS_END_OF_MEDIA:
-                    case INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH:
-                        ret = FAILURE;
-                        break;
-                    default:
-                        ret = OS_PASSTHROUGH_FAILURE;
-                        break;
-                    }
-                }
-                safe_free_irst_raid_fw_buffer(&raidFirmwareRequest);
+                raidFirmwareRequest->Header.Timeout = device->drive_info.defaultTimeoutSeconds;
             }
             else
             {
-                ret = MEMORY_FAILURE;
+                if (timeoutSeconds != 0)
+                {
+                    raidFirmwareRequest->Header.Timeout = timeoutSeconds;
+                }
+                else
+                {
+                    raidFirmwareRequest->Header.Timeout = DEFAULT_COMMAND_TIMEOUT;
+                }
             }
+            raidFirmwareRequest->Header.ControlCode = C_CAST(ULONG, IOCTL_RAID_FIRMWARE);
+            raidFirmwareRequest->Header.Length      = C_CAST(ULONG, allocationSize - sizeof(SRB_IO_CONTROL));
+            // Next fill in IOCTL_RAID_FIRMWARE_BUFFER, then work down from there and memcpy the input data to this
+            // function since it will have the specific download function data in it
+            raidFirmwareRequest->Request.Version  = RAID_FIRMWARE_REQUEST_BLOCK_VERSION;
+            raidFirmwareRequest->Request.TargetId = RESERVED;
+            raidFirmwareRequest->Request.Lun      = RESERVED;
+            if (device->os_info.csmiDeviceData && device->os_info.csmiDeviceData->csmiDeviceInfoValid)
+            {
+                if (device->os_info.csmiDeviceData->scsiAddressValid)
+                {
+                    raidFirmwareRequest->Request.PathId   = device->os_info.csmiDeviceData->scsiAddress.pathId;
+                    raidFirmwareRequest->Request.TargetId = device->os_info.csmiDeviceData->scsiAddress.targetId;
+                    raidFirmwareRequest->Request.Lun      = device->os_info.csmiDeviceData->scsiAddress.lun;
+                }
+                else
+                {
+                    raidFirmwareRequest->Request.PathId = device->os_info.csmiDeviceData->portIdentifier;
+                }
+            }
+            else
+            {
+                handleToUse = device->os_info.scsiSRBHandle;
+                // use Windows pathId
+                raidFirmwareRequest->Request.PathId = device->os_info.scsi_addr.PathId;
+                // may need to add in remaining scsi address in the future, but for now these other fields are
+                // reserved
+            }
+            // setup the firmware request
+            raidFirmwareRequest->Request.FwRequestBlock.Version  = INTEL_FIRMWARE_REQUEST_BLOCK_STRUCTURE_VERSION;
+            raidFirmwareRequest->Request.FwRequestBlock.Size     = sizeof(INTEL_FIRMWARE_REQUEST_BLOCK);
+            raidFirmwareRequest->Request.FwRequestBlock.Function = intelFirmwareFunction;
+            raidFirmwareRequest->Request.FwRequestBlock.Flags    = intelFirmwareFlags;
+            if (ptrDataRequest)
+            {
+                // NOTE: The offset should be a multiple of sizeof(void), which reading the structure types
+                // indicated that this should be the case for 64bit and 32bit builds. Anything else will need
+                // additional byte padding.
+                raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset =
+                    sizeof(SRB_IO_CONTROL) + sizeof(RAID_FIRMWARE_REQUEST_BLOCK);
+                raidFirmwareRequest->Request.FwRequestBlock.DataBufferLength = dataRequestLength;
+                safe_memcpy(&raidFirmwareRequest->ioctlBuffer,
+                            allocationSize - sizeof(SRB_IO_CONTROL) - sizeof(RAID_FIRMWARE_REQUEST_BLOCK),
+                            ptrDataRequest, dataRequestLength);
+            }
+
+            if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+            {
+                print_str("\n====Sending Intel Raid Firmware Request====\n");
+            }
+
+            // send the command
+            DWORD      bytesReturned = DWORD_C(0);
+            OVERLAPPED overlappedStruct;
+            safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+            overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
+            if (overlappedStruct.hEvent == M_NULLPTR)
+            {
+                safe_free_irst_raid_fw_buffer(&raidFirmwareRequest);
+                return OS_PASSTHROUGH_FAILURE;
+            }
+            start_Timer(&commandTimer);
+            BOOL success =
+                DeviceIoControl(handleToUse, IOCTL_SCSI_MINIPORT, raidFirmwareRequest, C_CAST(DWORD, allocationSize),
+                                raidFirmwareRequest, C_CAST(DWORD, allocationSize), &bytesReturned, &overlappedStruct);
+            set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
+            if (ERROR_IO_PENDING ==
+                device->os_info
+                    .last_error) // This will only happen for overlapped commands. If the drive is opened without
+                                 // the overlapped flag, everything will work like old synchronous code.-TJE
+            {
+                success = GetOverlappedResult(handleToUse, &overlappedStruct, &bytesReturned, TRUE);
+            }
+            else if (device->os_info.last_error != ERROR_SUCCESS)
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
+            stop_Timer(&commandTimer);
+            CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent = M_NULLPTR;
+            if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+            {
+                print_str("Windows Error: ");
+                print_Windows_Error_To_Screen(device->os_info.last_error);
+                print_str("Intel RAID Firmware: ");
+                printf_Intel_Firmware_SRB_Status(raidFirmwareRequest->Header.ReturnCode);
+            }
+            if (MSFT_BOOL_FALSE(success))
+            {
+                ret = FAILURE;
+            }
+            else
+            {
+                DISABLE_NONNULL_COMPARE
+                if (returnCode != M_NULLPTR)
+                {
+                    *returnCode = raidFirmwareRequest->Header.ReturnCode;
+                }
+                RESTORE_NONNULL_COMPARE
+                ret = SUCCESS; // IO sent successfully in the system...BUT we need to check the SRB return code to
+                               // determine if the command went through to the device
+                switch (raidFirmwareRequest->Header.ReturnCode)
+                {
+                case INTEL_FIRMWARE_STATUS_SUCCESS:
+                    // should have completion data here
+                    if (readFirmwareInfo && ptrDataRequest)
+                    {
+                        safe_memcpy(ptrDataRequest, dataRequestLength,
+                                    C_CAST(uint8_t*, raidFirmwareRequest) +
+                                        raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset,
+                                    dataRequestLength);
+                    }
+                    break;
+                case INTEL_FIRMWARE_STATUS_ERROR:
+                case INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST:
+                case INTEL_FIRMWARE_STATUS_INVALID_PARAMETER:
+                case INTEL_FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
+                case INTEL_FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
+                case INTEL_FIRMWARE_STATUS_INVALID_SLOT:
+                case INTEL_FIRMWARE_STATUS_INVALID_IMAGE:
+                case INTEL_FIRMWARE_STATUS_CONTROLLER_ERROR:
+                case INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
+                case INTEL_FIRMWARE_STATUS_DEVICE_ERROR:
+                case INTEL_FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
+                case INTEL_FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
+                case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE:
+                case INTEL_FIRMWARE_STATUS_ID_NOT_FOUND:
+                case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
+                case INTEL_FIRMWARE_STATUS_COMMAND_ABORT:
+                case INTEL_FIRMWARE_STATUS_END_OF_MEDIA:
+                case INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH:
+                    ret = FAILURE;
+                    break;
+                default:
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    break;
+                }
+            }
+            safe_free_irst_raid_fw_buffer(&raidFirmwareRequest);
         }
+        else
+        {
+            ret = MEMORY_FAILURE;
+        }
+    }
     else
     {
         ret = BAD_PARAMETER;
