@@ -247,7 +247,7 @@ static void print_fib_status(uint32_t fibstatus)
 static uint8_t parse_AAC_Handle(const char* devName, uint32_t* bus, uint32_t* target, uint32_t* lun)
 {
     uint8_t parseCount = 0;
-    char* dup = M_NULLPTR;
+    char*   dup        = M_NULLPTR;
     if (safe_strdup(&dup, devName) == 0)
     {
         if (strstr(dup, AAC_HANDLE_BASE_NAME) == dup)
@@ -351,9 +351,9 @@ static eReturnValues send_aac_raid_fib(AAC_HANDLE       fd,
     fib.Header.Command   = M_STATIC_CAST(uint16_t, fibCommand);
     fib.Header.StructType = AAC_FIBTYPE_TFIB; // if flag AAC_FLAGS_NEW_COMM_TYPE2 use TFIB2, AAC_FIBTYPE_TFIB2_64 if
                                               // setting SenderFibHighAddress
-    fib.Header.Size             = sizeof(aac_fib_header) + dataRequestInSize;
-    fib.Header.SenderSize       = sizeof(aac_fib);
-    fib.Header.SenderFibAddress = 0;     // Guessing based on what I have read in driver code to do this ourselves - TJE
+    fib.Header.Size                 = sizeof(aac_fib_header) + dataRequestInSize;
+    fib.Header.SenderSize           = sizeof(aac_fib);
+    fib.Header.SenderFibAddress     = 0; // Guessing based on what I have read in driver code to do this ourselves - TJE
     fib.Header.u.ReceiverFibAddress = 0; // Not sure - TJE
     // copy data in as it may contain info to issue the FIB to the controller
     safe_memcpy(fib.data, AAC_FIB_DATASIZE, dataRequestIn, dataRequestInSize);
@@ -448,9 +448,9 @@ static eReturnValues send_aac_raid_fib(AAC_HANDLE       fd,
     {
         printf("\tAAC FIB IO results:\n");
         printf("\t\tIO returned: %d\n", localIoctlReturn);
-        #if defined (_WIN32)
+#    if defined(_WIN32)
         printf("\t\tAAC Error Code: %lu\n", srbControl->ReturnCode);
-        #endif
+#    endif
         // Fib error code???
         if (VERBOSITY_COMMAND_NAMES <= verbosity)
         {
@@ -561,13 +561,13 @@ static eReturnValues send_VM_Container_Get_Bus_Info(AAC_HANDLE           fd,
 // Unable to find code to issue this, but trying to figure out how to do it-TJE
 // This can be helpful to figure out what information is already known by the controller before we begin issuing
 // commands
-static eReturnValues send_VM_Container_Get_DevInfo(AAC_HANDLE            fd,
-                                                   uint32_t              scsiMethod,
-                                                   uint32_t              bus,
-                                                   uint32_t              target,
-                                                   uint32_t              lun,
+static eReturnValues send_VM_Container_Get_DevInfo(AAC_HANDLE                   fd,
+                                                   uint32_t                     scsiMethod,
+                                                   uint32_t                     bus,
+                                                   uint32_t                     target,
+                                                   uint32_t                     lun,
                                                    struct aac_vmi_devinfo_resp* devinfo,
-                                                   eVerbosityLevels      verbosity)
+                                                   eVerbosityLevels             verbosity)
 {
     eReturnValues ret = SUCCESS;
     aac_vmioctl   vmio;
@@ -578,8 +578,8 @@ static eReturnValues send_VM_Container_Get_DevInfo(AAC_HANDLE            fd,
     vmio.ObjId   = AAC_BTL_TO_HANDLE(bus, target, lun); // Not sure if this goes here or somewhere else in the buffer.
                                                       // It's possible it's all in IOCTL_BUF but I don't know yet - TJE
     vmio.IoctlCmd = GetDeviceProbeInfo;
-    ret = send_aac_raid_fib(fd, ContainerCommand, &vmio, sizeof(aac_vmioctl), devinfo, sizeof( struct aac_vmi_devinfo_resp),
-                            verbosity);
+    ret           = send_aac_raid_fib(fd, ContainerCommand, &vmio, sizeof(aac_vmioctl), devinfo,
+                                      sizeof(struct aac_vmi_devinfo_resp), verbosity);
     return ret;
 }
 
@@ -671,9 +671,9 @@ static eReturnValues send_aac_get_pci_info(AAC_HANDLE fd, struct aac_pci_info* p
 #    endif
         printf("\tAAC PCI Info IO results:\n");
         printf("\t\tIO returned: %d\n", localIoctlReturn);
-        #if defined (_WIN32)
+#    if defined(_WIN32)
         printf("\t\tAAC Error Code: %lu\n", srbControl->ReturnCode);
-        #endif
+#    endif
     }
     else
     {
@@ -682,10 +682,10 @@ static eReturnValues send_aac_get_pci_info(AAC_HANDLE fd, struct aac_pci_info* p
     return ret;
 }
 
-static eReturnValues send_aac_miniport_rev_check(AAC_HANDLE          fd,
+static eReturnValues send_aac_miniport_rev_check(AAC_HANDLE                 fd,
                                                  struct aac_rev_check*      inrev,
                                                  struct aac_rev_check_resp* outrev,
-                                                 eVerbosityLevels    verbosity)
+                                                 eVerbosityLevels           verbosity)
 {
     eReturnValues ret = SUCCESS;
     if (inrev != M_NULLPTR && outrev != M_NULLPTR)
@@ -782,9 +782,9 @@ static eReturnValues send_aac_miniport_rev_check(AAC_HANDLE          fd,
 #    endif
         printf("\tAAC Miniport Rev IO results:\n");
         printf("\t\tIO returned: %d\n", localIoctlReturn);
-        #if defined (_WIN32)
+#    if defined(_WIN32)
         printf("\t\tAAC Error Code: %lu\n", srbControl->ReturnCode);
-        #endif
+#    endif
         if (VERBOSITY_COMMAND_NAMES <= verbosity)
         {
             printf("AAC Miniport Rev Response:\n");
@@ -800,7 +800,7 @@ static eReturnValues send_aac_miniport_rev_check(AAC_HANDLE          fd,
 
 static bool supports_aac_raid_ioctls(AAC_HANDLE fd)
 {
-    bool         supported = false;
+    bool                supported = false;
     struct aac_pci_info pciInfo;
     safe_memset(&pciInfo, sizeof(struct aac_pci_info), 0, sizeof(struct aac_pci_info));
     if (SUCCESS == send_aac_get_pci_info(fd, &pciInfo, VERBOSITY_QUIET))
@@ -900,8 +900,8 @@ static void setup_sg_list(aac_sg_table* sgtable,
                 // what is allowed in the sg element len This allows the counter to increment one final time then exit
                 // the loop
                 cmdTransferLen = 0;
-                sgdataptr = 0; // if the loop were to run again we have setup a null pointer with zero length to be
-                               // "used" next time
+                sgdataptr      = 0; // if the loop were to run again we have setup a null pointer with zero length to be
+                                    // "used" next time
             }
             sgtable->SgCount += 1;
         }
@@ -939,8 +939,8 @@ static void setup_sg_list64(aac_sg_table64* sgtable,
                 // what is allowed in the sg element len This allows the counter to increment one final time then exit
                 // the loop
                 cmdTransferLen = 0;
-                sgdataptr = 0; // if the loop were to run again we have setup a null pointer with zero length to be
-                               // "used" next time
+                sgdataptr      = 0; // if the loop were to run again we have setup a null pointer with zero length to be
+                                    // "used" next time
             }
             sgtable->SgCount += 1;
         }
@@ -1355,7 +1355,7 @@ eReturnValues get_AAC_RAID_Device(const char* filename, tDevice* device)
                                              M_NULLPTR);
             if (device->os_info.fd != INVALID_HANDLE_VALUE)
 #    else // POSIX
-            // TODO: implement support for other systems
+          // TODO: implement support for other systems
             ret = NOT_SUPPORTED;
             safe_free_aac_dev_info(&device->os_info.aacDeviceData);
             if (device->os_info.fd != AAC_INVALID_HANDLE)
