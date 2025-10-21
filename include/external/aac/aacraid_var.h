@@ -621,13 +621,13 @@ struct aac_code_lookup {
 
 
 #define AACQ_COMMAND_QUEUE(name, index)					\
-static __inline void							\
+static M_INLINE void							\
 aac_initq_ ## name (struct aac_softc *sc)				\
 {									\
 	TAILQ_INIT(&sc->aac_ ## name);					\
 	AACQ_INIT(sc, index);						\
 }									\
-static __inline void							\
+static M_INLINE void							\
 aac_enqueue_ ## name (struct aac_command *cm)				\
 {									\
 	if ((cm->cm_flags & AAC_ON_AACQ_MASK) != 0) {			\
@@ -639,7 +639,7 @@ aac_enqueue_ ## name (struct aac_command *cm)				\
 	cm->cm_flags |= AAC_ON_ ## index;				\
 	AACQ_ADD(cm->cm_sc, index);					\
 }									\
-static __inline void							\
+static M_INLINE void							\
 aac_requeue_ ## name (struct aac_command *cm)				\
 {									\
 	if ((cm->cm_flags & AAC_ON_AACQ_MASK) != 0) {			\
@@ -651,7 +651,7 @@ aac_requeue_ ## name (struct aac_command *cm)				\
 	cm->cm_flags |= AAC_ON_ ## index;				\
 	AACQ_ADD(cm->cm_sc, index);					\
 }									\
-static __inline struct aac_command *					\
+static M_INLINE struct aac_command *					\
 aac_dequeue_ ## name (struct aac_softc *sc)				\
 {									\
 	struct aac_command *cm;						\
@@ -669,7 +669,7 @@ aac_dequeue_ ## name (struct aac_softc *sc)				\
 	}								\
 	return(cm);							\
 }									\
-static __inline void							\
+static M_INLINE void							\
 aac_remove_ ## name (struct aac_command *cm)				\
 {									\
 	if ((cm->cm_flags & AAC_ON_ ## index) == 0) {			\
@@ -688,7 +688,7 @@ AACQ_COMMAND_QUEUE(free, AACQ_FREE);
 AACQ_COMMAND_QUEUE(ready, AACQ_READY);
 AACQ_COMMAND_QUEUE(busy, AACQ_BUSY);
 
-static __inline void
+static M_INLINE void
 aac_print_printf(aac_softc *sc)
 {
 	/*
@@ -701,7 +701,7 @@ aac_print_printf(aac_softc *sc)
 	AAC_QNOTIFY(sc, AAC_DB_PRINTF);
 }
 
-static __inline int
+static M_INLINE int
 aac_alloc_sync_fib(aac_softc *sc, aac_fib **fib)
 {
 
@@ -710,7 +710,7 @@ aac_alloc_sync_fib(aac_softc *sc, aac_fib **fib)
 	return (0);
 }
 
-static __inline void
+static M_INLINE void
 aac_release_sync_fib(aac_softc *sc)
 {
 
