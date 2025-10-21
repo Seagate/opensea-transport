@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -30,7 +30,7 @@ extern "C"
 
     //Seagate Power Telemetry
     //must measure one of these, otherwise default mode 0 is used and no error reported.
-    typedef enum _ePowerTelemetryMeasurementOptions
+    typedef enum ePowerTelemetryMeasurementOptionsEnum
     {
         PWR_TEL_MEASURE_5V_AND_12V  = 0,
         PWR_TEL_MEASURE_5V          = 5,

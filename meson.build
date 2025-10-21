@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-project('opensea-transport', 'c', license: 'MPL-2.0', version: '8.0.1', default_options : ['warning_level=2'])
+project('opensea-transport', 'c', license: 'MPL-2.0', version: '10.2.0', default_options : ['warning_level=2'])
 
 c = meson.get_compiler('c')
 
@@ -43,8 +43,7 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wint-to-pointer-cast',
   '-Wimplicit-fallthrough',
   '-D_GLIBCXX_ASSERTIONS',
-  '-fstrict-flex-arrays=1', #NOTE: Using level 1 since Windows often uses [1] at the end of it's structures. opensea-*libs has used this in a few places too.
-  '-fstack-protector-strong',
+  '-fstrict-flex-arrays=3',
   '-fno-delete-null-pointer-checks',
   '-fno-strict-overflow',
   '-fno-strict-aliasing',
@@ -74,12 +73,28 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
   '-Wcomment',
   '-Wsequence-point',
   '-Wreturn-type',
+  '-Wpointer-bool-conversion',
   '-fvisibility=hidden', #to work similarly to Window's DLL import/export
+  '-Wmismatched-dealloc',
+  '-Wfree-nonheap-object',
   ]
 
   if c.get_id().contains('gcc') and c.version().version_compare('>=10.0')
     #only enable the sign conversion warning on versions 10 and up because it is way too noisy on earlier GCC versions than it is useful-TJE
     warning_flags += '-Wsign-conversion'
+  endif
+
+  if target_machine.system() != 'sunos'
+    warning_flags += '-fstack-protector-strong'
+  else
+    #Illumos will support this, but solaris will not due to library differences in the systems
+    if meson.version().version_compare('>=1.2.0')
+      if target_machine.kernel() == 'illumos'
+        warning_flags += '-fstack-protector-strong'
+      endif
+    else
+    # TODO: Backup method to detect illumos vs solaris
+    endif
   endif
 
   if c.get_id().contains('gcc') and target_machine.system() == 'windows'
@@ -186,6 +201,11 @@ elif c.get_id().contains('msvc')
     '/guard:cf', #control flow guard
     '/d2guard4', #control flow guard
   ]
+
+  if target_machine.cpu_family() == 'x86_64' or target_machine.cpu_family() == 'x86'
+    # https://learn.microsoft.com/en-us/cpp/build/reference/qintel-jcc-erratum?view=msvc-170
+    warning_flags += '/QIntel-jcc-erratum'
+  endif
 
   if c.has_argument('/std:c17')
     c_std = 'c17'
@@ -305,8 +325,8 @@ if target_machine.system() == 'linux'
       message('Auto-disabling NVMe support as no ioctl header can be found')
     endif
   endif
-elif target_machine.system() == 'freebsd'
-  src_files += ['src/cam_helper.c']
+elif target_machine.system() == 'freebsd' or target_machine.system() == 'dragonfly'
+  src_files += ['src/cam_helper.c', 'src/bsd_mount_info.c']
   cam_dep = c.find_library('cam')
   os_deps += [cam_dep]
   #TODO: Need to do some testing on FreeBSD before we allow this
@@ -317,6 +337,11 @@ elif target_machine.system() == 'freebsd'
     add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language : 'c')
     message('Auto-disabling NVMe support as no ioctl header can be found')
   endif
+elif target_machine.system() == 'openbsd' or target_machine.system() == 'netbsd'
+  src_files += ['src/bsd_ata_passthrough.c', 'src/bsd_scsi_passthrough.c', 'src/bsd_mount_info.c', 'src/netbsd_openbsd_helper.c']
+  add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language : 'c')
+  message('Auto-disabling NVMe support as no ioctl header can be found')
+  #TODO: might need -lutil. Not sure yet-TJE
 elif target_machine.system() == 'sunos'
   src_files += ['src/uscsi_helper.c']
   add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language : 'c')

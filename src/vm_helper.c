@@ -2,53 +2,54 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // ******************************************************************************************
-// 
+//
 
-#include "common_types.h"
-#include "precision_timer.h"
-#include "memory_safety.h"
-#include "type_conversion.h"
-#include "string_utils.h"
 #include "bit_manip.h"
 #include "code_attributes.h"
-#include "math_utils.h"
+#include "common_types.h"
 #include "error_translation.h"
 #include "io_utils.h"
+#include "math_utils.h"
+#include "memory_safety.h"
+#include "precision_timer.h"
 #include "sleep.h"
+#include "string_utils.h"
+#include "type_conversion.h"
 
-#include <stdio.h>
-#include <dirent.h>
+#include "ata_helper_func.h"
+#include "cmds.h"
+#include "nvme_helper_func.h"
+#include "scsi_helper_func.h"
+#include "sntl_helper.h"
+#include "vm_helper.h"
 #include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <libgen.h> //for basename and dirname
+#include <stdio.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h> //for mmap pci reads. Potential to move.
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <time.h>
 #include <unistd.h> // for close
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h> //for mmap pci reads. Potential to move. 
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <errno.h>
-#include <libgen.h>//for basename and dirname
-#include <string.h>
 #include <vmkapi.h>
-#include "vm_helper.h"
-#include "cmds.h"
-#include "scsi_helper_func.h"
-#include "ata_helper_func.h"
-#include "nvme_helper_func.h"
-#include "sntl_helper.h"
 
 #if defined(DEGUG_SCAN_TIME)
-#include "common_platform.h"
+#    include "common_platform.h"
 #endif
 
-    //If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+// If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise
+// you must try MAX_CMD_TIMEOUT_SECONDS instead
 bool os_Is_Infinite_Timeout_Supported(void)
 {
     return true;
@@ -57,49 +58,48 @@ bool os_Is_Infinite_Timeout_Supported(void)
 extern bool validate_Device_Struct(versionBlock);
 
 // Local helper functions for debugging
-#if defined (_DEBUG)
-static void print_io_hdr(sg_io_hdr_t *pIo)
+#if defined(_DEBUG)
+static void print_io_hdr(sg_io_hdr_t* pIo)
 {
-    time_t time_now;
     DECLARE_ZERO_INIT_ARRAY(char, timeFormat, TIME_STRING_LENGTH);
-    memset(timeFormat, 0, TIME_STRING_LENGTH);//clear this again before reusing it
-    time_now = time(M_NULLPTR);
-    printf("\n%s: %s---------------------------------\n", __FUNCTION__, get_Current_Time_String(&time_now, timeFormat, TIME_STRING_LENGTH));
-    printf("type int interface_id %d\n", pIo->interface_id);           /* [i] 'S' (required) */
-    printf("type int  dxfer_direction %d\n", pIo->dxfer_direction);        /* [i] */
-    printf("type unsigned char cmd_len 0x%x\n", pIo->cmd_len);      /* [i] */
-    printf("type unsigned char mx_sb_len 0x%x\n", pIo->mx_sb_len);    /* [i] */
-    printf("type unsigned short iovec_count 0x%x\n", pIo->iovec_count); /* [i] */
-    printf("type unsigned int dxfer_len %d\n", pIo->dxfer_len);     /* [i] */
-    printf("type void * dxferp %p\n", C_CAST(unsigned int *, pIo->dxferp));              /* [i], [*io] */
-    printf("type unsigned char * cmdp %p\n", C_CAST(unsigned int *, pIo->cmdp));       /* [i], [*i]  */
-    printf("type unsigned char * sbp %p\n", C_CAST(unsigned int *, pIo->sbp));        /* [i], [*o]  */
-    printf("type unsigned int timeout %d\n", pIo->timeout);       /* [i] unit: millisecs */
-    printf("type unsigned int flags 0x%x\n", pIo->flags);         /* [i] */
-    printf("type int pack_id %d\n", pIo->pack_id);                /* [i->o] */
-    printf("type void * usr_ptr %p\n", C_CAST(unsigned int *, pIo->usr_ptr));             /* [i->o] */
-    printf("type unsigned char status 0x%x\n", pIo->status);       /* [o] */
-    printf("type unsigned char maskedStatus 0x%x\n", pIo->masked_status); /* [o] */
-    printf("type unsigned char msg_status 0x%x\n", pIo->msg_status);   /* [o] */
-    printf("type unsigned char sb_len_wr 0x%x\n", pIo->sb_len_wr);    /* [o] */
-    printf("type unsigned short host_status 0x%x\n", pIo->host_status); /* [o] */
-    printf("type unsigned short driver_status 0x%x\n", pIo->driver_status); /* [o] */
-    printf("type int resid %d\n", pIo->resid);                  /* [o] */
-    printf("type unsigned int duration %d\n", pIo->duration);      /* [o] */
-    printf("type unsigned int info 0x%x\n", pIo->info);          /* [o] */
-    printf("-----------------------------------------\n");
+    time_t time_now = time(M_NULLPTR);
+    printf("\n%s: %s---------------------------------\n", __FUNCTION__,
+           get_Current_Time_String(&time_now, timeFormat, TIME_STRING_LENGTH));
+    printf("type int interface_id %d\n", pIo->interface_id);                    /* [i] 'S' (required) */
+    printf("type int  dxfer_direction %d\n", pIo->dxfer_direction);             /* [i] */
+    printf("type unsigned char cmd_len 0x%x\n", pIo->cmd_len);                  /* [i] */
+    printf("type unsigned char mx_sb_len 0x%x\n", pIo->mx_sb_len);              /* [i] */
+    printf("type unsigned short iovec_count 0x%x\n", pIo->iovec_count);         /* [i] */
+    printf("type unsigned int dxfer_len %d\n", pIo->dxfer_len);                 /* [i] */
+    printf("type void * dxferp %p\n", C_CAST(unsigned int*, pIo->dxferp));      /* [i], [*io] */
+    printf("type unsigned char * cmdp %p\n", C_CAST(unsigned int*, pIo->cmdp)); /* [i], [*i]  */
+    printf("type unsigned char * sbp %p\n", C_CAST(unsigned int*, pIo->sbp));   /* [i], [*o]  */
+    printf("type unsigned int timeout %d\n", pIo->timeout);                     /* [i] unit: millisecs */
+    printf("type unsigned int flags 0x%x\n", pIo->flags);                       /* [i] */
+    printf("type int pack_id %d\n", pIo->pack_id);                              /* [i->o] */
+    printf("type void * usr_ptr %p\n", C_CAST(unsigned int*, pIo->usr_ptr));    /* [i->o] */
+    printf("type unsigned char status 0x%x\n", pIo->status);                    /* [o] */
+    printf("type unsigned char maskedStatus 0x%x\n", pIo->masked_status);       /* [o] */
+    printf("type unsigned char msg_status 0x%x\n", pIo->msg_status);            /* [o] */
+    printf("type unsigned char sb_len_wr 0x%x\n", pIo->sb_len_wr);              /* [o] */
+    printf("type unsigned short host_status 0x%x\n", pIo->host_status);         /* [o] */
+    printf("type unsigned short driver_status 0x%x\n", pIo->driver_status);     /* [o] */
+    printf("type int resid %d\n", pIo->resid);                                  /* [o] */
+    printf("type unsigned int duration %d\n", pIo->duration);                   /* [o] */
+    printf("type unsigned int info 0x%x\n", pIo->info);                         /* [o] */
+    print_str("-----------------------------------------\n");
 }
 #endif //_DEBUG
 
-static int drive_filter(const struct dirent *entry)
+static int drive_filter(const struct dirent* entry)
 {
     int driveHandle = strncmp("t10", entry->d_name, 3);
 
     if (driveHandle != 0)
     {
         /**
-         * Its not a SATA or NVMe. 
-         * Lets check if it is SAS (starts with "naa.") 
+         * Its not a SATA or NVMe.
+         * Lets check if it is SAS (starts with "naa.")
          */
 
         driveHandle = strncmp("naa.", entry->d_name, 4);
@@ -126,137 +126,136 @@ static int drive_filter(const struct dirent *entry)
     {
         return driveHandle;
     }
-
 }
 
-typedef struct _sysVMLowLevelDeviceInfo
+typedef struct s_sysVMLowLevelDeviceInfo
 {
-    eSCSIPeripheralDeviceType scsiDevType;//in Linux this will be reading the "type" file to get this. If it is not available, will retry with "inquiry" data file's first byte
+    eSCSIPeripheralDeviceType scsiDevType; // in Linux this will be reading the "type" file to get this. If it is not
+                                           // available, will retry with "inquiry" data file's first byte
     eDriveType     drive_type;
     eInterfaceType interface_type;
-    adapterInfo     adapter_info;
-    driverInfo		driver_info;
-    struct {
-            uint8_t         host;//AKA SCSI adapter #
-            uint8_t         channel;//AKA bus
-            uint8_t         target;//AKA id number
-            uint8_t         lun;//logical unit number
-    }scsiAddress;
-    char fullDevicePath[OPENSEA_PATH_MAX];
-    char primaryHandleStr[OS_HANDLE_NAME_MAX_LENGTH]; //dev/sg or /dev/nvmexny (namespace handle)
-    char secondaryHandleStr[OS_SECOND_HANDLE_NAME_LENGTH]; //dev/sd or /dev/nvmex (controller handle)
-    char tertiaryHandleStr[OS_SECOND_HANDLE_NAME_LENGTH]; //dev/bsg or /dev/ngXnY (nvme generic handle)
-    uint16_t queueDepth;//if 0, then this was unable to be read and populated
-}sysVMLowLevelDeviceInfo;
+    adapterInfo    adapter_info;
+    driverInfo     driver_info;
+    struct
+    {
+        uint8_t host;    // AKA SCSI adapter #
+        uint8_t channel; // AKA bus
+        uint8_t target;  // AKA id number
+        uint8_t lun;     // logical unit number
+    } scsiAddress;
+    char     fullDevicePath[OPENSEA_PATH_MAX];
+    char     primaryHandleStr[OS_HANDLE_NAME_MAX_LENGTH];      // dev/sg or /dev/nvmexny (namespace handle)
+    char     secondaryHandleStr[OS_SECOND_HANDLE_NAME_LENGTH]; // dev/sd or /dev/nvmex (controller handle)
+    char     tertiaryHandleStr[OS_SECOND_HANDLE_NAME_LENGTH];  // dev/bsg or /dev/ngXnY (nvme generic handle)
+    uint16_t queueDepth;                                       // if 0, then this was unable to be read and populated
+} sysVMLowLevelDeviceInfo;
 
-//while similar to the function below, this is used only by get_Device to set up some fields in the device structure for the above layers
-//this function gets the following info:
-// pcie/usb product ID, vendor ID, revision ID, sets the interface type, ieee1394 specifier ID, and sets the handle mapping for SD/BSG
-//this also calls the function to get the driver version info as well as the name of the driver as a string.
-//TODO: Also output the full device path from the read link???
-//      get the SCSI peripheral device type to help decide when to scan for RAIDs on a given handle
-//handle nvme-generic handles???
-//handle looking up nvme controller handle from a namespace handle???
-//handle /dev/disk/by-<> lookups. These are links to /dev/sd or /dev/nvme, etc. We can convert these first, then convert again to sd/sg/nvme as needed
+// while similar to the function below, this is used only by get_Device to set up some fields in the device structure
+// for the above layers this function gets the following info:
+//  pcie/usb product ID, vendor ID, revision ID, sets the interface type, ieee1394 specifier ID, and sets the handle
+//  mapping for SD/BSG
+// this also calls the function to get the driver version info as well as the name of the driver as a string.
+// TODO: Also output the full device path from the read link???
+//       get the SCSI peripheral device type to help decide when to scan for RAIDs on a given handle
+// handle nvme-generic handles???
+// handle looking up nvme controller handle from a namespace handle???
+// handle /dev/disk/by-<> lookups. These are links to /dev/sd or /dev/nvme, etc. We can convert these first, then
+// convert again to sd/sg/nvme as needed
 
-static void get_VMV_SYS_FS_Info(const char* handle, sysVMLowLevelDeviceInfo * sysVmInfo)
+static void get_VMV_SYS_FS_Info(const char* handle, sysVMLowLevelDeviceInfo* sysVmInfo)
 {
-    //check if it's a block handle, bsg, or scsi_generic handle, then setup the path we need to read.
+    // check if it's a block handle, bsg, or scsi_generic handle, then setup the path we need to read.
     if (handle && sysVmInfo)
     {
-        if (strstr(handle,"t10.ATA") != NULL)
+        if (strstr(handle, "t10.ATA") != NULL)
         {
-            //set scsi interface and scsi drive until we know otherwise
-            sysVmInfo->drive_type = ATA_DRIVE;
+            // set scsi interface and scsi drive until we know otherwise
+            sysVmInfo->drive_type     = ATA_DRIVE;
             sysVmInfo->interface_type = IDE_INTERFACE;
         }
-        if (strstr(handle,"naa.") != NULL) 
+        if (strstr(handle, "naa.") != NULL)
         {
-            sysVmInfo->drive_type = SCSI_DRIVE;
+            sysVmInfo->drive_type     = SCSI_DRIVE;
             sysVmInfo->interface_type = SCSI_INTERFACE;
         }
     }
-    return;
 }
 
-static void set_Device_Fields_From_Handle(const char* handle, tDevice *device)
+M_NONNULL_PARAM_LIST(1, 2)
+M_NULL_TERM_STRING(1)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
 {
     sysVMLowLevelDeviceInfo sysVmInfo;
     /**
-     * Setting up difaults
+     * Setting up defaults
      */
-    //sysVmInfo.drive_type = SCSI_DRIVE;
-    //device->drive_info.drive_type = ATA_DRIVE;
-    //sysVmInfo.interface_type = SCSI_INTERFACE;
-    //device->drive_info.interface_type = IDE_INTERFACE;
-    //sysVmInfo.media_type = MEDIA_HDD;
+    // sysVmInfo.drive_type = SCSI_DRIVE;
+    // device->drive_info.drive_type = ATA_DRIVE;
+    // sysVmInfo.interface_type = SCSI_INTERFACE;
+    // device->drive_info.interface_type = IDE_INTERFACE;
+    // sysVmInfo.media_type = MEDIA_HDD;
 
-    memset(&sysVmInfo, 0, sizeof(sysVMLowLevelDeviceInfo));
+    safe_memset(&sysVmInfo, sizeof(sysVMLowLevelDeviceInfo), 0, sizeof(sysVMLowLevelDeviceInfo));
     get_VMV_SYS_FS_Info(handle, &sysVmInfo);
-    //now copy the saved data to tDevice. -DB
+    // now copy the saved data to tDevice. -DB
     if (device)
     {
-        device->drive_info.drive_type = sysVmInfo.drive_type;
+        device->drive_info.drive_type     = sysVmInfo.drive_type;
         device->drive_info.interface_type = sysVmInfo.interface_type;
-        memcpy(&device->drive_info.adapter_info, &sysVmInfo.adapter_info, sizeof(adapterInfo));
-        memcpy(&device->drive_info.driver_info, &sysVmInfo.driver_info, sizeof(driverInfo));
+        safe_memcpy(&device->drive_info.adapter_info, sizeof(adapterInfo), &sysVmInfo.adapter_info,
+                    sizeof(adapterInfo));
+        safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysVmInfo.driver_info, sizeof(driverInfo));
         if (strlen(sysVmInfo.primaryHandleStr) > 0)
         {
-            snprintf(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysVmInfo.primaryHandleStr);
-            snprintf(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", basename(sysVmInfo.primaryHandleStr));
+            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysVmInfo.primaryHandleStr);
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
+                                basename(sysVmInfo.primaryHandleStr));
         }
         if (strlen(sysVmInfo.secondaryHandleStr) > 0)
         {
-            snprintf(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "%s", sysVmInfo.secondaryHandleStr);
-            snprintf(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s", basename(sysVmInfo.secondaryHandleStr));
+            snprintf_err_handle(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
+                                sysVmInfo.secondaryHandleStr);
+            snprintf_err_handle(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
+                                basename(sysVmInfo.secondaryHandleStr));
         }
     }
-    return;
-}
-
-//only to be used by get_Device to set up an os_specific structure
-//This could be useful to put into a function for all nix systems to use since it could be useful for them too.
-long get_Device_Page_Size(void)
-{
-#if defined (POSIX_2001)
-    //use sysconf: http://man7.org/linux/man-pages/man3/sysconf.3.html
-    return sysconf(_SC_PAGESIZE);
-#else
-    //use get page size: http://man7.org/linux/man-pages/man2/getpagesize.2.html
-    return C_CAST(long, getpagesize());
-#endif
 }
 
 #define LIN_MAX_HANDLE_LENGTH 16
-eReturnValues get_Device(const char *filename, tDevice *device)
+eReturnValues get_Device(const char* filename, tDevice* device)
 {
-    char *deviceHandle = M_NULLPTR;
-    eReturnValues ret = SUCCESS;
-    int rc = 0;
+    char*                    deviceHandle = M_NULLPTR;
+    eReturnValues            ret          = SUCCESS;
+    int                      rc           = 0;
     struct nvme_adapter_list nvmeAdptList;
-    bool isScsi = false;
-    char *nvmeDevName = M_NULLPTR;
+    bool                     isScsi      = false;
+    char*                    nvmeDevName = M_NULLPTR;
 
     /**
-     * In VMWare NVMe device the drivename (for NDDK) 
-     * always starts with "vmhba" (e.g. vmhba1) 
+     * In VMWare NVMe device the drivename (for NDDK)
+     * always starts with "vmhba" (e.g. vmhba1)
      */
 
     nvmeDevName = strstr(filename, "vmhba");
-    isScsi = (nvmeDevName == M_NULLPTR) ? true : false;
+    isScsi      = (nvmeDevName == M_NULLPTR) ? true : false;
 
-    //printf("Getting device for %s\n", filename);
+    // printf("Getting device for %s\n", filename);
 
     /**
-     * List down both NVMe and HDD/SSD drives 
-     * Get the device after matching the name 
+     * List down both NVMe and HDD/SSD drives
+     * Get the device after matching the name
      */
-    deviceHandle = strdup(filename);
+    if (0 != safe_strdup(&deviceHandle, filename))
+    {
+        return MEMORY_FAILURE;
+    }
 
     if (isScsi)
     {
-#if defined (_DEBUG)
-        printf("This is a SCSI drive\n");
+#if defined(_DEBUG)
+        print_str("This is a SCSI drive\n");
         printf("Attempting to open %s\n", deviceHandle);
 #endif
         // Note: We are opening a READ/Write flag
@@ -264,8 +263,8 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         {
             perror("open");
             device->os_info.fd = errno;
-            printf("open failure\n");
-            printf("Error: ");
+            print_str("open failure\n");
+            print_str("Error: ");
             print_Errno_To_Screen(errno);
             if (device->os_info.fd == EACCES)
             {
@@ -281,13 +280,13 @@ eReturnValues get_Device(const char *filename, tDevice *device)
 
         device->os_info.minimumAlignment = sizeof(void*);
 
-        //Adding support for different device discovery options. 
+        // Adding support for different device discovery options.
         if (device->dFlags == OPEN_HANDLE_ONLY)
         {
-            //set scsi interface and scsi drive until we know otherwise
-            device->drive_info.drive_type = SCSI_DRIVE;
+            // set scsi interface and scsi drive until we know otherwise
+            device->drive_info.drive_type     = SCSI_DRIVE;
             device->drive_info.interface_type = SCSI_INTERFACE;
-            device->drive_info.media_type = MEDIA_HDD;
+            device->drive_info.media_type     = MEDIA_HDD;
             set_Device_Fields_From_Handle(deviceHandle, device);
             setup_Passthrough_Hacks_By_ID(device);
             safe_free(&deviceHandle);
@@ -297,82 +296,86 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         if ((device->os_info.fd >= 0) && (ret == SUCCESS))
         {
             struct sg_scsi_id hctlInfo;
-            memset(&hctlInfo, 0, sizeof(struct sg_scsi_id));
+            safe_memset(&hctlInfo, sizeof(struct sg_scsi_id), 0, sizeof(struct sg_scsi_id));
             int getHctl = ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo);
-            if (getHctl == 0 && errno == 0)//when this succeeds, both of these will be zeros
+            if (getHctl == 0 && errno == 0) // when this succeeds, both of these will be zeros
             {
-                //printf("Got hctlInfo\n");
-                device->os_info.scsiAddress.host = C_CAST(uint8_t, hctlInfo.host_no);
+                // print_str("Got hctlInfo\n");
+                device->os_info.scsiAddress.host    = C_CAST(uint8_t, hctlInfo.host_no);
                 device->os_info.scsiAddress.channel = C_CAST(uint8_t, hctlInfo.channel);
-                device->os_info.scsiAddress.target = C_CAST(uint8_t, hctlInfo.scsi_id);
-                device->os_info.scsiAddress.lun = C_CAST(uint8_t, hctlInfo.lun);
-                device->drive_info.namespaceID = device->os_info.scsiAddress.lun + UINT32_C(1);//Doing this to help with USB to NVMe adapters. Luns start at zero, whereas namespaces start with 1, hence the plus 1.
-                //also reported are per lun and per device Q-depth which might be nice to store.
-                //printf("H:C:T:L = %" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8 "\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
+                device->os_info.scsiAddress.target  = C_CAST(uint8_t, hctlInfo.scsi_id);
+                device->os_info.scsiAddress.lun     = C_CAST(uint8_t, hctlInfo.lun);
+                device->drive_info.namespaceID =
+                    device->os_info.scsiAddress.lun +
+                    UINT32_C(1); // Doing this to help with USB to NVMe adapters. Luns start at zero, whereas namespaces
+                                 // start with 1, hence the plus 1.
+                // also reported are per lun and per device Q-depth which might be nice to store.
+                // printf("H:C:T:L = %" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8 "\n", device->os_info.scsiAddress.host,
+                // device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target,
+                // device->os_info.scsiAddress.lun);
             }
 
-#if defined (_DEBUG)
-            printf("Getting SG driver version\n");
+#if defined(_DEBUG)
+            print_str("Getting SG driver version\n");
 #endif
 
             /**
-             * SG_GET_VERSION_NUM is currently not supported for VMWare 
+             * SG_GET_VERSION_NUM is currently not supported for VMWare
              * SG_IO. Assume sg v3 IO support only
              */
 
-            //set the OS Type
+            // set the OS Type
             device->os_info.osType = OS_ESX;
 
-            memcpy(device->os_info.name, deviceHandle, safe_strlen(deviceHandle) + 1);
+            safe_memcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, deviceHandle, safe_strlen(deviceHandle) + 1);
 
-            //set scsi interface and scsi drive until we know otherwise
+            // set scsi interface and scsi drive until we know otherwise
             device->drive_info.drive_type = SCSI_DRIVE;
-            //device->drive_info.drive_type = ATA_DRIVE;
+            // device->drive_info.drive_type = ATA_DRIVE;
             device->drive_info.interface_type = SCSI_INTERFACE;
-            //device->drive_info.interface_type = IDE_INTERFACE;
+            // device->drive_info.interface_type = IDE_INTERFACE;
             device->drive_info.media_type = MEDIA_HDD;
-            //now have the device information fields set
-#if defined (_DEBUG)
-            printf("Setting interface, drive type, secondary handles\n");
+            // now have the device information fields set
+#if defined(_DEBUG)
+            print_str("Setting interface, drive type, secondary handles\n");
 #endif
 
             set_Device_Fields_From_Handle(deviceHandle, device);
             setup_Passthrough_Hacks_By_ID(device);
-            //device->drive_info.interface_type = SCSI_INTERFACE;
-            //device->drive_info.drive_type = UNKNOWN_DRIVE;
-            //device->drive_info.media_type = MEDIA_UNKNOWN;
+            // device->drive_info.interface_type = SCSI_INTERFACE;
+            // device->drive_info.drive_type = UNKNOWN_DRIVE;
+            // device->drive_info.media_type = MEDIA_UNKNOWN;
 
-#if defined (_DEBUG)
-            printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n",
-                device->os_info.name,
-                device->os_info.friendlyName,
-                device->os_info.secondName,
-                device->os_info.secondFriendlyName
-            );
-            printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
+#if defined(_DEBUG)
+            printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", device->os_info.name,
+                   device->os_info.friendlyName, device->os_info.secondName, device->os_info.secondFriendlyName);
+            printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel,
+                   device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
 
-            printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion, device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
+            printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion,
+                   device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
 #endif
 
             // Fill in all the device info.
-            //this code to set up passthrough commands for USB and IEEE1394 has been removed for now to match Windows functionality. Need better intelligence than this.
-            //Some of these old pass-through types issue vendor specific op codes that could be misinterpretted on some devices.
-//              if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type == IEEE_1394_INTERFACE)
-//              {
-//                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
-//              }
+            // this code to set up passthrough commands for USB and IEEE1394 has been removed for now to match Windows
+            // functionality. Need better intelligence than this. Some of these old pass-through types issue vendor
+            // specific op codes that could be misinterpretted on some devices.
+            //              if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type
+            //              == IEEE_1394_INTERFACE)
+            //              {
+            //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
+            //              }
 
             ret = fill_Drive_Info_Data(device);
 
-#if defined (_DEBUG)
-            printf("\nvm helper\n");
+#if defined(_DEBUG)
+            print_str("\nvm helper\n");
             printf("Drive type: %d\n", device->drive_info.drive_type);
             printf("Interface type: %d\n", device->drive_info.interface_type);
             printf("Media type: %d\n", device->drive_info.media_type);
 #endif
         }
         safe_free(&deviceHandle);
-
     }
     else
     {
@@ -383,8 +386,8 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             return FAILURE;
         }
 
-#if defined (_DEBUG)
-        printf("This is a NVMe drive\n");
+#if defined(_DEBUG)
+        print_str("This is a NVMe drive\n");
         printf("Attempting to open %s\n", deviceHandle);
 #endif
         // Note: We are opening a READ/Write flag
@@ -401,8 +404,8 @@ eReturnValues get_Device(const char *filename, tDevice *device)
         if (device->os_info.nvmeFd == M_NULLPTR)
         {
             perror("open");
-            printf("open failure\n");
-            printf("Error: ");
+            print_str("open failure\n");
+            print_str("Error: ");
             print_Errno_To_Screen(errno);
             if (errno == EACCES)
             {
@@ -416,27 +419,29 @@ eReturnValues get_Device(const char *filename, tDevice *device)
             }
         }
 
-        //Set NSID from the incoming handle. It's not clear if this is correct, but based on the vmware structures, the "cookie"
-        //in the adapter info says it points to the controller, so currently assuming this is a reasonable way to read the nsid.
-        if (!get_And_Validate_Integer_Input_Uint32(nvmeDevName + safe_strlen("vmhba"), M_NULLPTR, ALLOW_UNIT_NONE, &device->drive_info.namespaceID))
+        // Set NSID from the incoming handle. It's not clear if this is correct, but based on the vmware structures, the
+        // "cookie" in the adapter info says it points to the controller, so currently assuming this is a reasonable way
+        // to read the nsid.
+        if (!get_And_Validate_Integer_Input_Uint32(nvmeDevName + safe_strlen("vmhba"), M_NULLPTR, ALLOW_UNIT_NONE,
+                                                   &device->drive_info.namespaceID))
         {
-            printf("Error: Unable to read NSID\n");
+            print_str("Error: Unable to read NSID\n");
         }
 
-        device->os_info.minimumAlignment = sizeof(void *);
+        device->os_info.minimumAlignment = sizeof(void*);
 
-        //Adding support for different device discovery options. 
+        // Adding support for different device discovery options.
         if (device->dFlags == OPEN_HANDLE_ONLY)
         {
             safe_free(&deviceHandle);
             return ret;
         }
-        //\\TODO: Add support for other flags. 
+        //\\TODO: Add support for other flags.
 
         if ((device->os_info.nvmeFd != M_NULLPTR) && (ret == SUCCESS))
         {
-#if defined (_DEBUG)
-            printf("Getting SG driver version\n");
+#if defined(_DEBUG)
+            print_str("Getting SG driver version\n");
 #endif
 
             /**
@@ -444,11 +449,11 @@ eReturnValues get_Device(const char *filename, tDevice *device)
              */
 
             device->drive_info.interface_type = NVME_INTERFACE;
-            device->drive_info.drive_type = NVME_DRIVE;
-            device->drive_info.media_type = MEDIA_NVM;
-            memcmp(device->drive_info.T10_vendor_ident, "NVMe", 4);
+            device->drive_info.drive_type     = NVME_DRIVE;
+            device->drive_info.media_type     = MEDIA_NVM;
+            safe_memcpy(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe", 4);
             device->os_info.osType = OS_ESX;
-            memcpy(&(device->os_info.name), filename, safe_strlen(filename) + 1);
+            safe_memcpy(&(device->os_info.name), OS_HANDLE_NAME_MAX_LENGTH, filename, safe_strlen(filename) + 1);
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
             if (device->drive_info.interface_type == NVME_INTERFACE)
@@ -456,8 +461,8 @@ eReturnValues get_Device(const char *filename, tDevice *device)
                 ret = fill_In_NVMe_Device_Info(device);
             }
 #endif
-#if defined (_DEBUG)
-            printf("\nvm helper\n");
+#if defined(_DEBUG)
+            print_str("\nvm helper\n");
             printf("Drive type: %d\n", device->drive_info.drive_type);
             printf("Interface type: %d\n", device->drive_info.interface_type);
             printf("Media type: %d\n", device->drive_info.media_type);
@@ -468,9 +473,11 @@ eReturnValues get_Device(const char *filename, tDevice *device)
 
     return ret;
 }
-//http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
-//sgResetType should be one of the values from the link above...so bus or device...controller will work but that shouldn't be done ever.
-eReturnValues sg_reset(int fd, int resetType)
+// http://www.tldp.org/HOWTO/SCSI-Generic-HOWTO/scsi_reset.html
+// sgResetType should be one of the values from the link above...so bus or device...controller will work but that
+// shouldn't be done ever.
+M_FILE_DESCRIPTOR(1)
+static eReturnValues sg_reset(int fd, int resetType)
 {
     eReturnValues ret = UNKNOWN;
 
@@ -493,9 +500,9 @@ eReturnValues sg_reset(int fd, int resetType)
     }
     else
     {
-        //poll for reset completion
+        // poll for reset completion
 #if defined(_DEBUG)
-        printf("Reset in progress, polling for completion!\n");
+        print_str("Reset in progress, polling for completion!\n");
 #endif
         resetType = SG_SCSI_RESET_NOTHING;
         while (errno == EBUSY)
@@ -503,27 +510,27 @@ eReturnValues sg_reset(int fd, int resetType)
             ret = ioctl(fd, SG_SCSI_RESET, &resetType);
         }
         ret = SUCCESS;
-        //printf("Reset Success!\n");
+        // print_str("Reset Success!\n");
     }
     return ret;
 }
 
-eReturnValues os_Device_Reset(tDevice *device)
+eReturnValues os_Device_Reset(const tDevice* device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_DEVICE);
 }
 
-eReturnValues os_Bus_Reset(tDevice *device)
+eReturnValues os_Bus_Reset(const tDevice* device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_BUS);
 }
 
-eReturnValues os_Controller_Reset(tDevice *device)
+eReturnValues os_Controller_Reset(const tDevice* device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
 }
 
-eReturnValues send_IO(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
 #ifdef _DEBUG
@@ -532,10 +539,10 @@ eReturnValues send_IO(ScsiIoCtx *scsiIoCtx)
     switch (scsiIoCtx->device->drive_info.interface_type)
     {
     case NVME_INTERFACE:
-#if !defined (DISABLE_NVME_PASSTHROUGH)
+#if !defined(DISABLE_NVME_PASSTHROUGH)
         return sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
 #endif
-        //USB, ATA, and SCSI interface all use sg, so just issue an SG IO.
+        // USB, ATA, and SCSI interface all use sg, so just issue an SG IO.
     case SCSI_INTERFACE:
     case IDE_INTERFACE:
     case USB_INTERFACE:
@@ -551,15 +558,14 @@ eReturnValues send_IO(ScsiIoCtx *scsiIoCtx)
         {
             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("No Raid PassThrough IO Routine present for this device\n");
+                print_str("No Raid PassThrough IO Routine present for this device\n");
             }
         }
         break;
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Target Device does not have a valid interface %d\n", \
-                scsiIoCtx->device->drive_info.interface_type);
+            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
         }
         break;
     }
@@ -577,45 +583,45 @@ eReturnValues send_IO(ScsiIoCtx *scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
+eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
 {
-    sg_io_hdr_t io_hdr;
-    uint8_t *localSenseBuffer = M_NULLPTR;
-    eReturnValues ret = SUCCESS;
-    seatimer_t  commandTimer;
+    sg_io_hdr_t   io_hdr;
+    uint8_t*      localSenseBuffer = M_NULLPTR;
+    eReturnValues ret              = SUCCESS;
+    DECLARE_SEATIMER(commandTimer);
 #ifdef _DEBUG
     printf("-->%s \n", __FUNCTION__);
 #endif
 
-
-    memset(&commandTimer, 0, sizeof(seatimer_t));
-    //int idx = 0;
-    // Start with zapping the io_hdr
-    memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
+    // int idx = 0;
+    //  Start with zapping the io_hdr
+    safe_memset(&io_hdr, sizeof(sg_io_hdr_t), 0, sizeof(sg_io_hdr_t));
 
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
-        printf("Sending command with send_IO\n");
+        print_str("Sending command with send_IO\n");
     }
 
     // Set up the io_hdr
     io_hdr.interface_id = 'S';
-    io_hdr.cmd_len = scsiIoCtx->cdbLength;
+    io_hdr.cmd_len      = scsiIoCtx->cdbLength;
     // Use user's sense or local?
     if ((scsiIoCtx->senseDataSize) && (scsiIoCtx->psense != M_NULLPTR))
     {
         io_hdr.mx_sb_len = scsiIoCtx->senseDataSize;
-        io_hdr.sbp = scsiIoCtx->psense;
+        io_hdr.sbp       = scsiIoCtx->psense;
     }
     else
     {
-        localSenseBuffer = C_CAST(uint8_t *, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+        localSenseBuffer =
+            M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t),
+                                                             scsiIoCtx->device->os_info.minimumAlignment));
         if (!localSenseBuffer)
         {
             return MEMORY_FAILURE;
         }
         io_hdr.mx_sb_len = SPC3_SENSE_LEN;
-        io_hdr.sbp = localSenseBuffer;
+        io_hdr.sbp       = localSenseBuffer;
     }
 
     switch (scsiIoCtx->direction)
@@ -643,19 +649,21 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
     }
 
     io_hdr.dxfer_len = scsiIoCtx->dataLength;
-    io_hdr.dxferp = scsiIoCtx->pdata;
-    io_hdr.cmdp = scsiIoCtx->cdb;
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 && scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    io_hdr.dxferp    = scsiIoCtx->pdata;
+    io_hdr.cmdp      = scsiIoCtx->cdb;
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
+        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
     {
         io_hdr.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-        //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+        // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that
+        // we DON'T do a conversion and leave the time as the max...
         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < SG_MAX_CMD_TIMEOUT_SECONDS)
         {
-            io_hdr.timeout *= 1000;//convert to milliseconds
+            io_hdr.timeout *= 1000; // convert to milliseconds
         }
         else
         {
-            io_hdr.timeout = UINT32_MAX;//no timeout or maximum timeout
+            io_hdr.timeout = UINT32_MAX; // no timeout or maximum timeout
         }
     }
     else
@@ -663,33 +671,34 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
         if (scsiIoCtx->timeout != 0)
         {
             io_hdr.timeout = scsiIoCtx->timeout;
-            //this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that we DON'T do a conversion and leave the time as the max...
+            // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
+            // that we DON'T do a conversion and leave the time as the max...
             if (scsiIoCtx->timeout < SG_MAX_CMD_TIMEOUT_SECONDS)
             {
-                io_hdr.timeout *= 1000;//convert to milliseconds
+                io_hdr.timeout *= 1000; // convert to milliseconds
             }
             else
             {
-                io_hdr.timeout = UINT32_MAX;//no timeout or maximum timeout
+                io_hdr.timeout = UINT32_MAX; // no timeout or maximum timeout
             }
         }
         else
         {
-            io_hdr.timeout = 15 * 1000;//default to 15 second timeout
+            io_hdr.timeout = DEFAULT_COMMAND_TIMEOUT * 1000; // default to 15 second timeout
         }
     }
 
     // \revisit: should this be FF or something invalid than 0?
-    scsiIoCtx->returnStatus.format = 0xFF;
+    scsiIoCtx->returnStatus.format   = 0xFF;
     scsiIoCtx->returnStatus.senseKey = 0;
-    scsiIoCtx->returnStatus.asc = 0;
-    scsiIoCtx->returnStatus.ascq = 0;
-    //print_io_hdr(&io_hdr);
-    //printf("scsiIoCtx->device->os_info.fd = %d\n", scsiIoCtx->device->os_info.fd);
+    scsiIoCtx->returnStatus.asc      = 0;
+    scsiIoCtx->returnStatus.ascq     = 0;
+    // print_io_hdr(&io_hdr);
+    // printf("scsiIoCtx->device->os_info.fd = %d\n", scsiIoCtx->device->os_info.fd);
     start_Timer(&commandTimer);
     int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, SG_IO, &io_hdr);
     stop_Timer(&commandTimer);
-    scsiIoCtx->device->os_info.last_error = errno;
+    set_Device_Last_Error(scsiIoCtx->device, errno);
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
@@ -697,18 +706,20 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
         {
             if (scsiIoCtx->device->os_info.last_error != 0)
             {
-                printf("Error: ");
+                print_str("Error: ");
                 print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
             }
         }
     }
 
-    //print_io_hdr(&io_hdr);
+    // print_io_hdr(&io_hdr);
 
     if (io_hdr.sb_len_wr)
     {
         scsiIoCtx->returnStatus.format = io_hdr.sbp[0];
-        get_Sense_Key_ASC_ASCQ_FRU(io_hdr.sbp, io_hdr.mx_sb_len, &scsiIoCtx->returnStatus.senseKey, &scsiIoCtx->returnStatus.asc, &scsiIoCtx->returnStatus.ascq, &scsiIoCtx->returnStatus.fru);
+        get_Sense_Key_ASC_ASCQ_FRU(io_hdr.sbp, io_hdr.mx_sb_len, &scsiIoCtx->returnStatus.senseKey,
+                                   &scsiIoCtx->returnStatus.asc, &scsiIoCtx->returnStatus.ascq,
+                                   &scsiIoCtx->returnStatus.fru);
     }
 
     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
@@ -716,25 +727,25 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
         switch (io_hdr.info & SG_INFO_DIRECT_IO_MASK)
         {
         case SG_INFO_INDIRECT_IO:
-            printf("SG IO Issued as Indirect IO\n");
+            print_str("SG IO Issued as Indirect IO\n");
             break;
         case SG_INFO_DIRECT_IO:
-            printf("SG IO Issued as Direct IO\n");
+            print_str("SG IO Issued as Direct IO\n");
             break;
         case SG_INFO_MIXED_IO:
-            printf("SG IO Issued as Mixed IO\n");
+            print_str("SG IO Issued as Mixed IO\n");
             break;
         default:
-            printf("SG IO Issued as Unknown IO type\n");
+            print_str("SG IO Issued as Unknown IO type\n");
             break;
         }
     }
 
     if ((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK)
     {
-        //something has gone wrong. Sense data may or may not have been returned.
-        //Check the masked status, host status and driver status to see what happened.
-        if (io_hdr.masked_status != 0) //SAM_STAT_GOOD???
+        // something has gone wrong. Sense data may or may not have been returned.
+        // Check the masked status, host status and driver status to see what happened.
+        if (io_hdr.masked_status != 0) // SAM_STAT_GOOD???
         {
             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
@@ -742,34 +753,34 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
                 switch (io_hdr.masked_status)
                 {
                 case GOOD:
-                    printf(" - Good\n");
+                    print_str(" - Good\n");
                     break;
                 case CHECK_CONDITION:
-                    printf(" - Check Condition\n");
+                    print_str(" - Check Condition\n");
                     break;
                 case CONDITION_GOOD:
-                    printf(" - Condition Good\n");
+                    print_str(" - Condition Good\n");
                     break;
                 case BUSY:
-                    printf(" - Busy\n");
+                    print_str(" - Busy\n");
                     break;
                 case INTERMEDIATE_GOOD:
-                    printf(" - Intermediate Good\n");
+                    print_str(" - Intermediate Good\n");
                     break;
                 case INTERMEDIATE_C_GOOD:
-                    printf(" - Intermediate C Good\n");
+                    print_str(" - Intermediate C Good\n");
                     break;
                 case RESERVATION_CONFLICT:
-                    printf(" - Reservation Conflict\n");
+                    print_str(" - Reservation Conflict\n");
                     break;
                 case COMMAND_TERMINATED:
-                    printf(" - Command Terminated\n");
+                    print_str(" - Command Terminated\n");
                     break;
                 case QUEUE_FULL:
-                    printf(" - Queue Full\n");
+                    print_str(" - Queue Full\n");
                     break;
                 default:
-                    printf(" - Unknown Masked Status\n");
+                    print_str(" - Unknown Masked Status\n");
                     break;
                 }
             }
@@ -777,9 +788,10 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
             {
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
-                    printf("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                    print_str("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
                 }
-                //No sense data back. We need to set an error since the layers above are going to look for sense data and we don't have any.
+                // No sense data back. We need to set an error since the layers above are going to look for sense data
+                // and we don't have any.
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
@@ -791,51 +803,52 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
                 switch (io_hdr.host_status)
                 {
                 case OPENSEA_SG_ERR_DID_OK:
-                    printf(" - No Error\n");
+                    print_str(" - No Error\n");
                     break;
                 case OPENSEA_SG_ERR_DID_NO_CONNECT:
-                    printf(" - Could Not Connect\n");
+                    print_str(" - Could Not Connect\n");
                     break;
                 case OPENSEA_SG_ERR_DID_BUS_BUSY:
-                    printf(" - Bus Busy\n");
+                    print_str(" - Bus Busy\n");
                     break;
                 case OPENSEA_SG_ERR_DID_TIME_OUT:
-                    printf(" - Timed Out\n");
+                    print_str(" - Timed Out\n");
                     break;
                 case OPENSEA_SG_ERR_DID_BAD_TARGET:
-                    printf(" - Bad Target Device\n");
+                    print_str(" - Bad Target Device\n");
                     break;
                 case OPENSEA_SG_ERR_DID_ABORT:
-                    printf(" - Abort\n");
+                    print_str(" - Abort\n");
                     break;
                 case OPENSEA_SG_ERR_DID_PARITY:
-                    printf(" - Parity Error\n");
+                    print_str(" - Parity Error\n");
                     break;
                 case OPENSEA_SG_ERR_DID_ERROR:
-                    printf(" - Internal Adapter Error\n");
+                    print_str(" - Internal Adapter Error\n");
                     break;
                 case OPENSEA_SG_ERR_DID_RESET:
-                    printf(" - SCSI Bus/Device Has Been Reset\n");
+                    print_str(" - SCSI Bus/Device Has Been Reset\n");
                     break;
                 case OPENSEA_SG_ERR_DID_BAD_INTR:
-                    printf(" - Bad Interrupt\n");
+                    print_str(" - Bad Interrupt\n");
                     break;
                 case OPENSEA_SG_ERR_DID_PASSTHROUGH:
-                    printf(" - Forced Passthrough Past Mid-Layer\n");
+                    print_str(" - Forced Passthrough Past Mid-Layer\n");
                     break;
                 case OPENSEA_SG_ERR_DID_SOFT_ERROR:
-                    printf(" - Soft Error, Retry?\n");
+                    print_str(" - Soft Error, Retry?\n");
                     break;
                 default:
-                    printf(" - Unknown Host Status\n");
+                    print_str(" - Unknown Host Status\n");
                     break;
                 }
             }
-            if (io_hdr.sb_len_wr == 0)//Doing this because some drivers may set an error even if the command otherwise went through and sense data was available.
+            if (io_hdr.sb_len_wr == 0) // Doing this because some drivers may set an error even if the command otherwise
+                                       // went through and sense data was available.
             {
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
-                    printf("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                    print_str("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
                 }
                 ret = OS_PASSTHROUGH_FAILURE;
             }
@@ -848,73 +861,73 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
                 switch (io_hdr.driver_status & OPENSEA_SG_ERR_DRIVER_MASK)
                 {
                 case OPENSEA_SG_ERR_DRIVER_OK:
-                    printf(" - Driver OK");
+                    print_str(" - Driver OK");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_BUSY:
-                    printf(" - Driver Busy");
+                    print_str(" - Driver Busy");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_SOFT:
-                    printf(" - Driver Soft Error");
+                    print_str(" - Driver Soft Error");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_MEDIA:
-                    printf(" - Driver Media Error");
+                    print_str(" - Driver Media Error");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_ERROR:
-                    printf(" - Driver Error");
+                    print_str(" - Driver Error");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_INVALID:
-                    printf(" - Driver Invalid");
+                    print_str(" - Driver Invalid");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_TIMEOUT:
-                    printf(" - Driver Timeout");
+                    print_str(" - Driver Timeout");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_HARD:
-                    printf(" - Driver Hard Error");
+                    print_str(" - Driver Hard Error");
                     break;
                 case OPENSEA_SG_ERR_DRIVER_SENSE:
-                    printf(" - Driver Sense Data Available");
+                    print_str(" - Driver Sense Data Available");
                     break;
                 default:
-                    printf(" - Unknown Driver Error");
+                    print_str(" - Unknown Driver Error");
                     break;
                 }
-                //now error suggestions
+                // now error suggestions
                 switch (io_hdr.driver_status & OPENSEA_SG_ERR_SUGGEST_MASK)
                 {
                 case OPENSEA_SG_ERR_SUGGEST_NONE:
-                    break;//no suggestions, nothing necessary to print
+                    break; // no suggestions, nothing necessary to print
                 case OPENSEA_SG_ERR_SUGGEST_RETRY:
-                    printf(" - Suggest Retry");
+                    print_str(" - Suggest Retry");
                     break;
                 case OPENSEA_SG_ERR_SUGGEST_ABORT:
-                    printf(" - Suggest Abort");
+                    print_str(" - Suggest Abort");
                     break;
                 case OPENSEA_SG_ERR_SUGGEST_REMAP:
-                    printf(" - Suggest Remap");
+                    print_str(" - Suggest Remap");
                     break;
                 case OPENSEA_SG_ERR_SUGGEST_DIE:
-                    printf(" - Suggest Die");
+                    print_str(" - Suggest Die");
                     break;
                 case OPENSEA_SG_ERR_SUGGEST_SENSE:
-                    printf(" - Suggest Sense");
+                    print_str(" - Suggest Sense");
                     break;
                 default:
-                    printf(" - Unknown suggestion");
+                    print_str(" - Unknown suggestion");
                     break;
                 }
-                printf("\n");
+                print_str("\n");
             }
             if (io_hdr.sb_len_wr == 0)
             {
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
-                    printf("\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                    print_str("\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
                 }
-                //No sense data back. We need to set an error since the layers above are going to look for sense data and we don't have any.
+                // No sense data back. We need to set an error since the layers above are going to look for sense data
+                // and we don't have any.
                 ret = OS_PASSTHROUGH_FAILURE;
             }
         }
-
     }
 
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -934,37 +947,37 @@ eReturnValues send_sg_io(ScsiIoCtx *scsiIoCtx)
 //!                        get_Device_List, so that enough memory is allocated.
 //
 //  Entry:
-//!   \param[out] numberOfDevices = integer to hold the number of devices found. 
-//!   \param[in] flags = eScanFlags based mask to let application control. 
-//!                      NOTE: currently flags param is not being used.  
+//!   \param[out] numberOfDevices = integer to hold the number of devices found.
+//!   \param[in] flags = eScanFlags based mask to let application control.
+//!                      NOTE: currently flags param is not being used.
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
+eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 {
-    int  num_devs = 0;
-    int  num_nvme_devs = 0;
-    int rc = 0;
+    int                      num_devs      = 0;
+    int                      num_nvme_devs = 0;
+    int                      rc            = 0;
     struct nvme_adapter_list nvmeAdptList;
 
-    struct dirent **namelist;
+    struct dirent** namelist;
 
     num_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort);
 
-    //free the list of names to not leak memory
+    // free the list of names to not leak memory
     for (int iter = 0; iter < num_devs; ++iter)
     {
         safe_free_dirent(&namelist[iter]);
     }
-    safe_free_dirent(namelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist);
 
 #ifdef _DEBUG
     printf("get_Device_Count : num_devs %d\n", num_devs);
 #endif
 
-    //add nvme devices to the list
+    // add nvme devices to the list
     rc = Nvme_GetAdapterList(&nvmeAdptList);
 
     if (rc == 0)
@@ -985,52 +998,52 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 //
 //  get_Device_List()
 //
-//! \brief   Description:  Get a list of devices that the library supports. 
+//! \brief   Description:  Get a list of devices that the library supports.
 //!                        Use get_Device_Count to figure out how much memory is
-//!                        needed to be allocated for the device list. The memory 
-//!                        allocated must be the multiple of device structure. 
-//!                        The application can pass in less memory than needed 
-//!                        for all devices in the system, in which case the library 
-//!                        will fill the provided memory with how ever many device 
-//!                        structures it can hold. 
+//!                        needed to be allocated for the device list. The memory
+//!                        allocated must be the multiple of device structure.
+//!                        The application can pass in less memory than needed
+//!                        for all devices in the system, in which case the library
+//!                        will fill the provided memory with how ever many device
+//!                        structures it can hold.
 //  Entry:
 //!   \param[out] ptrToDeviceList = pointer to the allocated memory for the device list
-//!   \param[in]  sizeInBytes = size of the entire list in bytes. 
-//!   \param[in]  versionBlock = versionBlock structure filled in by application for 
-//!                              sanity check by library. 
-//!   \param[in] flags = eScanFlags based mask to let application control. 
-//!                      NOTE: currently flags param is not being used.  
+//!   \param[in]  sizeInBytes = size of the entire list in bytes.
+//!   \param[in]  versionBlock = versionBlock structure filled in by application for
+//!                              sanity check by library.
+//!   \param[in] flags = eScanFlags based mask to let application control.
+//!                      NOTE: currently flags param is not being used.
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+#define VM_NAME_LEN 128
+eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
 {
-    eReturnValues returnValue = SUCCESS;
-    int numberOfDevices = 0;
-    int driveNumber = 0;
-    int found = 0;
-    int failedGetDeviceCount = 0;
-    int permissionDeniedCount = 0;
-    DECLARE_ZERO_INIT_ARRAY(char, name, 128); //Because get device needs char
-    char *nvmeDevName = M_NULLPTR;
-    int fd = 0;
-    bool isScsi = false;
-    tDevice * d = M_NULLPTR;
+    eReturnValues returnValue           = SUCCESS;
+    uint32_t      numberOfDevices       = UINT32_C(0);
+    uint32_t      driveNumber           = UINT32_C(0);
+    uint32_t      found                 = UINT32_C(0);
+    uint32_t      failedGetDeviceCount  = UINT32_C(0);
+    uint32_t      permissionDeniedCount = UINT32_C(0);
+    DECLARE_ZERO_INIT_ARRAY(char, name, VM_NAME_LEN);
+    char*                    nvmeDevName = M_NULLPTR;
+    int                      fd          = -1;
+    bool                     isScsi      = false;
+    tDevice*                 d           = M_NULLPTR;
     struct nvme_adapter_list nvmeAdptList;
-    int rc = 0;
-#if defined (DEGUG_SCAN_TIME)
-    seatimer_t getDeviceTimer;
-    seatimer_t getDeviceListTimer;
-    memset(&getDeviceTimer, 0, sizeof(seatimer_t));
-    memset(&getDeviceListTimer, 0, sizeof(seatimer_t));
+    int                      rc = 0;
+#if defined(DEGUG_SCAN_TIME)
+    DECLARE_SEATIMER(getDeviceTimer);
+    DECLARE_SEATIMER(getDeviceListTimer);
 #endif
-    struct dirent **namelist = M_NULLPTR;
+    safe_memset(&nvmeAdptList, sizeof(struct nvme_adapter_list), 0, sizeof(struct nvme_adapter_list));
+    struct dirent** namelist = M_NULLPTR;
 
-    int  num_sg_devs = 0;
+    int num_sg_devs = 0;
 
-    int  num_nvme_devs = 0;
+    int num_nvme_devs = 0;
 
     num_sg_devs = scandir("/dev/disks", &namelist, drive_filter, alphasort);
 
@@ -1041,35 +1054,34 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
         num_nvme_devs = nvmeAdptList.count;
     }
 
-
-    char **devs = C_CAST(char **, safe_calloc(num_sg_devs + num_nvme_devs + 1, sizeof(char *)));
-    int i = 0;
-    int j = 0;
-    //add sg/sd devices to the list
+    char** devs = M_REINTERPRET_CAST(char**, safe_calloc(num_sg_devs + num_nvme_devs + 1, sizeof(char*)));
+    int    i    = 0;
+    int    j    = 0;
+    // add sg/sd devices to the list
     for (; i < (num_sg_devs); i++)
     {
         size_t deviceHandleLen = (safe_strlen("/dev/disks/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
-        devs[i] = C_CAST(char *, safe_malloc(deviceHandleLen));
-        snprintf(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
+        devs[i]                = M_REINTERPRET_CAST(char*, safe_malloc(deviceHandleLen));
+        snprintf_err_handle(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
         safe_free_dirent(&namelist[i]);
     }
-    safe_free_dirent(namelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist);
 
-    //add nvme devices to the list
+    // add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER; i++, j++)
     {
         size_t nvmeAdptNameLen = safe_strlen(nvmeAdptList.adapters[j].name) + 1;
-        devs[i] = C_CAST(char *, safe_malloc(nvmeAdptNameLen));
-        memset(devs[i], 0, nvmeAdptNameLen);
-        snprintf(devs[i], nvmeAdptNameLen, "%s", nvmeAdptList.adapters[j].name);
+        devs[i]                = M_REINTERPRET_CAST(char*, safe_malloc(nvmeAdptNameLen));
+        safe_memset(devs[i], nvmeAdptNameLen, 0, nvmeAdptNameLen);
+        snprintf_err_handle(devs[i], nvmeAdptNameLen, "%s", nvmeAdptList.adapters[j].name);
 #ifdef _DEBUG
         printf("Discovered NVMe Device index - %d Name - %s \n", j, nvmeAdptList.adapters[j].name);
 #endif
     }
-    devs[i] = M_NULLPTR; //Added this so the for loop down doesn't cause a segmentation fault.
+    devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
 
-
-    if (!(ptrToDeviceList) || (!sizeInBytes))
+    DISABLE_NONNULL_COMPARE
+    if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
     }
@@ -1080,46 +1092,48 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
     else
     {
         numberOfDevices = sizeInBytes / sizeof(tDevice);
-        d = ptrToDeviceList;
-#if defined (DEGUG_SCAN_TIME)
+        d               = ptrToDeviceList;
+#if defined(DEGUG_SCAN_TIME)
         start_Timer(&getDeviceListTimer);
 #endif
-        for (driveNumber = 0; ((driveNumber >= 0 && C_CAST(unsigned int, driveNumber) < MAX_DEVICES_TO_SCAN && driveNumber < (num_sg_devs + num_nvme_devs)) && (found < numberOfDevices)); driveNumber++)
+        for (driveNumber = UINT32_C(0); ((driveNumber >= UINT32_C(0) && driveNumber < MAX_DEVICES_TO_SCAN &&
+                                          driveNumber < (num_sg_devs + num_nvme_devs)) &&
+                                         (found < numberOfDevices));
+             driveNumber++)
         {
             if (!devs[driveNumber] || safe_strlen(devs[driveNumber]) == 0)
             {
                 continue;
             }
-            memset(name, 0, sizeof(name));//clear name before reusing it
-            snprintf(name, sizeof(name), "%s", devs[driveNumber]);
+            safe_memset(name, VM_NAME_LEN, 0, VM_NAME_LEN); // clear name before reusing it
+            snprintf_err_handle(name, VM_NAME_LEN, "%s", devs[driveNumber]);
 
             nvmeDevName = strstr(name, "vmhba");
-            isScsi = (nvmeDevName == M_NULLPTR) ? true : false;
+            isScsi      = (nvmeDevName == M_NULLPTR) ? true : false;
 
-            if (isScsi) 
+            if (isScsi)
             {
                 fd = -1;
-                //lets try to open the device.      
+                // lets try to open the device.
                 fd = open(name, O_RDWR | O_NONBLOCK);
                 if (fd >= 0)
                 {
                     close(fd);
                     eVerbosityLevels temp = d->deviceVerbosity;
-                    memset(d, 0, sizeof(tDevice));
+                    safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
                     d->deviceVerbosity = temp;
-                    d->sanity.size = ver.size;
-                    d->sanity.version = ver.version;
-    #if defined (DEGUG_SCAN_TIME)
-                    seatimer_t getDeviceTimer;
-                    memset(&getDeviceTimer, 0, sizeof(seatimer_t));
+                    d->sanity.size     = ver.size;
+                    d->sanity.version  = ver.version;
+#if defined(DEGUG_SCAN_TIME)
+                    DECLARE_SEATIMER(getDeviceTimer);
                     start_Timer(&getDeviceTimer);
-    #endif
-                    d->dFlags = flags;
-                    int ret = get_Device(name, d);
-    #if defined (DEGUG_SCAN_TIME)
+#endif
+                    d->dFlags         = flags;
+                    eReturnValues ret = get_Device(name, d);
+#if defined(DEGUG_SCAN_TIME)
                     stop_Timer(&getDeviceTimer);
                     printf("Time to get %s = %fms\n", name, get_Milli_Seconds(getDeviceTimer));
-    #endif
+#endif
                     if (ret != SUCCESS)
                     {
                         failedGetDeviceCount++;
@@ -1127,7 +1141,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                     found++;
                     d++;
                 }
-                else if (errno == EACCES) //quick fix for opening drives without sudo
+                else if (errno == EACCES) // quick fix for opening drives without sudo
                 {
                     ++permissionDeniedCount;
                     failedGetDeviceCount++;
@@ -1139,7 +1153,7 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             }
             else
             {
-                int ret = get_Device(name, d);
+                eReturnValues ret = get_Device(name, d);
                 if (ret != SUCCESS)
                 {
                     failedGetDeviceCount++;
@@ -1147,10 +1161,10 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
                 found++;
                 d++;
             }
-            //free the dev[deviceNumber] since we are done with it now.
+            // free the dev[deviceNumber] since we are done with it now.
             safe_free(&devs[driveNumber]);
         }
-#if defined (DEGUG_SCAN_TIME)
+#if defined(DEGUG_SCAN_TIME)
         stop_Timer(&getDeviceListTimer);
         printf("Time to get all device = %fms\n", get_Milli_Seconds(getDeviceListTimer));
 #endif
@@ -1167,7 +1181,8 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    safe_free(devs);
+    RESTORE_NONNULL_COMPARE
+    safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }
 
@@ -1175,28 +1190,28 @@ eReturnValues get_Device_List(tDevice * const ptrToDeviceList, uint32_t sizeInBy
 //
 //  close_Device()
 //
-//! \brief   Description:  Given a device, close it's handle. 
+//! \brief   Description:  Given a device, close it's handle.
 //
 //  Entry:
-//!   \param[in] device = device stuct that holds device information. 
+//!   \param[in] device = device stuct that holds device information.
 //!
 //  Exit:
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues close_Device(tDevice *dev)
+eReturnValues close_Device(tDevice* dev)
 {
-    int retValue = 0;
-    bool isNVMe = false;
-    char *nvmeDevName;
+    int   retValue = 0;
+    bool  isNVMe   = false;
+    char* nvmeDevName;
 
     /**
-     * In VMWare NVMe device the drivename (for NDDK) 
-     * always starts with "vmhba" (e.g. vmhba1) 
+     * In VMWare NVMe device the drivename (for NDDK)
+     * always starts with "vmhba" (e.g. vmhba1)
      */
 
     nvmeDevName = strstr(dev->os_info.name, "vmhba");
-    isNVMe = (nvmeDevName != M_NULLPTR) ? true : false;
+    isNVMe      = (nvmeDevName != M_NULLPTR) ? true : false;
 
     if (dev)
     {
@@ -1204,12 +1219,12 @@ eReturnValues close_Device(tDevice *dev)
         {
             Nvme_Close(dev->os_info.nvmeFd);
             dev->os_info.last_error = errno;
-            retValue = 0;
-            dev->os_info.nvmeFd = M_NULLPTR;
+            retValue                = 0;
+            dev->os_info.nvmeFd     = M_NULLPTR;
         }
         else
         {
-            retValue = close(dev->os_info.fd);
+            retValue                = close(dev->os_info.fd);
             dev->os_info.last_error = errno;
         }
 
@@ -1231,9 +1246,9 @@ eReturnValues close_Device(tDevice *dev)
 
 void print_usr_io_struct(struct usr_io uio)
 {
-    printf("\n====VMWare User NVMe IO====\n");
-    printf("\tnvme cmd:\n");
-    printf("\t\tnvme Header:\n");
+    print_str("\n====VMWare User NVMe IO====\n");
+    print_str("\tnvme cmd:\n");
+    print_str("\t\tnvme Header:\n");
     printf("\t\t\topcode: %" PRIu32 "\n", uio.cmd.header.opCode);
     printf("\t\t\tfusedOp: %" PRIu32 "\n", uio.cmd.header.fusedOp);
     printf("\t\t\tcmdID: %" PRIu32 "\n", uio.cmd.header.cmdID);
@@ -1242,12 +1257,12 @@ void print_usr_io_struct(struct usr_io uio)
     printf("\t\t\tmetadataPtr: %" PRIu64 "\n", uio.cmd.header.metadataPtr);
     printf("\t\t\tprp1: %" PRIX64 "\n", uio.cmd.header.prp[0].addr);
     printf("\t\t\tprp2: %" PRIX64 "\n", uio.cmd.header.prp[1].addr);
-    printf("\t\tas dwords:\n");
-    for(uint8_t iter = 0; iter < 16; ++iter)
+    print_str("\t\tas dwords:\n");
+    for (uint8_t iter = UINT8_C(0); iter < 16; ++iter)
     {
         printf("\t\t\tCDW%" PRIu8 ":\t%08" PRIX32 "h\n", iter, uio.cmd.dw[iter]);
     }
-    printf("\tnvme comp:\n");
+    print_str("\tnvme comp:\n");
     printf("\t\tCommand Specific: %" PRIu32 "\n", uio.comp.param.cmdSpecific);
     printf("\t\treserved: %" PRIu32 "\n", uio.comp.reserved);
     printf("\t\tsqHdPtr: %" PRIu32 "\n", uio.comp.sqHdPtr);
@@ -1262,7 +1277,9 @@ void print_usr_io_struct(struct usr_io uio)
     printf("\tNamespaceID: %" PRIu8 "\n", uio.namespaceID);
     printf("\tDirection: %" PRIu8 "\n", uio.direction);
     printf("\tReserved: %" PRIu16 "\n", uio.reserved);
-    printf("\tStatus: %" PRIX16 "\n", uio.status);//If this starts with 0x0BADxxxx then it is indicating an error. Use vmware API to translate it.
+    printf(
+        "\tStatus: %" PRIX16 "\n",
+        uio.status); // If this starts with 0x0BADxxxx then it is indicating an error. Use vmware API to translate it.
     printf("\tLength: %" PRIu32 "\n", uio.length);
     printf("\tMeta Length: %" PRIu32 "\n", uio.meta_length);
     printf("\tTimeout (us): %" PRIu64 "\n", uio.timeoutUs);
@@ -1270,37 +1287,36 @@ void print_usr_io_struct(struct usr_io uio)
     printf("\tMeta Address: %" PRIu64 "\n", uio.meta_addr);
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
+eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 {
-#if !defined (DISABLE_NVME_PASSTHROUGH)
-    eReturnValues ret = SUCCESS;//NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
-    int ioctlret = 0;
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+    eReturnValues ret = SUCCESS; // NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is
+                                 // missing in nvme_ioctl.h...it was a value of zero, so this should be ok.
+    int           ioctlret = 0;
     struct usr_io uio;
-    seatimer_t cmdtimer;
+    DECLARE_SEATIMER(cmdtimer);
 
-#ifdef _DEBUG
+#    ifdef _DEBUG
     printf("-->%s\n", __FILE__);
     printf("-->%s\n", __FUNCTION__);
-#endif
+#    endif
 
-    memset(&uio, 0, sizeof(struct usr_io));
-    memset(&cmdtimer, 0, sizeof(seatimer_t));
+    safe_memset(&uio, sizeof(struct usr_io), 0, sizeof(struct usr_io));
 
     if (nvmeIoCtx == M_NULLPTR)
     {
-#ifdef _DEBUG
+#    ifdef _DEBUG
         printf("-->%s\n", __FUNCTION__);
-#endif
+#    endif
         return BAD_PARAMETER;
     }
 
     switch (nvmeIoCtx->commandType)
     {
     case NVM_ADMIN_CMD:
-        memcpy(&(uio.cmd), &(nvmeIoCtx->cmd.adminCmd), sizeof(nvmeCommands));
+        safe_memcpy(&(uio.cmd), sizeof(struct nvme_cmd), &(nvmeIoCtx->cmd.adminCmd), sizeof(nvmeCommands));
 
-        if ((nvmeIoCtx->commandDirection == XFER_NO_DATA) ||
-            (nvmeIoCtx->commandDirection == XFER_DATA_IN))
+        if ((nvmeIoCtx->commandDirection == XFER_NO_DATA) || (nvmeIoCtx->commandDirection == XFER_DATA_IN))
         {
             uio.direction = XFER_FROM_DEV;
         }
@@ -1310,25 +1326,28 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         }
 
         uio.length = nvmeIoCtx->dataSize;
-        uio.addr = C_CAST(__typeof__(uio.addr), nvmeIoCtx->ptrData);
+        uio.addr   = C_CAST(__typeof__(uio.addr), nvmeIoCtx->ptrData);
         if (nvmeIoCtx->cmd.adminCmd.nsid == 0 || nvmeIoCtx->cmd.adminCmd.nsid == NVME_ALL_NAMESPACES)
         {
-            uio.namespaceID = C_CAST(vmk_uint8, -1);//this is what the header files say to do for non-specific namespace -TJE
+            uio.namespaceID =
+                C_CAST(vmk_uint8, -1); // this is what the header files say to do for non-specific namespace -TJE
         }
         else
         {
             uio.namespaceID = nvmeIoCtx->cmd.adminCmd.nsid;
         }
-        uio.timeoutUs = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
+        uio.timeoutUs = (nvmeIoCtx->timeout ? nvmeIoCtx->timeout : DEFAULT_COMMAND_TIMEOUT) * 1000;
 
         errno = 0;
         start_Timer(&cmdtimer);
-        //ioctlret = Nvme_AdminPassthru(nvmeIoCtx->device->os_info.nvmeFd, &uio);
+        // ioctlret = Nvme_AdminPassthru(nvmeIoCtx->device->os_info.nvmeFd, &uio);
         ioctlret = Nvme_Ioctl(nvmeIoCtx->device->os_info.nvmeFd, NVME_IOCTL_ADMIN_CMD, &uio);
         stop_Timer(&cmdtimer);
-        nvmeIoCtx->device->os_info.last_error = C_CAST(unsigned int, errno);
-        //Get error? 
-        if (ioctlret < 0 || (uio.status & 0x0FFF0000) == 0x0BAD0000)//If this starts with 0x0BADxxxx then it is indicating an error. Use vmware API to translate it.
+        set_Device_Last_Error(nvmeIoCtx->device, errno);
+        // Get error?
+        if (ioctlret < 0 ||
+            (uio.status & 0x0FFF0000) == 0x0BAD0000) // If this starts with 0x0BADxxxx then it is indicating an error.
+                                                     // Use vmware API to translate it.
         {
             if ((uio.status & 0x0FFF0000) == 0x0BAD0000)
             {
@@ -1343,7 +1362,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
                 {
                     if (nvmeIoCtx->device->os_info.last_error != 0)
                     {
-                        printf("Error: ");
+                        print_str("Error: ");
                         print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
                     }
                 }
@@ -1351,20 +1370,21 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             ret = OS_PASSTHROUGH_FAILURE;
         }
         nvmeIoCtx->commandCompletionData.commandSpecific = uio.comp.param.cmdSpecific;
-        nvmeIoCtx->commandCompletionData.dw0Valid = true;
-        nvmeIoCtx->commandCompletionData.dw1Reserved = uio.comp.reserved;
-        nvmeIoCtx->commandCompletionData.dw1Valid = true;
-        nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = M_WordsTo4ByteValue(uio.comp.sqID, uio.comp.sqHdPtr);
-        nvmeIoCtx->commandCompletionData.dw2Valid = true;
-        nvmeIoCtx->commandCompletionData.statusAndCID = uio.comp.cmdID | (uio.comp.phaseTag << 16) | (uio.comp.SC << 17) | (uio.comp.SCT << 25) | (uio.comp.more << 30) | (uio.comp.noRetry << 31);
+        nvmeIoCtx->commandCompletionData.dw0Valid        = true;
+        nvmeIoCtx->commandCompletionData.dw1Reserved     = uio.comp.reserved;
+        nvmeIoCtx->commandCompletionData.dw1Valid        = true;
+        nvmeIoCtx->commandCompletionData.sqIDandHeadPtr  = M_WordsTo4ByteValue(uio.comp.sqID, uio.comp.sqHdPtr);
+        nvmeIoCtx->commandCompletionData.dw2Valid        = true;
+        nvmeIoCtx->commandCompletionData.statusAndCID    = uio.comp.cmdID | (uio.comp.phaseTag << 16) |
+                                                        (uio.comp.SC << 17) | (uio.comp.SCT << 25) |
+                                                        (uio.comp.more << 30) | (uio.comp.noRetry << 31);
         nvmeIoCtx->commandCompletionData.dw3Valid = true;
         break;
 
     case NVM_CMD:
-        memcpy(&(uio.cmd), &(nvmeIoCtx->cmd.nvmCmd), sizeof(nvmeCommands));
-        
-        if ((nvmeIoCtx->commandDirection == XFER_NO_DATA) ||
-            (nvmeIoCtx->commandDirection == XFER_DATA_IN))
+        safe_memcpy(&(uio.cmd), (struct nvme_cmd), &(nvmeIoCtx->cmd.nvmCmd), sizeof(nvmeCommands));
+
+        if ((nvmeIoCtx->commandDirection == XFER_NO_DATA) || (nvmeIoCtx->commandDirection == XFER_DATA_IN))
         {
             uio.direction = XFER_FROM_DEV;
         }
@@ -1374,24 +1394,27 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
         }
 
         uio.length = nvmeIoCtx->dataSize;
-        uio.addr = C_CAST(__typeof__(uio.addr), nvmeIoCtx->ptrData);
+        uio.addr   = C_CAST(__typeof__(uio.addr), nvmeIoCtx->ptrData);
         if (nvmeIoCtx->cmd.nvmCmd.nsid == 0 || nvmeIoCtx->cmd.nvmCmd.nsid == NVME_ALL_NAMESPACES)
         {
-            uio.namespaceID = C_CAST(vmk_uint8, -1);//this is what the header files say to do for non-specific namespace -TJE
+            uio.namespaceID =
+                C_CAST(vmk_uint8, -1); // this is what the header files say to do for non-specific namespace -TJE
         }
         else
         {
             uio.namespaceID = nvmeIoCtx->cmd.nvmCmd.nsid;
         }
 
-        uio.timeoutUs = nvmeIoCtx->timeout ? nvmeIoCtx->timeout * 1000 : 15000;
-        errno = 0;
+        uio.timeoutUs = (nvmeIoCtx->timeout ? nvmeIoCtx->timeout : DEFAULT_COMMAND_TIMEOUT) * 1000;
+        errno         = 0;
         start_Timer(&cmdtimer);
         ioctlret = Nvme_Ioctl(nvmeIoCtx->device->os_info.nvmeFd, NVME_IOCTL_IO_CMD, &uio);
         stop_Timer(&cmdtimer);
-        nvmeIoCtx->device->os_info.last_error = C_CAST(unsigned int, errno);
-        //Get error? 
-        if (ioctlret < 0 || (uio.status & 0x0FFF0000) == 0x0BAD0000)//If this starts with 0x0BADxxxx then it is indicating an error. Use vmware API to translate it.
+        set_Device_Last_Error(nvmeIoCtx->device, errno);
+        // Get error?
+        if (ioctlret < 0 ||
+            (uio.status & 0x0FFF0000) == 0x0BAD0000) // If this starts with 0x0BADxxxx then it is indicating an error.
+                                                     // Use vmware API to translate it.
         {
             if ((uio.status & 0x0FFF0000) == 0x0BAD0000)
             {
@@ -1406,7 +1429,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
                 {
                     if (nvmeIoCtx->device->os_info.last_error != 0)
                     {
-                        printf("Error: ");
+                        print_str("Error: ");
                         print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
                     }
                 }
@@ -1414,23 +1437,25 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
             ret = OS_PASSTHROUGH_FAILURE;
         }
         nvmeIoCtx->commandCompletionData.commandSpecific = uio.comp.param.cmdSpecific;
-        nvmeIoCtx->commandCompletionData.dw0Valid = true;
-        nvmeIoCtx->commandCompletionData.dw1Reserved = uio.comp.reserved;
-        nvmeIoCtx->commandCompletionData.dw1Valid = true;
-        nvmeIoCtx->commandCompletionData.sqIDandHeadPtr = M_WordsTo4ByteValue(uio.comp.sqID, uio.comp.sqHdPtr);
-        nvmeIoCtx->commandCompletionData.dw2Valid = true;
-        nvmeIoCtx->commandCompletionData.statusAndCID = uio.comp.cmdID | (uio.comp.phaseTag << 16) | (uio.comp.SC << 17) | (uio.comp.SCT << 25) | (uio.comp.more << 30) | (uio.comp.noRetry << 31);
+        nvmeIoCtx->commandCompletionData.dw0Valid        = true;
+        nvmeIoCtx->commandCompletionData.dw1Reserved     = uio.comp.reserved;
+        nvmeIoCtx->commandCompletionData.dw1Valid        = true;
+        nvmeIoCtx->commandCompletionData.sqIDandHeadPtr  = M_WordsTo4ByteValue(uio.comp.sqID, uio.comp.sqHdPtr);
+        nvmeIoCtx->commandCompletionData.dw2Valid        = true;
+        nvmeIoCtx->commandCompletionData.statusAndCID    = uio.comp.cmdID | (uio.comp.phaseTag << 16) |
+                                                        (uio.comp.SC << 17) | (uio.comp.SCT << 25) |
+                                                        (uio.comp.more << 30) | (uio.comp.noRetry << 31);
         nvmeIoCtx->commandCompletionData.dw3Valid = true;
-        
+
         break;
     default:
         return BAD_PARAMETER;
         break;
     }
-    
-#ifdef _DEBUG
+
+#    ifdef _DEBUG
     printf("<--%s (%d)\n", __FUNCTION__, ret);
-#endif
+#    endif
 
     nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(cmdtimer);
 
@@ -1444,33 +1469,33 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx *nvmeIoCtx )
     }
 
     return ret;
-#else //DISABLE_NVME_PASSTHROUGH
+#else  // DISABLE_NVME_PASSTHROUGH
     return OS_COMMAND_NOT_AVAILABLE;
-#endif //DISABLE_NVME_PASSTHROUGH
+#endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Reset(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* device)
 {
-    //This is a stub. If this is possible, this should perform an nvme reset;
-    return OS_COMMAND_NOT_AVAILABLE;
-}
-
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice *device)
-{
-    //This is a stub. If this is possible, this should perform an nvme subsystem reset;
+    // This is a stub. If this is possible, this should perform an nvme reset;
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-//Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c 
-
-eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t dataSize )
+eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
 {
-#if !defined (DISABLE_NVME_PASSTHROUGH)
-    eReturnValues ret = UNKNOWN;
-    int fd = 0;
-    void * barRegs = M_NULLPTR;
+    // This is a stub. If this is possible, this should perform an nvme subsystem reset;
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
+// Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c
+
+eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize)
+{
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+    eReturnValues ret     = UNKNOWN;
+    int           fd      = 0;
+    void*         barRegs = M_NULLPTR;
     DECLARE_ZERO_INIT_ARRAY(char, sysfsPath, PATH_MAX);
-    snprintf(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
+    snprintf_err_handle(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
     fd = open(sysfsPath, O_RDONLY);
     if (fd >= 0)
     {
@@ -1479,7 +1504,7 @@ eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t data
         if (barRegs != MAP_FAILED)
         {
             ret = SUCCESS;
-            memcpy(pData, barRegs, dataSize);
+            safe_memcpy(pData, dataSize, barRegs, dataSize);
         }
         else
         {
@@ -1496,84 +1521,130 @@ eReturnValues pci_Read_Bar_Reg( tDevice * device, uint8_t * pData, uint32_t data
         ret = BAD_PARAMETER;
     }
     return ret;
-#else //DISABLE_NVME_PASSTHROUGH
+#else  // DISABLE_NVME_PASSTHROUGH
     M_USE_UNUSED(device);
     M_USE_UNUSED(pData);
     M_USE_UNUSED(dataSize);
     return OS_COMMAND_NOT_AVAILABLE;
-#endif //DISABLE_NVME_PASSTHROUGH
+#endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
+                      M_ATTR_UNUSED uint64_t       lba,
+                      M_ATTR_UNUSED bool           forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t*       ptrData,
+                      M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED bool forceUnitAccess, M_ATTR_UNUSED uint8_t *ptrData, M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
+                       M_ATTR_UNUSED uint64_t       lba,
+                       M_ATTR_UNUSED bool           forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t*       ptrData,
+                       M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED tDevice *device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Lock_Device(tDevice *device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
+{
+    return OS_COMMAND_NOT_AVAILABLE;
+}
+
+eReturnValues os_Lock_Device(const tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->drive_info.drive_type == NVME_DRIVE)
+    if (device->os_info.lockCount == UINT16_C(0))
     {
-        //Not sure what to do
+        if (device->drive_info.drive_type == NVME_DRIVE)
+        {
+            // Not sure what to do
+        }
+        else
+        {
+            struct flock locks;
+            safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+            locks.l_type   = F_WRLCK;
+            locks.l_whence = SEEK_SET;
+            locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
+            locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
+            if (fcntl(fd, F_SETLK, &locks) < 0)
+            {
+                if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+                {
+                    printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", lock == true ? "lock" : "unlock");
+                    print_Errno_To_Screen(errno);
+                }
+                ret = FAILURE;
+            }
+        }
     }
-    else
+    if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
     {
-        //Get flags
-        int flags = fcntl(device->os_info.fd, F_GETFL);
-        //disable O_NONBLOCK
-        flags &= ~O_NONBLOCK;
-        //Set Flags
-        fcntl(device->os_info.fd, F_SETFL, flags);
+        // Always increment this so we know how many times we've been requested to lock
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return ret;
 }
 
-eReturnValues os_Unlock_Device(tDevice *device)
+eReturnValues os_Unlock_Device(const tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->drive_info.drive_type == NVME_DRIVE)
+    if (device->os_info.lockCount == UINT16_C(1))
     {
-        //Not sure what to do
+        if (device->drive_info.drive_type == NVME_DRIVE)
+        {
+            // Not sure what to do
+        }
+        else
+        {
+            struct flock locks;
+            safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+            locks.l_type   = F_UNLCK;
+            locks.l_whence = SEEK_SET;
+            locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
+            locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
+            if (fcntl(fd, F_SETLK, &locks) < 0)
+            {
+                if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
+                {
+                    printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", lock == true ? "lock" : "unlock");
+                    print_Errno_To_Screen(errno);
+                }
+                ret = FAILURE;
+            }
+        }
     }
-    else
+    if (ret == SUCCESS && device->os_info.lockCount > 0)
     {
-        //Get flags
-        int flags = fcntl(device->os_info.fd, F_GETFL);
-        //enable O_NONBLOCK
-        flags |= O_NONBLOCK;
-        //Set Flags
-        fcntl(device->os_info.fd, F_SETFL, flags);
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
     }
     return ret;
 }
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
 {
-    //note: linux code for blkrrprt might work
+    // note: linux code for blkrrprt might work
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED tDevice *device)
+eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }

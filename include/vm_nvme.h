@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
-//
-// Do NOT modify or remove this copyright and license
-//
-// Copyright (c) 2018-2024 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
-//
-// This software is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-//
-// ******************************************************************************************
-// 
-// \file vm_nvme.h
-// \brief Defines the constants structures specific to VMWare Cross compiler. 
-//
+
+//! \file vm_nvme.h
+//! \brief Defines the constants structures specific to VMWare Cross compiler for ESXi
+//! \copyright
+//! Do NOT modify or remove this copyright and license
+//!
+//! Copyright (c) 2018-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//!
+//! This software is subject to the terms of the Mozilla Public License, v. 2.0.
+//! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #ifndef NVME_EXPRESS_H
 #define NVME_EXPRESS_H
@@ -21,16 +17,11 @@
 
 #include "vm_nvme_drv_config.h"
 
-
-
 /**
  * @file nvme_express.h - header file describing IDT NVM Express controller
  *       This file contains all NVM Express controller data structures
  *    and register definitions.
  */
-
-
-
 
 /**
  * @file
@@ -49,7 +40,7 @@
 
 #define NVME_PCI_CMDREG_OFFSET 0x4
 #define NVME_PCI_CMD_BUSMASTER 0x4
- 
+
 /**
  * @defgroup nvme_cap_fields NVM Express CAP Register Fields.
  *
@@ -124,35 +115,35 @@
 /**
  * @brief CAP - Controller Capabilities Register Offset.
  */
-#define NVME_CAP     0x0000
+#define NVME_CAP                 0x0000
 
-#define NVME_CAP_MQES_LSB     0
-#define NVME_CAP_MQES_MSB     15
+#define NVME_CAP_MQES_LSB        0
+#define NVME_CAP_MQES_MSB        15
 #define NVME_CAP_MQES_MSK64      0x000000000000FFFF
-#define NVME_CAP_MQES_MSKL    0x0000FFFF
-#define NVME_CAP_MQES_MSKU    0x00000000
+#define NVME_CAP_MQES_MSKL       0x0000FFFF
+#define NVME_CAP_MQES_MSKU       0x00000000
 
 #define NVME_CAP_CQR_LSB         16
-#define NVME_CAP_CQR_MSB      16
-#define NVME_CAP_CQR_MSK64    0x0000000000010000
-#define NVME_CAP_CQR_MSKL     0x00010000
-#define NVME_CAP_CQR_MSKU     0x00000000
+#define NVME_CAP_CQR_MSB         16
+#define NVME_CAP_CQR_MSK64       0x0000000000010000
+#define NVME_CAP_CQR_MSKL        0x00010000
+#define NVME_CAP_CQR_MSKU        0x00000000
 
-#define NVME_CAP_AMS_LSB      17
-#define NVME_CAP_AMS_MSB      18
-#define NVME_CAP_AMS_MSK64    0x0000000000060000
-#define NVME_CAP_AMS_MSKL     0x00060000
-#define NVME_CAP_AMS_MSKU     0x00060000
+#define NVME_CAP_AMS_LSB         17
+#define NVME_CAP_AMS_MSB         18
+#define NVME_CAP_AMS_MSK64       0x0000000000060000
+#define NVME_CAP_AMS_MSKL        0x00060000
+#define NVME_CAP_AMS_MSKU        0x00060000
 
-#define NVME_CAP_TO_LSB       24
-#define NVME_CAP_TO_MSB       31
-#define NVME_CAP_TO_MSK64     0x00000000FF000000
-#define NVME_CAP_TO_MSKL            0xFF000000
-#define NVME_CAP_TO_MSKU            0x00000000
+#define NVME_CAP_TO_LSB          24
+#define NVME_CAP_TO_MSB          31
+#define NVME_CAP_TO_MSK64        0x00000000FF000000
+#define NVME_CAP_TO_MSKL         0xFF000000
+#define NVME_CAP_TO_MSKU         0x00000000
 
-#define NVME_CAP_CSS_LSB      37
-#define NVME_CAP_CSS_MSB      40
-#define NVME_CAP_CSS_MSK64    0x000001E000000000
+#define NVME_CAP_CSS_LSB         37
+#define NVME_CAP_CSS_MSB         40
+#define NVME_CAP_CSS_MSK64       0x000001E000000000
 
 #define NVME_CAP_MPSMIN_LSB      48
 #define NVME_CAP_MPSMIN_MSB      51
@@ -167,15 +158,14 @@
 #define NVME_CAP_MPSMAX_MSKU     0x00F00000
 
 #define NVME_CAP_DEFAULT_VALUE64 0x00F000201401FFFF
-#define NVME_CAP_DEFAULT_VALUEL     0x1401FFFF
-#define NVME_CAP_DEFAULT_VALUEU     0x00F00020
+#define NVME_CAP_DEFAULT_VALUEL  0x1401FFFF
+#define NVME_CAP_DEFAULT_VALUEU  0x00F00020
 
-#define NVME_CAP_RW_MSK64     0x0000000000000000
-#define NVME_CAP_RW_MSKL      0x00000000
-#define NVME_CAP_RW_MSKU      0x00000000
+#define NVME_CAP_RW_MSK64        0x0000000000000000
+#define NVME_CAP_RW_MSKL         0x00000000
+#define NVME_CAP_RW_MSKU         0x00000000
 
 /** @} */
-
 
 /**
  * @defgroup nvme_vs_fields NVM Express Version Register Fields.
@@ -194,7 +184,7 @@
 /**
  * @brief VS - Version Register Offset.
  */
-#define NVME_VS                 0x0008
+#define NVME_VS               0x0008
 
 #define NVME_VS_MNR_LSB       0
 #define NVME_VS_MNR_MSB       15
@@ -204,11 +194,10 @@
 #define NVME_VS_MJR_MSB       16
 #define NVME_VS_MJR_MSK       0xFFFF0000
 
-#define NVME_VS_DEFAULT_VALUE    0x00010000
+#define NVME_VS_DEFAULT_VALUE 0x00010000
 
 #define NVME_VS_RW_MSK        0x00000000
 /** @} */
-
 
 /**
  * @defgroup nvme_intms_fields NVM Express Interrupt Mask Set Register Fields.
@@ -231,15 +220,15 @@
 /**
  * @brief INTMS - Interrupt Mask Set Register  Offset.
  */
-#define NVME_INTMS              0x000C
+#define NVME_INTMS               0x000C
 
-#define NVME_INTMS_LSB        0
-#define NVME_INTMS_MSB        31
-#define NVME_INTMS_MSK        0xFFFFFFFF
+#define NVME_INTMS_LSB           0
+#define NVME_INTMS_MSB           31
+#define NVME_INTMS_MSK           0xFFFFFFFF
 
 #define NVME_INTMS_DEFAULT_VALUE 0x00000000
 
-#define NVME_INTMS_RW_MSK     0xFFFFFFFF
+#define NVME_INTMS_RW_MSK        0xFFFFFFFF
 /** @} */
 
 /**
@@ -263,15 +252,15 @@
 /**
  * @brief INTMC - Interrupt Mask Clear Register Offset.
  */
-#define NVME_INTMC              0x0010
+#define NVME_INTMC               0x0010
 
-#define NVME_INTMC_LSB        0
-#define NVME_INTMC_MSB        31
-#define NVME_INTMC_MSK        0xFFFFFFFF
+#define NVME_INTMC_LSB           0
+#define NVME_INTMC_MSB           31
+#define NVME_INTMC_MSK           0xFFFFFFFF
 
 #define NVME_INTMC_DEFAULT_VALUE 0x00000000
 
-#define NVME_INTMC_RW_MSK     0xFFFFFFFF
+#define NVME_INTMC_RW_MSK        0xFFFFFFFF
 /** @} */
 
 /**
@@ -374,67 +363,67 @@
  */
 #define NVME_CC                 0x0014
 
-#define NVME_CC_ENABLE        1
-#define NVME_CC_EN_LSB        0
-#define NVME_CC_EN_MSB        0
-#define NVME_CC_EN_MSK64      0x0000000000000001
-#define NVME_CC_EN_MSKL          0x00000001
-#define NVME_CC_EN_MSKU          0x00000000
+#define NVME_CC_ENABLE          1
+#define NVME_CC_EN_LSB          0
+#define NVME_CC_EN_MSB          0
+#define NVME_CC_EN_MSK64        0x0000000000000001
+#define NVME_CC_EN_MSKL         0x00000001
+#define NVME_CC_EN_MSKU         0x00000000
 
-#define NVME_CC_CSS_NVM       0
-#define NVME_CC_CSS_LSB       4
-#define NVME_CC_CSS_MSB       6
-#define NVME_CC_CSS_MSK64     0x0000000000000070
-#define NVME_CC_CSS_MSKL         0x00000070
-#define NVME_CC_CSS_MSKU         0x00000000
+#define NVME_CC_CSS_NVM         0
+#define NVME_CC_CSS_LSB         4
+#define NVME_CC_CSS_MSB         6
+#define NVME_CC_CSS_MSK64       0x0000000000000070
+#define NVME_CC_CSS_MSKL        0x00000070
+#define NVME_CC_CSS_MSKU        0x00000000
 
-#define NVME_CC_MPS_LSB       7
-#define NVME_CC_MPS_MSB       10
-#define NVME_CC_MPS_MSK64     0x0000000000000780
-#define NVME_CC_MPS_MSKL         0x00000780
-#define NVME_CC_MPS_MSKU         0x00000000
+#define NVME_CC_MPS_LSB         7
+#define NVME_CC_MPS_MSB         10
+#define NVME_CC_MPS_MSK64       0x0000000000000780
+#define NVME_CC_MPS_MSKL        0x00000780
+#define NVME_CC_MPS_MSKU        0x00000000
 
-#define NVME_CC_ARB_RR        0
-#define NVME_CC_ARB_WRR       1
-#define NVME_CC_AMS_LSB       11
-#define NVME_CC_AMS_MSB       13
-#define NVME_CC_AMS_MSK64     0x0000000000003800
-#define NVME_CC_AMS_MSKL         0x00003800
-#define NVME_CC_AMS_MSKU         0x00000000
+#define NVME_CC_ARB_RR          0
+#define NVME_CC_ARB_WRR         1
+#define NVME_CC_AMS_LSB         11
+#define NVME_CC_AMS_MSB         13
+#define NVME_CC_AMS_MSK64       0x0000000000003800
+#define NVME_CC_AMS_MSKL        0x00003800
+#define NVME_CC_AMS_MSKU        0x00000000
 
-#define NVME_CC_SHN_LSB       14
-#define NVME_CC_SHN_MSB       15
-#define NVME_CC_SHN_MSK64        0x000000000000C000
-#define NVME_CC_SHN_MSKL         0x0000C000
-#define NVME_CC_SHN_MSKU         0x00000000
+#define NVME_CC_SHN_LSB         14
+#define NVME_CC_SHN_MSB         15
+#define NVME_CC_SHN_MSK64       0x000000000000C000
+#define NVME_CC_SHN_MSKL        0x0000C000
+#define NVME_CC_SHN_MSKU        0x00000000
 
-#define NVME_CC_IOSQES_LSB       16
-#define NVME_CC_IOSQES_MSB       19
-#define NVME_CC_IOSQES_MSK64     0x00000000000F0000
-#define NVME_CC_IOSQES_MSKL      0x000F0000
-#define NVME_CC_IOSQES_MSKU      0x00000000
+#define NVME_CC_IOSQES_LSB      16
+#define NVME_CC_IOSQES_MSB      19
+#define NVME_CC_IOSQES_MSK64    0x00000000000F0000
+#define NVME_CC_IOSQES_MSKL     0x000F0000
+#define NVME_CC_IOSQES_MSKU     0x00000000
 
-#define NVME_CC_IOCQES_LSB       20
-#define NVME_CC_IOCQES_MSB       23
-#define NVME_CC_IOCQES_MSK64     0x0000000000F00000
-#define NVME_CC_IOCQES_MSKL      0x00F00000
-#define NVME_CC_IOCQES_MSKU      0x00000000
+#define NVME_CC_IOCQES_LSB      20
+#define NVME_CC_IOCQES_MSB      23
+#define NVME_CC_IOCQES_MSK64    0x0000000000F00000
+#define NVME_CC_IOCQES_MSKL     0x00F00000
+#define NVME_CC_IOCQES_MSKU     0x00000000
 
-#define NVME_CC_AMS_RR        0x00000000
-#define NVME_CC_AMS_WRU       0x00000001
-#define NVME_CC_AMS_VNDR      0x00000002
+#define NVME_CC_AMS_RR          0x00000000
+#define NVME_CC_AMS_WRU         0x00000001
+#define NVME_CC_AMS_VNDR        0x00000002
 
-#define NVME_CC_SHN_NONE      0x00000000
-#define NVME_CC_SHN_NORMAL    0x00000001
-#define NVME_CC_SHN_ABRUPT    0x00000002
+#define NVME_CC_SHN_NONE        0x00000000
+#define NVME_CC_SHN_NORMAL      0x00000001
+#define NVME_CC_SHN_ABRUPT      0x00000002
 
-#define NVME_CC_DEFAULT_VALUE64     0x0000000000000000
-#define NVME_CC_DEFAULT_VALUEL      0x00000000
-#define NVME_CC_DEFAULT_VALUEU      0x00000000
+#define NVME_CC_DEFAULT_VALUE64 0x0000000000000000
+#define NVME_CC_DEFAULT_VALUEL  0x00000000
+#define NVME_CC_DEFAULT_VALUEU  0x00000000
 
-#define NVME_CC_RW_MSK64      0x0000000000FFFFF1
-#define NVME_CC_RW_MSKL       0x00FFFFF1
-#define NVME_CC_RW_MSKU       0x00000000
+#define NVME_CC_RW_MSK64        0x0000000000FFFFF1
+#define NVME_CC_RW_MSKL         0x00FFFFF1
+#define NVME_CC_RW_MSKU         0x00000000
 /** @} */
 
 /**
@@ -477,28 +466,27 @@
  */
 #define NVME_CSTS               0x001C
 
-#define NVME_CSTS_RDY_LSB     0
-#define NVME_CSTS_RDY_MSB     0
-#define NVME_CSTS_RDY_MSK     0x00000001
-#define NVME_CSTS_RDY         (1 << NVME_CSTS_RDY_LSB)
+#define NVME_CSTS_RDY_LSB       0
+#define NVME_CSTS_RDY_MSB       0
+#define NVME_CSTS_RDY_MSK       0x00000001
+#define NVME_CSTS_RDY           (1 << NVME_CSTS_RDY_LSB)
 
-#define NVME_CSTS_CFS_LSB     1
-#define NVME_CSTS_CFS_MSB     1
-#define NVME_CSTS_CFS_MSK     0x00000002
+#define NVME_CSTS_CFS_LSB       1
+#define NVME_CSTS_CFS_MSB       1
+#define NVME_CSTS_CFS_MSK       0x00000002
 
-#define NVME_CSTS_SHST_LSB    2
-#define NVME_CSTS_SHST_MSB    3
-#define NVME_CSTS_SHST_MSK    0x0000000C
+#define NVME_CSTS_SHST_LSB      2
+#define NVME_CSTS_SHST_MSB      3
+#define NVME_CSTS_SHST_MSK      0x0000000C
 
-#define NVME_CSTS_SHST_NRML      (0x00 << NVME_CSTS_SHST_LSB)
-#define NVME_CSTS_SHST_PRCSING      (0x01 << NVME_CSTS_SHST_LSB)
-#define NVME_CSTS_SHST_CPL    (0x02 << NVME_CSTS_SHST_LSB)
+#define NVME_CSTS_SHST_NRML     (0x00 << NVME_CSTS_SHST_LSB)
+#define NVME_CSTS_SHST_PRCSING  (0x01 << NVME_CSTS_SHST_LSB)
+#define NVME_CSTS_SHST_CPL      (0x02 << NVME_CSTS_SHST_LSB)
 
-#define NVME_CSTS_DEFAULT_VALUE     0x00000000
+#define NVME_CSTS_DEFAULT_VALUE 0x00000000
 
-#define NVME_CSTS_RW_MSK      0x00000000
+#define NVME_CSTS_RW_MSK        0x00000000
 /** @} */
-
 
 /**
  * @defgroup nvme_aqa_fields NVM Express Admin Queue Attributes Register Fields.
@@ -529,19 +517,19 @@
 /**
  * @brief AQA - Admin Queue Attributes Register Offset.
  */
-#define NVME_AQA                0x0024
+#define NVME_AQA               0x0024
 
-#define NVME_AQA_SQS_LSB      0
-#define NVME_AQA_SQS_MSB      11
-#define NVME_AQA_SQS_MSK      0x00000FFF
+#define NVME_AQA_SQS_LSB       0
+#define NVME_AQA_SQS_MSB       11
+#define NVME_AQA_SQS_MSK       0x00000FFF
 
-#define NVME_AQA_CQS_LSB      16
-#define NVME_AQA_CQS_MSB      27
-#define NVME_AQA_CQS_MSK      0x0FFF0000
+#define NVME_AQA_CQS_LSB       16
+#define NVME_AQA_CQS_MSB       27
+#define NVME_AQA_CQS_MSK       0x0FFF0000
 
-#define NVME_AQA_DEFAULT_VALUE      0x00000000
+#define NVME_AQA_DEFAULT_VALUE 0x00000000
 
-#define NVME_AQA_RW_MSK       0x0FFF0FFF
+#define NVME_AQA_RW_MSK        0x0FFF0FFF
 /** @} */
 
 /**
@@ -562,21 +550,21 @@
 /**
  * @brief ASQ - Admin Submission Queue Base Address Register Offset.
  */
-#define NVME_ASQ     0x0028
+#define NVME_ASQ                 0x0028
 
-#define NVME_ASQ_ASQB_LSB     12
-#define NVME_ASQ_ASQB_MSB     63
+#define NVME_ASQ_ASQB_LSB        12
+#define NVME_ASQ_ASQB_MSB        63
 #define NVME_ASQ_ASQB_MSK64      0xFFFFFFFFFFFFF000
-#define NVME_ASQ_ASQB_MSKL    0xFFFFF000
-#define NVME_ASQ_ASQB_MSKU    0xFFFFFFFF
+#define NVME_ASQ_ASQB_MSKL       0xFFFFF000
+#define NVME_ASQ_ASQB_MSKU       0xFFFFFFFF
 
-#define NVME_ASQ_DEFAULT_VALUE64       0x0000000000000000
-#define NVME_ASQ_DEFAULT_VALUEL     0x00000000
-#define NVME_ASQ_DEFAULT_VALUEU     0x00000000
+#define NVME_ASQ_DEFAULT_VALUE64 0x0000000000000000
+#define NVME_ASQ_DEFAULT_VALUEL  0x00000000
+#define NVME_ASQ_DEFAULT_VALUEU  0x00000000
 
-#define NVME_ASQ_RW_MSK64     0xFFFFFFFFFFFFF000
-#define NVME_ASQ_RW_MSKL      0xFFFFF000
-#define NVME_ASQ_RW_MSKU      0xFFFFFFFF
+#define NVME_ASQ_RW_MSK64        0xFFFFFFFFFFFFF000
+#define NVME_ASQ_RW_MSKL         0xFFFFF000
+#define NVME_ASQ_RW_MSKU         0xFFFFFFFF
 /** @} */
 
 /**
@@ -598,21 +586,21 @@
 /**
  * @brief ASQ - Admin Cpmpletion Queue Base Address Register Offset.
  */
-#define NVME_ACQ                0x0030
+#define NVME_ACQ                 0x0030
 
-#define NVME_ACQ_ACQB_LSB     12
-#define NVME_ACQ_ACQB_MSB     63
+#define NVME_ACQ_ACQB_LSB        12
+#define NVME_ACQ_ACQB_MSB        63
 #define NVME_ACQ_ACQB_MSK64      0xFFFFFFFFFFFFF000
-#define NVME_ACQ_ACQB_MSKL    0xFFFFF000
-#define NVME_ACQ_ACQB_MSKU    0xFFFFFFFF
+#define NVME_ACQ_ACQB_MSKL       0xFFFFF000
+#define NVME_ACQ_ACQB_MSKU       0xFFFFFFFF
 
 #define NVME_ACQ_DEFAULT_VALUE64 0x0000000000000000
-#define NVME_ACQ_DEFAULT_VALUEL     0x00000000
-#define NVME_ACQ_DEFAULT_VALUEU     0x00000000
+#define NVME_ACQ_DEFAULT_VALUEL  0x00000000
+#define NVME_ACQ_DEFAULT_VALUEU  0x00000000
 
-#define NVME_ACQ_RW_MSK64     0xFFFFFFFFFFFFF000
-#define NVME_ACQ_RW_MSKL      0xFFFFF000
-#define NVME_ACQ_RW_MSKU      0xFFFFFFFF
+#define NVME_ACQ_RW_MSK64        0xFFFFFFFFFFFFF000
+#define NVME_ACQ_RW_MSKL         0xFFFFF000
+#define NVME_ACQ_RW_MSKU         0xFFFFFFFF
 
 /** @} */
 
@@ -638,13 +626,12 @@
 /**
  * @brief ASQTDBL - Admin Submission Queue Tail Doorbell Register Offset.
  */
-#define NVME_ASQTDBL            0x1000
+#define NVME_ASQTDBL        0x1000
 
-#define NVME_SQTDBL_SQT_LSB      0
-#define NVME_SQTDBL_SQT_MSB      15
-#define NVME_SQTDBL_SQT_MSK      0x0000FFFF
+#define NVME_SQTDBL_SQT_LSB 0
+#define NVME_SQTDBL_SQT_MSB 15
+#define NVME_SQTDBL_SQT_MSK 0x0000FFFF
 /** @} */
-
 
 /**
  * @defgroup nvme_cqhdbl_fields NVM Express Completion Queue Head Doorbell
@@ -668,15 +655,14 @@
 /**
  * @brief ASQHDBL - Admin Completion Queue Head Doorbell Register Offset.
  */
-#define NVME_ACQHDBL 0x1004
+#define NVME_ACQHDBL        0x1004
 
-#define NVME_CQHDBL_CQH_LSB      0
-#define NVME_CQHDBL_CQH_MSB      15
-#define NVME_CQHDBL_CQH_MSK      0x0000FFFF
+#define NVME_CQHDBL_CQH_LSB 0
+#define NVME_CQHDBL_CQH_MSB 15
+#define NVME_CQHDBL_CQH_MSK 0x0000FFFF
 /** @} */
 
 /** @} */
-
 
 /*******************************************************************************
  *                            Command Opcodes
@@ -684,17 +670,17 @@
 /**
  * Vendor Specific Commands
  */
-#define NVME_VNDR_CMD_IO_CODE_START 0x80
-#define NVME_VNDR_CMD_IO_CODE_END   0xBF
-#define NVME_VNDR_CMD_ADM_CODE_START   0xC0
-#define NVME_VNDR_CMD_ADM_CODE_END  0xFF
-#define NVME_VNDR_CMD_INIT_DEV      0xC0
-#define NVME_VNDR_CMD_LOW_LVL_FMT   0xC1
-#define NVME_VNDR_CMD_HI_LVL_FMT 0xC2
-#define NVME_VNDR_CMD_GET_STATS     0xC3
-#define NVME_VNDR_CMD_NOP     0xCC
-#define NVME_VNDR_CMD_CREATE_NS     0xD0
-#define NVME_VNDR_CMD_DELETE_NS     0xD4
+#define NVME_VNDR_CMD_IO_CODE_START  0x80
+#define NVME_VNDR_CMD_IO_CODE_END    0xBF
+#define NVME_VNDR_CMD_ADM_CODE_START 0xC0
+#define NVME_VNDR_CMD_ADM_CODE_END   0xFF
+#define NVME_VNDR_CMD_INIT_DEV       0xC0
+#define NVME_VNDR_CMD_LOW_LVL_FMT    0xC1
+#define NVME_VNDR_CMD_HI_LVL_FMT     0xC2
+#define NVME_VNDR_CMD_GET_STATS      0xC3
+#define NVME_VNDR_CMD_NOP            0xCC
+#define NVME_VNDR_CMD_CREATE_NS      0xD0
+#define NVME_VNDR_CMD_DELETE_NS      0xD4
 
 /**
  * Admin Commands Op Codes
@@ -703,17 +689,16 @@
 /**
  * Vendor Specific Commands
  */
-    enum
+enum
 {
-   NVME_vndr_cmd_init_dev_e = 0xC0, /* CMD_Init_device */
-        NVME_vndr_low_lvl_fmt_e = 0xC1,      /* CMD_Low_Level_Fmt */
-        NVME_vndr_hi_lvl_fmt_e = 0xC2,    /* CMD_High_Level_Fmt */
-        NVME_vndr_get_stats_e = 0xC3,     /* CMD_Get_Stats */
-        NVME_vndr_nop = 0xCC,            /* CMD_Nop */
-        NVME_vndr_create_ns_e = 0xD0,     /* CMD_Create_ns */
-        NVME_vndr_delete_ns_e = 0xD4      /* CMD_Delete_ns */
+    NVME_vndr_cmd_init_dev_e = 0xC0, /* CMD_Init_device */
+    NVME_vndr_low_lvl_fmt_e  = 0xC1, /* CMD_Low_Level_Fmt */
+    NVME_vndr_hi_lvl_fmt_e   = 0xC2, /* CMD_High_Level_Fmt */
+    NVME_vndr_get_stats_e    = 0xC3, /* CMD_Get_Stats */
+    NVME_vndr_nop            = 0xCC, /* CMD_Nop */
+    NVME_vndr_create_ns_e    = 0xD0, /* CMD_Create_ns */
+    NVME_vndr_delete_ns_e    = 0xD4  /* CMD_Delete_ns */
 };
-
 
 /**
  * Admin Commands Op Codes
@@ -723,63 +708,63 @@ typedef enum
     /**
      * @brief Delete I/O Submission Queue.
      */
-        NVM_ADMIN_CMD_DEL_SQ = 0x00,
+    NVM_ADMIN_CMD_DEL_SQ = 0x00,
     /**
      * @brief Create I/O Submission Queue.
      */
-        NVM_ADMIN_CMD_CREATE_SQ = 0x01,
+    NVM_ADMIN_CMD_CREATE_SQ = 0x01,
     /**
      * @brief Get Log Page.
      */
-        NVM_ADMIN_CMD_GET_LOG_PAGE = 0x02,
+    NVM_ADMIN_CMD_GET_LOG_PAGE = 0x02,
     /**
      * @brief Delete I/O Completion Queue.
      */
-        NVM_ADMIN_CMD_DEL_CQ = 0x04,
+    NVM_ADMIN_CMD_DEL_CQ = 0x04,
     /**
      * @brief Create I/O Completion Queue.
      */
-        NVM_ADMIN_CMD_CREATE_CQ = 0x05,
+    NVM_ADMIN_CMD_CREATE_CQ = 0x05,
     /**
      * @brief Identify.
      */
-        NVM_ADMIN_CMD_IDENTIFY = 0x06,
+    NVM_ADMIN_CMD_IDENTIFY = 0x06,
     /**
      * @brief Abort.
      */
-        NVM_ADMIN_CMD_ABORT = 0x08,
+    NVM_ADMIN_CMD_ABORT = 0x08,
     /**
      * @brief Set Features.
      */
-        NVM_ADMIN_CMD_SET_FEATURES = 0x09,
+    NVM_ADMIN_CMD_SET_FEATURES = 0x09,
     /**
      * @brief Get Features.
      */
-        NVM_ADMIN_CMD_GET_FEATURES = 0x0a,
+    NVM_ADMIN_CMD_GET_FEATURES = 0x0a,
     /**
      * @brief Asynchronous Event Request.
      */
-        NVM_ADMIN_CMD_ASYNC_EVENT_REQ = 0x0c,
+    NVM_ADMIN_CMD_ASYNC_EVENT_REQ = 0x0c,
     /**
      * @brief Firmware Activate.
      */
-        NVM_ADMIN_CMD_FIRMWARE_ACTIVATE = 0x10,
+    NVM_ADMIN_CMD_FIRMWARE_ACTIVATE = 0x10,
     /**
      * @brief Firmware Download.
      */
-        NVM_ADMIN_CMD_FIRMWARE_DOWNLOAD = 0x11,
+    NVM_ADMIN_CMD_FIRMWARE_DOWNLOAD = 0x11,
     /**
      * @brief Format NVM.
      *
      * @note NVM Command Set Specific.
      */
-        NVM_ADMIN_CMD_FORMAT_NVM = 0x80,
+    NVM_ADMIN_CMD_FORMAT_NVM = 0x80,
     /**
      * @brief Security Send.
      *
      * @note NVM Command Set Specific.
      */
-        NVM_ADMIN_CMD_SECURITY_TX = 0x81,
+    NVM_ADMIN_CMD_SECURITY_TX = 0x81,
     /**
      * @brief Security Receive.
      *
@@ -787,7 +772,6 @@ typedef enum
      */
     NVM_ADMIN_CMD_SECURITY_RX = 0x82
 } nvm_admin_opcodes_e;
-
 
 /**
  * @brief NVM Express NVM Command Set Opcodes
@@ -797,41 +781,39 @@ typedef enum
     /**
      * @brief Flush.
      */
-        NVM_CMD_FLUSH = 0x00,
+    NVM_CMD_FLUSH = 0x00,
     /**
      * @brief Write.
      */
-        NVM_CMD_WRITE = 0x01,
+    NVM_CMD_WRITE = 0x01,
     /**
      * @brief Read.
      */
-        NVM_CMD_READ = 0x02,
+    NVM_CMD_READ = 0x02,
     /**
      * @brief Write Uncorrectable.
      */
-        NVM_CMD_WRITE_UNCORR = 0x04,
+    NVM_CMD_WRITE_UNCORR = 0x04,
     /**
      * @brief Compare.
      */
-        NVM_CMD_COMPARE = 0x05,
+    NVM_CMD_COMPARE = 0x05,
     /**
      * @brief Dataset Management.
      */
     NVM_CMD_DATASET_MGMNT = 0x09
 } nvm_cmd_opcodes_e;
 
-
 /**
  * Queue Priorities
  */
 enum
 {
-q_priority_urgnt_e = 0x0,
-q_priority_hi_e = 0x1,
-q_priority_med_e = 0x2,
-q_priority_low = 0x3
+    q_priority_urgnt_e = 0x0,
+    q_priority_hi_e    = 0x1,
+    q_priority_med_e   = 0x2,
+    q_priority_low     = 0x3
 };
-
 
 /*
  * Defines
@@ -840,8 +822,8 @@ q_priority_low = 0x3
 /**
  * Doorbell Register Length
  */
-#define DB_REG_LENGTH  0x4
-#define DB_REG_PAIRS   0x8
+#define DB_REG_LENGTH 0x4
+#define DB_REG_PAIRS  0x8
 
 /**
  * @brief Generic Command Status.
@@ -852,7 +834,7 @@ q_priority_low = 0x3
  * command types, and include such conditions as success,
  * opcode not supported, and invalid field.
  */
-#define SF_SCT_GENERIC          0x0
+#define SF_SCT_GENERIC 0x0
 /**
  * @brief Command Specific Error.
  *
@@ -860,56 +842,56 @@ q_priority_low = 0x3
  * opcode. Errors such as invalid firmware image or exceeded
  * maximum number of queues is reported with this type.
  */
-#define SF_SCT_CMD_SPC_ERR      0x1
+#define SF_SCT_CMD_SPC_ERR 0x1
 /**
  * @brief Media Errors.
  *
  * Any media specific errors that occur in the NVM or data
  * integrity type errors shall be of this type.
  */
-#define SF_SCT_MEDIA_ERR        0x2
+#define SF_SCT_MEDIA_ERR 0x2
 /**
  * @brief Vendor Specific.
  */
-#define SF_SCT_VENDOR_SPC       0x7
+#define SF_SCT_VENDOR_SPC 0x7
 
 /**
  * @brief Successful Completion.
  *
  * The command completed successfully.
  */
-#define SF_SC_SUCCESS           0x0
+#define SF_SC_SUCCESS 0x0
 /**
  * @brief Invalid Command Opcode.
  *
  * The associated command opcode field is not valid.
  */
-#define SF_SC_INV_OPCODE        0x1
+#define SF_SC_INV_OPCODE 0x1
 /**
  * @brief Invalid Field in Command.
  *
  * An invalid field specified in the command parameters.
  */
-#define SF_SC_INV_FIELD         0x2
+#define SF_SC_INV_FIELD 0x2
 /**
  * @brief Command ID Conflict.
  *
  * The command identifier is already in use. Note: It is implementation
  * specific how many commands are searched for a conflict.
  */
-#define SF_SC_CMD_ID_CFLT       0x3
+#define SF_SC_CMD_ID_CFLT 0x3
 /**
  * @brief Data Transfer Error.
  *
  * Transferring the data or metadata associated with a command had an error.
  */
-#define SF_SC_DATA_TX_ERR       0x4
+#define SF_SC_DATA_TX_ERR 0x4
 /**
  * @brief Command Aborted due to Power Loss Notification.
  *
  * Indicates that the commands are aborted due to a power loss notification.
  */
-#define SF_SC_CMD_ABORT_NP      0x5
+#define SF_SC_CMD_ABORT_NP 0x5
 /**
  * @brief Internal Device Error.
  *
@@ -917,7 +899,7 @@ q_priority_low = 0x3
  * error. Details on the internal device error are returned as an
  * asynchronous event.
  */
-#define SF_SC_INT_DEV_ERR       0x6
+#define SF_SC_INT_DEV_ERR 0x6
 /**
  * @brief Command Abort Requested.
  *
@@ -925,34 +907,34 @@ q_priority_low = 0x3
  * being received that specified the Submission Queue ID
  * and Command ID of this command.
  */
-#define SF_SC_CMD_ABORT_REQ     0x7
+#define SF_SC_CMD_ABORT_REQ 0x7
 /**
  * @brief Command Aborted due to SQ Deletion.
  *
  * The command was aborted due to a Delete I/O
  * Submission Queue request received for the SQ that the command was issued to.
  */
-#define SF_SC_CMD_ABORT_NSQ     0x8
+#define SF_SC_CMD_ABORT_NSQ 0x8
 /**
  * @biref Command Aborted due to Failed Fused Command.
  *
  * The command was aborted due to the
  * other command in a fused operation failing.
  */
-#define SF_SC_CMD_ABORT_FUSE_FAIL   0x9
+#define SF_SC_CMD_ABORT_FUSE_FAIL 0x9
 /**
  * @brief Command Aborted due to Missing Fused Command.
  *
  * The command was aborted due to the
  * companion fused command not being found as the subsequent SQ entry.
  */
-#define SF_SC_CMD_ABORT_FUSE_MISSING    0xa
+#define SF_SC_CMD_ABORT_FUSE_MISSING 0xa
 /**
  * @brief Invalid Namespace or Format.
  *
  * The namespace or the format of that namespace is invalid.
  */
-#define SF_SC_INV_NS_FMT            0xb
+#define SF_SC_INV_NS_FMT 0xb
 /**
  * @brief Firmware Application Requires Conventional Reset.
  *
@@ -961,34 +943,34 @@ q_priority_low = 0x3
  * conventional reset. If an FLR or controller reset occurs prior to a conventional reset, the controller
  * shall continue operation with the currently executing firmware image.
  */
-#define SF_SC_FIRMWARE_REQUIRES_RESET  0xb
+#define SF_SC_FIRMWARE_REQUIRES_RESET 0xb
 /**
  * @brief LBA Out of Range.
  *
  * The command references an LBA that exceeds the size of the namespace.
  */
-#define SF_SC_INV_LBA               0x80
+#define SF_SC_INV_LBA 0x80
 /**
  * @brief Capacity Exceeded.
  *
  * Execution of the command has caused the capacity of the namespace to be
  * exceeded.
  */
-#define SF_SC_INV_CAP               0x81
+#define SF_SC_INV_CAP 0x81
 /**
  * @brief Namespace Not Ready.
  *
  * The namespace is not ready to be accessed. The Do Not Retry bit
  * indicates whether re-issuing the command at a later time may succeed.
  */
-#define SF_SC_NS_NOT_READY          0x82
+#define SF_SC_NS_NOT_READY 0x82
 /**
  * @brief Do Not Retry.
  *
  * Indicates that if the same command is re-issued it is expected
  * to fail.
  */
-#define SF_DO_NOT_RETRY             0x1
+#define SF_DO_NOT_RETRY 0x1
 
 /**
  * Completion Entry Status Field - Status Code (Command Specific Error)
@@ -1012,25 +994,25 @@ q_priority_low = 0x3
 /**
  * Completion Entry Status Field - Status Code (Media Error)
  */
-#define SC_MEDIA_ERR_WRITE_FLT         0x80
-#define SC_MEDIA_ERR_UNREC_RD_ERR      0x81
-#define SC_MEDIA_ERR_ETE_GUARD_CHK     0x82
-#define SC_MEDIA_ERR_ETE_APP_TAG_CHK   0x83
-#define SC_MEDIA_ERR_ETE_REF_TAG_CHK   0x84
-#define SC_MEDIA_ERR_CMP_FAIL          0x85
+#define SC_MEDIA_ERR_WRITE_FLT       0x80
+#define SC_MEDIA_ERR_UNREC_RD_ERR    0x81
+#define SC_MEDIA_ERR_ETE_GUARD_CHK   0x82
+#define SC_MEDIA_ERR_ETE_APP_TAG_CHK 0x83
+#define SC_MEDIA_ERR_ETE_REF_TAG_CHK 0x84
+#define SC_MEDIA_ERR_CMP_FAIL        0x85
 
 /**
  * Identify Types
  */
-#define IDENTIFY_NAMESPACE       0x0
-#define IDENTIFY_CONTROLLER      0x1
+#define IDENTIFY_NAMESPACE  0x0
+#define IDENTIFY_CONTROLLER 0x1
 
 /**
  * Asynchronous Event Types
  */
-#define AER_ERR_STATUS           0x0
-#define AER_SMART_HEALTH_STATUS  0x1
-#define AER_VENDOR_SPECIFIC      0x7
+#define AER_ERR_STATUS          0x0
+#define AER_SMART_HEALTH_STATUS 0x1
+#define AER_VENDOR_SPECIFIC     0x7
 
 /**
  * Asynchronous Event Information - Error Status
@@ -1048,7 +1030,8 @@ q_priority_low = 0x3
 #define AER_INFO_SH_TEMP_ABOV_THRESHOLD   0x1
 #define AER_INFO_SH_SPARE_BELOW_THRESHOLD 0x2
 
-enum { 
+enum
+{
     SMART_GLP_CRIT_WARN_SPARE_BELOW_THRSHLD,
     SMART_GLP_CRIT_WARN_TEMP_ABOV_THRSHLD,
     SMART_GLP_CRIT_WARN_DEV_RELIABILITY,
@@ -1057,69 +1040,68 @@ enum {
     SMART_GLP_LAST,
 };
 
-
 /**
  * @brief  Arbitration.
  */
-#define FTR_ID_ARBITRATION             0x1
+#define FTR_ID_ARBITRATION 0x1
 /**
  * @brief Power Management.
  */
-#define FTR_ID_PWR_MANAGEMENT          0x2
+#define FTR_ID_PWR_MANAGEMENT 0x2
 /**
  * @brief LBA Range Type.
  */
-#define FTR_ID_LBA_RANGE_TYPE          0x3
+#define FTR_ID_LBA_RANGE_TYPE 0x3
 /**
  * @brief Temperature Threshold.
  */
-#define FTR_ID_TEMP_THRESHOLD          0x4
+#define FTR_ID_TEMP_THRESHOLD 0x4
 /**
  * @brief Error Recovery.
  */
-#define FTR_ID_ERR_RECOVERY            0x5
+#define FTR_ID_ERR_RECOVERY 0x5
 /**
  * @brief Volatile Write Cache.
  */
-#define FTR_ID_WRITE_CACHE             0x6
+#define FTR_ID_WRITE_CACHE 0x6
 /**
  * @brief Number of Queues.
  */
-#define FTR_ID_NUM_QUEUE               0x7
+#define FTR_ID_NUM_QUEUE 0x7
 /**
  * @brief Interrupt Coalescing.
  */
-#define FTR_ID_INT_COALESCING          0x8
+#define FTR_ID_INT_COALESCING 0x8
 /**
  * @brief Interrupt Vector Configuration.
  */
-#define FTR_ID_INT_VECTOR_CONFIG       0x9
+#define FTR_ID_INT_VECTOR_CONFIG 0x9
 /**
  * @brief Write Atomicity.
  */
-#define FTR_ID_WRITE_ATOMICITY         0xa
+#define FTR_ID_WRITE_ATOMICITY 0xa
 /**
  * @brief Asynchronous Event Configuration.
  */
-#define FTR_ID_ASYN_EVENT_CONFIG       0xb
+#define FTR_ID_ASYN_EVENT_CONFIG 0xb
 /**
  * @brief Software Progress Marker.
  */
-#define FTR_ID_SW_PROGRESS_MARKER      0x80
+#define FTR_ID_SW_PROGRESS_MARKER 0x80
 
 /**
  * Get Log Page - Log ID
  */
-#define GLP_ID_ERR_INFO                0x1  // 64 bytes
-#define GLP_ID_SMART_HEALTH            0x2  // 512 bytes
-#define GLP_ID_FIRMWARE_SLOT_INFO      0x3  // 512 bytes
+#define GLP_ID_ERR_INFO           0x1 // 64 bytes
+#define GLP_ID_SMART_HEALTH       0x2 // 512 bytes
+#define GLP_ID_FIRMWARE_SLOT_INFO 0x3 // 512 bytes
 
 /**
  * Get Log Page - Log LENGTH
  */
-#define GLP_LEN_ERR_INFO                64
-#define GLP_LEN_SMART_HEALTH            512
-#define GLP_LEN_FIRMWARE_SLOT_INFO      512
+#define GLP_LEN_ERR_INFO           64
+#define GLP_LEN_SMART_HEALTH       512
+#define GLP_LEN_FIRMWARE_SLOT_INFO 512
 
 /**
  * SMART/Health threshold default value
@@ -1129,14 +1111,14 @@ enum {
 /**
  * End-to-end Data Protection Information Types
  */
-#define ETEDP_INFO_DISABLE        0x0
-#define ETEDP_INFO_TYPE1          0x1
-#define ETEDP_INFO_TYPE2          0x2
-#define ETEDP_INFO_TYPE3          0x3
+#define ETEDP_INFO_DISABLE      0x0
+#define ETEDP_INFO_TYPE1        0x1
+#define ETEDP_INFO_TYPE2        0x2
+#define ETEDP_INFO_TYPE3        0x3
 
-#define Q_ENTRY_PHYS_CONTIGUOUS   1
-#define CPL_Q_INT_ENABLED         1
-#define CPL_Q_INT_DISABLED        0
+#define Q_ENTRY_PHYS_CONTIGUOUS 1
+#define CPL_Q_INT_ENABLED       1
+#define CPL_Q_INT_DISABLED      0
 
 /*
  * Data Structures
@@ -1154,70 +1136,70 @@ struct error_log
         {
             /**
              * @brief 64-bit incrementing error count, indicating a unique
-        *      identifier for this error.
-        *      The error count starts at 1h, is incremented for each
-        *      unique error log entry, and is retained across power
-        *      off conditions. A value of 0h indicates an invalid
-        *      entry; this value may be used when there are lost
-        *      entries or when there a fewer errors than the maximum
-        *      number of entries the controller supports.
+             *      identifier for this error.
+             *      The error count starts at 1h, is incremented for each
+             *      unique error log entry, and is retained across power
+             *      off conditions. A value of 0h indicates an invalid
+             *      entry; this value may be used when there are lost
+             *      entries or when there a fewer errors than the maximum
+             *      number of entries the controller supports.
              */
-       vmk_uint64 errorCount;
+            vmk_uint64 errorCount;
             /**
              * @brief The Submission Queue Identifier of the command
-        *      that the error information is associated with.
+             *      that the error information is associated with.
              */
-       vmk_uint16 sqID;
+            vmk_uint16 sqID;
             /**
              * @brief This field indicates the Command Identifier of the
-        *      command that the error is assocated with.
+             *      command that the error is assocated with.
              */
-       vmk_uint16 cmdID;
+            vmk_uint16 cmdID;
             /**
              * @brief The Status Code that the command completed with.
              */
-       vmk_uint16 status;
+            vmk_uint16 status;
             /**
              * @brief Byte in command that contained the error.
-        *      Valid values are 0 to 63.
+             *      Valid values are 0 to 63.
              */
-       vmk_uint16 errorByte:8,
-            /**
-             * @brief Bit in command that contained the error.
-        *      Valid values are 0 to7.
-             */
-           errorBit:3,
-            /**
-             * @brief reserved.
-             */
-           reservedA:5;
+            vmk_uint16 errorByte : 8,
+                /**
+                 * @brief Bit in command that contained the error.
+                 *      Valid values are 0 to7.
+                 */
+                errorBit : 3,
+                /**
+                 * @brief reserved.
+                 */
+                reservedA : 5;
             /**
              * @brief First LBA that experienced the error condition, if
-        *      applicable.
+             *      applicable.
              */
-       vmk_uint64 lba;
+            vmk_uint64 lba;
             /**
              * @brief The namespace that the error is associated with, if
-        *      applicable.
+             *      applicable.
              */
-       vmk_uint32 nameSpace;
+            vmk_uint32 nameSpace;
             /**
              * @brief If there is additional vendor specific error information
-        *      available, this field provides the log page identifier
-        *      associated with that page. A value of 00h indicates
-        *      that no additional information is available.
-        *      Valid values are in the range of 80h to FFh.
+             *      available, this field provides the log page identifier
+             *      associated with that page. A value of 00h indicates
+             *      that no additional information is available.
+             *      Valid values are in the range of 80h to FFh.
              */
-       vmk_uint8 vendorInfo;
+            vmk_uint8 vendorInfo;
             /**
              * @brief Reserved;
              */
-          vmk_uint8 reservedB[63-29+1];
-   };
+            vmk_uint8 reservedB[63 - 29 + 1];
+        };
         /**
          * @brief byte host memory buffer address.
          */
-   vmk_uint32   asUlong[16];
+        vmk_uint32 asUlong[16];
     };
 };
 
@@ -1232,155 +1214,155 @@ struct smart_log
         {
             /**
              * @brief This field indicates critical warnings for the state
-        * of the controller. Each bit corresponds to a critical warning
-        * type; multiple bits may be set. If a bit is cleared to .0.,
-        * then that critical warning does not apply. Critical warnings
-        * may result in an asynchronous event notification to the host.
+             * of the controller. Each bit corresponds to a critical warning
+             * type; multiple bits may be set. If a bit is cleared to .0.,
+             * then that critical warning does not apply. Critical warnings
+             * may result in an asynchronous event notification to the host.
              */
-       vmk_uint8 criticalError;
+            vmk_uint8 criticalError;
             /**
              * @brief Contains the temperature of the overall device
-        * (controller and NVM included) in units of Kelvin. If the
-        * temperature exceeds the temperature threshold, refer to section
-        * 5.12.1.4, then an asynchronous event may be issued to the host.
+             * (controller and NVM included) in units of Kelvin. If the
+             * temperature exceeds the temperature threshold, refer to section
+             * 5.12.1.4, then an asynchronous event may be issued to the host.
              */
-       vmk_uint8 temperature[2];
+            vmk_uint8 temperature[2];
             /**
              * @brief Contains a normalized percentage (0 to 100%) of the
-        * remaining spare capacity available.
+             * remaining spare capacity available.
              */
-       vmk_uint8 availableSpace;
+            vmk_uint8 availableSpace;
             /**
              * @brief When the Available Spare falls below the threshold
-        * indicated in this field, an asynchronous event may be issued
-        * to the host. The value is indicated as a normalized percentage
-        * (0 to 100%).
+             * indicated in this field, an asynchronous event may be issued
+             * to the host. The value is indicated as a normalized percentage
+             * (0 to 100%).
              */
-       vmk_uint8 availableSpaceThreshold;
+            vmk_uint8 availableSpaceThreshold;
             /**
              * @brief Contains a vendor specific estimate of the percentage
-        * of device life used based on the actual device usage and the
-        * manufacturer.s prediction of device life. A value of 100
-        * indicates that the estimated endurance of the device has been
-        * consumed, but may not indicate a device failure. The value is
-        * allowed to exceed 100. Percentages greater than 254 shall be
-        * represented as 255. This value shall be updated once per
-        * power-on hour (when the controller is not in a sleep state).
+             * of device life used based on the actual device usage and the
+             * manufacturer.s prediction of device life. A value of 100
+             * indicates that the estimated endurance of the device has been
+             * consumed, but may not indicate a device failure. The value is
+             * allowed to exceed 100. Percentages greater than 254 shall be
+             * represented as 255. This value shall be updated once per
+             * power-on hour (when the controller is not in a sleep state).
              */
-       vmk_uint8 percentageUsed;
+            vmk_uint8 percentageUsed;
             /**
              * @brief Reserved.
-        */
-       vmk_uint8 reservedA[31-6+1];
+             */
+            vmk_uint8 reservedA[31 - 6 + 1];
             /**
              * @brief Contains the number of 512 byte data units the host has
-        * read from the controller; this value does not include metadata.
-        * This value is reported in thousands (i.e., a value of 1
-        * corresponds to 1000 units of 512 bytes read) and is rounded up.
-        * When the LBA size is a value other than 512 bytes, the
-        * controller shall convert the amount of data read to 512 byte
-        * units.
+             * read from the controller; this value does not include metadata.
+             * This value is reported in thousands (i.e., a value of 1
+             * corresponds to 1000 units of 512 bytes read) and is rounded up.
+             * When the LBA size is a value other than 512 bytes, the
+             * controller shall convert the amount of data read to 512 byte
+             * units.
              */
-       vmk_uint8 dataUnitsRead[47-32+1];
+            vmk_uint8 dataUnitsRead[47 - 32 + 1];
             /**
              * @brief Contains the number of 512 byte data units the host has
-        * written to the controller; this value does not include metadata.
-        * This value is reported in thousands (i.e., a value of 1
-        * corresponds to 1000 units of 512 bytes written) and is rounded
-        * up. When the LBA size is a value other than 512 bytes, the
-        * controller shall convert the amount of data written to 512 byte
-        * units.
+             * written to the controller; this value does not include metadata.
+             * This value is reported in thousands (i.e., a value of 1
+             * corresponds to 1000 units of 512 bytes written) and is rounded
+             * up. When the LBA size is a value other than 512 bytes, the
+             * controller shall convert the amount of data written to 512 byte
+             * units.
              */
-       vmk_uint8 dataUnitsWritten[63-48+1];
+            vmk_uint8 dataUnitsWritten[63 - 48 + 1];
             /**
              * @brief Contains the number of read commands issued to the
-        * controller.
+             * controller.
              */
-       vmk_uint8 hostReadCommands[79-64+1];
+            vmk_uint8 hostReadCommands[79 - 64 + 1];
             /**
              * @brief Contains the number of write commands issued to the
-        * controller.
+             * controller.
              */
-       vmk_uint8 hostWriteCommands[95-80+1];
+            vmk_uint8 hostWriteCommands[95 - 80 + 1];
             /**
              * @brief Contains the amount of time the controller is busy with
-        * I/O commands. The controller is busy when there is a command
-        * outstanding to an I/O Queue (specifically, a command was issued
-        * via an I/O Submission Queue Tail doorbell write and the
-        * corresponding completion queue entry has not been posted yet to
-        * the associated I/O Completion Queue). This value is reported
-        * in minutes.
+             * I/O commands. The controller is busy when there is a command
+             * outstanding to an I/O Queue (specifically, a command was issued
+             * via an I/O Submission Queue Tail doorbell write and the
+             * corresponding completion queue entry has not been posted yet to
+             * the associated I/O Completion Queue). This value is reported
+             * in minutes.
              */
-          vmk_uint8 controllerBusyTime[111-96+1];
+            vmk_uint8 controllerBusyTime[111 - 96 + 1];
             /**
              * @brief Contains the number of power cycles.
              */
-          vmk_uint8 powerCycles[127-112+1];
+            vmk_uint8 powerCycles[127 - 112 + 1];
             /**
              * @brief Contains the number of power-on hours. This does not
-        * include time that the controller was powered and in a low
-        * power state condition.
+             * include time that the controller was powered and in a low
+             * power state condition.
              */
-          vmk_uint8 powerOnHours[143-128+1];
+            vmk_uint8 powerOnHours[143 - 128 + 1];
             /**
              * @brief Contains the number of unsafe shutdowns. This count is
-        * incremented when a shutdown notification (CC.SHN) is not
-        * received prior to loss of power.
+             * incremented when a shutdown notification (CC.SHN) is not
+             * received prior to loss of power.
              */
-          vmk_uint8 unsafeShutdowns[159-144+1];
+            vmk_uint8 unsafeShutdowns[159 - 144 + 1];
             /**
              * @brief Contains the number of occurrences where the controller
-        * detected an unrecovered data integrity error. Errors such as
-        * uncorrectable ECC, CRC checksum failure, or LBA tag mismatch
-        * are included in this field.
+             * detected an unrecovered data integrity error. Errors such as
+             * uncorrectable ECC, CRC checksum failure, or LBA tag mismatch
+             * are included in this field.
              */
-          vmk_uint8 mediaErrors[175-160+1];
+            vmk_uint8 mediaErrors[175 - 160 + 1];
             /**
              * @brief Contains the number of Error Information log entries
-        * over the life of the controller.
+             * over the life of the controller.
              */
-          vmk_uint8 numberOfErrorInfoLogs[191-176+1];
-          /**
-           * @brief Warning Composite Temperature Time
-           *
-           * Contains the amount of time in minutes that the controller is operational
-           * and the Composite Temperature is greater than or equal to the Warning
-           * Composite Temperature Threshold (WCTEMP) field and less than the Critical
-           * Composite Temperature Threshold (CCTEMP) field in the Identify Controller
-           * data structure in Figure 90.
-           */
-          vmk_uint32 warningCompositeTempTime;
-          /**
-           * @brief Critical Composite Temperature Time
-           *
-           * Contains the amount of time in minutes that the controller is operational
-           * and the Composite Temperature is greater the Critical Composite Temperature
-           * Threshold (CCTEMP) field in the Identify Controller data structure in
-           * Figure 90.
-           */
-          vmk_uint32 criticalCompositeTempTime;
-          /**
-           * @brief Temperature Sensor
-           *
-           * Contains the current temperature reported by temperature sensors.
-           */
-          vmk_uint16 tempSensor1;
-          vmk_uint16 tempSensor2;
-          vmk_uint16 tempSensor3;
-          vmk_uint16 tempSensor4;
-          vmk_uint16 tempSensor5;
-          vmk_uint16 tempSensor6;
-          vmk_uint16 tempSensor7;
-          vmk_uint16 tempSensor8;
+            vmk_uint8 numberOfErrorInfoLogs[191 - 176 + 1];
+            /**
+             * @brief Warning Composite Temperature Time
+             *
+             * Contains the amount of time in minutes that the controller is operational
+             * and the Composite Temperature is greater than or equal to the Warning
+             * Composite Temperature Threshold (WCTEMP) field and less than the Critical
+             * Composite Temperature Threshold (CCTEMP) field in the Identify Controller
+             * data structure in Figure 90.
+             */
+            vmk_uint32 warningCompositeTempTime;
+            /**
+             * @brief Critical Composite Temperature Time
+             *
+             * Contains the amount of time in minutes that the controller is operational
+             * and the Composite Temperature is greater the Critical Composite Temperature
+             * Threshold (CCTEMP) field in the Identify Controller data structure in
+             * Figure 90.
+             */
+            vmk_uint32 criticalCompositeTempTime;
+            /**
+             * @brief Temperature Sensor
+             *
+             * Contains the current temperature reported by temperature sensors.
+             */
+            vmk_uint16 tempSensor1;
+            vmk_uint16 tempSensor2;
+            vmk_uint16 tempSensor3;
+            vmk_uint16 tempSensor4;
+            vmk_uint16 tempSensor5;
+            vmk_uint16 tempSensor6;
+            vmk_uint16 tempSensor7;
+            vmk_uint16 tempSensor8;
             /**
              * @brief reserved.
              */
-          vmk_uint8 reservedB[511-216+1];
-   };
+            vmk_uint8 reservedB[511 - 216 + 1];
+        };
         /**
          * @brief Byte host memory buffer address.
          */
-   vmk_uint8   asByte[512];
+        vmk_uint8 asByte[512];
     };
 };
 
@@ -1395,66 +1377,66 @@ struct firmware_slot_log
         {
             /**
              * @brief This log page is used to describe the firmware revision
-        * stored in each firmware slot supported. The firmware revision
-        * is indicated as an ASCII string. The log page also indicates
-        * the active slot number.
+             * stored in each firmware slot supported. The firmware revision
+             * is indicated as an ASCII string. The log page also indicates
+             * the active slot number.
              */
-       vmk_uint8 activeFirmwareInfo;
+            vmk_uint8 activeFirmwareInfo;
             /**
              * @brief Reserved.
              */
-       vmk_uint8 reservedA[7-1+1];
+            vmk_uint8 reservedA[7 - 1 + 1];
             /**
              * @brief Contains the revision of the firmware downloaded to
-        * firmware slot 1. If no valid firmware revision is present or
-        * if this slot is unsupported, all zeros shall be returned.
+             * firmware slot 1. If no valid firmware revision is present or
+             * if this slot is unsupported, all zeros shall be returned.
              */
-       vmk_uint8 FirmwareRevisionSlot1[15-8+1];
+            vmk_uint8 FirmwareRevisionSlot1[15 - 8 + 1];
             /**
              * @brief Contains the revision of the firmware downloaded to
-        * firmware slot 2. If no valid firmware revision is present or
-        * if this slot is unsupported, all zeros shall be returned.
+             * firmware slot 2. If no valid firmware revision is present or
+             * if this slot is unsupported, all zeros shall be returned.
              */
-       vmk_uint8 FirmwareRevisionSlot2[23-16+1];
+            vmk_uint8 FirmwareRevisionSlot2[23 - 16 + 1];
             /**
              * @brief Contains the revision of the firmware downloaded to
-        * firmware slot 3. If no valid firmware revision is present or
-        * if this slot is unsupported, all zeros shall be returned.
+             * firmware slot 3. If no valid firmware revision is present or
+             * if this slot is unsupported, all zeros shall be returned.
              */
-       vmk_uint8 FirmwareRevisionSlot3[31-24+1];
+            vmk_uint8 FirmwareRevisionSlot3[31 - 24 + 1];
             /**
              * @brief Contains the revision of the firmware downloaded to
-        * firmware slot 4. If no valid firmware revision is present or
-        * if this slot is unsupported, all zeros shall be returned.
+             * firmware slot 4. If no valid firmware revision is present or
+             * if this slot is unsupported, all zeros shall be returned.
              */
-       vmk_uint8 FirmwareRevisionSlot4[39-32+1];
+            vmk_uint8 FirmwareRevisionSlot4[39 - 32 + 1];
             /**
              * @brief Contains the revision of the firmware downloaded to
-        * firmware slot 5. If no valid firmware revision is present or
-        * if this slot is unsupported, all zeros shall be returned.
+             * firmware slot 5. If no valid firmware revision is present or
+             * if this slot is unsupported, all zeros shall be returned.
              */
-       vmk_uint8 FirmwareRevisionSlot5[47-40+1];
+            vmk_uint8 FirmwareRevisionSlot5[47 - 40 + 1];
             /**
              * @brief Contains the revision of the firmware downloaded to
-        * firmware slot 6. If no valid firmware revision is present or
-        * if this slot is unsupported, all zeros shall be returned.
+             * firmware slot 6. If no valid firmware revision is present or
+             * if this slot is unsupported, all zeros shall be returned.
              */
-       vmk_uint8 FirmwareRevisionSlot6[55-48+1];
+            vmk_uint8 FirmwareRevisionSlot6[55 - 48 + 1];
             /**
              * @brief Contains the revision of the firmware downloaded to
-        * firmware slot 7. If no valid firmware revision is present or
-        * if this slot is unsupported, all zeros shall be returned.
+             * firmware slot 7. If no valid firmware revision is present or
+             * if this slot is unsupported, all zeros shall be returned.
              */
-       vmk_uint8 FirmwareRevisionSlot7[63-56+1];
+            vmk_uint8 FirmwareRevisionSlot7[63 - 56 + 1];
             /**
              * @brief Reserved.
-        */
-          vmk_uint8 reservedB[511-64+1];
-   };
+             */
+            vmk_uint8 reservedB[511 - 64 + 1];
+        };
         /**
          * @brief byte host memory buffer address.
          */
-   vmk_uint8   asByte[512];
+        vmk_uint8 asByte[512];
     };
 };
 
@@ -1485,7 +1467,6 @@ struct nvme_prp
     };
 };
 
-
 /**
  * @brief NVM Express command header data structure.
  */
@@ -1496,31 +1477,31 @@ struct nvme_cmd_hdr
      *
      * This field indicates the opcode of the command to be executed.
      */
-    vmk_uint32 opCode:8,
-    /**
-     * @brief Fused Operation.
-     *
-     * In a fused operation, a complex command is created by fusing
-     * together two simpler commands. This field indicates whether
-     * this command is part of a fused operation and if so, which
-     * command it is in the sequence.
-     * - 00b Normal operation.
-     * - 01b Fused operation, first command.
-     * - 10b Fused operation, second command.
-     * - 11b Reserved.
-     */
-        fusedOp:2,
-     /**
-      * @brief Reserved.
-      */
-        :6,
-     /**
-      * @brief Command Identifier.
-      *
-      * This field indicates a unique identifier for the command when
-      * combined with the Submission Queue identifier.
-      */
-        cmdID:16;
+    vmk_uint32 opCode : 8,
+        /**
+         * @brief Fused Operation.
+         *
+         * In a fused operation, a complex command is created by fusing
+         * together two simpler commands. This field indicates whether
+         * this command is part of a fused operation and if so, which
+         * command it is in the sequence.
+         * - 00b Normal operation.
+         * - 01b Fused operation, first command.
+         * - 10b Fused operation, second command.
+         * - 11b Reserved.
+         */
+        fusedOp : 2,
+        /**
+         * @brief Reserved.
+         */
+        : 6,
+        /**
+         * @brief Command Identifier.
+         *
+         * This field indicates a unique identifier for the command when
+         * combined with the Submission Queue identifier.
+         */
+        cmdID : 16;
     /**
      * @brief Napespace Identifier.
      *
@@ -1558,14 +1539,13 @@ struct nvme_cmd_hdr
 /**
  * @brief NVM IO command protection information data definition.
  */
-#define  PROT_PRACT     (1 << 3)
-#define PROT_PRCHK_GUARD   (1 << 2)
-#define PROT_PRCHK_APREF   (1 << 1)
-#define PROT_PRCHK_LBREF   (1 << 0)
-#define PROT_PRCHK_TYPE1   (PROT_PRCHK_APREF|PROT_PRCHK_LBREF|\
-                    PROT_PRCHK_GUARD)
-#define PROT_PRCHK_TYPE2   (PROT_PRCHK_LBREF|PROT_PRCHK_GUARD)
-#define PROT_PRCHK_TYPE3   (PROT_PRCHK_GUARD)
+#define PROT_PRACT       (1 << 3)
+#define PROT_PRCHK_GUARD (1 << 2)
+#define PROT_PRCHK_APREF (1 << 1)
+#define PROT_PRCHK_LBREF (1 << 0)
+#define PROT_PRCHK_TYPE1 (PROT_PRCHK_APREF | PROT_PRCHK_LBREF | PROT_PRCHK_GUARD)
+#define PROT_PRCHK_TYPE2 (PROT_PRCHK_LBREF | PROT_PRCHK_GUARD)
+#define PROT_PRCHK_TYPE3 (PROT_PRCHK_GUARD)
 
 /**
  * @brief NVM read command specific data.
@@ -1582,7 +1562,7 @@ struct nvme_cmd_read
     union
     {
         vmk_uint64 startLBA;
-        vmk_uint8 sLBA[8];
+        vmk_uint8  sLBA[8];
     };
     /**
      * @brief Number of logical blocks.
@@ -1590,38 +1570,36 @@ struct nvme_cmd_read
      * This field indicates the number of logical blocks to be
      * written.  This is a 0s based value.
      */
-    vmk_uint32 numLBA:16,
-    :10,
-    /**
-     * @brief Protection information.
-     *
-     * Specifies the protection information action and check field.
-     */
-    protInfo:4,
-    /**
-     * @brief Force unit access.
-     *
-     * This field indicates that the data shall be written to non-volatile
-     * media before indicating command completion. There is no implied ordering
-     * with other commands.
-     */
-    forceUnitAccess:1,
-    /**
-     * @brief Limited retry.
-     *
-     * If set to 1, the controller should apply limited retry efforts. If
-     * cleared to 0, the controller should apply all available error recovery
-     * means to write the data to the NVM.
-     */
-    limitedRetry:1;
+    vmk_uint32 numLBA : 16, : 10,
+        /**
+         * @brief Protection information.
+         *
+         * Specifies the protection information action and check field.
+         */
+        protInfo : 4,
+        /**
+         * @brief Force unit access.
+         *
+         * This field indicates that the data shall be written to non-volatile
+         * media before indicating command completion. There is no implied ordering
+         * with other commands.
+         */
+        forceUnitAccess : 1,
+        /**
+         * @brief Limited retry.
+         *
+         * If set to 1, the controller should apply limited retry efforts. If
+         * cleared to 0, the controller should apply all available error recovery
+         * means to write the data to the NVM.
+         */
+        limitedRetry : 1;
     /**
      * @brief Dataset management.
      *
      * This field indicates attributes for the dataset that the LBA(s) being
      * read are associated with.
      */
-    vmk_uint32 datasetMgmnt:8,
-                :24;
+    vmk_uint32 datasetMgmnt : 8, : 24;
     /**
      * @brief Expected initial logical block reference tag.
      *
@@ -1637,17 +1615,16 @@ struct nvme_cmd_read
      * field is only used if the namespace is formatted to use end-to-end
      * protection information.
      */
-    vmk_uint32 expLogBlkAppTag:16,
-    /**
-     * @brief Expected logical block application tag mask.
-     *
-     * This field indicates the Application Tag Mask expected
-     * value. This field is only used if the namespace is formatted to use
-     * end-to-end protection information.
-     */
-    expLogBlkAppTagMsk:16;
+    vmk_uint32 expLogBlkAppTag : 16,
+        /**
+         * @brief Expected logical block application tag mask.
+         *
+         * This field indicates the Application Tag Mask expected
+         * value. This field is only used if the namespace is formatted to use
+         * end-to-end protection information.
+         */
+        expLogBlkAppTagMsk : 16;
 };
-
 
 /**
  * @brief NVM write command specific data.
@@ -1663,7 +1640,7 @@ struct nvme_cmd_write
     union
     {
         vmk_uint64 startLBA;
-        vmk_uint8 sLBA[8];
+        vmk_uint8  sLBA[8];
     };
     /**
      * @brief Number of logical blocks.
@@ -1671,39 +1648,37 @@ struct nvme_cmd_write
      * This field indicates the number of logical blocks to be
      * written.  This is a 0s based value.
      */
-    vmk_uint32 numLBA:16,
-            :10,
-    /**
-     * @brief Protection information.
-     *
-     * Specifies the protection information action and check field.
-     */
-    protInfo:4,
-    /**
-     * @brief Force unit access.
-     *
-     * This field indicates that the data shall be written to non-volatile
-     * media before indicating command completion. There is no implied ordering
-     *  with other commands.
-     */
-    forceUnitAccess:1,
-    /**
-     * @brief Limited retry.
-     *
-     * If set to 1, the controller should apply limited retry efforts. If
-     * cleared to 0,
-     * the controller should apply all available error recovery means to write
-     * the data to the NVM.
-     */
-    limitedRetry:1;
+    vmk_uint32 numLBA : 16, : 10,
+        /**
+         * @brief Protection information.
+         *
+         * Specifies the protection information action and check field.
+         */
+        protInfo : 4,
+        /**
+         * @brief Force unit access.
+         *
+         * This field indicates that the data shall be written to non-volatile
+         * media before indicating command completion. There is no implied ordering
+         *  with other commands.
+         */
+        forceUnitAccess : 1,
+        /**
+         * @brief Limited retry.
+         *
+         * If set to 1, the controller should apply limited retry efforts. If
+         * cleared to 0,
+         * the controller should apply all available error recovery means to write
+         * the data to the NVM.
+         */
+        limitedRetry : 1;
     /**
      * @brief Dataset management.
      *
      * This field indicates attributes for the dataset that the LBA(s) being
      * read are associated with.
      */
-    vmk_uint32 datasetMgmnt:8,
-                :24;
+    vmk_uint32 datasetMgmnt : 8, : 24;
     /**
      * @brief Initial logical block reference tag.
      *
@@ -1719,16 +1694,15 @@ struct nvme_cmd_write
      * field is only used if the namespace is formatted to use end-to-end
      * protection information.
      */
-    vmk_uint32 logBlkAppTag:16,
-    /**
-     * @brief Logical block application tag mask.
-     *
-     * This field indicates the Application Tag Mask
-     * value. This field is only used if the namespace is formatted to use
-     * end-to-end protection information.
-     */
-    logBlkAppTagMsk:16;
-
+    vmk_uint32 logBlkAppTag : 16,
+        /**
+         * @brief Logical block application tag mask.
+         *
+         * This field indicates the Application Tag Mask
+         * value. This field is only used if the namespace is formatted to use
+         * end-to-end protection information.
+         */
+        logBlkAppTagMsk : 16;
 };
 
 /**
@@ -1749,76 +1723,75 @@ struct nvme_dataset_mgmt_data
      * software are accurate.
      */
 
-     /**
-      * @brief Command Access Size
-      * Number of logical blocks expected to be transferred in a single Read
-      * or Write command from this dataset. A value of 0h indicates no Command
-      * Access Size is provided.
-      */
-     vmk_uint32  access_size : 8,
+    /**
+     * @brief Command Access Size
+     * Number of logical blocks expected to be transferred in a single Read
+     * or Write command from this dataset. A value of 0h indicates no Command
+     * Access Size is provided.
+     */
+    vmk_uint32 access_size : 8,
 
-     /**
-      * @brief Reserved.
-      */
-         reservedA : 13,
-     /**
-      * @brief Write Prepare.
-      * If set to 1 then the provided range is expected to be written in
-      * the near future.
-      */
-      writePrepare : 1,
-     /**
-      * @brief Sequential Write Range.
-      * If set to 1 then the dataset should be optimized for sequential write
-      * access. The host expects to perform operations on the dataset as a
-      * single object for writes.
-      */
-      sequentialWriteRange : 1,
-     /**
-      * @brief Sequential Read Range.
-      * If set to 1 then the dataset should be optimized for sequential
-      * read access. The host expects to perform operations on the dataset
-      * as a single object for reads.
-      */
-      sequentialReadRange : 1,
-     /**
-      * @brief Reserved.
-      */
-         reservedB : 2,
-     /**
-      * @brief Access Latency.
-      * 00b None. No latency information provided.
-      * 01b Idle. Longer latency acceptable.
-      * 10b Normal. Typical latency.
-      * 11b Low. Smallest possible latency.
-      */
-      accessLatency : 2,
-     /**
-      * @brief Access Frequency.
-      * 0000b No frequency information provided.
-      * 0001b Typical number of reads and writes expected for this LBA range.
-      * 0010b Infrequent writes and infrequent reads to the LBA range indicated.
-      * 0011b Infrequent writes and frequent reads to the LBA range indicated.
-      * 0100b Frequent writes and infrequent reads to the LBA range indicated.
-      * 0101b Frequent writes and frequent reads to the LBA range indicated.
-      * 0110b Reserved
-      * ...   Reserved
-      * 1111b Reserved
-      *
-      */
-      accessFrequency : 4;
+        /**
+         * @brief Reserved.
+         */
+        reservedA : 13,
+        /**
+         * @brief Write Prepare.
+         * If set to 1 then the provided range is expected to be written in
+         * the near future.
+         */
+        writePrepare : 1,
+        /**
+         * @brief Sequential Write Range.
+         * If set to 1 then the dataset should be optimized for sequential write
+         * access. The host expects to perform operations on the dataset as a
+         * single object for writes.
+         */
+        sequentialWriteRange : 1,
+        /**
+         * @brief Sequential Read Range.
+         * If set to 1 then the dataset should be optimized for sequential
+         * read access. The host expects to perform operations on the dataset
+         * as a single object for reads.
+         */
+        sequentialReadRange : 1,
+        /**
+         * @brief Reserved.
+         */
+        reservedB : 2,
+        /**
+         * @brief Access Latency.
+         * 00b None. No latency information provided.
+         * 01b Idle. Longer latency acceptable.
+         * 10b Normal. Typical latency.
+         * 11b Low. Smallest possible latency.
+         */
+        accessLatency : 2,
+        /**
+         * @brief Access Frequency.
+         * 0000b No frequency information provided.
+         * 0001b Typical number of reads and writes expected for this LBA range.
+         * 0010b Infrequent writes and infrequent reads to the LBA range indicated.
+         * 0011b Infrequent writes and frequent reads to the LBA range indicated.
+         * 0100b Frequent writes and infrequent reads to the LBA range indicated.
+         * 0101b Frequent writes and frequent reads to the LBA range indicated.
+         * 0110b Reserved
+         * ...   Reserved
+         * 1111b Reserved
+         *
+         */
+        accessFrequency : 4;
 
-     /**
-      * @brief Length in logical blocks.
-      */
-    vmk_uint32   numLBA;
+    /**
+     * @brief Length in logical blocks.
+     */
+    vmk_uint32 numLBA;
 
-     /**
-      * @brief Starting LBA.
-      */
-    vmk_uint64   startLBA;
+    /**
+     * @brief Starting LBA.
+     */
+    vmk_uint64 startLBA;
 };
-
 
 /**
  * @brief NVM dataset command specific data.
@@ -1832,7 +1805,7 @@ struct nvme_cmd_dataset
      * Indicates the number of 16 byte range sets that are specified in the
      * command. This is a 0.s based value.
      */
-    vmk_uint32    numRanges;
+    vmk_uint32 numRanges;
 
     /**
      * @brief Attribute
@@ -1857,10 +1830,8 @@ struct nvme_cmd_dataset
      * read.
      *
      */
-    vmk_uint32    attribute;
-
+    vmk_uint32 attribute;
 };
-
 
 /**
  * @brief NVM create completion queue command specific data.
@@ -1876,14 +1847,14 @@ struct nvme_cmd_create_cplq
      * not exceed the value reported in the Number of Queues feature for I/O
      * Completion Queues.
      */
-    vmk_uint32     identifier  : 16,
-    /**
-     * @brief Queue Size.
-     *
-     * This field indicates the size of the Completion Queue
-     * (in completion queue entries) to be created. This is a 0s based value.
-     */
-            size        : 16;
+    vmk_uint32 identifier : 16,
+        /**
+         * @brief Queue Size.
+         *
+         * This field indicates the size of the Completion Queue
+         * (in completion queue entries) to be created. This is a 0s based value.
+         */
+        size : 16;
     /**
      * @brief Physically Contiguous.
      *
@@ -1892,30 +1863,30 @@ struct nvme_cmd_create_cplq
      * If cleared to 0, then the Completion Queue is not physically
      * contiguous and PRP Entry 1 (PRP1) is a PRP List pointer.
      */
-    vmk_uint32     contiguous  : 1,
-    /**
-     * @brief Interrupt Enable.
-     *
-     * If set to 1, then interrupts are enabled for this Completion Queue. If
-     * cleared to 0, then interrupts are disabled for this Completion Queue.
-     */
-            interruptEnable : 1,
-    /**
-     * @brief Reserved.
-     */
-            :14,
-    /**
-     * @brief Interrupt Vector.
-     *
-     * This field indicates interrupt vector to use for this Completion Queue.
-     * This corresponds to the MSI-X or multiple message MSI vector to use.
-     * If using single message MSI or pin-based interrupts, then this field
-     * shall be cleared to 0h.  In MSI-X, a maximum of 2K vectors are used.
-     * This value shall not be set to a value greater than the number of
-     * messages the controller supports (refer to MSICAP.MC.MME or
-     * MSIXCAP.MXC.TS).
-     */
-            interruptVector : 16;
+    vmk_uint32 contiguous : 1,
+        /**
+         * @brief Interrupt Enable.
+         *
+         * If set to 1, then interrupts are enabled for this Completion Queue. If
+         * cleared to 0, then interrupts are disabled for this Completion Queue.
+         */
+        interruptEnable : 1,
+        /**
+         * @brief Reserved.
+         */
+        : 14,
+        /**
+         * @brief Interrupt Vector.
+         *
+         * This field indicates interrupt vector to use for this Completion Queue.
+         * This corresponds to the MSI-X or multiple message MSI vector to use.
+         * If using single message MSI or pin-based interrupts, then this field
+         * shall be cleared to 0h.  In MSI-X, a maximum of 2K vectors are used.
+         * This value shall not be set to a value greater than the number of
+         * messages the controller supports (refer to MSICAP.MC.MME or
+         * MSIXCAP.MXC.TS).
+         */
+        interruptVector : 16;
 };
 
 /**
@@ -1932,14 +1903,14 @@ struct nvme_cmd_create_subq
      * not exceed the value reported in the Number of Queues feature for I/O
      * Submission Queues.
      */
-    vmk_uint32     identifier  : 16,
-    /**
-     * @brief Queue Size.
-     *
-     * This field indicates the size of the Submission Queue
-     * (in submission queue entries) to be created. This is a 0s based value.
-     */
-            size        : 16;
+    vmk_uint32 identifier : 16,
+        /**
+         * @brief Queue Size.
+         *
+         * This field indicates the size of the Submission Queue
+         * (in submission queue entries) to be created. This is a 0s based value.
+         */
+        size : 16;
     /**
      * @brief Physically Contiguous.
      *
@@ -1948,33 +1919,33 @@ struct nvme_cmd_create_subq
      * If cleared to 0, then the Completion Queue is not physically
      * contiguous and PRP Entry 1 (PRP1) is a PRP List pointer.
      */
-    vmk_uint32     contiguous  : 1,
-    /**
-     * @brief Queue Priority.
-     *
-     * This field indicates the priority service class to use for commands
-     * within this Submission Queue.  This field is only used when the
-     * weighted round robin with an urgent priority service class is the
-     * arbitration mechanism is selected.
-     * - 00b Urgent
-     * - 01b High
-     * - 10b Medium
-     * - 11b Low
-     */
-            priority : 2,
-    /**
-     * @brief Reserved.
-     */
-            :13,
-    /**
-     * @brief Completion Queue Identifier.
-     *
-     * This field indicates the identifier of the Completion Queue
-     * to utilize for any command completions entries associated
-     * with this Submission Queue. The value of 0h
-     * (Admin Completion Queue) shall not be specified.
-     */
-            completionQueueID : 16;
+    vmk_uint32 contiguous : 1,
+        /**
+         * @brief Queue Priority.
+         *
+         * This field indicates the priority service class to use for commands
+         * within this Submission Queue.  This field is only used when the
+         * weighted round robin with an urgent priority service class is the
+         * arbitration mechanism is selected.
+         * - 00b Urgent
+         * - 01b High
+         * - 10b Medium
+         * - 11b Low
+         */
+        priority : 2,
+        /**
+         * @brief Reserved.
+         */
+        : 13,
+        /**
+         * @brief Completion Queue Identifier.
+         *
+         * This field indicates the identifier of the Completion Queue
+         * to utilize for any command completions entries associated
+         * with this Submission Queue. The value of 0h
+         * (Admin Completion Queue) shall not be specified.
+         */
+        completionQueueID : 16;
 };
 
 /**
@@ -1991,7 +1962,7 @@ struct nvme_cmd_delete_subq
      * not exceed the value reported in the Number of Queues feature for I/O
      * Submission Queues.
      */
-    vmk_uint32     identifier  : 16;
+    vmk_uint32 identifier : 16;
 };
 
 /**
@@ -2009,7 +1980,7 @@ struct nvme_cmd_delete_cplq
      * the value reported in the Number of Queues feature for I/O Completion
      * Queues.
      */
-    vmk_uint32     identifier  : 16;
+    vmk_uint32 identifier : 16;
 };
 
 /**
@@ -2025,8 +1996,7 @@ struct nvme_cmd_identify
      * otherwise, it retrieves the namespace structure associated with the
      * namespaceID indicated in header.
      */
-    vmk_uint32     controllerStructure : 1,
-            reserved : 31;
+    vmk_uint32 controllerStructure : 1, reserved : 31;
 };
 
 /**
@@ -2040,11 +2010,9 @@ struct nvme_cmd_set_feature
      * This field indicates the identifier of the Feature that attributes are
      * being specified for.
      */
-    vmk_uint32     featureID   : 8,
-            reserved    : 24;
-    vmk_uint32     numSubQReq:16, numCplQReq:16;
+    vmk_uint32 featureID : 8, reserved : 24;
+    vmk_uint32 numSubQReq : 16, numCplQReq : 16;
 };
-
 
 /**
  * @brief NVM set features command specific data.
@@ -2057,9 +2025,8 @@ struct nvme_cmd_get_feature
      * This field indicates the identifier of the Feature that attributes are
      * being specified for.
      */
-    vmk_uint32     featureID   : 8,
-            reserved    : 24;
-    vmk_uint32     numSubQReq:16, numCplQReq:16;
+    vmk_uint32 featureID : 8, reserved : 24;
+    vmk_uint32 numSubQReq : 16, numCplQReq : 16;
 };
 
 /**
@@ -2073,8 +2040,7 @@ struct nvme_cmd_firmware_activate
      * This field indicates the slot of firmware to activate and the specific
      * activate action
      */
-    vmk_uint32     slot: 3,
-            action: 2,    : 24;
+    vmk_uint32 slot : 3, action : 2, : 24;
 };
 
 /**
@@ -2088,10 +2054,9 @@ struct nvme_cmd_firmware_download
      * This field indicates the size of download image in Dwords, and the
      * download offset of the image in Dwords.
      */
-    vmk_uint32     numDW;
-    vmk_uint32     offset;
+    vmk_uint32 numDW;
+    vmk_uint32 offset;
 };
-
 
 /**
  * @brief NVM get log page command specific data.
@@ -2104,9 +2069,8 @@ struct nvme_cmd_get_log_page
      * This field indicates the log page identifier and log page size
      * in Dwords.
      */
-    vmk_uint16     LogPageID;
-    vmk_uint16     numDW: 12,
-              reserved: 4;
+    vmk_uint16 LogPageID;
+    vmk_uint16 numDW : 12, reserved : 4;
 };
 
 /**
@@ -2155,14 +2119,13 @@ struct nvme_cmd_format
      *      This corresponds to the LBA formats indicated in the Identify
      *      command, Only supported LBA formats shall be selected.
      */
-#define  FORMAT_LBAF_SHIFT 0
-#define  FORMAT_META_SHIFT 4
-#define FORMAT_PI_SHIFT    5
-#define FORMAT_PIL_SHIFT   8
+#define FORMAT_LBAF_SHIFT     0
+#define FORMAT_META_SHIFT     4
+#define FORMAT_PI_SHIFT       5
+#define FORMAT_PIL_SHIFT      8
 #define FORMAT_SECURITY_SHIFT 9
-    vmk_uint32     formatOption;
+    vmk_uint32 formatOption;
 };
-
 
 /**
  * @brief NVM/Admin Vendor command specific data,
@@ -2174,14 +2137,13 @@ struct nvme_cmd_vendor_specific
      *      parameters
      *
      */
-    vmk_uint32     buffNumDW;
-    vmk_uint32     metaNumDW;
-    vmk_uint32     vndrCDW12;
-    vmk_uint32     vndrCDW13;
-    vmk_uint32     vndrCDW14;
-    vmk_uint32     vndrCDW15;
+    vmk_uint32 buffNumDW;
+    vmk_uint32 metaNumDW;
+    vmk_uint32 vndrCDW12;
+    vmk_uint32 vndrCDW13;
+    vmk_uint32 vndrCDW14;
+    vmk_uint32 vndrCDW15;
 };
-
 
 /**
  * @brief NVM Command Structure.
@@ -2190,8 +2152,8 @@ struct nvme_cmd
 {
     union
     {
-   struct
-   {
+        struct
+        {
             /**
              * @brief Command header.
              */
@@ -2253,23 +2215,23 @@ struct nvme_cmd
                  * @brief NVM firmware download command specific info.
                  */
                 struct nvme_cmd_firmware_download firmwareDownload;
-      /**
-       * @brief NVM get log page command specific data.
-       */
-      struct nvme_cmd_get_log_page getLogPage;
-      /**
-       * @brief NVM Format Media command specific data.
-       */
-      struct nvme_cmd_format format;
-      /**
-       * @brief NVM/Admin command Vendor Specific command data.
-       */
-      struct nvme_cmd_vendor_specific vendorSpecific;
-      /**
-       * generic command template.
-       */
-         vmk_uint32    asUlong[6];
-       } cmd;
+                /**
+                 * @brief NVM get log page command specific data.
+                 */
+                struct nvme_cmd_get_log_page getLogPage;
+                /**
+                 * @brief NVM Format Media command specific data.
+                 */
+                struct nvme_cmd_format format;
+                /**
+                 * @brief NVM/Admin command Vendor Specific command data.
+                 */
+                struct nvme_cmd_vendor_specific vendorSpecific;
+                /**
+                 * generic command template.
+                 */
+                vmk_uint32 asUlong[6];
+            } cmd;
         };
         vmk_uint32 dw[16];
     };
@@ -2286,14 +2248,14 @@ struct cq_entry
     union
     {
         vmk_uint32 cmdSpecific;
-        vmk_uint32 numSubQAlloc:16, numCplQAlloc:16;
-    }param;
+        vmk_uint32 numSubQAlloc : 16, numCplQAlloc : 16;
+    } param;
     /**
      * @brief Reserved.
      */
     vmk_uint32 reserved;
-    vmk_uint32 sqHdPtr:16, sqID:16;
-    vmk_uint32 cmdID:16, phaseTag:1, SC:8, SCT:3,:2, more:1, noRetry:1;
+    vmk_uint32 sqHdPtr : 16, sqID : 16;
+    vmk_uint32 cmdID : 16, phaseTag : 1, SC : 8, SCT : 3, : 2, more : 1, noRetry : 1;
 };
 
 /**
@@ -2413,9 +2375,8 @@ struct lba_format
      * - 10b     Good performance
      * - 11b     Degraded performance
      */
-     vmk_uint8 relPerf;
+    vmk_uint8 relPerf;
 };
-
 
 /**
  * @brief LbaRange - LbaRange Data Structure.
@@ -2478,33 +2439,31 @@ struct lba_range
     /**
      * @brief padding.
      */
-    vmk_uint8 padding[63-48+1];
+    vmk_uint8 padding[63 - 48 + 1];
 };
-
 
 /**
  * @brief Identify - Meta Data Capability field definitions.
  */
-#define METADATA_MBUF      (1 << 1)
-#define METADATA_LBA    (1 << 0)
-#define METADATA_SUPPORT(x)   (x & METADATA_LBA|
+#define METADATA_MBUF       (1 << 1)
+#define METADATA_LBA        (1 << 0)
+#define METADATA_SUPPORT(x) ((x) & METADATA_LBA)
 
 /**
  * @brief Identify - Data Protection Capability field definitions.
  */
-#define END2END_CAP_LAST_8B      (1 << 4)
-#define END2END_CAP_FIRST_8B     (1 << 3)
-#define END2END_CAP_TYPE3     (1 << 2)
-#define END2END_CAP_TYPE2     (1 << 1)
-#define END2END_CAP_TYPE1     (1 << 0)
-#define END2END_CAP_TYPE(x)      (x & 0x07)
+#define END2END_CAP_LAST_8B  (1 << 4)
+#define END2END_CAP_FIRST_8B (1 << 3)
+#define END2END_CAP_TYPE3    (1 << 2)
+#define END2END_CAP_TYPE2    (1 << 1)
+#define END2END_CAP_TYPE1    (1 << 0)
+#define END2END_CAP_TYPE(x)  ((x) & 0x07)
 
 /**
  * @brief Identify - Data Protection Type settings field definitions.
  */
-#define END2END_DPS_FIRST  (1 << 3)
-#define END2END_DPS_TYPE(x)   (x & 0x07)
-
+#define END2END_DPS_FIRST   (1 << 3)
+#define END2END_DPS_TYPE(x) ((x) & 0x07)
 
 /**
  * @brief Identify - Namespace Data Structure.
@@ -2673,9 +2632,10 @@ struct iden_namespace
      *        cleared to ‘0’ then the namespace is a private namespace and may only be
      *        accessed by the controller that returned this namespace data structure.
      */
-    struct {
-       vmk_uint8 sharedNs :1;
-       vmk_uint8 reserved :7;
+    struct
+    {
+        vmk_uint8 sharedNs : 1;
+        vmk_uint8 reserved : 7;
     } nmic;
     /**
      * @brief Reservation Capabilities
@@ -2711,15 +2671,16 @@ struct iden_namespace
      *       Power Loss capability. If this bit is cleared to ‘0’, then the namespace
      *       does not support the Persist Through Power Loss Capability.
      */
-    struct {
-       vmk_uint8 pstThruPowerLoss :1;
-       vmk_uint8 wrExcResv :1;
-       vmk_uint8 excAcsResv :1;
-       vmk_uint8 wrExcRegOnlyResv :1;
-       vmk_uint8 excAcsRegOnlyResv :1;
-       vmk_uint8 wrExcAllRegOnlyResv :1;
-       vmk_uint8 excAcsAllRegOnlyResv :1;
-       vmk_uint8 reserved :1;
+    struct
+    {
+        vmk_uint8 pstThruPowerLoss : 1;
+        vmk_uint8 wrExcResv : 1;
+        vmk_uint8 excAcsResv : 1;
+        vmk_uint8 wrExcRegOnlyResv : 1;
+        vmk_uint8 excAcsRegOnlyResv : 1;
+        vmk_uint8 wrExcAllRegOnlyResv : 1;
+        vmk_uint8 excAcsAllRegOnlyResv : 1;
+        vmk_uint8 reserved : 1;
     } resCap;
     /**
      * @brief Format Progress Indicator
@@ -2737,9 +2698,10 @@ struct iden_namespace
      * formatted with the format specified by the FLBAS and DPS fields in this data
      * structure.
      */
-    struct {
-       vmk_uint8 pctRemFmt :7;
-       vmk_uint8 fmtProgIndtSup :1;
+    struct
+    {
+        vmk_uint8 pctRemFmt : 7;
+        vmk_uint8 fmtProgIndtSup : 1;
     } fpi;
     /**
      * @brief reserved
@@ -2838,8 +2800,8 @@ struct iden_namespace
     /**
      * @brief reserved
      */
-    vmk_uint8 reservedE[103-64+1];
-     /**
+    vmk_uint8 reservedE[103 - 64 + 1];
+    /**
      * @brief Namespace Globally Unique Identifier
      * This field contains a 128-bit value that is globally unique and assigned to the
      * namespace when the namespace is created. This field remains fixed throughout the
@@ -2855,17 +2817,18 @@ struct iden_namespace
      * The controller shall specify a globally unique namespace identifier in this field
      * or the EUI64 field when the namespace is created.
      */
-    struct {
-       vmk_uint8 vendorSpecExtId[8];
-       vmk_uint8 extId[5];
-       vmk_uint8 cmpyId[3];
+    struct
+    {
+        vmk_uint8 vendorSpecExtId[8];
+        vmk_uint8 extId[5];
+        vmk_uint8 cmpyId[3];
     } nguid;
 
     /**
      * @brief Reserved
      * Removed it would break the compatiblity?
      */
-//    vmk_uint8 reservedA[119-30+1];
+    //    vmk_uint8 reservedA[119-30+1];
     /**
      * @brief IEEE Extended Unique Identifier (EUI64)
      */
@@ -2880,13 +2843,13 @@ struct iden_namespace
     /**
      * @brief Reserved
      */
-    vmk_uint8 reservedB[383-192+1];
+    vmk_uint8 reservedB[383 - 192 + 1];
     /**
      * @brief Vendor Specific
      *
      * This range of bytes is allocated for vendor specific usage.
      */
-    vmk_uint8 vendor[4095-384+1];
+    vmk_uint8 vendor[4095 - 384 + 1];
 };
 
 /**
@@ -2962,11 +2925,12 @@ struct iden_controller
      *        Express ports. If cleared to ‘0’ then the NVM subsystem contains only a
      *        single PCI Express port.
      */
-    struct {
-       vmk_uint8 mulPorts :1;
-       vmk_uint8 mulCtrlrs :1;
-       vmk_uint8 sriov :1;
-       vmk_uint8 reserved :5;
+    struct
+    {
+        vmk_uint8 mulPorts : 1;
+        vmk_uint8 mulCtrlrs : 1;
+        vmk_uint8 sriov : 1;
+        vmk_uint8 reserved : 5;
     } cmic;
     /**
      * @brief Maximum Data Transfer Size
@@ -3000,12 +2964,13 @@ struct iden_controller
      * section 3.1.2. Implementations compliant to revision 1.2 or later of this
      * specification shall report a non-zero value in this field.
      */
-    struct {
-       vmk_uint32 reserved :8;
-       vmk_uint32 mnr :8;
-       vmk_uint32 mjr :16;
+    struct
+    {
+        vmk_uint32 reserved : 8;
+        vmk_uint32 mnr : 8;
+        vmk_uint32 mjr : 16;
     } ver;
-     /**
+    /**
      * @brief RTD3 Resume Latency
      *
      * This field indicates the typical latency in microseconds resuming from Runtime
@@ -3014,7 +2979,7 @@ struct iden_controller
      * this field.
      */
     vmk_uint32 rtd3r;
-     /**
+    /**
      * @brief RTD3 Entry Latency
      *
      * This field indicates the typical latency in microseconds to enter Runtime D3
@@ -3023,7 +2988,7 @@ struct iden_controller
      * field.
      */
     vmk_uint32 rtd3e;
-     /**
+    /**
      * @brief Optional Asynchronouos Events Supported
      *
      * This field indicates the optional asynchronous events supported by the controller.
@@ -3038,15 +3003,16 @@ struct iden_controller
      *
      * Bits 7:0 are reserved.
      */
-    struct {
-       vmk_uint32 reserved1 :8;
-       vmk_uint32 nsChgEvent :1;
-       vmk_uint32 reserved2 :23;
+    struct
+    {
+        vmk_uint32 reserved1 : 8;
+        vmk_uint32 nsChgEvent : 1;
+        vmk_uint32 reserved2 : 23;
     } oaes;
     /**
      * @brief Reserved
      */
-    vmk_uint8 reservedA[255-96+1];
+    vmk_uint8 reservedA[255 - 96 + 1];
     /**
      * @brief Optional Admin Command Support
      *
@@ -3156,9 +3122,10 @@ struct iden_controller
      *       transitions. If cleared to ‘0’ then the controller does not support
      *       autonomous power state transitions.
      */
-    struct {
-       vmk_uint8 autoPowerStX :1;
-       vmk_uint8 reserved :7;
+    struct
+    {
+        vmk_uint8 autoPowerStX : 1;
+        vmk_uint8 reserved : 7;
     } apsta;
     /**
      * @brief Warning Composite Temperature Threshold
@@ -3240,17 +3207,18 @@ struct iden_controller
      * This field indicates if the controller supports one or more Replay Protected
      * Memory Blocks (RPMBs) and the capabilities. Refer to section 8.10.
      */
-    struct {
-       vmk_uint32 rpmbUnitsNum :3;
-       vmk_uint32 authMethod :3;
-       vmk_uint32 reserved :10;
-       vmk_uint32 totalSize :8;
-       vmk_uint32 accessSize :8;
+    struct
+    {
+        vmk_uint32 rpmbUnitsNum : 3;
+        vmk_uint32 authMethod : 3;
+        vmk_uint32 reserved : 10;
+        vmk_uint32 totalSize : 8;
+        vmk_uint32 accessSize : 8;
     } rpmbs;
     /**
      * @brief Reserved
      */
-    vmk_uint8 reservedB[511-316+1];
+    vmk_uint8 reservedB[511 - 316 + 1];
     /**
      * @brief Submission Queue Entry Size
      *
@@ -3285,7 +3253,7 @@ struct iden_controller
     /**
      * @brief Reserved
      */
-    vmk_uint8 reservedC[515-514+1];
+    vmk_uint8 reservedC[515 - 514 + 1];
     /**
      * @brief Number of Namespaces
      *
@@ -3400,7 +3368,7 @@ struct iden_controller
      * @brief Reserved
      */
     vmk_uint8 reservedG;
-     /**
+    /**
      * @brief Atomic Compare & Write Unit
      *
      * This field indicates the size of the write operation guaranteed to be written
@@ -3419,28 +3387,29 @@ struct iden_controller
      * shall be 0h.
      */
     vmk_uint16 acwu;
-     /**
+    /**
      * @brief Reserved
      */
     vmk_uint16 reservedH;
-     /**
+    /**
      * @brief SGL Support
      *
      * This field indicates if SGLs are supported for the NVM Command Set and the
      * particular SGL types supported. Refer to section 4.4.
      */
-    struct {
-       vmk_uint32 sglsSup :1;
-       vmk_uint32 reserved1 :15;
-       vmk_uint32 sglsBitBuckDescSup :1;
-       vmk_uint32 byteAlignedContPhyBufSup :1;
-       vmk_uint32 sglsLargerThanData :1;
-       vmk_uint32 reserved2 :13;
+    struct
+    {
+        vmk_uint32 sglsSup : 1;
+        vmk_uint32 reserved1 : 15;
+        vmk_uint32 sglsBitBuckDescSup : 1;
+        vmk_uint32 byteAlignedContPhyBufSup : 1;
+        vmk_uint32 sglsLargerThanData : 1;
+        vmk_uint32 reserved2 : 13;
     } sgls;
     /**
      * @brief Reserved
      */
-    vmk_uint8 reservedE[2047-540+1];
+    vmk_uint8 reservedE[2047 - 540 + 1];
     /**
      * @brief Power State Descriptors
      *
@@ -3452,7 +3421,7 @@ struct iden_controller
      * @brief Vendor Specific
      * This range of bytes is allocated for vendor specific usage.
      */
-    vmk_uint8 resevedF[4095-3072+1];
+    vmk_uint8 resevedF[4095 - 3072 + 1];
 };
 
 /* IOCTL/Mgmt interface requirements*/
@@ -3464,48 +3433,50 @@ struct iden_controller
  * of the sturcture. To ensure size of structure is the same, we should always align 8 bytes.
  * See PR #1213822
  */
-struct usr_io {
-   struct nvme_cmd cmd;         /* Submission queue entry. */
-   struct cq_entry comp;        /* Completion entry */
-   vmk_uint8    namespaceID;    /* Namespace ID, -1 for non-specific */
-   vmk_uint8    direction;      /* direction TO_DEVICE/FROM_DEVICE */
-   vmk_uint16   reserved;       /* reserved */
-   vmk_uint32   status;         /* Command status */
-   vmk_uint32   length;         /* data length */
-   vmk_uint32   meta_length;    /* meta data length */
-   vmk_uint64   timeoutUs;      /* timeout in microseconds */
-   vmk_uint64   addr;           /* data address */
-   vmk_uint64   meta_addr;      /* meta data address */
+struct usr_io
+{
+    struct nvme_cmd cmd;         /* Submission queue entry. */
+    struct cq_entry comp;        /* Completion entry */
+    vmk_uint8       namespaceID; /* Namespace ID, -1 for non-specific */
+    vmk_uint8       direction;   /* direction TO_DEVICE/FROM_DEVICE */
+    vmk_uint16      reserved;    /* reserved */
+    vmk_uint32      status;      /* Command status */
+    vmk_uint32      length;      /* data length */
+    vmk_uint32      meta_length; /* meta data length */
+    vmk_uint64      timeoutUs;   /* timeout in microseconds */
+    vmk_uint64      addr;        /* data address */
+    vmk_uint64      meta_addr;   /* meta data address */
 };
 
 /**
  * Ioctl function command definitions
  */
-enum {
-   NVME_IOCTL_START,             /* Placeholder, no-op */
-   NVME_IOCTL_ADMIN_CMD,         /* Pass-through admin command */
-   NVME_IOCTL_IO_CMD,            /* Pass-through NVM command */
-   NVME_IOCTL_RESTART,           /* Restart controller */
-   NVME_IOCTL_HOTREMOVE,         /* Hot remove */
-   NVME_IOCTL_HOTADD,            /* Hot add device */
-   NVME_IOCTL_EVENT,             /* Acquire asynchronous events */
-   NVME_IOCTL_SET_CACHE,         /* Configure cache */
-   NVME_IOCTL_DUMP_REGS,         /* Dump NVM registers */
-   NVME_IOCTL_SET_CTRLR_ONLINE,  /* Online all namespaces on the controller */
-   NVME_IOCTL_SET_CTRLR_OFFLINE, /* Offline all namespaces on the controller */
-   NVME_IOCTL_DUMP_STATS_DATA,   /* Dump statistics data */
-   NVME_IOCTL_SET_NS_ONLINE,     /* Online specific namespace */
-   NVME_IOCTL_SET_NS_OFFLINE,    /* Offline specific namespace */
-   NVME_IOCTL_UPDATE_NS,         /* Update namespace attributes */
-   NVME_IOCTL_GET_NS_STATUS,     /* Get status of specific namespace */
-   NVME_IOCTL_GET_INT_VECT_NUM,  /* Get number of interrupt vectors */
+enum
+{
+    NVME_IOCTL_START,             /* Placeholder, no-op */
+    NVME_IOCTL_ADMIN_CMD,         /* Pass-through admin command */
+    NVME_IOCTL_IO_CMD,            /* Pass-through NVM command */
+    NVME_IOCTL_RESTART,           /* Restart controller */
+    NVME_IOCTL_HOTREMOVE,         /* Hot remove */
+    NVME_IOCTL_HOTADD,            /* Hot add device */
+    NVME_IOCTL_EVENT,             /* Acquire asynchronous events */
+    NVME_IOCTL_SET_CACHE,         /* Configure cache */
+    NVME_IOCTL_DUMP_REGS,         /* Dump NVM registers */
+    NVME_IOCTL_SET_CTRLR_ONLINE,  /* Online all namespaces on the controller */
+    NVME_IOCTL_SET_CTRLR_OFFLINE, /* Offline all namespaces on the controller */
+    NVME_IOCTL_DUMP_STATS_DATA,   /* Dump statistics data */
+    NVME_IOCTL_SET_NS_ONLINE,     /* Online specific namespace */
+    NVME_IOCTL_SET_NS_OFFLINE,    /* Offline specific namespace */
+    NVME_IOCTL_UPDATE_NS,         /* Update namespace attributes */
+    NVME_IOCTL_GET_NS_STATUS,     /* Get status of specific namespace */
+    NVME_IOCTL_GET_INT_VECT_NUM,  /* Get number of interrupt vectors */
 };
 
 /* full name space for get log page query*/
-#define NVME_FULL_NAMESPACE  0xFFFFFFFF
+#define NVME_FULL_NAMESPACE 0xFFFFFFFF
 
-#define XFER_TO_DEV           0
-#define XFER_FROM_DEV         1
+#define XFER_TO_DEV         0
+#define XFER_FROM_DEV       1
 
 /**
  * Structure to handle statistic parameters
@@ -3513,61 +3484,61 @@ enum {
 typedef struct
 {
 #if (NVME_ENABLE_IO_STATS == 1)
-   // TotalRequests - counter for holding the Total number of requests
-   vmk_uint64  TotalRequests;
+    // TotalRequests - counter for holding the Total number of requests
+    vmk_uint64 TotalRequests;
 
-   // TotalCompletions - counter for holding Total number of completions
-   vmk_uint64 TotalCompletions;
+    // TotalCompletions - counter for holding Total number of completions
+    vmk_uint64 TotalCompletions;
 
-   // TotalInterrupts - counter for holding Total number of interrupts
-   vmk_uint64 TotalInterrupts;
+    // TotalInterrupts - counter for holding Total number of interrupts
+    vmk_uint64 TotalInterrupts;
 
-   // TotalReads - counter for holding total number of reads
-   vmk_uint64 TotalReads;
+    // TotalReads - counter for holding total number of reads
+    vmk_uint64 TotalReads;
 
-   // TotalWrites - Counter for holding total number of writes
-   vmk_uint64 TotalWrites;
+    // TotalWrites - Counter for holding total number of writes
+    vmk_uint64 TotalWrites;
 
-   // QFullNoFreeCmdSlots - counter to hold how many times the driver hits the IO Queue full case
-   vmk_uint64 QFULLNoFreeCmdSlots;
+    // QFullNoFreeCmdSlots - counter to hold how many times the driver hits the IO Queue full case
+    vmk_uint64 QFULLNoFreeCmdSlots;
 
-   #if (NVME_ENABLE_IO_STATS_ADDITIONAL == 1)
-      // UnalignedReads - Counter for holding the total unaligned reads
-      vmk_uint64 UnalignedReads;
+#    if (NVME_ENABLE_IO_STATS_ADDITIONAL == 1)
+    // UnalignedReads - Counter for holding the total unaligned reads
+    vmk_uint64 UnalignedReads;
 
-      // UnalignedWrites - Counter for holding the total Unaligned Writes
-      vmk_uint64 UnalignedWrites;
-   #endif
+    // UnalignedWrites - Counter for holding the total Unaligned Writes
+    vmk_uint64 UnalignedWrites;
+#    endif
 #endif
 
 #if (NVME_ENABLE_EXCEPTION_STATS == 1)
-   // TMAbortReq - counter for holding total Task Managment Abort requests
-   vmk_uint64 TMAbortReq;
+    // TMAbortReq - counter for holding total Task Managment Abort requests
+    vmk_uint64 TMAbortReq;
 
-   // TMVirtResets - counter for holding total Task Managment Virtual Reset requests
-   vmk_uint64 TMVirtResets;
+    // TMVirtResets - counter for holding total Task Managment Virtual Reset requests
+    vmk_uint64 TMVirtResets;
 
-   // TMLunResets - counter for holding total Task Managemnt Lun Reset requests
-   vmk_uint64 TMLunResets;
+    // TMLunResets - counter for holding total Task Managemnt Lun Reset requests
+    vmk_uint64 TMLunResets;
 
-   // TMDeviceResets - counter for holding total Task Managemnt Device Reset requests
-   vmk_uint64 TMDeviceResets;
+    // TMDeviceResets - counter for holding total Task Managemnt Device Reset requests
+    vmk_uint64 TMDeviceResets;
 
-   // TMBusResets - counter for holding total Task Managemnt Bus Reset requests
-   vmk_uint64 TMBusResets;
+    // TMBusResets - counter for holding total Task Managemnt Bus Reset requests
+    vmk_uint64 TMBusResets;
 
-   // CMDTimeouts - counter for holding total command timeouts
-   vmk_uint64 CMDTimeouts;
+    // CMDTimeouts - counter for holding total command timeouts
+    vmk_uint64 CMDTimeouts;
 #endif
 
 } STATS_StatisticData;
 
 #if (NVME_ENABLE_STATISTICS == 1)
-   #define STATS_Increment(stats_field) (stats_field++)
-   #define STATS_Decrement(stats_field) (stats_field--)
+#    define STATS_Increment(stats_field) (stats_field++)
+#    define STATS_Decrement(stats_field) (stats_field--)
 #else
-   #define STATS_Increment(stats_field)
-   #define STATS_Decrement(stats_field)
+#    define STATS_Increment(stats_field)
+#    define STATS_Decrement(stats_field)
 #endif
 
-#endif  /* NVME_EXPRESS_H */
+#endif /* NVME_EXPRESS_H */
