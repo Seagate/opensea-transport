@@ -18,3 +18,5 @@ option('cissraid', type : 'feature', value : 'enabled')
 option('irstpt', type : 'feature', value : 'enabled')
 #openfabrics NVMe interface support. No impact to anything other than Windows builds
 option('ofnvme', type : 'feature', value : 'enabled')
+#AAC Raid driver support. Currently Windows only as other systems don't tie into this scan yet.
+option('aacraid', type : 'feature', value : 'enabled')

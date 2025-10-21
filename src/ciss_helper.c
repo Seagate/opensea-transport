@@ -258,7 +258,7 @@ static bool create_OS_CISS_Handle_Name(const char *input, char *osHandle)
 }
 
 #define PARSE_COUNT_SUCCESS 3
-
+#define OS_CISS_HANDLE_MAX_FIELDS 3
 static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t *physicalDriveNumber)
 {
     uint8_t parseCount = 0;
@@ -273,7 +273,7 @@ static uint8_t parse_CISS_Handle(const char * devName, char *osHandle, uint16_t 
             char *saveptr = M_NULLPTR;
             rsize_t duplen = safe_strlen(dup);
             char *token = common_String_Token(dup, &duplen, ":", &saveptr);
-            while (token && counter < 3)
+            while (token && counter < OS_CISS_HANDLE_MAX_FIELDS)
             {
                 switch (counter)
                 {

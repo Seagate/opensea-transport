@@ -243,6 +243,7 @@ src_files = ['src/asmedia_nvme_helper.c',
              'src/ata_cmds.c', 
              'src/ata_helper.c', 
              'src/ata_legacy_cmds.c', 
+             'src/aac_raid_helper.c',
              'src/ciss_helper.c',
              'src/cmds.c', 
              'src/common_public.c', 
@@ -279,6 +280,11 @@ endif
 cisssupport = get_option('cissraid')
 irstsupport = get_option('irstpt')
 ofnvmesupport = get_option('ofnvme')
+
+aacraidsupport = get_option('aacraid')
+if aacraidsupport.enabled()
+  add_project_arguments('-DENABLE_AAC', language : 'c')
+endif
 
 os_deps = []
 

@@ -4903,6 +4903,14 @@ eReturnValues get_Device_Count(uint32_t * numberOfDevices, uint64_t flags)
 
     *numberOfDevices = found;
 
+#if defined (ENABLE_AAC)
+
+    uint32_t aacRaidCount = 0;
+    eReturnValues aacRet = get_AAC_RAID_Device_Count(&aacRaidCount, flags, &beginRaidHandleList);
+    printf("AAC Raid Count = %" PRIu32 "\n", aacRaidCount);
+
+#endif //AAC RAID support
+
 #if defined (ENABLE_CSMI)
     if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))//check whether they want CSMI devices or not
     {

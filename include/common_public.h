@@ -1149,6 +1149,14 @@ extern "C"
         safe_Free(M_REINTERPRET_CAST(void**, cissdevinfo));
     }
 
+    //forward declare aac device 
+    typedef struct _aacDeviceInfo aacDeviceInfo,*ptrAacDeviceInfo;
+
+    static M_INLINE void safe_free_aac_dev_info(aacDeviceInfo **aacdevinfo)
+    {
+        safe_Free(M_REINTERPRET_CAST(void**, aacdevinfo));
+    }
+
 #define OS_HANDLE_NAME_MAX_LENGTH 256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
 #define OS_SECOND_HANDLE_NAME_LENGTH 30
@@ -1305,6 +1313,7 @@ extern "C"
         }fileSystemInfo;
         ptrCsmiDeviceInfo csmiDeviceData;//This is a pointer because it will only be allocated when CSMI is supported. This is also used by Intel RST NVMe passthrough which is basically an extension of CSMI
         ptrCissDeviceInfo cissDeviceData;//This pointer is allocated only when CCISS is supported.
+        ptrAacDeviceInfo aacDeviceData;//This pointer is allocated only when aac raid is supported.
         uint8_t padd[6];//padd to multiple of 8 bytes
     }OSDriveInfo;
 
