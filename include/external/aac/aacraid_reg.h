@@ -59,35 +59,7 @@
  */
 
 //Seagate added include
-#include <stdint.h>
-
-//TODO: Switch to opensea-common packing macro
-//Seagate added macro for help with cross-compiler packing
-#if defined(_MSC_VER)
-	#define M_AAC_PACKED_STRUCT(name, ...) \
-		__pragma(pack(push, 1));\
-		struct name { __VA_ARGS__ }; \
-		__pragma(pack(pop))
-#elif defined(__GNUC__) || defined(__clang__) || defined (__MINGW32__) || defined (__MINGW64__)
-	#define M_AAC_PACKED_STRUCT(name, ...) \
-		struct name { __VA_ARGS__ } __attribute__((packed))
-#else
-	#define M_AAC_PACKED_STRUCT(name, ...) \
-		struct name { __VA_ARGS__ }
-#endif
-
-#if defined(_MSC_VER)
-	#define M_AAC_PACKED_UNION(name, ...) \
-		__pragma(pack(push, 1));\
-		union name { __VA_ARGS__ }; \
-		__pragma(pack(pop))
-#elif defined(__GNUC__) || defined(__clang__) || defined (__MINGW32__) || defined (__MINGW64__)
-	#define M_AAC_PACKED_UNION(name, ...) \
-		union name { __VA_ARGS__ } __attribute__((packed))
-#else
-	#define M_AAC_PACKED_UNION(name, ...) \
-		union name { __VA_ARGS__ }
-#endif
+#include "common_types.h"
 
 /*
  * Misc. magic numbers.
@@ -105,7 +77,7 @@
  */
 
 /* transport FIB header (PMC) */
-M_AAC_PACKED_STRUCT(aac_fib_xporthdr,
+M_PACKED_STRUCT(aac_fib_xporthdr,
 	uint64_t	HostAddress;	/* FIB host address w/o xport header */
 	uint32_t	Size;			/* FIB size excluding xport header */
 	uint32_t	Handle;			/* driver handle to reference the FIB */
@@ -116,7 +88,7 @@ M_AAC_PACKED_STRUCT(aac_fib_xporthdr,
  * List structure used to chain FIBs (used by the adapter - we hang FIBs off
  * our private command structure and don't touch these)
  */
-M_AAC_PACKED_STRUCT(aac_fib_list_entry,
+M_PACKED_STRUCT(aac_fib_list_entry,
 	uint32_t	Flink;
 	uint32_t	Blink;
 );
@@ -125,7 +97,7 @@ M_AAC_PACKED_STRUCT(aac_fib_list_entry,
  * FIB (FSA Interface Block?); this is the datastructure passed between the host
  * and adapter.
  */
-M_AAC_PACKED_STRUCT(aac_fib_header,
+M_PACKED_STRUCT(aac_fib_header,
 	uint32_t		XferState;
 	uint16_t		Command;
 	uint8_t		StructType;
@@ -143,10 +115,10 @@ M_AAC_PACKED_STRUCT(aac_fib_header,
 	uint32_t		Next;
 );
 
-#define AAC_FIB_DATASIZE	(512 - sizeof(struct aac_fib_header))
+#define AAC_FIB_DATASIZE	(512 - sizeof(aac_fib_header))
 
-M_AAC_PACKED_STRUCT(aac_fib,
-	struct aac_fib_header	Header;
+M_PACKED_STRUCT(aac_fib,
+	aac_fib_header	Header;
 	uint8_t	data[AAC_FIB_DATASIZE];
 );
 
@@ -294,7 +266,7 @@ typedef enum {
 
 #define	AAC_PAGE_SIZE				4096
 
-M_AAC_PACKED_UNION(aac_adapter_init,
+M_PACKED_UNION(aac_adapter_init,
 	struct _r7 {
 		uint32_t	InitStructRevision;
 		uint32_t	NoOfMSIXVectors;
@@ -396,17 +368,17 @@ typedef enum {
 /*
  * Host-side scatter/gather list for 32-bit commands.
  */
-M_AAC_PACKED_STRUCT(aac_sg_entry,
+M_PACKED_STRUCT(aac_sg_entry,
 	uint32_t	SgAddress;
 	uint32_t	SgByteCount;
 );
 
-M_AAC_PACKED_STRUCT(aac_sg_entry64,
+M_PACKED_STRUCT(aac_sg_entry64,
 	uint64_t	SgAddress;
 	uint32_t	SgByteCount;
 );
 
-M_AAC_PACKED_STRUCT(aac_sg_entryraw,
+M_PACKED_STRUCT(aac_sg_entryraw,
 	uint32_t	Next;		/* reserved for FW use */
 	uint32_t	Prev;		/* reserved for FW use */
 	uint64_t	SgAddress;
@@ -414,33 +386,33 @@ M_AAC_PACKED_STRUCT(aac_sg_entryraw,
 	uint32_t	Flags;		/* reserved for FW use */
 );
 
-M_AAC_PACKED_STRUCT(aac_sg_table,
+M_PACKED_STRUCT(aac_sg_table,
 	uint32_t		SgCount;
 	//Seagate NOTE: Original FreeBSD driver code sets this to zero, but linux and illumos both use 1. Using 1 to keep compiler compatible and to make our code simpler -TJE
-	struct aac_sg_entry	SgEntry[1];
+	aac_sg_entry	SgEntry[1];
 );
 
 /*
  * Host-side scatter/gather list for 64-bit commands.
  */
-M_AAC_PACKED_STRUCT(aac_sg_table64,
+M_PACKED_STRUCT(aac_sg_table64,
 	uint32_t	SgCount;
 	//Seagate NOTE: Original FreeBSD driver code sets this to zero, but linux and illumos both use 1. Using 1 to keep compiler compatible and to make our code simpler -TJE
-	struct aac_sg_entry64	SgEntry64[1];
+	aac_sg_entry64	SgEntry64[1];
 );
 
 /*
  * s/g list for raw commands
  */
-M_AAC_PACKED_STRUCT(aac_sg_tableraw,
+M_PACKED_STRUCT(aac_sg_tableraw,
 	uint32_t	SgCount;
-	struct aac_sg_entryraw	SgEntryRaw[0];
+	aac_sg_entryraw	SgEntryRaw[0];
 );
 
 /*
  * new ieee1212 s/g element
  */
-M_AAC_PACKED_STRUCT(aac_sge_ieee1212,
+M_PACKED_STRUCT(aac_sge_ieee1212,
 	uint32_t	addrLow;
 	uint32_t	addrHigh;
 	uint32_t	length;
@@ -450,7 +422,7 @@ M_AAC_PACKED_STRUCT(aac_sge_ieee1212,
 /*
  * Container creation data
  */
-M_AAC_PACKED_STRUCT(aac_container_creation,
+M_PACKED_STRUCT(aac_container_creation,
 	uint8_t	ViaBuildNumber;
 	uint8_t	MicroSecond;
 	uint8_t	Via;		/* 1 = FSU, 2 = API, etc. */
@@ -479,7 +451,7 @@ typedef enum {
 	RevRemoteApi
 } RevComponent;
 
-M_AAC_PACKED_STRUCT(FsaRevision,
+M_PACKED_STRUCT(FsaRevision,
 	union {
 		struct {
 			uint8_t	dash;
@@ -628,7 +600,7 @@ typedef enum
 /* 
  * Structure used to respond to a RequestAdapterInfo fib.
  */
-M_AAC_PACKED_STRUCT(aac_adapter_info,
+M_PACKED_STRUCT(aac_adapter_info,
 	AAC_Platform		PlatformBase;    /* adapter type */
 	AAC_CpuType		CpuArchitecture; /* adapter CPU type */
 	AAC_CpuSubType		CpuVariant;      /* adapter CPU subtype */
@@ -636,10 +608,10 @@ M_AAC_PACKED_STRUCT(aac_adapter_info,
 	uint32_t		ExecutionMem;    /* adapter Execution Memory size */
 	uint32_t		BufferMem;       /* adapter Data Memory */
 	uint32_t		TotalMem;        /* adapter Total Memory */
-	struct FsaRevision	KernelRevision;  /* adapter Kernel Software Revision */
-	struct FsaRevision	MonitorRevision; /* adapter Monitor/Diagnostic Software Revision */
-	struct FsaRevision	HardwareRevision;/* TBD */
-	struct FsaRevision	BIOSRevision;    /* adapter BIOS Revision */
+	FsaRevision	KernelRevision;  /* adapter Kernel Software Revision */
+	FsaRevision	MonitorRevision; /* adapter Monitor/Diagnostic Software Revision */
+	FsaRevision	HardwareRevision;/* TBD */
+	FsaRevision	BIOSRevision;    /* adapter BIOS Revision */
 	uint32_t		ClusteringEnabled;
 	uint32_t		ClusterChannelMask;
 	uint64_t		SerialNumber;
@@ -666,7 +638,7 @@ M_AAC_PACKED_STRUCT(aac_adapter_info,
 /* 
  * Structure used to respond to a RequestSupplementAdapterInfo fib.
  */
-M_AAC_PACKED_STRUCT(vpd_info,
+M_PACKED_STRUCT(vpd_info,
 	uint8_t		AssemblyPn[8];
 	uint8_t		FruPn[8];
 	uint8_t		BatteryFruPn[8];
@@ -677,7 +649,7 @@ M_AAC_PACKED_STRUCT(vpd_info,
 #define	MFG_PCBA_SERIAL_NUMBER_WIDTH	12
 #define	MFG_WWN_WIDTH			8
 
-M_AAC_PACKED_STRUCT(aac_supplement_adapter_info,
+M_PACKED_STRUCT(aac_supplement_adapter_info,
 	/* The assigned Adapter Type Text, extra byte for null termination */
 	int8_t		AdapterTypeText[17+1];
 	/* Pad for the text above */
@@ -697,13 +669,13 @@ M_AAC_PACKED_STRUCT(aac_supplement_adapter_info,
 	/* The current number of Ports on a SAS controller, 0 otherwise */
 	uint32_t	CurrentNumberPorts;
 
-	struct vpd_info VpdInfo;
+	vpd_info VpdInfo;
 
 	/* Firmware Revision (Vmaj.min-dash.) */
-	struct FsaRevision	FlashFirmwareRevision;
+	FsaRevision	FlashFirmwareRevision;
 	uint32_t	RaidTypeMorphOptions;
 	/* Firmware's boot code Revision (Vmaj.min-dash.) */
-	struct FsaRevision	FlashFirmwareBootRevision;
+	FsaRevision	FlashFirmwareBootRevision;
 	/* PCBA serial no. from th MFG sector */
 	uint8_t	MfgPcbaSerialNo[MFG_PCBA_SERIAL_NUMBER_WIDTH];
 	/* WWN from the MFG sector */
@@ -826,14 +798,14 @@ typedef enum {
 /*
  * NVRAM Info structure returned for NVRAM_GetInfo call
  */
-M_AAC_PACKED_STRUCT(aac_nvramdevinfo,
+M_PACKED_STRUCT(aac_nvramdevinfo,
 	uint32_t	NV_Enabled;	/* write caching enabled */
 	uint32_t	NV_Error;	/* device in error state */
 	uint32_t	NV_NDirty;	/* count of dirty NVRAM buffers */
 	uint32_t	NV_NActive;	/* count of NVRAM buffers being written */
 );
 
-M_AAC_PACKED_STRUCT(aac_nvraminfo,
+M_PACKED_STRUCT(aac_nvraminfo,
 	AAC_NVSTATUS		NV_Status;	/* nvram subsystem status */
 	AAC_NVBATTSTATUS	NV_BattStatus;	/* battery status */
 	uint32_t		NV_Size;	/* size of WriteCache NVRAM in bytes */
@@ -843,7 +815,7 @@ M_AAC_PACKED_STRUCT(aac_nvraminfo,
 	uint32_t		NV_NClean;	/* Num clean NVRAM buffers */
 	uint32_t		NV_NActive;	/* Num NVRAM buffers being written */
 	uint32_t		NV_NBrokered;	/* Num brokered NVRAM buffers */
-	struct aac_nvramdevinfo	NV_DevInfo[AAC_NFILESYS];	/* per device info */
+	aac_nvramdevinfo	NV_DevInfo[AAC_NFILESYS];	/* per device info */
 	uint32_t		NV_BattNeedsReconditioning;	/* boolean */
 	uint32_t		NV_TotalSize;	/* size of all non-volatile memories in bytes */
 );
@@ -911,27 +883,27 @@ typedef enum {
 	AifJobCtlMax = 499		/* Max Adapter type operation */
 } AAC_AifJobType;
 
-M_AAC_PACKED_STRUCT(aac_AifContainers,
+M_PACKED_STRUCT(aac_AifContainers,
 	uint32_t	src;		/* from/master */
 	uint32_t	dst;		/* to/slave */
 );
 
 union aac_AifJobClient {
-	struct aac_AifContainers	container;	/* For Container and
+	aac_AifContainers	container;	/* For Container and
 							 * filesystem progress
 							 * ops; */
 	int32_t				scsi_dh;	/* For SCSI progress
 							 * ops */
 };
 
-M_AAC_PACKED_STRUCT(aac_AifJobDesc,
+M_PACKED_STRUCT(aac_AifJobDesc,
 	uint32_t		jobID;		/* DO NOT FILL IN! Will be filled in by AIF */
 	AAC_AifJobType		type;		/* Operation that is being performed */
 	union aac_AifJobClient	client;		/* Details */
 );
 
-M_AAC_PACKED_STRUCT(aac_AifJobProgressReport,
-	struct aac_AifJobDesc	jd;
+M_PACKED_STRUCT(aac_AifJobProgressReport,
+	aac_AifJobDesc	jd;
 	AAC_AifJobStatus	status;
 	uint32_t		finalTick;
 	uint32_t		currentTick;
@@ -984,30 +956,30 @@ typedef enum {
 	AifRawDeviceRemove			/* Raw device Failure event */
 } AAC_AifEventNotifyType;
 
-M_AAC_PACKED_STRUCT(aac_AifEnsGeneric,
+M_PACKED_STRUCT(aac_AifEnsGeneric,
 	char	text[132];		/* Generic text */
 );
 
-M_AAC_PACKED_STRUCT(aac_AifEnsDeviceFailure,
+M_PACKED_STRUCT(aac_AifEnsDeviceFailure,
 	uint32_t	deviceHandle;	/* SCSI device handle */
 );
 
-M_AAC_PACKED_STRUCT(aac_AifEnsMirrorFailover,
+M_PACKED_STRUCT(aac_AifEnsMirrorFailover,
 	uint32_t	container;	/* Container with failed element */
 	uint32_t	failedSlice;	/* Old slice which failed */
 	uint32_t	creatingSlice;	/* New slice used for auto-create */
 );
 
-M_AAC_PACKED_STRUCT(aac_AifEnsContainerChange,
+M_PACKED_STRUCT(aac_AifEnsContainerChange,
 	uint32_t	container[2];	/* container that changed, -1 if no container */
 );
 
-M_AAC_PACKED_STRUCT(aac_AifEnsContainerEvent,
+M_PACKED_STRUCT(aac_AifEnsContainerEvent,
 	uint32_t	container;	/* container number  */
 	uint32_t	eventType;	/* event type */
 );
 
-M_AAC_PACKED_STRUCT(aac_AifEnsEnclosureEvent,
+M_PACKED_STRUCT(aac_AifEnsEnclosureEvent,
 	uint32_t	empID;		/* enclosure management proc number  */
 	uint32_t	unitID;		/* unitId, fan id, power supply id, slot id, tempsensor id.  */
 	uint32_t	eventType;	/* event type */
@@ -1018,13 +990,13 @@ typedef enum {
 	AIF_EM_DRIVE_REMOVAL
 } aac_AifEMEventType;
 
-M_AAC_PACKED_STRUCT(aac_AifEnsBatteryEvent,
+M_PACKED_STRUCT(aac_AifEnsBatteryEvent,
 	AAC_NVBATT_TRANSITION	transition_type;	/* eg from low to ok */
 	AAC_NVBATTSTATUS	current_state;		/* current batt state */
 	AAC_NVBATTSTATUS	prior_state;		/* prev batt state */
 );
 
-M_AAC_PACKED_STRUCT(aac_AifEnsDiskSetEvent,
+M_PACKED_STRUCT(aac_AifEnsDiskSetEvent,
 	uint32_t	eventType;
 	uint64_t	DsNum;
 	uint64_t	CreatorId;
@@ -1040,23 +1012,23 @@ typedef enum {
 	/* (partner has rebooted) */
 } AAC_ClusterAifEvent;
 
-M_AAC_PACKED_STRUCT(aac_AifEnsClusterEvent,
+M_PACKED_STRUCT(aac_AifEnsClusterEvent,
 	AAC_ClusterAifEvent	eventType;
 );
 
-M_AAC_PACKED_STRUCT(aac_AifEventNotify,
+M_PACKED_STRUCT(aac_AifEventNotify,
 	AAC_AifEventNotifyType	type;
 	union {
-		struct aac_AifEnsGeneric		EG;
-		struct aac_AifEnsDeviceFailure		EDF;
-		struct aac_AifEnsMirrorFailover		EMF;
-		struct aac_AifEnsContainerChange	ECC;
-		struct aac_AifEnsContainerEvent		ECE;
-		struct aac_AifEnsEnclosureEvent		EEE;
-		struct aac_AifEnsBatteryEvent		EBE;
-		struct aac_AifEnsDiskSetEvent		EDS;
-/*		struct aac_AifEnsSMARTEvent		ES;*/
-		struct aac_AifEnsClusterEvent		ECLE;
+		aac_AifEnsGeneric		EG;
+		aac_AifEnsDeviceFailure		EDF;
+		aac_AifEnsMirrorFailover		EMF;
+		aac_AifEnsContainerChange	ECC;
+		aac_AifEnsContainerEvent		ECE;
+		aac_AifEnsEnclosureEvent		EEE;
+		aac_AifEnsBatteryEvent		EBE;
+		aac_AifEnsDiskSetEvent		EDS;
+/*		aac_AifEnsSMARTEvent		ES;*/
+		aac_AifEnsClusterEvent		ECLE;
 	} data;
 );
 
@@ -1086,14 +1058,14 @@ typedef enum {
 	AifReqEvent = 200	/* PMC NEW COMM: Request the event data */
 } AAC_AifCommand;
 
-M_AAC_PACKED_STRUCT(aac_aif_command,
+M_PACKED_STRUCT(aac_aif_command,
 	AAC_AifCommand	command;	/* Tell host what type of
 					 * notify this is */
 	uint32_t	seqNumber;	/* To allow ordering of
 					 * reports (if necessary) */
 	union {
-		struct aac_AifEventNotify	EN;	/* Event notify */
-		struct aac_AifJobProgressReport	PR[1];	/* Progress report */
+		aac_AifEventNotify	EN;	/* Event notify */
+		aac_AifJobProgressReport	PR[1];	/* Progress report */
 		uint8_t			AR[AAC_AIF_REPORT_MAX_SIZE];
 		uint8_t			data[AAC_FIB_DATASIZE - 8];
 	} data;
@@ -1254,7 +1226,7 @@ typedef enum {
  * CT_PAUSE_IO is immediate minimal runtime command that is used
  * to restart the applications and cache.
  */
-M_AAC_PACKED_STRUCT(aac_pause_command,
+M_PACKED_STRUCT(aac_pause_command,
 	uint32_t	Command;
 	uint32_t	Type;
 	uint32_t	Timeout;
@@ -1274,10 +1246,10 @@ M_AAC_PACKED_STRUCT(aac_pause_command,
 /*
  * "mountable object"
  */
-M_AAC_PACKED_STRUCT(aac_mntobj,
+M_PACKED_STRUCT(aac_mntobj,
 	uint32_t			ObjectId;
 	char				FileSystemName[16];
-	struct aac_container_creation	CreateInfo;
+	aac_container_creation	CreateInfo;
 	uint32_t			Capacity;
 	uint32_t			VolType;
 	uint32_t			ObjType;
@@ -1293,23 +1265,23 @@ M_AAC_PACKED_STRUCT(aac_mntobj,
 	uint32_t			CapacityHigh;
 );
 
-M_AAC_PACKED_STRUCT(aac_mntinfo,
+M_PACKED_STRUCT(aac_mntinfo,
 	uint32_t		Command;
 	uint32_t		MntType;
 	uint32_t		MntCount;
 );
 
-M_AAC_PACKED_STRUCT(aac_mntinforesp,
+M_PACKED_STRUCT(aac_mntinforesp,
 	uint32_t		Status;
 	uint32_t		MntType;
 	uint32_t		MntRespCount;
-	struct aac_mntobj	MntTable[1];
+	aac_mntobj	MntTable[1];
 );
 
 /*
  * Container shutdown command.
  */
-M_AAC_PACKED_STRUCT(aac_closecommand,
+M_PACKED_STRUCT(aac_closecommand,
 	uint32_t	Command;
 	uint32_t	ContainerId;
 );
@@ -1317,13 +1289,13 @@ M_AAC_PACKED_STRUCT(aac_closecommand,
 /*
  * Container Config Command
  */
-M_AAC_PACKED_STRUCT(aac_ctcfg,
+M_PACKED_STRUCT(aac_ctcfg,
 	uint32_t		Command;
 	uint32_t		cmd;
 	uint32_t		param;
 );
 
-M_AAC_PACKED_STRUCT(aac_ctcfg_resp,
+M_PACKED_STRUCT(aac_ctcfg_resp,
 	uint32_t		Status;
 	uint32_t		resp;
 	uint32_t		param;
@@ -1339,7 +1311,7 @@ M_AAC_PACKED_STRUCT(aac_ctcfg_resp,
 #define AAC_BUS_DISABLED	3
 #define GetBusInfo		0x9
 
-M_AAC_PACKED_STRUCT(aac_getbusinf,
+M_PACKED_STRUCT(aac_getbusinf,
 	uint32_t		ProbeComplete;
 	uint32_t		BusCount;
 	uint32_t		TargetsPerBus;
@@ -1347,7 +1319,7 @@ M_AAC_PACKED_STRUCT(aac_getbusinf,
 	uint8_t		BusValid[AAC_SCSI_MAX_PORTS];
 );
 
-M_AAC_PACKED_STRUCT(aac_vmioctl,
+M_PACKED_STRUCT(aac_vmioctl,
 	uint32_t		Command;
 	uint32_t		ObjType;
 	uint32_t		MethId;
@@ -1356,13 +1328,13 @@ M_AAC_PACKED_STRUCT(aac_vmioctl,
 	uint32_t		IoctlBuf[1];	/* Placeholder? */
 );
 
-M_AAC_PACKED_STRUCT(aac_vmi_businf_resp,
+M_PACKED_STRUCT(aac_vmi_businf_resp,
 	uint32_t		Status;
 	uint32_t		ObjType;
 	uint32_t		MethId;
 	uint32_t		ObjId;
 	uint32_t		IoctlCmd;
-	struct aac_getbusinf	BusInf;
+	aac_getbusinf	BusInf;
 );
 
 #define AAC_BTL_TO_HANDLE(b, t, l) \
@@ -1471,62 +1443,62 @@ struct aac_cf_status_hdr {
  * These structures are packed into the 'data' area in the FIB.
  */
 
-M_AAC_PACKED_STRUCT(aac_blockread,
+M_PACKED_STRUCT(aac_blockread,
 	uint32_t		Command;	/* not FSACommand! */
 	uint32_t		ContainerId;
 	uint32_t		BlockNumber;
 	uint32_t		ByteCount;
-	struct aac_sg_table	SgMap;		/* variable size */
+	aac_sg_table	SgMap;		/* variable size */
 );
 
-M_AAC_PACKED_STRUCT(aac_blockread64,
+M_PACKED_STRUCT(aac_blockread64,
 	uint32_t		Command;
 	uint16_t		ContainerId;
 	uint16_t		SectorCount;
 	uint32_t		BlockNumber;
 	uint16_t		Pad;
 	uint16_t		Flags;
-	struct aac_sg_table64	SgMap64;
+	aac_sg_table64	SgMap64;
 );
 
-M_AAC_PACKED_STRUCT(aac_blockread_response,
+M_PACKED_STRUCT(aac_blockread_response,
 	uint32_t		Status;
 	uint32_t		ByteCount;
 );
 
-M_AAC_PACKED_STRUCT(aac_blockwrite,
+M_PACKED_STRUCT(aac_blockwrite,
 	uint32_t		Command;	/* not FSACommand! */
 	uint32_t		ContainerId;
 	uint32_t		BlockNumber;
 	uint32_t		ByteCount;
 	uint32_t		Stable;
-	struct aac_sg_table	SgMap;		/* variable size */
+	aac_sg_table	SgMap;		/* variable size */
 );
 
-M_AAC_PACKED_STRUCT(aac_blockwrite64,
+M_PACKED_STRUCT(aac_blockwrite64,
 	uint32_t		Command;	/* not FSACommand! */
 	uint16_t		ContainerId;
 	uint16_t		SectorCount;
 	uint32_t		BlockNumber;
 	uint16_t		Pad;
 	uint16_t		Flags;
-	struct aac_sg_table64	SgMap64;	/* variable size */
+	aac_sg_table64	SgMap64;	/* variable size */
 );
 
-M_AAC_PACKED_STRUCT(aac_blockwrite_response,
+M_PACKED_STRUCT(aac_blockwrite_response,
 	uint32_t		Status;
 	uint32_t		ByteCount;
 	uint32_t		Committed;
 );
 
-M_AAC_PACKED_STRUCT(aac_raw_io,
+M_PACKED_STRUCT(aac_raw_io,
 	uint64_t		BlockNumber;
 	uint32_t		ByteCount;
 	uint16_t		ContainerId;
 	uint16_t		Flags;				/* 0: W, 1: R */
 	uint16_t		BpTotal;			/* reserved for FW use */
 	uint16_t		BpComplete;			/* reserved for FW use */
-	struct aac_sg_tableraw	SgMapRaw;	/* variable size */
+	aac_sg_tableraw	SgMapRaw;	/* variable size */
 );
 
 #define RIO2_IO_TYPE		0x0003
@@ -1540,7 +1512,7 @@ M_AAC_PACKED_STRUCT(aac_raw_io,
 #define RIO2_SG_FORMAT_ARC	0x0000
 #define RIO2_SG_FORMAT_SRL	0x1000
 #define RIO2_SG_FORMAT_IEEE1212	0x2000
-M_AAC_PACKED_STRUCT(aac_raw_io2,
+M_PACKED_STRUCT(aac_raw_io2,
 	uint32_t		strtBlkLow;
 	uint32_t		strtBlkHigh;
 	uint32_t		byteCnt;
@@ -1553,13 +1525,13 @@ M_AAC_PACKED_STRUCT(aac_raw_io2,
 	uint8_t		bpComplete;			/* reserved for FW use */
 	uint8_t		sgeFirstIndex;		/* reserved for FW use */
 	uint8_t		unused[4];
-	struct aac_sge_ieee1212	sge[0];		/* variable size */
+	aac_sge_ieee1212	sge[0];		/* variable size */
 );
 
 /*
  * Container shutdown command.
  */
-M_AAC_PACKED_STRUCT(aac_close_command,
+M_PACKED_STRUCT(aac_close_command,
 	uint32_t		Command;
 	uint32_t		ContainerId;
 );
@@ -1567,7 +1539,7 @@ M_AAC_PACKED_STRUCT(aac_close_command,
 /*
  * SCSI Passthrough structures
  */
-M_AAC_PACKED_STRUCT(aac_srb,
+M_PACKED_STRUCT(aac_srb,
 	uint32_t		function;
 	uint32_t		bus;
 	uint32_t		target;
@@ -1578,10 +1550,10 @@ M_AAC_PACKED_STRUCT(aac_srb,
 	uint32_t		retry_limit;
 	uint32_t		cdb_len;
 	uint8_t		cdb[16];
-	struct aac_sg_table	sg_map;
+	aac_sg_table	sg_map;
 );
 
-M_AAC_PACKED_STRUCT(aac_srb64,
+M_PACKED_STRUCT(aac_srb64,
 	uint32_t		function;
 	uint32_t		bus;
 	uint32_t		target;
@@ -1592,7 +1564,7 @@ M_AAC_PACKED_STRUCT(aac_srb64,
 	uint32_t		retry_limit;
 	uint32_t		cdb_len;
 	uint8_t		cdb[16];
-	struct aac_sg_table64 sg_map;
+	aac_sg_table64 sg_map;
 );
 
 enum {
@@ -1627,7 +1599,7 @@ enum {
 
 #define AAC_HOST_SENSE_DATA_MAX			30
 
-M_AAC_PACKED_STRUCT(aac_srb_response,
+M_PACKED_STRUCT(aac_srb_response,
 	uint32_t	fib_status;
 	uint32_t	srb_status;
 	uint32_t	scsi_status;
@@ -1748,7 +1720,7 @@ struct aac_pci_info
 #define	HBA_REQUEST_TAG_ERROR_FLAG	0x00000002
 #define	HBA_SGL_FLAGS_EXT		0x80000000UL
 
-M_AAC_PACKED_STRUCT(aac_hba_sgl,
+M_PACKED_STRUCT(aac_hba_sgl,
 	uint32_t	addr_lo; /* Lower 32-bits of SGL element address */
 	uint32_t	addr_hi; /* Upper 32-bits of SGL element address */
 	uint32_t	len;	/* Length of SGL element in bytes */
@@ -1808,7 +1780,7 @@ enum
 	HBA_RESP_STAT_OVERRUN = 0x75
 };
 
-M_AAC_PACKED_STRUCT(aac_hba_cmd_req,
+M_PACKED_STRUCT(aac_hba_cmd_req,
 	uint8_t	iu_type;	/* HBA information unit type */
 	/*
 	 ** byte1:
@@ -1834,7 +1806,7 @@ M_AAC_PACKED_STRUCT(aac_hba_cmd_req,
 	uint32_t	error_length;	/* Length of error data in bytes */
 	uint32_t	tweak_value_hi;	/* Upper 32-bits of tweak value */
 
-	struct aac_hba_sgl sge[HBA_MAX_SG_SEPARATE+2]; /* SG list space */
+	aac_hba_sgl sge[HBA_MAX_SG_SEPARATE+2]; /* SG list space */
 	/* structure must not exceed AAC_MAX_NATIVE_SIZE-FW_ERROR_BUFFER_SIZE */
 );
 
@@ -1842,7 +1814,7 @@ M_AAC_PACKED_STRUCT(aac_hba_cmd_req,
 #define HBA_TMF_ABORT_TASK	0x01
 #define HBA_TMF_LUN_RESET	0x08
 
-M_AAC_PACKED_STRUCT(aac_hba_tm_req,
+M_PACKED_STRUCT(aac_hba_tm_req,
 	uint8_t	iu_type;	/* HBA information unit type */
 	uint8_t	reply_qid;	/* reply queue to post response to */
 	uint8_t	tmf;		/* Task management function */
@@ -1865,7 +1837,7 @@ M_AAC_PACKED_STRUCT(aac_hba_tm_req,
 	uint32_t	error_length;	/* Length of error data in bytes */
 );
 
-M_AAC_PACKED_STRUCT(aac_hba_reset_req,
+M_PACKED_STRUCT(aac_hba_reset_req,
 	uint8_t	iu_type;	/* HBA information unit type */
 	uint8_t	reset_type;	/* 0-reset spec. dev., 1-reset all */
 	uint8_t	reply_qid;	/* reply queue to post response to */
@@ -1879,7 +1851,7 @@ M_AAC_PACKED_STRUCT(aac_hba_reset_req,
 	uint32_t	error_length;	/* Length of error data in bytes */
 );
 
-M_AAC_PACKED_STRUCT(aac_hba_resp,
+M_PACKED_STRUCT(aac_hba_resp,
 	uint8_t	iu_type;	/* HBA information unit type */
 	uint8_t	reserved1[3];
 	uint32_t	request_identifier;	/* sender context */
@@ -1892,20 +1864,20 @@ M_AAC_PACKED_STRUCT(aac_hba_resp,
 	uint8_t	sense_response_buf[HBA_SENSE_DATA_LEN_MAX]; /* data */
 );
 
-M_AAC_PACKED_STRUCT(aac_native_hba,
+M_PACKED_STRUCT(aac_native_hba,
 	union {
-		struct aac_hba_cmd_req cmd; 
-		struct aac_hba_tm_req tmr;
+		aac_hba_cmd_req cmd; 
+		aac_hba_tm_req tmr;
 		uint8_t cmd_bytes[AAC_MAX_NATIVE_SIZE-FW_ERROR_BUFFER_SIZE];
 	} cmd;
 	union {
-		struct aac_hba_resp err;
+		aac_hba_resp err;
 		uint8_t resp_bytes[FW_ERROR_BUFFER_SIZE];
 	} resp;
 );
 
 #define CISS_REPORT_PHYSICAL_LUNS	0xc3
-M_AAC_PACKED_STRUCT(aac_ciss_phys_luns_resp,
+M_PACKED_STRUCT(aac_ciss_phys_luns_resp,
 	uint8_t	list_length[4];	/* LUN list length (N-7, big endian) */
 	uint8_t	resp_flag;	/* extended response_flag */
 	uint8_t	reserved[3];

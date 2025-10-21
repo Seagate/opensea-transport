@@ -137,7 +137,7 @@ extern "C"
                 uint16_t Word019;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idSNwords or something-TJE
-        };     // anonymous to make access to SN or SN words easier
+        }; // anonymous to make access to SN or SN words easier
         uint16_t Word020;
         uint16_t Word021;
         uint16_t Word022;
@@ -152,7 +152,7 @@ extern "C"
                 uint16_t Word026;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idFWwords or something-TJE
-        };     // anonymous to make access to FW or FW words easier
+        }; // anonymous to make access to FW or FW words easier
         union
         {
             uint8_t ModelNum[ATA_IDENTIFY_MN_LENGTH]; // 27 ... 46
@@ -180,7 +180,7 @@ extern "C"
                 uint16_t Word046;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idMNwords or something-TJE
-        };     // anonymous to make access to MN or MN words easier
+        }; // anonymous to make access to MN or MN words easier
         uint16_t Word047;
         uint16_t Word048;
         uint16_t Word049;
@@ -1117,7 +1117,7 @@ extern "C"
             bool     noCompareLogicalBlocks; // when set, the verify with bytecheck = 1 is not supported
             uint32_t maxTransferLength;      // Maximum SCSI command transfer length in bytes. Mostly here for USB where
                                              // translations aren't accurate or don't show this properly.
-            int8_t   readBufferCmdSize; // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
+            int8_t readBufferCmdSize;        // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
             bool noSATVPDPage; // when this is set, the SAT VPD is not available and should not be read, skipping ahead
                                // to instead directly trying a passthrough command
             int8_t syncCacheCmdSize;      // 0 = not set, <0 = not supported, 10 = 10B version, 16 = 16B version
@@ -1445,12 +1445,12 @@ extern "C"
         safe_free_core(M_REINTERPRET_CAST(void**, cissdevinfo));
     }
 
-    //forward declare aac device 
-    typedef struct s_aacDeviceInfo aacDeviceInfo,*ptrAacDeviceInfo;
+    // forward declare aac device
+    typedef struct s_aacDeviceInfo aacDeviceInfo, *ptrAacDeviceInfo;
 
-    static M_INLINE void safe_free_aac_dev_info(aacDeviceInfo **aacdevinfo)
+    static M_INLINE void safe_free_aac_dev_info(aacDeviceInfo** aacdevinfo)
     {
-        safe_Free(M_REINTERPRET_CAST(void**, aacdevinfo));
+        safe_free_core(M_REINTERPRET_CAST(void**, aacdevinfo));
     }
 
 #define OS_HANDLE_NAME_MAX_LENGTH 256
@@ -1635,10 +1635,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
     int fd; // used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but
             // kept here just in case)
-    struct cam_device* cam_dev;             // holds fd inside for CAM devices among other information
+    struct cam_device* cam_dev; // holds fd inside for CAM devices among other information
 #    if defined(__x86_64__) || defined(__amd64__) || defined(__aarch64__) || defined(__ia64__) ||                      \
         defined(__itanium__) || defined(__powerpc64__) || defined(__ppc64__) || defined(__spark__)
-    uint8_t            freeBSDPadding[102]; // padding on 64bit OS
+    uint8_t freeBSDPadding[102]; // padding on 64bit OS
 #    else
     uint8_t freeBSDPadding[106]; // padding on 32bit OS
 #    endif
@@ -1697,7 +1697,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                             // used by Intel RST NVMe passthrough which is basically an extension of CSMI
         ptrCissDeviceInfo cissDeviceData; // This pointer is allocated only when CCISS is supported.
         eHandleOpenFlags  handleFlags;    // keeps track of the flags used when the handle was opened.
-        ptrAacDeviceInfo aacDeviceData;//This pointer is allocated only when aac raid is supported.
+        ptrAacDeviceInfo  aacDeviceData;  // This pointer is allocated only when aac raid is supported.
         uint8_t           padd[2];        // padd to multiple of 8 bytes
     } OSDriveInfo;
 

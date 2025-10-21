@@ -48,6 +48,8 @@
  * SUCH DAMAGE.
  */
 
+#pragma once
+
 /*
  * Command queue statistics
  */
@@ -196,12 +198,12 @@ union aac_statrequest {
  */
 struct aac_rev_check {
 	RevComponent		callingComponent;
-	struct FsaRevision	callingRevision;
+	FsaRevision	callingRevision;
 };
 
 struct aac_rev_check_resp {
 	int			possiblyCompatible;
-	struct FsaRevision	adapterSWRevision;
+	FsaRevision	adapterSWRevision;
 };
 
 /*
@@ -248,7 +250,7 @@ typedef union {
 	uint32_t fValue;
 } featuresState;
 
-M_AAC_PACKED_STRUCT(aac_features,
+M_PACKED_STRUCT(aac_features,
 	featuresState feat;
 	uint32_t data[31];
 	uint32_t reserved[32];

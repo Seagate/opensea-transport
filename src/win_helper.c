@@ -70,6 +70,10 @@ RESTORE_WARNING_4255
 #    include "intel_rst_helper.h"
 #endif
 
+#if defined (ENABLE_AAC)
+#    include "aac_raid_helper_func.h"
+#endif
+
 #include "raid_scan_helper.h"
 
 #if defined(_DEBUG) && !defined(WIN_DEBUG)
@@ -6222,16 +6226,16 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 
     *numberOfDevices = found;
 
-#if defined (ENABLE_AAC)
+#if defined(ENABLE_AAC)
 
-    uint32_t aacRaidCount = 0;
-    eReturnValues aacRet = get_AAC_RAID_Device_Count(&aacRaidCount, flags, &beginRaidHandleList);
-    print_str("AAC Raid Count = %" PRIu32 "\n", aacRaidCount);
+    uint32_t      aacRaidCount = 0;
+    eReturnValues aacRet       = get_AAC_RAID_Device_Count(&aacRaidCount, flags, &beginRaidHandleList);
+    printf("AAC Raid Count = %" PRIu32 "\n", aacRaidCount);
 
-#endif //AAC RAID support
+#endif // AAC RAID support
 
-#if defined (ENABLE_CSMI)
-    if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI))//check whether they want CSMI devices or not
+#if defined(ENABLE_CSMI)
+    if (!(flags & GET_DEVICE_FUNCS_IGNORE_CSMI)) // check whether they want CSMI devices or not
     {
         uint32_t      csmiDeviceCount = UINT32_C(0);
         eReturnValues csmiRet         = get_CSMI_RAID_Device_Count(&csmiDeviceCount, flags, &beginRaidHandleList);

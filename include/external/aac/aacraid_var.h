@@ -50,6 +50,7 @@
  *
  *	$FreeBSD$
  */
+#pragma once 
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -688,7 +689,7 @@ AACQ_COMMAND_QUEUE(ready, AACQ_READY);
 AACQ_COMMAND_QUEUE(busy, AACQ_BUSY);
 
 static __inline void
-aac_print_printf(struct aac_softc *sc)
+aac_print_printf(aac_softc *sc)
 {
 	/*
 	 * XXX We have the ability to read the length of the printf string
@@ -701,7 +702,7 @@ aac_print_printf(struct aac_softc *sc)
 }
 
 static __inline int
-aac_alloc_sync_fib(struct aac_softc *sc, struct aac_fib **fib)
+aac_alloc_sync_fib(aac_softc *sc, aac_fib **fib)
 {
 
 	mtx_assert(&sc->aac_io_lock, MA_OWNED);
@@ -710,7 +711,7 @@ aac_alloc_sync_fib(struct aac_softc *sc, struct aac_fib **fib)
 }
 
 static __inline void
-aac_release_sync_fib(struct aac_softc *sc)
+aac_release_sync_fib(aac_softc *sc)
 {
 
 	mtx_assert(&sc->aac_io_lock, MA_OWNED);

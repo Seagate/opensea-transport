@@ -22,8 +22,9 @@
 
 #pragma once
 
-#include "common_public.h"
 #include "common_types.h"
+
+#include "common_public.h"
 #include "scsi_helper.h"
 
 #if defined(__cplusplus)

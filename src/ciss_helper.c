@@ -189,8 +189,8 @@ static bool create_OS_CISS_Handle_Name(const char* input, char* osHandle)
     return success;
 }
 
-#    define PARSE_COUNT_SUCCESS 3
-#define OS_CISS_HANDLE_MAX_FIELDS 3
+#    define PARSE_COUNT_SUCCESS       3
+#    define OS_CISS_HANDLE_MAX_FIELDS 3
 static uint8_t parse_CISS_Handle(const char* devName, char* osHandle, uint16_t* physicalDriveNumber)
 {
     uint8_t parseCount = UINT8_C(0);
@@ -382,12 +382,14 @@ static eReturnValues ciss_Scsi_Report_Physical_LUNs(const tDevice* device,
     if (ptrData && dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, ptrData, dataLength, XFER_DATA_IN,
-                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
+                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
+                            DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA,
-                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
+                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
+                            DEFAULT_COMMAND_TIMEOUT);
     }
     return ret;
 }
