@@ -205,12 +205,10 @@ eReturnValues ata_Sanitize_Command(tDevice*            device,
         ataSanitizeCmd.tfr.DeviceHead |= DEVICE_SELECT_BIT;
     }
 
-    bool backupHack = device->drive_info.passThroughHacks.ataPTHacks
-                     .disableCheckCondition;
+    bool backupHack = device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition;
     if (sanitizeFeature != ATA_SANITIZE_STATUS)
     {
-        device->drive_info.passThroughHacks.ataPTHacks
-                     .disableCheckCondition = true;
+        device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition = true;
     }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -244,8 +242,7 @@ eReturnValues ata_Sanitize_Command(tDevice*            device,
 
     ret = ata_Passthrough_Command(device, &ataSanitizeCmd);
 
-    device->drive_info.passThroughHacks.ataPTHacks
-                     .disableCheckCondition = backupHack;
+    device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition = backupHack;
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
