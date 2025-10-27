@@ -211,6 +211,7 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
     {
         return MEMORY_FAILURE;
     }
+    device->os_info.cam_dev = M_NULLPTR;
     if ((device->os_info.fd = open(deviceHandle, O_RDWR | O_NONBLOCK)) < 0)
     {
         perror("open");
@@ -428,6 +429,18 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                                         // device compatibility lookups
                                     }
                                     break;
+#if defined(XPORT_IS_NVME)
+                                case XPORT_NVME:
+                                    device->drive_info.drive_type     = NVME_DRIVE;
+                                    device->drive_info.interface_type = NVME_INTERFACE;
+                                    device->drive_info.namespaceID    = cpi.xport_specific.nvme.nsid;
+                                    break;
+                                case XPORT_NVMF:
+                                    device->drive_info.drive_type     = NVME_DRIVE;
+                                    device->drive_info.interface_type = NVME_INTERFACE;
+                                    device->drive_info.namespaceID    = cpi.xport_specific.nvmf.nsid;
+                                    break;
+#endif // XPORT_IS_NVME
                                 case XPORT_SAS:
                                 // case XPORT_ISCSI: //Only in freeBSD. Since this falls into default, just
                                 // commenting it out - TJE
@@ -1041,6 +1054,10 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             }
             ret = BAD_PARAMETER;
         }
+        if (ccb != M_NULLPTR)
+        {
+            cam_freeccb(ccb);
+        }
     }
     else
     {
@@ -1328,7 +1345,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 static int nvme_filter(const struct dirent* entry)
 {
-    int nvmeHandle = strncmp("nvme", entry->d_name, 3);
+    int nvmeHandle = strncmp("nvme", entry->d_name, 4);
     if (nvmeHandle != 0)
     {
         return !nvmeHandle;
@@ -1343,6 +1360,25 @@ static int nvme_filter(const struct dirent* entry)
         return !nvmeHandle;
     }
 }
+
+static int nda_filter(const struct dirent* entry)
+{
+    int nvmeHandle = strncmp("nda", entry->d_name, 3);
+    if (nvmeHandle != 0)
+    {
+        return !nvmeHandle;
+    }
+    char* partition = strpbrk(entry->d_name, "pPsS");
+    if (partition != M_NULLPTR)
+    {
+        return 0;
+    }
+    else
+    {
+        return !nvmeHandle;
+    }
+}
+
 #endif
 
 static int da_filter(const struct dirent* entry)
@@ -1381,7 +1417,7 @@ static int ada_filter(const struct dirent* entry)
     }
 }
 
-#if defined (IOCATAREQUEST)
+#if defined(IOCATAREQUEST)
 // Legacy ATA Passthrough filter
 // Only checking for ATA disks.
 // adX = ata disk
@@ -1418,7 +1454,7 @@ eReturnValues close_Device(tDevice* dev)
     {
         close(dev->os_info.fd);
         dev->os_info.last_error = errno;
-        dev->os_info.fd = -1;
+        dev->os_info.fd         = -1;
     }
     return SUCCESS;
 }
@@ -1455,21 +1491,28 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
     {
         num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
     }
-    #if defined (IOCATAREQUEST)
+#if defined(IOCATAREQUEST)
     else
     {
         num_ada_devs = scandir("/dev", &adanamelist, ad_filter, alphasort);
     }
-    #endif // IOCATAREQUEST
+#endif // IOCATAREQUEST
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-    num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
+#    if defined(XPORT_IS_NVME)
+    num_nvme_devs = scandir("/dev", &nvmenamelist, nda_filter, alphasort);
+    if (num_nvme_devs == 0)
+#    else
+    {
+        num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
+    }
+#    endif
 #endif // DISABLE_NVME_PASSTHROUGH
 
-    // free the list of names to not leak memory
-    for (int iter = 0; iter < num_da_devs; ++iter)
-    {
-        safe_free_dirent(&danamelist[iter]);
-    }
+        // free the list of names to not leak memory
+        for (int iter = 0; iter < num_da_devs; ++iter)
+        {
+            safe_free_dirent(&danamelist[iter]);
+        }
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &danamelist));
     // free the list of names to not leak memory
     for (int iter = 0; iter < num_ada_devs; ++iter)
@@ -1572,22 +1615,29 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         scandirres = scandir("/dev", &adanamelist, ada_filter, alphasort);
     }
-    #if defined (IOCATAREQUEST)
+#if defined(IOCATAREQUEST)
     else
     {
         scandirres = scandir("/dev", &adanamelist, ad_filter, alphasort);
     }
-    #endif // IOCATAREQUEST
+#endif // IOCATAREQUEST
     if (scandirres > 0)
     {
         num_ada_devs = C_CAST(uint32_t, scandirres);
     }
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-    scandirres = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
-    if (scandirres > 0)
+#    if defined(XPORT_IS_NVME)
+    scandirres = scandir("/dev", &nvmenamelist, nda_filter, alphasort);
+    if (scandirres == 0)
+#    else
     {
-        num_nvme_devs = C_CAST(uint32_t, scandirres);
+        scandirres = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
     }
+#    endif
+        if (scandirres > 0)
+        {
+            num_nvme_devs = C_CAST(uint32_t, scandirres);
+        }
 #endif // DISABLE_NVME_PASSTHROUGH
     uint32_t totalDevs = num_da_devs + num_ada_devs + num_nvme_devs;
 
@@ -1647,24 +1697,28 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             snprintf_err_handle(name, CAM_DEV_NAME_LEN, "%s", devs[driveNumber]);
             fd = -1;
             // lets try to open the device.
-            #if defined (IOCATAREQUEST)
-            if (is_ad_device(name) && !is_ATA_CAM_Available())
+            if (is_NVMe_Handle(name)
+#if defined(IOCATAREQUEST)
+                || (is_ad_device(name) && !is_ATA_CAM_Available())
+#endif // IOCATAREQUEST
+            )
             {
                 fd = open(name, O_RDWR);
             }
             else
-            #endif // IOCATAREQUEST
             {
                 fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);
             }
             if (fd >= 0)
             {
-                #if defined (IOCATAREQUEST)
-                if (is_ad_device(name) && !is_ATA_CAM_Available())
+                if (is_NVMe_Handle(name)
+#if defined(IOCATAREQUEST)
+                    || (is_ad_device(name) && !is_ATA_CAM_Available())
+#endif // IOCATAREQUEST
+                )
                 {
                     close(fd);
                 }
-                #endif // IOCATAREQUEST
                 // Not sure this is necessary, but add back in if we find any issues - TJE
                 /*if (d->os_info.cam_dev)
                 {
@@ -1814,12 +1868,194 @@ eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
-{
 #if defined(DISABLE_NVME_PASSTHROUGH)
-    M_USE_UNUSED(nvmeIoCtx);
-    return OS_COMMAND_NOT_AVAILABLE;
-#else // DISABLE_NVME_PASSTHROUGH
+#    if defined(XPORT_IS_NVME)
+static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+{
+    eReturnValues ret = SUCCESS;
+    DECLARE_SEATIMER(commandTimer);
+    union ccb*         ccb    = M_NULLPTR;
+    struct ccb_nvmeio* nvmeio = M_NULLPTR;
+
+    ccb = cam_getccb(scsiIoCtx->device->os_info.cam_dev);
+
+    if (ccb != M_NULLPTR)
+    {
+        nvmeio = &ccb->nvmeio;
+        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+        uint32_t camFlags   = CAM_DEV_QFRZDIS;
+        uint32_t camTimeout = nvmeIoCtx->timeout;
+        if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
+            nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
+        {
+            camTimeout = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
+            // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
+            // that we DON'T do a conversion and leave the time as the max...
+            if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds < CAM_MAX_CMD_TIMEOUT_SECONDS)
+            {
+                camTimeout *= UINT32_C(1000); // convert to milliseconds
+            }
+            else
+            {
+                camTimeout = UINT32_MAX; // no timeout or maximum timeout
+            }
+        }
+        else
+        {
+            if (nvmeIoCtx->timeout != UINT32_C(0))
+            {
+                camTimeout = nvmeIoCtx->timeout;
+                // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata
+                // security) that we DON'T do a conversion and leave the time as the max...
+                if (nvmeIoCtx->timeout < CAM_MAX_CMD_TIMEOUT_SECONDS)
+                {
+                    camTimeout *= UINT32_C(1000); // convert to milliseconds
+                }
+                else
+                {
+                    camTimeout = UINT32_MAX; // no timeout or maximum timeout
+                }
+            }
+            else
+            {
+                camTimeout = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
+            }
+        }
+
+        switch (nvmeIoCtx->commandDirection)
+        {
+        case XFER_DATA_IN:
+            camFlags |= CAM_DIR_IN;
+            break;
+        case XFER_DATA_OUT:
+            camFlags |= CAM_DIR_OUT;
+            break;
+        case XFER_NO_DATA:
+            camFlags |= CAM_DIR_NONE;
+            break;
+        case XFER_DATA_IN_OUT:
+        case XFER_DATA_OUT_IN:
+            camFlags |= CAM_DIR_NOTH;
+            break;
+        }
+
+        if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
+        {
+            nvmeio->cmd.opc   = nvmeIoCtx->cmd.adminCmd.opcode;
+            nvmeio->cmd.fuse  = nvmeIoCtx->cmd.adminCmd.flags;
+            nvmeio->cmd.cid   = 0; // this will be set somewhere below us in the driver/CAM layer
+            nvmeio->cmd.nsid  = nvmeIoCtx->cmd.adminCmd.nsid;
+            nvmeio->cmd.rsvd2 = nvmeIoCtx->cmd.adminCmd.cdw2;
+            nvmeio->cmd.rsvd3 = nvmeIoCtx->cmd.adminCmd.cdw3;
+            nvmeio->cmd.mptr  = nvmeIoCtx->cmd.adminCmd.metadata;
+            nvmeio->cmd.prp1  = nvmeIoCtx->cmd.adminCmd.addr;
+            nvmeio->cmd.prp2  = nvmeIoCtx->cmd.adminCmd.metadataLen << 32;
+            nvmeio->cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
+            nvmeio->cmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
+            nvmeio->cmd.cdw12 = nvmeIoCtx->cmd.adminCmd.cdw12;
+            nvmeio->cmd.cdw13 = nvmeIoCtx->cmd.adminCmd.cdw13;
+            nvmeio->cmd.cdw14 = nvmeIoCtx->cmd.adminCmd.cdw14;
+            nvmeio->cmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
+            cam_fill_nvmeadmin(nvmeio, 0 /* retries */, M_NULLPTR, camFlags, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize,
+                               camTimeout);
+        }
+        else
+        {
+            nvmeio->cmd.opc  = nvmeIoCtx->cmd.nvmCmd.opcode;
+            nvmeio->cmd.fuse = nvmeIoCtx->cmd.nvmCmd.flags;
+            nvmeio->cmd.cid =
+                nvmeIoCtx->cmd.nvmCmd.commandId; // this will be set somewhere below us in the driver/CAM layer
+            nvmeio->cmd.nsid  = nvmeIoCtx->cmd.nvmCmd.nsid;
+            nvmeio->cmd.rsvd2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
+            nvmeio->cmd.rsvd3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
+            nvmeio->cmd.mptr  = nvmeIoCtx->cmd.nvmCmd.metadata;
+            nvmeio->cmd.prp1  = nvmeIoCtx->cmd.nvmCmd.prp1;
+            nvmeio->cmd.prp2  = nvmeIoCtx->cmd.nvmCmd.prp2;
+            nvmeio->cmd.cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
+            nvmeio->cmd.cdw11 = nvmeIoCtx->cmd.nvmCmd.cdw11;
+            nvmeio->cmd.cdw12 = nvmeIoCtx->cmd.nvmCmd.cdw12;
+            nvmeio->cmd.cdw13 = nvmeIoCtx->cmd.nvmCmd.cdw13;
+            nvmeio->cmd.cdw14 = nvmeIoCtx->cmd.nvmCmd.cdw14;
+            nvmeio->cmd.cdw15 = nvmeIoCtx->cmd.nvmCmd.cdw15;
+            cam_fill_nvmeio(nvmeio, 0 /* retries */, M_NULLPTR, camFlags, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize,
+                            camTimeout);
+        }
+        start_Timer(&commandTimer);
+        int ioctlResult = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
+        stop_Timer(&commandTimer);
+        if (ioctlResult < 0)
+        {
+            perror("error sending NVMe I/O");
+            cam_error_print(scsiIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/, CAM_EPF_ALL,
+                            stdout);
+            ret = FAILURE;
+        }
+        else
+        {
+            // cam_error_print(scsiIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/,
+            // CAM_EPF_ALL, stdout);
+            if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP)
+            {
+                if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_NVME_STATUS_ERROR)
+                {
+                    ret = COMMAND_FAILURE;
+                }
+                else if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT)
+                {
+                    if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
+                    {
+                        print_str("WARN: I/O CAM_CMD_TIMEOUT occured\n");
+                    }
+                }
+                else
+                {
+                    if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
+                    {
+                        printf("WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
+                    }
+                }
+            }
+            else
+            {
+#        if defined(_DEBUG)
+                printf("I/O went through status %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
+#        endif
+            }
+            ret                                                      = SUCCESS;
+            nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            // Fill the nvme CommandCompletionData
+            nvmeIoCtx->commandCompletionData.dw0      = nvmeio->cpl.cdw0;
+            nvmeIoCtx->commandCompletionData.dw1      = nvmeio->cpl.rsvd1;
+            nvmeIoCtx->commandCompletionData.dw2      = M_WordsTo4ByteValue(nvmeio->cpl.sqid, nvmeio->cpl.sqhd);
+            nvmeIoCtx->commandCompletionData.dw3      = M_WordsTo4ByteValue(nvmeio->cpl.status, nvmeio->cpl.cid);
+            nvmeIoCtx->commandCompletionData.dw0Valid = true;
+            nvmeIoCtx->commandCompletionData.dw1Valid = true;
+            nvmeIoCtx->commandCompletionData.dw2Valid = true;
+            nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        }
+        if (nvmeIoCtx->device->delay_io)
+        {
+            delay_Milliseconds(nvmeIoCtx->device->delay_io);
+            if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+            {
+                printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
+            }
+        }
+        if (ccb != M_NULLPTR)
+        {
+            cam_freeccb(ccb);
+        }
+    }
+    else
+    {
+        ret = OS_PASSTHROUGH_FAILURE;
+    }
+    return ret;
+}
+#    endif // XPORT_IS_NVME
+
+static eReturnValues send_IOCTL_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+{
     eReturnValues ret         = SUCCESS;
     int           ioctlResult = 0;
     DECLARE_SEATIMER(commandTimer);
@@ -1939,7 +2175,26 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         }
     }
     return ret;
+}
 #endif // DISABLE_NVME_PASSTHROUGH
+
+eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+{
+#if defined(DISABLE_NVME_PASSTHROUGH)
+    M_USE_UNUSED(nvmeIoCtx);
+    return OS_COMMAND_NOT_AVAILABLE;
+#else // DISABLE_NVME_PASSTHROUGH
+#    if defined(XPORT_IS_NVME)
+    if (nvmeIoCtx->device->os_info.cam_dev != M_NULLPTR)
+    {
+        return send_CAM_NVMe_IO(nvmeIoCtx);
+    }
+    else
+#    endif // XPORT_IS_NVME
+    {
+        return send_IOCTL_NVMe_IO(nvmeIoCtx);
+    }
+#endif     // DISABLE_NVME_PASSTHROUGH
 }
 
 eReturnValues os_nvme_Reset(const tDevice* device)
@@ -1949,6 +2204,10 @@ eReturnValues os_nvme_Reset(const tDevice* device)
     int           handleToReset = device->os_info.fd;
     DECLARE_SEATIMER(commandTimer);
     int ioRes = 0;
+    if (device->os_info.cam_dev != M_NULLPTR)
+    {
+        handleToReset = device->os_info.cam_dev->fd;
+    }
 
     start_Timer(&commandTimer);
     ioRes = ioctl(handleToReset, NVME_RESET_CONTROLLER);
@@ -1974,7 +2233,6 @@ eReturnValues os_nvme_Reset(const tDevice* device)
         // success
         ret = SUCCESS;
     }
-
     return ret;
 #else  // DISABLE_NVME_PASSTHROUGH
     M_USE_UNUSED(device);
