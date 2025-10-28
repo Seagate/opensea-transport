@@ -1286,7 +1286,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
-    static M_INLINE ataPassthroughCommand create_ata_pio_in_cmd(const tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_in_cmd(const tDevice* device,
                                                                 eATA_CMDS      opcode,
                                                                 eAtaCmdType    ext,
                                                                 uint16_t       sectorCount,
@@ -1300,9 +1300,9 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
-    static M_INLINE ataPassthroughCommand create_ata_pio_out_cmd(const tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_out_cmd(const tDevice* device,
                                                                  eATA_CMDS      opcode,
-                                                                 bool           ext,
+                                                                 eAtaCmdType    ext,
                                                                  uint16_t       sectorCount,
                                                                  const uint8_t* ptrdata,
                                                                  uint32_t       dataSize)
@@ -1314,7 +1314,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(7, 8)
-    static M_INLINE ataPassthroughCommand create_ata_pio_lba_cmd(const tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_lba_cmd(const tDevice*         device,
                                                                  eATA_CMDS              opcode,
                                                                  eAtaCmdType            ext,
                                                                  eDataTransferDirection direction,
@@ -1381,7 +1381,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_pio_read_lba_cmd(const tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_read_lba_cmd(const tDevice* device,
                                                                       eATA_CMDS      opcode,
                                                                       eAtaCmdType    ext,
                                                                       uint16_t       sectorCount,
@@ -1396,7 +1396,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_pio_write_lba_cmd(const tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_pio_write_lba_cmd(const tDevice* device,
                                                                        eATA_CMDS      opcode,
                                                                        eAtaCmdType    ext,
                                                                        uint16_t       sectorCount,
@@ -1423,7 +1423,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_dma_cmd(const tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_cmd(const tDevice*         device,
                                                              eATA_CMDS              opcode,
                                                              eAtaCmdType            ext,
                                                              eDataTransferDirection direction,
@@ -1485,7 +1485,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(7, 8)
-    static M_INLINE ataPassthroughCommand create_ata_dma_lba_cmd(const tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_lba_cmd(const tDevice*         device,
                                                                  eATA_CMDS              opcode,
                                                                  eAtaCmdType            ext,
                                                                  eDataTransferDirection direction,
@@ -1551,7 +1551,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
-    static M_INLINE ataPassthroughCommand create_ata_dma_in_cmd(const tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_in_cmd(const tDevice* device,
                                                                 eATA_CMDS      opcode,
                                                                 eAtaCmdType    ext,
                                                                 uint16_t       sectorCount,
@@ -1564,7 +1564,7 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
-    static M_INLINE ataPassthroughCommand create_ata_dma_out_cmd(const tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_out_cmd(const tDevice* device,
                                                                  eATA_CMDS      opcode,
                                                                  eAtaCmdType    ext,
                                                                  uint16_t       sectorCount,
@@ -1578,7 +1578,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_dma_read_lba_cmd(const tDevice*       device,
+    static M_INLINE ataPassthroughCommand create_ata_dma_read_lba_cmd(const tDevice* device,
                                                                       eATA_CMDS      opcode,
                                                                       eAtaCmdType    ext,
                                                                       uint16_t       sectorCount,
@@ -1593,13 +1593,13 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    static M_INLINE ataPassthroughCommand create_ata_dma_write_lba_cmd(const tDevice*    device,
-                                                                       eATA_CMDS   opcode,
-                                                                       eAtaCmdType ext,
-                                                                       uint16_t    sectorCount,
-                                                                       uint64_t    lba,
-                                                                       uint8_t*    ptrdata,
-                                                                       uint32_t    dataSize)
+    static M_INLINE ataPassthroughCommand create_ata_dma_write_lba_cmd(const tDevice* device,
+                                                                       eATA_CMDS      opcode,
+                                                                       eAtaCmdType    ext,
+                                                                       uint16_t       sectorCount,
+                                                                       uint64_t       lba,
+                                                                       uint8_t*       ptrdata,
+                                                                       uint32_t       dataSize)
     {
         return create_ata_dma_lba_cmd(device, opcode, ext, M_ACCESS_ENUM(eDataTransferDirection, XFER_DATA_OUT),
                                       sectorCount, lba, ptrdata, dataSize);
@@ -1607,10 +1607,10 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    static M_INLINE ataPassthroughCommand create_ata_nondata_cmd(const tDevice*    device,
-                                                                 eATA_CMDS   opcode,
-                                                                 eAtaCmdType ext,
-                                                                 bool        needRTFRs)
+    static M_INLINE ataPassthroughCommand create_ata_nondata_cmd(const tDevice* device,
+                                                                 eATA_CMDS      opcode,
+                                                                 eAtaCmdType    ext,
+                                                                 bool           needRTFRs)
     {
         ataPassthroughCommand nodata;
         nodata.commandType       = ext;
@@ -1665,7 +1665,9 @@ extern "C"
 
     M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    static M_INLINE ataPassthroughCommand create_ata_dev_diag_cmd(const tDevice* device, eATA_CMDS opcode, eAtaCmdType ext)
+    static M_INLINE ataPassthroughCommand create_ata_dev_diag_cmd(const tDevice* device,
+                                                                  eATA_CMDS      opcode,
+                                                                  eAtaCmdType    ext)
     {
         ataPassthroughCommand nodata;
         nodata.commandType       = ext;
@@ -1721,7 +1723,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 9)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(9, 10)
-    static M_INLINE ataPassthroughCommand create_ata_queued_lba_cmd(const tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_queued_lba_cmd(const tDevice*         device,
                                                                     eATA_CMDS              opcode,
                                                                     eAtaCmdType            ext,
                                                                     bool                   ncq,
@@ -1789,7 +1791,7 @@ extern "C"
     M_NONNULL_PARAM_LIST(1, 8)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(8, 9)
-    static M_INLINE ataPassthroughCommand create_ata_queued_cmd(const tDevice*               device,
+    static M_INLINE ataPassthroughCommand create_ata_queued_cmd(const tDevice*         device,
                                                                 eATA_CMDS              opcode,
                                                                 eAtaCmdType            ext,
                                                                 bool                   ncq,

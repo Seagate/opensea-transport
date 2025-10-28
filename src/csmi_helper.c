@@ -3706,8 +3706,8 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
                             {
                                 // ATA identify
                                 DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, 512);
-                                ataPassthroughCommand identify =
-                                    create_ata_pio_in_cmd(device, ATA_IDENTIFY, false, 1, identifyData, 512);
+                                ataPassthroughCommand identify = create_ata_pio_in_cmd(
+                                    device, ATA_IDENTIFY, ATA_CMD_TYPE_TASKFILE, 1, identifyData, 512);
                                 csmiPTCmd.pdata       = identifyData;
                                 csmiPTCmd.dataLength  = 512;
                                 csmiPTCmd.pAtaCmdOpts = &identify;
@@ -5039,7 +5039,7 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
                                             // ATA identify
                                             DECLARE_ZERO_INIT_ARRAY(uint8_t, identifyData, 512);
                                             ataPassthroughCommand identify = create_ata_pio_in_cmd(
-                                                &tempDevice, ATA_IDENTIFY, false, 1, identifyData, 512);
+                                                &tempDevice, ATA_IDENTIFY, ATA_CMD_TYPE_TASKFILE, 1, identifyData, 512);
                                             csmiPTCmd.pdata       = identifyData;
                                             csmiPTCmd.dataLength  = 512;
                                             csmiPTCmd.pAtaCmdOpts = &identify;
@@ -5827,7 +5827,8 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                                     identifyData, 512);
                                                                             ataPassthroughCommand identify =
                                                                                 create_ata_pio_in_cmd(
-                                                                                    &tempDevice, ATA_IDENTIFY, false, 1,
+                                                                                    &tempDevice, ATA_IDENTIFY,
+                                                                                    ATA_CMD_TYPE_TASKFILE, 1,
                                                                                     identifyData, 512);
                                                                             csmiPTCmd.pdata       = identifyData;
                                                                             csmiPTCmd.dataLength  = 512;

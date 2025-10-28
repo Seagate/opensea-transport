@@ -925,7 +925,7 @@ eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
                         if (0 > umountResult)
                         {
                             ret = FAILURE;
-                            set_Device_Last_Error(device, errno);
+                            set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
                             if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                             {
                                 printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
