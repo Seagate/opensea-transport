@@ -49,6 +49,10 @@ extern "C"
 #    include <cam/scsi/scsi_message.h>
 #    include <cam/scsi/scsi_pass.h>
 #    include <cam/scsi/smp_all.h>
+#    if defined(XPORT_IS_NVME)
+// If this is defined, then this version of CAM supports NVMe
+#        include <cam/nvme/nvme_all.h>
+#    endif // XPORT_IS_NVME
 #else
 // slightly different paths for dragonflybsd
 #    include <bus/cam/cam.h>
@@ -187,9 +191,8 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(2, 3) eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1, 2) M_PARAM_RO(1) M_PARAM_WO_SIZE(2, 3) eReturnValues
+        pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
