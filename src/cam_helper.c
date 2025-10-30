@@ -64,7 +64,7 @@ bool os_Is_Infinite_Timeout_Supported(void)
 }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-static bool is_NVMe_Handle(char* handle)
+static bool is_NVMe_Handle(const char* handle)
 {
     bool isNVMeDevice = false;
     if (handle && safe_strlen(handle))
@@ -543,7 +543,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         return get_Legacy_ATA_Device(filename, device);
     }
 #endif // IOCATAREQUEST
-    return get_CAM_Device(filename, device)
+    return get_CAM_Device(filename, device);
 }
 
 // This function depends on the caller already putting the RTFR's into the ata structure.
