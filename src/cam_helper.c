@@ -1868,11 +1868,11 @@ eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-#if defined(DISABLE_NVME_PASSTHROUGH)
+#if !defined(DISABLE_NVME_PASSTHROUGH)
 #    if defined(XPORT_IS_NVME)
 
 #if !IS_FREEBSD_VERSION(14, 0, 0)
-#defined CAM_NVME_STATUS_ERROR 0x20
+#define CAM_NVME_STATUS_ERROR 0x20
 #endif
 
 static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
