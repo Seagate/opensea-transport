@@ -630,15 +630,15 @@ eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
         return OS_COMMAND_NOT_AVAILABLE;
     }
     safe_memset(&atareq, sizeof(struct ata_ioc_request), 0, sizeof(struct ata_ioc_request));
-    atareq.ata.command = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
-    atareq.ata.feature = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
+    atareq.u.ata.command = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
+    atareq.u.ata.feature = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
     if (scsiIoCtx->pAtaCmdOpts->commandType > ATA_CMD_TYPE_TASKFILE)
     {
-        atareq.ata.lba =
+        atareq.u.ata.lba =
             M_BytesTo8ByteValue(0, 0, scsiIoCtx->pAtaCmdOpts->tfr.LbaHi48, scsiIoCtx->pAtaCmdOpts->tfr.LbaMid48,
                                 scsiIoCtx->pAtaCmdOpts->tfr.LbaLow48, scsiIoCtx->pAtaCmdOpts->tfr.LbaHi,
                                 scsiIoCtx->pAtaCmdOpts->tfr.LbaMid, scsiIoCtx->pAtaCmdOpts->tfr.LbaLow);
-        atareq.ata.count =
+        atareq.u.ata.count =
             M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount);
     }
     else
@@ -646,10 +646,10 @@ eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
         // for 28bit commands this has no separate register for device/head
         // so need to take the LBA value from device head to append to the "LBA" field and let the kernel handle setting
         // the register correctly
-        atareq.ata.lba =
+        atareq.u.ata.lba =
             M_BytesTo4ByteValue(M_Nibble0(scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead), scsiIoCtx->pAtaCmdOpts->tfr.LbaHi,
                                 scsiIoCtx->pAtaCmdOpts->tfr.LbaMid, scsiIoCtx->pAtaCmdOpts->tfr.LbaLow);
-        atareq.ata.count = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
+        atareq.u.ata.count = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
     }
 
     atareq.flags        = ATA_CMD_CONTROL;
@@ -717,14 +717,14 @@ eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
     else
     {
         // copy back output registers
-        scsiIoCtx->pAtaCmdOpts->rtfr.status = atareq.ata.command;
-        scsiIoCtx->pAtaCmdOpts->rtfr.error  = atareq.ata.feature;
+        scsiIoCtx->pAtaCmdOpts->rtfr.status = atareq.u.ata.command;
+        scsiIoCtx->pAtaCmdOpts->rtfr.error  = atareq.u.ata.feature;
         if (scsiIoCtx->pAtaCmdOpts->commandType > ATA_CMD_TYPE_TASKFILE)
         {
-            scsiIoCtx->pAtaCmdOpts->rtfr.lbaHiExt  = M_Byte5(atareq.ata.lba);
-            scsiIoCtx->pAtaCmdOpts->rtfr.lbaMidExt = M_Byte4(atareq.ata.lba);
-            scsiIoCtx->pAtaCmdOpts->rtfr.lbaLowExt = M_Byte3(atareq.ata.lba);
-            scsiIoCtx->pAtaCmdOpts->rtfr.secCntExt = M_Byte1(atareq.ata.count);
+            scsiIoCtx->pAtaCmdOpts->rtfr.lbaHiExt  = M_Byte5(atareq.u.ata.lba);
+            scsiIoCtx->pAtaCmdOpts->rtfr.lbaMidExt = M_Byte4(atareq.u.ata.lba);
+            scsiIoCtx->pAtaCmdOpts->rtfr.lbaLowExt = M_Byte3(atareq.u.ata.lba);
+            scsiIoCtx->pAtaCmdOpts->rtfr.secCntExt = M_Byte1(atareq.u.ata.count);
         }
         else
         {
@@ -734,12 +734,12 @@ eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
             scsiIoCtx->pAtaCmdOpts->rtfr.secCntExt = UINT8_C(0);
             scsiIoCtx->pAtaCmdOpts->rtfr.secCntExt = UINT8_C(0);
             // 28 bit commands put head/last 4 bits of LBA here so need to get them back this way - TJE
-            scsiIoCtx->pAtaCmdOpts->rtfr.device = M_Nibble0(M_Byte3(atareq.ata.lba));
+            scsiIoCtx->pAtaCmdOpts->rtfr.device = M_Nibble0(M_Byte3(atareq.u.ata.lba));
         }
-        scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi  = M_Byte2(atareq.ata.lba);
-        scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid = M_Byte1(atareq.ata.lba);
-        scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow = M_Byte0(atareq.ata.lba);
-        scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = M_Byte0(atareq.ata.count);
+        scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi  = M_Byte2(atareq.u.ata.lba);
+        scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid = M_Byte1(atareq.u.ata.lba);
+        scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow = M_Byte0(atareq.u.ata.lba);
+        scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = M_Byte0(atareq.u.ata.count);
         set_ATA_PT_Sense_Data(scsiIoCtx);
     }
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
@@ -1292,7 +1292,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->pAtaCmdOpts)
         {
 #    if defined(IOCATAREQUEST)
-            if (is_ad_device(filename) && !is_ATA_CAM_Available())
+            if (is_ad_device(scsiIoCtx->device.os_info.name) && !is_ATA_CAM_Available())
             {
                 ret = send_Legacy_ATA_PT(scsiIoCtx);
             }
@@ -1870,6 +1870,11 @@ eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
 
 #if defined(DISABLE_NVME_PASSTHROUGH)
 #    if defined(XPORT_IS_NVME)
+
+#if !IS_FREEBSD_VERSION(14, 0, 0)
+#defined CAM_NVME_STATUS_ERROR 0x20
+#endif
+
 static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = SUCCESS;
@@ -1877,7 +1882,7 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     union ccb*         ccb    = M_NULLPTR;
     struct ccb_nvmeio* nvmeio = M_NULLPTR;
 
-    ccb = cam_getccb(scsiIoCtx->device->os_info.cam_dev);
+    ccb = cam_getccb(nvmeIoCtx->device->os_info.cam_dev);
 
     if (ccb != M_NULLPTR)
     {
@@ -1935,7 +1940,7 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             break;
         case XFER_DATA_IN_OUT:
         case XFER_DATA_OUT_IN:
-            camFlags |= CAM_DIR_NOTH;
+            camFlags |= CAM_DIR_BOTH;
             break;
         }
 
@@ -1981,18 +1986,18 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
                             camTimeout);
         }
         start_Timer(&commandTimer);
-        int ioctlResult = cam_send_ccb(scsiIoCtx->device->os_info.cam_dev, ccb);
+        int ioctlResult = cam_send_ccb(nvmeIoCtx->device->os_info.cam_dev, ccb);
         stop_Timer(&commandTimer);
         if (ioctlResult < 0)
         {
             perror("error sending NVMe I/O");
-            cam_error_print(scsiIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/, CAM_EPF_ALL,
+            cam_error_print(nvmeIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/, CAM_EPF_ALL,
                             stdout);
             ret = FAILURE;
         }
         else
         {
-            // cam_error_print(scsiIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/,
+            // cam_error_print(nvmeIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/,
             // CAM_EPF_ALL, stdout);
             if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP)
             {
