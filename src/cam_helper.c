@@ -706,7 +706,7 @@ eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
     }
 
     start_Timer(&commandTimer);
-    int iocres = ioctl(scsiIoCtx->device.os_info.fd, IOCATAREQUEST, &atareq);
+    int iocres = ioctl(scsiIoCtx->device->os_info.fd, IOCATAREQUEST, &atareq);
     stop_Timer(&commandTimer);
     if (iocres < 0)
     {
@@ -1292,7 +1292,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->pAtaCmdOpts)
         {
 #    if defined(IOCATAREQUEST)
-            if (is_ad_device(scsiIoCtx->device.os_info.name) && !is_ATA_CAM_Available())
+            if (is_ad_device(scsiIoCtx->device->os_info.name) && !is_ATA_CAM_Available())
             {
                 ret = send_Legacy_ATA_PT(scsiIoCtx);
             }
