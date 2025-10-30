@@ -602,7 +602,7 @@ static M_INLINE void set_ATA_PT_Sense_Data(ScsiIoCtx* scsiIoCtx)
 // For legacy ATA disk devices only right now.
 // If we wanted to support ATAPI we need to check protocol for packet to copy the CDB into place instead.
 // This is not done right now since this code focusses on disks. - TJE
-eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
+static eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues          ret = SUCCESS;
     struct ata_ioc_request atareq;
@@ -692,12 +692,12 @@ eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
         break;
     case XFER_DATA_IN:
         atareq.flags |= ATA_CMD_READ;
-        atareq.data  = scsiIoCtx->pAtaCmdOpts->ptrData;
+        atareq.data  = M_REINTERPRET_CAST(caddr_t, scsiIoCtx->pAtaCmdOpts->ptrData);
         atareq.count = M_STATIC_CAST(int, scsiIoCtx->pAtaCmdOpts->dataSize);
         break;
     case XFER_DATA_OUT:
         atareq.flags |= ATA_CMD_WRITE;
-        atareq.data  = scsiIoCtx->pAtaCmdOpts->ptrData;
+        atareq.data  = M_REINTERPRET_CAST(caddr_t, scsiIoCtx->pAtaCmdOpts->ptrData);
         atareq.count = M_STATIC_CAST(int, scsiIoCtx->pAtaCmdOpts->dataSize);
         break;
     case XFER_DATA_IN_OUT:
@@ -1952,9 +1952,9 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             nvmeio->cmd.nsid  = nvmeIoCtx->cmd.adminCmd.nsid;
             nvmeio->cmd.rsvd2 = nvmeIoCtx->cmd.adminCmd.cdw2;
             nvmeio->cmd.rsvd3 = nvmeIoCtx->cmd.adminCmd.cdw3;
-            nvmeio->cmd.mptr  = nvmeIoCtx->cmd.adminCmd.metadata;
+            nvmeio->cmd.mptr  = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
             nvmeio->cmd.prp1  = nvmeIoCtx->cmd.adminCmd.addr;
-            nvmeio->cmd.prp2  = nvmeIoCtx->cmd.adminCmd.metadataLen << 32;
+            nvmeio->cmd.prp2  = nvmeIoCtx->cmd.adminCmd.metadataLen;
             nvmeio->cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
             nvmeio->cmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
             nvmeio->cmd.cdw12 = nvmeIoCtx->cmd.adminCmd.cdw12;
@@ -1973,7 +1973,7 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             nvmeio->cmd.nsid  = nvmeIoCtx->cmd.nvmCmd.nsid;
             nvmeio->cmd.rsvd2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
             nvmeio->cmd.rsvd3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
-            nvmeio->cmd.mptr  = nvmeIoCtx->cmd.nvmCmd.metadata;
+            nvmeio->cmd.mptr  = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
             nvmeio->cmd.prp1  = nvmeIoCtx->cmd.nvmCmd.prp1;
             nvmeio->cmd.prp2  = nvmeIoCtx->cmd.nvmCmd.prp2;
             nvmeio->cmd.cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
