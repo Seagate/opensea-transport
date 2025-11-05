@@ -1396,8 +1396,7 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                         {
                             char* genName   = M_NULLPTR;
                             char* blockName = M_NULLPTR;
-                            DECLARE_ZERO_INIT_ARRAY(char, displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
-                            if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
+                            if (SUCCESS == map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle, &genName, &blockName))
                             {
                                 snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
                                                     SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
@@ -1409,8 +1408,7 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                         {
                             char* genName   = M_NULLPTR;
                             char* blockName = M_NULLPTR;
-                            DECLARE_ZERO_INIT_ARRAY(char, displayHandle, SCAN_DISPLAY_HANDLE_STRING_LENGTH);
-                            if (SUCCESS == map_Block_To_Generic_Handle(displayHandle, &genName, &blockName))
+                            if (SUCCESS == map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle, &genName, &blockName))
                             {
                                 snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
                                                     SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
