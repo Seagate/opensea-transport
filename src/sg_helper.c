@@ -379,6 +379,32 @@ typedef struct s_sysFSLowLevelDeviceInfo
     uint16_t queueDepth;                                       // if 0, then this was unable to be read and populated
 } sysFSLowLevelDeviceInfo;
 
+#if defined(_DEBUG)
+static void print_sysFSLowLevelDeviceInfo(sysFSLowLevelDeviceInfo* sysFsInfo)
+{
+    printf("Full Device Path: %s\n", sysFsInfo->fullDevicePath);
+    printf("Primary Handle: %s\n", sysFsInfo->primaryHandleStr);
+    printf("Secondary Handle: %s\n", sysFsInfo->secondaryHandleStr);
+    printf("Tertiary Handle: %s\n", sysFsInfo->tertiaryHandleStr);
+    printf("SCSI Address: Host %u, Channel %u, Target %u, LUN %u\n", sysFsInfo->scsiAddress.host,
+           sysFsInfo->scsiAddress.channel, sysFsInfo->scsiAddress.target, sysFsInfo->scsiAddress.lun);
+    printf("Drive Type: %d\n", sysFsInfo->drive_type);
+    printf("Interface Type: %d\n", sysFsInfo->interface_type);
+    printf("SCSI Device Type: %d\n", sysFsInfo->scsiDevType);
+    printf("Adapter Info: Vendor ID 0x%X, Product ID 0x%X, Revision 0x%X, Specifier ID 0x%X\n",
+           sysFsInfo->adapter_info.vendorID, sysFsInfo->adapter_info.productID, sysFsInfo->adapter_info.revision,
+           sysFsInfo->adapter_info.specifierID);
+    printf("Driver Info: Name %s, Version String %s, Major Valid %d, Minor Valid %d, Revision Valid %d, Build "
+           "Valid %d, Major Version %u, Minor Version %u, Revision %u, Build Number %u\n",
+           sysFsInfo->driver_info.driverName, sysFsInfo->driver_info.driverVersionString,
+           C_CAST(int, sysFsInfo->driver_info.majorVerValid), C_CAST(int, sysFsInfo->driver_info.minorVerValid),
+           C_CAST(int, sysFsInfo->driver_info.revisionVerValid), C_CAST(int, sysFsInfo->driver_info.buildVerValid),
+           sysFsInfo->driver_info.driverMajorVersion, sysFsInfo->driver_info.driverMinorVersion,
+           sysFsInfo->driver_info.driverRevision, sysFsInfo->driver_info.driverBuildNumber);
+    printf("Queue Depth: %u\n", sysFsInfo->queueDepth);
+}
+#endif //_DEBUG
+
 #define DRIVER_VERSION_LIST_LENGTH 4
 
 // TODO: It may be better to switch to safe_strtok to parse this...would be much simpler overall
@@ -1114,7 +1140,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
     {
         uint8_t scsiDeviceType = UINT8_C(0);
         sysFsInfo->scsiDevType = PERIPHERAL_UNKNOWN_OR_NO_DEVICE_TYPE;
-        if (!read_sysfs_file_uint8(temp, &scsiDeviceType))
+        if (read_sysfs_file_uint8(temp, &scsiDeviceType))
         {
             sysFsInfo->scsiDevType = M_STATIC_CAST(eSCSIPeripheralDeviceType, scsiDeviceType);
         }
@@ -1144,7 +1170,7 @@ static void get_Linux_SYS_FS_SCSI_Device_File_Info(sysFSLowLevelDeviceInfo* sysF
     {
         if (!read_sysfs_file_uint16(temp, &sysFsInfo->queueDepth))
         {
-            sysFsInfo->queueDepth = 0;
+            sysFsInfo->queueDepth = UINT16_C(0);
         }
         close_sysfs_file(&temp);
     }
@@ -2667,7 +2693,6 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
         safe_memset(&raidHint, sizeof(raidTypeHint), 0,
                     sizeof(raidTypeHint)); // clear out before checking driver name since this will be expanded to check
                                            // other drivers in the future
-#    if defined(ENABLE_CISS)
         if (sysFsInfo.scsiDevType == PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE)
         {
             if (strcmp(sysFsInfo.driver_info.driverName, "hpsa") == 0 ||
@@ -2683,7 +2708,6 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
                 }
             }
         }
-#    endif // ENABLE_CISS
     }
 #endif // ENABLE_CISS
 
