@@ -108,7 +108,7 @@ static bool is_ATA_CAM_Available(void)
 }
 
 #if defined(IOCATAREQUEST)
-#    define AD_OPEN_ATTEMPTS_MAX
+#    define AD_OPEN_ATTEMPTS_MAX 2
 
 static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device)
 {
@@ -435,12 +435,14 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                                     device->drive_info.interface_type = NVME_INTERFACE;
                                     device->drive_info.namespaceID    = cpi.xport_specific.nvme.nsid;
                                     break;
+#    if IS_FREEBSD_VERSION(15, 0, 0)
                                 case XPORT_NVMF:
                                     device->drive_info.drive_type     = NVME_DRIVE;
                                     device->drive_info.interface_type = NVME_INTERFACE;
                                     device->drive_info.namespaceID    = cpi.xport_specific.nvmf.nsid;
                                     break;
-#endif // XPORT_IS_NVME
+#    endif // IS_FREEBSD_VERSION(15,0,0)
+#endif     // XPORT_IS_NVME
                                 case XPORT_SAS:
                                 // case XPORT_ISCSI: //Only in freeBSD. Since this falls into default, just
                                 // commenting it out - TJE
@@ -1343,6 +1345,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
 }
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
+#    if !defined(XPORT_IS_NVME)
 static int nvme_filter(const struct dirent* entry)
 {
     int nvmeHandle = strncmp("nvme", entry->d_name, 4);
@@ -1360,7 +1363,7 @@ static int nvme_filter(const struct dirent* entry)
         return !nvmeHandle;
     }
 }
-
+#    else
 static int nda_filter(const struct dirent* entry)
 {
     int nvmeHandle = strncmp("nda", entry->d_name, 3);
@@ -1378,8 +1381,8 @@ static int nda_filter(const struct dirent* entry)
         return !nvmeHandle;
     }
 }
-
-#endif
+#    endif // !defined(XPORT_IS_NVME)
+#endif     // !defined(DISABLE_NVME_PASSTHROUGH)
 
 static int da_filter(const struct dirent* entry)
 {
@@ -1871,9 +1874,9 @@ eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
 #if !defined(DISABLE_NVME_PASSTHROUGH)
 #    if defined(XPORT_IS_NVME)
 
-#if !IS_FREEBSD_VERSION(14, 0, 0)
-#define CAM_NVME_STATUS_ERROR 0x20
-#endif
+#        if !IS_FREEBSD_VERSION(14, 0, 0)
+#            define CAM_NVME_STATUS_ERROR 0x20
+#        endif
 
 static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 {
