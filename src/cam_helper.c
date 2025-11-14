@@ -53,7 +53,8 @@ extern bool validate_Device_Struct(versionBlock);
 // This is defined in newer versions of cam in FreeBSD, and is really useful.
 // This is being redefined here in case it is missing for backwards compatibility with old FreeBSD versions
 #    define CCB_CLEAR_ALL_EXCEPT_HDR(ccbp)                                                                             \
-        bzero((char*)(ccbp) + sizeof((ccbp)->ccb_h), sizeof(*(ccbp)) - sizeof((ccbp)->ccb_h))
+        safe_memset((char*)(ccbp) + sizeof((ccbp)->ccb_h), sizeof(*(ccbp)) - sizeof((ccbp)->ccb_h), 0,                 \
+                    sizeof(*(ccbp)) - sizeof((ccbp)->ccb_h))
 #endif
 
 // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise
@@ -761,10 +762,8 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 
     if (ccb != M_NULLPTR)
     {
-        ataio = &ccb->ataio;
-
-        /* cam_getccb cleans up the header, caller has to zero the payload */
         CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+        ataio = &ccb->ataio;
 
         switch (scsiIoCtx->direction)
         {
@@ -834,7 +833,6 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 
         if (scsiIoCtx->pAtaCmdOpts != M_NULLPTR)
         {
-            bzero(&ataio->cmd, sizeof(ataio->cmd));
             if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_TASKFILE)
             {
                 // NOLINTBEGIN(bugprone-branch-clone)
@@ -1095,9 +1093,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
 
     if (ccb != M_NULLPTR)
     {
-        // Following is copy/paste from different funtions in camcontrol.c
-        /* cam_getccb cleans up the header, caller has to zero the payload */
-        bzero(&(&ccb->ccb_h)[1], sizeof(struct ccb_scsiio) - sizeof(struct ccb_hdr));
+        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
 
         csio = &ccb->csio;
 
@@ -1277,19 +1273,15 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = FAILURE;
     // printf("%s -->\n",__FUNCTION__);
 
-    if (scsiIoCtx->device->drive_info.interface_type == SCSI_INTERFACE)
+    switch (scsiIoCtx->device->drive_info.interface_type)
     {
-        ret = send_Scsi_Cam_IO(scsiIoCtx);
-    }
-    else if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
-    {
+    case NVME_INTERFACE:
         ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
-    }
-    else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
-    {
+        break;
+    case IDE_INTERFACE:
 #if defined(__DragonFly__)
         // Dragonfly BSD has SCSI translation in ahci_cam.c
-        ret = send_Scsi_Cam_IO(scsiIoCtx);
+        M_FALLTHROUGH;
 #else
         if (scsiIoCtx->pAtaCmdOpts)
         {
@@ -1308,10 +1300,14 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         {
             ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
         }
+        break;
 #endif     //__DragonFly__
-    }
-    else if (scsiIoCtx->device->drive_info.interface_type == RAID_INTERFACE)
-    {
+    case IEEE_1394_INTERFACE:
+    case USB_INTERFACE:
+    case SCSI_INTERFACE:
+        ret = send_Scsi_Cam_IO(scsiIoCtx);
+        break;
+    case RAID_INTERFACE:
         if (scsiIoCtx->device->issue_io != M_NULLPTR)
         {
             ret = scsiIoCtx->device->issue_io(scsiIoCtx);
@@ -1323,9 +1319,8 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
                 print_str("No Raid PassThrough IO Routine present for this device\n");
             }
         }
-    }
-    else
-    {
+        break;
+    default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
             printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
