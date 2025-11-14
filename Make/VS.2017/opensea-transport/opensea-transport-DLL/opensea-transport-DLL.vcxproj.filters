@@ -72,6 +72,9 @@
     <ClInclude Include="..\..\..\..\include\ti_legacy_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\sunplus_legacy_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\include\nec_legacy_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -118,6 +121,9 @@
       <Filter>Header Files\vendor\seagate</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\jmicron_nvme_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\jmicron_legacy_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\asmedia_nvme_helper.h">
@@ -200,6 +206,9 @@
     <ClCompile Include="..\..\..\..\src\ti_legacy_helper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\src\sunplus_legacy_helper.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\src\nec_legacy_helper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -234,6 +243,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\src\jmicron_legacy_helper.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\src\asmedia_nvme_helper.c">

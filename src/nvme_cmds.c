@@ -44,6 +44,7 @@ eReturnValues nvme_Reset(const tDevice* device)
     case NVME_PASSTHROUGH_ASMEDIA:
         return asm_nvme_Reset(device);
     case NVME_PASSTHROUGH_REALTEK:
+    case NVME_PASSTHROUGH_REALTEK_BASIC:
     case NVME_PASSTHROUGH_ASMEDIA_BASIC:
         return OS_COMMAND_NOT_AVAILABLE;
     default:
@@ -62,6 +63,7 @@ eReturnValues nvme_Subsystem_Reset(const tDevice* device)
     case NVME_PASSTHROUGH_ASMEDIA:
         return asm_nvme_Subsystem_Reset(device);
     case NVME_PASSTHROUGH_REALTEK:
+    case NVME_PASSTHROUGH_REALTEK_BASIC:
     case NVME_PASSTHROUGH_ASMEDIA_BASIC:
         return OS_COMMAND_NOT_AVAILABLE;
     default:
@@ -195,6 +197,9 @@ eReturnValues nvme_Cmd(const tDevice* device, nvmeCmdCtx* cmdCtx)
         break;
     case NVME_PASSTHROUGH_REALTEK:
         ret = send_Realtek_NVMe_Cmd(cmdCtx);
+        break;
+    case NVME_PASSTHROUGH_REALTEK_BASIC:
+        ret = send_Realtek_Basic_NVMe_Cmd(cmdCtx);
         break;
     default:
         return BAD_PARAMETER;

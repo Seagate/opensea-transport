@@ -270,6 +270,7 @@ src_files = [
     'src/csmi_legacy_pt_cdb_helper.c',
     'src/cypress_legacy_helper.c',
     'src/intel_rst_helper.c',
+    'src/jmicron_legacy_helper.c',
     'src/jmicron_nvme_helper.c',
     'src/realtek_nvme_helper.c',
     'src/nec_legacy_helper.c',
@@ -284,8 +285,9 @@ src_files = [
     'src/scsi_cmds.c',
     'src/scsi_helper.c',
     'src/sntl_helper.c',
+    'src/sunplus_legacy_helper.c',
     'src/ti_legacy_helper.c',
-    'src/usb_hacks.c',
+    'src/usb_hacks.c'
 ]
 
 # Handle various options related to NVMe passthrough support, CISS support, CSMI support, etc. All of these SHOULD be on by default but can be disabled.
