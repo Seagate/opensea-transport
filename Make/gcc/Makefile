@@ -124,6 +124,7 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)nvme_helper.c\
 	$(SRC_DIR)psp_legacy_helper.c\
 	$(SRC_DIR)cypress_legacy_helper.c\
+	$(SRC_DIR)sunplus_legacy_helper.c\
 	$(SRC_DIR)ti_legacy_helper.c\
 	$(SRC_DIR)nec_legacy_helper.c\
 	$(SRC_DIR)prolific_legacy_helper.c\
@@ -132,6 +133,7 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)raid_scan_helper.c\
 	$(SRC_DIR)sntl_helper.c\
 	$(SRC_DIR)jmicron_nvme_helper.c\
+	$(SRC_DIR)jmicron_legacy_helper.c\
 	$(SRC_DIR)asmedia_nvme_helper.c\
 	$(SRC_DIR)realtek_nvme_helper.c\
 	$(SRC_DIR)csmi_legacy_pt_cdb_helper.c\

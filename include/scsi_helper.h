@@ -29,11 +29,14 @@ extern "C"
 #define INQ_DATA_PRODUCT_ID_LEN      (16)
 #define INQ_DATA_PRODUCT_REV_LEN     (4)
 
-#define INQ_RESPONSE_FMT_SCSI        (0) // original response format - basically all vendor unique information
-#define INQ_RESPONSE_FMT_CCS         (1) // SCSI common command set definition. More or less meets modern requirements
-#define INQ_RESPONSE_FMT_CURRENT     (2) // SCSI2 and later all use this format to report inquiry data
+    enum eInquiryResponseFormat
+    {
+        INQ_RESPONSE_FMT_SCSI    = 0, // original response format - basically all vendor unique information
+        INQ_RESPONSE_FMT_CCS     = 1, // SCSI common command set definition. More or less meets modern requirements
+        INQ_RESPONSE_FMT_CURRENT = 2, // SCSI2 and later all use this format to report inquiry data
+    };
 
-#define INQ_MAX_VERSION_DESCRIPTORS  (8)
+#define INQ_MAX_VERSION_DESCRIPTORS (8)
 
     typedef enum eSCSIVersionEnum
     {

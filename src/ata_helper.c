@@ -1899,6 +1899,21 @@ static eReturnValues initial_Identify_Device(tDevice* device)
                         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = false;
                         noMoreRetries                                                                = false;
                     }
+                    else if (device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT &&
+                                 device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_JMICRON)
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_JMICRON;
+                        noMoreRetries                                       = false;
+                    }
+                }
+                else
+                {
+                    if (device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT &&
+                        device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_JMICRON)
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_JMICRON;
+                        noMoreRetries                                       = false;
+                    }
                 }
             }
             if (device->drive_info.interface_type != IDE_INTERFACE)
