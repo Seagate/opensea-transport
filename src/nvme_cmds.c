@@ -71,9 +71,8 @@ eReturnValues nvme_Subsystem_Reset(const tDevice* device)
     }
 }
 
-static eReturnValues set_NVMe_Last_Completion(tDevice* device, const nvmeCmdCtx* cmdCtx)
+static eReturnValues set_NVMe_Last_Completion(tDevice* device, const nvmeCmdCtx* cmdCtx, eReturnValues ret)
 {
-    eReturnValues ret = SUCCESS;
     if (cmdCtx->commandCompletionData.dw3Valid)
     {
         device->drive_info.lastNVMeResult.lastNVMeStatus = cmdCtx->commandCompletionData.statusAndCID;
@@ -204,7 +203,7 @@ eReturnValues nvme_Cmd(const tDevice* device, nvmeCmdCtx* cmdCtx)
     default:
         return BAD_PARAMETER;
     }
-    ret = set_NVMe_Last_Completion(M_CONST_CAST(tDevice*, device), cmdCtx);
+    ret = set_NVMe_Last_Completion(M_CONST_CAST(tDevice*, device), cmdCtx, ret);
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
     {
         print_NVMe_Cmd_Result_Verbose(cmdCtx);
