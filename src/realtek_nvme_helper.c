@@ -268,3 +268,75 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     }
     return ret;
 }
+
+// cmds supported:
+// admin:
+//  - get log page (2)
+//  - identify (6)
+//  - security send/receive
+//  - get features (no way to get completion registers at this time)
+//  - format
+// CMDs to test:
+//  - firmware image download - cdw 11 instead??? this is offset, whereas xfer size is cdw10 as dwords
+//  - firmware image commit - action and slot at most
+
+// NOT SUPPORTED:
+//  device self-test
+//  sanitize
+//  set features
+
+eReturnValues build_Realtek_Basic_NVMe_CDB_And_Payload(uint8_t* cdb, nvmeCmdCtx* nvmCmd)
+{
+    eReturnValues ret = SUCCESS;
+    if (nvmCmd->commandType != NVM_ADMIN_CMD || nvmCmd->dataSize > REALTEK_BASIC_MAX_TRANSFER_SIZE_BYTES)
+    {
+        return OS_COMMAND_NOT_AVAILABLE;
+    }
+    if ((nvmCmd->commandDirection == XFER_DATA_OUT && nvmCmd->dataSize > 0) || nvmCmd->commandDirection == XFER_NO_DATA)
+    {
+        // use for data out and no-data. No data tested with non-data command
+        cdb[0] = REALTEK_NVME_PT_OPCODE_OUT;
+    }
+    else
+    {
+        cdb[0] = REALTEK_NVME_PT_OPCODE_IN;
+    }
+    cdb[1] = M_Byte0(nvmCmd->dataSize);
+    cdb[2] = M_Byte1(nvmCmd->dataSize);
+    cdb[3] = nvmCmd->cmd.adminCmd.opcode;
+    // general rule that lowest byte of dword 0 goes here.
+    // This seems to work for get log page, get features, identify commands - TJE
+    cdb[4] = M_Byte0(nvmCmd->cmd.adminCmd.cdw10);
+    if (nvmCmd->cmd.adminCmd.opcode == NVME_ADMIN_CMD_FORMAT_NVM)
+    {
+        // Note sure if CDB[5] gets used or not. It seems accepted for specifying which LBA format, but that is
+        //  part of cdb[4]...not sure if SES can be specified or not?
+        // cdb[5] = M_Byte1(nvmCmd->cmd.adminCmd.cdw10) >> 1;
+    }
+    return ret;
+}
+
+eReturnValues send_Realtek_Basic_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
+{
+    eReturnValues ret = SUCCESS;
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekCDB, REALTEK_NVME_CDB_SIZE);
+    DISABLE_NONNULL_COMPARE
+    if (nvmCmd == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
+    RESTORE_NONNULL_COMPARE
+    ret = build_Realtek_Basic_NVMe_CDB_And_Payload(realtekCDB, nvmCmd);
+    if (SUCCESS != ret)
+    {
+        return ret;
+    }
+    eReturnValues sendRet = scsi_Send_Cdb(nvmCmd->device, realtekCDB, REALTEK_NVME_CDB_SIZE, nvmCmd->ptrData,
+                                          nvmCmd->dataSize, nvmCmd->commandDirection, NULL, 0, nvmCmd->timeout);
+    // TODO: Translate sense to NVMe status?
+    // NOTE: There does not appear to be a way to read completion DWords from the adapter from what I can tell - TJE
+    // NOTE: For unsupported commands over this passthrough, the sense data returns invalid command operation code,
+    // meaning
+    //       the NVMe opcode, not the SCSI E4/E5 opcode. -TJE
+    return sendRet;
+}
