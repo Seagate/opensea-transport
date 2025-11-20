@@ -2290,10 +2290,10 @@ eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* device, bool USBchildDr
     return isIronWolfNASDrive;
 }
 
-bool is_Firecuda_Drive(const tDevice* device, bool USBchildDrive)
+eFirecuda_Drive is_Firecuda_Drive(const tDevice* device, bool USBchildDrive)
 {
-    bool        isFirecudaDrive = false;
-    const char* modelNumber     = &device->drive_info.product_identification[0];
+    eFirecuda_Drive isFirecudaDrive = NON_FIRECUDA_DRIVE;
+    char*           modelNumber     = &device->drive_info.product_identification[0];
     if (USBchildDrive)
     {
         modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
@@ -2307,7 +2307,11 @@ bool is_Firecuda_Drive(const tDevice* device, bool USBchildDrive)
             wildcard_Match("*ZP*GM*", modelNumber) || // check if PCIe Firecuda SSD
             wildcard_Match("*ZP*GV*", modelNumber))   // check if PCIe Firecuda SSD
         {
-            isFirecudaDrive = true;
+            isFirecudaDrive = FIRECUDA_DRIVE;
+        }
+        else if (wildcard_Match("*ZP*GS*", modelNumber))
+        {
+            isFirecudaDrive = FIRECUDA_X_DRIVE;
         }
     }
 

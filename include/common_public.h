@@ -2563,6 +2563,13 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* device, bool USBchildDrive);
 
+    typedef enum eFirecuda_DriveEnum
+    {
+        NON_FIRECUDA_DRIVE,
+        FIRECUDA_DRIVE,
+        FIRECUDA_X_DRIVE,
+    } eFirecuda_Drive;
+
     //-----------------------------------------------------------------------------
     //
     //  is_Firecuda_Drive(const tDevice *device, bool USBchildDrive)
@@ -2575,11 +2582,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   automatically also check the child drive info (this is really just used for recursion in the function)
     //!
     //  Exit:
-    //!   \return 1 = It is a Firecuda Drive, 0 - Not a Firecuda Drive
+    //!   \return 1 = It is a Firecuda Drive, 2 = It is a FireCudaX Drive, 0 - Not a Firecuda Drive
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Firecuda_Drive(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eFirecuda_Drive is_Firecuda_Drive(const tDevice* device, bool USBchildDrive);
 
     typedef enum eSkyhawk_DriveEnum
     {
