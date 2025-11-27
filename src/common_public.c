@@ -1408,7 +1408,9 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                         {
                             char* genName   = M_NULLPTR;
                             char* blockName = M_NULLPTR;
-                            if (SUCCESS == map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle, &genName, &blockName))
+                            if (SUCCESS ==
+                                map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                                            &genName, &blockName))
                             {
                                 snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
                                                     SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
@@ -1420,7 +1422,9 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                         {
                             char* genName   = M_NULLPTR;
                             char* blockName = M_NULLPTR;
-                            if (SUCCESS == map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle, &genName, &blockName))
+                            if (SUCCESS ==
+                                map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                                            &genName, &blockName))
                             {
                                 snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
                                                     SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
@@ -2293,7 +2297,7 @@ eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* device, bool USBchildDr
 eFirecuda_Drive is_Firecuda_Drive(const tDevice* device, bool USBchildDrive)
 {
     eFirecuda_Drive isFirecudaDrive = NON_FIRECUDA_DRIVE;
-    char*           modelNumber     = &device->drive_info.product_identification[0];
+    const char*     modelNumber     = &device->drive_info.product_identification[0];
     if (USBchildDrive)
     {
         modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
@@ -2365,7 +2369,7 @@ bool is_Nytro_Drive(const tDevice* device, bool USBchildDrive)
 
     if (safe_strlen(modelNumber))
     {
-        if (wildcard_Match("XS*SE*", modelNumber) ||  // Nytro 3332, Nytro 3331, Nytro 2332
+        if (wildcard_Match("*XS*SE*", modelNumber) || // Nytro 3332, Nytro 3331, Nytro 2332
             wildcard_Match("*XS*LE*", modelNumber) || // Nytro 3532, Nytro 3531, Nytro 2532
             wildcard_Match("*XS*ME*", modelNumber) || // Nytro 3732, Nytro 3731
             wildcard_Match("*XS*TE*", modelNumber) || // Nytro 3131
@@ -2399,9 +2403,9 @@ bool is_Exos_Drive(const tDevice* device, bool USBchildDrive)
     if (safe_strlen(modelNumber))
     {
         if (wildcard_Match("ST*NM*", modelNumber) ||  // Exos X-series
-            wildcard_Match("*ST*MP*", modelNumber) || // Exos E-series
-            wildcard_Match("*ST*MM*", modelNumber) || // Exos E-series
-            wildcard_Match("*ST*NX*", modelNumber))   // Exos E-series
+            wildcard_Match("ST*MP*", modelNumber) || // Exos E-series
+            wildcard_Match("ST*MM*", modelNumber) || // Exos E-series
+            wildcard_Match("ST*NX*", modelNumber))   // Exos E-series
         {
             isExosDrive = true;
         }
