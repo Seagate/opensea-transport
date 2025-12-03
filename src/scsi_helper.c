@@ -5414,3 +5414,15 @@ bool is_Unaligned_Write(const uint8_t* senseData, uint32_t senseLen)
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0x04, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
+
+bool is_LBA_Out_Of_Range(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0x00, 0x00};
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
+
+bool is_HW_Error_No_Defect_Spare_Available(const uint8_t* senseData, uint32_t senseLen)
+{
+    senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_HARDWARE_ERROR, 0x32, 0x00, 0x00};
+    return check_Sense_For_Specific_Info(senseData, senseLen, check);
+}
