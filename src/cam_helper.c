@@ -181,7 +181,6 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
     struct nvme_get_nsid gnsid;
     eReturnValues        ret          = SUCCESS;
     char*                deviceHandle = M_NULLPTR;
-    char*         deviceHandle = M_NULLPTR;
 
     ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
     if (ret != SUCCESS)
@@ -191,6 +190,15 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
     }
 
     device->os_info.cam_dev = M_NULLPTR;
+    ePosixHandleFlags handleFlags = POSIX_HANDLE_FLAGS_DEFAULT;
+    if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUIRE_EXCLUSIVE;
+    }
+    else if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
+    }
     ret = posix_Get_Device_Handle(deviceHandle, &device->os_info.fd, &handleFlags, 0);
     if (ret != SUCCESS)
     {
