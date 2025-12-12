@@ -1245,6 +1245,13 @@ extern "C"
         SAM_STATUS_TASK_ABORTED               = 0x40,
     } eSAMStatus;
 
+    typedef enum
+    {
+        REASSIGN_BLOCKS_LIST_HEADER_LENGTH = 4,
+        REASSIGN_BLOCKS_SHORT_LBA_LENGTH = 4,
+        REASSIGN_BLOCKS_LONG_LBA_LENGTH  = 8,
+    } eReassignBlocksSizes;
+
 #if defined(__cplusplus)
 } // extern "C"
 #endif

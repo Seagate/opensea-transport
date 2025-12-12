@@ -21,11 +21,12 @@
 #include "type_conversion.h"
 
 #include "bsd_ata_passthrough.h"
-#include "bsd_mount_info.h"
 #include "bsd_scsi_passthrough.h"
 #include "cmds.h"
 #include "common_public.h"
 #include "netbsd_openbsd_helper.h"
+#include "nix_mounts.h"
+#include "posix_common_lowlevel.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -76,78 +77,45 @@ static int rwd_filter(const struct dirent* entry)
 
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
-    int           fd           = 0;
-    eReturnValues ret          = SUCCESS;
-    char*         deviceHandle = M_NULLPTR;
-    errno_t       duphandle    = safe_strdup(&deviceHandle, filename);
-    if (duphandle != 0 || deviceHandle == M_NULLPTR)
-    {
-        return MEMORY_FAILURE;
-    }
-    int handleFlags = O_RDWR | O_NONBLOCK;
-    int attempts    = 0;
-#define BSD_OPEN_ATTEMPTS_MAX 2
-    if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
-    {
-        handleFlags |= O_EXCL;
-    }
-    do
-    {
-        ++attempts;
-        if ((device->os_info.fd = open(deviceHandle, handleFlags)) < 0)
-        {
-            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
-            {
-                handleFlags &= ~O_EXCL;
-                continue;
-            }
-            perror("open");
-            set_Device_Last_Error(device, errno);
-            print_str("open failure\n");
-            print_str("Error: ");
-            print_Errno_To_Screen(errno);
-            if (device->os_info.last_error == EACCES)
-            {
-                safe_free(&deviceHandle);
-                return PERMISSION_DENIED;
-            }
-            else if (device->os_info.last_error == EBUSY)
-            {
-                safe_free(&deviceHandle);
-                return DEVICE_BUSY;
-            }
-            else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
-            {
-                safe_free(&deviceHandle);
-                return DEVICE_INVALID;
-            }
-            else
-            {
-                safe_free(&deviceHandle);
-                return FAILURE;
-            }
-        }
-        else
-        {
-            break;
-        }
-    } while (attempts < BSD_OPEN_ATTEMPTS_MAX);
+    eReturnValues     ret          = SUCCESS;
+    char*             deviceHandle = M_NULLPTR;
+    ePosixHandleFlags handleFlags  = POSIX_HANDLE_FLAGS_DEFAULT;
 
-    if (handleFlags & O_EXCL)
+    ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
+    if (ret != SUCCESS)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
     }
-    else
+
+    if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUIRE_EXCLUSIVE;
+    }
+    else if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
+    }
+
+    ret = posix_Get_Device_Handle(deviceHandle, &device->os_info.fd, &handleFlags, 0);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+    if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
     {
         device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
     }
-
-    device->os_info.fd = fd;
+    else
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+    }
 
     // setup any other necessary enumeration of the device
     device->drive_info.drive_type     = SCSI_DRIVE;
     device->drive_info.interface_type = SCSI_INTERFACE;
-    if (strstr(filename, "wd"))
+    if (strstr(deviceHandle, "wd"))
     {
         device->drive_info.drive_type                                 = ATA_DRIVE;
         device->drive_info.interface_type                             = IDE_INTERFACE;
@@ -165,6 +133,9 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         get_BSD_SCSI_Address(device->os_info.fd, &device->os_info.addresstype, &device->os_info.bus,
                              &device->os_info.target, &device->os_info.lun);
     }
+    snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
+    snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", deviceHandle);
+    free_Posix_Resolved_Filename(&deviceHandle);
 
 #if defined(__NetBSD__)
     device->os_info.osType = OS_NETBSD;
@@ -178,7 +149,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         return ret;
     }
 
-    set_BSD_Device_Partition_Info(device);
+    set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
     ret = fill_Drive_Info_Data(device);
     return ret;
 }
@@ -247,7 +218,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 }
 
 #define BSD_DEV_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const   ptrToDeviceList,
+eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)
@@ -561,7 +532,7 @@ eReturnValues os_Update_File_System_Cache(const tDevice* device)
 
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
-    return bsd_Unmount_From_Matching_Dev(device);
+    return unmount_Partitions_From_Device(device->os_info.name);
 }
 
 eReturnValues os_Erase_Boot_Sectors(const tDevice* device)

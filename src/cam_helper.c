@@ -24,9 +24,10 @@
 #include "type_conversion.h"
 
 #include "ata_helper_func.h"
-#include "bsd_mount_info.h"
 #include "cam_helper.h"
+#include "nix_mounts.h"
 #include "nvme_helper_func.h"
+#include "posix_common_lowlevel.h"
 #include "sat_helper_func.h"
 #include "scsi_helper_func.h"
 #include "sntl_helper.h"
@@ -115,66 +116,37 @@ static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device
 {
     eReturnValues ret          = SUCCESS;
     char*         deviceHandle = M_NULLPTR;
-    errno_t       duphandle    = safe_strdup(&deviceHandle, filename);
-    if (duphandle != 0 || deviceHandle == M_NULLPTR)
-    {
-        return MEMORY_FAILURE;
-    }
-    int handleFlags = O_RDWR;
-    int attempts    = 0;
-    if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
-    {
-        handleFlags |= O_EXCL;
-    }
-    do
-    {
-        ++attempts;
-        if ((device->os_info.fd = open(deviceHandle, handleFlags)) < 0)
-        {
-            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
-            {
-                handleFlags &= ~O_EXCL;
-                continue;
-            }
-            perror("open");
-            set_Device_Last_Error(device, errno);
-            printf("open failure\n");
-            printf("Error: ");
-            print_Errno_To_Screen(errno);
-            if (device->os_info.last_error == EACCES)
-            {
-                safe_free(&deviceHandle);
-                return PERMISSION_DENIED;
-            }
-            else if (device->os_info.last_error == EBUSY)
-            {
-                safe_free(&deviceHandle);
-                return DEVICE_BUSY;
-            }
-            else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
-            {
-                safe_free(&deviceHandle);
-                return DEVICE_INVALID;
-            }
-            else
-            {
-                safe_free(&deviceHandle);
-                return FAILURE;
-            }
-        }
-        else
-        {
-            break;
-        }
-    } while (attempts < AD_OPEN_ATTEMPTS_MAX);
 
-    if (handleFlags & O_EXCL)
+    ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
+    if (ret != SUCCESS)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+
+    ePosixHandleFlags handleFlags = POSIX_HANDLE_FLAGS_DEFAULT;
+    if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUIRE_EXCLUSIVE;
+    }
+    else if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
+    }
+
+    ret = posix_Get_Device_Handle(deviceHandle, &device->os_info.fd, &handleFlags, 0);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+    if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
     }
     else
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
     }
 
     device->os_info.minimumAlignment = sizeof(void*);
@@ -196,7 +168,9 @@ static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device
         return ret;
     }
 
-    set_BSD_Device_Partition_Info(device);
+    free_Posix_Resolved_Filename(&deviceHandle);
+
+    set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
     ret = fill_Drive_Info_Data(device);
     return ret;
 }
@@ -207,29 +181,29 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
     struct nvme_get_nsid gnsid;
     eReturnValues        ret          = SUCCESS;
     char*                deviceHandle = M_NULLPTR;
-    errno_t              duphandle    = safe_strdup(&deviceHandle, filename);
-    if (duphandle != 0 || deviceHandle == M_NULLPTR)
+    char*         deviceHandle = M_NULLPTR;
+
+    ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
+    if (ret != SUCCESS)
     {
-        return MEMORY_FAILURE;
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
     }
+
     device->os_info.cam_dev = M_NULLPTR;
-    if ((device->os_info.fd = open(deviceHandle, O_RDWR | O_NONBLOCK)) < 0)
+    ret = posix_Get_Device_Handle(deviceHandle, &device->os_info.fd, &handleFlags, 0);
+    if (ret != SUCCESS)
     {
-        perror("open");
-        device->os_info.fd = errno;
-        print_str("open failure");
-        print_str("Error:");
-        print_Errno_To_Screen(errno);
-        if (device->os_info.fd == EACCES)
-        {
-            safe_free(&deviceHandle);
-            return PERMISSION_DENIED;
-        }
-        else
-        {
-            safe_free(&deviceHandle);
-            return FAILURE;
-        }
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+    if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+    }
+    else
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
     }
 
     device->os_info.minimumAlignment = sizeof(void*);
@@ -255,7 +229,7 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
     // Now we will set up the device name, etc fields in the os_info structure
     snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
     snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
-    set_BSD_Device_Partition_Info(device);
+    set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
 
     ret = fill_Drive_Info_Data(device);
 
@@ -498,7 +472,7 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                             //       we know the interface
                             setup_Passthrough_Hacks_By_ID(device);
                         }
-                        set_BSD_Device_Partition_Info(device);
+                        set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
                         ret = fill_Drive_Info_Data(device);
                     }
                     else
@@ -2308,5 +2282,5 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
-    return bsd_Unmount_From_Matching_Dev(device);
+    return unmount_Partitions_From_Device(device->os_info.name);
 }

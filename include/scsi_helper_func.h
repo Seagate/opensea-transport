@@ -233,6 +233,14 @@ extern "C"
     OPENSEA_TRANSPORT_API bool is_Unaligned_Write(const uint8_t* senseData, uint32_t senseLen);
 
     M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_LBA_Out_Of_Range(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API bool is_HW_Error_No_Defect_Spare_Available(const uint8_t* senseData, uint32_t senseLen);
+
+    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields senseFields);
 
     //-----------------------------------------------------------------------------
