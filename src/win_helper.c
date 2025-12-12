@@ -49,6 +49,7 @@ RESTORE_WARNING_4255
 #include "ata_helper_func.h"
 #include "common_public.h"
 #include "sat_helper_func.h"
+#include "scsi_helper.h"
 #include "scsi_helper_func.h"
 #include "usb_hacks.h"
 #include "win_helper.h"
@@ -6459,6 +6460,136 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     RESTORE_NONNULL_COMPARE
     return returnValue;
 }
+
+// prototypes for reassign blocks IOCTLs
+#if WINVER >= SEA_WIN32_WINNT_VISTA && defined(IOCTL_DISK_REASSIGN_BLOCKS_EX)
+static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks_Ex(ScsiIoCtx* scsiIoCtx);
+#endif
+static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks(ScsiIoCtx* scsiIoCtx);
+
+static M_INLINE bool is_Reassign_Blocks_LongLBA(uint8_t cdbByte1)
+{
+    // if longlba is one, all LBAs are 8bytes long and should use the newer IOCTL for this CDB
+    if ((cdbByte1 & BIT1) == 1)
+    {
+        return true;
+    }
+    return false;
+}
+
+static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks(ScsiIoCtx* scsiIoCtx)
+{
+    // 4 byte LBA version
+    eReturnValues ret = SUCCESS;
+    // Windows will only support standard list, not long list for this, so check that first.
+    if (scsiIoCtx == M_NULLPTR || scsiIoCtx->cdb[CDB_OPERATION_CODE] != REASSIGN_BLOCKS_6)
+    {
+        return BAD_PARAMETER;
+    }
+    else
+    {
+        uint32_t lbaEntries =
+            M_BytesTo4ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1], scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]) /
+            REASSIGN_BLOCKS_SHORT_LBA_LENGTH;
+        if (lbaEntries > UINT16_MAX) // maximum number of blocks that can be in the list.
+        {
+            return OS_COMMAND_NOT_AVAILABLE;
+        }
+        // if longlba is one, all LBAs are 8bytes long and should use the newer IOCTL for this CDB
+        if (is_Reassign_Blocks_LongLBA(scsiIoCtx->cdb[CDB_1]))
+        {
+#if WINVER >= SEA_WIN32_WINNT_VISTA && defined(IOCTL_DISK_REASSIGN_BLOCKS_EX)
+            // call 4byte version instead.
+            return send_Win_IOCTL_Disk_Reassign_Blocks_Ex(scsiIoCtx);
+            #else
+            return OS_COMMAND_NOT_AVAILABLE;
+            #endif
+        }
+        // no other conditions to check, so proceed.
+        // first get number of entries in the list.
+        DWORD               bytesReturned     = DWORD_C(0);
+        DWORD            reassignStructLen = sizeof(REASSIGN_BLOCKS) + (lbaEntries * sizeof(DWORD));
+        PREASSIGN_BLOCKS winReassignBlocks =
+            M_REINTERPRET_CAST(PREASSIGN_BLOCKS, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t),
+                                                                        scsiIoCtx->device->os_info.minimumAlignment));
+        if (winReassignBlocks == M_NULLPTR)
+        {
+            return MEMORY_FAILURE;
+        }
+        winReassignBlocks->Count = M_STATIC_CAST(WORD, lbaEntries);
+        for (uint32_t iter = REASSIGN_BLOCKS_LIST_HEADER_LENGTH, counter = 0;
+             iter < scsiIoCtx->dataLength && counter < lbaEntries; iter += REASSIGN_BLOCKS_LONG_LBA_LENGTH, ++counter)
+        {
+            winReassignBlocks->BlockNumber[counter] =
+                M_BytesTo4ByteValue(scsiIoCtx->pdata[iter], scsiIoCtx->pdata[iter + 1], scsiIoCtx->pdata[iter + 2],
+                                    scsiIoCtx->pdata[iter + 3]);
+        }
+        BOOL ioResult = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_DISK_REASSIGN_BLOCKS, winReassignBlocks,
+                                        reassignStructLen, M_NULLPTR, 0, &bytesReturned, M_NULLPTR);
+        scsiIoCtx->device->os_info.last_error = GetLastError();
+        if (MSFT_BOOL_FALSE(ioResult))
+        {
+            // Need to figure out error mapping for this IOCTL. Not clearly documented what errors can be returned here.
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
+    }
+    return ret;
+}
+
+#if WINVER >= SEA_WIN32_WINNT_VISTA && defined (IOCTL_DISK_REASSIGN_BLOCKS_EX)
+
+static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks_Ex(ScsiIoCtx* scsiIoCtx)
+{
+    eReturnValues ret = SUCCESS;
+    // Windows will only support standard list, not long list for this, so check that first.
+    if (scsiIoCtx == M_NULLPTR || scsiIoCtx->cdb[CDB_OPERATION_CODE] != REASSIGN_BLOCKS_6)
+    {
+        return BAD_PARAMETER;
+    }
+    else
+    {
+        uint32_t lbaEntries =
+            M_BytesTo4ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1], scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]) /
+            REASSIGN_BLOCKS_LONG_LBA_LENGTH; 
+        if (lbaEntries > UINT16_MAX) // maximum number of blocks that can be in the list.
+        {
+            return OS_COMMAND_NOT_AVAILABLE;
+        }
+        if (!is_Reassign_Blocks_LongLBA(scsiIoCtx->cdb[CDB_1])) // if longlba is zero, all LBAs are 4bytes long and should use the older IOCTL for this CDB
+        {
+            // call 4byte version instead.
+            return send_Win_IOCTL_Disk_Reassign_Blocks(scsiIoCtx);
+        }
+        // no other conditions to check, so proceed.
+        // first get number of entries in the list.
+        DWORD bytesReturned     = DWORD_C(0);
+        DWORD               reassignStructLen = sizeof(REASSIGN_BLOCKS_EX) + (lbaEntries * sizeof(LARGE_INTEGER));
+        PREASSIGN_BLOCKS_EX winReassignBlocks = M_REINTERPRET_CAST(PREASSIGN_BLOCKS_EX, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+        if (winReassignBlocks == M_NULLPTR)
+        {
+            return MEMORY_FAILURE;
+        }
+        winReassignBlocks->Count = M_STATIC_CAST(WORD, lbaEntries);
+        for (uint32_t iter = REASSIGN_BLOCKS_LIST_HEADER_LENGTH, counter = 0; iter < scsiIoCtx->dataLength && counter < lbaEntries; iter += REASSIGN_BLOCKS_LONG_LBA_LENGTH, ++counter)
+        {
+            winReassignBlocks->BlockNumber[counter].QuadPart =
+                M_BytesTo8ByteValue(scsiIoCtx->pdata[iter], scsiIoCtx->pdata[iter + 1], scsiIoCtx->pdata[iter + 2],
+                                    scsiIoCtx->pdata[iter + 3], scsiIoCtx->pdata[iter + 4], scsiIoCtx->pdata[iter + 5],
+                                    scsiIoCtx->pdata[iter + 6], scsiIoCtx->pdata[iter + 7]);
+        }
+        BOOL ioResult = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_DISK_REASSIGN_BLOCKS_EX, winReassignBlocks,
+                                        reassignStructLen, M_NULLPTR, 0, &bytesReturned, M_NULLPTR);
+        scsiIoCtx->device->os_info.last_error = GetLastError();
+        if (MSFT_BOOL_FALSE(ioResult))
+        {
+            // Need to figure out error mapping for this IOCTL. Not clearly documented what errors can be returned here.
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
+    }
+    return ret;
+}
+
+#endif // WINVER >= SEA_WIN32_WINNT_VISTA && defined (IOCTL_DISK_REASSIGN_BLOCKS_EX)
 
 #if defined INCLUDED_SCSI_DOT_H
 typedef struct s_scsiPassThroughEXIOStruct
