@@ -119,6 +119,10 @@ struct MountIter
 {
     FILE*          fp;
     char           lineBuf[MNT_LINE_BUF_SIZE];
+#    if defined(_BSD_SOURCE) || defined(_SVID_SOURCE) ||                                                               \
+        !defined(NO_GETMNTENT_R)
+    struct mntent entBuf;
+#    endif
     struct mntent* ent;
 };
 
@@ -161,12 +165,11 @@ int mount_iter_next(MountIter* it, MountEntry* out)
         !defined(NO_GETMNTENT_R) // feature test macros we're defining _BSD_SOURCE or _SVID_SOURCE in my testing, but we
                                  // want the reentrant version whenever possible. This can be defined if this function
                                  // is not identified. - TJE
-    struct mntent entBuf;
-    if (getmntent_r(it->fp, &entBuf, it->lineBuf, MNT_LINE_BUF_SIZE) == M_NULLPTR)
+    if (getmntent_r(it->fp, &it->entBuf, it->lineBuf, MNT_LINE_BUF_SIZE) == M_NULLPTR)
     {
         return -1;
     }
-    it->ent = &entBuf;
+    it->ent = &it->entBuf;
 #    else
     it->ent = getmntent(it->fp);
     if (it->ent == M_NULLPTR)
