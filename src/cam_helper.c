@@ -105,6 +105,9 @@ static bool is_ATA_CAM_Available(void)
         }
         checked = true;
     }
+#else
+    M_USE_UNUSED(checked);
+    M_USE_UNUSED(available);
 #endif
     return available;
 }
@@ -176,6 +179,7 @@ static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device
 }
 #endif // IOCATAREQUEST
 
+#if !defined(DISABLE_NVME_PASSTHROUGH)
 static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
 {
     struct nvme_get_nsid gnsid;
@@ -244,6 +248,7 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
     safe_free(&deviceHandle);
     return ret;
 }
+#endif // DISABLE_NVME_PASSTHROUGH
 
 static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
 {
