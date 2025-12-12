@@ -306,7 +306,7 @@ ofnvmesupport = get_option('ofnvme')
 os_deps = []
 
 if target_machine.system() == 'linux'
-    src_files += ['src/sg_helper.c']
+    src_files += ['src/sg_helper.c', 'src/posix_common_lowlevel.c', 'src/nix_mounts.c']
     if cisssupport.enabled()
         add_project_arguments('-DENABLE_CISS', language: 'c')
     endif
@@ -323,7 +323,7 @@ if target_machine.system() == 'linux'
         endif
     endif
 elif target_machine.system() == 'freebsd' or target_machine.system() == 'dragonfly'
-    src_files += ['src/cam_helper.c', 'src/bsd_mount_info.c']
+    src_files += ['src/cam_helper.c', 'src/posix_common_lowlevel.c', 'src/nix_mounts.c']
     cam_dep = c.find_library('cam')
     os_deps += [cam_dep]
     #TODO: Need to do some testing on FreeBSD before we allow this
@@ -338,14 +338,14 @@ elif target_machine.system() == 'openbsd' or target_machine.system() == 'netbsd'
     src_files += [
         'src/bsd_ata_passthrough.c',
         'src/bsd_scsi_passthrough.c',
-        'src/bsd_mount_info.c',
         'src/netbsd_openbsd_helper.c',
+        'src/posix_common_lowlevel.c', 'src/nix_mounts.c'
     ]
     add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language: 'c')
     message('Auto-disabling NVMe support as no ioctl header can be found')
     #TODO: might need -lutil. Not sure yet-TJE
 elif target_machine.system() == 'sunos'
-    src_files += ['src/uscsi_helper.c']
+    src_files += ['src/uscsi_helper.c', 'src/posix_common_lowlevel.c', 'src/nix_mounts.c']
     add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language: 'c')
     message('Auto-disabling NVMe support as no ioctl header can be found')
     #TODO: Need to do some testing on Illumos before we allow this
@@ -353,7 +353,7 @@ elif target_machine.system() == 'sunos'
     #   add_project_arguments('-DENABLE_CISS', language : 'c')
     # endif
 elif target_machine.system() == 'aix'
-    src_files += ['src/aix_helper.c']
+    src_files += ['src/aix_helper.c', 'src/posix_common_lowlevel.c']
     odm_dep = c.find_library('odm')
     os_deps += [odm_dep]
     cfg_dep = c.find_library('cfg')

@@ -137,7 +137,7 @@ extern "C"
                 uint16_t Word019;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idSNwords or something-TJE
-        };     // anonymous to make access to SN or SN words easier
+        }; // anonymous to make access to SN or SN words easier
         uint16_t Word020;
         uint16_t Word021;
         uint16_t Word022;
@@ -152,7 +152,7 @@ extern "C"
                 uint16_t Word026;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idFWwords or something-TJE
-        };     // anonymous to make access to FW or FW words easier
+        }; // anonymous to make access to FW or FW words easier
         union
         {
             uint8_t ModelNum[ATA_IDENTIFY_MN_LENGTH]; // 27 ... 46
@@ -180,7 +180,7 @@ extern "C"
                 uint16_t Word046;
             }; // anonymous to make sure all words are easily accessed. If this creates too many warnings, we can give
                // it the name idMNwords or something-TJE
-        };     // anonymous to make access to MN or MN words easier
+        }; // anonymous to make access to MN or MN words easier
         uint16_t Word047;
         uint16_t Word048;
         uint16_t Word049;
@@ -1121,7 +1121,7 @@ extern "C"
             bool     noCompareLogicalBlocks; // when set, the verify with bytecheck = 1 is not supported
             uint32_t maxTransferLength;      // Maximum SCSI command transfer length in bytes. Mostly here for USB where
                                              // translations aren't accurate or don't show this properly.
-            int8_t   readBufferCmdSize; // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
+            int8_t readBufferCmdSize;        // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
             bool noSATVPDPage; // when this is set, the SAT VPD is not available and should not be read, skipping ahead
                                // to instead directly trying a passthrough command
             int8_t syncCacheCmdSize;      // 0 = not set, <0 = not supported, 10 = 10B version, 16 = 16B version
@@ -1463,6 +1463,23 @@ extern "C"
 typedef errno_t lasterror_t; // errno in POSIX OSs
 #endif
 
+    typedef struct s_fileSystemInfo
+    {
+        bool fileSystemInfoValid; // This must be set to true for the other bools to have any meaning. This is here
+                                  // because some OS's may not have support for detecting this information
+        union
+        {
+            bool hasFileSystem; //[deprecated], use the hasActiveFileSystem below. This will only be true for
+                                // filesystems the current OS can detect. Ex: Windows will only set this for mounted
+                                // volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem
+                                // types since it can handle more than Windows by default
+            bool hasActiveFileSystem; // This is a bit more clear that the filesystem detected was mounted and is in
+                                      // use within the OS.
+        };
+        bool isSystemDisk; // This will be set if the drive has a file system and the OS is running off of it. Ex:
+                           // Windows' C:\Windows\System32, Linux's / & /boot, etc
+    } fileSystemInfo;
+
 #define OS_HANDLE_NAME_MAX_LENGTH          256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
 #define OS_SECOND_HANDLE_NAME_LENGTH       30
@@ -1632,10 +1649,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
     int fd; // used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but
             // kept here just in case)
-    struct cam_device* cam_dev;             // holds fd inside for CAM devices among other information
+    struct cam_device* cam_dev; // holds fd inside for CAM devices among other information
 #    if defined(__x86_64__) || defined(__amd64__) || defined(__aarch64__) || defined(__ia64__) ||                      \
         defined(__itanium__) || defined(__powerpc64__) || defined(__ppc64__) || defined(__spark__)
-    uint8_t            freeBSDPadding[102]; // padding on 64bit OS
+    uint8_t freeBSDPadding[102]; // padding on 64bit OS
 #    else
     uint8_t freeBSDPadding[106]; // padding on 32bit OS
 #    endif
@@ -1656,7 +1673,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #elif defined(__sun)
     int      fd;
     uint32_t adapterMaxTransferSize;
-    uint8_t  otherPadd[106];
+    bool     secondHandleValid; // must be true for remaining fields to be used.
+    char     secondName[OS_SECOND_HANDLE_NAME_LENGTH];
+    char     secondFriendlyName[OS_SECOND_HANDLE_NAME_LENGTH];
+    bool     secondHandleOpened;
+    uint8_t  otherPadd[50];
 #elif defined(__NetBSD__) || defined(__OpenBSD__)
     int                 fd;
     eBSDPassthroughType passthroughType;
@@ -1673,22 +1694,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                                      // Windows since they may not work right for read/write)
         lasterror_t last_error; // This is the last error from the OS specific calls. This is not cleared automatically,
                                 // so it will hold the last error until it is overwritten by another OS call.
-        struct
-        {
-            bool fileSystemInfoValid; // This must be set to true for the other bools to have any meaning. This is here
-                                      // because some OS's may not have support for detecting this information
-            union
-            {
-                bool hasFileSystem; //[deprecated], use the hasActiveFileSystem below. This will only be true for
-                                    // filesystems the current OS can detect. Ex: Windows will only set this for mounted
-                                    // volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem
-                                    // types since it can handle more than Windows by default
-                bool hasActiveFileSystem; // This is a bit more clear that the filesystem detected was mounted and is in
-                                          // use within the OS.
-            };
-            bool isSystemDisk; // This will be set if the drive has a file system and the OS is running off of it. Ex:
-                               // Windows' C:\Windows\System32, Linux's / & /boot, etc
-        } fileSystemInfo;
+        fileSystemInfo fileSystemInfo; // holds filesystem related information
         ptrCsmiDeviceInfo
             csmiDeviceData; // This is a pointer because it will only be allocated when CSMI is supported. This is also
                             // used by Intel RST NVMe passthrough which is basically an extension of CSMI

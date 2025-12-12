@@ -24,8 +24,8 @@
 #include "type_conversion.h"
 
 #include "ata_helper_func.h"
-#include "bsd_mount_info.h"
 #include "cam_helper.h"
+#include "nix_mounts.h"
 #include "nvme_helper_func.h"
 #include "sat_helper_func.h"
 #include "scsi_helper_func.h"
@@ -134,7 +134,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         // Now we will set up the device name, etc fields in the os_info structure
         snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
         snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
-        set_BSD_Device_Partition_Info(device);
+        set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
 
         ret = fill_Drive_Info_Data(device);
 
@@ -348,7 +348,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                 //       we know the interface
                                 setup_Passthrough_Hacks_By_ID(device);
                             }
-                            set_BSD_Device_Partition_Info(device);
+                            set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
                             ret = fill_Drive_Info_Data(device);
                         }
                         else
@@ -1149,7 +1149,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 //
 //-----------------------------------------------------------------------------
 #define CAM_DEV_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const   ptrToDeviceList,
+eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)
@@ -1647,5 +1647,5 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
-    return bsd_Unmount_From_Matching_Dev(device);
+    return unmount_Partitions_From_Device(device->os_info.name);
 }

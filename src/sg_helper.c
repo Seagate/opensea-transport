@@ -39,7 +39,9 @@
 
 #include "ata_helper_func.h"
 #include "cmds.h"
+#include "nix_mounts.h"
 #include "nvme_helper_func.h"
+#include "posix_common_lowlevel.h"
 #include "scsi_helper_func.h"
 #include "sg_helper.h"
 #include "sntl_helper.h"
@@ -256,105 +258,6 @@ static bool is_NVMe_Handle(char* handle)
         }
     }
     return isNvmeDevice;
-}
-
-#define GETMNTENT_R_LINE_BUF_SIZE (256)
-static int get_Partition_Count(const char* blockDeviceName)
-{
-    int   result = 0;
-    FILE* mount = setmntent("/etc/mtab", "r"); // we only need to know about mounted partitions. Mounted partitions need
-                                               // to be known so that they can be unmounted when necessary. - TJE
-    if (mount)
-    {
-        struct mntent* entry = M_NULLPTR;
-#if defined(_BSD_SOURCE) || defined(_SVID_SOURCE) ||                                                                   \
-    !defined(NO_GETMNTENT_R) // getmntent_r lists these feature test macros to look for - TJE
-        struct mntent entBuf;
-        DECLARE_ZERO_INIT_ARRAY(char, lineBuf, GETMNTENT_R_LINE_BUF_SIZE);
-        while (M_NULLPTR != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
-#else // use the not thread safe version since that is all that is available
-        while (M_NULLPTR != (entry = getmntent(mount)))
-#endif
-        {
-            if (strstr(entry->mnt_fsname, blockDeviceName))
-            {
-                // Found a match, increment result counter.
-                ++result;
-            }
-        }
-        endmntent(mount);
-    }
-    else
-    {
-        result = -1; // indicate an error opening the mtab file
-    }
-    return result;
-}
-
-#define PART_INFO_NAME_LENGTH (32)
-#define PART_INFO_PATH_LENGTH (64)
-typedef struct s_spartitionInfo
-{
-    char fsName[PART_INFO_NAME_LENGTH];
-    char mntPath[PART_INFO_PATH_LENGTH];
-} spartitionInfo, *ptrsPartitionInfo;
-
-static M_INLINE void safe_free_spartition_info(spartitionInfo** partinfo)
-{
-    safe_free_core(M_REINTERPRET_CAST(void**, partinfo));
-}
-
-// partitionInfoList is a pointer to the beginning of the list
-// listCount is the number of these structures, which should be returned by get_Partition_Count
-static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
-{
-    eReturnValues result       = SUCCESS;
-    int           matchesFound = 0;
-    if (listCount > 0)
-    {
-        FILE* mount =
-            setmntent("/etc/mtab", "r"); // we only need to know about mounted partitions. Mounted partitions need to be
-                                         // known so that they can be unmounted when necessary. - TJE
-        if (mount)
-        {
-            struct mntent* entry = M_NULLPTR;
-#if defined(_BSD_SOURCE) || defined(_SVID_SOURCE) ||                                                                   \
-    !defined(NO_GETMNTENT_R) // feature test macros we're defining _BSD_SOURCE or _SVID_SOURCE in my testing, but we
-                             // want the reentrant version whenever possible. This can be defined if this function is
-                             // not identified. - TJE
-            struct mntent entBuf;
-            DECLARE_ZERO_INIT_ARRAY(char, lineBuf, GETMNTENT_R_LINE_BUF_SIZE);
-            while (M_NULLPTR != (entry = getmntent_r(mount, &entBuf, lineBuf, GETMNTENT_R_LINE_BUF_SIZE)))
-#else // use the not thread safe version since that is all that is available
-#    pragma message "Not using getmntent_r. Partition detection is not thread safe"
-            while (M_NULLPTR != (entry = getmntent(mount)))
-#endif
-            {
-                if (strstr(entry->mnt_fsname, blockDeviceName))
-                {
-                    // found a match, copy it to the list
-                    if (matchesFound < listCount)
-                    {
-                        snprintf_err_handle((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
-                                            entry->mnt_fsname);
-                        snprintf_err_handle((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s",
-                                            entry->mnt_dir);
-                        ++matchesFound;
-                    }
-                    else
-                    {
-                        result = MEMORY_FAILURE; // out of memory to copy all results to the list.
-                    }
-                }
-            }
-            endmntent(mount);
-        }
-        else
-        {
-            result = FAILURE;
-        }
-    }
-    return result;
 }
 
 typedef struct s_sysFSLowLevelDeviceInfo
@@ -1614,51 +1517,31 @@ static eReturnValues open_fd2(tDevice* device)
     eReturnValues ret = SUCCESS;
     if (device->os_info.secondHandleValid && !device->os_info.secondHandleOpened)
     {
-        int handleFlags = O_RDWR | O_NONBLOCK;
-        int attempts    = 0;
-#define SECOND_HANDLE_OPEN_ATTEMPT_MAX 2
-        if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+        char*             deviceHandle = M_NULLPTR;
+        ePosixHandleFlags handleFlags  = POSIX_HANDLE_FLAGS_DEFAULT;
+        ret                            = posix_Resolve_Filename_Link(device->os_info.secondName, &deviceHandle);
+        if (ret != SUCCESS)
         {
-            handleFlags |= O_EXCL;
+            free_Posix_Resolved_Filename(&deviceHandle);
+            return ret;
         }
-        do
+
+        if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
         {
-            ++attempts;
-            if ((device->os_info.fd2 = open(device->os_info.secondName, handleFlags)) < 0)
-            {
-                if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS &&
-                    !(device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS))
-                {
-                    handleFlags &= ~O_EXCL;
-                    continue;
-                }
-                perror("open");
-                set_Device_Last_Error(device, errno);
-                print_str("open failure\n");
-                print_str("Error: ");
-                print_Errno_To_Screen(errno);
-                if (device->os_info.last_error == EACCES)
-                {
-                    return PERMISSION_DENIED;
-                }
-                else if (device->os_info.last_error == EBUSY)
-                {
-                    return DEVICE_BUSY;
-                }
-                else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
-                {
-                    return DEVICE_INVALID;
-                }
-                else
-                {
-                    return FAILURE;
-                }
-            }
-            else
-            {
-                break;
-            }
-        } while (attempts < SECOND_HANDLE_OPEN_ATTEMPT_MAX);
+            handleFlags = POSIX_HANDLE_FLAGS_REQUIRE_EXCLUSIVE;
+        }
+        else if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+        {
+            handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
+        }
+
+        ret = posix_Get_Device_Handle(deviceHandle, &device->os_info.fd2, &handleFlags, 0);
+        if (ret != SUCCESS)
+        {
+            free_Posix_Resolved_Filename(&deviceHandle);
+            return ret;
+        }
+        free_Posix_Resolved_Filename(&deviceHandle);
         if (device->os_info.fd2 > 0)
         {
             device->os_info.secondHandleOpened = true;
@@ -1671,110 +1554,38 @@ static eReturnValues open_fd2(tDevice* device)
     return ret;
 }
 
-M_NONNULL_PARAM_LIST(1)
-M_PARAM_RW(1)
-static eReturnValues set_Device_Partition_Info(tDevice* device)
-{
-    eReturnValues ret            = SUCCESS;
-    int           partitionCount = 0;
-    char*         blockHandle    = device->os_info.name;
-    if (device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))
-    {
-        blockHandle = device->os_info.secondName;
-    }
-    partitionCount = get_Partition_Count(blockHandle);
-#if defined(_DEBUG)
-    printf("Partition count for %s = %d\n", blockHandle, partitionCount);
-#endif
-    if (partitionCount > 0)
-    {
-        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
-        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
-        device->os_info.fileSystemInfo.isSystemDisk        = false;
-        ptrsPartitionInfo parts =
-            M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
-        if (parts)
-        {
-            if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
-            {
-                int iter = 0;
-                for (; iter < partitionCount; ++iter)
-                {
-                    // since we found a partition, set the "has file system" bool to true
-                    device->os_info.fileSystemInfo.hasActiveFileSystem = true;
-#if defined(_DEBUG)
-                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
-#endif
-                    // check if one of the partitions is /boot and mark the system disk when this is found
-                    // TODO: Should / be treated as a system disk too?
-                    if (strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
-                    {
-                        device->os_info.fileSystemInfo.isSystemDisk = true;
-#if defined(_DEBUG)
-                        print_str("found system disk\n");
-#endif
-                    }
-                }
-            }
-            safe_free_spartition_info(&parts);
-        }
-        else
-        {
-            ret = MEMORY_FAILURE;
-        }
-    }
-    else
-    {
-        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
-        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
-        device->os_info.fileSystemInfo.isSystemDisk        = false;
-    }
-    return ret;
-}
-
 #define LIN_MAX_HANDLE_LENGTH 16
-M_NONNULL_PARAM_LIST(1, 2)
-M_NULL_TERM_STRING(1)
-M_PARAM_RO(1)
-M_PARAM_RW(2)
-static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
+static eReturnValues resolve_Block_Handle_To_Generic_Handle(const char* filename, char** genericHandle)
 {
-    char*         deviceHandle = M_NULLPTR;
-    eReturnValues ret          = SUCCESS;
-    int           k            = 0;
-    int           handleFlags  = O_RDWR | O_NONBLOCK;
-#if defined(_DEBUG)
-    printf("%s: Getting device for %s\n", __FUNCTION__, filename);
-#endif
-
+    eReturnValues mapResult = SUCCESS;
     if (is_Block_Device_Handle(filename))
     {
         // print_str("\tBlock handle found, mapping...\n");
-        char*         genHandle   = M_NULLPTR;
-        char*         blockHandle = M_NULLPTR;
-        eReturnValues mapResult   = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle);
+        char* genHandle   = M_NULLPTR;
+        char* blockHandle = M_NULLPTR;
+        mapResult         = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle);
 #if defined(_DEBUG)
         printf("sg = %s\tsd = %s\n", genHandle, blockHandle);
 #endif
         if (mapResult == SUCCESS && genHandle != M_NULLPTR)
         {
-            deviceHandle = M_REINTERPRET_CAST(char*, safe_calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
+            *genericHandle = M_REINTERPRET_CAST(char*, safe_calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
             // print_str("Changing filename to SG device....\n");
             if (is_SCSI_Generic_Handle(genHandle))
             {
-                snprintf_err_handle(deviceHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", genHandle);
+                snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", genHandle);
             }
             else
             {
-                snprintf_err_handle(deviceHandle, LIN_MAX_HANDLE_LENGTH, "/dev/bsg/%s", genHandle);
+                snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "/dev/bsg/%s", genHandle);
             }
 #if defined(_DEBUG)
-            printf("\tfilename = %s\n", deviceHandle);
+            printf("\tfilename = %s\n", *genericHandle);
 #endif
         }
         else // If we can't map, let still try anyway.
         {
-            if (0 != safe_strdup(&deviceHandle, filename))
+            if (0 != safe_strdup(genericHandle, filename))
             {
                 safe_free(&genHandle);
                 safe_free(&blockHandle);
@@ -1786,71 +1597,181 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
     }
     else
     {
-        if (0 != safe_strdup(&deviceHandle, filename))
+        if (0 != safe_strdup(genericHandle, filename))
         {
             return MEMORY_FAILURE;
         }
     }
-#if defined(_DEBUG)
-    printf("%s: Attempting to open %s\n", __FUNCTION__, deviceHandle);
-#endif
-    // Note: We are opening a READ/Write flag
-    int attempts = 0;
-#define LIN_OPEN_ATTEMPTS_MAX 2
-    if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
-    {
-        handleFlags |= O_EXCL;
-    }
-    do
-    {
-        ++attempts;
-        if ((device->os_info.fd = open(deviceHandle, handleFlags)) < 0)
-        {
-            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
-            {
-                handleFlags &= ~O_EXCL;
-                continue;
-            }
-            perror("open");
-            set_Device_Last_Error(device, errno);
-            printf("open failure\n");
-            printf("Error: ");
-            print_Errno_To_Screen(errno);
-            if (device->os_info.last_error == EACCES)
-            {
-                safe_free(&deviceHandle);
-                return PERMISSION_DENIED;
-            }
-            else if (device->os_info.last_error == EBUSY)
-            {
-                safe_free(&deviceHandle);
-                return DEVICE_BUSY;
-            }
-            else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
-            {
-                safe_free(&deviceHandle);
-                return DEVICE_INVALID;
-            }
-            else
-            {
-                safe_free(&deviceHandle);
-                return FAILURE;
-            }
-        }
-        else
-        {
-            break;
-        }
-    } while (attempts < LIN_OPEN_ATTEMPTS_MAX);
+    return mapResult;
+}
 
-    if (handleFlags & O_EXCL)
+static eReturnValues linux_Get_NVMe_Device(tDevice* device, const char* deviceHandle)
+{
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+    eReturnValues ret = SUCCESS;
+    // Do NVMe specific setup and enumeration
+    device->drive_info.drive_type     = NVME_DRIVE;
+    device->drive_info.interface_type = NVME_INTERFACE;
+    device->drive_info.media_type     = MEDIA_NVM;
+    int ioctlResult                   = ioctl(device->os_info.fd, NVME_IOCTL_ID);
+    if (ioctlResult < 0)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        perror("nvme_ioctl_id");
+        return FAILURE;
+    }
+    device->drive_info.namespaceID = C_CAST(uint32_t, ioctlResult);
+
+    char* dupHandle = M_NULLPTR;
+    if (0 != safe_strdup(&dupHandle, deviceHandle) || dupHandle == M_NULLPTR)
+    {
+        return MEMORY_FAILURE;
+    }
+
+    char* baseLink = basename(dupHandle);
+    // Now we will set up the device name, etc fields in the os_info structure.
+    snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
+    snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
+    safe_free(&dupHandle);
+    return ret;
+#else // DISABLE_NVME_PASSTHROUGH
+#    if defined(_DEBUG)
+    print_str("\nsg helper-nvmedev --  NVME Passthrough disabled, device not supported\n");
+#    endif // DEBUG
+    return NOT_SUPPORTED; // return not supported since NVMe-passthrough is disabled
+#endif     // DISABLE_NVME_PASSTHROUGH
+}
+
+static eReturnValues linux_Get_SCSI_Device(tDevice* device, const char* deviceHandle)
+{
+    eReturnValues ret = SUCCESS;
+    int           k   = 0;
+#if defined(_DEBUG)
+    print_str("Getting SG SCSI address\n");
+#endif
+    struct sg_scsi_id hctlInfo;
+    safe_memset(&hctlInfo, sizeof(struct sg_scsi_id), 0, sizeof(struct sg_scsi_id));
+    errno       = 0; // clear before calling this ioctl
+    int getHctl = ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo);
+    if (getHctl == 0 && errno == 0) // when this succeeds, both of these will be zeros
+    {
+        // print_str("Got hctlInfo\n");
+        device->os_info.scsiAddress.host    = C_CAST(uint8_t, hctlInfo.host_no);
+        device->os_info.scsiAddress.channel = C_CAST(uint8_t, hctlInfo.channel);
+        device->os_info.scsiAddress.target  = C_CAST(uint8_t, hctlInfo.scsi_id);
+        device->os_info.scsiAddress.lun     = C_CAST(uint8_t, hctlInfo.lun);
+        device->drive_info.namespaceID      = device->os_info.scsiAddress.lun +
+                                         UINT32_C(1); // Doing this to help with USB to NVMe adapters. Luns start at
+                                                      // zero, whereas namespaces start with 1, hence the plus 1.
+        // also reported are per lun and per device Q-depth which might be nice to store.
+        // printf("H:C:T:L = %" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8 "\n", device->os_info.scsiAddress.host,
+        // device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target,
+        // device->os_info.scsiAddress.lun);
+    }
+
+#if defined(_DEBUG)
+    print_str("Getting SG driver version\n");
+#endif
+    // Check we have a valid device by trying an ioctl
+    // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
+    if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
+    {
+        printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, deviceHandle, k);
+        perror("SG_GET_VERSION_NUM");
+        close(device->os_info.fd);
+        ret = FAILURE;
     }
     else
     {
+        // http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
+        device->os_info.sgDriverVersion.driverVersionValid = true;
+        device->os_info.sgDriverVersion.majorVersion       = C_CAST(uint8_t, k / 10000);
+        device->os_info.sgDriverVersion.minorVersion =
+            C_CAST(uint8_t, (k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
+        device->os_info.sgDriverVersion.revision =
+            C_CAST(uint8_t, k - (device->os_info.sgDriverVersion.majorVersion * 10000) -
+                                (device->os_info.sgDriverVersion.minorVersion * 100));
+
+        // set scsi interface and scsi drive until we know otherwise
+        device->drive_info.drive_type     = SCSI_DRIVE;
+        device->drive_info.interface_type = SCSI_INTERFACE;
+        device->drive_info.media_type     = MEDIA_HDD;
+        // now have the device information fields set
+#if defined(_DEBUG)
+        print_str("Setting interface, drive type, secondary handles\n");
+#endif
+        set_Device_Fields_From_Handle(deviceHandle, device);
+        setup_Passthrough_Hacks_By_ID(device);
+
+#if defined(_DEBUG)
+        printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", device->os_info.name,
+               device->os_info.friendlyName, device->os_info.secondName, device->os_info.secondFriendlyName);
+        printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel,
+               device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
+
+        printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion,
+               device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
+#endif
+    }
+    return ret;
+}
+
+M_NONNULL_PARAM_LIST(1, 2)
+M_NULL_TERM_STRING(1)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
+{
+    char*         deviceHandle  = M_NULLPTR;
+    char*         genericHandle = M_NULLPTR;
+    eReturnValues ret           = SUCCESS;
+#if defined(_DEBUG)
+    printf("%s: Getting device for %s\n", __FUNCTION__, filename);
+#endif
+
+    ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+
+    ret = resolve_Block_Handle_To_Generic_Handle(deviceHandle, &genericHandle);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        safe_free(&genericHandle);
+        return ret;
+    }
+    // no longer need this handle since we now have what we want in genericHandle
+    free_Posix_Resolved_Filename(&deviceHandle);
+
+    ePosixHandleFlags handleFlags = POSIX_HANDLE_FLAGS_DEFAULT;
+    if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUIRE_EXCLUSIVE;
+    }
+    else if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
+    }
+
+    ret = posix_Get_Device_Handle(genericHandle, &device->os_info.fd, &handleFlags, 0);
+    if (ret != SUCCESS)
+    {
+        safe_free(&genericHandle);
+        return ret;
+    }
+    if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
+    {
         device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
     }
+    else
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+    }
+
+    // set the OS Type
+    device->os_info.osType           = OS_LINUX;
     device->os_info.minimumAlignment = sizeof(void*);
 
     // Adding support for different device discovery options.
@@ -1860,148 +1781,43 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
         device->drive_info.drive_type     = SCSI_DRIVE;
         device->drive_info.interface_type = SCSI_INTERFACE;
         device->drive_info.media_type     = MEDIA_HDD;
-        set_Device_Fields_From_Handle(deviceHandle, device);
+        set_Device_Fields_From_Handle(genericHandle, device);
         setup_Passthrough_Hacks_By_ID(device);
-        set_Device_Partition_Info(device);
-        safe_free(&deviceHandle);
+        set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondHandleValid
+                                                                       ? device->os_info.secondName
+                                                                       : device->os_info.name);
+        safe_free(&genericHandle);
         return ret;
     }
+
     // Add support for other flags.
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
-        if (is_NVMe_Handle(deviceHandle))
+        if (is_NVMe_Handle(genericHandle))
         {
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-            // Do NVMe specific setup and enumeration
-            device->drive_info.drive_type     = NVME_DRIVE;
-            device->drive_info.interface_type = NVME_INTERFACE;
-            int ioctlResult                   = ioctl(device->os_info.fd, NVME_IOCTL_ID);
-            if (ioctlResult < 0)
-            {
-                perror("nvme_ioctl_id");
-                safe_free(&deviceHandle);
-                return FAILURE;
-            }
-            device->drive_info.namespaceID = C_CAST(uint32_t, ioctlResult);
-            device->os_info.osType         = OS_LINUX;
-            device->drive_info.media_type  = MEDIA_NVM;
-
-            char* baseLink = basename(deviceHandle);
-            // Now we will set up the device name, etc fields in the os_info structure.
-            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
-
-            set_Device_Partition_Info(device);
-
-            ret = fill_Drive_Info_Data(device);
-#    if defined(_DEBUG)
-            print_str("\nsg helper-nvmedev\n");
-            printf("Drive type: %d\n", device->drive_info.drive_type);
-            printf("Interface type: %d\n", device->drive_info.interface_type);
-            printf("Media type: %d\n", device->drive_info.media_type);
-#    endif // DEBUG
-#else      // DISABLE_NVME_PASSTHROUGH
-#    if defined(_DEBUG)
-            print_str("\nsg helper-nvmedev --  NVME Passthrough disabled, device not supported\n");
-#    endif // DEBUG
-            return NOT_SUPPORTED; // return not supported since NVMe-passthrough is disabled
-#endif     // DISABLE_NVME_PASSTHROUGH
+            ret = linux_Get_NVMe_Device(device, genericHandle);
         }
         else // not an NVMe handle
         {
-#if defined(_DEBUG)
-            print_str("Getting SG SCSI address\n");
-#endif
-            struct sg_scsi_id hctlInfo;
-            safe_memset(&hctlInfo, sizeof(struct sg_scsi_id), 0, sizeof(struct sg_scsi_id));
-            errno       = 0; // clear before calling this ioctl
-            int getHctl = ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo);
-            if (getHctl == 0 && errno == 0) // when this succeeds, both of these will be zeros
-            {
-                // print_str("Got hctlInfo\n");
-                device->os_info.scsiAddress.host    = C_CAST(uint8_t, hctlInfo.host_no);
-                device->os_info.scsiAddress.channel = C_CAST(uint8_t, hctlInfo.channel);
-                device->os_info.scsiAddress.target  = C_CAST(uint8_t, hctlInfo.scsi_id);
-                device->os_info.scsiAddress.lun     = C_CAST(uint8_t, hctlInfo.lun);
-                device->drive_info.namespaceID =
-                    device->os_info.scsiAddress.lun +
-                    UINT32_C(1); // Doing this to help with USB to NVMe adapters. Luns start at zero, whereas namespaces
-                                 // start with 1, hence the plus 1.
-                // also reported are per lun and per device Q-depth which might be nice to store.
-                // printf("H:C:T:L = %" PRIu8 ":%" PRIu8 ":%" PRIu8 ":%" PRIu8 "\n", device->os_info.scsiAddress.host,
-                // device->os_info.scsiAddress.channel, device->os_info.scsiAddress.target,
-                // device->os_info.scsiAddress.lun);
-            }
+            ret = linux_Get_SCSI_Device(device, genericHandle);
+        }
+        if (ret == SUCCESS)
+        {
+            set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondHandleValid
+                                                                           ? device->os_info.secondName
+                                                                           : device->os_info.name);
 
-#if defined(_DEBUG)
-            print_str("Getting SG driver version\n");
-#endif
-            // Check we have a valid device by trying an ioctl
-            // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
-            if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
-            {
-                printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, filename, k);
-                perror("SG_GET_VERSION_NUM");
-                close(device->os_info.fd);
-            }
-            else
-            {
-                // http://www.faqs.org/docs/Linux-HOWTO/SCSI-Generic-HOWTO.html#IDDRIVER
-                device->os_info.sgDriverVersion.driverVersionValid = true;
-                device->os_info.sgDriverVersion.majorVersion       = C_CAST(uint8_t, k / 10000);
-                device->os_info.sgDriverVersion.minorVersion =
-                    C_CAST(uint8_t, (k - (device->os_info.sgDriverVersion.majorVersion * 10000)) / 100);
-                device->os_info.sgDriverVersion.revision =
-                    C_CAST(uint8_t, k - (device->os_info.sgDriverVersion.majorVersion * 10000) -
-                                        (device->os_info.sgDriverVersion.minorVersion * 100));
-
-                // set the OS Type
-                device->os_info.osType = OS_LINUX;
-
-                // set scsi interface and scsi drive until we know otherwise
-                device->drive_info.drive_type     = SCSI_DRIVE;
-                device->drive_info.interface_type = SCSI_INTERFACE;
-                device->drive_info.media_type     = MEDIA_HDD;
-                // now have the device information fields set
-#if defined(_DEBUG)
-                print_str("Setting interface, drive type, secondary handles\n");
-#endif
-                set_Device_Fields_From_Handle(deviceHandle, device);
-                setup_Passthrough_Hacks_By_ID(device);
-                set_Device_Partition_Info(device);
-
-#if defined(_DEBUG)
-                printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", device->os_info.name,
-                       device->os_info.friendlyName, device->os_info.secondName, device->os_info.secondFriendlyName);
-                printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel,
-                       device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
-
-                printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion,
-                       device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
-#endif
-
-                // Fill in all the device info.
-                // this code to set up passthrough commands for USB and IEEE1394 has been removed for now to match
-                // Windows functionality. Need better intelligence than this. Some of these old pass-through types issue
-                // vendor specific op codes that could be misinterpretted on some devices.
-                //              if (device->drive_info.interface_type == USB_INTERFACE ||
-                //              device->drive_info.interface_type == IEEE_1394_INTERFACE)
-                //              {
-                //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
-                //              }
-
-                ret = fill_Drive_Info_Data(device);
-
-#if defined(_DEBUG)
-                print_str("\nsg helper\n");
-                printf("Drive type: %d\n", device->drive_info.drive_type);
-                printf("Interface type: %d\n", device->drive_info.interface_type);
-                printf("Media type: %d\n", device->drive_info.media_type);
-#endif
-            }
+            ret = fill_Drive_Info_Data(device);
         }
     }
-    safe_free(&deviceHandle);
+    safe_free(&genericHandle);
+
+#if defined(_DEBUG)
+    print_str("\nsg helper\n");
+    printf("Drive type: %d\n", device->drive_info.drive_type);
+    printf("Interface type: %d\n", device->drive_info.interface_type);
+    printf("Media type: %d\n", device->drive_info.media_type);
+#endif
     return ret;
 }
 
@@ -3736,65 +3552,8 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
-    eReturnValues ret            = SUCCESS;
-    int           partitionCount = 0;
-    const char*   blockHandle    = device->os_info.name;
-    if (device->os_info.secondHandleValid && !is_Block_Device_Handle(blockHandle))
-    {
-        blockHandle = device->os_info.secondName;
-    }
-    partitionCount = get_Partition_Count(blockHandle);
-    if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
-    {
-        printf("Partition count for %s = %d\n", blockHandle, partitionCount);
-    }
-    if (partitionCount > 0)
-    {
-        ptrsPartitionInfo parts =
-            M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
-        if (parts)
-        {
-            if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
-            {
-                int iter = 0;
-                for (; iter < partitionCount; ++iter)
-                {
-                    // since we found a partition, set the "has file system" bool to true
-                    if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
-                    {
-                        printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
-                    }
-                    // Try syncing the FS first by opening the mount point and calling fsync on it.
-                    int mntfs = open((parts + iter)->mntPath, O_DIRECTORY | O_RDONLY);
-                    if (mntfs > 0)
-                    {
-                        fsync(mntfs);
-                        close(mntfs);
-                    }
-
-                    // Now that we have a name, unmount the file system
-                    // Linux 2.1.116 added the umount2()
-                    if (0 > umount2((parts + iter)->mntPath, MNT_FORCE))
-                    {
-                        ret = FAILURE;
-                        set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
-                        if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
-                        {
-                            printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
-                            print_Errno_To_Screen(errno);
-                            print_str("\n");
-                        }
-                    }
-                }
-            }
-            safe_free_spartition_info(&parts);
-        }
-        else
-        {
-            ret = MEMORY_FAILURE;
-        }
-    }
-    return ret;
+    return unmount_Partitions_From_Device(device->os_info.secondHandleValid ? device->os_info.secondName
+                                                                 : device->os_info.name);
 }
 
 // This should be at the end of this file to undefine _GNU_SOURCE if this file manually enabled it
