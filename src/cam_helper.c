@@ -65,9 +65,9 @@ bool os_Is_Infinite_Timeout_Supported(void)
     return true;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
 static bool is_NVMe_Handle(const char* handle)
 {
+#if !defined(DISABLE_NVME_PASSTHROUGH)
     bool isNVMeDevice = false;
     if (handle && safe_strlen(handle))
     {
@@ -77,8 +77,11 @@ static bool is_NVMe_Handle(const char* handle)
         }
     }
     return isNVMeDevice;
+    #else
+    M_USE_UNUSED(handle);
+    return false;
+    #endif // !DISABLE_NVME_PASSTHROUGH
 }
-#endif // !DISABLE_NVME_PASSTHROUGH
 
 #if defined(IOCATAREQUEST)
 static bool is_ad_device(const char* handle)
