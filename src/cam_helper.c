@@ -1270,6 +1270,13 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         break;
     case IDE_INTERFACE:
 #if defined(__DragonFly__)
+#    if defined(IOCATAREQUEST)
+        if (is_ad_device(scsiIoCtx->device->os_info.name))
+        {
+            ret = send_Legacy_ATA_PT(scsiIoCtx);
+            break;
+        }
+#    endif // IOCATAREQUEST
         // Dragonfly BSD has SCSI translation in ahci_cam.c
         M_FALLTHROUGH;
 #else
