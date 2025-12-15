@@ -882,6 +882,9 @@ extern "C"
         ATA_PASSTHROUGH_PROLIFIC,
         ATA_PASSTHROUGH_TI,
         ATA_PASSTHROUGH_NEC,
+        ATA_PASSTHROUGH_JMICRON,
+        ATA_PASSTHROUGH_JMICRON_PROLIFIC,
+        ATA_PASSTHROUGH_SUNPLUS,
         ATA_PASSTHROUGH_PSP, // Some PSP drives use this passthrough and others use SAT...it's not clear if this was
                              // ever even used. If testing for it, test it last.
         ATA_PASSTHROUGH_END_LEGACY_USB =
@@ -903,7 +906,8 @@ extern "C"
         NVME_PASSTHROUGH_ASMEDIA_BASIC = 102, // ASMedia command that is capable of only select commands. Must be after
                                               // full passthrough that way when trying one passthrough after another it
                                               // can properly find full capabilities before basic capabilities.
-        NVME_PASSTHROUGH_REALTEK = 103,
+        NVME_PASSTHROUGH_REALTEK       = 103,
+        NVME_PASSTHROUGH_REALTEK_BASIC = 104,
         // Add other vendor unique SCSI to NVMe passthrough here
         NVME_PASSTHROUGH_UNKNOWN,
         // No passthrough
@@ -1186,9 +1190,8 @@ extern "C"
                                // even if the target drive is 48bit
             bool noMultipleModeCommands; // This is to disable use read/write multiple commands if a bridge chip doesn't
                                          // handle them correctly.
-            // uint8_t reserved[1];//padd byte for 8 byte boundary with above bools.
-            uint32_t maxTransferLength; // ATA Passthrough max transfer length in bytes. This may be different than the
-                                        // scsi translation max.
+            uint32_t maxTransferLength;  // ATA Passthrough max transfer length in bytes. This may be different than the
+                                         // scsi translation max.
             bool limitedUseTPSIU; // This might work for certain other commands, but only identify device has been found
                                   // to show this. Using TPSIU on identify works as expected, but other data transfers
                                   // abort this.
@@ -1198,6 +1201,9 @@ extern "C"
                                        // and it emulates ATA identify data, need this to work around how it reports.
                                        // -TJE
             bool smartEnabled;         // Override check of ATA word 85, bit0 since some USB adapters don't set this.
+            bool retryWithJMicronPT;   // Needed for some JMicron adapters. Newer may support SAT, older support their
+                                       // lagacy passthrough, so this is to retry on these devices.
+            bool jmPTDevSet; // for JMicron's passthrough we need to set dev 0 or 1. This gets turned to true once set
         } ataPTHacks;
         // NVMe Hacks
         struct
@@ -1457,6 +1463,23 @@ extern "C"
 typedef errno_t lasterror_t; // errno in POSIX OSs
 #endif
 
+    typedef struct s_fileSystemInfo
+    {
+        bool fileSystemInfoValid; // This must be set to true for the other bools to have any meaning. This is here
+                                  // because some OS's may not have support for detecting this information
+        union
+        {
+            bool hasFileSystem; //[deprecated], use the hasActiveFileSystem below. This will only be true for
+                                // filesystems the current OS can detect. Ex: Windows will only set this for mounted
+                                // volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem
+                                // types since it can handle more than Windows by default
+            bool hasActiveFileSystem; // This is a bit more clear that the filesystem detected was mounted and is in
+                                      // use within the OS.
+        };
+        bool isSystemDisk; // This will be set if the drive has a file system and the OS is running off of it. Ex:
+                           // Windows' C:\Windows\System32, Linux's / & /boot, etc
+    } fileSystemInfo;
+
 #define OS_HANDLE_NAME_MAX_LENGTH          256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
 #define OS_SECOND_HANDLE_NAME_LENGTH       30
@@ -1650,7 +1673,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #elif defined(__sun)
     int      fd;
     uint32_t adapterMaxTransferSize;
-    uint8_t  otherPadd[106];
+    bool     secondHandleValid; // must be true for remaining fields to be used.
+    char     secondName[OS_SECOND_HANDLE_NAME_LENGTH];
+    char     secondFriendlyName[OS_SECOND_HANDLE_NAME_LENGTH];
+    bool     secondHandleOpened;
+    uint8_t  otherPadd[50];
 #elif defined(__NetBSD__) || defined(__OpenBSD__)
     int                 fd;
     eBSDPassthroughType passthroughType;
@@ -1670,22 +1697,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                                      // Windows since they may not work right for read/write)
         lasterror_t last_error; // This is the last error from the OS specific calls. This is not cleared automatically,
                                 // so it will hold the last error until it is overwritten by another OS call.
-        struct
-        {
-            bool fileSystemInfoValid; // This must be set to true for the other bools to have any meaning. This is here
-                                      // because some OS's may not have support for detecting this information
-            union
-            {
-                bool hasFileSystem; //[deprecated], use the hasActiveFileSystem below. This will only be true for
-                                    // filesystems the current OS can detect. Ex: Windows will only set this for mounted
-                                    // volumes it understands (NTFS, FAT32, etc). Linux may set this for more filesystem
-                                    // types since it can handle more than Windows by default
-                bool hasActiveFileSystem; // This is a bit more clear that the filesystem detected was mounted and is in
-                                          // use within the OS.
-            };
-            bool isSystemDisk; // This will be set if the drive has a file system and the OS is running off of it. Ex:
-                               // Windows' C:\Windows\System32, Linux's / & /boot, etc
-        } fileSystemInfo;
+        fileSystemInfo fileSystemInfo; // holds filesystem related information
         ptrCsmiDeviceInfo
             csmiDeviceData; // This is a pointer because it will only be allocated when CSMI is supported. This is also
                             // used by Intel RST NVMe passthrough which is basically an extension of CSMI
@@ -1837,6 +1849,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     typedef enum eUSBVendorIDsEnum
     {
         USB_Vendor_Unknown                            = 0,
+        USB_Vendor_SunplusIT                          = 0x1BCF,
         USB_Vendor_Adaptec                            = 0x03F3,
         USB_Vendor_Buffalo                            = 0x0411,
         USB_Vendor_TI                                 = 0x0451,
@@ -2561,6 +2574,13 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* device, bool USBchildDrive);
 
+    typedef enum eFirecuda_DriveEnum
+    {
+        NON_FIRECUDA_DRIVE,
+        FIRECUDA_DRIVE,
+        FIRECUDA_X_DRIVE,
+    } eFirecuda_Drive;
+
     //-----------------------------------------------------------------------------
     //
     //  is_Firecuda_Drive(const tDevice *device, bool USBchildDrive)
@@ -2573,11 +2593,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   automatically also check the child drive info (this is really just used for recursion in the function)
     //!
     //  Exit:
-    //!   \return 1 = It is a Firecuda Drive, 0 - Not a Firecuda Drive
+    //!   \return 1 = It is a Firecuda Drive, 2 = It is a FireCudaX Drive, 0 - Not a Firecuda Drive
     //
     //-----------------------------------------------------------------------------
     M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Firecuda_Drive(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eFirecuda_Drive is_Firecuda_Drive(const tDevice* device, bool USBchildDrive);
 
     typedef enum eSkyhawk_DriveEnum
     {
@@ -2841,6 +2861,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Removable_Media(const tDevice* device);
 
     M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) bool setup_Passthrough_Hacks_By_ID(tDevice* device);
+
+    // This is exposed for retrying from SAT to Jmicron passthrough - TJE
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RW(1)
+    bool set_JMicron_Legacy_PT_Hacks(tDevice* device);
 
 #if defined(_DEBUG)
     // This function is more for debugging than anything else!

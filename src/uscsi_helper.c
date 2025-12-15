@@ -25,6 +25,8 @@
 
 #include "ata_helper_func.h"
 #include "cmds.h"
+#include "nix_mounts.h"
+#include "posix_common_lowlevel.h"
 #include "scsi_helper_func.h"
 #include "usb_hacks.h"
 #include "uscsi_helper.h"
@@ -69,163 +71,10 @@ static M_INLINE void close_mnttab(FILE** mnttab)
     *mnttab = M_NULLPTR;
 }
 
-// This API is very similar to the linux API.
-// TODO: May need to use handle without rdsk in the name
-//       We use the rdsk for issuing passthrough commands, but the other handle is probably what will really be needed
-//       to do this correctly I do not have a solaris machine or VM available to test this right now, so it's written as
-//       best I could to prevent needing changes. - TJE
-static int get_Partition_Count(const char* blockDeviceName)
-{
-    int     result = 0;
-    FILE*   mount  = M_NULLPTR;
-    errno_t fileopenerr =
-        safe_fopen(&mount, "/etc/mnttab", "r"); // we only need to know about mounted partitions. Mounted partitions
-                                                // need to be known so that they can be unmounted when necessary. - TJE
-    struct mnttab entry;
-    safe_memset(&entry, sizeof(struct mnttab), 0, sizeof(struct mnttab));
-    if (fileopenerr == 0 && mount)
-    {
-        while (0 == getmntent(mount, &entry))
-        {
-            if (strstr(entry.mnt_special, blockDeviceName))
-            {
-                // Found a match, increment result counter.
-                ++result;
-            }
-        }
-        close_mnttab(&mount);
-    }
-    else
-    {
-        result = -1; // indicate an error
-    }
-    return result;
-}
-
-#define PART_INFO_NAME_LENGTH (32)
-#define PART_INFO_PATH_LENGTH (64)
-typedef struct s_spartitionInfo
-{
-    char fsName[PART_INFO_NAME_LENGTH];
-    char mntPath[PART_INFO_PATH_LENGTH];
-} spartitionInfo, *ptrsPartitionInfo;
-
-static M_INLINE void safe_free_spartition_info(spartitionInfo** partinfo)
-{
-    safe_free_core(M_REINTERPRET_CAST(void**, partinfo));
-}
-
-// partitionInfoList is a pointer to the beginning of the list
-// listCount is the number of these structures, which should be returned by get_Partition_Count
-static eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo partitionInfoList, int listCount)
-{
-    eReturnValues result       = SUCCESS;
-    int           matchesFound = 0;
-    if (listCount > 0)
-    {
-        FILE*   mount       = M_NULLPTR;
-        errno_t fileopenerr = safe_fopen(&mount, "/etc/mnttab",
-                                         "r"); // we only need to know about mounted partitions. Mounted partitions
-                                               // need to be known so that they can be unmounted when necessary. - TJE
-        if (fileopenerr == 0 && mount)
-        {
-            struct mnttab entry;
-            safe_memset(&entry, sizeof(struct mnttab), 0, sizeof(struct mnttab));
-            while (0 == getmntent(mount, &entry))
-            {
-                if (strstr(entry.mnt_special, blockDeviceName))
-                {
-                    // found a match, copy it to the list
-                    if (matchesFound < listCount)
-                    {
-                        snprintf_err_handle((partitionInfoList + matchesFound)->fsName, PART_INFO_NAME_LENGTH, "%s",
-                                            entry.mnt_special);
-                        snprintf_err_handle((partitionInfoList + matchesFound)->mntPath, PART_INFO_PATH_LENGTH, "%s",
-                                            entry.mnt_mountp);
-                        ++matchesFound;
-                    }
-                    else
-                    {
-                        result = MEMORY_FAILURE; // out of memory to copy all results to the list.
-                    }
-                }
-            }
-            close_mnttab(&mount);
-        }
-        else
-        {
-            result = FAILURE;
-        }
-    }
-    return result;
-}
-
-M_NONNULL_PARAM_LIST(1)
-M_PARAM_RW(1)
-static eReturnValues set_Device_Partition_Info(tDevice* device)
-{
-    eReturnValues ret            = SUCCESS;
-    int           partitionCount = 0;
-    DECLARE_ZERO_INIT_ARRAY(char, blockHandle, OS_HANDLE_NAME_MAX_LENGTH);
-    snprintf_err_handle(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
-    set_Device_Name(device->os_info.name, &blockHandle[safe_strlen("/dev/")],
-                    OS_HANDLE_NAME_MAX_LENGTH - safe_strlen("/dev/"));
-    // note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the
-    // information in the mount tab file.
-    partitionCount = get_Partition_Count(blockHandle);
-#if defined(_DEBUG)
-    printf("Partition count for %s = %d\n", blockHandle, partitionCount);
-#endif
-    if (partitionCount > 0)
-    {
-        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
-        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
-        device->os_info.fileSystemInfo.isSystemDisk        = false;
-        ptrsPartitionInfo parts =
-            M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
-        if (parts)
-        {
-            if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
-            {
-                int iter = 0;
-                for (; iter < partitionCount; ++iter)
-                {
-                    // since we found a partition, set the "has file system" bool to true
-                    device->os_info.fileSystemInfo.hasActiveFileSystem = true;
-#if defined(_DEBUG)
-                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
-#endif
-                    // check if one of the partitions is /boot and mark the system disk when this is found
-                    // TODO: Should / be treated as a system disk too?
-                    if (strncmp((parts + iter)->mntPath, "/boot", 5) == 0)
-                    {
-                        device->os_info.fileSystemInfo.isSystemDisk = true;
-#if defined(_DEBUG)
-                        print_str("found system disk\n");
-#endif
-                    }
-                }
-            }
-            safe_free_spartition_info(&parts);
-        }
-        else
-        {
-            ret = MEMORY_FAILURE;
-        }
-    }
-    else
-    {
-        device->os_info.fileSystemInfo.fileSystemInfoValid = true;
-        device->os_info.fileSystemInfo.hasActiveFileSystem = false;
-        device->os_info.fileSystemInfo.isSystemDisk        = false;
-    }
-    return ret;
-}
-
 // Man page suggests not transferring more than 16MB.
 // This is used to fill in adapter max transfer length by default.
 // If the IOCTL for USCSIMAXXFER passes, then we use that value instead
-#define MAX_REC_XFER_SIZE_16MB 16777216
+#define MAX_REC_XFER_SIZE_16MB UINT32_C(16777216)
 
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
@@ -233,59 +82,39 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 #if defined(USCSIMAXXFER)
     uscsi_xfer_t maxXfer = 0;
 #endif // USCSIMAXXFER
+    ePosixHandleFlags handleFlags = POSIX_HANDLE_FLAGS_DEFAULT;
 
-    int handleFlags = O_RDWR | O_NONBLOCK;
-    int attempts    = 0;
-#define SOL_OPEN_ATTEMPTS_MAX 2
-    if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+    char* deviceHandle = M_NULLPTR;
+
+    ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
+    if (ret != SUCCESS)
     {
-        handleFlags |= O_EXCL;
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
     }
-    do
-    {
-        ++attempts;
-        if ((device->os_info.fd = open(filename, handleFlags)) < 0)
-        {
-            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
-            {
-                handleFlags &= ~O_EXCL;
-                continue;
-            }
-            perror("open");
-            set_Device_Last_Error(device, errno);
-            print_str("open failure\n");
-            print_str("Error: ");
-            print_Errno_To_Screen(errno);
-            if (device->os_info.last_error == EACCES)
-            {
-                return PERMISSION_DENIED;
-            }
-            else if (device->os_info.last_error == EBUSY)
-            {
-                return DEVICE_BUSY;
-            }
-            else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
-            {
-                return DEVICE_INVALID;
-            }
-            else
-            {
-                return FAILURE;
-            }
-        }
-        else
-        {
-            break;
-        }
-    } while (attempts < SOL_OPEN_ATTEMPTS_MAX);
 
-    if (handleFlags & O_EXCL)
+    if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        handleFlags = POSIX_HANDLE_FLAGS_REQUIRE_EXCLUSIVE;
+    }
+    else if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
+    }
+
+    ret = posix_Get_Device_Handle(deviceHandle, &device->os_info.fd, &handleFlags, 0);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+    if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
     }
     else
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
     }
 
     device->os_info.osType = OS_SOLARIS;
@@ -309,10 +138,14 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         // set the name
-        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
-        set_Device_Partition_Info(device);
+        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
         // set the friendly name
-        set_Device_Name(filename, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        set_Device_Name(deviceHandle, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        // set the block handle
+        snprintf_err_handle(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s",
+                            device->os_info.friendlyName);
+        // set the partition info
+        set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondName);
 
         // set the OS Type
         device->os_info.osType = OS_SOLARIS;
@@ -329,6 +162,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         // fill in the device info
         ret = fill_Drive_Info_Data(device);
     }
+    free_Posix_Resolved_Filename(&deviceHandle);
 
     return ret;
 }
@@ -380,6 +214,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     case SCSI_INTERFACE:
     case IDE_INTERFACE:
     case USB_INTERFACE:
+    case IEEE_1394_INTERFACE:
         ret = send_uscsi_io(scsiIoCtx);
         break;
     case RAID_INTERFACE:
@@ -617,7 +452,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //
 //-----------------------------------------------------------------------------
 #define USCSI_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const   ptrToDeviceList,
+eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)
@@ -888,60 +723,6 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
-    eReturnValues ret            = SUCCESS;
-    int           partitionCount = 0;
-    DECLARE_ZERO_INIT_ARRAY(char, blockHandle, OS_HANDLE_NAME_MAX_LENGTH);
-    snprintf_err_handle(blockHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/");
-    set_Device_Name(device->os_info.name, &blockHandle[safe_strlen("/dev/")],
-                    OS_HANDLE_NAME_MAX_LENGTH - safe_strlen("/dev/"));
-    // note: this mess above is to get rid of /rdsk/ in the file handle as that raw disk handle won't be part of the
-    // information in the mount tab file.
-    partitionCount = get_Partition_Count(blockHandle);
-#if defined(_DEBUG)
-    printf("Partition count for %s = %d\n", blockHandle, partitionCount);
-#endif
-    if (partitionCount > 0)
-    {
-        ptrsPartitionInfo parts =
-            M_REINTERPRET_CAST(ptrsPartitionInfo, safe_calloc(int_to_sizet(partitionCount), sizeof(spartitionInfo)));
-        if (parts)
-        {
-            if (SUCCESS == get_Partition_List(blockHandle, parts, partitionCount))
-            {
-                int iter = 0;
-                for (; iter < partitionCount; ++iter)
-                {
-#if defined(_DEBUG)
-                    printf("Found mounted file system: %s - %s\n", (parts + iter)->fsName, (parts + iter)->mntPath);
-#endif
-                    int umountResult = 0;
-                    if (0 > (umountResult = umount2((parts + iter)->mntPath, MS_FORCE)))
-                    {
-                        if (errno == ENOTSUP)
-                        {
-                            // try again without the force flag since it may not be supported.
-                            umountResult = umount2((parts + iter)->mntPath, 0);
-                        }
-                        if (0 > umountResult)
-                        {
-                            ret = FAILURE;
-                            set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
-                            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
-                            {
-                                printf("Unable to unmount %s: \n", (parts + iter)->mntPath);
-                                print_Errno_To_Screen(errno);
-                                print_str("\n");
-                            }
-                        }
-                    }
-                }
-            }
-            safe_free_spartition_info(&parts);
-        }
-        else
-        {
-            ret = MEMORY_FAILURE;
-        }
-    }
-    return ret;
+    return unmount_Partitions_From_Device(device->os_info.secondHandleValid ? device->os_info.secondName
+                                                                 : device->os_info.name);
 }

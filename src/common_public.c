@@ -281,6 +281,15 @@ void print_Low_Level_Info(const tDevice* device)
         case ATA_PASSTHROUGH_CSMI:
             print_str("ATA CSMI CDBs (legacy, should be using SAT)\n");
             break;
+        case ATA_PASSTHROUGH_JMICRON:
+            printf("ATA JMicron\n");
+            break;
+        case ATA_PASSTHROUGH_JMICRON_PROLIFIC:
+            printf("ATA JMicron-Prolific\n");
+            break;
+        case ATA_PASSTHROUGH_SUNPLUS:
+            printf("ATA Sunplus\n");
+            break;
         case ATA_PASSTHROUGH_UNKNOWN:
             print_str("ATA unknown\n");
             break;
@@ -298,6 +307,9 @@ void print_Low_Level_Info(const tDevice* device)
             break;
         case NVME_PASSTHROUGH_REALTEK:
             print_str("NVMe Realtek\n");
+            break;
+        case NVME_PASSTHROUGH_REALTEK_BASIC:
+            printf("NVMe Realtek Basic\n");
             break;
         case PASSTHROUGH_NONE:
             print_str("None\n");
@@ -1396,7 +1408,9 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                         {
                             char* genName   = M_NULLPTR;
                             char* blockName = M_NULLPTR;
-                            if (SUCCESS == map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle, &genName, &blockName))
+                            if (SUCCESS ==
+                                map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                                            &genName, &blockName))
                             {
                                 snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
                                                     SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
@@ -1408,7 +1422,9 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                         {
                             char* genName   = M_NULLPTR;
                             char* blockName = M_NULLPTR;
-                            if (SUCCESS == map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle, &genName, &blockName))
+                            if (SUCCESS ==
+                                map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                                            &genName, &blockName))
                             {
                                 snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
                                                     SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
@@ -2278,10 +2294,10 @@ eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* device, bool USBchildDr
     return isIronWolfNASDrive;
 }
 
-bool is_Firecuda_Drive(const tDevice* device, bool USBchildDrive)
+eFirecuda_Drive is_Firecuda_Drive(const tDevice* device, bool USBchildDrive)
 {
-    bool        isFirecudaDrive = false;
-    const char* modelNumber     = &device->drive_info.product_identification[0];
+    eFirecuda_Drive isFirecudaDrive = NON_FIRECUDA_DRIVE;
+    const char*     modelNumber     = &device->drive_info.product_identification[0];
     if (USBchildDrive)
     {
         modelNumber = &device->drive_info.bridge_info.childDriveMN[0];
@@ -2295,7 +2311,11 @@ bool is_Firecuda_Drive(const tDevice* device, bool USBchildDrive)
             wildcard_Match("*ZP*GM*", modelNumber) || // check if PCIe Firecuda SSD
             wildcard_Match("*ZP*GV*", modelNumber))   // check if PCIe Firecuda SSD
         {
-            isFirecudaDrive = true;
+            isFirecudaDrive = FIRECUDA_DRIVE;
+        }
+        else if (wildcard_Match("*ZP*GS*", modelNumber))
+        {
+            isFirecudaDrive = FIRECUDA_X_DRIVE;
         }
     }
 
@@ -2349,7 +2369,7 @@ bool is_Nytro_Drive(const tDevice* device, bool USBchildDrive)
 
     if (safe_strlen(modelNumber))
     {
-        if (wildcard_Match("XS*SE*", modelNumber) ||  // Nytro 3332, Nytro 3331, Nytro 2332
+        if (wildcard_Match("*XS*SE*", modelNumber) || // Nytro 3332, Nytro 3331, Nytro 2332
             wildcard_Match("*XS*LE*", modelNumber) || // Nytro 3532, Nytro 3531, Nytro 2532
             wildcard_Match("*XS*ME*", modelNumber) || // Nytro 3732, Nytro 3731
             wildcard_Match("*XS*TE*", modelNumber) || // Nytro 3131
@@ -2383,9 +2403,9 @@ bool is_Exos_Drive(const tDevice* device, bool USBchildDrive)
     if (safe_strlen(modelNumber))
     {
         if (wildcard_Match("ST*NM*", modelNumber) ||  // Exos X-series
-            wildcard_Match("*ST*MP*", modelNumber) || // Exos E-series
-            wildcard_Match("*ST*MM*", modelNumber) || // Exos E-series
-            wildcard_Match("*ST*NX*", modelNumber))   // Exos E-series
+            wildcard_Match("ST*MP*", modelNumber) || // Exos E-series
+            wildcard_Match("ST*MM*", modelNumber) || // Exos E-series
+            wildcard_Match("ST*NX*", modelNumber))   // Exos E-series
         {
             isExosDrive = true;
         }
@@ -5144,6 +5164,37 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
+// This function exists to make it easy to set the same settings for other USB vendor ID's that
+// used this chip (Example: LaCie)
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
+static bool set_Sunplus_Hacks(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SUNPLUS;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 6;
+        device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+        device->drive_info.passThroughHacks.scsiHacks.noModePages                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 65536;
+        device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData             = true;
+        // device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDOffset = 8;
+        // device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDLength = 28;
+        device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
+        // device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 65536;
+        passthroughHacksSet                                              = true;
+    }
+    return passthroughHacksSet;
+}
+
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
 static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
@@ -5151,6 +5202,16 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
     bool passthroughHacksSet = false;
     switch (device->drive_info.adapter_info.productID)
     {
+    case 0x0951:
+    case 0x1019:
+    case 0x101D:
+    case 0x1021:
+    case 0x102A:
+        passthroughHacksSet = set_JMicron_Legacy_PT_Hacks(device);
+        break;
+    case 0x1010:
+        passthroughHacksSet = set_Sunplus_Hacks(device);
+        break;
     case 0x1043: // blade runner (product ID shows this too)
         passthroughHacksSet = true;
         // TODO: This may use some old vendor unique passthrough to get ATA drive info, but haven't figured it
@@ -5498,11 +5559,76 @@ static bool set_Maxtor_USB_Hacks_By_PID(tDevice* device)
 
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
+bool set_JMicron_Legacy_PT_Hacks(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    DISABLE_NONNULL_COMPARE
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.passThroughHacks.passthroughType         = ATA_PASSTHROUGH_JMICRON;
+        passthroughHacksSet                                         = true;
+        device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly = true;
+        device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength                             = 65024;
+        device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands                        = true;
+        // https://github.com/Seagate/openSeaChest/issues/197#issuecomment-3008133785
+        // output after implementing support shows DMA mode commands working from the automated test.
+        // odd that ATA passthrough is 1 sector less than 65536 in the testing.
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+        device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage                = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages               = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.preSCSI2InqData             = true;
+        device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDOffset     = 8;
+        device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDOffset     = 24;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = UINT16_MAX;
+        device->drive_info.passThroughHacks.turfValue                             = 13;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+    }
+    RESTORE_NONNULL_COMPARE
+    return passthroughHacksSet;
+}
+
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
 static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
 {
     bool passthroughHacksSet = false;
     switch (device->drive_info.adapter_info.productID)
     {
+    case 0x0539:
+        if (device->drive_info.adapter_info.revision == 0x0100)
+        {
+            passthroughHacksSet = set_JMicron_Legacy_PT_Hacks(device);
+        }
+        else
+        {
+            // SAT in newer revisions, but leave the retry just in case - TJE
+            // NOTE: These settings are not tested, but best guesses with what
+            // is seen on other JMicron adapters
+            device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
+            passthroughHacksSet                                                       = true;
+            device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+            device->drive_info.passThroughHacks.turfValue                             = 14;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+            device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+            device->drive_info.passThroughHacks.scsiHacks.noVPDPages                  = true;
+            device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+            device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+            device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 65536;
+            // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+            device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported     = true;
+            device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR     = true;
+            device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+            device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable   = true;
+            device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength               = 65536;
+            device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT              = true;
+        }
+        break;
     case 0x0551: // USB 3.0 to SATA/PATA adapter
         device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
         passthroughHacksSet                                                       = true;
@@ -5522,6 +5648,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable   = true;
         device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength               = 130560;
+        device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT              = true;
         break;
     case 0x0562: // USB to NVMe adapter
         // Rev 204h
@@ -5592,10 +5719,20 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.scsiHacks.noLogSubPages               = true;
         device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
         device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
-        // NOTE: Add max passthrough transfer length hack set to 65536
+        device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength         = 65536;
+        break;
+    case 0x2329:
+    case 0x2352:
+    case 0x2336:
+    case 0x2337:
+    case 0x2509:
+    case 0x2566:
+        // assuming these both use older JMicron passthrough only at this time - TJE
+        passthroughHacksSet = set_JMicron_Legacy_PT_Hacks(device);
         break;
     case 0x2338: // Sabrent USB 2.0 to SATA/PATA. Only tested SATA.
-        // NOTE: Some versions of this chip will NOT do SAT passthrough.
+        // NOTE: Some versions of this chip will NOT do SAT passthrough and use JMicron's older
+        //       vendor unique passthrough
         device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
         passthroughHacksSet                                                       = true;
         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
@@ -5609,6 +5746,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable   = true;
         device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength               = 122880;
+        device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT              = true;
         break;
     case 0x2339: // MiniD2 - NOTE: This has custom firmware. If other things use this chip, additional product
                  // verification will be necessary.
@@ -5628,6 +5766,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable   = true;
         device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength               = 65536;
+        device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT              = true;
         break;
     case 0x2567: // USB3 to SATA adapter box
         device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
@@ -5651,6 +5790,9 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
         break;
     default: // unknown
+        // set this flag by default due to some devices supporting SAT or legacy passthrough with no way to
+        // tell other than a retry.
+        device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT = true;
         break;
     }
     return passthroughHacksSet;
@@ -5838,6 +5980,10 @@ static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDLength     = 11;
         // Serial number is not reported in inquiry data or any other known location
         break;
+    case 0x2F03:
+    case 0x2F06:
+        passthroughHacksSet = set_JMicron_Legacy_PT_Hacks(device);
+        break;
     case 0x5F12: // Story Station
         passthroughHacksSet = true;
         // hacks based on revision 1302h. Not sure if revision level filter is needed right now
@@ -5861,6 +6007,9 @@ static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = true;
+        break;
+    case 0x6032:
+        passthroughHacksSet = set_JMicron_Legacy_PT_Hacks(device);
         break;
     case 0x6093: // S2 portable 3
         passthroughHacksSet = true;
@@ -5921,7 +6070,10 @@ static bool set_Prolific_USB_Hacks_By_PID(tDevice* device)
     bool passthroughHacksSet = false;
     switch (device->drive_info.adapter_info.productID)
     {
+    case 0x2571:
+    case 0x2771:
     case 0x2773:
+    case 0x2775:
         // based on revision 0000h
         passthroughHacksSet                                 = true;
         device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_PROLIFIC;
@@ -5943,11 +6095,15 @@ static bool set_Prolific_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
         break;
     // TODO: Find and test these. Unknown if they support the same capabilities listed above
-    // case 0x3507 - PL3507 ATAPI6 Bridge
-    // case 0x2528 - USB flash drive
-    // case 0x2507 - PL2507 Hi-speed USB to IDE bridge controller
-    // case 0x2307 PL2307 USB-ATAPI4 Bridge
-    // case 0x0600 - IDE Bridge
+    case 0x2507: // PL2507 Hi-speed USB to IDE bridge controller
+    case 0x3507: // PL3507 ATAPI6 Bridge
+        passthroughHacksSet = set_JMicron_Legacy_PT_Hacks(device);
+        // change PT type to jmicron-prolific after this function since it sets standard jmicron
+        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_JMICRON_PROLIFIC;
+        break;
+    // case 0x2528: // USB flash drive
+    // case 0x2307: // PL2307 USB-ATAPI4 Bridge
+    // case 0x0600: // IDE Bridge
     default: // unknown
         break;
     }
@@ -6027,6 +6183,38 @@ static bool set_TI_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.scsiHacks.readWrite.available            = true;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10                 = true;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16                 = true;
+        break;
+    default: // unknown
+        break;
+    }
+    return passthroughHacksSet;
+}
+
+M_NONNULL_PARAM_LIST(1)
+M_PARAM_RW(1)
+static bool set_Sunplus_USB_Hacks_By_PID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    switch (device->drive_info.adapter_info.productID)
+    {
+    case 0x0C05:
+    case 0x0C15:
+    case 0x0C25:
+        passthroughHacksSet = set_Sunplus_Hacks(device);
+        break;
+    default: // unknown
+        break;
+    }
+    return passthroughHacksSet;
+}
+
+static bool set_SunplusIT_USB_Hacks_By_PID(tDevice* device)
+{
+    bool passthroughHacksSet = false;
+    switch (device->drive_info.adapter_info.productID)
+    {
+    case 0x0C31:
+        passthroughHacksSet = set_Sunplus_Hacks(device);
         break;
     default: // unknown
         break;
@@ -6159,6 +6347,12 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             break;
         case USB_Vendor_Samsung: // 04E8
             passthroughHacksSet = set_Samsung_USB_Hacks_By_PID(device);
+            break;
+        case USB_Vendor_Sunplus: // 04FC
+            passthroughHacksSet = set_Sunplus_USB_Hacks_By_PID(device);
+            break;
+        case USB_Vendor_SunplusIT: // 1BCF
+            passthroughHacksSet = set_SunplusIT_USB_Hacks_By_PID(device);
             break;
         case USB_Vendor_Silicon_Motion: // 090C
             switch (device->drive_info.adapter_info.productID)

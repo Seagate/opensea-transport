@@ -11,13 +11,13 @@
 # ******************************************************************************************
 
 # Hand Written Makefile (Edit with caution) -Debabrata
-# 
+#
 
 NAME=opensea-transport
 FILE_OUTPUT_DIR=lib
 #Change the Major version when major interface changes are made. E.g. tDevice changes
 MAJOR=10
-#Change the Minor version when new features are added. 
+#Change the Minor version when new features are added.
 MINOR=2
 #Change the patch version when only bug fixes are made.
 PATCH=0
@@ -111,7 +111,7 @@ DEV_OBJDIR = beta
 # the following assignment.  The value needs to be empty or non-
 # empty.  If the latter, any content may be used.
 #DEV_APP = 1
-DEV_APP = 
+DEV_APP =
 
 ################
 # Extra compiler and preprocessor flags based on kind of build
@@ -421,7 +421,7 @@ INC_DIR=-I../../include -I../../../opensea-common/include
 CC=$(VMW_$(VMW_TARGET)_CCBIN)
 AR=ar
 #override CFLAGS = -Wall -c -fPIC -I. -std=gnu99
-CFLAGS ?= -Wall 
+CFLAGS ?= -Wall
 CFLAGS += -c -fPIC -I. $(VMW_$(VMW_TARGET)_COMPILEFLAGS) -std=gnu99
 CFLAGS += -DVMK_CROSS_COMP
 LFLAGS = -Wall ../../../opensea-common/Make/vmware/$(FILE_OUTPUT_DIR)/libopensea-common.a $(VMW_LINK_FLAGS)
@@ -438,14 +438,18 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)nvme_helper.c\
 	$(SRC_DIR)psp_legacy_helper.c\
 	$(SRC_DIR)cypress_legacy_helper.c\
+	$(SRC_DIR)sunplus_legacy_helper.c\
 	$(SRC_DIR)ti_legacy_helper.c\
 	$(SRC_DIR)nec_legacy_helper.c\
 	$(SRC_DIR)prolific_legacy_helper.c\
+	$(SRC_DIR)posix_common_lowlevel.c\
+	${SRC_DIR}nix_mounts.c\
 	$(SRC_DIR)usb_hacks.c\
 	$(SRC_DIR)sata_helper_func.c\
 	$(SRC_DIR)raid_scan_helper.c\
 	$(SRC_DIR)sntl_helper.c\
 	$(SRC_DIR)jmicron_nvme_helper.c\
+	$(SRC_DIR)jmicron_legacy_helper.c\
 	$(SRC_DIR)asmedia_nvme_helper.c\
 	$(SRC_DIR)realtek_nvme_helper.c\
 	$(SRC_DIR)csmi_legacy_pt_cdb_helper.c\
@@ -472,7 +476,7 @@ LIBS = lib$(NAME).a
 
 #-include $(DEPFILES)
 
-.PHONY: all 
+.PHONY: all
 
 all: clean mkoutputdir $(LIBS)
 
@@ -488,7 +492,7 @@ $(LIBS): $(LIB_OBJ_FILES) opensea-libs
 	#$(CC) -shared -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION) $(LIB_OBJ_FILES) $(LFLAGS) $(DEV_$(DEV_OBJDIR)_OBJECTS)
 	$(CC) $(VMW_$(VMW_TARGET)_COMPILEFLAGS) -shared -o $(FILE_OUTPUT_DIR)/lib$(NAME).so.$(VERSION) $(LIB_OBJ_FILES) $(LFLAGS) $(DEV_$(DEV_OBJDIR)_OBJECTS)
 	cd $(FILE_OUTPUT_DIR) && ln -s lib$(NAME).so* lib$(NAME).so
-	
+
 clean:
 	rm -f $(FILE_OUTPUT_DIR)/lib$(NAME).a $(FILE_OUTPUT_DIR)/lib$(NAME).so* *.o ../../src/*.o
 	rm -rf $(FILE_OUTPUT_DIR)
