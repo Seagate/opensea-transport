@@ -3204,192 +3204,122 @@ uint32_t get_Sector_Count_For_4096B_Based_XFers(const tDevice* device)
     }
 }
 
-void print_Command_Time(uint64_t timeInNanoSeconds)
+typedef enum eTimeUnits
 {
-    double  printTime   = C_CAST(double, timeInNanoSeconds);
-    uint8_t unitCounter = UINT8_C(0);
-    bool    breakLoop   = false;
-    while (printTime > 1 && unitCounter <= 6)
+    TIME_UNITS_NS = 0,
+    TIME_UNITS_US,
+    TIME_UNITS_MS,
+    TIME_UNITS_S,
+    TIME_UNITS_M,
+    TIME_UNITS_H,
+    TIME_UNITS_D
+} eTimeUnits;
+
+#define TIME_UNIT_STR_LENGTH RSIZE_T_C(4)
+
+static M_INLINE void get_Time_Unit_String(eTimeUnits timeUnit, char* unitString, rsize_t stringSize)
+{
+    switch (timeUnit)
     {
-        switch (unitCounter)
-        {
-        case 6: // shouldn't get this far...
-            break;
-        case 5: // h to d
-            if ((printTime / 24) < 1)
-            {
-                breakLoop = true;
-            }
-            break;
-        case 4: // m to h
-        case 3: // s to m
-            if ((printTime / 60) < 1)
-            {
-                breakLoop = true;
-            }
-            break;
-        case 0: // ns to us
-        case 1: // us to ms
-        case 2: // ms to s
-        default:
-            if ((printTime / 1000) < 1)
-            {
-                breakLoop = true;
-            }
-            break;
-        }
-        if (breakLoop)
-        {
-            break;
-        }
-        switch (unitCounter)
-        {
-        case 6: // shouldn't get this far...
-            break;
-        case 5: // h to d
-            printTime /= 24;
-            break;
-        case 4: // m to h
-        case 3: // s to m
-            printTime /= 60;
-            break;
-        case 0: // ns to us
-        case 1: // us to ms
-        case 2: // ms to s
-        default:
-            printTime /= 1000;
-            break;
-        }
-        if (unitCounter == 6)
-        {
-            break;
-        }
-        ++unitCounter;
-    }
-    print_str("Command Time (");
-    switch (unitCounter)
-    {
-    case 6: // we shouldn't get to a days value, but room for future large drives I guess...-TJE
-        print_str("d): ");
+    case TIME_UNITS_NS:
+        safe_strcpy(unitString, stringSize, "ns");
         break;
-    case 5:
-        print_str("h): ");
+    case TIME_UNITS_US:
+        safe_strcpy(unitString, stringSize, "us");
         break;
-    case 4:
-        print_str("m): ");
+    case TIME_UNITS_MS:
+        safe_strcpy(unitString, stringSize, "ms");
         break;
-    case 3:
-        print_str("s): ");
+    case TIME_UNITS_S:
+        safe_strcpy(unitString, stringSize, "s");
         break;
-    case 2:
-        print_str("ms): ");
+    case TIME_UNITS_M:
+        safe_strcpy(unitString, stringSize, "m");
         break;
-    case 1:
-        print_str("us): ");
+    case TIME_UNITS_H:
+        safe_strcpy(unitString, stringSize, "h");
         break;
-    case 0:
-        print_str("ns): ");
-        break;
-    default: // couldn't get a good conversion or something weird happened so show original nanoseconds.
-        print_str("ns): ");
-        printTime = C_CAST(double, timeInNanoSeconds);
+    case TIME_UNITS_D:
+        safe_strcpy(unitString, stringSize, "d");
         break;
     }
-    printf("%0.02f\n\n", printTime);
+}
+
+static M_INLINE void calculate_Time_Conversion(uint64_t timeInNanoSeconds, double* convertedTime, eTimeUnits* timeUnit)
+{
+    *convertedTime = C_CAST(double, timeInNanoSeconds);
+    *timeUnit      = TIME_UNITS_NS;
+    if (*convertedTime >= 1000.0)
+    {
+        *convertedTime /= 1000.0;
+        *timeUnit = TIME_UNITS_US;
+    }
+    else
+    {
+        return;
+    }
+    if (*convertedTime >= 1000.0)
+    {
+        *convertedTime /= 1000.0;
+        *timeUnit = TIME_UNITS_MS;
+    }
+    else
+    {
+        return;
+    }
+    if (*convertedTime >= 1000.0)
+    {
+        *convertedTime /= 1000.0;
+        *timeUnit = TIME_UNITS_S;
+    }
+    else
+    {
+        return;
+    }
+    if (*convertedTime >= 60.0)
+    {
+        *convertedTime /= 60.0;
+        *timeUnit = TIME_UNITS_M;
+    }
+    else
+    {
+        return;
+    }
+    if (*convertedTime >= 60.0)
+    {
+        *convertedTime /= 60.0;
+        *timeUnit = TIME_UNITS_H;
+    }
+    else
+    {
+        return;
+    }
+    if (*convertedTime >= 24.0)
+    {
+        *convertedTime /= 24.0;
+        *timeUnit = TIME_UNITS_D;
+        return;
+    }
+    else
+    {
+        return;
+    }
 }
 
 void print_Time(uint64_t timeInNanoSeconds)
 {
-    double  printTime   = C_CAST(double, timeInNanoSeconds);
-    uint8_t unitCounter = UINT8_C(0);
-    bool    breakLoop   = false;
-    while (printTime > 1.0 && unitCounter <= UINT8_C(6))
-    {
-        switch (unitCounter)
-        {
-        case 6: // shouldn't get this far...
-            break;
-        case 5: // h to d
-            if ((printTime / 24) < 1)
-            {
-                breakLoop = true;
-            }
-            break;
-        case 4: // m to h
-        case 3: // s to m
-            if ((printTime / 60) < 1)
-            {
-                breakLoop = true;
-            }
-            break;
-        case 0: // ns to us
-        case 1: // us to ms
-        case 2: // ms to s
-        default:
-            if ((printTime / 1000) < 1)
-            {
-                breakLoop = true;
-            }
-            break;
-        }
-        if (breakLoop)
-        {
-            break;
-        }
-        switch (unitCounter)
-        {
-        case 6: // shouldn't get this far...
-            break;
-        case 5: // h to d
-            printTime /= 24;
-            break;
-        case 4: // m to h
-        case 3: // s to m
-            printTime /= 60;
-            break;
-        case 0: // ns to us
-        case 1: // us to ms
-        case 2: // ms to s
-        default:
-            printTime /= 1000;
-            break;
-        }
-        if (unitCounter == 6)
-        {
-            break;
-        }
-        ++unitCounter;
-    }
-    print_str(" (");
-    switch (unitCounter)
-    {
-    case 6: // we shouldn't get to a days value, but room for future large drives I guess...-TJE
-        print_str("d): ");
-        break;
-    case 5:
-        print_str("h): ");
-        break;
-    case 4:
-        print_str("m): ");
-        break;
-    case 3:
-        print_str("s): ");
-        break;
-    case 2:
-        print_str("ms): ");
-        break;
-    case 1:
-        print_str("us): ");
-        break;
-    case 0:
-        print_str("ns): ");
-        break;
-    default: // couldn't get a good conversion or something weird happened so show original nanoseconds.
-        print_str("ns): ");
-        printTime = C_CAST(double, timeInNanoSeconds);
-        break;
-    }
-    printf("%0.02f\n", printTime);
+    double     convertedTime = 0.0;
+    eTimeUnits timeUnit      = TIME_UNITS_NS;
+    DECLARE_ZERO_INIT_ARRAY(char, unitString, TIME_UNIT_STR_LENGTH);
+    calculate_Time_Conversion(timeInNanoSeconds, &convertedTime, &timeUnit);
+    get_Time_Unit_String(timeUnit, unitString, TIME_UNIT_STR_LENGTH);
+    printf("(%s): %0.02f\n", unitString, convertedTime);
+}
+
+void print_Command_Time(uint64_t timeInNanoSeconds)
+{
+    print_str("Command Time: ");
+    print_Time(timeInNanoSeconds);
 }
 
 uint64_t align_LBA(const tDevice* device, uint64_t LBA)
