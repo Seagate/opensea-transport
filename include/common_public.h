@@ -1685,6 +1685,9 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     int                 bus;
     int                 target;
     int                 lun;
+#elif defined(__hpux)
+    int  fd;
+    bool persistentDev;
 #else                                // OS preprocessor checks
     int     fd; // some other nix system that only needs a integer file handle
     uint8_t otherPadd[110];
@@ -2067,6 +2070,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #    define MAX_CMD_TIMEOUT_SECONDS                                                                                    \
         (UINT32_MAX - 1) /*NOTE: This may not be correct but the field that sets this is a uint32. Setting to 1 less   \
                             than infinite's current value -TJE*/
+#elif defined (__hpux)
+#    define MAX_CMD_TIMEOUT_SECONDS UINT_MAX
 #else
 #    error "Need to set MAX_CMD_TIMEOUT_SECONDS for this OS"
 #endif

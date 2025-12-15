@@ -29,7 +29,7 @@
 #elif defined(_AIX) // IBM Unix
 #    include "aix_helper.h"
 #elif defined(__hpux) // HP Unix
-#    error "Need a HP UX passthrough helper file"
+#    include "hpux_helper.h"
 #elif defined(__APPLE__)
 #    include <TargetConditionals.h>
 #    if defined(TARGET_OS_MAC)
