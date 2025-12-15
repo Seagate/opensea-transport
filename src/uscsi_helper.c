@@ -214,6 +214,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     case SCSI_INTERFACE:
     case IDE_INTERFACE:
     case USB_INTERFACE:
+    case IEEE_1394_INTERFACE:
         ret = send_uscsi_io(scsiIoCtx);
         break;
     case RAID_INTERFACE:

@@ -395,7 +395,7 @@ int mount_iter_open(MountIter* it)
 #    if IS_NETBSD_VERSION(3, 0, 0)
     // Two-step pattern: query count with M_NULLPTR, then allocate and fetch.
     // [5](https://unix.stackexchange.com/questions/69286/is-it-possible-to-tell-df-to-use-proc-mounts-instead-of-etc-mtab)
-    int count = getvfsstat(M_NULLPTR, 0, ST_WAIT);
+    int count = getvfsstat(M_NULLPTR, SIZE_T_C(0), ST_WAIT);
     if (count <= 0)
     {
         return -1;
@@ -407,7 +407,7 @@ int mount_iter_open(MountIter* it)
         return -1;
     }
 
-    int got = getvfsstat(it->buf, M_STATIC_CAST(int, size), ST_WAIT);
+    int got = getvfsstat(it->buf, size, ST_WAIT);
     if (got < 0)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, &it->buf));
@@ -419,7 +419,7 @@ int mount_iter_open(MountIter* it)
 #    else
     // FreeBSD/OpenBSD/macOS: getfsstat(2) + struct statfs (caller-owned buffer).
     // [6](https://uw714doc.xinuos.com/en/man/html.3G/getmntent.3G.html)[7](https://github.com/lattera/glibc/blob/master/misc/mntent.h)[8](https://www.gnu.org/software/gnulib/manual/html_node/mntent_002eh.html)
-    int count = getfsstat(M_NULLPTR, 0, MNT_WAIT);
+    int count = getfsstat(M_NULLPTR, SIZE_T_C(0), MNT_WAIT);
     if (count <= 0)
     {
         return -1;
@@ -431,7 +431,7 @@ int mount_iter_open(MountIter* it)
         return -1;
     }
 
-    int got = getfsstat(it->buf, M_STATIC_CAST(int, size), MNT_WAIT);
+    int got = getfsstat(it->buf, size, MNT_WAIT);
     if (got < 0)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, &it->buf));
