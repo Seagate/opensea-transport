@@ -119,7 +119,7 @@ eReturnValues posix_Get_Device_Handle(const char*        deviceHandle,
 #endif
 
 #if defined(_DEBUG)
-    print_str("%s: Attempting to open %s\n", __FUNCTION__, deviceHandle);
+    printf("%s: Attempting to open %s\n", __FUNCTION__, deviceHandle);
 #endif
     // Note: We are opening a READ/Write flag
     int attempts = 0;
