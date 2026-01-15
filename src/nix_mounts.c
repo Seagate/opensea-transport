@@ -133,13 +133,13 @@ static FILE* open_mounts_stream(void)
 {
     FILE* fp = M_NULLPTR;
     fp       = setmntent("/proc/self/mounts", "r");
-    if (fp == M_NULLPTR)
+    if (fp != M_NULLPTR)
     {
         return fp;
     }
 
     fp = setmntent("/proc/mounts", "r");
-    if (fp == M_NULLPTR)
+    if (fp != M_NULLPTR)
     {
         return fp;
     }
