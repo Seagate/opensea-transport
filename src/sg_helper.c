@@ -403,9 +403,13 @@ static M_INLINE void close_sysfs_file(FILE** file)
     *file = M_NULLPTR;
 }
 
-static void trim_ctrl_from_line(char* line, size_t linelen)
+static void trim_ctrl_from_line(char* line, ssize_t linelen)
 {
-    for (size_t offset = SIZE_T_C(0); offset < linelen; offset++)
+    if (linelen <= SSIZE_T_C(0) || line == M_NULLPTR)
+    {
+        return;
+    }
+    for (ssize_t offset = SSIZE_T_C(0); offset < linelen && offset >= SSIZE_T_C(0); offset++)
     {
         if (safe_iscntrl(line[offset]))
         {
@@ -445,8 +449,9 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
         if (fileopenerr == 0 && versionFile != M_NULLPTR)
         {
             char*  versionFileData = M_NULLPTR;
-            size_t versionFileSize = SIZE_T_C(0);
-            if (getline(&versionFileData, &versionFileSize, versionFile) > 0)
+            size_t versionFileAlloc = SIZE_T_C(0);
+            ssize_t versionFileSize = getline(&versionFileData, &versionFileAlloc, versionFile);
+            if (versionFileSize > 0)
             {
                 trim_ctrl_from_line(versionFileData, versionFileSize);
                 snprintf_err_handle(sysFsInfo->driver_info.driverVersionString, MAX_DRIVER_VER_STR, "%s",
@@ -521,13 +526,14 @@ static bool read_sysfs_file_uint8(FILE* sysfsfile, uint8_t* value)
     if (sysfsfile != M_NULLPTR && value != M_NULLPTR)
     {
         char*  line    = M_NULLPTR;
-        size_t linelen = SIZE_T_C(0);
-        if (getline(&line, &linelen, sysfsfile) != SSIZE_T_C(-1))
+        size_t linealloc = SIZE_T_C(0);
+        ssize_t linelen = getline(&line, &linealloc, sysfsfile);
+        if (linelen != SSIZE_T_C(-1) && linelen > SSIZE_T_C(0))
         {
             trim_ctrl_from_line(line, linelen);
             success = get_And_Validate_Integer_Input_Uint8(line, M_NULLPTR, ALLOW_UNIT_NONE, value);
-            safe_free(&line);
         }
+        safe_free(&line);
     }
     return success;
 }
@@ -538,13 +544,14 @@ static bool read_sysfs_file_uint16(FILE* sysfsfile, uint16_t* value)
     if (sysfsfile != M_NULLPTR && value != M_NULLPTR)
     {
         char*  line    = M_NULLPTR;
-        size_t linelen = SIZE_T_C(0);
-        if (getline(&line, &linelen, sysfsfile) != SSIZE_T_C(-1))
+        size_t linealloc = SIZE_T_C(0);
+        ssize_t linelen = getline(&line, &linealloc, sysfsfile);
+        if (linelen != SSIZE_T_C(-1) && linelen > SSIZE_T_C(0))
         {
             trim_ctrl_from_line(line, linelen);
             success = get_And_Validate_Integer_Input_Uint16(line, M_NULLPTR, ALLOW_UNIT_NONE, value);
-            safe_free(&line);
         }
+        safe_free(&line);
     }
     return success;
 }
@@ -555,13 +562,14 @@ static bool read_sysfs_file_uint32(FILE* sysfsfile, uint32_t* value)
     if (sysfsfile != M_NULLPTR && value != M_NULLPTR)
     {
         char*  line    = M_NULLPTR;
-        size_t linelen = SIZE_T_C(0);
-        if (getline(&line, &linelen, sysfsfile) != SSIZE_T_C(-1))
+        size_t linealloc = SIZE_T_C(0);
+        ssize_t linelen = getline(&line, &linealloc, sysfsfile);
+        if (linelen != SSIZE_T_C(-1) && linelen > SSIZE_T_C(0))
         {
             trim_ctrl_from_line(line, linelen);
             success = get_And_Validate_Integer_Input_Uint32(line, M_NULLPTR, ALLOW_UNIT_NONE, value);
-            safe_free(&line);
         }
+        safe_free(&line);
     }
     return success;
 }
@@ -639,8 +647,9 @@ static M_INLINE bool get_usb_file_id_hex(FILE* usbFile, uint32_t* hexvalue)
     if (usbFile != M_NULLPTR && hexvalue != M_NULLPTR)
     {
         char*  line    = M_NULLPTR;
-        size_t linelen = SIZE_T_C(0);
-        if (getline(&line, &linelen, usbFile) != -1)
+        size_t linealloc = SIZE_T_C(0);
+        ssize_t linelen = getline(&line, &linealloc, usbFile);
+        if (linelen != SSIZE_T_C(-1) && linelen > SSIZE_T_C(0))
         {
             unsigned long temp = 0UL;
             if (0 != safe_strtoul(&temp, line, M_NULLPTR, BASE_16_HEX))
@@ -655,8 +664,8 @@ static M_INLINE bool get_usb_file_id_hex(FILE* usbFile, uint32_t* hexvalue)
                     success   = true;
                 }
             }
-            safe_free(&line);
         }
+        safe_free(&line);
     }
     return success;
 }
@@ -744,8 +753,9 @@ static bool get_ieee1394_ids(FILE*     idFile,
         revision != M_NULLPTR)
     {
         char*  line = M_NULLPTR;
-        size_t len  = SIZE_T_C(0);
-        if (getline(&line, &len, idFile) != -1)
+        size_t linealloc  = SIZE_T_C(0);
+        ssize_t linelen = getline(&line, &linealloc, idFile);
+        if (linelen != SSIZE_T_C(-1) && linelen > SSIZE_T_C(0))
         {
             // line format: ieee1394:venXXXXXXXXmoXXXXXXXXspXXXXXXXXverXXXXXXXX
             // all values are hex
@@ -830,8 +840,8 @@ static bool get_ieee1394_ids(FILE*     idFile,
                     }
                 } while (parsing);
             }
-            safe_free(&line);
         }
+        safe_free(&line);
     }
     return success;
 }
