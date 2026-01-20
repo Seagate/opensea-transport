@@ -2099,7 +2099,7 @@ extern "C"
         SF_ENABLE_APM_FEATURE                                          = 0x05,
         SF_ENABLE_PUIS_FEATURE                                         = 0x06,
         SF_PUIS_DEVICE_SPIN_UP                                         = 0x07,
-        SF_RESERVED_08                                                 = 0x08,
+        SF_POWER_CONSUMPTION_CONTROL                                   = 0x08,
         SF_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT        = 0x09, // Defined in ATA5, obsolete in ACS3
         SF_ENABLE_ADDRESS_OFFSET_RESERVED_BOOT_AREA_METHOD_TECH_REPORT = 0x09, // Defined in ATA5, obsolete in ACS3
         SF_ENABLE_CFA_POWER_MODE1                                      = 0x0A,
@@ -2483,6 +2483,7 @@ extern "C"
         ATA_LOG_MUTATE_CONFIGURATIONS                   = 0x42,
         ATA_LOG_CONCURRENT_POSITIONING_RANGES           = 0x47,
         ATA_LOG_SENSE_DATA                              = 0x53,
+        ATA_LOG_POWER_CONSUMPTION_CONTROL_LOG           = 0x59,
         ATA_LOG_CAPACITY_MODELNUMBER_MAPPING            = 0x61,
         // 80h - 9F are host specific logs
         ATA_LOG_HOST_SPECIFIC_80H = 0x80,
