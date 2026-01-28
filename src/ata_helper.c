@@ -1180,7 +1180,10 @@ eReturnValues ata_SF_CFA_Power_Mode1(const tDevice* device, eSimpleATAFeat state
     }
 }
 
-eReturnValues ata_SF_Write_Read_Verify(const tDevice* device, eSimpleATAFeat state, eWRVMode wrvmode, uint8_t sectorsX1024)
+eReturnValues ata_SF_Write_Read_Verify(const tDevice* device,
+                                       eSimpleATAFeat state,
+                                       eWRVMode       wrvmode,
+                                       uint8_t        sectorsX1024)
 {
     if (state == ATA_SF_ENABLE)
     {
@@ -1313,7 +1316,7 @@ eReturnValues ata_SF_SATA_Dev_Auto_Partial_To_Slumber_Transitions(const tDevice*
     }
 }
 
-eReturnValues ata_SF_SATA_Hardware_Feature_Control(const tDevice*                     device,
+eReturnValues ata_SF_SATA_Hardware_Feature_Control(const tDevice*               device,
                                                    eSimpleATAFeat               state,
                                                    eSATAHardwareFeaturesControl feature)
 {
@@ -1433,8 +1436,8 @@ eReturnValues ata_SF_AAM(const tDevice* device, eSimpleATAFeat state, uint8_t le
 }
 
 eReturnValues ata_SF_Set_Max_Host_Interface_Sector_Times(const tDevice* device,
-                                                         uint16_t typicalPIOTime,
-                                                         uint16_t typicalDMATime)
+                                                         uint16_t       typicalPIOTime,
+                                                         uint16_t       typicalDMATime)
 {
     return ata_Set_Features(device, SF_MAXIMUM_HOST_INTERFACE_SECTOR_TIMES, M_Byte0(typicalPIOTime),
                             M_Byte1(typicalPIOTime), M_Byte0(typicalDMATime), M_Byte1(typicalDMATime));
@@ -1492,9 +1495,9 @@ eReturnValues ata_SF_LPS_Alignment_Error_Reporting_CTL(const tDevice* device, eL
 }
 
 eReturnValues ata_SF_EPC_Restore_Power_Condition_Settings(const tDevice* device,
-                                                          uint8_t  powerConditionID,
-                                                          bool     defaultBit,
-                                                          bool     save)
+                                                          uint8_t        powerConditionID,
+                                                          bool           defaultBit,
+                                                          bool           save)
 {
     eReturnValues ret   = UNKNOWN;
     uint8_t       lbaLo = EPC_RESTORE_POWER_CONDITION_SETTINGS;
@@ -1511,9 +1514,9 @@ eReturnValues ata_SF_EPC_Restore_Power_Condition_Settings(const tDevice* device,
 }
 
 eReturnValues ata_SF_EPC_Go_To_Power_Condition(const tDevice* device,
-                                               uint8_t  powerConditionID,
-                                               bool     delayedEntry,
-                                               bool     holdPowerCondition)
+                                               uint8_t        powerConditionID,
+                                               bool           delayedEntry,
+                                               bool           holdPowerCondition)
 {
     eReturnValues ret   = UNKNOWN;
     uint8_t       lbaLo = EPC_GO_TO_POWER_CONDITION;
@@ -1531,11 +1534,11 @@ eReturnValues ata_SF_EPC_Go_To_Power_Condition(const tDevice* device,
 }
 
 eReturnValues ata_SF_EPC_Set_Power_Condition_Timer(const tDevice* device,
-                                                   uint8_t  powerConditionID,
-                                                   uint16_t timerValue,
-                                                   bool     timerUnits,
-                                                   bool     enable,
-                                                   bool     save)
+                                                   uint8_t        powerConditionID,
+                                                   uint16_t       timerValue,
+                                                   bool           timerUnits,
+                                                   bool           enable,
+                                                   bool           save)
 {
     eReturnValues ret    = UNKNOWN;
     uint8_t       lbaLo  = EPC_SET_POWER_CONDITION_TIMER;
@@ -1557,7 +1560,10 @@ eReturnValues ata_SF_EPC_Set_Power_Condition_Timer(const tDevice* device,
     return ret;
 }
 
-eReturnValues ata_SF_EPC_Set_Power_Condition_State(const tDevice* device, uint8_t powerConditionID, bool enable, bool save)
+eReturnValues ata_SF_EPC_Set_Power_Condition_State(const tDevice* device,
+                                                   uint8_t        powerConditionID,
+                                                   bool           enable,
+                                                   bool           save)
 {
     eReturnValues ret   = UNKNOWN;
     uint8_t       lbaLo = EPC_SET_POWER_CONDITION_STATE;
@@ -1597,7 +1603,7 @@ eReturnValues ata_SF_EPC_Disable_EPC_Feature_Set(const tDevice* device)
     return ata_SF_EPC(device, ATA_SF_DISABLE);
 }
 
-eReturnValues ata_EPC_Set_EPC_Power_Source(const tDevice* device, uint8_t powerSource)
+eReturnValues ata_SF_EPC_Set_EPC_Power_Source(const tDevice* device, uint8_t powerSource)
 {
     return ata_Set_Features(device, SF_EXTENDED_POWER_CONDITIONS, get_bit_range_uint8(powerSource, 1, 0),
                             EPC_SET_EPC_POWER_SOURCE, RESERVED, RESERVED);
@@ -1679,6 +1685,30 @@ eReturnValues ata_SF_DDT(const tDevice* device, eSimpleATAFeat state)
     {
         return ata_Set_Features(device, SF_DISABLE_DISABLE_DATA_TRANSFER_AFTER_ERROR_DETECTION, RESERVED, RESERVED,
                                 RESERVED, RESERVED);
+    }
+}
+
+eReturnValues ata_SF_Power_Consumption(const tDevice* device,
+                                       bool           restoreToDefault,
+                                       bool           enableBit,
+                                       uint8_t        activeLevelField,
+                                       uint8_t        powerConsumptionIdentifier)
+{
+    uint8_t lbaMid = UINT8_C(0);
+    if (enableBit)
+    {
+        lbaMid |= BIT2; // set enable bit
+    }
+    if (restoreToDefault)
+    {
+        lbaMid |= BIT3;
+        return ata_Set_Features(device, SF_POWER_CONSUMPTION_CONTROL, RESERVED, RESERVED, lbaMid, RESERVED);
+    }
+    else
+    {
+        lbaMid |= get_bit_range_uint8(activeLevelField, 1, 0);
+        return ata_Set_Features(device, SF_POWER_CONSUMPTION_CONTROL, RESERVED, powerConsumptionIdentifier, lbaMid,
+                                RESERVED);
     }
 }
 
@@ -1900,7 +1930,7 @@ static eReturnValues initial_Identify_Device(tDevice* device)
                         noMoreRetries                                                                = false;
                     }
                     else if (device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT &&
-                                 device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_JMICRON)
+                             device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_JMICRON)
                     {
                         device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_JMICRON;
                         noMoreRetries                                       = false;
