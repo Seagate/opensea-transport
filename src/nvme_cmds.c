@@ -1190,6 +1190,52 @@ eReturnValues nvme_Reservation_Release(const tDevice* device,
     return ret;
 }
 
+eReturnValues nvme_Write_Zeroes(const tDevice* device,
+                                 uint64_t       startingLBA,
+                                 uint16_t       numberOfLogicalBlocks,
+                                 bool           limitedRetry,
+                                 bool           forceUnitAccess,
+                                 bool           deallocate)
+{
+    eReturnValues ret = SUCCESS;
+    nvmeCmdCtx    nvmCommand;
+    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    nvmCommand.commandType       = NVM_CMD;
+    nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_WRITE_ZEROS;
+    nvmCommand.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
+    nvmCommand.commandDirection  = XFER_NO_DATA;
+    nvmCommand.ptrData           = M_NULLPTR;
+    nvmCommand.dataSize          = 0;
+    nvmCommand.cmd.nvmCmd.cdw10  = M_DoubleWord0(startingLBA); // lba
+    nvmCommand.cmd.nvmCmd.cdw11  = M_DoubleWord1(startingLBA); // lba
+    nvmCommand.cmd.nvmCmd.cdw12  = numberOfLogicalBlocks;
+    if (limitedRetry)
+    {
+        nvmCommand.cmd.nvmCmd.cdw12 |= BIT31;
+    }
+    if (forceUnitAccess)
+    {
+        nvmCommand.cmd.nvmCmd.cdw12 |= BIT30;
+    }
+    // NOTE: PRInfo here, but not currently supported
+    if (deallocate)
+    {
+        nvmCommand.cmd.nvmCmd.cdw12 |= BIT25;
+    }
+    nvmCommand.timeout = DEFAULT_COMMAND_TIMEOUT;
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_str("Sending NVMe Write Zeroes Command\n");
+    }
+    ret = nvme_Cmd(device, &nvmCommand);
+    // Command specific return codes:
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Write Zeroes", ret);
+    }
+    return ret;
+}
+
 eReturnValues nvme_Read_Ctrl_Reg(const tDevice* device, nvmeBarCtrlRegisters* ctrlRegs)
 {
     eReturnValues ret = UNKNOWN;
@@ -1211,7 +1257,6 @@ eReturnValues nvme_Read_Ctrl_Reg(const tDevice* device, nvmeBarCtrlRegisters* ct
         {
             safe_memcpy(ctrlRegs, sizeof(nvmeBarCtrlRegisters), barRegs, sizeof(nvmeBarCtrlRegisters));
         }
-
         safe_free_aligned(&barRegs);
     }
     else

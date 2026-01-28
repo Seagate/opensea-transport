@@ -525,6 +525,15 @@ extern "C"
                                                                  uint8_t*       ptrData,
                                                                  uint32_t       dataSize);
 
+    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1)
+    eReturnValues nvme_Write_Zeroes(const tDevice* device,
+                                 uint64_t       startingLBA,
+                                 uint16_t       numberOfLogicalBlocks,
+                                 bool           limitedRetry,
+                                 bool           forceUnitAccess,
+                                 bool           deallocate);
+
     M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
     M_PARAM_RO(7)
