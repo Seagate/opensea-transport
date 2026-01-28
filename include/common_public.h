@@ -1128,6 +1128,8 @@ extern "C"
             int8_t writeAndVerifyCmdSize; // 0 = not set, <0 = not supported, 10 = 10B version, 12 = 12B version, 16 =
                                           // 16B version
             int8_t writeBufferCmdSize;    // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
+            int8_t writeSameCmdSize;      // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
+            bool   writeSameDataOutRequired;// If true, NDOB bit must be 0 and data out must be sent with write same commands.
         } scsiHacks;
         // ATA Hacks refer to SAT translation issues or workarounds.
         struct
