@@ -1892,8 +1892,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             {
 #    if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf(
-                    "Failed to allocate memory for an aligned data pointer - missing buffer on data xfer command!\n");
+                print_str("Failed to allocate memory for an aligned data pointer - missing buffer on data xfer command!\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #    endif
                 return MEMORY_FAILURE;

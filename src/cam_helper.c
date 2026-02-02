@@ -1039,7 +1039,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
         {
             if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT "
+                print_str("WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT "
                        "Specification]\n");
             }
             ret = BAD_PARAMETER;
@@ -1737,7 +1737,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
-                    printf("Failed open, reason: ");
+                    print_str("Failed open, reason: ");
                     print_Errno_To_Screen(errno);
                 }
                 ++failedGetDeviceCount;

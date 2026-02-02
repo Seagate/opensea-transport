@@ -2062,7 +2062,7 @@ static void set_SAT_Flags_From_ATA_Info(tDevice*             device,
     // Setup flags for ATA passthrough if we know the SAT vendor/product/rev info
     if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS    ") == 0)
     {
-        // printf("Found PMCS SATL\n");
+        // print_str("Found PMCS SATL\n");
         // PMCS is a PMC translator. Sometimes these also show up on HPE controllers.
         // Tested:
         // SAT Vendor ID: PMCS
@@ -2099,7 +2099,7 @@ static void set_SAT_Flags_From_ATA_Info(tDevice*             device,
     }
     else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "LSI     ") == 0)
     {
-        // printf("Found LSI SATL\n");
+        // print_str("Found LSI SATL\n");
         // LSI/Avago/Broadcom HBAs
         //  Got SAT Vendor ID as LSI
         //  Got SAT Product ID as LSI SATL
@@ -2134,7 +2134,7 @@ static void set_SAT_Flags_From_ATA_Info(tDevice*             device,
         //  SAT Vendor ID: linux
         //  SAT Product ID: libata
         //  SAT Product Rev: 3.00
-        // printf("Found linux SATL\n");
+        // print_str("Found linux SATL\n");
         device->drive_info.passThroughHacks.passthroughType            = ATA_PASSTHROUGH_SAT;
         device->drive_info.passThroughHacks.hacksSetByReportedID       = true;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6    = true;

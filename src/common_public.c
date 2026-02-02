@@ -282,13 +282,13 @@ void print_Low_Level_Info(const tDevice* device)
             print_str("ATA CSMI CDBs (legacy, should be using SAT)\n");
             break;
         case ATA_PASSTHROUGH_JMICRON:
-            printf("ATA JMicron\n");
+            print_str("ATA JMicron\n");
             break;
         case ATA_PASSTHROUGH_JMICRON_PROLIFIC:
-            printf("ATA JMicron-Prolific\n");
+            print_str("ATA JMicron-Prolific\n");
             break;
         case ATA_PASSTHROUGH_SUNPLUS:
-            printf("ATA Sunplus\n");
+            print_str("ATA Sunplus\n");
             break;
         case ATA_PASSTHROUGH_UNKNOWN:
             print_str("ATA unknown\n");
@@ -309,7 +309,7 @@ void print_Low_Level_Info(const tDevice* device)
             print_str("NVMe Realtek\n");
             break;
         case NVME_PASSTHROUGH_REALTEK_BASIC:
-            printf("NVMe Realtek Basic\n");
+            print_str("NVMe Realtek Basic\n");
             break;
         case PASSTHROUGH_NONE:
             print_str("None\n");
@@ -522,28 +522,26 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.a1ExtCommandWhenPossible)
         {
-            printf("\t\t\t\t\tA1EXT (Some 48 bit commands must be issued with A1h opcode. Many limitations to this "
+            print_str("\t\t\t\t\tA1EXT (Some 48 bit commands must be issued with A1h opcode. Many limitations to this "
                    "device)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
         {
-            printf(
-                "\t\t\t\t\tRS (SAT return response info protocol is supported for determining command completion)\n");
+            print_str("\t\t\t\t\tRS (SAT return response info protocol is supported for determining command completion)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR)
         {
-            printf("\t\t\t\t\tRSTD (SAT return response info TDIR bit can be set to ensure proper interpretation of "
+            print_str("\t\t\t\t\tRSTD (SAT return response info TDIR bit can be set to ensure proper interpretation of "
                    "data direction)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit)
         {
-            printf("\t\t\t\t\tRSIE (SAT return response info data requires ignoring the extend bit as it isn't handled "
+            print_str("\t\t\t\t\tRSIE (SAT return response info data requires ignoring the extend bit as it isn't handled "
                    "properly)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough)
         {
-            printf(
-                "\t\t\t\t\tTSPIU (SAT commands must use the TSPIU transfer type for all commands to work properly)\n");
+            print_str("\t\t\t\t\tTSPIU (SAT commands must use the TSPIU transfer type for all commands to work properly)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
         {
@@ -563,17 +561,17 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible)
         {
-            printf("\t\t\t\t\tNORTFR (It is impossible to get the drive's response. Can only rely on SAT translation "
+            print_str("\t\t\t\t\tNORTFR (It is impossible to get the drive's response. Can only rely on SAT translation "
                    "of errors if that is even available)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.multiSectorPIOWithMultipleMode)
         {
-            printf("\t\t\t\t\tMMPIO (Multi-sector PIO commands are only possible if multiple mode configuration is "
+            print_str("\t\t\t\t\tMMPIO (Multi-sector PIO commands are only possible if multiple mode configuration is "
                    "done first)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly)
         {
-            printf("\t\t\t\t\tSPIO (Only single sector PIO commands are possible. Any attempts at multiple-sectors "
+            print_str("\t\t\t\t\tSPIO (Only single sector PIO commands are possible. Any attempts at multiple-sectors "
                    "will cause massive problems)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly)
@@ -582,7 +580,7 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands)
         {
-            printf("\t\t\t\t\tNOMMPIO (Do not use multiple mode read/write commands on this device. They are not "
+            print_str("\t\t\t\t\tNOMMPIO (Do not use multiple mode read/write commands on this device. They are not "
                    "handled correctly)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength > 0)
@@ -592,7 +590,7 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU)
         {
-            printf("\t\t\t\t\tTPID (TSPIU can be used on identify commands and possibly a few others, but it cannot be "
+            print_str("\t\t\t\t\tTPID (TSPIU can be used on identify commands and possibly a few others, but it cannot be "
                    "used on every command)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition)
@@ -601,12 +599,11 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty)
         {
-            printf(
-                "\t\t\t\t\tCHKE (Check condition bit is accepted but sense data is empty, so this bit is unusable)\n");
+            print_str("\t\t\t\t\tCHKE (Check condition bit is accepted but sense data is empty, so this bit is unusable)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
         {
-            printf("\t\t\t\t\tPEMUNV (Adapter is possibly a USB to NVMe adapter that responds to SAT ATA identify CDBs "
+            print_str("\t\t\t\t\tPEMUNV (Adapter is possibly a USB to NVMe adapter that responds to SAT ATA identify CDBs "
                    "with only MN, SN, FW)\n");
         }
         // print out the os_info unique things. This has a lot of ifdefs for the different OSs/configurations so need to
@@ -1263,20 +1260,20 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
         }
         else
         {
-            printf("No devices found\n");
+            print_str("No devices found\n");
         }
     }
     else if (ret == PERMISSION_DENIED)
     {
-        printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
+        print_str("Permission to access all devices was denied. Please check your permissions and try again.\n");
     }
     else if (ret == DEVICE_BUSY)
     {
-        printf("All devices reported as busy at this time.\n");
+        print_str("All devices reported as busy at this time.\n");
     }
     else
     {
-        printf("Unable to get number of devices from OS\n");
+        print_str("Unable to get number of devices from OS\n");
     }
     safe_free(C_CAST(void**, &scanDeviceList));
 }
@@ -1475,11 +1472,11 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
     }
     else if (ret == PERMISSION_DENIED)
     {
-        printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
+        print_str("Permission to access all devices was denied. Please check your permissions and try again.\n");
     }
     else if (ret == DEVICE_BUSY)
     {
-        printf("All devices reported as busy at this time.\n");
+        print_str("All devices reported as busy at this time.\n");
     }
     else
     {

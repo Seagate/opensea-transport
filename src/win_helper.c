@@ -2692,7 +2692,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                                          device)))
                                                                                     {
 #if defined(_DEBUG)
-                                                                                        printf("Fatal error getting "
+                                                                                        print_str("Fatal error getting "
                                                                                                "device IDs\n");
 #endif // _DEBUG
                                                                                     }
@@ -2854,7 +2854,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                     if (scanfRet < 4 || scanfRet == EOF)
                                                                                     {
 #if defined(_DEBUG)
-                                                                                        printf("Fatal error getting "
+                                                                                        print_str("Fatal error getting "
                                                                                                "driver version!\n");
 #endif //_DEBUG
                                                                                     }
@@ -5349,8 +5349,7 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
 #if defined(WIN_DEBUG)
                                         else
                                         {
-                                            printf(
-                                                "\nWARNING! Asked for system directory, but got a zero length string! "
+                                            print_str("\nWARNING! Asked for system directory, but got a zero length string! "
                                                 "Unable to detect if this is a drive with a system folder!\n");
                                         }
 #endif // WIN_DEBUG
@@ -6550,7 +6549,7 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks_Ex(ScsiIoCtx* scsiIoCtx
     {
         uint32_t lbaEntries =
             M_BytesTo4ByteValue(scsiIoCtx->pdata[0], scsiIoCtx->pdata[1], scsiIoCtx->pdata[2], scsiIoCtx->pdata[3]) /
-            REASSIGN_BLOCKS_LONG_LBA_LENGTH; 
+            REASSIGN_BLOCKS_LONG_LBA_LENGTH;
         if (lbaEntries > UINT16_MAX) // maximum number of blocks that can be in the list.
         {
             return OS_COMMAND_NOT_AVAILABLE;

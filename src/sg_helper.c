@@ -2798,7 +2798,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             {
                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
-                    printf("Failed open, reason: ");
+                    print_str("Failed open, reason: ");
                     print_Errno_To_Screen(errno);
                 }
                 ++failedGetDeviceCount;
@@ -3394,7 +3394,7 @@ static bool lock_unlock_handle(int fd, bool lock, eVerbosityLevels verboseLevel)
             if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
             {
                 printf("Failed to set Linux F_OFD_SETLK %s flags with fcntl\n", lock == true ? "lock" : "unlock");
-                printf("Will retry with the standard POSIX method\n");
+                print_str("Will retry with the standard POSIX method\n");
                 print_Errno_To_Screen(errno);
             }
             retryPOSIXstd = true;

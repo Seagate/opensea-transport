@@ -45,7 +45,7 @@ eReturnValues posix_Resolve_Filename_Link(const char* filename, char** resolvedF
     {
         errno_t err = errno;
         print_str("lstat failure\n");
-        printf("Error: ");
+        print_str("Error: ");
         print_Errno_To_Screen(err);
         if (err == EACCES)
         {
