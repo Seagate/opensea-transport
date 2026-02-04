@@ -59,9 +59,9 @@ extern "C"
 
     typedef struct s_raidHandleToScan
     {
-        struct s_raidHandleToScan* next; // must be declared like this to work with older GCC compilers.
-        char                       handle[RAID_HANDLE_STRING_MAX_LEN];
-        raidTypeHint               raidHint;
+        struct s_raidHandleToScan* M_NULLABLE next; // must be declared like this to work with older GCC compilers.
+        char                                  handle[RAID_HANDLE_STRING_MAX_LEN];
+        raidTypeHint                          raidHint;
         // These pieces of info may provide additional help in case the OS is unable to classify the hint, passing this
         // along may help screen which RAID to scan this device with when this data is available.-TJE If the system has
         // this info and can pass it in, it also helps populate additional data fields when enumerating the device in
@@ -76,36 +76,35 @@ extern "C"
     // Function to make it easy to add another entry to the list
     // Returns pointer to the added entry.
     // Entry is always added in currentPtr->next
-    M_NONNULL_PARAM_LIST(2)
     M_PARAM_RW(1)
     M_NULL_TERM_STRING(2)
     M_PARAM_RO(2)
-    ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr,
-                                        const char*         handleToScan,
-                                        raidTypeHint        raidHint);
+    ptrRaidHandleToScan M_NULLABLE add_RAID_Handle(ptrRaidHandleToScan M_NULLABLE currentPtr,
+                                                   const char* M_NONNULL          handleToScan,
+                                                   raidTypeHint                   raidHint);
 
     // Same as above, but checks to make sure that the provided handle is not already part of the list to scan - helpful
     // for some configurations where a RAID also has JBOD/passthrough disks available on the same HBA If already in the
     // list, currentPtr is returned
-    M_NONNULL_PARAM_LIST(3)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
     M_NULL_TERM_STRING(3)
     M_PARAM_RO(3)
-    ptrRaidHandleToScan add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan listBegin,
-                                                       ptrRaidHandleToScan currentPtr,
-                                                       const char*         handleToScan,
-                                                       raidTypeHint        raidHint);
+    ptrRaidHandleToScan M_NULLABLE add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan M_NULLABLE listBegin,
+                                                                  ptrRaidHandleToScan M_NULLABLE currentPtr,
+                                                                  const char* M_NONNULL          handleToScan,
+                                                                  raidTypeHint                   raidHint);
 
     // Make it easier to remove an item. Useful when scanning multiple RAID libs because the first RAID lib can remove
     // handles that did in fact work so that they are not scanned again by another RAID library. returns a pointer to
     // the entry after "toRemove", which can be M_NULLPTR
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    M_PARAM_RW(2) ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHandleToScan previous);
+    M_PARAM_RW(2)
+    ptrRaidHandleToScan M_NULLABLE remove_RAID_Handle(ptrRaidHandleToScan M_NULLABLE toRemove,
+                                                      ptrRaidHandleToScan M_NULLABLE previous);
 
     // Deletes everything in the list from pointer to the beginning of the list.
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) void delete_RAID_List(ptrRaidHandleToScan listBegin);
+    M_PARAM_RW(1) void delete_RAID_List(ptrRaidHandleToScan M_NONNULL listBegin);
 
 #if defined(__cplusplus)
 }

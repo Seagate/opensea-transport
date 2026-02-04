@@ -30,7 +30,7 @@
 
 void print_Low_Level_Info(const tDevice* device)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (device != M_NULLPTR)
     {
         int adapterIDWidthSpec;
@@ -523,25 +523,28 @@ void print_Low_Level_Info(const tDevice* device)
         if (device->drive_info.passThroughHacks.ataPTHacks.a1ExtCommandWhenPossible)
         {
             print_str("\t\t\t\t\tA1EXT (Some 48 bit commands must be issued with A1h opcode. Many limitations to this "
-                   "device)\n");
+                      "device)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
         {
-            print_str("\t\t\t\t\tRS (SAT return response info protocol is supported for determining command completion)\n");
+            print_str(
+                "\t\t\t\t\tRS (SAT return response info protocol is supported for determining command completion)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR)
         {
             print_str("\t\t\t\t\tRSTD (SAT return response info TDIR bit can be set to ensure proper interpretation of "
-                   "data direction)\n");
+                      "data direction)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit)
         {
-            print_str("\t\t\t\t\tRSIE (SAT return response info data requires ignoring the extend bit as it isn't handled "
-                   "properly)\n");
+            print_str(
+                "\t\t\t\t\tRSIE (SAT return response info data requires ignoring the extend bit as it isn't handled "
+                "properly)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough)
         {
-            print_str("\t\t\t\t\tTSPIU (SAT commands must use the TSPIU transfer type for all commands to work properly)\n");
+            print_str(
+                "\t\t\t\t\tTSPIU (SAT commands must use the TSPIU transfer type for all commands to work properly)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
         {
@@ -561,18 +564,19 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible)
         {
-            print_str("\t\t\t\t\tNORTFR (It is impossible to get the drive's response. Can only rely on SAT translation "
-                   "of errors if that is even available)\n");
+            print_str(
+                "\t\t\t\t\tNORTFR (It is impossible to get the drive's response. Can only rely on SAT translation "
+                "of errors if that is even available)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.multiSectorPIOWithMultipleMode)
         {
             print_str("\t\t\t\t\tMMPIO (Multi-sector PIO commands are only possible if multiple mode configuration is "
-                   "done first)\n");
+                      "done first)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly)
         {
             print_str("\t\t\t\t\tSPIO (Only single sector PIO commands are possible. Any attempts at multiple-sectors "
-                   "will cause massive problems)\n");
+                      "will cause massive problems)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly)
         {
@@ -581,7 +585,7 @@ void print_Low_Level_Info(const tDevice* device)
         if (device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands)
         {
             print_str("\t\t\t\t\tNOMMPIO (Do not use multiple mode read/write commands on this device. They are not "
-                   "handled correctly)\n");
+                      "handled correctly)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength > 0)
         {
@@ -590,8 +594,9 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU)
         {
-            print_str("\t\t\t\t\tTPID (TSPIU can be used on identify commands and possibly a few others, but it cannot be "
-                   "used on every command)\n");
+            print_str(
+                "\t\t\t\t\tTPID (TSPIU can be used on identify commands and possibly a few others, but it cannot be "
+                "used on every command)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition)
         {
@@ -599,12 +604,14 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty)
         {
-            print_str("\t\t\t\t\tCHKE (Check condition bit is accepted but sense data is empty, so this bit is unusable)\n");
+            print_str(
+                "\t\t\t\t\tCHKE (Check condition bit is accepted but sense data is empty, so this bit is unusable)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
         {
-            print_str("\t\t\t\t\tPEMUNV (Adapter is possibly a USB to NVMe adapter that responds to SAT ATA identify CDBs "
-                   "with only MN, SN, FW)\n");
+            print_str(
+                "\t\t\t\t\tPEMUNV (Adapter is possibly a USB to NVMe adapter that responds to SAT ATA identify CDBs "
+                "with only MN, SN, FW)\n");
         }
         // print out the os_info unique things. This has a lot of ifdefs for the different OSs/configurations so need to
         // watch out for the differences in here
@@ -1084,7 +1091,6 @@ void print_Low_Level_Info(const tDevice* device)
 #endif // ENABLE_CSMI
         print_str("\n");
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 size_t load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize)
@@ -1502,7 +1508,7 @@ bool validate_Device_Struct(versionBlock sanity)
 
 eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ver != M_NULLPTR)
     {
         ver->majorVersion = OPENSEA_TRANSPORT_MAJOR_VERSION;
@@ -1514,12 +1520,11 @@ eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver)
     {
         return MEMORY_FAILURE;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 eReturnValues get_Version_Block(versionBlock* ver)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ver != M_NULLPTR)
     {
         ver->size    = sizeof(tDevice);
@@ -1530,7 +1535,6 @@ eReturnValues get_Version_Block(versionBlock* ver)
     {
         return MEMORY_FAILURE;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 static void set_IEEE_OUI(uint32_t* ieeeOUI, const tDevice* device, bool USBchildDrive)
@@ -2037,7 +2041,7 @@ bool is_LaCie(const tDevice* device)
 // USB, firewire, thunderbolt, etc
 void seagate_External_SN_Cleanup(char** sn, size_t snlen)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (sn != M_NULLPTR && *sn != M_NULLPTR)
     {
         // sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
@@ -2110,7 +2114,6 @@ void seagate_External_SN_Cleanup(char** sn, size_t snlen)
         // NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to
         // add different cases for these older LaCie products.
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 bool is_Samsung_String(const char* string)
@@ -2399,7 +2402,7 @@ bool is_Exos_Drive(const tDevice* device, bool USBchildDrive)
 
     if (safe_strlen(modelNumber))
     {
-        if (wildcard_Match("ST*NM*", modelNumber) ||  // Exos X-series
+        if (wildcard_Match("ST*NM*", modelNumber) || // Exos X-series
             wildcard_Match("ST*MP*", modelNumber) || // Exos E-series
             wildcard_Match("ST*MM*", modelNumber) || // Exos E-series
             wildcard_Match("ST*NX*", modelNumber))   // Exos E-series
@@ -3107,12 +3110,10 @@ eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize)
     uint8_t  checksum = UINT8_C(0);
     uint32_t counter  = UINT32_C(0);
 
-    DISABLE_NONNULL_COMPARE
     if ((blockSize > LEGACY_DRIVE_SEC_SIZE) || (blockSize == UINT32_C(0)) || (pBuf == M_NULLPTR))
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     // printf("%s: blksize %d, pBuf %p\n", __FUNCTION__, blockSize, C_CAST(void*, pBuf));
 
@@ -3342,12 +3343,11 @@ eReturnValues remove_Duplicate_Devices(tDevice*                 deviceList,
     bool              sameSlNo = false;
     eReturnValues     ret      = UNKNOWN;
 
-    DISABLE_NONNULL_COMPARE
     if (deviceList == M_NULLPTR || numberOfDevices == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     /*
     Go through all the devices in the list.
     */
@@ -5093,9 +5093,8 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
 
 // This function exists to make it easy to set the same settings for other USB vendor ID's that
 // used this chip (Example: LaCie)
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static bool set_Sunplus_Hacks(tDevice* device)
+static bool set_Sunplus_Hacks(tDevice* M_NULLABLE device)
 {
     bool passthroughHacksSet = false;
     if (device != M_NULLPTR)
@@ -5484,12 +5483,11 @@ static bool set_Maxtor_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-bool set_JMicron_Legacy_PT_Hacks(tDevice* device)
+bool set_JMicron_Legacy_PT_Hacks(tDevice* M_NONNULL device)
 {
     bool passthroughHacksSet = false;
-    DISABLE_NONNULL_COMPARE
+
     if (device != M_NULLPTR)
     {
         device->drive_info.passThroughHacks.passthroughType         = ATA_PASSTHROUGH_JMICRON;
@@ -5515,7 +5513,7 @@ bool set_JMicron_Legacy_PT_Hacks(tDevice* device)
         device->drive_info.passThroughHacks.turfValue                             = 13;
         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
     }
-    RESTORE_NONNULL_COMPARE
+
     return passthroughHacksSet;
 }
 

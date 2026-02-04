@@ -167,12 +167,10 @@ eReturnValues ata_Legacy_Read_DMA_CHS(const tDevice*         device,
 
     M_USE_UNUSED(sectorCount);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -224,12 +222,10 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(const tDevice*         device,
 
     M_USE_UNUSED(sectorCount);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -335,12 +331,10 @@ eReturnValues ata_Legacy_Read_Sectors_CHS(const tDevice*         device,
 
     M_USE_UNUSED(sectorCount);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -482,12 +476,10 @@ eReturnValues ata_Legacy_Write_DMA_CHS(const tDevice* device,
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -537,12 +529,10 @@ eReturnValues ata_Legacy_Write_Multiple_CHS(const tDevice* device,
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_multipleCount(&ataCommandOptions, device);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -590,12 +580,10 @@ eReturnValues ata_Legacy_Write_Sectors_CHS(const tDevice* device,
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -691,12 +679,10 @@ eReturnValues ata_Legacy_Read_Long_CHS(const tDevice* device,
     ataCommandOptions.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -728,12 +714,10 @@ eReturnValues ata_Legacy_Read_Long(const tDevice* device,
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
     ataCommandOptions.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -758,20 +742,19 @@ eReturnValues ata_Legacy_Write_Long_CHS(const tDevice* device,
                                         uint8_t*       ptrData,
                                         uint32_t       dataSize)
 {
-    eReturnValues         ret               = UNKNOWN;
-    ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(device, retries ? ATA_WRITE_LONG_RETRY_CMD : ATA_WRITE_LONG_NORETRY,
+    eReturnValues         ret = UNKNOWN;
+    ataPassthroughCommand ataCommandOptions =
+        create_ata_pio_out_cmd(device, retries ? ATA_WRITE_LONG_RETRY_CMD : ATA_WRITE_LONG_NORETRY,
                                ATA_CMD_TYPE_TASKFILE, 1, ptrData, dataSize);
     // this must be used since the transfer is some number of bytes
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
     ataCommandOptions.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -802,12 +785,10 @@ eReturnValues ata_Legacy_Write_Long(const tDevice* device,
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_TPSIU;
     ataCommandOptions.ataTransferBlocks        = ATA_PT_NUMBER_OF_BYTES;
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -833,7 +814,7 @@ eReturnValues ata_Legacy_Write_Same_CHS(const tDevice* device,
                                         uint8_t*       ptrData,
                                         uint32_t       dataSize)
 {
-    eReturnValues         ret = UNKNOWN;
+    eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
         device, ATA_LEGACY_WRITE_SAME, ATA_CMD_TYPE_TASKFILE, numberOfSectorsToWrite, ptrData, dataSize);
     // this must be used since the transfer is always 1 sector to the drive. The sector count says
@@ -868,12 +849,10 @@ eReturnValues ata_Legacy_Write_Same_CHS(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -897,7 +876,7 @@ eReturnValues ata_Legacy_Write_Same(const tDevice* device,
                                     uint8_t*       ptrData,
                                     uint32_t       dataSize)
 {
-    eReturnValues         ret = UNKNOWN;
+    eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
         device, ATA_LEGACY_WRITE_SAME, ATA_CMD_TYPE_TASKFILE, numberOfSectorsToWrite, ptrData, dataSize);
     // this must be used since the transfer is always 1 sector to the drive. The sector count says
@@ -932,12 +911,10 @@ eReturnValues ata_Legacy_Write_Same(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -968,12 +945,10 @@ eReturnValues ata_Legacy_Write_Verify_CHS(const tDevice* device,
         dataSize);
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -998,12 +973,10 @@ eReturnValues ata_Legacy_Write_Verify(const tDevice* device, uint32_t lba, uint8
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), lba, ptrData,
         dataSize);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1068,12 +1041,10 @@ eReturnValues ata_Legacy_Check_Power_Mode(const tDevice* device, uint8_t* powerM
     ataPassthroughCommand ataCommandOptions =
         create_ata_nondata_cmd(device, ATA_LEGACY_ALT_CHECK_POWER_MODE, ATA_CMD_TYPE_TASKFILE, true);
 
-    DISABLE_NONNULL_COMPARE
     if (powerMode == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {

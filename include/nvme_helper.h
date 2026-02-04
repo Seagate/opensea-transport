@@ -505,10 +505,10 @@ extern "C"
         uint32_t nsid;
         uint64_t metadata; // MPTR
         // uint64_t  addr;   //PRP Entry 1
-        uint8_t* addr; // PRP Entry 1
-        uint32_t metadataLen;
-        uint32_t dataLen;
-        uint8_t  lid; // Log Page identifier, part of Command Dword 10(CDW10)
+        uint8_t* M_NONNULL addr; // PRP Entry 1
+        uint32_t           metadataLen;
+        uint32_t           dataLen;
+        uint8_t            lid; // Log Page identifier, part of Command Dword 10(CDW10)
         // Additional attributes to support Log Page 7 and 8
         uint32_t lsp;
         uint32_t rae;
@@ -521,8 +521,8 @@ extern "C"
     */
     typedef struct s_nvmeFeaturesCmdOpt
     {
-        uint8_t* dataPtr;
-        uint32_t dataLength;
+        uint8_t* M_NULLABLE dataPtr;
+        uint32_t            dataLength;
         // Following are part of Dword 10 in nvmeSpec
         uint8_t  sv;              // Save Value Used for Set Features command as Bit 31
         uint8_t  rsvd;            // //this part is reserved for both Get/Set Features
@@ -649,13 +649,13 @@ extern "C"
 
     typedef struct s_nvmeStatus
     {
-        uint8_t       statusCodeType;
-        uint8_t       statusCode;
-        eReturnValues ret;
-        const char*   description;
+        uint8_t               statusCodeType;
+        uint8_t               statusCode;
+        eReturnValues         ret;
+        const char* M_NONNULL description;
     } nvmeStatus;
 
-    const nvmeStatus* get_NVMe_Status(uint32_t nvmeStatusDWord);
+    const nvmeStatus* M_NULLABLE get_NVMe_Status(uint32_t nvmeStatusDWord);
 
     typedef enum eNvmeStatusCodeTypeEnum
     {
@@ -896,13 +896,13 @@ extern "C"
     // \struct typedef struct s_nvmeCmdCtx
     typedef struct s_nvmeCmdCtx
     {
-        tDevice*     device;
-        eNvmeCmdType commandType; // admin vs nvm command (needed for some OSs to send to the correct queue)
+        tDevice* M_NONNULL device;
+        eNvmeCmdType       commandType; // admin vs nvm command (needed for some OSs to send to the correct queue)
         eDataTransferDirection
             commandDirection; // this should match the NVMe definition in opcode bits 1:0. 00 - no data, 01 - host to
                               // controller (out), 10 - controller to host (in), 11 - bidirectional
         nvmeCommands         cmd; // cmd definition. This will be accessed depending on what is set to comandType field
-        uint8_t*             ptrData;  // buffer to hold data being sent or received
+        uint8_t* M_NULLABLE  ptrData;  // buffer to hold data being sent or received
         uint32_t             dataSize; // size of data being sent or received in BYTES
         uint32_t             timeout;  // in seconds
         completionQueueEntry commandCompletionData;

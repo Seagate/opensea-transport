@@ -42,25 +42,23 @@ extern 'C'
         SUNPLUS_XFER_OUT  = 0x11
     } eSunplusDataDir;
 
-    M_NONNULL_PARAM_LIST(1, 2, 3, 4)
     M_PARAM_WO(1)
     M_PARAM_WO(2)
     M_PARAM_WO(3)
     M_PARAM_RO(4)
-    eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t lowCDB[SUNPLUS_PT_CDB_LEN],
-                                                        uint8_t hiCDB[SUNPLUS_PT_CDB_LEN], bool* highCDBValid,
-                                                        ataPassthroughCommand* ataCommandOptions);
+    eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(
+        uint8_t lowCDB[M_NONNULL_ARRAY SUNPLUS_PT_CDB_LEN], uint8_t hiCDB[M_NONNULL_ARRAY SUNPLUS_PT_CDB_LEN],
+        bool* M_NONNULL highCDBValid, ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice * device, ataPassthroughCommand * ataCommandOptions,
-                                                eReturnValues commandRet);
+    eReturnValues get_RTFRs_From_Sunplus_Legacy(
+        const tDevice* M_NONNULL device, ataPassthroughCommand* M_NONNULL ataCommandOptions, eReturnValues commandRet);
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice * device, ataPassthroughCommand * ataCommandOptions);
+    eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                          ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
 #if defined(__cplusplus)
 }

@@ -348,12 +348,10 @@ eReturnValues ata_Read_Log_Ext(const tDevice* device,
                (dataSize / LEGACY_DRIVE_SEC_SIZE));
     }
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR || dataSize < LEGACY_DRIVE_SEC_SIZE || dataSize % LEGACY_DRIVE_SEC_SIZE)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     ataCommandOptions.commandDirection         = XFER_DATA_IN;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_SECTOR_COUNT;
@@ -443,12 +441,10 @@ eReturnValues ata_Write_Log_Ext(const tDevice* device,
                (dataSize / LEGACY_DRIVE_SEC_SIZE));
     }
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR || dataSize < LEGACY_DRIVE_SEC_SIZE || dataSize % LEGACY_DRIVE_SEC_SIZE)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (useDMA)
     {
@@ -952,12 +948,10 @@ eReturnValues ata_Accessible_Max_Address_Feature(const tDevice* device,
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    DISABLE_NONNULL_COMPARE
     if (rtfrs != M_NULLPTR)
     {
         safe_memcpy(rtfrs, sizeof(ataReturnTFRs), &(ataCommandOptions.rtfr), sizeof(ataReturnTFRs));
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -973,12 +967,12 @@ eReturnValues ata_Get_Native_Max_Address_Ext(const tDevice* device, uint64_t* na
     ataReturnTFRs rtfrs;
     safe_memset(&rtfrs, sizeof(rtfrs), 0, sizeof(rtfrs));
     ret = ata_Accessible_Max_Address_Feature(device, AMAC_GET_NATIVE_MAX_ADDRESS, 0, &rtfrs, 0);
-    DISABLE_NONNULL_COMPARE
+
     if (ret == SUCCESS && nativeMaxLBA != M_NULLPTR)
     {
         *nativeMaxLBA = get_ata_pt_LBA_48_from_rtfr(&rtfrs);
     }
-    RESTORE_NONNULL_COMPARE
+
     return ret;
 }
 
@@ -1013,7 +1007,6 @@ eReturnValues ata_Read_Native_Max_Address(const tDevice* device, uint64_t* nativ
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    DISABLE_NONNULL_COMPARE
     if (ret == SUCCESS && nativeMaxLBA != M_NULLPTR)
     {
         if (ext)
@@ -1025,7 +1018,6 @@ eReturnValues ata_Read_Native_Max_Address(const tDevice* device, uint64_t* nativ
             *nativeMaxLBA = get_ata_pt_LBA_28(&ataCommandOptions);
         }
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1224,12 +1216,10 @@ eReturnValues ata_Check_Power_Mode(const tDevice* device, uint8_t* powerMode)
     ataPassthroughCommand ataCommandOptions =
         create_ata_nondata_cmd(device, ATA_CHECK_POWER_MODE_CMD, ATA_CMD_TYPE_TASKFILE, true);
 
-    DISABLE_NONNULL_COMPARE
     if (powerMode == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1302,12 +1292,10 @@ eReturnValues ata_Data_Set_Management(const tDevice* device, bool trimBit, uint8
         ataCommandOptions.tfr.ErrorFeature |= BIT0;
     }
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1461,12 +1449,10 @@ eReturnValues ata_Read_Buffer(const tDevice* device, uint8_t* ptrData, bool useD
             create_ata_pio_in_cmd(device, ATA_READ_BUF, ATA_CMD_TYPE_TASKFILE, 1, ptrData, LEGACY_DRIVE_SEC_SIZE);
     }
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1513,12 +1499,10 @@ eReturnValues ata_Read_DMA(const tDevice*         device,
 
     M_USE_UNUSED(sectorCount);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1566,12 +1550,10 @@ eReturnValues ata_Read_Multiple(const tDevice*         device,
 
     M_USE_UNUSED(sectorCount);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1618,12 +1600,10 @@ eReturnValues ata_Read_Sectors(const tDevice*         device,
 
     M_USE_UNUSED(sectorCount);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1664,12 +1644,10 @@ eReturnValues ata_Read_Sectors_No_Retry(const tDevice* device,
     ataPassthroughCommand ataCommandOptions = create_ata_pio_read_lba_cmd(
         device, ATA_READ_SECT_NORETRY, ATA_CMD_TYPE_TASKFILE, sectorCount, LBA, ptrData, dataSize);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1729,12 +1707,10 @@ eReturnValues ata_Read_Stream_Ext(const tDevice* device,
 
     ataCommandOptions.tfr.Feature48 = commandCCTL;
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1819,12 +1795,11 @@ eReturnValues ata_Request_Sense_Data(const tDevice* device,
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
         create_ata_nondata_cmd(device, ATA_REQUEST_SENSE_DATA, ATA_CMD_TYPE_EXTENDED_TASKFILE, true);
-    DISABLE_NONNULL_COMPARE
+
     if (senseKey == M_NULLPTR || additionalSenseCode == M_NULLPTR || additionalSenseCodeQualifier == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2132,12 +2107,10 @@ eReturnValues ata_Write_Buffer(const tDevice* device, uint8_t* ptrData, bool use
             create_ata_pio_out_cmd(device, ATA_WRITE_BUF, ATA_CMD_TYPE_TASKFILE, 1, ptrData, LEGACY_DRIVE_SEC_SIZE);
     }
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2182,12 +2155,10 @@ eReturnValues ata_Write_DMA(const tDevice* device,
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
         ptrData, dataSize);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2233,12 +2204,10 @@ eReturnValues ata_Write_Multiple(const tDevice* device,
         ptrData, dataSize);
     set_ata_pt_multipleCount(&ataCommandOptions, device);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2281,12 +2250,11 @@ eReturnValues ata_Write_Sectors(const tDevice* device,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), LBA,
         ptrData, dataSize);
-    DISABLE_NONNULL_COMPARE
+
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2325,12 +2293,10 @@ eReturnValues ata_Write_Sectors_No_Retry(const tDevice* device, uint64_t LBA, ui
         get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), LBA, ptrData,
         dataSize);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -2391,12 +2357,10 @@ eReturnValues ata_Write_Stream_Ext(const tDevice* device,
 
     ataCommandOptions.tfr.Feature48 = commandCCTL;
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {

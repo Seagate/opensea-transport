@@ -77,7 +77,33 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         '-fvisibility=hidden',  #to work similarly to Window's DLL import/export
         '-Wmismatched-dealloc',
         '-Wfree-nonheap-object',
+        '-fnullability',
+        '-Wnullability',  # Warnings for nullability annotations
+        '-Wnullability-completeness',  # Warn if nullability annotations are incomplete
+        '-Wnullability-completeness-on-arrays',  # Warn if nullability annotations are incomplete
+        # '-Wnullable-to-nonnull-conversion', # Basically warns so you have to cast to the correct nullability type. Not needed today -TJE
+        #'-Wswitch-enum', # too noisy for now - TJE
+        '-Walloc-zero',
+        '-Walloc-size',
+        '-Wcalloc-transposed-args',
+        '-Werror=alloca',  # Do not allow use of the alloca function
+        '-Wstring-compare',  # Helps detect when strcmp is used when the programmer likely meant to use strncmp
     ]
+
+    if get_option('cc-suggest-attribute')
+        warning_flags += [
+            '-Wsuggest-attribute=pure',
+            '-Wsuggest-attribute=const',
+            '-Wsuggest-attribute=noreturn',
+            '-Wsuggest-attribute=returns_nonnull',
+            '-Wmissing-noreturn',
+            '-Wsuggest-attribute=malloc',
+            '-Wsuggest-attribute=format',
+            '-Wmissing-format-attribute',
+            '-Wsuggest-attribute=cold',
+            '-fipa-pure-const',
+        ]
+    endif
 
     if c.get_id().contains('gcc') and c.version().version_compare('>=10.0')
         #only enable the sign conversion warning on versions 10 and up because it is way too noisy on earlier GCC versions than it is useful-TJE
@@ -287,7 +313,7 @@ src_files = [
     'src/sntl_helper.c',
     'src/sunplus_legacy_helper.c',
     'src/ti_legacy_helper.c',
-    'src/usb_hacks.c'
+    'src/usb_hacks.c',
 ]
 
 # Handle various options related to NVMe passthrough support, CISS support, CSMI support, etc. All of these SHOULD be on by default but can be disabled.
@@ -339,7 +365,8 @@ elif target_machine.system() == 'openbsd' or target_machine.system() == 'netbsd'
         'src/bsd_ata_passthrough.c',
         'src/bsd_scsi_passthrough.c',
         'src/netbsd_openbsd_helper.c',
-        'src/posix_common_lowlevel.c', 'src/nix_mounts.c'
+        'src/posix_common_lowlevel.c',
+        'src/nix_mounts.c',
     ]
     add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language: 'c')
     message('Auto-disabling NVMe support as no ioctl header can be found')

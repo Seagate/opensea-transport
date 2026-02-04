@@ -303,7 +303,7 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
                                        uint8_t* statusCodeType,
                                        uint8_t* statusCode)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (doNotRetry != M_NULLPTR && more != M_NULLPTR && statusCodeType != M_NULLPTR && statusCode != M_NULLPTR)
     {
         *doNotRetry     = nvmeStatusDWord & BIT31;
@@ -311,7 +311,6 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
         *statusCodeType = get_8bit_range_uint32(nvmeStatusDWord, 27, 25);
         *statusCode     = get_8bit_range_uint32(nvmeStatusDWord, 24, 17);
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 // Status codes must be in numeric order!
@@ -647,11 +646,11 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* cmdCtx)
     print_str("\n");
 }
 
-const char* nvme_cmd_to_string(int admin, uint8_t opcode)
+M_RETURNS_NONNULL const char* nvme_cmd_to_string(int admin, uint8_t opcode)
 {
     if (admin)
     {
-        switch (opcode)
+        switch (M_STATIC_CAST(eNVMeAdminOpCodes, opcode))
         {
         case NVME_ADMIN_CMD_DELETE_SQ:
             return "Delete I/O Submission Queue";
@@ -711,7 +710,7 @@ const char* nvme_cmd_to_string(int admin, uint8_t opcode)
     }
     else
     {
-        switch (opcode)
+        switch (M_STATIC_CAST(eNvmeOPCodes, opcode))
         {
         case NVME_CMD_FLUSH:
             return "Flush";
@@ -727,6 +726,8 @@ const char* nvme_cmd_to_string(int admin, uint8_t opcode)
             return "Write Zeroes";
         case NVME_CMD_DATA_SET_MANAGEMENT:
             return "Dataset Management";
+        case NVME_CMD_VERIFY:
+            return "Verify";
         case NVME_CMD_RESERVATION_REGISTER:
             return "Reservation Register";
         case NVME_CMD_RESERVATION_REPORT:
@@ -749,12 +750,11 @@ eReturnValues nvme_Get_SMART_Log_Page(const tDevice* device, uint32_t nsid, uint
 #ifdef _DEBUG
     printf("-->%s\n", __FUNCTION__);
 #endif
-    DISABLE_NONNULL_COMPARE
+
     if (pData == M_NULLPTR || (dataLen < NVME_SMART_HEALTH_LOG_LEN))
     {
         return ret;
     }
-    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     smartLog = C_CAST(nvmeSmartLog*, pData);
@@ -780,12 +780,11 @@ eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* device, uint8_t* pData, uin
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    DISABLE_NONNULL_COMPARE
+
     if (pData == M_NULLPTR || (dataLen < sizeof(nvmeErrLogEntry)))
     {
         return ret;
     }
-    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
@@ -807,12 +806,11 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* device, uint8_t* pData, u
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    DISABLE_NONNULL_COMPARE
+
     if (pData == M_NULLPTR || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }
-    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
@@ -834,12 +832,11 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* device, uint8_t* pData
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    DISABLE_NONNULL_COMPARE
+
     if (pData == M_NULLPTR || (dataLen < sizeof(nvmeEffectsLog)))
     {
         return ret;
     }
-    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
@@ -861,12 +858,11 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* device, uint8_t* pDat
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    DISABLE_NONNULL_COMPARE
+
     if (pData == M_NULLPTR || (dataLen < sizeof(nvmeSelfTestLog)))
     {
         return ret;
     }
-    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;

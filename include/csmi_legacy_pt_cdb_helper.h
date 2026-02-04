@@ -22,23 +22,22 @@ extern "C"
 
 #define CSMI_PASSTHROUGH_CDB_LENGTH UINT8_C(16)
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RW(1)
     M_PARAM_RO(2)
-    eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH], ataPassthroughCommand* ataPtCmd);
+    eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[M_NONNULL_ARRAY CSMI_PASSTHROUGH_CDB_LENGTH],
+                                             ataPassthroughCommand* M_NONNULL ataPtCmd);
 
     // NOTE: This is a stub. There is not currently a known way to get RTFRs when sending this passthrough CDB
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice*         device,
-                                             ataPassthroughCommand* ataCommandOptions,
-                                             int                    commandRet);
+    eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice* M_NONNULL         device,
+                                             ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                             int                              commandRet);
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* device, ataPassthroughCommand* ataCommandOptions);
+    eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* M_NONNULL         device,
+                                                   ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
 #if defined(__cplusplus)
 }

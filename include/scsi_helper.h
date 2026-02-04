@@ -319,18 +319,10 @@ extern "C"
     typedef senseDataFields*       ptrSenseDataFields;
     typedef const senseDataFields* constPtrSenseDataFields;
 
-    static M_INLINE void safe_free_sensefields(senseDataFields** sensefields)
+    static M_INLINE void safe_free_sensefields(senseDataFields * M_NULLABLE * M_NULLABLE sensefields)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, sensefields));
     }
-
-    typedef struct s_biDirectionalCommandBuffers
-    {
-        uint8_t* dataOutBuffer;
-        uint32_t dataOutBufferSize;
-        uint8_t* dataInBuffer;
-        uint32_t dataInBufferSize;
-    } biDirectionalCommandBuffers;
 
 // \struct ScsiIoCtx
 // \param device file descriptor
@@ -348,22 +340,22 @@ extern "C"
 #define SCSI_IO_CTX_MAX_CDB_LEN 64
     typedef struct s_ScsiIoCtx
     {
-        tDevice*               device;
+        tDevice* M_NONNULL     device;
         uint8_t                cdb[SCSI_IO_CTX_MAX_CDB_LEN]; // 64 just so if we ever get there.
         uint8_t                cdbLength;
         eDataTransferDirection direction;
-        uint8_t*               pdata;
+        uint8_t* M_NULLABLE    pdata;
         uint32_t               dataLength;
-        uint8_t*               psense;
+        uint8_t* M_NULLABLE    psense;
         uint32_t   senseDataSize; // should be reduced to uint8 in the future as sense data maxes at 252Bytes
         uint32_t   timeout;       // seconds
         uint8_t    verbose;
         scsiStatus returnStatus;
-        ataPassthroughCommand* pAtaCmdOpts;
-        bool                   isSoftReset;
-        bool                   isHardReset;
-        bool                   fwdlFirstSegment;
-        bool                   fwdlLastSegment;
+        ataPassthroughCommand* M_NULLABLE pAtaCmdOpts;
+        bool                              isSoftReset;
+        bool                              isHardReset;
+        bool                              fwdlFirstSegment;
+        bool                              fwdlLastSegment;
     } ScsiIoCtx;
 
 #define OPERATION_CODE (0)
@@ -1222,12 +1214,12 @@ extern "C"
 #define REPORT_LUNS_MIN_LENGTH                                                                                         \
     UINT16_C(16) // this is the minimum length from SPC, but this requirement was removed later -TJE
 
-    OPENSEA_TRANSPORT_API bool is_LaCie_USB_Vendor_ID(const char* t10VendorIdent);
-    OPENSEA_TRANSPORT_API bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent);
-    OPENSEA_TRANSPORT_API bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent);
-    OPENSEA_TRANSPORT_API void seagate_Serial_Number_Cleanup(const char* t10VendorIdent,
-                                                             char**      unitSerialNumber,
-                                                             size_t      unitSNSize);
+    OPENSEA_TRANSPORT_API bool is_LaCie_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent);
+    OPENSEA_TRANSPORT_API bool is_Seagate_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent);
+    OPENSEA_TRANSPORT_API bool is_Seagate_SAS_Vendor_ID(const char* M_NONNULL t10VendorIdent);
+    OPENSEA_TRANSPORT_API void seagate_Serial_Number_Cleanup(const char* M_NONNULL      t10VendorIdent,
+                                                             char* M_NONNULL* M_NONNULL unitSerialNumber,
+                                                             size_t                     unitSNSize);
 
     // SCSI Architecture model status's
     typedef enum eSAMStatusEnum
@@ -1248,8 +1240,8 @@ extern "C"
     typedef enum
     {
         REASSIGN_BLOCKS_LIST_HEADER_LENGTH = 4,
-        REASSIGN_BLOCKS_SHORT_LBA_LENGTH = 4,
-        REASSIGN_BLOCKS_LONG_LBA_LENGTH  = 8,
+        REASSIGN_BLOCKS_SHORT_LBA_LENGTH   = 4,
+        REASSIGN_BLOCKS_LONG_LBA_LENGTH    = 8,
     } eReassignBlocksSizes;
 
 #if defined(__cplusplus)

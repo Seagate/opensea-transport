@@ -98,7 +98,7 @@ static M_INLINE void free_RaidHandleToScan(ptrRaidHandleToScan* handle)
 // is allowed. Previous is used to update the previous entry's next pointer to make sure the list is still functional
 ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHandleToScan previous)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (toRemove != M_NULLPTR)
     {
         if (toRemove->next != M_NULLPTR)
@@ -123,14 +123,14 @@ ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHand
             return M_NULLPTR;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     return M_NULLPTR;
 }
 
 // Deletes everything in the list from pointer to the beginning of the list.
 void delete_RAID_List(ptrRaidHandleToScan listBegin)
 {
-    DISABLE_NONNULL_COMPARE
+
     while (listBegin != M_NULLPTR)
     {
         if (listBegin->next != M_NULLPTR)
@@ -145,5 +145,4 @@ void delete_RAID_List(ptrRaidHandleToScan listBegin)
             break;
         }
     }
-    RESTORE_NONNULL_COMPARE
 }

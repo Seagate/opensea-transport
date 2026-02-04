@@ -117,10 +117,9 @@ void mount_iter_close(MountIter* it)
 
 struct MountIter
 {
-    FILE*          fp;
-    char           lineBuf[MNT_LINE_BUF_SIZE];
-#    if defined(_BSD_SOURCE) || defined(_SVID_SOURCE) ||                                                               \
-        !defined(NO_GETMNTENT_R)
+    FILE* fp;
+    char  lineBuf[MNT_LINE_BUF_SIZE];
+#    if defined(_BSD_SOURCE) || defined(_SVID_SOURCE) || !defined(NO_GETMNTENT_R)
     struct mntent entBuf;
 #    endif
     struct mntent* ent;

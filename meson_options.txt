@@ -18,3 +18,4 @@ option('cissraid', type : 'feature', value : 'enabled')
 option('irstpt', type : 'feature', value : 'enabled')
 #openfabrics NVMe interface support. No impact to anything other than Windows builds
 option('ofnvme', type : 'feature', value : 'enabled')
+option('cc-suggest-attribute', type : 'boolean', value : false, description : 'Enable warnings where the compiler can suggest various attributes to be applied to functions for optimization and correctness.')

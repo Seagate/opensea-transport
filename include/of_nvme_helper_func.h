@@ -27,7 +27,7 @@ extern "C"
 {
 #    endif
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool supports_OFNVME_IO(HANDLE deviceHandle);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool supports_OFNVME_IO(HANDLE M_NONNULL deviceHandle);
 
     //-----------------------------------------------------------------------------
     //
@@ -42,15 +42,13 @@ extern "C"
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(const tDevice* M_NONNULL device);
 
 #    if defined(__cplusplus)
 }

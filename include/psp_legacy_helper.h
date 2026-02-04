@@ -41,8 +41,7 @@ extern 'C'
         PSP_FUNC_DISABLE_ATA_PASSTHROUGH    = 15,
     } ePSPATAPTFunctions;
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) eReturnValues enable_Disable_ATA_Passthrough(const tDevice* device, bool enable);
+    M_PARAM_RO(1) eReturnValues enable_Disable_ATA_Passthrough(const tDevice* M_NONNULL device, bool enable);
 
     //-----------------------------------------------------------------------------
     //
@@ -59,11 +58,11 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2, 3)
     M_PARAM_WO(1)
     M_PARAM_WO(2)
     M_PARAM_RO(3)
-    eReturnValues build_PSP_Legacy_CDB(uint8_t * cdb, uint8_t * cdbLen, ataPassthroughCommand * ataCommandOptions);
+    eReturnValues build_PSP_Legacy_CDB(uint8_t* M_NONNULL cdb, uint8_t* M_NONNULL cdbLen,
+                                       ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -81,11 +80,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues get_RTFRs_From_PSP_Legacy(const tDevice* device, ataPassthroughCommand* ataCommandOptions,
-                                            eReturnValues commandRet);
+    eReturnValues get_RTFRs_From_PSP_Legacy(
+        const tDevice* M_NONNULL device, ataPassthroughCommand* M_NONNULL ataCommandOptions, eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -102,10 +100,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues send_PSP_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions);
+    eReturnValues send_PSP_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                      ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
 #if defined(__cplusplus)
 }

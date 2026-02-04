@@ -122,7 +122,7 @@ extern "C"
         uint16_t Word009;
         union
         {
-            uint8_t SerNum[ATA_IDENTIFY_SN_LENGTH];
+            M_NONSTRING uint8_t SerNum[ATA_IDENTIFY_SN_LENGTH];
             struct
             {
                 uint16_t Word010;
@@ -143,7 +143,7 @@ extern "C"
         uint16_t Word022;
         union
         {
-            uint8_t FirmVer[ATA_IDENTIFY_FW_LENGTH]; // 23 24 25 26
+            M_NONSTRING uint8_t FirmVer[ATA_IDENTIFY_FW_LENGTH]; // 23 24 25 26
             struct
             {
                 uint16_t Word023;
@@ -155,7 +155,7 @@ extern "C"
         }; // anonymous to make access to FW or FW words easier
         union
         {
-            uint8_t ModelNum[ATA_IDENTIFY_MN_LENGTH]; // 27 ... 46
+            M_NONSTRING uint8_t ModelNum[ATA_IDENTIFY_MN_LENGTH]; // 27 ... 46
             struct
             {
                 uint16_t Word027;
@@ -442,30 +442,30 @@ extern "C"
     typedef struct s_nvmeIDCtrl
     {
         // controller capabilities and features
-        uint16_t vid;
-        uint16_t ssvid;
-        char     sn[NVME_CTRL_IDENTIFY_SN_LEN];
-        char     mn[NVME_CTRL_IDENTIFY_MN_LEN];
-        char     fr[NVME_CTRL_IDENTIFY_FW_LEN];
-        uint8_t  rab;
-        uint8_t  ieee[3];
-        uint8_t  cmic;
-        uint8_t  mdts;
-        uint16_t cntlid;
-        uint32_t ver;
-        uint32_t rtd3r;
-        uint32_t rtd3e;
-        uint32_t oaes;
-        uint32_t ctratt;
-        uint16_t rrls;
-        uint8_t  reservedBytes110_102[9];
-        uint8_t  cntrltype;
-        uint8_t  fguid[16]; // 128bit identifier
-        uint16_t crdt1;
-        uint16_t crdt2;
-        uint16_t crdt3;
-        uint8_t  reservedBytes239_134[106];
-        uint8_t  nvmManagement[16];
+        uint16_t         vid;
+        uint16_t         ssvid;
+        M_NONSTRING char sn[NVME_CTRL_IDENTIFY_SN_LEN];
+        M_NONSTRING char mn[NVME_CTRL_IDENTIFY_MN_LEN];
+        M_NONSTRING char fr[NVME_CTRL_IDENTIFY_FW_LEN];
+        uint8_t          rab;
+        uint8_t          ieee[3];
+        uint8_t          cmic;
+        uint8_t          mdts;
+        uint16_t         cntlid;
+        uint32_t         ver;
+        uint32_t         rtd3r;
+        uint32_t         rtd3e;
+        uint32_t         oaes;
+        uint32_t         ctratt;
+        uint16_t         rrls;
+        uint8_t          reservedBytes110_102[9];
+        uint8_t          cntrltype;
+        uint8_t          fguid[16]; // 128bit identifier
+        uint16_t         crdt1;
+        uint16_t         crdt2;
+        uint16_t         crdt3;
+        uint8_t          reservedBytes239_134[106];
+        uint8_t          nvmManagement[16];
         // Admin command set attribues & optional controller capabilities
         uint16_t oacs;
         uint8_t  acl;
@@ -1129,7 +1129,8 @@ extern "C"
                                           // 16B version
             int8_t writeBufferCmdSize;    // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
             int8_t writeSameCmdSize;      // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
-            bool   writeSameDataOutRequired;// If true, NDOB bit must be 0 and data out must be sent with write same commands.
+            bool   writeSameDataOutRequired; // If true, NDOB bit must be 0 and data out must be sent with write same
+                                             // commands.
         } scsiHacks;
         // ATA Hacks refer to SAT translation issues or workarounds.
         struct
@@ -1440,7 +1441,7 @@ extern "C"
     // forward declare csmi info to avoid including csmi_helper.h
     typedef struct s_csmiDeviceInfo csmiDeviceInfo, *ptrCsmiDeviceInfo;
 
-    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo** csmidevinfo)
+    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo * M_NULLABLE * M_NULLABLE csmidevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, csmidevinfo));
     }
@@ -1448,7 +1449,7 @@ extern "C"
     // forward declare cciss device
     typedef struct s_cissDeviceInfo cissDeviceInfo, *ptrCissDeviceInfo;
 
-    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo** cissdevinfo)
+    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo * M_NULLABLE * M_NULLABLE cissdevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, cissdevinfo));
     }
@@ -1577,9 +1578,9 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     uint8_t paddSG[35];
 #    endif
 #elif defined(_WIN32)
-    HANDLE fd;
-    HANDLE scsiSRBHandle; // To support for SCSI SRB IOCTLs (miniport) that use this same handle type
-                          // (\\.\SCSI<pathId>:)
+    HANDLE M_NONNULL  fd;
+    HANDLE M_NULLABLE scsiSRBHandle; // To support for SCSI SRB IOCTLs (miniport) that use this same handle type
+                                     // (\\.\SCSI<pathId>:)
     SCSI_ADDRESS  scsi_addr;
     uint32_t      os_drive_number;
     int           srbtype; // this will be used to filter when a controller supports the new SCSI PassThrough EX IOCTLs
@@ -1632,9 +1633,9 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                                               // passthrough IOCTL
     bool intelNVMePassthroughSupported; // if true, this is a device that supports intel's nvme passthrough, but doesn't
                                         // show up as full features with CSMI as expected otherwise.
-    bool fwdlMiniportSupported;   // Miniport IOCTL for FWDL is supported. This should be in the structure above, but it
-                                  // is here for compatibility at this time - TJE
-    HANDLE   forceUnitAccessRWfd; // used for os_read and os_Write when using the force unit access option
+    bool fwdlMiniportSupported; // Miniport IOCTL for FWDL is supported. This should be in the structure above, but it
+                                // is here for compatibility at this time - TJE
+    HANDLE M_NULLABLE forceUnitAccessRWfd; // used for os_read and os_Write when using the force unit access option
     uint32_t volumeBitField; // This is a bitfield that is stored to prevent rereading, mounting, waking all systems on
                              // the system. Since we read this up front, this will be stored so taht each partition on a
                              // device can be unmouted later if necessary. - TJE
@@ -1651,7 +1652,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #elif defined(__FreeBSD__) || defined(__DragonFly__)
     int fd; // used when cam is not being used (legacy ATA or NVMe IO without CAM....which may not be supported, but
             // kept here just in case)
-    struct cam_device* cam_dev; // holds fd inside for CAM devices among other information
+    struct cam_device* M_NULLABLE cam_dev; // holds fd inside for CAM devices among other information
 #    if defined(__x86_64__) || defined(__amd64__) || defined(__aarch64__) || defined(__ia64__) ||                      \
         defined(__itanium__) || defined(__powerpc64__) || defined(__ppc64__) || defined(__spark__)
     uint8_t freeBSDPadding[102]; // padding on 64bit OS
@@ -1700,12 +1701,12 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         lasterror_t last_error; // This is the last error from the OS specific calls. This is not cleared automatically,
                                 // so it will hold the last error until it is overwritten by another OS call.
         fileSystemInfo fileSystemInfo; // holds filesystem related information
-        ptrCsmiDeviceInfo
+        ptrCsmiDeviceInfo M_NULLABLE
             csmiDeviceData; // This is a pointer because it will only be allocated when CSMI is supported. This is also
                             // used by Intel RST NVMe passthrough which is basically an extension of CSMI
-        ptrCissDeviceInfo cissDeviceData; // This pointer is allocated only when CCISS is supported.
-        eHandleOpenFlags  handleFlags;    // keeps track of the flags used when the handle was opened.
-        uint8_t           padd[2];        // padd to multiple of 8 bytes
+        ptrCissDeviceInfo M_NULLABLE cissDeviceData; // This pointer is allocated only when CCISS is supported.
+        eHandleOpenFlags             handleFlags;    // keeps track of the flags used when the handle was opened.
+        uint8_t                      padd[2];        // padd to multiple of 8 bytes
     } OSDriveInfo;
 
 #define DEFAULT_DISCOVERY  0
@@ -1732,7 +1733,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #define HANDLE_REQUIRE_EXCLUSIVE_ACCESS                                                                                \
     BIT24 // must be able to open with exclusive access, otherwise this will return a failure code.
 
-    typedef eReturnValues (*issue_io_func)(void*);
+    typedef eReturnValues (*issue_io_func)(void* M_NONNULL);
 
 #define DEVICE_BLOCK_VERSION (10)
 
@@ -1746,42 +1747,40 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     // \struct typedef struct _tDevice
     typedef struct s_tDevice
     {
-        versionBlock  sanity;
-        OSDriveInfo   os_info;
-        driveInfo     drive_info;
-        void*         raid_device;
-        issue_io_func issue_io; // scsi IO function pointer for raid or other driver/custom interface to send commands
-        issue_io_func
+        versionBlock     sanity;
+        OSDriveInfo      os_info;
+        driveInfo        drive_info;
+        void* M_NULLABLE raid_device;
+        issue_io_func M_NULLABLE
+            issue_io; // scsi IO function pointer for raid or other driver/custom interface to send commands
+        issue_io_func M_NULLABLE
                  issue_nvme_io; // nvme IO function pointer for raid or other driver/custom interface to send commands
         uint64_t dFlags;
         eVerbosityLevels deviceVerbosity;
         uint32_t         delay_io;
     } tDevice;
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RW(1)
-    M_PARAM_RO(2) static M_INLINE void copy_ata_identify_to_tdevice(tDevice* device, const uint8_t* identifyData)
+    M_PARAM_RO(2)
+    static M_INLINE void copy_ata_identify_to_tdevice(tDevice* M_NONNULL device,
+                                                      const uint8_t      identifyData[M_NONNULL_ARRAY 512])
     {
-        DISABLE_NONNULL_COMPARE
-        if (device != M_NULLPTR && identifyData != M_NULLPTR &&
-            M_REINTERPRET_CAST(uintptr_t, &device->drive_info.IdentifyData.ata) !=
-                M_REINTERPRET_CAST(uintptr_t, identifyData))
+
+        if (device != M_NULLPTR && M_REINTERPRET_CAST(uintptr_t, &device->drive_info.IdentifyData.ata) !=
+                                       M_REINTERPRET_CAST(uintptr_t, identifyData))
         {
             safe_memcpy(M_REINTERPRET_CAST(void*, &device->drive_info.IdentifyData.ata), 512, identifyData, 512);
         }
-        RESTORE_NONNULL_COMPARE
     }
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    static M_INLINE void set_Device_Last_Error(tDevice* device, lasterror_t error)
+    static M_INLINE void set_Device_Last_Error(tDevice* M_NONNULL device, lasterror_t error)
     {
-        DISABLE_NONNULL_COMPARE
+
         if (device != M_NULLPTR)
         {
             device->os_info.last_error = error;
         }
-        RESTORE_NONNULL_COMPARE
     }
 
     // Common enum for getting/setting power states.
@@ -2072,7 +2071,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #    define MAX_CMD_TIMEOUT_SECONDS                                                                                    \
         (UINT32_MAX - 1) /*NOTE: This may not be correct but the field that sets this is a uint32. Setting to 1 less   \
                             than infinite's current value -TJE*/
-#elif defined (__hpux)
+#elif defined(__hpux)
 #    define MAX_CMD_TIMEOUT_SECONDS UINT_MAX
 #else
 #    error "Need to set MAX_CMD_TIMEOUT_SECONDS for this OS"
@@ -2092,8 +2091,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_WO(1) OPENSEA_TRANSPORT_API eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver);
+    M_PARAM_WO(1) OPENSEA_TRANSPORT_API eReturnValues get_Opensea_Transport_Version(apiVersionInfo* M_NONNULL ver);
 
     //-----------------------------------------------------------------------------
     //
@@ -2108,7 +2106,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_WO(1) OPENSEA_TRANSPORT_API eReturnValues get_Version_Block(versionBlock* ver);
+    M_PARAM_WO(1) OPENSEA_TRANSPORT_API eReturnValues get_Version_Block(versionBlock* M_NONNULL ver);
 
     OPENSEA_TRANSPORT_API bool validate_Device_Struct(versionBlock sanity);
 
@@ -2130,10 +2128,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_NULL_TERM_STRING(1)
-    M_PARAM_RW(2) OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* filename, tDevice* device);
+    M_PARAM_RW(2)
+    OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2152,8 +2150,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags);
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags);
 
     //-----------------------------------------------------------------------------
     //
@@ -2180,12 +2178,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* const ptrToDeviceList,
-                                                        uint32_t       sizeInBytes,
-                                                        versionBlock   ver,
-                                                        uint64_t       flags);
+    OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                                                        uint32_t                 sizeInBytes,
+                                                        versionBlock             ver,
+                                                        uint64_t                 flags);
 
     //-----------------------------------------------------------------------------
     //
@@ -2200,7 +2197,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* device);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2248,10 +2245,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //-----------------------------------------------------------------------------
     M_PARAM_RW(3)
     M_PARAM_RW(4)
-    OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
-                                                                    eVerbosityLevels scanVerbosity,
-                                                                    uint32_t*        numberOfDevices,
-                                                                    scanDriveInfo**  deviceList);
+    OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int        flags,
+                                                                    eVerbosityLevels    scanVerbosity,
+                                                                    uint32_t* M_NONNULL numberOfDevices,
+                                                                    scanDriveInfo * M_NONNULL * M_NULLABLE deviceList);
 
     //-----------------------------------------------------------------------------
     //
@@ -2268,10 +2265,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return size_t bytes read
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_NULL_TERM_STRING(1)
-    M_PARAM_WO_SIZE(2, 3) OPENSEA_TRANSPORT_API size_t load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize);
+    M_PARAM_WO_SIZE(2, 3)
+    OPENSEA_TRANSPORT_API size_t load_Bin_Buf(const char* M_NONNULL filename, void* M_NONNULL myBuf, size_t bufSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2287,7 +2284,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return true = show drive, false = don't show drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) bool scan_Drive_Type_Filter(const tDevice* device, uint32_t scanFlags);
+    M_PARAM_RO(1) bool scan_Drive_Type_Filter(const tDevice* M_NONNULL device, uint32_t scanFlags);
 
     //-----------------------------------------------------------------------------
     //
@@ -2305,11 +2302,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return true = show drive, false = don't show drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) bool scan_Interface_Type_Filter(const tDevice* device, uint32_t scanFlags);
+    M_PARAM_RO(1) bool scan_Interface_Type_Filter(const tDevice* M_NONNULL device, uint32_t scanFlags);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Seagate_Family( tDevice * device )
+    //  is_Seagate_Family( tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the device is a Seagate drive, a Samsung HDD drive, a Maxtor Drive, or a LaCie Drive. This
     //! should be used for features we want to allow only on Seagate Supported products (erase, etc).
@@ -2321,11 +2318,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return eSeagateFamily enum value. See enum for meanings
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eSeagateFamily is_Seagate_Family(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eSeagateFamily is_Seagate_Family(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Seagate_MN( tDevice * device )
+    //  is_Seagate_MN(tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the passed in model number string starts with ST which means it's a seagate MN
     //
@@ -2336,12 +2333,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Seagate_MN(const char* string);
+    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Seagate_MN(const char* M_NONNULL string);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Seagate_VendorID( tDevice * device )
+    //  is_Seagate_VendorID( tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the vendor ID for a device is Seagate or SEAGATE. Useful for determinging a SAS or USB drive
     //! is a seagate drive
@@ -2353,11 +2349,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_VendorID(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_VendorID(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Seagate( tDevice * device )
+    //  is_Seagate(tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the device is a Seagate drive
     //
@@ -2370,15 +2366,13 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Seagate Drive, 0 - Not a Seagate Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate(const tDevice* M_NONNULL device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1) OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** sn, size_t snlen);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char* M_NONNULL* M_NONNULL sn, size_t snlen);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_LaCie( tDevice * device )
+    //  is_LaCie( tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the device is a LaCie drive
     //
@@ -2389,11 +2383,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a LaCie Drive, 0 - Not a LaCie Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_LaCie(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_LaCie(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Samsung_String( tDevice * device )
+    //  is_Samsung_String(tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the passed in string (model number or vendor id) are SAMSUNG
     //
@@ -2404,12 +2398,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Samsung Drive, 0 - Not a Samsung Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Samsung_String(const char* string);
+    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Samsung_String(const char* M_NONNULL string);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Samsung_HDD( tDevice * device )
+    //  is_Samsung_HDD( tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the device is a Samsung HDD drive
     //
@@ -2422,12 +2415,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Samsung Drive, 0 - Not a Samsung Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Samsung_HDD(const tDevice* M_NONNULL device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Maxtor_String( tDevice * device )
+    //  is_Maxtor_String( tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the passed in string (model number or vendor id) are MAXTOR
     //
@@ -2438,12 +2430,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Maxtor Drive, 0 - Not a Maxtor Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Maxtor_String(const char* string);
+    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Maxtor_String(const char* M_NONNULL string);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Maxtor( tDevice * device )
+    //  is_Maxtor( tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the device is a Maxtor drive
     //
@@ -2456,12 +2447,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Maxtor Drive, 0 - Not a Maxtor Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Maxtor(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Maxtor(const tDevice* M_NONNULL device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Seagate_Model_Vendor_A( tDevice * device )
+    //  is_Seagate_Model_Vendor_A( tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the device is a Seagate partnership product
     //
@@ -2472,11 +2462,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Seagate Partner Drive, 0 - Not a Seagate-Partner Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Vendor_A(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Model_Vendor_A(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Vendor_A( tDevice * device )
+    //  is_Vendor_A(tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the device is a Partner drive
     //
@@ -2489,66 +2479,55 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Partner Drive, 0 - Not a Partner Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Vendor_A(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Vendor_A(const tDevice* M_NONNULL device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Conner_Model_Number(const char* mn);
+    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Conner_Model_Number(const char* M_NONNULL mn);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Conner_VendorID(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Conner_VendorID(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Connor(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Connor(const tDevice* M_NONNULL device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CDC_VendorID(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CDC_VendorID(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_DEC_VendorID(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_DEC_VendorID(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_MiniScribe_VendorID(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_MiniScribe_VendorID(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Quantum_VendorID(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Quantum_VendorID(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Quantum_Model_Number(const char* string);
-
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Quantum(const tDevice* device, bool USBchildDrive);
-
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_PrarieTek_VendorID(const tDevice* device);
-
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_B(const tDevice* device, bool USBchildDrive);
+    M_NULL_TERM_STRING(1) OPENSEA_TRANSPORT_API bool is_Quantum_Model_Number(const char* M_NONNULL string);
 
-    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Quantum(const tDevice* M_NONNULL device, bool USBchildDrive);
+
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_PrarieTek_VendorID(const tDevice* M_NONNULL device);
+
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_C(const tDevice* device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_B(const tDevice* M_NONNULL device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_D(const tDevice* device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_C(const tDevice* M_NONNULL device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_E(const tDevice* device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_D(const tDevice* M_NONNULL device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_SSD_PJ(const tDevice* device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_E(const tDevice* M_NONNULL device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(const tDevice* device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_SSD_PJ(const tDevice* M_NONNULL device,
+                                                                     bool                     USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(const tDevice* device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(const tDevice* M_NONNULL device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(const tDevice* device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(const tDevice* M_NONNULL device, bool USBchildDrive);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Vendor_K(const tDevice* device);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(const tDevice* M_NONNULL device, bool USBchildDrive);
+
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Seagate_Vendor_K(const tDevice* M_NONNULL device);
 
     typedef enum eIronwolf_NAS_DriveEnum
     {
@@ -2572,9 +2551,9 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 0 = Not a Ironwolf NAS Drive, 1 - a Ironwolf NAS Drive, 2 - a Ironwolf Pro NAS Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* device, bool USBchildDrive);
+    OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* M_NONNULL device,
+                                                                    bool                     USBchildDrive);
 
     typedef enum eFirecuda_DriveEnum
     {
@@ -2598,8 +2577,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Firecuda Drive, 2 = It is a FireCudaX Drive, 0 - Not a Firecuda Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eFirecuda_Drive is_Firecuda_Drive(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eFirecuda_Drive is_Firecuda_Drive(const tDevice* M_NONNULL device, bool USBchildDrive);
 
     typedef enum eSkyhawk_DriveEnum
     {
@@ -2623,8 +2602,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 0 = Not a Skyhawk Drive, 1 - a Skyhawk Drive, 2 - a Skyhawk AI Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(const tDevice* M_NONNULL device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2641,8 +2620,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Nytro Drive, 0 - Not a Nytro Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Nytro_Drive(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Nytro_Drive(const tDevice* M_NONNULL device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2659,8 +2637,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Exos Drive, 0 - Not a Exos Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Exos_Drive(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Exos_Drive(const tDevice* M_NONNULL device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
@@ -2677,12 +2654,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a Barracuda Drive, 0 - Not a Barracuda Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Barracuda_Drive(const tDevice* device, bool USBchildDrive);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Barracuda_Drive(const tDevice* M_NONNULL device, bool USBchildDrive);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_SSD( tDevice * device )
+    //  is_SSD( tDevice* M_NONNULL device )
     //
     //! \brief   Checks if the device is an SSD or not. This just looks at the media type to see if it is MEDIA_SSD or
     //! MEDIA_NVM
@@ -2694,13 +2670,13 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return 1 = It is a SSD Drive, 0 - Not a SSD Drive
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_SSD(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_SSD(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_SATA(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_SATA(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Sector_Size_Emulation_Active( tDevice * device )
+    //  is_Sector_Size_Emulation_Active( tDevice* M_NONNULL device )
     //
     //! \brief   Checks if sector size emulation is active. This is only really useful on SAT interfaces/drivers. This
     //! will always be false when the isValid bool is set to false in thebridge info struct
@@ -2715,12 +2691,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   block size = device reported block size
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Sector_Size_Emulation_Active(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Sector_Size_Emulation_Active(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  is_Blocksize_And_Capacity_In_Sync( tDevice * device )
+    //  is_Blocksize_And_Capacity_In_Sync( tDevice* M_NONNULL device )
     //
     //! \brief   Checks if sector size and capacity are in sync between the SCSI layer performing translation
     //!         and the emulated ATA/NVMe device. This also checks the above sector size emulation is not in use.
@@ -2736,8 +2711,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   block size = device reported block size
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Blocksize_And_Capacity_In_Sync(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Blocksize_And_Capacity_In_Sync(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2759,8 +2733,9 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return int SUCCESS if passes !SUCCESS if fails for some reason.
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW_SIZE(1, 2) OPENSEA_TRANSPORT_API eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize);
+    M_DEPRECATED_REASON("Use the checksum functions in ata_helper_func.h instead")
+    M_PARAM_RW_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API eReturnValues calculate_Checksum(uint8_t* M_NONNULL pBuf, uint32_t blockSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -2777,8 +2752,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return uint32_t value to use for a sector count
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2795,8 +2769,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return uint32_t value to use for a sector count
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2814,8 +2787,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return uint32_t value to use for a sector count
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(const tDevice* device);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2832,13 +2805,14 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return The aligned LBA
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint64_t align_LBA(const tDevice* device, uint64_t LBA);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint64_t align_LBA(const tDevice* M_NONNULL device, uint64_t LBA);
 
     OPENSEA_TRANSPORT_API void print_Command_Time(uint64_t timeInNanoSeconds);
 
     OPENSEA_TRANSPORT_API void print_Time(uint64_t timeInNanoSeconds);
 
-    OPENSEA_TRANSPORT_API void write_JSON_To_File(void* customData, char* message); // callback function
+    OPENSEA_TRANSPORT_API void write_JSON_To_File(void* M_NONNULL customData,
+                                                  char* M_NONNULL message); // callback function
 
     typedef struct s_removeDuplicateDriveType
     {
@@ -2846,28 +2820,25 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         uint8_t raid;
     } removeDuplicateDriveType;
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RW(1)
-    OPENSEA_TRANSPORT_API eReturnValues remove_Duplicate_Devices(tDevice*                 deviceList,
-                                                                 volatile uint32_t*       numberOfDevices,
-                                                                 removeDuplicateDriveType rmvDevFlag);
+    OPENSEA_TRANSPORT_API eReturnValues remove_Duplicate_Devices(tDevice* M_NONNULL           deviceList,
+                                                                 volatile uint32_t* M_NONNULL numberOfDevices,
+                                                                 removeDuplicateDriveType     rmvDevFlag);
 
-    M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RW(1)
-    OPENSEA_TRANSPORT_API eReturnValues remove_Device(tDevice*           deviceList,
-                                                      uint32_t           driveToRemoveIdx,
-                                                      volatile uint32_t* numberOfDevices);
+    OPENSEA_TRANSPORT_API eReturnValues remove_Device(tDevice* M_NONNULL           deviceList,
+                                                      uint32_t                     driveToRemoveIdx,
+                                                      volatile uint32_t* M_NONNULL numberOfDevices);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CSMI_Device(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_CSMI_Device(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Removable_Media(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Removable_Media(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) bool setup_Passthrough_Hacks_By_ID(tDevice* device);
+    M_PARAM_RW(1) bool setup_Passthrough_Hacks_By_ID(tDevice* M_NONNULL device);
 
     // This is exposed for retrying from SAT to Jmicron passthrough - TJE
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    bool set_JMicron_Legacy_PT_Hacks(tDevice* device);
+    bool set_JMicron_Legacy_PT_Hacks(tDevice* M_NONNULL device);
 
 #if defined(_DEBUG)
     // This function is more for debugging than anything else!
@@ -2876,7 +2847,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     //-----------------------------------------------------------------------------
     //
-    //  print_Low_Level_Info(const tDevice * device)
+    //  print_Low_Level_Info(const tDevice* M_NONNULL device)
     //
     //! \brief   Description:  Printfs out useful low-level information from the device structure to the screen
     //
@@ -2886,7 +2857,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //  Exit:
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Low_Level_Info(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Low_Level_Info(const tDevice* M_NONNULL device);
 
 #if defined(__cplusplus)
 } // extern "C"

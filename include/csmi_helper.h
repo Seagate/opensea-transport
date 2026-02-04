@@ -54,9 +54,9 @@ extern "C"
 #    endif
 
 #    if defined(_WIN32)
-#        define CSMI_HANDLE               HANDLE
+#        define CSMI_HANDLE               HANDLE M_NONNULL
 #        define CSMI_INVALID_HANDLE       INVALID_HANDLE_VALUE
-#        define CSMI_HANDLE_PARAM(argnum) M_NONNULL_PARAM_LIST(argnum) M_PARAM_RW(argnum)
+#        define CSMI_HANDLE_PARAM(argnum) M_PARAM_RW(argnum)
 #    else
 #        define CSMI_HANDLE               int
 #        define CSMI_INVALID_HANDLE       (-1)

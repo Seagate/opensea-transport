@@ -18,29 +18,28 @@ extern "C"
 {
 #endif
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* cmdCtx);
+    M_PARAM_RO(1) void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* M_NONNULL cmdCtx);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* cmdCtx);
+    M_PARAM_RO(1) void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* M_NONNULL cmdCtx);
 
-    M_NONNULL_PARAM_LIST(2, 3, 4, 5)
     M_PARAM_WO(2)
     M_PARAM_WO(3)
     M_PARAM_WO(4)
     M_PARAM_WO(5)
-    void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
-                                           bool*    doNotRetry,
-                                           bool*    more,
-                                           uint8_t* statusCodeType,
-                                           uint8_t* statusCode);
+    void get_NVMe_Status_Fields_From_DWord(uint32_t           nvmeStatusDWord,
+                                           bool* M_NONNULL    doNotRetry,
+                                           bool* M_NONNULL    more,
+                                           uint8_t* M_NONNULL statusCodeType,
+                                           uint8_t* M_NONNULL statusCode);
 
     eReturnValues check_NVMe_Status(
         uint32_t nvmeStatusDWord); // converts NVMe status to a return status used by open-sea libs
 
     // These reset functions will be defined in the os_Helper file since this is OS specific. Not all OS's will support
     // this function either.
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues nvme_Reset(const tDevice* device);
+    M_PARAM_RO(1) eReturnValues nvme_Reset(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues nvme_Subsystem_Reset(const tDevice* device);
+    M_PARAM_RO(1) eReturnValues nvme_Subsystem_Reset(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -56,8 +55,9 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) M_PARAM_RW(2) OPENSEA_TRANSPORT_API eReturnValues nvme_Cmd(const tDevice* device, nvmeCmdCtx* cmdCtx);
+    M_PARAM_RO(1)
+    M_PARAM_RW(2)
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Cmd(const tDevice* M_NONNULL device, nvmeCmdCtx* M_NONNULL cmdCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -73,10 +73,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_Features(const tDevice* device, nvmeFeaturesCmdOpt* featCmdOpts);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_Features(const tDevice* M_NONNULL      device,
+                                                          nvmeFeaturesCmdOpt* M_NONNULL featCmdOpts);
 
     //-----------------------------------------------------------------------------
     //
@@ -92,11 +92,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_Log_Page(const tDevice*         device,
-                                                          nvmeGetLogPageCmdOpts* getLogPageCmdOpts);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_Log_Page(const tDevice* M_NONNULL         device,
+                                                          nvmeGetLogPageCmdOpts* M_NONNULL getLogPageCmdOpts);
 
     //-----------------------------------------------------------------------------
     //
@@ -114,13 +113,12 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(3, 4)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_SMART_Log_Page(const tDevice* device,
-                                                                uint32_t       nsid,
-                                                                uint8_t*       pData,
-                                                                uint32_t       dataLen);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_SMART_Log_Page(const tDevice* M_NONNULL device,
+                                                                uint32_t                 nsid,
+                                                                uint8_t* M_NONNULL       pData,
+                                                                uint32_t                 dataLen);
 
     //-----------------------------------------------------------------------------
     //
@@ -138,12 +136,11 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(2, 3)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* device,
-                                                                uint8_t*       pData,
-                                                                uint32_t       dataLen);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* M_NONNULL device,
+                                                                uint8_t* M_NONNULL       pData,
+                                                                uint32_t                 dataLen);
 
     //-----------------------------------------------------------------------------
     //
@@ -160,12 +157,11 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(2, 3)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* device,
-                                                                  uint8_t*       pData,
-                                                                  uint32_t       dataLen);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* M_NONNULL device,
+                                                                  uint8_t* M_NONNULL       pData,
+                                                                  uint32_t                 dataLen);
 
     //-----------------------------------------------------------------------------
     //
@@ -182,14 +178,14 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(2, 3)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* device,
-                                                                     uint8_t*       pData,
-                                                                     uint32_t       dataLen);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* M_NONNULL device,
+                                                                     uint8_t* M_NONNULL       pData,
+                                                                     uint32_t                 dataLen);
 
-    OPENSEA_TRANSPORT_API const char* nvme_cmd_to_string(int admin, uint8_t opcode);
+    M_RETURNS_NONNULL
+    OPENSEA_TRANSPORT_API const char* M_NONNULL nvme_cmd_to_string(int admin, uint8_t opcode);
 
     //-----------------------------------------------------------------------------
     //
@@ -206,12 +202,11 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(2, 3)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* device,
-                                                                      uint8_t*       pData,
-                                                                      uint32_t       dataLen);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* M_NONNULL device,
+                                                                      uint8_t* M_NONNULL       pData,
+                                                                      uint32_t                 dataLen);
 
     //-----------------------------------------------------------------------------
     //
@@ -229,13 +224,12 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_WO(2)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Identify(const tDevice* device,
-                                                      uint8_t*       ptrData,
-                                                      uint32_t       nvmeNamespace,
-                                                      uint32_t       cns);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Identify(const tDevice* M_NONNULL device,
+                                                      uint8_t* M_NONNULL       ptrData,
+                                                      uint32_t                 nvmeNamespace,
+                                                      uint32_t                 cns);
 
     //-----------------------------------------------------------------------------
     //
@@ -259,16 +253,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(4, 3)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Firmware_Image_Dl(const tDevice* device,
-                                                               uint32_t       bufferOffset,
-                                                               uint32_t       numberOfBytes,
-                                                               uint8_t*       ptrData,
-                                                               bool           firstSegment,
-                                                               bool           lastSegment,
-                                                               uint32_t       timeoutSeconds);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Firmware_Image_Dl(const tDevice* M_NONNULL device,
+                                                               uint32_t                 bufferOffset,
+                                                               uint32_t                 numberOfBytes,
+                                                               uint8_t* M_NONNULL       ptrData,
+                                                               bool                     firstSegment,
+                                                               bool                     lastSegment,
+                                                               uint32_t                 timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -288,12 +281,11 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Firmware_Commit(const tDevice*     device,
-                                                             nvmeFWCommitAction commitAction,
-                                                             uint8_t            firmwareSlot,
-                                                             uint32_t           timeoutSeconds);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Firmware_Commit(const tDevice* M_NONNULL device,
+                                                             nvmeFWCommitAction       commitAction,
+                                                             uint8_t                  firmwareSlot,
+                                                             uint32_t                 timeoutSeconds);
 
     //-----------------------------------------------------------------------------
     //
@@ -309,10 +301,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Set_Features(const tDevice* device, nvmeFeaturesCmdOpt* featCmdOpts);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Set_Features(const tDevice* M_NONNULL      device,
+                                                          nvmeFeaturesCmdOpt* M_NONNULL featCmdOpts);
 
     //-----------------------------------------------------------------------------
     //
@@ -328,10 +320,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RO(2)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Format(const tDevice* device, nvmeFormatCmdOpts* formatCmdOpts);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Format(const tDevice* M_NONNULL     device,
+                                                    nvmeFormatCmdOpts* M_NONNULL formatCmdOpts);
 
     //-----------------------------------------------------------------------------
     //
@@ -347,10 +339,10 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Read_Ctrl_Reg(const tDevice* device, nvmeBarCtrlRegisters* ctrlRegs);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Read_Ctrl_Reg(const tDevice* M_NONNULL        device,
+                                                           nvmeBarCtrlRegisters* M_NONNULL ctrlRegs);
 
 #define FORMAT_NVME_NO_SECURE_ERASE (0)
 #define FORMAT_NVME_ERASE_USER_DATA (1)
@@ -361,202 +353,183 @@ extern "C"
 #define FORMAT_NVME_PI_TYPE_III     (32)
 #define FORMAT_NVME_XFER_METADATA   (64)
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Abort_Command(const tDevice* device,
-                                                           uint16_t       commandIdentifier,
-                                                           uint16_t       submissionQueueIdentifier);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Abort_Command(const tDevice* M_NONNULL device,
+                                                           uint16_t                 commandIdentifier,
+                                                           uint16_t                 submissionQueueIdentifier);
 
     // Do not use the asynchronous event request at this time. More work is required at low levels to properly support
     // this. This definition is here for completeness at this time.
-    M_NONNULL_PARAM_LIST(1, 2, 3, 4)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
     M_PARAM_RW(3)
     M_PARAM_RW(4)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Asynchronous_Event_Request(const tDevice* device,
-                                                                        uint8_t*       logPageIdentifier,
-                                                                        uint8_t*       asynchronousEventInformation,
-                                                                        uint8_t*       asynchronousEventType);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Asynchronous_Event_Request(const tDevice* M_NONNULL device,
+                                                                        uint8_t* M_NONNULL       logPageIdentifier,
+                                                                        uint8_t* M_NONNULL asynchronousEventInformation,
+                                                                        uint8_t* M_NONNULL asynchronousEventType);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Device_Self_Test(const tDevice* device,
-                                                              uint32_t       nsid,
-                                                              uint8_t        selfTestCode);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Device_Self_Test(const tDevice* M_NONNULL device,
+                                                              uint32_t                 nsid,
+                                                              uint8_t                  selfTestCode);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(5, 6)
     M_PARAM_WO_SIZE(5, 6)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Security_Receive(const tDevice* device,
-                                                              uint8_t        securityProtocol,
-                                                              uint16_t       securityProtocolSpecific,
-                                                              uint8_t        nvmeSecuritySpecificField,
-                                                              uint8_t*       ptrData,
-                                                              uint32_t       dataLength);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Security_Receive(const tDevice* M_NONNULL device,
+                                                              uint8_t                  securityProtocol,
+                                                              uint16_t                 securityProtocolSpecific,
+                                                              uint8_t                  nvmeSecuritySpecificField,
+                                                              uint8_t* M_NULLABLE      ptrData,
+                                                              uint32_t                 dataLength);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(5, 6)
     M_PARAM_WO_SIZE(5, 6)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Security_Send(const tDevice* device,
-                                                           uint8_t        securityProtocol,
-                                                           uint16_t       securityProtocolSpecific,
-                                                           uint8_t        nvmeSecuritySpecificField,
-                                                           uint8_t*       ptrData,
-                                                           uint32_t       dataLength);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Security_Send(const tDevice* M_NONNULL device,
+                                                           uint8_t                  securityProtocol,
+                                                           uint16_t                 securityProtocolSpecific,
+                                                           uint8_t                  nvmeSecuritySpecificField,
+                                                           uint8_t* M_NULLABLE      ptrData,
+                                                           uint32_t                 dataLength);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Verify(const tDevice* device,
-                                                    uint64_t       startingLBA,
-                                                    bool           limitedRetry,
-                                                    bool           fua,
-                                                    uint8_t        protectionInformationField,
-                                                    uint16_t       numberOfLogicalBlocks);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Verify(const tDevice* M_NONNULL device,
+                                                    uint64_t                 startingLBA,
+                                                    bool                     limitedRetry,
+                                                    bool                     fua,
+                                                    uint8_t                  protectionInformationField,
+                                                    uint16_t                 numberOfLogicalBlocks);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Write_Uncorrectable(const tDevice* device,
-                                                                 uint64_t       startingLBA,
-                                                                 uint16_t       numberOfLogicalBlocks);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Write_Uncorrectable(const tDevice* M_NONNULL device,
+                                                                 uint64_t                 startingLBA,
+                                                                 uint16_t                 numberOfLogicalBlocks);
 
 #define SANITIZE_NVM_EXIT_FAILURE_MODE 1
 #define SANITIZE_NVM_BLOCK_ERASE       2
 #define SANITIZE_NVM_OVERWRITE         3
 #define SANITIZE_NVM_CRYPTO            4
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Sanitize(const tDevice* device,
-                                                      bool           noDeallocateAfterSanitize,
-                                                      bool           invertBetweenOverwritePasses,
-                                                      uint8_t        overWritePassCount,
-                                                      bool           allowUnrestrictedSanitizeExit,
-                                                      uint8_t        sanitizeAction,
-                                                      uint32_t       overwritePattern);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Sanitize(const tDevice* M_NONNULL device,
+                                                      bool                     noDeallocateAfterSanitize,
+                                                      bool                     invertBetweenOverwritePasses,
+                                                      uint8_t                  overWritePassCount,
+                                                      bool                     allowUnrestrictedSanitizeExit,
+                                                      uint8_t                  sanitizeAction,
+                                                      uint32_t                 overwritePattern);
 
-    M_NONNULL_PARAM_LIST(1, 6)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(6, 7)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Dataset_Management(const tDevice* device,
-                                                                uint8_t        numberOfRanges,
-                                                                bool           deallocate,
-                                                                bool           integralDatasetForWrite,
-                                                                bool           integralDatasetForRead,
-                                                                uint8_t*       ptrData,
-                                                                uint32_t       dataLength);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Dataset_Management(const tDevice* M_NONNULL device,
+                                                                uint8_t                  numberOfRanges,
+                                                                bool                     deallocate,
+                                                                bool                     integralDatasetForWrite,
+                                                                bool                     integralDatasetForRead,
+                                                                uint8_t* M_NONNULL       ptrData,
+                                                                uint32_t                 dataLength);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues nvme_Flush(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues nvme_Flush(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1, 8)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(8, 9)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Write(const tDevice* device,
-                                                   uint64_t       startingLBA,
-                                                   uint16_t       numberOfLogicalBlocks,
-                                                   bool           limitedRetry,
-                                                   bool           fua,
-                                                   uint8_t        protectionInformationField,
-                                                   uint8_t        directiveType,
-                                                   uint8_t*       ptrData,
-                                                   uint32_t       dataLength);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Write(const tDevice* M_NONNULL device,
+                                                   uint64_t                 startingLBA,
+                                                   uint16_t                 numberOfLogicalBlocks,
+                                                   bool                     limitedRetry,
+                                                   bool                     fua,
+                                                   uint8_t                  protectionInformationField,
+                                                   uint8_t                  directiveType,
+                                                   uint8_t* M_NONNULL       ptrData,
+                                                   uint32_t                 dataLength);
 
-    M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(7, 8)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Read(const tDevice* device,
-                                                  uint64_t       startingLBA,
-                                                  uint16_t       numberOfLogicalBlocks,
-                                                  bool           limitedRetry,
-                                                  bool           fua,
-                                                  uint8_t        protectionInformationField,
-                                                  uint8_t*       ptrData,
-                                                  uint32_t       dataLength);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Read(const tDevice* M_NONNULL device,
+                                                  uint64_t                 startingLBA,
+                                                  uint16_t                 numberOfLogicalBlocks,
+                                                  bool                     limitedRetry,
+                                                  bool                     fua,
+                                                  uint8_t                  protectionInformationField,
+                                                  uint8_t* M_NONNULL       ptrData,
+                                                  uint32_t                 dataLength);
 
-    M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(7, 8)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Compare(const tDevice* device,
-                                                     uint64_t       startingLBA,
-                                                     uint16_t       numberOfLogicalBlocks,
-                                                     bool           limitedRetry,
-                                                     bool           fua,
-                                                     uint8_t        protectionInformationField,
-                                                     uint8_t*       ptrData,
-                                                     uint32_t       dataLength);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Compare(const tDevice* M_NONNULL device,
+                                                     uint64_t                 startingLBA,
+                                                     uint16_t                 numberOfLogicalBlocks,
+                                                     bool                     limitedRetry,
+                                                     bool                     fua,
+                                                     uint8_t                  protectionInformationField,
+                                                     uint8_t* M_NONNULL       ptrData,
+                                                     uint32_t                 dataLength);
 
-    M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(3, 4)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Report(const tDevice* device,
-                                                                bool           extendedDataStructure,
-                                                                uint8_t*       ptrData,
-                                                                uint32_t       dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Report(const tDevice* M_NONNULL device,
+                                                                bool                     extendedDataStructure,
+                                                                uint8_t* M_NONNULL       ptrData,
+                                                                uint32_t                 dataSize);
 
-    M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Register(const tDevice* device,
-                                                                  uint8_t        changePersistThroughPowerLossState,
-                                                                  bool           ignoreExistingKey,
-                                                                  uint8_t        reservationRegisterAction,
-                                                                  uint8_t*       ptrData,
-                                                                  uint32_t       dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Register(const tDevice* M_NONNULL device,
+                                                                  uint8_t            changePersistThroughPowerLossState,
+                                                                  bool               ignoreExistingKey,
+                                                                  uint8_t            reservationRegisterAction,
+                                                                  uint8_t* M_NONNULL ptrData,
+                                                                  uint32_t           dataSize);
 
-    M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Acquire(const tDevice* device,
-                                                                 uint8_t        reservationType,
-                                                                 bool           ignoreExistingKey,
-                                                                 uint8_t        reservtionAcquireAction,
-                                                                 uint8_t*       ptrData,
-                                                                 uint32_t       dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Acquire(const tDevice* M_NONNULL device,
+                                                                 uint8_t                  reservationType,
+                                                                 bool                     ignoreExistingKey,
+                                                                 uint8_t                  reservtionAcquireAction,
+                                                                 uint8_t* M_NONNULL       ptrData,
+                                                                 uint32_t                 dataSize);
 
-    M_NONNULL_PARAM_LIST(1, 5)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Release(const tDevice* device,
-                                                                 uint8_t        reservationType,
-                                                                 bool           ignoreExistingKey,
-                                                                 uint8_t        reservtionReleaseAction,
-                                                                 uint8_t*       ptrData,
-                                                                 uint32_t       dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Release(const tDevice* M_NONNULL device,
+                                                                 uint8_t                  reservationType,
+                                                                 bool                     ignoreExistingKey,
+                                                                 uint8_t                  reservtionReleaseAction,
+                                                                 uint8_t* M_NONNULL       ptrData,
+                                                                 uint32_t                 dataSize);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    eReturnValues nvme_Write_Zeroes(const tDevice* device,
-                                 uint64_t       startingLBA,
-                                 uint16_t       numberOfLogicalBlocks,
-                                 bool           limitedRetry,
-                                 bool           forceUnitAccess,
-                                 bool           deallocate);
+    eReturnValues nvme_Write_Zeroes(const tDevice* M_NONNULL device,
+                                    uint64_t                 startingLBA,
+                                    uint16_t                 numberOfLogicalBlocks,
+                                    bool                     limitedRetry,
+                                    bool                     forceUnitAccess,
+                                    bool                     deallocate);
 
-    M_NONNULL_PARAM_LIST(1, 7)
     M_PARAM_RO(1)
     M_PARAM_RO(7)
-    OPENSEA_TRANSPORT_API eReturnValues pci_Correctble_Err(const tDevice* device,
-                                                           uint8_t        opcode,
-                                                           uint32_t       nsid,
-                                                           uint32_t       cdw10,
-                                                           uint32_t       cdw11,
-                                                           uint32_t       data_len,
-                                                           void*          data);
+    OPENSEA_TRANSPORT_API eReturnValues pci_Correctble_Err(const tDevice* M_NONNULL device,
+                                                           uint8_t                  opcode,
+                                                           uint32_t                 nsid,
+                                                           uint32_t                 cdw10,
+                                                           uint32_t                 cdw11,
+                                                           uint32_t                 data_len,
+                                                           void* M_NONNULL          data);
 
-    // \fn fill_In_NVMe_Device_Info(const tDevice * device)
+    // \fn fill_In_NVMe_Device_Info(const tDevice* M_NONNULL device)
     // \brief Sends a set Identify etc commands & fills in the device information
     // \param device device struture
     // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues fill_In_NVMe_Device_Info(tDevice* device);
+    M_PARAM_RW(1) eReturnValues fill_In_NVMe_Device_Info(tDevice* M_NONNULL device);
 
     // Seagate unique?
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Read_Ext_Smt_Log(const tDevice*         device,
-                                                              EXTENDED_SMART_INFO_T* ExtdSMARTInfo);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* M_NONNULL         device,
+                                                              EXTENDED_SMART_INFO_T* M_NONNULL ExtdSMARTInfo);
 
 #if defined(__cplusplus)
 }

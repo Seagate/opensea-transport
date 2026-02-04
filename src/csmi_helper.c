@@ -10,8 +10,9 @@
 //
 // ******************************************************************************************
 //
-#if 1 // defined(ENABLE_CSMI)
+#if defined(ENABLE_CSMI)
 
+#    include "warning_ctl.h"
 #    include <assert.h>
 #    include <fcntl.h>
 #    include <stddef.h> // offsetof
@@ -3505,7 +3506,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
                 // capable controller
 #    if defined(CSMI_DEBUG)
                 print_str("JSCI: Using alternate method to get SAS address. Checking for compatible controller flags "
-                       "first.\n");
+                          "first.\n");
 #    endif // CSMI_DEBUG
                 if (controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID ||
                     controllerConfig.Configuration.uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID ||
@@ -3607,8 +3608,9 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
                                                                       // this is not guaranteed-TJE
                                                     {
 #    if defined(CSMI_DEBUG)
-                                                        print_str("JSCI: Found matching drive data. Can send CSMI IOs in "
-                                                               "addition to normal system IOs\n");
+                                                        print_str(
+                                                            "JSCI: Found matching drive data. Can send CSMI IOs in "
+                                                            "addition to normal system IOs\n");
 #    endif // CSMI_DEBUG
                                                         gotSASAddress = true;
                                                     }
@@ -3899,7 +3901,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
 //-----------------------------------------------------------------------------
 eReturnValues close_CSMI_RAID_Device(tDevice* device)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (device != M_NULLPTR)
     {
 #    if defined(_WIN32)
@@ -3931,7 +3933,6 @@ eReturnValues close_CSMI_RAID_Device(tDevice* device)
     {
         return MEMORY_FAILURE;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 static bool get_CSMI_Handle_Fields_From_Input(const char* filename,
@@ -4924,8 +4925,9 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
                                                     {
                                                         raidConfigIncomplete = true;
 #    if defined(CSMI_DEBUG)
-                                                        print_str("GDC: Detected incomplete raid config data. Will need "
-                                                               "phy info to complete count\n");
+                                                        print_str(
+                                                            "GDC: Detected incomplete raid config data. Will need "
+                                                            "phy info to complete count\n");
 #    endif // CSMI_DEBUG
                                                     }
 
@@ -5061,8 +5063,9 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
                                                 {
 #    if defined(CSMI_DEBUG)
                                                     print_str("GDC: ATAPI Identify Successful\n");
-                                                    print_str("GDC: Not adding to the count since ATAPI should use system "
-                                                           "handle instead.\n");
+                                                    print_str(
+                                                        "GDC: Not adding to the count since ATAPI should use system "
+                                                        "handle instead.\n");
 #    endif // CSMI_DEBUG
                                                 }
                                             }
@@ -5231,7 +5234,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
 #    endif // CSMI_DEBUG
         return SUCCESS;
     }
-    DISABLE_NONNULL_COMPARE
+
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == 0)
     {
 #    if defined(CSMI_DEBUG)
@@ -5346,16 +5349,18 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                             switch (csmiAccess)
                             {
                             case CSMI_SECURITY_ACCESS_NONE:
-                                print_str("CSMI Security access set to none! Won't be able to properly communicate with "
-                                       "the device(s)!\n");
+                                print_str(
+                                    "CSMI Security access set to none! Won't be able to properly communicate with "
+                                    "the device(s)!\n");
                                 break;
                             case CSMI_SECURITY_ACCESS_RESTRICTED:
-                                print_str("CSMI Security access set to restricted! Won't be able to properly communicate "
-                                       "with the device(s)!\n");
+                                print_str(
+                                    "CSMI Security access set to restricted! Won't be able to properly communicate "
+                                    "with the device(s)!\n");
                                 break;
                             case CSMI_SECURITY_ACCESS_LIMITED:
                                 print_str("CSMI Security access set to limited! Won't be able to properly communicate "
-                                       "with the device(s)!\n");
+                                          "with the device(s)!\n");
                                 break;
                             case CSMI_SECURITY_ACCESS_FULL:
                             default:
@@ -5560,8 +5565,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                  ++phyIter)
                                                             {
 #    if defined(CSMI_DEBUG)
-                                                                print_str("GDL: Comparing SAS address to RAID config SAS "
-                                                                       "address\n");
+                                                                print_str(
+                                                                    "GDL: Comparing SAS address to RAID config SAS "
+                                                                    "address\n");
 #    endif // CSMI_DEBUG
                                                                 if (phyInfo.Information.Phy[phyIter]
                                                                         .Attached.bDeviceType ==
@@ -5604,8 +5610,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                              8) == 0))
                                                                     {
 #    if defined(CSMI_DEBUG)
-                                                                        print_str("GDL: Matching SAS address in Phy info "
-                                                                               "found\n");
+                                                                        print_str(
+                                                                            "GDL: Matching SAS address in Phy info "
+                                                                            "found\n");
 #    endif // CSMI_DEBUG
                                                                         uint8_t lun = UINT8_C(0);
                                                                         if (!is_Empty(csmiRAIDConfig->Configuration
@@ -5645,8 +5652,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                             else
                                                                             {
 #    if defined(CSMI_DEBUG)
-                                                                                print_str("GDL: Error converting SASLun "
-                                                                                       "to SCSI Address lun!\n");
+                                                                                print_str(
+                                                                                    "GDL: Error converting SASLun "
+                                                                                    "to SCSI Address lun!\n");
 #    endif // CSMI_DEBUG
                                                                             }
                                                                         }
@@ -5676,7 +5684,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                         case CSMI_SAS_NO_DEVICE_ATTACHED:
 #    if defined(CSMI_DEBUG)
                                                                             print_str("GDL: No device attached. "
-                                                                                   "Skipping...\n");
+                                                                                      "Skipping...\n");
 #    endif // CSMI_DEBUG
                                                                             break;
                                                                         case CSMI_SAS_EDGE_EXPANDER_DEVICE:
@@ -5688,7 +5696,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                         case CSMI_SAS_FANOUT_EXPANDER_DEVICE:
 #    if defined(CSMI_DEBUG)
                                                                             print_str("GDL: Fanout Expander Device. "
-                                                                                   "Skipping...\n");
+                                                                                      "Skipping...\n");
 #    endif // CSMI_DEBUG
                                                                             break;
                                                                         default:
@@ -5723,8 +5731,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                         // address to use for matching, we need to issue
                                                                         // an identify command and match the MN and SN.
 #    if defined(CSMI_DEBUG)
-                                                                        print_str("GDL: No SASAddress, so matching with "
-                                                                               "identify command\n");
+                                                                        print_str(
+                                                                            "GDL: No SASAddress, so matching with "
+                                                                            "identify command\n");
 #    endif // CSMI_DEBUG
                                                                         DECLARE_ZERO_INIT_ARRAY(char, csmiRaidDevModel,
                                                                                                 41);
@@ -5765,7 +5774,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                         {
 #    if defined(CSMI_DEBUG)
                                                                             print_str("GRL: Failed to allocate "
-                                                                                   "csmiDeviceInfo structure\n");
+                                                                                      "csmiDeviceInfo structure\n");
 #    endif // CSMI_DEBUG
                                                                             return MEMORY_FAILURE;
                                                                         }
@@ -5835,7 +5844,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                             csmiPTCmd.pAtaCmdOpts = &identify;
 #    if defined(CSMI_DEBUG)
                                                                             print_str("GDL: Detected SATA protocol. "
-                                                                                   "Attempting Identify CMD\n");
+                                                                                      "Attempting Identify CMD\n");
 #    endif // CSMI_DEBUG
                                                                             if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
                                                                             {
@@ -5862,7 +5871,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                     // found a match!
 #    if defined(CSMI_DEBUG)
                                                                                     print_str("GDL: Found a matching "
-                                                                                           "MN/SN!\n");
+                                                                                              "MN/SN!\n");
 #    endif // CSMI_DEBUG
                                                                                     snprintf_err_handle(
                                                                                         handle,
@@ -5908,7 +5917,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                     // check for a match
 #    if defined(CSMI_DEBUG)
                                                                                     print_str("GDL: ATAPI Identify "
-                                                                                           "Successful\n");
+                                                                                              "Successful\n");
                                                                                     printf(
                                                                                         "GDL: Not adding to the list "
                                                                                         "since ATAPI should use system "
@@ -5921,8 +5930,9 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                     {
                                                                                         // found a match!
 #    if defined(CSMI_DEBUG)
-                                                                                        print_str("GDL: Found a matching "
-                                                                                               "MN/SN!\n");
+                                                                                        print_str(
+                                                                                            "GDL: Found a matching "
+                                                                                            "MN/SN!\n");
 #    endif // CSMI_DEBUG
                                                                                         snprintf_err_handle(
                                                                                             handle,
@@ -5976,7 +5986,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                             csmiPTCmd.pdata      = inqData;
 #    if defined(CSMI_DEBUG)
                                                                             print_str("GDL: Detected SSP protocol. "
-                                                                                   "Attempting Inquiry\n");
+                                                                                      "Attempting Inquiry\n");
 #    endif // CSMI_DEBUG
                                                                             if (SUCCESS == send_CSMI_IO(&csmiPTCmd))
                                                                             {
@@ -6045,7 +6055,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                 {
 #    if defined(CSMI_DEBUG)
                                                                                     print_str("GDL: MN/Vendor match. "
-                                                                                           "Checking SN\n");
+                                                                                              "Checking SN\n");
 #    endif // CSMI_DEBUG
            // now read the unit SN VPD page since this matches so far that way we can compare the serial number. Not
            // checking SCSI 2 since every SAS drive *SHOULD* support this.
@@ -6055,7 +6065,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                     cdb[CDB_2] = UNIT_SERIAL_NUMBER;
 #    if defined(CSMI_DEBUG)
                                                                                     print_str("GDL: Requesting Unit SN "
-                                                                                           "page\n");
+                                                                                              "page\n");
 #    endif // CSMI_DEBUG
                                                                                     if (SUCCESS ==
                                                                                         send_CSMI_IO(&csmiPTCmd))
@@ -6090,7 +6100,8 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                                                 0)
                                                                                             {
 #    if defined(CSMI_DEBUG)
-                                                                                                print_str("GDL: Found a "
+                                                                                                print_str(
+                                                                                                    "GDL: Found a "
                                                                                                     "matching SN!\n");
 #    endif // CSMI_DEBUG
            // found a match!
@@ -6156,9 +6167,10 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                         // SN. So this is likely a case of a missing
                                                                         // drive, so do NOT scan the phyinfo
 #    if defined(CSMI_DEBUG)
-                                                                        print_str("GDL: No SAS address and MN is blank, "
-                                                                               "but has a SN, so likely a missing "
-                                                                               "drive from the RAID set.\n");
+                                                                        print_str(
+                                                                            "GDL: No SAS address and MN is blank, "
+                                                                            "but has a SN, so likely a missing "
+                                                                            "drive from the RAID set.\n");
 #    endif // CSMI_DEBUG
                                                                     }
                                                                     else
@@ -6169,9 +6181,10 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                                         printf("GDL: Logging error for iter = %" PRIu8
                                                                                "\n",
                                                                                phyIter);
-                                                                        print_str("GDL: Cannot use SASAddress or MN+SN to "
-                                                                               "match drives. Trying final "
-                                                                               "possibility: PhyInfo\n");
+                                                                        print_str(
+                                                                            "GDL: Cannot use SASAddress or MN+SN to "
+                                                                            "match drives. Trying final "
+                                                                            "possibility: PhyInfo\n");
 #    endif // CSMI_DEBUG
                                                                     }
                                                                 }
@@ -6344,7 +6357,7 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
 #    endif // CSMI_DEBUG
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     return returnValue;
 }
 

@@ -181,11 +181,10 @@ static void get_VMV_SYS_FS_Info(const char* handle, sysVMLowLevelDeviceInfo* sys
     }
 }
 
-M_NONNULL_PARAM_LIST(1, 2)
 M_NULL_TERM_STRING(1)
 M_PARAM_RO(1)
 M_PARAM_RW(2)
-static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
+static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice* M_NONNULL device)
 {
     sysVMLowLevelDeviceInfo sysVmInfo;
     /**
@@ -1080,7 +1079,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     }
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
 
-    DISABLE_NONNULL_COMPARE
+
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
@@ -1181,7 +1180,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }

@@ -486,12 +486,12 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     uint8_t* dataPhasePtr  = M_NULLPTR;
     uint32_t dataPhaseSize = UINT32_C(0);
     bool     localMemory   = false;
-    DISABLE_NONNULL_COMPARE
+
     if (nvmCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     dataPhasePtr  = nvmCmd->ptrData;
     dataPhaseSize = nvmCmd->dataSize;
     if (nvmCmd->ptrData && nvmCmd->dataSize > 0 && nvmCmd->dataSize % UINT32_C(512))

@@ -13,7 +13,7 @@
 
 #pragma once
 #if defined(_WIN32)
-#    include "predef_env_detect.h"
+#    include "warning_ctl.h"
 DISABLE_WARNING_4255
 #    include <windows.h>
 RESTORE_WARNING_4255

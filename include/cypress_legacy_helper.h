@@ -61,10 +61,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RO(2)
-    eReturnValues build_Cypress_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand * ataCommandOptions);
+    eReturnValues build_Cypress_Legacy_CDB(uint8_t                          cdb[M_NONNULL_ARRAY CDB_16],
+                                           ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -82,11 +82,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues get_RTFRs_From_Cypress_Legacy(const tDevice* device, ataPassthroughCommand* ataCommandOptions,
-                                                eReturnValues commandRet);
+    eReturnValues get_RTFRs_From_Cypress_Legacy(
+        const tDevice* M_NONNULL device, ataPassthroughCommand* M_NONNULL ataCommandOptions, eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -103,11 +102,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues send_Cypress_Legacy_Passthrough_Command(const tDevice*         device,
-                                                          ataPassthroughCommand* ataCommandOptions);
+    eReturnValues send_Cypress_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                          ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
 #if defined(__cplusplus)
 }

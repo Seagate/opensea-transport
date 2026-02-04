@@ -164,13 +164,12 @@ DEFINE_GUID(GUID_DEVINTERFACE_DISK, 0x53f56307L, 0xb6bf, 0x11d0, 0x94, 0xf2, 0x0
 
 extern bool validate_Device_Struct(versionBlock);
 
-M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues get_Windows_SMART_IO_Support(tDevice* device);
+M_PARAM_RW(1) eReturnValues get_Windows_SMART_IO_Support(tDevice* M_NONNULL device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-M_NONNULL_PARAM_LIST(1)
-M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busType);
-bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx);
-M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx);
-M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx);
+M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* M_NONNULL device, STORAGE_BUS_TYPE busType);
+bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* M_NONNULL scsiIoCtx);
+M_PARAM_RW(1) eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
+M_PARAM_RW(1) eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 #endif
 #if defined(WIN_DEBUG)
 // \fn print_bus_type (BYTE type)
@@ -286,10 +285,12 @@ void print_bus_type(BYTE type)
 //     }
 // }
 
-M_NONNULL_PARAM_LIST(2, 4)
 M_PARAM_RW_SIZE(2, 3)
 M_PARAM_RW(4)
-static bool get_IDs_From_TCHAR_String(DEVINST instance, TCHAR* buffer, size_t bufferLength, tDevice* device)
+static bool get_IDs_From_TCHAR_String(DEVINST            instance,
+                                      TCHAR* M_NONNULL   buffer,
+                                      size_t             bufferLength,
+                                      tDevice* M_NONNULL device)
 {
     bool      success = true;
     CONFIGRET cmRet   = CR_SUCCESS;
@@ -2693,7 +2694,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                     {
 #if defined(_DEBUG)
                                                                                         print_str("Fatal error getting "
-                                                                                               "device IDs\n");
+                                                                                                  "device IDs\n");
 #endif // _DEBUG
                                                                                     }
                                                                                 }
@@ -2855,7 +2856,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                     {
 #if defined(_DEBUG)
                                                                                         print_str("Fatal error getting "
-                                                                                               "driver version!\n");
+                                                                                                  "driver version!\n");
 #endif //_DEBUG
                                                                                     }
                                                                                     else
@@ -3175,9 +3176,8 @@ static M_INLINE void safe_free_firmwareinfo(PSTORAGE_FIRMWARE_INFO* info)
     safe_free_core(M_REINTERPRET_CAST(void**, info));
 }
 
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* device, bool controllerRequest)
+static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* M_NONNULL device, bool controllerRequest)
 {
     eReturnValues ret = NOT_SUPPORTED;
 #    if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
@@ -3447,15 +3447,15 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
                 printf("Transfersize sectors: %" PRIu16 "\n", transferSizeSectors);
                 printf("Transfersize bytes: %" PRIu32 "\tMaxXferSize: %" PRIu32 "\n",
-                       C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE),
+                       C_CAST(uint32_t, transferSizeSectors* LEGACY_DRIVE_SEC_SIZE),
                        scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize);
                 printf("Transfersize sectors %% alignment: %" PRIu32 "\n",
-                       (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) %
+                       (C_CAST(uint32_t, transferSizeSectors* LEGACY_DRIVE_SEC_SIZE) %
                         scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment));
 #    endif
-                if (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) <
+                if (C_CAST(uint32_t, transferSizeSectors* LEGACY_DRIVE_SEC_SIZE) <
                         scsiIoCtx->device->os_info.fwdlIOsupport.maxXferSize &&
-                    (C_CAST(uint32_t, transferSizeSectors * LEGACY_DRIVE_SEC_SIZE) %
+                    (C_CAST(uint32_t, transferSizeSectors* LEGACY_DRIVE_SEC_SIZE) %
                          scsiIoCtx->device->os_info.fwdlIOsupport.payloadAlignment ==
                      0))
                 {
@@ -4098,12 +4098,12 @@ eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* nvmeIoCtx, uint32_t* 
     eReturnValues      ret = SUCCESS;
     nvmeFWCommitAction activateAction =
         M_STATIC_CAST(nvmeFWCommitAction, get_8bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 5, 3));
-    DISABLE_NONNULL_COMPARE
+
     if (nvmeIoCtx == M_NULLPTR || currentFlags == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     switch (activateAction)
     {
     case NVME_CA_REPLACE_NOT_ACTIVITED:
@@ -4301,12 +4301,11 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Activate(nvmeCmdCtx* nvmeIo
 
 #endif // WINVER >= SEA_WIN32_WINNT_WINBLUE
 
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static eReturnValues close_SCSI_SRB_Handle(tDevice* device)
+static eReturnValues close_SCSI_SRB_Handle(tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
-    DISABLE_NONNULL_COMPARE
+
     if (device != M_NULLPTR)
     {
         if (device->os_info.scsiSRBHandle != INVALID_HANDLE_VALUE)
@@ -4324,7 +4323,7 @@ static eReturnValues close_SCSI_SRB_Handle(tDevice* device)
             ;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     return ret;
 }
 
@@ -4344,7 +4343,7 @@ static eReturnValues close_SCSI_SRB_Handle(tDevice* device)
 eReturnValues close_Device(tDevice* dev)
 {
     int retValue = 0;
-    DISABLE_NONNULL_COMPARE
+
     if (dev != M_NULLPTR)
     {
 #if defined(ENABLE_CSMI)
@@ -4378,7 +4377,6 @@ eReturnValues close_Device(tDevice* dev)
     {
         return MEMORY_FAILURE;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 // opens this handle, but does nothing else with it
@@ -5101,11 +5099,10 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
 #define MAX_VOL_STR_LEN  (8U)
 #define MAX_DISK_EXTENTS (32U)
 
-M_NONNULL_PARAM_LIST(1, 2)
 M_NULL_TERM_STRING(1)
 M_PARAM_RO(1)
 M_PARAM_RW(2)
-static eReturnValues open_Win_Handle(const char* filename, tDevice* device)
+static eReturnValues open_Win_Handle(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     eReturnValues ret      = SUCCESS;
     int           attempts = 0;
@@ -5195,11 +5192,10 @@ static eReturnValues open_Win_Handle(const char* filename, tDevice* device)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-M_NONNULL_PARAM_LIST(1, 2)
 M_NULL_TERM_STRING(1)
 M_PARAM_RO(1)
 M_PARAM_RW(2)
-static eReturnValues get_Win_Device(const char* filename, tDevice* device)
+static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     eReturnValues               ret          = FAILURE;
     eReturnValues               win_ret      = SUCCESS;
@@ -5349,7 +5345,8 @@ static eReturnValues get_Win_Device(const char* filename, tDevice* device)
 #if defined(WIN_DEBUG)
                                         else
                                         {
-                                            print_str("\nWARNING! Asked for system directory, but got a zero length string! "
+                                            print_str(
+                                                "\nWARNING! Asked for system directory, but got a zero length string! "
                                                 "Unable to detect if this is a drive with a system folder!\n");
                                         }
 #endif // WIN_DEBUG
@@ -6298,7 +6295,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         listVerbosity = VERBOSITY_BUFFERS;
     }
-    DISABLE_NONNULL_COMPARE
+
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == 0)
     {
         returnValue = BAD_PARAMETER;
@@ -6456,7 +6453,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         printf("Get device list returning %d\n", returnValue);
     }
-    RESTORE_NONNULL_COMPARE
+
     return returnValue;
 }
 
@@ -6500,17 +6497,17 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks(ScsiIoCtx* scsiIoCtx)
 #if WINVER >= SEA_WIN32_WINNT_VISTA && defined(IOCTL_DISK_REASSIGN_BLOCKS_EX)
             // call 4byte version instead.
             return send_Win_IOCTL_Disk_Reassign_Blocks_Ex(scsiIoCtx);
-            #else
+#else
             return OS_COMMAND_NOT_AVAILABLE;
-            #endif
+#endif
         }
         // no other conditions to check, so proceed.
         // first get number of entries in the list.
-        DWORD               bytesReturned     = DWORD_C(0);
+        DWORD            bytesReturned     = DWORD_C(0);
         DWORD            reassignStructLen = sizeof(REASSIGN_BLOCKS) + (lbaEntries * sizeof(DWORD));
         PREASSIGN_BLOCKS winReassignBlocks =
             M_REINTERPRET_CAST(PREASSIGN_BLOCKS, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t),
-                                                                        scsiIoCtx->device->os_info.minimumAlignment));
+                                                                     scsiIoCtx->device->os_info.minimumAlignment));
         if (winReassignBlocks == M_NULLPTR)
         {
             return MEMORY_FAILURE;
@@ -6535,7 +6532,7 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-#if WINVER >= SEA_WIN32_WINNT_VISTA && defined (IOCTL_DISK_REASSIGN_BLOCKS_EX)
+#if WINVER >= SEA_WIN32_WINNT_VISTA && defined(IOCTL_DISK_REASSIGN_BLOCKS_EX)
 
 static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks_Ex(ScsiIoCtx* scsiIoCtx)
 {
@@ -6554,22 +6551,26 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks_Ex(ScsiIoCtx* scsiIoCtx
         {
             return OS_COMMAND_NOT_AVAILABLE;
         }
-        if (!is_Reassign_Blocks_LongLBA(scsiIoCtx->cdb[CDB_1])) // if longlba is zero, all LBAs are 4bytes long and should use the older IOCTL for this CDB
+        if (!is_Reassign_Blocks_LongLBA(scsiIoCtx->cdb[CDB_1])) // if longlba is zero, all LBAs are 4bytes long and
+                                                                // should use the older IOCTL for this CDB
         {
             // call 4byte version instead.
             return send_Win_IOCTL_Disk_Reassign_Blocks(scsiIoCtx);
         }
         // no other conditions to check, so proceed.
         // first get number of entries in the list.
-        DWORD bytesReturned     = DWORD_C(0);
+        DWORD               bytesReturned     = DWORD_C(0);
         DWORD               reassignStructLen = sizeof(REASSIGN_BLOCKS_EX) + (lbaEntries * sizeof(LARGE_INTEGER));
-        PREASSIGN_BLOCKS_EX winReassignBlocks = M_REINTERPRET_CAST(PREASSIGN_BLOCKS_EX, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+        PREASSIGN_BLOCKS_EX winReassignBlocks =
+            M_REINTERPRET_CAST(PREASSIGN_BLOCKS_EX, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t),
+                                                                        scsiIoCtx->device->os_info.minimumAlignment));
         if (winReassignBlocks == M_NULLPTR)
         {
             return MEMORY_FAILURE;
         }
         winReassignBlocks->Count = M_STATIC_CAST(WORD, lbaEntries);
-        for (uint32_t iter = REASSIGN_BLOCKS_LIST_HEADER_LENGTH, counter = 0; iter < scsiIoCtx->dataLength && counter < lbaEntries; iter += REASSIGN_BLOCKS_LONG_LBA_LENGTH, ++counter)
+        for (uint32_t iter = REASSIGN_BLOCKS_LIST_HEADER_LENGTH, counter = 0;
+             iter < scsiIoCtx->dataLength && counter < lbaEntries; iter += REASSIGN_BLOCKS_LONG_LBA_LENGTH, ++counter)
         {
             winReassignBlocks->BlockNumber[counter].QuadPart =
                 M_BytesTo8ByteValue(scsiIoCtx->pdata[iter], scsiIoCtx->pdata[iter + 1], scsiIoCtx->pdata[iter + 2],
@@ -14965,8 +14966,7 @@ static void set_Command_Completion_For_OS_Read_Write_ATA(tDevice* device, DWORD 
     }
 }
 
-M_NONNULL_PARAM_LIST(1)
-M_PARAM_RW(1) static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* device, DWORD lastError)
+M_PARAM_RW(1) static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* M_NONNULL device, DWORD lastError)
 {
     eReturnValues ret = SUCCESS;
     // clear the last command sense data and rtfrs. We'll dummy them up in a minute
@@ -15183,14 +15183,13 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
     }
-    DISABLE_NONNULL_COMPARE
+
     if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != M_NULLPTR)
     {
         print_str("\t  Data Buffer being returned:\n");
         print_Data_Buffer(ptrData, dataSize, true);
         print_str("\n");
     }
-    RESTORE_NONNULL_COMPARE
 
     if (bytesReturned != C_CAST(DWORD, dataSize))
     {
@@ -15277,14 +15276,14 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     overlappedStruct.Offset     = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
     overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
-    DISABLE_NONNULL_COMPARE
+
     if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != M_NULLPTR)
     {
         print_str("\t  Data Buffer being sent:\n");
         print_Data_Buffer(ptrData, dataSize, true);
         print_str("\n");
     }
-    RESTORE_NONNULL_COMPARE
+
     start_Timer(&commandTimer);
     retStatus = WriteFile(handleToUse, ptrData, dataSize, &bytesReturned, &overlappedStruct);
     set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());

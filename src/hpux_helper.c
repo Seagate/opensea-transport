@@ -455,8 +455,8 @@ static void set_Device_Name(const char* filename, char* name, size_t sizeOfName)
 
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
-    eReturnValues ret         = SUCCESS;
-    char *deviceHandle = M_NULLPTR;
+    eReturnValues ret          = SUCCESS;
+    char*         deviceHandle = M_NULLPTR;
 
     ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
     if (ret != SUCCESS)
@@ -513,7 +513,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
         set_Device_Name(deviceHandle, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
         // must call this after friendly name has been set!
-        //TODO: legacy devices need to have /dev/dsk instead of /dev/rdsk passed in here. For now this assumes no legacy handles
+        // TODO: legacy devices need to have /dev/dsk instead of /dev/rdsk passed in here. For now this assumes no
+        // legacy handles
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
 
         device->drive_info.interface_type = SCSI_INTERFACE;

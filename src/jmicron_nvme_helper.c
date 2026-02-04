@@ -29,7 +29,7 @@
 #include "jmicron_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
-eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
+eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t                 cdb[M_NONNULL_ARRAY JMICRON_NVME_CDB_SIZE],
                                             eDataTransferDirection* cdbDataDirection,
                                             uint8_t*                dataPtr,
                                             uint32_t                dataSize,
@@ -37,11 +37,14 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
                                             eJMNvmeVendorControl    jmCtrl,
                                             nvmeCmdCtx*             nvmCmd)
 {
+
     DISABLE_NONNULL_COMPARE
+    // static array should force passing a non-null pointer, but checking anyways
     if (cdb == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     safe_memset(cdb, JMICRON_NVME_CDB_SIZE, 0, JMICRON_NVME_CDB_SIZE);
 
@@ -248,8 +251,6 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
     cdb[CDB_4] = M_Byte1(parameterListLength);
     cdb[CDB_5] = M_Byte0(parameterListLength);
 
-    RESTORE_NONNULL_COMPARE
-
     return SUCCESS;
 }
 
@@ -259,12 +260,12 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmCDB, JMICRON_NVME_CDB_SIZE);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE);
     eDataTransferDirection jmCDBDir = 0;
-    DISABLE_NONNULL_COMPARE
+
     if (nvmCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     // 1. build CDB & data for command to send
     // Send CDB to set the command values that will be used to issue a command.
     ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE,

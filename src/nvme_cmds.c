@@ -278,7 +278,6 @@ eReturnValues nvme_Asynchronous_Event_Request(const tDevice* device,
     // Command specific return codes:
     //  5h = The number of concurrently outstanding Asynchronous Event Request commands has been exceeded.
 
-    DISABLE_NONNULL_COMPARE
     if (logPageIdentifier != M_NULLPTR)
     {
         *logPageIdentifier = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 23, 16);
@@ -293,7 +292,6 @@ eReturnValues nvme_Asynchronous_Event_Request(const tDevice* device,
     {
         *asynchronousEventType = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 2, 0);
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -1191,11 +1189,11 @@ eReturnValues nvme_Reservation_Release(const tDevice* device,
 }
 
 eReturnValues nvme_Write_Zeroes(const tDevice* device,
-                                 uint64_t       startingLBA,
-                                 uint16_t       numberOfLogicalBlocks,
-                                 bool           limitedRetry,
-                                 bool           forceUnitAccess,
-                                 bool           deallocate)
+                                uint64_t       startingLBA,
+                                uint16_t       numberOfLogicalBlocks,
+                                bool           limitedRetry,
+                                bool           forceUnitAccess,
+                                bool           deallocate)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;

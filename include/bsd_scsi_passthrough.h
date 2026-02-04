@@ -17,17 +17,30 @@
 
 #pragma once
 
-M_FILE_DESCRIPTOR(1)
-M_PARAM_WO(2)
-M_PARAM_WO(3)
-M_PARAM_WO(4)
-M_PARAM_WO(5)
-eReturnValues get_BSD_SCSI_Address(int fd, int* type, int* bus, int* target, int* lun);
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
 
-M_FILE_DESCRIPTOR(1)
-eReturnValues send_BSD_SCSI_Reset(int fd);
+    M_FILE_DESCRIPTOR(1)
+    M_PARAM_WO(2)
+    M_PARAM_WO(3)
+    M_PARAM_WO(4)
+    M_PARAM_WO(5)
+    eReturnValues get_BSD_SCSI_Address(int            fd,
+                                       int* M_NONNULL type,
+                                       int* M_NONNULL bus,
+                                       int* M_NONNULL target,
+                                       int* M_NONNULL lun);
 
-M_FILE_DESCRIPTOR(1)
-eReturnValues send_BSD_SCSI_Bus_Reset(int fd);
+    M_FILE_DESCRIPTOR(1)
+    eReturnValues send_BSD_SCSI_Reset(int fd);
 
-M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx);
+    M_FILE_DESCRIPTOR(1)
+    eReturnValues send_BSD_SCSI_Bus_Reset(int fd);
+
+    M_PARAM_RW(1) eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx);
+
+#if defined(__cplusplus)
+}
+#endif

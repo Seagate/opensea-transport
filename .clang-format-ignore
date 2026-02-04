@@ -1,0 +1,4 @@
+# This is a file for meson's clang-format target to specify which files to ignore formatting.
+
+./src/external/**/*
+./include/external/**/*

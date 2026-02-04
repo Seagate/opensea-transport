@@ -7730,10 +7730,10 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, S
                 if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_DIRECTORY, 0, gplDirectory, ATA_LOG_PAGE_LEN_BYTES,
                                                 device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))
                 {
-                    uint32_t currentStatusLogSize = get_ATA_Log_Size_From_Directory(
-                        gplDirectory, ATA_LOG_PAGE_LEN_BYTES, ATA_LOG_CURRENT_DEVICE_INTERNAL_STATUS_DATA_LOG);
-                    uint32_t savedStatusLogSize = get_ATA_Log_Size_From_Directory(
-                        gplDirectory, ATA_LOG_PAGE_LEN_BYTES, ATA_LOG_SAVED_DEVICE_INTERNAL_STATUS_DATA_LOG);
+                    uint32_t currentStatusLogSize =
+                        get_ATA_Log_Size_From_Directory(gplDirectory, ATA_LOG_CURRENT_DEVICE_INTERNAL_STATUS_DATA_LOG);
+                    uint32_t savedStatusLogSize =
+                        get_ATA_Log_Size_From_Directory(gplDirectory, ATA_LOG_SAVED_DEVICE_INTERNAL_STATUS_DATA_LOG);
                     if (SUCCESS != ata_Read_Log_Ext(device, ATA_LOG_CURRENT_DEVICE_INTERNAL_STATUS_DATA_LOG, 0,
                                                     gplDirectory, ATA_LOG_PAGE_LEN_BYTES,
                                                     device->drive_info.ata_Options.readLogWriteLogDMASupported, 0))

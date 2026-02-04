@@ -42,9 +42,13 @@
 #define CSMI_PROTOCOL_DMA_QUEUED_IN  7
 #define CSMI_PROTOCOL_DMA_QUEUED_OUT 8
 
-eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH], ataPassthroughCommand* ataPtCmd)
+eReturnValues build_CSMI_Passthrough_CDB(uint8_t                cdb[M_NONNULL_ARRAY CSMI_PASSTHROUGH_CDB_LENGTH],
+                                         ataPassthroughCommand* ataPtCmd)
 {
     eReturnValues ret = BAD_PARAMETER;
+
+    // static array should force passing a non-null pointer, but checking anyways since MSVC doesn't support marking
+    // static arrays
     DISABLE_NONNULL_COMPARE
     if (cdb != M_NULLPTR && ataPtCmd != M_NULLPTR)
     {
@@ -158,6 +162,7 @@ eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[CSMI_PASSTHROUGH_CDB_LENGTH
         cdb[CDB_13] = ataPtCmd->tfr.DeviceHead;
     }
     RESTORE_NONNULL_COMPARE
+
     return ret;
 }
 

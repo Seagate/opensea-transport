@@ -17,7 +17,16 @@
 
 #pragma once
 
-M_FILE_DESCRIPTOR(1)
-eReturnValues send_BSD_ATA_Reset(int fd);
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
 
-M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_BSD_ATA_IO(ScsiIoCtx* scsiIoCtx);
+    M_FILE_DESCRIPTOR(1)
+    eReturnValues send_BSD_ATA_Reset(int fd);
+
+    M_PARAM_RW(1) eReturnValues send_BSD_ATA_IO(ScsiIoCtx* M_NONNULL scsiIoCtx);
+
+#if defined(__cplusplus)
+}
+#endif

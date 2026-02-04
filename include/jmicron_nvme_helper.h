@@ -60,30 +60,26 @@ extern "C"
         // All other values up to 255 are reserved
     } eJMNvmeVendorControl;
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_WO(1)
     M_PARAM_RO(2)
     M_PARAM_WO_SIZE(3, 4)
     M_PARAM_RO(7)
-    eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
-                                                eDataTransferDirection* cdbDataDirection,
-                                                uint8_t*                dataPtr,
-                                                uint32_t                dataSize,
-                                                eJMNvmeProtocol         jmProtocol,
-                                                eJMNvmeVendorControl    jmCtrl,
-                                                nvmeCmdCtx*             nvmCmd);
+    eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t cdb[M_NONNULL_ARRAY JMICRON_NVME_CDB_SIZE],
+                                                eDataTransferDirection* M_NONNULL cdbDataDirection,
+                                                uint8_t* M_NULLABLE               dataPtr,
+                                                uint32_t                          dataSize,
+                                                eJMNvmeProtocol                   jmProtocol,
+                                                eJMNvmeVendorControl              jmCtrl,
+                                                nvmeCmdCtx* M_NULLABLE            nvmCmd);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd);
+    eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    eReturnValues jm_nvme_Reset(const tDevice* device);
+    eReturnValues jm_nvme_Reset(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    eReturnValues jm_nvme_Subsystem_Reset(const tDevice* device);
+    eReturnValues jm_nvme_Subsystem_Reset(const tDevice* M_NONNULL device);
 
 #if defined(__cplusplus)
 }

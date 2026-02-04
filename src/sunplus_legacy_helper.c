@@ -79,7 +79,7 @@ eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCD
 }
 
 #define SUBPLUS_READ_REG_LEN 16
-eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice*               device,
+eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice*         device,
                                             ataPassthroughCommand* ataCommandOptions,
                                             eReturnValues          commandRet)
 {

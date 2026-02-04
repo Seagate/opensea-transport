@@ -37,8 +37,9 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
-    M_PARAM_RO(1) M_PARAM_RW(2) eReturnValues sntl_Translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx);
+    M_PARAM_RO(1)
+    M_PARAM_RW(2)
+    eReturnValues sntl_Translate_SCSI_Command(const tDevice* M_NONNULL device, ScsiIoCtx* M_NONNULL scsiIoCtx);
 
 #if defined(__cplusplus)
 }
