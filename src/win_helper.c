@@ -44,7 +44,6 @@ RESTORE_WARNING_4255
 // #include <setupapi.h> //NOTE: Not available for ARM
 #include <devpkey.h>
 #include <devpropdef.h>
-#include <winbase.h>
 
 #include "ata_helper_func.h"
 #include "common_public.h"
