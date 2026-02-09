@@ -6466,7 +6466,7 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks(ScsiIoCtx* scsiIoCtx);
 static M_INLINE bool is_Reassign_Blocks_LongLBA(uint8_t cdbByte1)
 {
     // if longlba is one, all LBAs are 8bytes long and should use the newer IOCTL for this CDB
-    if ((cdbByte1 & BIT1) == 1)
+    if ((cdbByte1 & BIT1) > 0)
     {
         return true;
     }
