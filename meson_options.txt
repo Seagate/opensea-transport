@@ -8,14 +8,9 @@
 # Description: options for meson.build
 # ---------------------------------------------
 
-#nvme passthrough support. Can be disabled if desrired (why would you?)
-option('nvmept', type : 'feature', value : 'enabled')
-#CSMI support. Mostly used on Windows but some Linux use as well. Adds support for RAID passthrough when CSMI is supported by a driver
-option('csmiraid', type : 'feature', value : 'enabled')
-#CISS support. Mostly affects Linux. No impact to Windows since no known CISS passthrough implemented today.
-option('cissraid', type : 'feature', value : 'enabled')
-#Intel RST Windows passthrough support. No impact to anything other than Windows builds.
-option('irstpt', type : 'feature', value : 'enabled')
-#openfabrics NVMe interface support. No impact to anything other than Windows builds
-option('ofnvme', type : 'feature', value : 'enabled')
+option('nvmept', type : 'feature', value : 'enabled', description : 'Enable or Disable NVMe passthrough support (On by default)')
+option('csmiraid', type : 'feature', value : 'enabled', description : 'Enable or Disable CSMI RAID passthrough support commonly used by Intel motherboards and some others. (On by default)')
+option('cissraid', type : 'feature', value : 'enabled', description : 'Enable or Disable CISS RAID passthrough support commonly used by HP Smart Array controllers. (On by default) - Linux only for now'  )
+option('irstpt', type : 'feature', value : 'enabled', description : 'Enable or Disable Intel RST passthrough support commonly used by Intel Rapid Storage Technology drivers in modern systems with NVMe storage. (On by default)')
+option('ofnvme', type : 'feature', value : 'enabled', description : 'Enable or Disable OpenFabrics NVMe passthrough support in Windows. Most commonly found in Windows 8.1 and earlier. (On by default)')
 option('cc-suggest-attribute', type : 'boolean', value : false, description : 'Enable warnings where the compiler can suggest various attributes to be applied to functions for optimization and correctness.')
