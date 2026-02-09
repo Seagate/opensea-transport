@@ -14,6 +14,7 @@
 
 #include "ata_helper.h"
 #include "common_types.h"
+#include "sata_types.h"
 
 #if defined(__cplusplus)
 extern "C"
