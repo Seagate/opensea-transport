@@ -84,14 +84,20 @@ else ifeq ($(PLATFORM),dragonflybsd)
 
 else ifeq ($(PLATFORM),openbsd)
     # OpenBSD: NetBSD/OpenBSD shared helper (28-bit ATA limitation)
+    # Also needs BSD ATA/SCSI passthrough helpers
     TRANSPORT_SOURCES += \
+        bsd_ata_passthrough.c \
+        bsd_scsi_passthrough.c \
         netbsd_openbsd_helper.c \
         posix_common_lowlevel.c \
         nix_mounts.c
 
 else ifeq ($(PLATFORM),netbsd)
     # NetBSD: NetBSD/OpenBSD shared helper (28-bit ATA limitation)
+    # Also needs BSD ATA/SCSI passthrough helpers
     TRANSPORT_SOURCES += \
+        bsd_ata_passthrough.c \
+        bsd_scsi_passthrough.c \
         netbsd_openbsd_helper.c \
         posix_common_lowlevel.c \
         nix_mounts.c
