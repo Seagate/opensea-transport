@@ -49,7 +49,7 @@ extern "C"
 // This is a bunch of stuff for creating opensea-transport as a dynamic library (DLL in Windows or shared object in
 // linux)
 #if defined(OPENSEA_TRANSPORT_API)
-#    undef(OPENSEA_TRANSPORT_API)
+#    undef OPENSEA_TRANSPORT_API
 #endif
 
 #if defined(EXPORT_OPENSEA_TRANSPORT) && defined(STATIC_OPENSEA_TRANSPORT)
@@ -2113,6 +2113,37 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #define DEFAULT_GET_DEV_FLAGS 0
 
     //-----------------------------------------------------------------------------
+	//
+	//  get_Opensea_Transport_Version_str()
+	//
+	//! \brief   Description:  Get the API version as string. Alternative way is to
+	//                          read OPENSEA_TRANSPORT_VERSION from version.h
+	//
+	//  Entry:
+	//!   \param[out] ver = dest_Version_str string to be filled in.
+	//!
+	//  Exit:
+	//!   \return SUCCESS - dest_Version_str pointer or 0 if something went wrong
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API char* get_Opensea_Transport_Version_str(char* dest_Version_str, size_t dest_len);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Opensea_Transport_Version_str_len()
+	//
+	//! \brief   Description:  Get the API version string lenght needed from version.h
+	//
+	//  Entry:
+	//!   \param[out] none
+	//!
+	//  Exit:
+	//!   \return length of string needed to pass into get_Opensea_Transport_Version_str() including null terminator
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API size_t get_Opensea_Transport_Version_str_len(void);
+
+    //-----------------------------------------------------------------------------
     //
     //  get_Device()
     //
@@ -2839,6 +2870,398 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     // This is exposed for retrying from SAT to Jmicron passthrough - TJE
     M_PARAM_RW(1)
     bool set_JMicron_Legacy_PT_Hacks(tDevice* M_NONNULL device);
+
+    // helper functions to make tDevice structure opaque
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_Struct_size()
+	//
+	//! \brief  Returns tDevice structure size.
+	//
+	//  Entry:
+	//!   \param[in] none
+	//
+	//  Exit:
+	//!   \return size_t size of device struct
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API size_t get_Device_Struct_size(void);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device_Block_Version()
+    //
+    //! \brief  Returns tDevice structure version.
+    //
+    //  Entry:
+    //!   \param[in] none
+    //
+    //  Exit:
+    //!   \return size_t size of device struct
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint32_t get_Device_Block_Version(void);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  initialize_Device_struct()
+    //
+    //! \brief  initializes the tDevice structure to be used with get_Device().
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to the device struct.
+    //!   \param[in] deviceSize = size of device struct.
+    //!   \param[in] blockVersion = device structure version.
+    //
+    //  Exit:
+    //!   \return int SUCCESS if passes !SUCCESS if deviceSize or blockVersion is wrong
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int32_t initialize_Device_struct(tDevice* device, uint32_t deviceSize, uint32_t blockVersion);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_DriveType(tDevice *device)
+	//
+	//! \brief  Returns DriveType from tDevice structure.
+	//
+	//  Entry:
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return enum value for DriveType from device struct
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API eDriveType get_Device_DriveType(const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_BlockSize(tDevice *device)
+	//
+	//! \brief  Returns BlockSize from tDevice structure.
+	//
+	//  Entry:
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return uint32_t value BlockSize from device struct
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API uint32_t get_Device_BlockSize(const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_PhyBlockSize(tDevice *device)
+	//
+	//! \brief  Returns PhyBlockSize from tDevice structure.
+	//
+	//  Entry:
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return uint32_t value PhyBlockSize from device struct
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API uint32_t get_Device_PhyBlockSize(const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_MaxLba(uint64_t* maxLba, tDevice* device)
+	//
+	//! \brief  Returns MaxLba from tDevice structure.
+	//
+	//  Entry:
+	//!   \param[in] maxLba = Pointer to the maxLba variable.
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return int SUCCESS if passes !SUCCESS if maxLba pointer NULL
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_LUN(tDevice *device)
+	//
+	//! \brief  Returns LUN from tDevice structure.
+	//
+	//  Entry:
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return uint32_t value LUN from device struct
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API uint32_t get_Device_LUN(const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_serialNumber(char* dest_serialNumber, tDevice* device)
+	//
+	//! \brief  Returns copy of serialNumber in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] dest_serialNumber = Pointer to the destination array where serialNumber is to be copied.
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return int32_t number of bytes copied.
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int32_t get_Device_serialNumber(char* dest_serialNumber, size_t dest_len, const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_serialNumber_length()
+	//
+	//! \brief  Returns string size of serialNumber string in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] none
+	//
+	//  Exit:
+	//!   \return size_t size of string in device struct.
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API size_t get_Device_serialNumber_length(void);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_T10_vendor_ident(char* dest_T10_vendor_ident, tDevice* device)
+	//
+	//! \brief  Returns copy of T10_vendor_ident in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] dest_serialNumber = Pointer to the destination array where T10_vendor_ident is to be copied.
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return int32_t number of bytes copied.
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int32_t get_Device_T10_vendor_ident(char* dest_T10_vendor_ident, size_t dest_len, const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_T10_vendor_ident_length()
+	//
+	//! \brief  Returns string size of T10_vendor_ident string in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] none
+	//
+	//  Exit:
+	//!   \return size_t size of string in device struct.
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API size_t get_Device_T10_vendor_ident_length(void);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_product_identification(char* dest_product_identification, tDevice* device)
+	//
+	//! \brief  Returns copy of product_identification in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] dest_serialNumber = Pointer to the destination array where product_identification is to be copied.
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return int32_t number of bytes copied.
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int32_t get_Device_product_identification(char* dest_product_identification, size_t dest_len, const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_product_identification_length()
+	//
+	//! \brief  Returns string size of product_identification string in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] none
+	//
+	//  Exit:
+	//!   \return size_t size of string in device struct.
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API size_t get_Device_product_identification_length(void);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_product_revision(char* dest_product_revision, tDevice* device)
+	//
+	//! \brief  Returns copy of product_revision in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] dest_serialNumber = Pointer to the destination array where product_revision is to be copied.
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return int32_t number of bytes copied.
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int32_t get_Device_product_revision(char* dest_product_revision, size_t dest_len, const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_product_revision_length()
+	//
+	//! \brief  Returns string size of product_revision string in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] none
+	//
+	//  Exit:
+	//!   \return size_t size of string in device struct.
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API size_t get_Device_product_revision_length(void);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_worldWideName(uint64_t* worldWideName, tDevice* device)
+	//
+	//! \brief  Returns worldWideName from tDevice structure.
+	//
+	//  Entry:
+	//!   \param[in] worldWideName = Pointer to the worldWideName variable.
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return int SUCCESS if passes !SUCCESS if worldWideName pointer NULL
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int32_t get_Device_worldWideName(uint64_t* worldWideName, const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_lastCommandSenseData(uint8_t* dest_lastCommandSenseData, tDevice* device)
+	//
+	//! \brief  Returns copy of lastCommandSenseData in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] dest_serialNumber = Pointer to the destination array where lastCommandSenseData is to be copied.
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return int32_t number of bytes copied.
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API int32_t get_Device_lastCommandSenseData(uint8_t* dest_lastCommandSenseData, size_t dest_len, const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_lastCommandSenseData_length()
+	//
+	//! \brief  Returns byte size of lastCommandSenseData array in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] none
+	//
+	//  Exit:
+	//!   \return size_t size of byte array in device struct.
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API size_t get_Device_lastCommandSenseData_length(void);
+
+	//-----------------------------------------------------------------------------
+	//
+	//  get_Device_OS_Info_Last_Error(tDevice* device)
+	//
+	//! \brief  Returns OS Info Last Error in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return uint32_t error value
+	//
+	//-----------------------------------------------------------------------------
+	OPENSEA_TRANSPORT_API uint32_t get_Device_OS_Info_Last_Error(const tDevice* device);
+
+	//-----------------------------------------------------------------------------
+    //
+    //  set_Device_Verbosity_Level(int32_t verbosity, tDevice* device)
+    //
+    //! \brief  Sets the verbosity level in the tDevice struct.
+    //!     VERBOSITY_QUIET = 0
+    //!     VERBOSITY_DEFAULT = 1
+    //!     VERBOSITY_COMMAND_NAMES = 2
+    //!     VERBOSITY_COMMAND_VERBOSE = 3
+    //!     VERBOSITY_BUFFERS = 4
+    //
+    //  Entry:
+    //!   \param[in] verbosity = integer with verbosity level
+    //!   \param[in] device = pointer to the device struct.
+    //
+    //  Exit:
+    //!   \return int32_t non zero value if error
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device_os_info_scsiAddress_host(tDevice* device)
+    //
+    //! \brief  Returns os_info scsiAddress host in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return uint8_t os_info scsiAddress host in device struct.
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_host(const tDevice* device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device_os_info_scsiAddress_host(tDevice* device)
+    //
+    //! \brief  Returns os_info scsiAddress channel in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return uint8_t os_info scsiAddress channel in device struct.
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device_os_info_scsiAddress_host(tDevice* device)
+    //
+    //! \brief  Returns os_info scsiAddress target in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return uint8_t os_info scsiAddress target in device struct.
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_target(const tDevice* device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device_os_info_scsiAddress_host(tDevice* device)
+    //
+    //! \brief  Returns os_info scsiAddress lun in tDevice.
+	//
+	//  Entry:
+	//!   \param[in] device = pointer to the device struct.
+	//
+	//  Exit:
+	//!   \return uint8_t os_info scsiAddress lun in device struct.
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* device);
+
 
 #if defined(_DEBUG)
     // This function is more for debugging than anything else!

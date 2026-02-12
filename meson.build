@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-project('opensea-transport', 'c', license: 'MPL-2.0', version: '10.2.0', default_options: ['warning_level=2'])
+project('opensea-transport', 'c', license: 'MPL-2.0', version: '10.2.0', default_options: ['warning_level=2', 'default_library=static'])
 
 c = meson.get_compiler('c')
 
@@ -74,7 +74,6 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         '-Wsequence-point',
         '-Wreturn-type',
         '-Wpointer-bool-conversion',
-        '-fvisibility=hidden',  #to work similarly to Window's DLL import/export
         '-Wmismatched-dealloc',
         '-Wfree-nonheap-object',
         '-fnullability',
@@ -143,7 +142,7 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         warning_flags += ['-mbranch-protection=standard']
     endif
 
-    linker_flags += ['-Wl,-z,nodlopen', '-Wl,-z,noexecstack', '-Wl,-z,relro', '-Wl,-z,now']
+    linker_flags += ['-Wl,-z,noexecstack', '-Wl,-z,relro', '-Wl,-z,now']
 
     fortifytest = ''' #include <stdio.h>
                       int main() {
@@ -406,25 +405,36 @@ elif target_machine.system() == 'windows'
     if ofnvmesupport.enabled()
         add_project_arguments('-DENABLE_OFNVME', language: 'c')
     endif
-    global_cpp_args += ['-D_CRT_NONSTDC_NO_DEPRECATE', '-D_CRT_SECURE_NO_WARNINGS']
-    global_cpp_args += ['-DSTATIC_OPENSEA_TRANSPORT', '-D_UNICODE', '-DUNICODE']
+    global_cpp_args += ['-D_CRT_NONSTDC_NO_DEPRECATE', '-D_CRT_SECURE_NO_WARNINGS', '-D_UNICODE', '-DUNICODE']
 endif  # TODO UEFI and vmware
+
+defaultlib = get_option('default_library')
+
+build_c_args = []
+dep_c_args = []
+
+if defaultlib == 'static'
+    # no additional args required
+elif defaultlib == 'shared'
+    build_c_args += ['-DEXPORT_OPENSEA_TRANSPORT']
+    dep_c_args += ['-DIMPORT_OPENSEA_TRANSPORT']
+else
+    error('Invalid default_library option value for this project. Please set shared or static, but not both: ' + defaultlib)
+endif
 
 opensea_common = subproject('opensea-common')
 opensea_common_dep = opensea_common.get_variable('opensea_common_dep')
 
 incdir = include_directories('include', 'include/vendor')
 
-opensea_transport_lib = static_library(
-    'opensea-transport',
+opensea_transport_lib = library('opensea-transport',
     src_files,
-    c_args: global_cpp_args,
-    dependencies: [opensea_common_dep, os_deps],
-    include_directories: incdir,
-)
-opensea_transport_dep = declare_dependency(
-    link_with: opensea_transport_lib,
-    compile_args: global_cpp_args,
-    dependencies: os_deps,
-    include_directories: incdir,
-)
+    c_args : global_cpp_args + build_c_args,
+    dependencies : [opensea_common_dep, os_deps],
+    include_directories : incdir,
+    gnu_symbol_visibility : 'hidden')
+
+opensea_transport_dep = declare_dependency(link_with : opensea_transport_lib,
+    compile_args : global_cpp_args + dep_c_args,
+    dependencies : os_deps,
+    include_directories : incdir)
