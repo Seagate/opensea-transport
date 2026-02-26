@@ -2265,7 +2265,6 @@ static eReturnValues scsi_Compare(const tDevice* device, uint64_t lba, uint8_t* 
 // When it is not, need to emulate with read and memcmp(like ATA does)
 eReturnValues compare_LBA(const tDevice* device, uint64_t lba, uint8_t* ptrData, uint32_t dataSize)
 {
-    eReturnValues ret = SUCCESS;
     switch (device->drive_info.interface_type)
     {
     case IDE_INTERFACE:
@@ -2303,7 +2302,7 @@ eReturnValues compare_LBA(const tDevice* device, uint64_t lba, uint8_t* ptrData,
     default:
         return generic_Compare(device, lba, ptrData, dataSize);
     }
-    return ret;
+    M_UNREACHABLE();
 }
 
 eReturnValues nvme_Verify_LBA(const tDevice* device, uint64_t lba, uint32_t range)
