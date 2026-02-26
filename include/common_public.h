@@ -2126,7 +2126,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return SUCCESS - dest_Version_str pointer or 0 if something went wrong
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API char* get_Opensea_Transport_Version_str(char* dest_Version_str, size_t dest_len);
+	OPENSEA_TRANSPORT_API char* M_NULLABLE get_Opensea_Transport_Version_str(char* M_NONNULL dest_Version_str, size_t dest_len);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -2917,7 +2917,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return int SUCCESS if passes !SUCCESS if deviceSize or blockVersion is wrong
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int32_t initialize_Device_struct(tDevice* device, uint32_t deviceSize, uint32_t blockVersion);
+    OPENSEA_TRANSPORT_API int32_t initialize_Device_struct(tDevice* M_NONNULL device, uint32_t deviceSize, uint32_t blockVersion);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -2932,7 +2932,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return enum value for DriveType from device struct
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API eDriveType get_Device_DriveType(const tDevice* device);
+	OPENSEA_TRANSPORT_API eDriveType get_Device_DriveType(const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -2947,7 +2947,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return uint32_t value BlockSize from device struct
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API uint32_t get_Device_BlockSize(const tDevice* device);
+	OPENSEA_TRANSPORT_API uint32_t get_Device_BlockSize(const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -2962,7 +2962,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return uint32_t value PhyBlockSize from device struct
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API uint32_t get_Device_PhyBlockSize(const tDevice* device);
+	OPENSEA_TRANSPORT_API uint32_t get_Device_PhyBlockSize(const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -2978,7 +2978,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return int SUCCESS if passes !SUCCESS if maxLba pointer NULL
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device);
+	OPENSEA_TRANSPORT_API int32_t get_Device_MaxLba(uint64_t* M_NONNULL maxLba, const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -2993,7 +2993,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return uint32_t value LUN from device struct
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API uint32_t get_Device_LUN(const tDevice* device);
+	OPENSEA_TRANSPORT_API uint32_t get_Device_LUN(const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -3009,7 +3009,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return int32_t number of bytes copied.
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int32_t get_Device_serialNumber(char* dest_serialNumber, size_t dest_len, const tDevice* device);
+	OPENSEA_TRANSPORT_API int32_t get_Device_serialNumber(char* M_NONNULL dest_serialNumber, size_t dest_len, const tDevice* M_NONNULL evice);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -3040,7 +3040,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return int32_t number of bytes copied.
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int32_t get_Device_T10_vendor_ident(char* dest_T10_vendor_ident, size_t dest_len, const tDevice* device);
+	OPENSEA_TRANSPORT_API int32_t get_Device_T10_vendor_ident(char* M_NONNULL dest_T10_vendor_ident, size_t dest_len, const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -3071,7 +3071,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return int32_t number of bytes copied.
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int32_t get_Device_product_identification(char* dest_product_identification, size_t dest_len, const tDevice* device);
+	OPENSEA_TRANSPORT_API int32_t get_Device_product_identification(char* M_NONNULL dest_product_identification, size_t dest_len, const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -3102,7 +3102,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return int32_t number of bytes copied.
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int32_t get_Device_product_revision(char* dest_product_revision, size_t dest_len, const tDevice* device);
+	OPENSEA_TRANSPORT_API int32_t get_Device_product_revision(char* M_NONNULL dest_product_revision, size_t dest_len, const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -3133,7 +3133,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return int SUCCESS if passes !SUCCESS if worldWideName pointer NULL
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int32_t get_Device_worldWideName(uint64_t* worldWideName, const tDevice* device);
+	OPENSEA_TRANSPORT_API int32_t get_Device_worldWideName(uint64_t* M_NONNULL worldWideName, const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -3149,7 +3149,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return int32_t number of bytes copied.
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API int32_t get_Device_lastCommandSenseData(uint8_t* dest_lastCommandSenseData, size_t dest_len, const tDevice* device);
+	OPENSEA_TRANSPORT_API int32_t get_Device_lastCommandSenseData(uint8_t* M_NONNULL dest_lastCommandSenseData, size_t dest_len, const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
 	//
@@ -3179,7 +3179,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return uint32_t error value
 	//
 	//-----------------------------------------------------------------------------
-	OPENSEA_TRANSPORT_API uint32_t get_Device_OS_Info_Last_Error(const tDevice* device);
+	OPENSEA_TRANSPORT_API uint32_t get_Device_OS_Info_Last_Error(const tDevice* M_NONNULL device);
 
 	//-----------------------------------------------------------------------------
     //
@@ -3200,7 +3200,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \return int32_t non zero value if error
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* device);
+    OPENSEA_TRANSPORT_API int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3215,7 +3215,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return uint8_t os_info scsiAddress host in device struct.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_host(const tDevice* device);
+    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_host(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3230,7 +3230,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return uint8_t os_info scsiAddress channel in device struct.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* device);
+    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3245,7 +3245,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return uint8_t os_info scsiAddress target in device struct.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_target(const tDevice* device);
+    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_target(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3260,7 +3260,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 	//!   \return uint8_t os_info scsiAddress lun in device struct.
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* device);
+    OPENSEA_TRANSPORT_API uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* M_NONNULL device);
 
 
 #if defined(_DEBUG)
