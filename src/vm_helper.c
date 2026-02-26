@@ -117,7 +117,7 @@ static int drive_filter(const struct dirent* entry)
         return driveHandle;
     }
 
-    char* partition = strpbrk(entry->d_name, ":");
+    const char* partition = strpbrk(entry->d_name, ":");
     if (partition != M_NULLPTR)
     {
         return !driveHandle;
@@ -167,13 +167,13 @@ static void get_VMV_SYS_FS_Info(const char* handle, sysVMLowLevelDeviceInfo* sys
     // check if it's a block handle, bsg, or scsi_generic handle, then setup the path we need to read.
     if (handle && sysVmInfo)
     {
-        if (strstr(handle, "t10.ATA") != NULL)
+        if (strstr(handle, "t10.ATA") != M_NULLPTR)
         {
             // set scsi interface and scsi drive until we know otherwise
             sysVmInfo->drive_type     = ATA_DRIVE;
             sysVmInfo->interface_type = IDE_INTERFACE;
         }
-        if (strstr(handle, "naa.") != NULL)
+        if (strstr(handle, "naa.") != M_NULLPTR)
         {
             sysVmInfo->drive_type     = SCSI_DRIVE;
             sysVmInfo->interface_type = SCSI_INTERFACE;
@@ -230,7 +230,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     int                      rc           = 0;
     struct nvme_adapter_list nvmeAdptList;
     bool                     isScsi      = false;
-    char*                    nvmeDevName = M_NULLPTR;
+    const char*                    nvmeDevName = M_NULLPTR;
 
     /**
      * In VMWare NVMe device the drivename (for NDDK)
