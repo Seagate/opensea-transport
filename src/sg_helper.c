@@ -180,7 +180,7 @@ static int sd_filter(const struct dirent* entry)
     {
         return !sdHandle;
     }
-    char* partition = strpbrk(entry->d_name, "0123456789");
+    const char* partition = strpbrk(entry->d_name, "0123456789");
     if (partition != M_NULLPTR)
     {
         return sdHandle;
@@ -593,7 +593,7 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[4] = '/';
     safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
     snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
-    intptr_t newStrLen = strstr(fullPciPath, "/ata") - fullPciPath;
+    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/ata")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0)
     {
         char* pciPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -689,7 +689,7 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[4] = '/';
     safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
     snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
-    intptr_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath;
+    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0)
     {
         char* usbPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -865,7 +865,7 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     safe_memmove(&fullFWPath[5], PATH_MAX - 5, &fullFWPath[6], safe_strlen(fullFWPath));
     snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullFWPath);
     // now we need to go up a few directories to get the modalias file to parse
-    intptr_t newStrLen = strstr(fullFWPath, "/host") - fullFWPath;
+    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullFWPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullFWPath);
     if (newStrLen > 0)
     {
         char* fwPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -938,7 +938,7 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     // printf("/host location string: %s\n", strstr(fullPciPath, "/host"));
     // printf("FULL: %" PRIXPTR "\t/HOST: %" PRIXPTR "\n", C_CAST(uintptr_t, fullPciPath), C_CAST(uintptr_t,
     // strstr(fullPciPath, "/host")));
-    intptr_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath;
+    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0)
     {
         char* pciPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -1175,15 +1175,15 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                         // ../../devices/pci0000:00/0000:00:1c.5/0000:04:00.0/0000:05:09.0/0000:0b:00.0/0000:0c:02.0/fw1/fw1.0/host13/target13:0:0/13:0:0:0/scsi_generic/sg3
                         // example sata over sas device link:
                         // ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:1/end_device-0:1/target0:0:1/0:0:1:0/scsi_generic/sg5
-                        if (strstr(inHandleLink, "ata") != 0)
+                        if (strstr(inHandleLink, "ata"))
                         {
                             get_SYS_FS_ATA_Info(inHandleLink, sysFsInfo);
                         }
-                        else if (strstr(inHandleLink, "usb") != 0)
+                        else if (strstr(inHandleLink, "usb"))
                         {
                             get_SYS_FS_USB_Info(inHandleLink, sysFsInfo);
                         }
-                        else if (strstr(inHandleLink, "fw") != 0)
+                        else if (strstr(inHandleLink, "fw"))
                         {
                             get_SYS_FS_1394_Info(inHandleLink, sysFsInfo);
                         }
@@ -2369,7 +2369,7 @@ static int nvme_filter(const struct dirent* entry)
         {
             return 0;
         }
-        char* partition = strpbrk(entry->d_name, "p");
+        const char* partition = strpbrk(entry->d_name, "p");
         if (partition != M_NULLPTR)
         {
             return nvmeHandle;

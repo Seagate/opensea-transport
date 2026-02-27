@@ -61,7 +61,7 @@ e.g. return c?t?d? from /dev/rdsk/c?t?d?
 */
 static void set_Device_Name(const char* filename, char* name, size_t sizeOfName)
 {
-    char* s = strrchr(filename, '/') + 1;
+    const char* s = strrchr(filename, '/') + 1;
     snprintf_err_handle(name, sizeOfName, "%s", s);
 }
 
@@ -357,7 +357,7 @@ static int uscsi_filter(const struct dirent* entry)
         return !uscsiHandle;
     }
     // now, we need to filter out the device names that have "p"s for the partitions and "s"s for the slices
-    char* partitionOrSlice = strpbrk(entry->d_name, "pPsS");
+    const char* partitionOrSlice = strpbrk(entry->d_name, "pPsS");
     if (partitionOrSlice != M_NULLPTR)
     {
         return 0;

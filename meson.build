@@ -87,6 +87,7 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         '-Wcalloc-transposed-args',
         '-Werror=alloca',  # Do not allow use of the alloca function
         '-Wstring-compare',  # Helps detect when strcmp is used when the programmer likely meant to use strncmp
+        '-Wfortify-source' # Clang specific (at least for now) but enables additional diagnostics.
     ]
 
     if get_option('cc-suggest-attribute')
