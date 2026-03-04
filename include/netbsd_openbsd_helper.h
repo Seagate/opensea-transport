@@ -44,7 +44,7 @@ extern "C"
 
     M_PARAM_RO(1)
     M_PARAM_WO_SIZE(2, 3)
-    eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* pData, uint32_t dataSize);
+    eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataSize);
 
     M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx);
 

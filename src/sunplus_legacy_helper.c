@@ -67,7 +67,7 @@ eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCD
     case XFER_DATA_OUT_IN:
         return BAD_PARAMETER;
     }
-    lowCDB[4]  = ataCommandOptions->dataSize >> 9; // converting to number of 512B blocks
+    lowCDB[4]  = M_STATIC_CAST(uint8_t, ataCommandOptions->dataSize >> 9); // converting to number of 512B blocks
     lowCDB[5]  = ataCommandOptions->tfr.ErrorFeature;
     lowCDB[6]  = ataCommandOptions->tfr.SectorCount;
     lowCDB[7]  = ataCommandOptions->tfr.LbaLow;

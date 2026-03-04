@@ -502,7 +502,7 @@ extern "C"
                                                                  uint32_t                 dataSize);
 
     M_PARAM_RO(1)
-    eReturnValues nvme_Write_Zeroes(const tDevice* M_NONNULL device,
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Write_Zeroes(const tDevice* M_NONNULL device,
                                     uint64_t                 startingLBA,
                                     uint16_t                 numberOfLogicalBlocks,
                                     bool                     limitedRetry,

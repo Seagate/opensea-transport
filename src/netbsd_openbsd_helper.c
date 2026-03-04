@@ -46,7 +46,7 @@ static int rsd_filter(const struct dirent* entry)
     {
         return !daHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -64,7 +64,7 @@ static int rwd_filter(const struct dirent* entry)
     {
         return !adaHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;

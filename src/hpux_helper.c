@@ -449,7 +449,7 @@ static bool is_Persistent_Disk_Handle(const char* filename)
 
 static void set_Device_Name(const char* filename, char* name, size_t sizeOfName)
 {
-    char* s = strrchr(filename, '/') + 1;
+    const char* s = strrchr(filename, '/') + 1;
     (0 != safe_strcpy(name, sizeOfName, s))
     {
         perror("Error setting HPUX device name");
@@ -549,7 +549,7 @@ static int persistentDisk_filter(const struct dirent* entry)
         return !valid;
     }
     // all persistent disks with partitions use an underscore, so easy to filter out.
-    char* partition = strpbrk(entry->d_name, "_");
+    const char* partition = strpbrk(entry->d_name, "_");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -570,7 +570,7 @@ static int legacyDisk_filter(const struct dirent* entry)
     }
     // filter out the "sections" designated with optional s.
     // If this doesn't find ANY disks, then we should catch only section 0 for whole disks.
-    char* partitionOrSlice = strpbrk(entry->d_name, "s");
+    const char* partitionOrSlice = strpbrk(entry->d_name, "s");
     if (partitionOrSlice != M_NULLPTR)
     {
         return 0;

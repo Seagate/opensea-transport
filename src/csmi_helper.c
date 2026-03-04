@@ -4053,7 +4053,7 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename,
     {
         char* end = M_NULLPTR;
         // need to update str pointer as we scan the string, but not actually modifying data
-        char* str = M_CONST_CAST(char*, filename);
+        const char* str = filename;
         if (strstr(filename, "csmi:") == str) // must begin with this
         {
             str += safe_strlen("csmi:");
