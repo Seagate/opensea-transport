@@ -238,7 +238,8 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
             HANDLE handleToUse = device->os_info.fd; // start with this in case of CSMI RAID
             // fill in SRB_IO_HEADER first
             raidFirmwareRequest->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
-            safe_memcpy(raidFirmwareRequest->Header.Signature, 8, INTEL_RAID_FW_SIGNATURE, 8);
+            M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(raidFirmwareRequest->Header.Signature, 8, INTEL_RAID_FW_SIGNATURE, 8),
+                                     "Copying Intel RST NVMe RAID FW signature will never fail");
             raidFirmwareRequest->Header.Timeout = timeoutSeconds;
             if (device->drive_info.defaultTimeoutSeconds > 0 &&
                 device->drive_info.defaultTimeoutSeconds > timeoutSeconds)
@@ -297,9 +298,15 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset =
                     sizeof(SRB_IO_CONTROL) + sizeof(RAID_FIRMWARE_REQUEST_BLOCK);
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferLength = dataRequestLength;
-                safe_memcpy(&raidFirmwareRequest->ioctlBuffer,
-                            allocationSize - sizeof(SRB_IO_CONTROL) - sizeof(RAID_FIRMWARE_REQUEST_BLOCK),
-                            ptrDataRequest, dataRequestLength);
+                if (0 != safe_memcpy(&raidFirmwareRequest->ioctlBuffer,
+                                     allocationSize - sizeof(SRB_IO_CONTROL) - sizeof(RAID_FIRMWARE_REQUEST_BLOCK),
+                                     ptrDataRequest, dataRequestLength))
+                {
+                    perror("Error copying Intel RST NVMe passthrough for data-out\n");
+                    ret = MEMORY_FAILURE;
+                    safe_free_irst_raid_fw_buffer(&raidFirmwareRequest);
+                    return ret;
+                }
             }
 
             if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -310,7 +317,7 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
             // send the command
             DWORD      bytesReturned = DWORD_C(0);
             OVERLAPPED overlappedStruct;
-            safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+            M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
             overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
             if (overlappedStruct.hEvent == M_NULLPTR)
             {
@@ -363,10 +370,14 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
                     // should have completion data here
                     if (readFirmwareInfo && ptrDataRequest)
                     {
-                        safe_memcpy(ptrDataRequest, dataRequestLength,
-                                    C_CAST(uint8_t*, raidFirmwareRequest) +
-                                        raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset,
-                                    dataRequestLength);
+                        if (0 != safe_memcpy(ptrDataRequest, dataRequestLength,
+                                             C_CAST(uint8_t*, raidFirmwareRequest) +
+                                                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset,
+                                             dataRequestLength))
+                        {
+                            perror("Error copying Intel RST NVMe passthrough result\n");
+                            ret = MEMORY_FAILURE;
+                        }
                     }
                     break;
                 case INTEL_FIRMWARE_STATUS_ERROR:
@@ -509,8 +520,14 @@ static eReturnValues internal_Intel_FWDL_Function_Download(const tDevice* device
             download->Slot       = firmwareSlot;
             download->ImageSize  = imageDataLength; // TODO: Not sure if this is supposed to be the same or different
                                                     // from the buffersize listed above
-            safe_memcpy(download->ImageBuffer, allocationSize - sizeof(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2), imagePtr,
-                        imageDataLength);
+            if (0 != safe_memcpy(download->ImageBuffer, allocationSize - sizeof(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2),
+                                 imagePtr, imageDataLength))
+            {
+                perror("Error copying Intel RST firmware download image data\n");
+                ret = MEMORY_FAILURE;
+                safe_free_irst_fwdl(&download);
+                return ret;
+            }
             ret = intel_RAID_FW_Request(device, download, allocationSize, timeoutSeconds,
                                         INTEL_FIRMWARE_FUNCTION_DOWNLOAD, flags, false, returnCode);
             safe_free_irst_fwdl(&download);
@@ -730,7 +747,9 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
         {
             // setup the header (SRB_IO_CONTROL) first
             nvmPassthroughCommand->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
-            safe_memcpy(nvmPassthroughCommand->Header.Signature, 8, INTELNVM_SIGNATURE, 8);
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memcpy(nvmPassthroughCommand->Header.Signature, 8, INTELNVM_SIGNATURE, 8),
+                "Copying Intel RST NVMe passthrough signature will never fail as source and dest are the same size");
             nvmPassthroughCommand->Header.Timeout = nvmeIoCtx->timeout;
             if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
                 nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
@@ -807,7 +826,14 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
             switch (nvmeIoCtx->commandDirection)
             {
             case XFER_DATA_OUT:
-                safe_memcpy(nvmPassthroughCommand->data, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+                if (0 != safe_memcpy(nvmPassthroughCommand->data, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData,
+                                     nvmeIoCtx->dataSize))
+                {
+                    perror("Error copying Intel RST NVMe passthrough data for data-out command\n");
+                    ret = MEMORY_FAILURE;
+                    safe_free_irst_nvme_passthrough(&nvmPassthroughCommand);
+                    return ret;
+                }
                 M_FALLTHROUGH;
             case XFER_DATA_IN:
                 // set the data length and offset
@@ -827,7 +853,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
             }
             DWORD      bytesReturned = DWORD_C(0);
             OVERLAPPED overlappedStruct;
-            safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+            M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
             overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
             if (overlappedStruct.hEvent == M_NULLPTR)
             {
@@ -869,8 +895,12 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
                     // if(nvmPassthroughCommand->Header.ReturnCode)
                     if (nvmeIoCtx->commandDirection == XFER_DATA_IN && nvmeIoCtx->ptrData)
                     {
-                        safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, nvmPassthroughCommand->data,
-                                    nvmeIoCtx->dataSize);
+                        if (0 != safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, nvmPassthroughCommand->data,
+                                             nvmeIoCtx->dataSize))
+                        {
+                            perror("Error coping Intel RST NVMe passthrough result\n");
+                            ret = MEMORY_FAILURE;
+                        }
                     }
                     // copy completion data
                     nvmeIoCtx->commandCompletionData.dw0Valid = true;

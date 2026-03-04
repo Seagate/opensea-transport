@@ -1807,6 +1807,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                                                       OS_SECOND_HANDLE_NAME_LENGTH),
                                          "This should always fit within this buffer.");
             }
+#else
+        M_USE_UNUSED(friendlyName);
 #endif
             // TODO: Make second handles available for all systems since this can come in handy  and make everything
             // easier to manage.

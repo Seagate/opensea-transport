@@ -5663,11 +5663,18 @@ eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
                                                             // documentation
                                                             //\\.\SCSI?: number is needed in windows, this is the
                                                             // controllerNumber in Windows.
-                                                            snprintf_err_handle(handle, RAID_HANDLE_STRING_MAX_LEN,
-                                                                                "csmi:%" CPRIu8 ":N:%" CPRIu8
-                                                                                ":%" CPRIu8 ":%" CPRIu8,
-                                                                                controllerNumber, path, target, lun);
-                                                            foundDevice = true;
+                                                            if (0 > snprintf_err_handle(
+                                                                        handle, RAID_HANDLE_STRING_MAX_LEN,
+                                                                        "csmi:%" CPRIu8 ":N:%" CPRIu8 ":%" CPRIu8
+                                                                        ":%" CPRIu8,
+                                                                        controllerNumber, path, target, lun))
+                                                            {
+                                                                perror("Error formatting CSMI Raid handle string\n");
+                                                            }
+                                                            else
+                                                            {
+                                                                foundDevice = true;
+                                                            }
 #        if defined(CSMI_DEBUG)
                                                             printf(
                                                                 "GDL: Intel NVMe detected, setting up handle as %s\n",

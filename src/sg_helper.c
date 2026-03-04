@@ -620,7 +620,8 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     {
         return;
     }
-    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/ata")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/ata")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0)
     {
         char* pciPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -746,7 +747,8 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     {
         return;
     }
-    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0 && M_STATIC_CAST(rsize_t, newStrLen) < RSIZE_MAX)
     {
         char* usbPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -961,7 +963,8 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
         return;
     }
     // now we need to go up a few directories to get the modalias file to parse
-    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullFWPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullFWPath);
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullFWPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullFWPath);
     if (newStrLen > 0)
     {
         char* fwPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -1056,7 +1059,8 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     // printf("/host location string: %s\n", strstr(fullPciPath, "/host"));
     // printf("FULL: %" PRIXPTR "\t/HOST: %" PRIXPTR "\n", C_CAST(uintptr_t, fullPciPath), C_CAST(uintptr_t,
     // strstr(fullPciPath, "/host")));
-    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0 && M_STATIC_CAST(rsize_t, newStrLen) < RSIZE_MAX)
     {
         char* pciPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));

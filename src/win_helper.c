@@ -578,13 +578,21 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                 if (scsicmRet == CR_SUCCESS && scsiIdListLen > 0 && scsiListBuff)
                 {
                     cmRet = CR_SUCCESS; // set the status as SUCCESS, as we have list of SCSI drives to use later
-                    safe_memcpy(&listBuffer[copyOffset], deviceIdListLen - copyOffset, scsiListBuff, scsiIdListLen);
+                    if (safe_memcpy(&listBuffer[copyOffset], deviceIdListLen - copyOffset, scsiListBuff,
+                                    scsiIdListLen) != 0)
+                    {
+                        ret = MEMORY_FAILURE;
+                    }
                     copyOffset += scsiIdListLen - 1;
                 }
                 if (usbcmRet == CR_SUCCESS && usbIdListLen > 0 && usbListBuff)
                 {
                     cmRet = CR_SUCCESS; // set the status as SUCCESS, as we have list of USB drives to use later
-                    safe_memcpy(&listBuffer[copyOffset], deviceIdListLen - copyOffset, usbListBuff, usbIdListLen);
+                    if (safe_memcpy(&listBuffer[copyOffset], deviceIdListLen - copyOffset, usbListBuff, usbIdListLen) !=
+                        0)
+                    {
+                        ret = MEMORY_FAILURE;
+                    }
                     copyOffset += usbIdListLen - 1;
                 }
                 // add other lists here and offset them as needed
@@ -656,8 +664,7 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                         // the parent device ID. This will contain the USB VID/PID and PCI Vendor,
                                         // product, and revision numbers.
                                         STORAGE_DEVICE_NUMBER deviceNumber;
-                                        safe_memset(&deviceNumber, sizeof(STORAGE_DEVICE_NUMBER), 0,
-                                                    sizeof(STORAGE_DEVICE_NUMBER));
+                                        M_INITIALIZE_STRUCTURE(&deviceNumber, sizeof(STORAGE_DEVICE_NUMBER));
                                         DWORD returnedDataSize = DWORD_C(0);
                                         if (MSFT_BOOL_TRUE(DeviceIoControl(
                                                 deviceHandle, IOCTL_STORAGE_GET_DEVICE_NUMBER, M_NULLPTR, 0,
@@ -2761,14 +2768,20 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                         propertyBufLen &&
                                                                                     wcslen(property))
                                                                                 {
-                                                                                    snprintf_err_handle(
-                                                                                        device->drive_info.driver_info
-                                                                                            .driverName,
-                                                                                        MAX_DRIVER_NAME, "%ls",
-                                                                                        property); // this should
-                                                                                                   // convert the driver
-                                                                                                   // name to ascii
-                                                                                                   // string.-TJE
+                                                                                    if (0 >
+                                                                                        snprintf_err_handle(
+                                                                                            device->drive_info
+                                                                                                .driver_info.driverName,
+                                                                                            MAX_DRIVER_NAME, "%ls",
+                                                                                            property)) // this should
+                                                                                    // convert the driver
+                                                                                    // name to ascii
+                                                                                    // string.-TJE
+                                                                                    {
+                                                                                        perror(
+                                                                                            "Error converting driver "
+                                                                                            "name to ASCII string");
+                                                                                    }
                                                                                 }
                                                                             }
                                                                         }
@@ -2824,11 +2837,18 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                         propertyBufLen &&
                                                                                     wcslen(property))
                                                                                 {
-                                                                                    snprintf_err_handle(
-                                                                                        device->drive_info.driver_info
-                                                                                            .driverVersionString,
-                                                                                        MAX_DRIVER_VER_STR, "%ls",
-                                                                                        property);
+                                                                                    if (0 >
+                                                                                        snprintf_err_handle(
+                                                                                            device->drive_info
+                                                                                                .driver_info
+                                                                                                .driverVersionString,
+                                                                                            MAX_DRIVER_VER_STR, "%ls",
+                                                                                            property))
+                                                                                    {
+                                                                                        perror(
+                                                                                            "Error formatting driver "
+                                                                                            "version string\n");
+                                                                                    }
 #if defined(HAVE_MSFT_SECURE_LIB)
                                                                                     int scanfRet = swscanf_s(
                                                                                         property, L"%u.%u.%u.%u",
@@ -2942,7 +2962,7 @@ static M_INLINE uint32_t win_dummy_nvme_status(uint8_t sct, uint8_t sc)
     return (M_STATIC_CAST(uint32_t, sct) << 25) | (M_STATIC_CAST(uint32_t, sc) << 17);
 }
 
-#define WIN_DUMMY_NVME_STATUS(sct, sc) win_dummy_nvme_status(sct, sc);
+#define WIN_DUMMY_NVME_STATUS(sct, sc) win_dummy_nvme_status(sct, sc)
 
 #if WINVER >= SEA_WIN32_WINNT_WINBLUE && defined(IOCTL_SCSI_MINIPORT_FIRMWARE)
 static void print_Firmware_Miniport_SRB_Status(ULONG returnCode)
@@ -3064,7 +3084,9 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
     // First fill out the srb header and firmware request block since these are common for all requests.
     srbControl               = C_CAST(PSRB_IO_CONTROL, buffer);
     srbControl->HeaderLength = sizeof(SRB_IO_CONTROL);
-    safe_memcpy(srbControl->Signature, 8, IOCTL_MINIPORT_SIGNATURE_FIRMWARE, 8);
+    M_IGNORE_SAFE_ERRNO_CALL(
+        safe_memcpy(srbControl->Signature, 8, IOCTL_MINIPORT_SIGNATURE_FIRMWARE, 8),
+        "Coping Miniport SRB signature will never fail as destination and source are the same length");
     if (timeoutSeconds == 0)
     {
         srbControl->Timeout = DEFAULT_COMMAND_TIMEOUT * 2;
@@ -3086,8 +3108,14 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
     firmwareRequest->DataBufferLength = bufferSize - firmwareRequestDataOffset;
 
     // now copy the request to the proper offset in the buffer
-    safe_memcpy(buffer + firmwareRequestDataOffset, bufferSize - firmwareRequestDataOffset, ptrDataRequest,
-                dataRequestLength);
+    if (0 != safe_memcpy(buffer + firmwareRequestDataOffset, bufferSize - firmwareRequestDataOffset, ptrDataRequest,
+                         dataRequestLength))
+    {
+        perror("Error copying firmware info\n");
+        ret = MEMORY_FAILURE;
+        safe_free_aligned(&buffer);
+        return ret;
+    }
 
     DECLARE_SEATIMER(commandTimer);
     ULONG      returnedLength = ULONG_C(0);
@@ -3130,8 +3158,12 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
         {
             // request was to read the firmware info, so copy this out to the buffer for the calling function to deal
             // with - TJE
-            safe_memcpy(ptrDataRequest, dataRequestLength, buffer + firmwareRequestDataOffset,
-                        M_Min(dataRequestLength, bufferSize - firmwareRequestDataOffset));
+            if (0 != safe_memcpy(ptrDataRequest, dataRequestLength, buffer + firmwareRequestDataOffset,
+                                 M_Min(dataRequestLength, bufferSize - firmwareRequestDataOffset)))
+            {
+                perror("Error copying firmware info\n");
+                ret = MEMORY_FAILURE;
+            }
         }
         ret = SUCCESS;
         if (returnCode != M_NULLPTR)
@@ -3762,8 +3794,12 @@ static eReturnValues dummy_Up_SCSI_Sense_FWDL(ScsiIoCtx* scsiIoCtx, ULONG return
     }
 
     // copy back based on allocated length
-    safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, localSense,
-                M_Min(SPC3_SENSE_LEN, scsiIoCtx->senseDataSize));
+    if (0 != safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, localSense,
+                         M_Min(SPC3_SENSE_LEN, scsiIoCtx->senseDataSize)))
+    {
+        perror("Error copying sense data\n");
+        return MEMORY_FAILURE;
+    }
     return ret;
 }
 
@@ -3829,7 +3865,13 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
             }
 
             // copy the image to ImageBuffer
-            safe_memcpy(firmwareDownload->ImageBuffer, scsiIoCtx->dataLength, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+            if (0 != safe_memcpy(firmwareDownload->ImageBuffer, scsiIoCtx->dataLength, scsiIoCtx->pdata,
+                                 scsiIoCtx->dataLength))
+            {
+                perror("Error copying firmware image for SCSI Win 10 download\n");
+                safe_free_firmwaredownloadv2(&firmwareDownload);
+                return MEMORY_FAILURE;
+            }
             // setup any flags
 #        if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
             if (scsiIoCtx->fwdlLastSegment)
@@ -3907,8 +3949,13 @@ static eReturnValues win_FW_Download_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
                 }
 
                 // copy the image to ImageBuffer
-                safe_memcpy(firmwareDownload->ImageBuffer, scsiIoCtx->dataLength, scsiIoCtx->pdata,
-                            scsiIoCtx->dataLength);
+                if (0 != safe_memcpy(firmwareDownload->ImageBuffer, scsiIoCtx->dataLength, scsiIoCtx->pdata,
+                                     scsiIoCtx->dataLength))
+                {
+                    perror("Error copying firmware image for SCSI Win 8.1 download\n");
+                    safe_free_firmwaredownload(&firmwareDownload);
+                    return MEMORY_FAILURE;
+                }
                 // no other flags to setup since 8.1 only had "controller" flag and existing slot flag (which only
                 // affects activate) Issue the minport IOCTL
                 ret = send_Win_Firmware_Miniport_Command(
@@ -4186,7 +4233,13 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIo
                                                     // command in the NVMe spec - TJE
 
             // copy the image to ImageBuffer
-            safe_memcpy(firmwareDownload->ImageBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            if (0 != safe_memcpy(firmwareDownload->ImageBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData,
+                                 nvmeIoCtx->dataSize))
+            {
+                perror("Error copying firmware image for NVMe Win 8.1 download\n");
+                safe_free_firmwaredownloadv2(&firmwareDownload);
+                return MEMORY_FAILURE;
+            }
             // setup any flags
 #        if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
             if (nvmeIoCtx->fwdlLastSegment)
@@ -4240,8 +4293,13 @@ static eReturnValues send_Win_NVME_Firmware_Miniport_Download(nvmeCmdCtx* nvmeIo
                     << 2; // add one since this is zeroes based then multiply by 4 to convert words to bytes
 
                 // copy the image to ImageBuffer
-                safe_memcpy(firmwareDownload->ImageBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData,
-                            nvmeIoCtx->dataSize);
+                if (0 != safe_memcpy(firmwareDownload->ImageBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData,
+                                     nvmeIoCtx->dataSize))
+                {
+                    perror("Error copying firmware image for NVMe Win 8.1 download\n");
+                    safe_free_firmwaredownload(&firmwareDownload);
+                    return MEMORY_FAILURE;
+                }
                 // no other flags to setup since 8.1 only had "controller" flag and existing slot flag (which only
                 // affects activate) Issue the minport IOCTL
                 ret = send_Win_Firmware_Miniport_Command(
@@ -4393,8 +4451,12 @@ static eReturnValues open_SCSI_SRB_Handle(tDevice* device)
         // open the SCSI SRB handle
         DECLARE_ZERO_INIT_ARRAY(TCHAR, scsiDeviceName, WIN_MAX_DEVICE_NAME_LENGTH);
         TCHAR* ptrSCSIDeviceName = &scsiDeviceName[0];
-        _stprintf_s(scsiDeviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs%d:"), WIN_SCSI_SRB,
-                    device->os_info.scsi_addr.PortNumber);
+        if (0 > _stprintf_s(scsiDeviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs%d:"), WIN_SCSI_SRB,
+                            device->os_info.scsi_addr.PortNumber))
+        {
+            perror("Error formatting SCSI device name in open_SCSI_SRB_Handle\n");
+            return MEMORY_FAILURE;
+        }
         device->os_info.scsiSRBHandle = CreateFile(ptrSCSIDeviceName,
                                                    /* We are reverting to the GENERIC_WRITE | GENERIC_READ because
                                                       in the use case of a dll where multiple applications are using
@@ -4449,7 +4511,7 @@ static eReturnValues win_Get_Property_Data(HANDLE              deviceHandle,
         STORAGE_PROPERTY_QUERY query;
         BOOL                   success      = FALSE;
         DWORD                  returnedData = DWORD_C(0);
-        safe_memset(&query, sizeof(STORAGE_PROPERTY_QUERY), 0, sizeof(STORAGE_PROPERTY_QUERY));
+        M_INITIALIZE_STRUCTURE(&query, sizeof(STORAGE_PROPERTY_QUERY));
         query.PropertyId = propertyID;
         query.QueryType  = PropertyStandardQuery;
         success = DeviceIoControl(deviceHandle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(STORAGE_PROPERTY_QUERY),
@@ -4474,7 +4536,7 @@ static bool storage_Property_Exists(HANDLE deviceHandle, STORAGE_PROPERTY_ID pro
 {
     bool                      exists = false;
     STORAGE_DESCRIPTOR_HEADER header;
-    safe_memset(&header, sizeof(STORAGE_DESCRIPTOR_HEADER), 0, sizeof(STORAGE_DESCRIPTOR_HEADER));
+    M_INITIALIZE_STRUCTURE(&header, sizeof(STORAGE_DESCRIPTOR_HEADER));
     if (SUCCESS == win_Get_Property_Data(deviceHandle, propertyID, &header, sizeof(STORAGE_DESCRIPTOR_HEADER)))
     {
         if (header.Size > 0)
@@ -4833,7 +4895,7 @@ static eReturnValues win_Get_Drive_Geometry(HANDLE devHandle, PDISK_GEOMETRY* ge
         *geom = M_REINTERPRET_CAST(PDISK_GEOMETRY, safe_malloc(diskGeomSize));
         if (*geom)
         {
-            safe_memset(*geom, diskGeomSize, 0, diskGeomSize);
+            M_INITIALIZE_STRUCTURE(*geom, diskGeomSize);
             if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, M_NULLPTR, 0, *geom,
                                                diskGeomSize, &bytesReturned, M_NULLPTR)))
             {
@@ -4964,7 +5026,7 @@ static eReturnValues win_Get_Drive_Geometry_Ex(HANDLE                devHandle,
         *geom = M_REINTERPRET_CAST(PDISK_GEOMETRY_EX, safe_malloc(diskGeomSize));
         if (*geom)
         {
-            safe_memset(*geom, diskGeomSize, 0, diskGeomSize);
+            M_INITIALIZE_STRUCTURE(*geom, diskGeomSize);
             if (MSFT_BOOL_TRUE(DeviceIoControl(devHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, M_NULLPTR, 0, *geom,
                                                diskGeomSize, &bytesReturned, M_NULLPTR)))
             {
@@ -5123,7 +5185,11 @@ static eReturnValues open_Win_Handle(const char* M_NONNULL filename, tDevice* M_
     DWORD access = GENERIC_WRITE | GENERIC_READ; // FILE_ALL_ACCESS,
     DECLARE_ZERO_INIT_ARRAY(TCHAR, device_name, WIN_MAX_DEVICE_NAME_LENGTH);
     TCHAR* ptrDeviceName = &device_name[0];
-    _stprintf_s(device_name, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), filename);
+    if (0 > _stprintf_s(device_name, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), filename))
+    {
+        perror("Error formatting device name in open_Win_Handle\n");
+        return MEMORY_FAILURE;
+    }
 
     if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
     {
@@ -5228,7 +5294,8 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
 
         device->os_info.scsiSRBHandle = INVALID_HANDLE_VALUE; // set this to invalid ahead of anywhere that it might get
                                                               // opened below for discovering additional capabilities.
-        DECLARE_ZERO_INIT_ARRAY(char, tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        DECLARE_ZERO_INIT_ARRAY(char, tempFriendlyNameBuf, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        char* tempFriendlyName = &tempFriendlyNameBuf[0];
 
         if (strstr(device->os_info.name, WIN_PHYSICAL_DRIVE))
         {
@@ -5238,7 +5305,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             {
                 return FAILURE;
             }
-            if (0 > snprintf_err_handle(&tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "PD%lu", drive))
+            if (0 > snprintf_err_handle(tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "PD%lu", drive))
             {
                 perror("Truncated Physical Device Name");
             }
@@ -5252,7 +5319,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             {
                 return FAILURE;
             }
-            if (0 > snprintf_err_handle(&tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CDROM%lu", drive))
+            if (0 > snprintf_err_handle(tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CDROM%lu", drive))
             {
                 perror("Truncated CDROM Device Name");
             }
@@ -5266,7 +5333,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             {
                 return FAILURE;
             }
-            if (0 > snprintf_err_handle(&tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "TAPE%lu", drive))
+            if (0 > snprintf_err_handle(tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "TAPE%lu", drive))
             {
                 perror("Truncated Tape Device Name");
             }
@@ -5280,7 +5347,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             {
                 return FAILURE;
             }
-            if (0 > snprintf_err_handle(&tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%lu", drive))
+            if (0 > snprintf_err_handle(tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%lu", drive))
             {
                 perror("Truncated Changer Device Name");
             }
@@ -5310,7 +5377,11 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                 // a volume with this letter exists...check it's physical device number
                 DECLARE_ZERO_INIT_ARRAY(TCHAR, volume_name, MAX_VOL_STR_LEN);
                 TCHAR* ptrLetterName = &volume_name[0];
-                _sntprintf_s(ptrLetterName, MAX_VOL_STR_LEN, _TRUNCATE, TEXT("\\\\.\\%c:"), currentLetter);
+                if (0 > _sntprintf_s(ptrLetterName, MAX_VOL_STR_LEN, _TRUNCATE, TEXT("\\\\.\\%c:"), currentLetter))
+                {
+                    perror("Error formatting volume name in get device\n");
+                    continue;
+                }
                 HANDLE letterHandle = CreateFile(ptrLetterName, GENERIC_WRITE | GENERIC_READ,
                                                  FILE_SHARE_READ | FILE_SHARE_WRITE, M_NULLPTR, OPEN_EXISTING,
                                                  // #if !defined(WINDOWS_DISABLE_OVERLAPPED)
@@ -5330,7 +5401,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                     diskExtents = M_REINTERPRET_CAST(PVOLUME_DISK_EXTENTS, safe_malloc(diskExtentsSizeBytes));
                     if (diskExtents != M_NULLPTR)
                     {
-                        safe_memset(diskExtents, diskExtentsSizeBytes, 0, diskExtentsSizeBytes);
+                        M_INITIALIZE_STRUCTURE(diskExtents, diskExtentsSizeBytes);
                         if (MSFT_BOOL_TRUE(DeviceIoControl(letterHandle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,
                                                            M_NULLPTR, 0, diskExtents, diskExtentsSizeBytes,
                                                            &returnedBytes, M_NULLPTR)))
@@ -6106,7 +6177,6 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
     }
     // Just in case we bailed out in any way.
     set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
-    ;
 
     // printf("%s <--\n",__FUNCTION__);
     return ret; // if we didn't get to fill_In_Device_Info FAILURE
@@ -6188,7 +6258,12 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
     uint32_t found = UINT32_C(0);
     for (driveNumber = 0; driveNumber < MAX_DEVICES_TO_SCAN; ++driveNumber)
     {
-        _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%u"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
+        if (0 >
+            _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%u"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber))
+        {
+            perror("Error formatting device name in get device count\n");
+            continue;
+        }
         // lets try to open the device.
         fd = CreateFile(deviceName,
                         GENERIC_WRITE | GENERIC_READ, // FILE_ALL_ACCESS,
@@ -6216,16 +6291,20 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
                     // get the SCSI address for this device and save it to the RAID handle list so it can be scanned for
                     // additional types of RAID interfaces.
                     SCSI_ADDRESS scsiAddress;
-                    safe_memset(&scsiAddress, sizeof(SCSI_ADDRESS), 0, sizeof(SCSI_ADDRESS));
+                    M_INITIALIZE_STRUCTURE(&scsiAddress, sizeof(SCSI_ADDRESS));
                     if (SUCCESS == win_Get_SCSI_Address(fd, &scsiAddress))
                     {
                         DECLARE_ZERO_INIT_ARRAY(char, raidHandle, RAID_HANDLE_STRING_MAX_LEN);
                         raidTypeHint raidHint;
-                        safe_memset(&raidHint, sizeof(raidTypeHint), 0, sizeof(raidTypeHint));
+                        M_INITIALIZE_STRUCTURE(&raidHint, sizeof(raidTypeHint));
                         raidHint.unknownRAID = true; // TODO: Look up driver name to set hint instead of unknown to
                                                      // prevent excess IOCTLs being sent from retries.
-                        snprintf_err_handle(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":",
-                                            scsiAddress.PortNumber);
+                        if (0 > snprintf_err_handle(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":",
+                                                    scsiAddress.PortNumber))
+                        {
+                            perror("Error formatting RAID handle in get device list\n");
+                            continue;
+                        }
                         if (VERBOSITY_COMMAND_NAMES <= winCountVerbosity)
                         {
                             printf("Adding SCSI port handle to RAID list to check for compatible devices: %s\n",
@@ -6340,7 +6419,12 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
         for (driveNumber = 0; ((driveNumber < MAX_DEVICES_TO_SCAN) && (found < numberOfDevices) && found < totalDevs);
              driveNumber++)
         {
-            _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE), driveNumber);
+            if (0 > _stprintf_s(deviceName, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%s%d"), TEXT(WIN_PHYSICAL_DRIVE),
+                                driveNumber))
+            {
+                perror("Error formatting Windows handle before opening in get device list\n");
+                continue;
+            }
             // lets try to open the device.
             fd = CreateFile(deviceName,
                             GENERIC_WRITE | GENERIC_READ, // FILE_ALL_ACCESS,
@@ -6354,9 +6438,14 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             if (fd != INVALID_HANDLE_VALUE)
             {
                 CloseHandle(fd);
-                snprintf_err_handle(name, WIN_MAX_DEVICE_NAME_LENGTH, "%s%d", WIN_PHYSICAL_DRIVE, driveNumber);
+                if (0 > snprintf_err_handle(name, WIN_MAX_DEVICE_NAME_LENGTH, "%s%d", WIN_PHYSICAL_DRIVE, driveNumber))
+                {
+                    perror("Error formatting device name in get device list\n");
+                    continue;
+                }
                 eVerbosityLevels temp = d->deviceVerbosity;
-                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
+                M_IGNORE_SAFE_ERRNO_CALL(safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice)),
+                                         "Always clearing tDevice for exact size so never fails");
                 d->deviceVerbosity = temp;
                 d->sanity.size     = ver.size;
                 d->sanity.version  = ver.version;
@@ -6376,7 +6465,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                             // get the SCSI address for this device and save it to the RAID handle list so it can be
                             // scanned for additional types of RAID interfaces.
                             SCSI_ADDRESS scsiAddress;
-                            safe_memset(&scsiAddress, sizeof(SCSI_ADDRESS), 0, sizeof(SCSI_ADDRESS));
+                            M_INITIALIZE_STRUCTURE(&scsiAddress, sizeof(SCSI_ADDRESS));
                             if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                             {
                                 printf("Detected RAID adapter for %s\n", name);
@@ -6385,11 +6474,15 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                             {
                                 DECLARE_ZERO_INIT_ARRAY(char, raidHandle, RAID_HANDLE_STRING_MAX_LEN);
                                 raidTypeHint raidHint;
-                                safe_memset(&raidHint, sizeof(raidTypeHint), 0, sizeof(raidTypeHint));
+                                M_INITIALIZE_STRUCTURE(&raidHint, sizeof(raidTypeHint));
                                 raidHint.unknownRAID = true; // TODO: Look up driver name to set hint instead of unknown
                                                              // to prevent excess IOCTLs being sent from retries.
-                                snprintf_err_handle(raidHandle, RAID_HANDLE_STRING_MAX_LEN, "\\\\.\\SCSI%" PRIu8 ":",
-                                                    scsiAddress.PortNumber);
+                                if (0 > snprintf_err_handle(raidHandle, RAID_HANDLE_STRING_MAX_LEN,
+                                                            "\\\\.\\SCSI%" PRIu8 ":", scsiAddress.PortNumber))
+                                {
+                                    perror("Error formatting RAID handle in get device list\n");
+                                    continue;
+                                }
                                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                                 {
                                     printf("Adding %s to RAID handle list to scan for compatible devices\n",
@@ -6719,7 +6812,11 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoC
         }
     }
     psptd->scsiPassThroughEX.SenseInfoOffset = offsetof(scsiPassThroughEXIOStruct, senseBuffer);
-    safe_memcpy(psptd->scsiPassThroughEX.Cdb, CDB_LEN_32, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+    if (0 != safe_memcpy(psptd->scsiPassThroughEX.Cdb, CDB_LEN_32, scsiIoCtx->cdb, scsiIoCtx->cdbLength))
+    {
+        ret = MEMORY_FAILURE;
+        perror("Error copying CDB to SCSI Pass Through EX structure\n");
+    }
     return ret;
 }
 
@@ -6757,8 +6854,14 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
             // need to copy the data we're sending to the device over!
             if (scsiIoCtx->pdata)
             {
-                safe_memcpy(sptdioEx->dataOutBuffer, DOUBLE_BUFFERED_MAX_TRANSFER_SIZE, scsiIoCtx->pdata,
-                            scsiIoCtx->dataLength);
+                if (0 != safe_memcpy(sptdioEx->dataOutBuffer, DOUBLE_BUFFERED_MAX_TRANSFER_SIZE, scsiIoCtx->pdata,
+                                     scsiIoCtx->dataLength))
+                {
+                    ret = MEMORY_FAILURE;
+                    perror("Error copying data to SCSI Pass Through EX structure\n");
+                    safe_free_SCSIPassthroughEx(&sptdioEx);
+                    return ret;
+                }
             }
             sptBufInLen += scsiIoCtx->dataLength;
             break;
@@ -6797,7 +6900,12 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
             ret = SUCCESS; // setting to zero to be compatible with linux
             if (scsiIoCtx->pdata && scsiIoCtx->direction == XFER_DATA_IN)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, sptdioEx->dataInBuffer, scsiIoCtx->dataLength);
+                if (0 !=
+                    safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, sptdioEx->dataInBuffer, scsiIoCtx->dataLength))
+                {
+                    ret = MEMORY_FAILURE;
+                    perror("Error copying data from SCSI Pass Through EX structure\n");
+                }
             }
         }
         else
@@ -6825,8 +6933,12 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
         // Any sense data?
         if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0)
         {
-            safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &sptdioEx->senseBuffer[0],
-                        M_Min(sptdioEx->scsiPassThroughEX.SenseInfoLength, scsiIoCtx->senseDataSize));
+            if (0 != safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &sptdioEx->senseBuffer[0],
+                                 M_Min(sptdioEx->scsiPassThroughEX.SenseInfoLength, scsiIoCtx->senseDataSize)))
+            {
+                ret = MEMORY_FAILURE;
+                perror("Error coping sense data after SCSI Passthrough EX\n");
+            }
         }
 
         if (scsiIoCtx->psense != M_NULLPTR)
@@ -6862,8 +6974,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* 
                                                                      uint8_t*                     alignedPointer)
 {
     eReturnValues ret = SUCCESS;
-    safe_memset(&psptd->scsiPassThroughEXDirect, sizeof(SCSI_PASS_THROUGH_DIRECT_EX), 0,
-                sizeof(SCSI_PASS_THROUGH_DIRECT_EX));
+    M_INITIALIZE_STRUCTURE(&psptd->scsiPassThroughEXDirect, sizeof(SCSI_PASS_THROUGH_DIRECT_EX));
     psptd->scsiPassThroughEXDirect.Version           = 0; // MSDN says set this to zero
     psptd->scsiPassThroughEXDirect.Length            = sizeof(SCSI_PASS_THROUGH_DIRECT_EX);
     psptd->scsiPassThroughEXDirect.CdbLength         = scsiIoCtx->cdbLength;
@@ -6939,7 +7050,11 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* 
         }
     }
     psptd->scsiPassThroughEXDirect.SenseInfoOffset = offsetof(scsiPassThroughEXIOStruct, senseBuffer);
-    safe_memcpy(psptd->scsiPassThroughEXDirect.Cdb, CDB_LEN_32, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
+    if (0 != safe_memcpy(psptd->scsiPassThroughEXDirect.Cdb, CDB_LEN_32, scsiIoCtx->cdb, scsiIoCtx->cdbLength))
+    {
+        ret = MEMORY_FAILURE;
+        perror("Error copying CDB to SCSI Pass Through EX Direct structure\n");
+    }
     return ret;
 }
 
@@ -6958,7 +7073,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
         return MEMORY_FAILURE;
     }
     DECLARE_SEATIMER(commandTimer);
-    safe_memset(sptdio, sizeof(scsiPassThroughEXIOStruct), 0, sizeof(scsiPassThroughEXIOStruct));
+    M_INITIALIZE_STRUCTURE(sptdio, sizeof(scsiPassThroughEXIOStruct));
     bool     localAlignedBuffer = false;
     uint8_t* alignedPointer     = scsiIoCtx->pdata;
     uint8_t* localBuffer        = M_NULLPTR; // we need to save this to free up the memory properly later.
@@ -6972,30 +7087,39 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
                                            C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) &
                                               ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
         if (alignedPointer != scsiIoCtx->pdata)
-        {
-            localAlignedBuffer       = true;
-            uint32_t totalBufferSize = scsiIoCtx->dataLength + scsiIoCtx->device->os_info.alignmentMask;
-            localBuffer              = M_REINTERPRET_CAST(uint8_t*, safe_calloc(totalBufferSize, sizeof(uint8_t)));
-            if (!localBuffer)
+            M_UNLIKELY
             {
-                perror(
-                    "error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's pointer.");
-                localAlignedBuffer = false;
-                alignedPointer     = scsiIoCtx->pdata;
-            }
-            else
-            {
-                alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, localBuffer) +
-                                                   C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) &
-                                                      ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
-                if (scsiIoCtx->direction == XFER_DATA_OUT)
+                localAlignedBuffer       = true;
+                uint32_t totalBufferSize = scsiIoCtx->dataLength + scsiIoCtx->device->os_info.alignmentMask;
+                localBuffer              = M_REINTERPRET_CAST(uint8_t*, safe_calloc(totalBufferSize, sizeof(uint8_t)));
+                if (!localBuffer)
                 {
-                    safe_memcpy(alignedPointer,
-                                totalBufferSize - (C_CAST(uintptr_t, alignedPointer) - C_CAST(uintptr_t, localBuffer)),
-                                scsiIoCtx->pdata, scsiIoCtx->dataLength);
+                    perror("error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's "
+                           "pointer.");
+                    localAlignedBuffer = false;
+                    alignedPointer     = scsiIoCtx->pdata;
+                }
+                else
+                {
+                    alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, localBuffer) +
+                                                       C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) &
+                                                          ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
+                    if (scsiIoCtx->direction == XFER_DATA_OUT)
+                    {
+                        if (0 != safe_memcpy(alignedPointer,
+                                             totalBufferSize -
+                                                 (C_CAST(uintptr_t, alignedPointer) - C_CAST(uintptr_t, localBuffer)),
+                                             scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                        {
+                            ret = MEMORY_FAILURE;
+                            perror("Error copying data to aligned buffer\n");
+                            safe_free(&localBuffer);
+                            safe_free_SCSIPassthroughEx(&sptdio);
+                            return ret;
+                        }
+                    }
                 }
             }
-        }
     }
     ret = convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(scsiIoCtx, sptdio, alignedPointer);
     if (SUCCESS == ret)
@@ -7004,7 +7128,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
         set_Device_Last_Error(scsiIoCtx->device, 0);
         DWORD      sptBufLen = sizeof(scsiPassThroughEXIOStruct);
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_SCSI_PASS_THROUGH_DIRECT_EX,
@@ -7035,7 +7159,11 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
             ret = SUCCESS; // setting to zero to be compatible with linux
             if (localAlignedBuffer && scsiIoCtx->direction == XFER_DATA_IN)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, alignedPointer, scsiIoCtx->dataLength);
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, alignedPointer, scsiIoCtx->dataLength))
+                {
+                    ret = MEMORY_FAILURE;
+                    perror("Error copying data from aligned buffer\n");
+                }
             }
         }
         else
@@ -7063,8 +7191,12 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
         // Any sense data?
         if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0)
         {
-            safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &sptdio->senseBuffer[0],
-                        M_Min(sptdio->scsiPassThroughEXDirect.SenseInfoLength, scsiIoCtx->senseDataSize));
+            if (0 != safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &sptdio->senseBuffer[0],
+                                 M_Min(sptdio->scsiPassThroughEXDirect.SenseInfoLength, scsiIoCtx->senseDataSize)))
+            {
+                ret = MEMORY_FAILURE;
+                perror("Error copying sense data\n");
+            }
         }
 
         if (scsiIoCtx->psense != M_NULLPTR)
@@ -7181,7 +7313,11 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx*    
     // sets the offset to the beginning of the sense buffer-TJE
     // psptd->scsiPassthroughDirect.SenseInfoOffset = C_CAST(ULONG, (&psptd->senseBuffer[0] - C_CAST(uint8_t*,
     // &psptd->scsiPassthroughDirect)));
-    safe_memcpy(psptd->scsiPassthroughDirect.Cdb, 16, scsiIoCtx->cdb, M_Min(16, scsiIoCtx->cdbLength));
+    if (0 != safe_memcpy(psptd->scsiPassthroughDirect.Cdb, 16, scsiIoCtx->cdb, M_Min(16, scsiIoCtx->cdbLength)))
+    {
+        ret = MEMORY_FAILURE;
+        perror("Error copying up to 16 bytes of CDB data\n");
+    }
     return ret;
 }
 
@@ -7248,7 +7384,11 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiI
     // sets the offset to the beginning of the sense buffer-TJE
     // psptd->scsiPassthrough.SenseInfoOffset = C_CAST(ULONG, (&psptd->senseBuffer[0] - C_CAST(uint8_t*,
     // &psptd->scsiPassthrough)));
-    safe_memcpy(psptd->scsiPassthrough.Cdb, 16, scsiIoCtx->cdb, M_Min(16, scsiIoCtx->cdbLength));
+    if (0 != safe_memcpy(psptd->scsiPassthrough.Cdb, 16, scsiIoCtx->cdb, M_Min(16, scsiIoCtx->cdbLength)))
+    {
+        ret = MEMORY_FAILURE;
+        perror("Error copying up to 16 bytes of CDB data\n");
+    }
     return ret;
 }
 
@@ -7264,8 +7404,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
         return MEMORY_FAILURE;
     }
     DECLARE_SEATIMER(commandTimer);
-    safe_memset(sptdioDB, sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength, 0,
-                sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength);
+    explicit_zeroes(sptdioDB, sizeof(scsiPassThroughIOStruct) + scsiIoCtx->dataLength);
     ret = convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(scsiIoCtx, sptdioDB);
     if (SUCCESS == ret)
     {
@@ -7282,7 +7421,14 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
             // need to copy the data we're sending to the device over!
             if (scsiIoCtx->pdata)
             {
-                safe_memcpy(sptdioDB->dataBuffer, scsiIoCtx->dataLength, scsiIoCtx->pdata, scsiIoCtx->dataLength);
+                if (0 !=
+                    safe_memcpy(sptdioDB->dataBuffer, scsiIoCtx->dataLength, scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                {
+                    perror("Error copying data to aligned buffer for SCSI Passthrough direct\n");
+                    ret = MEMORY_FAILURE;
+                    safe_free_scsi_pt_io(&sptdioDB);
+                    return ret;
+                }
             }
             scsiPassThroughInLength += scsiIoCtx->dataLength;
             break;
@@ -7290,7 +7436,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
             break;
         }
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         if (overlappedStruct.hEvent == M_NULLPTR)
         {
@@ -7324,7 +7470,12 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
             ret = SUCCESS; // setting to zero to be compatible with linux
             if (scsiIoCtx->pdata && scsiIoCtx->direction == XFER_DATA_IN)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, sptdioDB->dataBuffer, scsiIoCtx->dataLength);
+                if (0 !=
+                    safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, sptdioDB->dataBuffer, scsiIoCtx->dataLength))
+                {
+                    perror("Error copying data from aligned buffer for SCSI Passthrough direct\n");
+                    ret = MEMORY_FAILURE;
+                }
             }
         }
         else
@@ -7353,8 +7504,12 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
         // Any sense data?
         if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0)
         {
-            safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, sptdioDB->senseBuffer,
-                        M_Min(sptdioDB->scsiPassthrough.SenseInfoLength, scsiIoCtx->senseDataSize));
+            if (0 != safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, sptdioDB->senseBuffer,
+                                 M_Min(sptdioDB->scsiPassthrough.SenseInfoLength, scsiIoCtx->senseDataSize)))
+            {
+                perror("Error coping sense data after SCSI Passthrough Direct\n");
+                ret = MEMORY_FAILURE;
+            }
         }
 
         if (scsiIoCtx->psense != M_NULLPTR)
@@ -7391,7 +7546,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
     ULONG                   returned_data = ULONG_C(0);
     scsiPassThroughIOStruct sptdio;
     DECLARE_SEATIMER(commandTimer);
-    safe_memset(&sptdio, sizeof(scsiPassThroughIOStruct), 0, sizeof(scsiPassThroughIOStruct));
+    M_INITIALIZE_STRUCTURE(&sptdio, sizeof(scsiPassThroughIOStruct));
     bool     localAlignedBuffer = false;
     uint8_t* alignedPointer     = scsiIoCtx->pdata;
     uint8_t* localBuffer        = M_NULLPTR; // we need to save this to free up the memory properly later.
@@ -7405,32 +7560,39 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
                                            C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) &
                                               ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
         if (alignedPointer != scsiIoCtx->pdata)
-        {
-            localAlignedBuffer = true;
-            uint32_t totalBufferSize =
-                scsiIoCtx->dataLength + C_CAST(uint32_t, scsiIoCtx->device->os_info.alignmentMask);
-            localBuffer = M_REINTERPRET_CAST(uint8_t*, safe_calloc(totalBufferSize, sizeof(uint8_t)));
-            if (!localBuffer)
+            M_UNLIKELY
             {
-                perror(
-                    "error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's pointer.");
-                localAlignedBuffer = false;
-                alignedPointer     = scsiIoCtx->pdata;
-            }
-            else
-            {
-                alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, localBuffer) +
-                                                   C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) &
-                                                      ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
-                if (scsiIoCtx->direction == XFER_DATA_OUT)
+                localAlignedBuffer = true;
+                uint32_t totalBufferSize =
+                    scsiIoCtx->dataLength + C_CAST(uint32_t, scsiIoCtx->device->os_info.alignmentMask);
+                localBuffer = M_REINTERPRET_CAST(uint8_t*, safe_calloc(totalBufferSize, sizeof(uint8_t)));
+                if (!localBuffer)
                 {
-                    safe_memcpy(alignedPointer,
-                                totalBufferSize -
-                                    (C_CAST(uintptr_t, alignedPointer) - (C_CAST(uintptr_t, localBuffer))),
-                                scsiIoCtx->pdata, scsiIoCtx->dataLength);
+                    perror("error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's "
+                           "pointer.");
+                    localAlignedBuffer = false;
+                    alignedPointer     = scsiIoCtx->pdata;
+                }
+                else
+                {
+                    alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, localBuffer) +
+                                                       C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) &
+                                                          ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
+                    if (scsiIoCtx->direction == XFER_DATA_OUT)
+                    {
+                        if (0 != safe_memcpy(alignedPointer,
+                                             totalBufferSize -
+                                                 (C_CAST(uintptr_t, alignedPointer) - (C_CAST(uintptr_t, localBuffer))),
+                                             scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                        {
+                            perror("Error copying data to aligned buffer for SCSI Passthrough direct\n");
+                            ret = MEMORY_FAILURE;
+                            safe_free(&localBuffer);
+                            return ret;
+                        }
+                    }
                 }
             }
-        }
     }
     ret = convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(scsiIoCtx, &sptdio, alignedPointer);
     if (SUCCESS == ret)
@@ -7439,7 +7601,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
         set_Device_Last_Error(scsiIoCtx->device, 0);
         DWORD      scsiPassThroughBufLen = sizeof(scsiPassThroughIOStruct);
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_SCSI_PASS_THROUGH_DIRECT,
@@ -7468,7 +7630,11 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
             ret = SUCCESS; // setting to zero to be compatible with linux
             if (localAlignedBuffer && scsiIoCtx->direction == XFER_DATA_IN)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, alignedPointer, scsiIoCtx->dataLength);
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, alignedPointer, scsiIoCtx->dataLength))
+                {
+                    perror("Error copying back data after SCSI Passthrough direct\n");
+                    ret = MEMORY_FAILURE;
+                }
             }
         }
         else
@@ -7496,8 +7662,12 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
         // Any sense data?
         if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0)
         {
-            safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, sptdio.senseBuffer,
-                        M_Min(sptdio.scsiPassthroughDirect.SenseInfoLength, scsiIoCtx->senseDataSize));
+            if (0 != safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, sptdio.senseBuffer,
+                                 M_Min(sptdio.scsiPassthroughDirect.SenseInfoLength, scsiIoCtx->senseDataSize)))
+            {
+                perror("Error coping back sense data after SCSI Passthrough direct\n");
+                ret = MEMORY_FAILURE;
+            }
         }
 
         if (scsiIoCtx->psense != M_NULLPTR)
@@ -7716,7 +7886,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
     ULONG                   returned_data = ULONG_C(0);
     ATA_PASS_THROUGH_DIRECT ataPassThroughDirect;
     DECLARE_SEATIMER(commandTimer);
-    safe_memset(&ataPassThroughDirect, sizeof(ATA_PASS_THROUGH_DIRECT), 0, sizeof(ATA_PASS_THROUGH_DIRECT));
+    M_INITIALIZE_STRUCTURE(&ataPassThroughDirect, sizeof(ATA_PASS_THROUGH_DIRECT));
     bool     localAlignedBuffer = false;
     uint8_t* alignedPointer     = scsiIoCtx->pdata;
     uint8_t* localBuffer        = M_NULLPTR; // we need to save this to free up the memory properly later.
@@ -7730,31 +7900,40 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
                                            C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) &
                                               ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
         if (alignedPointer != scsiIoCtx->pdata)
-        {
-            localAlignedBuffer = true;
-            uint32_t totalBufferSize =
-                scsiIoCtx->dataLength + C_CAST(uint32_t, scsiIoCtx->device->os_info.alignmentMask);
-            localBuffer = M_REINTERPRET_CAST(uint8_t*, safe_calloc(totalBufferSize, sizeof(uint8_t)));
-            if (!localBuffer)
+            M_UNLIKELY // basicall all buffers should be aligned at a higher level than this so it will not be an issue
+                       // - TJE
             {
-                perror(
-                    "error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's pointer.");
-                localAlignedBuffer = false;
-                alignedPointer     = scsiIoCtx->pdata;
-            }
-            else
-            {
-                alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, localBuffer) +
-                                                   C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) &
-                                                      ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
-                if (scsiIoCtx->direction == XFER_DATA_OUT)
+                localAlignedBuffer = true;
+                uint32_t totalBufferSize =
+                    scsiIoCtx->dataLength + C_CAST(uint32_t, scsiIoCtx->device->os_info.alignmentMask);
+                localBuffer = M_REINTERPRET_CAST(uint8_t*, safe_calloc(totalBufferSize, sizeof(uint8_t)));
+                if (!localBuffer)
                 {
-                    safe_memcpy(alignedPointer,
-                                totalBufferSize - (C_CAST(uintptr_t, alignedPointer) - C_CAST(uintptr_t, localBuffer)),
-                                scsiIoCtx->pdata, scsiIoCtx->dataLength);
+                    perror("error allocating aligned buffer for ATA Passthrough Direct...attempting to use user's "
+                           "pointer.");
+                    localAlignedBuffer = false;
+                    alignedPointer     = scsiIoCtx->pdata;
+                }
+                else
+                {
+                    alignedPointer = C_CAST(uint8_t*, (C_CAST(UINT_PTR, localBuffer) +
+                                                       C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask)) &
+                                                          ~C_CAST(UINT_PTR, scsiIoCtx->device->os_info.alignmentMask));
+                    if (scsiIoCtx->direction == XFER_DATA_OUT)
+                    {
+                        if (0 != safe_memcpy(alignedPointer,
+                                             totalBufferSize -
+                                                 (C_CAST(uintptr_t, alignedPointer) - C_CAST(uintptr_t, localBuffer)),
+                                             scsiIoCtx->pdata, scsiIoCtx->dataLength))
+                        {
+                            perror("Error copying data buffer before ATA Passthrough Direct\n");
+                            ret = MEMORY_FAILURE;
+                            safe_free(&localBuffer);
+                            return ret;
+                        }
+                    }
                 }
             }
-        }
     }
 
     ret = convert_SCSI_CTX_To_ATA_PT_Direct(scsiIoCtx, &ataPassThroughDirect, alignedPointer);
@@ -7763,7 +7942,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
         set_Device_Last_Error(scsiIoCtx->device, 0);
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_ATA_PASS_THROUGH_DIRECT, &ataPassThroughDirect,
@@ -7816,7 +7995,11 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
             if (localAlignedBuffer && scsiIoCtx->direction == XFER_DATA_IN)
             {
                 // memcpy the data back to the user's pointer since we had to allocate one locally.
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, alignedPointer, scsiIoCtx->dataLength);
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, alignedPointer, scsiIoCtx->dataLength))
+                {
+                    perror("Error copying data buffer after ATA Passthrough Direct\n");
+                    ret = MEMORY_FAILURE;
+                }
             }
         }
         else
@@ -7888,7 +8071,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
         // dummy up sense data
         if (scsiIoCtx->psense != M_NULLPTR)
         {
-            safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+            explicit_zeroes(scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             // fill in not supported
             scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
             scsiIoCtx->psense[2] = 0x05;
@@ -8059,8 +8242,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
         return MEMORY_FAILURE;
     }
     DECLARE_SEATIMER(commandTimer);
-    safe_memset(doubleBufferedIO, sizeof(ATA_PASS_THROUGH_EX) + dataLength, 0,
-                sizeof(ATA_PASS_THROUGH_EX) + dataLength);
+    explicit_zeroes(doubleBufferedIO, sizeof(ATA_PASS_THROUGH_EX) + dataLength);
     ret = convert_SCSI_CTX_To_ATA_PT_Ex(scsiIoCtx, doubleBufferedIO);
     if (SUCCESS == ret)
     {
@@ -8075,8 +8257,14 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
             // need to copy the data we're sending to the device over!
             if (scsiIoCtx->pdata)
             {
-                safe_memcpy(doubleBufferedIO->dataBuffer, scsiIoCtx->dataLength, scsiIoCtx->pdata,
-                            scsiIoCtx->dataLength);
+                if (0 != safe_memcpy(doubleBufferedIO->dataBuffer, scsiIoCtx->dataLength, scsiIoCtx->pdata,
+                                     scsiIoCtx->dataLength))
+                {
+                    perror("Error copying data buffer before ATA Passthrough Ex\n");
+                    ret = MEMORY_FAILURE;
+                    safe_free_ata_db_io(&doubleBufferedIO);
+                    return ret;
+                }
             }
             inBufferLength += M_Max(scsiIoCtx->dataLength, scsiIoCtx->pAtaCmdOpts->dataSize);
             break;
@@ -8086,7 +8274,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
         set_Device_Last_Error(scsiIoCtx->device, 0);
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_ATA_PASS_THROUGH,
@@ -8126,8 +8314,12 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
             // copy the data buffer back to the user's data pointer
             if (scsiIoCtx->pdata && scsiIoCtx->direction == XFER_DATA_IN)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, doubleBufferedIO->dataBuffer,
-                            scsiIoCtx->dataLength);
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, doubleBufferedIO->dataBuffer,
+                                     scsiIoCtx->dataLength))
+                {
+                    perror("Error copying data buffer after ATA Passthrough Ex\n");
+                    ret = MEMORY_FAILURE;
+                }
             }
             // use the format, sensekey, acq, acsq from the sense data buffer we passed in rather than what windows
             // reports...because windows doesn't always match what is in your sense buffer
@@ -8211,7 +8403,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
         // dummy up sense data
         if (scsiIoCtx->psense != M_NULLPTR)
         {
-            safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+            explicit_zeroes(scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             // fill in not supported
             scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
             scsiIoCtx->psense[2] = 0x05;
@@ -8342,8 +8534,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
         return MEMORY_FAILURE;
     }
     DECLARE_SEATIMER(commandTimer);
-    safe_memset(doubleBufferedIO, sizeof(IDEDoubleBufferedIO) - 1 + dataLength, 0,
-                sizeof(IDEDoubleBufferedIO) - 1 + dataLength);
+    explicit_zeroes(doubleBufferedIO, sizeof(IDEDoubleBufferedIO) - 1 + dataLength);
     ret = convert_SCSI_CTX_To_IDE_PT(scsiIoCtx, doubleBufferedIO);
     if (SUCCESS == ret)
     {
@@ -8358,8 +8549,14 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
             // need to copy the data we're sending to the device over!
             if (scsiIoCtx->pdata)
             {
-                safe_memcpy(doubleBufferedIO->dataBuffer, scsiIoCtx->dataLength, scsiIoCtx->pdata,
-                            scsiIoCtx->dataLength);
+                if (0 != safe_memcpy(doubleBufferedIO->dataBuffer, scsiIoCtx->dataLength, scsiIoCtx->pdata,
+                                     scsiIoCtx->dataLength))
+                {
+                    perror("Error copying data buffer before IDE Passthrough\n");
+                    ret = MEMORY_FAILURE;
+                    safe_free_ide_db_io(&doubleBufferedIO);
+                    return ret;
+                }
             }
             inBufferLength += dataLength;
             break;
@@ -8369,7 +8566,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
         set_Device_Last_Error(scsiIoCtx->device, 0);
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_IDE_PASS_THROUGH, doubleBufferedIO,
@@ -8413,8 +8610,12 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
             // copy the data buffer back to the user's data pointer
             if (scsiIoCtx->pdata && scsiIoCtx->direction == XFER_DATA_IN)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, doubleBufferedIO->dataBuffer,
-                            scsiIoCtx->dataLength);
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, doubleBufferedIO->dataBuffer,
+                                     scsiIoCtx->dataLength))
+                {
+                    perror("Error coping data buffer after IDE Passthrough\n");
+                    ret = MEMORY_FAILURE;
+                }
             }
             // use the format, sensekey, acq, acsq from the sense data buffer we passed in rather than what windows
             // reports...because windows doesn't always match what is in your sense buffer
@@ -8481,7 +8682,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
         // dummy up sense data
         if (scsiIoCtx->psense != M_NULLPTR)
         {
-            safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+            explicit_zeroes(scsiIoCtx->psense, scsiIoCtx->senseDataSize);
             // fill in not supported
             scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
             scsiIoCtx->psense[2] = 0x05;
@@ -8510,7 +8711,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
 //{
 //     eReturnValues ret = FAILURE;
 //     ScsiIoCtx ideCtx;
-//     safe_memset(&ideCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
+//     M_INITIALIZE_STRUCTURE(&ideCtx, sizeof(ScsiIoCtx));
 //     if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
 //     {
 //         return OS_COMMAND_NOT_AVAILABLE;
@@ -8548,7 +8749,7 @@ eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busT
 {
     eReturnValues                  ret = NOT_SUPPORTED;
     STORAGE_HW_FIRMWARE_INFO_QUERY fwdlInfo;
-    safe_memset(&fwdlInfo, sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY), 0, sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY));
+    M_INITIALIZE_STRUCTURE(&fwdlInfo, sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY));
     fwdlInfo.Version  = sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY);
     fwdlInfo.Size     = sizeof(STORAGE_HW_FIRMWARE_INFO_QUERY);
     uint8_t slotCount = UINT8_C(7); // 7 is maximum number of firmware slots...always reading with this for now since it
@@ -8559,7 +8760,7 @@ eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busT
     {
         return MEMORY_FAILURE;
     }
-    safe_memset(outputData, outputDataSize, 0, outputDataSize);
+    explicit_zeroes(outputData, outputDataSize);
     DWORD returned_data = DWORD_C(0);
     // STORAGE_HW_FIRMWARE_REQUEST_FLAG_CONTROLLER is needed for NVMe to report relavant data. Without it, we only see 1
     // slot available.
@@ -8628,7 +8829,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     }
     // send the activate IOCTL
     STORAGE_HW_FIRMWARE_ACTIVATE downloadActivate;
-    safe_memset(&downloadActivate, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE), 0, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
+    M_INITIALIZE_STRUCTURE(&downloadActivate, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
     downloadActivate.Version = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     downloadActivate.Size    = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     // downloadActivate.Flags |= STORAGE_HW_FIRMWARE_REQUEST_FLAG_SWITCH_TO_EXISTING_FIRMWARE;
@@ -8647,7 +8848,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     DECLARE_SEATIMER(commandTimer);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_STORAGE_FIRMWARE_ACTIVATE, &downloadActivate,
@@ -8675,11 +8876,19 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     if (fwdlIO)
     {
         ret = SUCCESS;
-        safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+        if (0 != safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize))
+        {
+            perror("Error clearing sense data\n");
+            ret = MEMORY_FAILURE;
+        }
         if (scsiIoCtx->pAtaCmdOpts)
         {
             // set status register to 50
-            safe_memset(&scsiIoCtx->pAtaCmdOpts->rtfr, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs));
+            if (0 != safe_memset(&scsiIoCtx->pAtaCmdOpts->rtfr, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs)))
+            {
+                perror("Error clearing ATA RTFRs\n");
+                ret = MEMORY_FAILURE;
+            }
             scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
             scsiIoCtx->pAtaCmdOpts->rtfr.secCnt =
                 0x02; // This is supposed to be set when the drive has applied the new code.
@@ -8721,10 +8930,18 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
         switch (scsiIoCtx->device->os_info.last_error)
         {
         case ERROR_IO_DEVICE: // aborted command is the best we can do
-            safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+            if (0 != safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize))
+            {
+                perror("Error clearing sense data\n");
+                ret = MEMORY_FAILURE;
+            }
             if (scsiIoCtx->pAtaCmdOpts)
             {
-                safe_memset(&scsiIoCtx->pAtaCmdOpts->rtfr, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs));
+                if (0 != safe_memset(&scsiIoCtx->pAtaCmdOpts->rtfr, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs)))
+                {
+                    perror("Error clearing ATA RTFRs\n");
+                    ret = MEMORY_FAILURE;
+                }
                 scsiIoCtx->pAtaCmdOpts->rtfr.status =
                     ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
                 scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_ABORT;
@@ -8829,7 +9046,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     {
         return MEMORY_FAILURE;
     }
-    safe_memset(downloadIO, downloadStructureSize, 0, downloadStructureSize);
+    explicit_zeroes(downloadIO, downloadStructureSize);
     downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD);
     downloadIO->Size    = downloadStructureSize;
 #    if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_15063
@@ -8880,13 +9097,18 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     // set the size of the buffer
     downloadIO->BufferSize = dataLength;
     // now copy the buffer into this IOCTL struct
-    safe_memcpy(downloadIO->ImageBuffer, dataLength, scsiIoCtx->pdata, dataLength);
+    if (0 != safe_memcpy(downloadIO->ImageBuffer, dataLength, scsiIoCtx->pdata, dataLength))
+    {
+        perror("Error coping data for Win10 FWDL\n");
+        safe_free_hwfwdl(&downloadIO);
+        return MEMORY_FAILURE;
+    }
     // time to issue the IO
     DWORD returned_data = DWORD_C(0);
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     DECLARE_SEATIMER(commandTimer);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_STORAGE_FIRMWARE_DOWNLOAD, downloadIO,
@@ -8914,11 +9136,19 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     if (fwdlIO)
     {
         ret = SUCCESS;
-        safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+        if (0 != safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize))
+        {
+            perror("Error clearing sense data\n");
+            ret = MEMORY_FAILURE;
+        }
         if (scsiIoCtx->pAtaCmdOpts)
         {
             // set status register to 50
-            safe_memset(&scsiIoCtx->pAtaCmdOpts->rtfr, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs));
+            if (0 != safe_memset(&scsiIoCtx->pAtaCmdOpts->rtfr, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs)))
+            {
+                perror("Error clearing ATA RTFRs\n");
+                ret = MEMORY_FAILURE;
+            }
             scsiIoCtx->pAtaCmdOpts->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
             if (scsiIoCtx->fwdlLastSegment)
             {
@@ -8966,10 +9196,18 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
         switch (scsiIoCtx->device->os_info.last_error)
         {
         case ERROR_IO_DEVICE: // aborted command is the best we can do
-            safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+            if (0 != safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize))
+            {
+                perror("Error clearing sense data\n");
+                ret = MEMORY_FAILURE;
+            }
             if (scsiIoCtx->pAtaCmdOpts)
             {
-                safe_memset(&scsiIoCtx->pAtaCmdOpts->rtfr, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs));
+                if (0 != safe_memset(&scsiIoCtx->pAtaCmdOpts->rtfr, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs)))
+                {
+                    perror("Error clearing ATA RTFRs\n");
+                    ret = MEMORY_FAILURE;
+                }
                 scsiIoCtx->pAtaCmdOpts->rtfr.status =
                     ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE | ATA_STATUS_BIT_ERROR;
                 scsiIoCtx->pAtaCmdOpts->rtfr.error = ATA_ERROR_BIT_ABORT;
@@ -9062,7 +9300,7 @@ eReturnValues get_Windows_SMART_IO_Support(tDevice* device)
 {
     ULONG              returned_data = ULONG_C(0);
     GETVERSIONINPARAMS smartVersionInfo;
-    safe_memset(&smartVersionInfo, sizeof(GETVERSIONINPARAMS), 0, sizeof(GETVERSIONINPARAMS));
+    M_INITIALIZE_STRUCTURE(&smartVersionInfo, sizeof(GETVERSIONINPARAMS));
     int smartRet = DeviceIoControl(device->os_info.fd, SMART_GET_VERSION, M_NULLPTR, 0, &smartVersionInfo,
                                    sizeof(GETVERSIONINPARAMS), &returned_data, M_NULLPTR);
     // Got the version info, but that doesn't mean we'll be successful with commands...
@@ -9339,7 +9577,14 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
             // need to copy the data we're sending to the device over!
             if (scsiIoCtx->pdata)
             {
-                safe_memcpy(smartIOin->bBuffer, dataInLength, scsiIoCtx->pdata, dataInLength);
+                if (0 != safe_memcpy(smartIOin->bBuffer, dataInLength, scsiIoCtx->pdata, dataInLength))
+                {
+                    perror("Error copying data buffer for ATA SMART cmd IO\n");
+                    ret = MEMORY_FAILURE;
+                    safe_free(M_REINTERPRET_CAST(void**, &smartIOout));
+                    safe_free(M_REINTERPRET_CAST(void**, &smartIOin));
+                    return ret;
+                }
             }
             inBufferLength += dataInLength - 1;
             break;
@@ -9352,7 +9597,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
         set_Device_Last_Error(scsiIoCtx->device, 0);
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success = DeviceIoControl(scsiIoCtx->device->os_info.fd,
@@ -9390,8 +9635,12 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
             // copy the data buffer back to the user's data pointer
             if (scsiIoCtx->pdata && scsiIoCtx->direction == XFER_DATA_IN)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, smartIOout->bBuffer,
-                            M_Min(scsiIoCtx->dataLength, smartIOout->cBufferSize));
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, smartIOout->bBuffer,
+                                     M_Min(scsiIoCtx->dataLength, smartIOout->cBufferSize)))
+                {
+                    perror("Error copying data buffer for ATA SMART cmd IO\n");
+                    ret = MEMORY_FAILURE;
+                }
             }
             // use the format, sensekey, acq, acsq from the sense data buffer we passed in rather than what windows
             // reports...because windows doesn't always match what is in your sense buffer
@@ -9426,7 +9675,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
                 22) // check that the sense data buffer is big enough to fill in our rtfrs using descriptor format
             {
                 ataReturnTFRs smartTFRs;
-                safe_memset(&smartTFRs, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs));
+                M_INITIALIZE_STRUCTURE(&smartTFRs, sizeof(ataReturnTFRs));
                 scsiIoCtx->returnStatus.format   = SCSI_SENSE_CUR_INFO_DESC;
                 scsiIoCtx->returnStatus.senseKey = 0x01; // check condition
                 // setting ASC/ASCQ to ATA Passthrough Information Available
@@ -9498,7 +9747,10 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
         // dummy up sense data
         if (scsiIoCtx->psense != M_NULLPTR)
         {
-            safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+            if (0 != safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize))
+            {
+                perror("Error clearing sense data for ATA SMART cmd IO\n");
+            }
             // fill in not supported
             scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_FIXED;
             scsiIoCtx->psense[2] = 0x05;
@@ -9554,7 +9806,7 @@ eReturnValues os_Bus_Reset(const tDevice* device)
     ULONG                     returned_data = ULONG_C(0);
     BOOL                      success       = FALSE;
     STORAGE_BUS_RESET_REQUEST reset;
-    safe_memset(&reset, sizeof(STORAGE_BUS_RESET_REQUEST), 0, sizeof(STORAGE_BUS_RESET_REQUEST));
+    M_INITIALIZE_STRUCTURE(&reset, sizeof(STORAGE_BUS_RESET_REQUEST));
     reset.PathId = device->os_info.scsi_addr.PathId;
     SetLastError(NO_ERROR);
     DWORD error = NO_ERROR;
@@ -9656,7 +9908,11 @@ eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
                 HANDLE volumeHandle  = INVALID_HANDLE_VALUE;
                 DWORD  bytesReturned = DWORD_C(0);
                 DECLARE_ZERO_INIT_ARRAY(TCHAR, volumeHandleString, MAX_VOL_STR_LEN);
-                _sntprintf_s(volumeHandleString, MAX_VOL_STR_LEN, _TRUNCATE, TEXT("\\\\.\\%c:"), volumeLetter);
+                if (0 > _sntprintf_s(volumeHandleString, MAX_VOL_STR_LEN, _TRUNCATE, TEXT("\\\\.\\%c:"), volumeLetter))
+                {
+                    perror("Error formatting volume handle string for unmounting partitions");
+                    continue;
+                }
                 volumeHandle = CreateFile(volumeHandleString, GENERIC_WRITE | GENERIC_READ,
                                           FILE_SHARE_READ | FILE_SHARE_WRITE, M_NULLPTR, OPEN_EXISTING, 0, M_NULLPTR);
                 if (INVALID_HANDLE_VALUE != volumeHandle)
@@ -9725,7 +9981,11 @@ static void wbst_Set_Sense_Data(ScsiIoCtx* scsiIoCtx, bool valid, uint8_t senseK
                 senseData[2] |= BIT4;
             }
         }
-        safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, senseData, M_Min(18, scsiIoCtx->senseDataSize));
+        if (0 !=
+            safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, senseData, M_Min(18, scsiIoCtx->senseDataSize)))
+        {
+            perror("Error setting basic sense data\n");
+        }
     }
 }
 
@@ -9783,9 +10043,15 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                                 C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
                             if (deviceDesc->SerialNumberOffset && deviceDesc->SerialNumberOffset != UINT32_MAX)
                             {
-                                safe_memcpy(&vpdPage[4], 96 - 4, devSerial,
-                                            M_Min(safe_strlen(devSerial),
-                                                  92)); // 92 for maximum size of current remaining memory for this page
+                                if (0 !=
+                                    safe_memcpy(
+                                        &vpdPage[4], 96 - 4, devSerial,
+                                        M_Min(safe_strlen(devSerial),
+                                              92))) // 92 for maximum size of current remaining memory for this page
+                                {
+                                    perror("Error copying unit serial number data\n");
+                                    ret = MEMORY_FAILURE;
+                                }
                                 vpdPageLen = vpdPage[3] = C_CAST(uint8_t, M_Min(safe_strlen(devSerial), 92));
                             }
                             else
@@ -9847,8 +10113,12 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                     }
                     if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
                     {
-                        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, vpdPage,
-                                    M_Min(96U, M_Min(vpdPageLen + 4U, scsiIoCtx->dataLength)));
+                        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, vpdPage,
+                                             M_Min(96U, M_Min(vpdPageLen + 4U, scsiIoCtx->dataLength))))
+                        {
+                            perror("Error copying VPD page data\n");
+                            ret = MEMORY_FAILURE;
+                        }
                     }
                     safe_free_device_descriptor(&deviceDesc);
                 }
@@ -9895,10 +10165,11 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                                 C_CAST(char*, deviceDesc->RawDeviceProperties + deviceDesc->SerialNumberOffset);
                             if (deviceDesc->VendorIdOffset && deviceDesc->VendorIdOffset != UINT32_MAX)
                             {
-                                safe_memset(&inquiryData[8], 96 - 8, ' ',
-                                            8); // space pad first as spec says ASCII data should be space padded
-                                safe_memcpy(&inquiryData[8], 96 - 8, devVendor,
-                                            M_Min(safe_strlen(devVendor), 8)); // maximum of 8 characters in length
+                                M_IGNORE_SAFE_ERRNO_CALL(safe_memset(&inquiryData[8], 96 - 8, ' ', 8),
+                                                         "Space padding internal buffer before use will never fail");
+                                M_IGNORE_SAFE_ERRNO_CALL(
+                                    safe_memcpy(&inquiryData[8], 96 - 8, devVendor, M_Min(safe_strlen(devVendor), 8)),
+                                    "Copying device vendor to internal buffer will never fail");
                             }
                             else
                             {
@@ -9914,9 +10185,11 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                             }
                             if (deviceDesc->ProductIdOffset && deviceDesc->ProductIdOffset != UINT32_MAX)
                             {
-                                safe_memset(&inquiryData[16], 96 - 16, ' ',
-                                            16); // space pad first as spec says ASCII data should be space padded
-                                safe_memcpy(&inquiryData[16], 96 - 16, devModel, M_Min(safe_strlen(devModel), 16));
+                                M_IGNORE_SAFE_ERRNO_CALL(safe_memset(&inquiryData[16], 96 - 16, ' ', 16),
+                                                         "Space padding internal buffer before use will never fail");
+                                M_IGNORE_SAFE_ERRNO_CALL(
+                                    safe_memcpy(&inquiryData[16], 96 - 16, devModel, M_Min(safe_strlen(devModel), 16)),
+                                    "Copying device model to internal buffer will never fail");
                             }
                             else
                             {
@@ -9939,22 +10212,31 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                             }
                             if (deviceDesc->ProductRevisionOffset && deviceDesc->ProductRevisionOffset != UINT32_MAX)
                             {
-                                safe_memset(&inquiryData[32], 96 - 32, ' ',
-                                            4); // space pad first as spec says ASCII data should be space padded
-                                safe_memcpy(&inquiryData[32], 96 - 32, devRev, M_Min(safe_strlen(devRev), 4));
+                                M_IGNORE_SAFE_ERRNO_CALL(
+                                    safe_memset(&inquiryData[32], 96 - 32, ' ', 4),
+                                    "Space padding internal buffer before use will never fail"); // space pad first as
+                                                                                                 // spec says ASCII data
+                                                                                                 // should be space
+                                                                                                 // padded
+                                M_IGNORE_SAFE_ERRNO_CALL(
+                                    safe_memcpy(&inquiryData[32], 96 - 32, devRev, M_Min(safe_strlen(devRev), 4)),
+                                    "Copying device revision to internal buffer will never fail");
                             }
                             else
                             {
-                                inquiryData[32] = 'F';
-                                inquiryData[33] = 'A';
+                                inquiryData[32] = 'U';
+                                inquiryData[33] = 'N';
                                 inquiryData[34] = 'K';
-                                inquiryData[35] = 'E';
+                                inquiryData[35] = 'N';
                             }
                             // SN is not described in spec to be here, but it is listed as "Vendor Specific", so we're
                             // putting it here since it is a fairly common practice overall. - TJE
                             if (deviceDesc->SerialNumberOffset && deviceDesc->SerialNumberOffset != UINT32_MAX)
                             {
-                                safe_memcpy(&inquiryData[36], 96 - 36, devSerial, M_Min(safe_strlen(devSerial), 20));
+                                M_IGNORE_SAFE_ERRNO_CALL(
+                                    safe_memcpy(&inquiryData[36], 96 - 36, devSerial,
+                                                M_Min(safe_strlen(devSerial), 20)),
+                                    "Copying device serial number to internal buffer will never fail");
                             }
                         }
                         else
@@ -9985,10 +10267,10 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                             inquiryData[29] = ' ';
                             inquiryData[30] = ' ';
                             inquiryData[31] = ' ';
-                            inquiryData[32] = 'F';
-                            inquiryData[33] = 'A';
+                            inquiryData[32] = 'U';
+                            inquiryData[33] = 'N';
                             inquiryData[34] = 'K';
-                            inquiryData[35] = 'E';
+                            inquiryData[35] = 'N';
                         }
                         safe_free_device_descriptor(&deviceDesc);
                     }
@@ -10007,8 +10289,12 @@ static eReturnValues wbst_Inquiry(ScsiIoCtx* scsiIoCtx)
                     }
                     if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
                     {
-                        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, inquiryData,
-                                    M_Min(96, scsiIoCtx->dataLength));
+                        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, inquiryData,
+                                             M_Min(96, scsiIoCtx->dataLength)))
+                        {
+                            perror("Error copying wbst inquiry data\n");
+                            ret = MEMORY_FAILURE;
+                        }
                     }
                 }
                 else
@@ -10123,8 +10409,12 @@ static eReturnValues wbst_Read_Capacity_10(ScsiIoCtx* scsiIoCtx)
             }
             if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readCapacityData,
-                            M_Min(READ_CAPACITY_10_LEN, scsiIoCtx->dataLength));
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readCapacityData,
+                                     M_Min(READ_CAPACITY_10_LEN, scsiIoCtx->dataLength)))
+                {
+                    ret = MEMORY_FAILURE;
+                    perror("Error copying wbst read capacity 10 data\n");
+                }
             }
         }
         wbst_Set_Sense_Data(scsiIoCtx, setSenseData, senseKey, asc, ascq);
@@ -10273,8 +10563,12 @@ static eReturnValues wbst_Read_Capacity_16(ScsiIoCtx* scsiIoCtx)
 #endif // WINVER >= SEA_WIN32_WINNT_VISTA
                 if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
                 {
-                    safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readCapacityData,
-                                M_Min(READ_CAPACITY_16_LEN, allocationLength));
+                    if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readCapacityData,
+                                         M_Min(READ_CAPACITY_16_LEN, allocationLength)))
+                    {
+                        perror("Error copying wbst read capacity 16 data\n");
+                        ret = MEMORY_FAILURE;
+                    }
                 }
             }
         }
@@ -11190,8 +11484,12 @@ static eReturnValues wbst_Report_Luns(ScsiIoCtx* scsiIoCtx)
                 reportLunsData[15] = 0;
                 if (scsiIoCtx->pdata)
                 {
-                    safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, reportLunsData,
-                                M_Min(REPORT_LUNS_MIN_LENGTH, allocationLength));
+                    if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, reportLunsData,
+                                         M_Min(REPORT_LUNS_MIN_LENGTH, allocationLength)))
+                    {
+                        perror("Error copying wbst report LUNs data\n");
+                        ret = MEMORY_FAILURE;
+                    }
                 }
                 break;
             case 0x01:
@@ -11202,8 +11500,12 @@ static eReturnValues wbst_Report_Luns(ScsiIoCtx* scsiIoCtx)
                 // nothing to report, so just copy back the data buffer as it is
                 if (scsiIoCtx->pdata)
                 {
-                    safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, reportLunsData,
-                                M_Min(REPORT_LUNS_MIN_LENGTH, allocationLength));
+                    if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, reportLunsData,
+                                         M_Min(REPORT_LUNS_MIN_LENGTH, allocationLength)))
+                    {
+                        perror("Error copying wbst report LUNs data\n");
+                        ret = MEMORY_FAILURE;
+                    }
                 }
                 break;
             default:
@@ -11427,8 +11729,14 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
                                             for (uint32_t copyIter = UINT32_C(0); copyIter < writeDataLength;
                                                  copyIter += scsiIoCtx->device->drive_info.deviceBlockSize)
                                             {
-                                                safe_memcpy(&writePattern[copyIter], writeDataLength - copyIter,
-                                                            initializationPatternPtr, initializationPatternLength);
+                                                if (0 !=
+                                                    safe_memcpy(&writePattern[copyIter], writeDataLength - copyIter,
+                                                                initializationPatternPtr, initializationPatternLength))
+                                                {
+                                                    perror("Error copying initialization pattern\n");
+                                                    ret = MEMORY_FAILURE;
+                                                    break;
+                                                }
                                             }
                                         }
                                         for (uint64_t lba = UINT64_C(0);
@@ -11769,12 +12077,12 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
         // assuming bidirectional commands have the same amount of data transferring in each direction
         nvmePassthroughDataSize += nvmeIoCtx->dataSize;
     }
-    uint8_t* commandBuffer = C_CAST(uint8_t*, _aligned_malloc(nvmePassthroughDataSize, 8));
+    uint8_t* commandBuffer = C_CAST(uint8_t*, safe_malloc_aligned(nvmePassthroughDataSize, 8));
     if (!commandBuffer)
     {
         return MEMORY_FAILURE;
     }
-    safe_memset(commandBuffer, nvmePassthroughDataSize, 0, nvmePassthroughDataSize);
+    explicit_zeroes(commandBuffer, nvmePassthroughDataSize);
 
     // Setup the storage protocol command structure.
 
@@ -11791,13 +12099,24 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
         protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_ADMIN_COMMAND;
         protocolCommand->Flags           = STORAGE_PROTOCOL_COMMAND_FLAG_ADAPTER_REQUEST;
         nvmeAdminCommand* command        = C_CAST(nvmeAdminCommand*, &protocolCommand->Command);
-        safe_memcpy(command, sizeof(nvmeAdminCommand), &nvmeIoCtx->cmd.adminCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
+        if (0 != safe_memcpy(command, sizeof(nvmeAdminCommand), &nvmeIoCtx->cmd.adminCmd,
+                             STORAGE_PROTOCOL_COMMAND_LENGTH_NVME))
+        {
+            perror("Error copying NVMe admin command data\n");
+            safe_free_aligned(&commandBuffer);
+            return MEMORY_FAILURE;
+        }
     }
     else
     {
         protocolCommand->CommandSpecific = STORAGE_PROTOCOL_SPECIFIC_NVME_NVM_COMMAND;
         nvmCommand* command              = C_CAST(nvmCommand*, &protocolCommand->Command);
-        safe_memcpy(command, sizeof(nvmCommand), &nvmeIoCtx->cmd.nvmCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME);
+        if (0 != safe_memcpy(command, sizeof(nvmCommand), &nvmeIoCtx->cmd.nvmCmd, STORAGE_PROTOCOL_COMMAND_LENGTH_NVME))
+        {
+            perror("Error copying NVMe NVM command data\n");
+            safe_free_aligned(&commandBuffer);
+            return MEMORY_FAILURE;
+        }
     }
 
     // Save error info? Seems to be from NVMe error log
@@ -11822,8 +12141,14 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
         // copy the data we're sending into this structure to send to the device
         if (nvmeIoCtx->ptrData)
         {
-            safe_memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->dataSize,
-                        nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            if (0 != safe_memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->dataSize,
+                                 nvmeIoCtx->ptrData, nvmeIoCtx->dataSize))
+            {
+                perror("Error copying NVMe vendor-specific data for data-out transfer\n");
+                ret = MEMORY_FAILURE;
+                safe_free_aligned(&commandBuffer);
+                return ret;
+            }
         }
         break;
     case XFER_NO_DATA:
@@ -11842,8 +12167,14 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
         // copy the data we're sending into this structure to send to the device
         if (nvmeIoCtx->ptrData)
         {
-            safe_memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->dataSize,
-                        nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            if (0 != safe_memcpy(&commandBuffer[protocolCommand->DataToDeviceBufferOffset], nvmeIoCtx->dataSize,
+                                 nvmeIoCtx->ptrData, nvmeIoCtx->dataSize))
+            {
+                perror("Error copying NVMe vendor-specific data for bi-directional transfer\n");
+                ret = MEMORY_FAILURE;
+                safe_free_aligned(&commandBuffer);
+                return ret;
+            }
         }
         break;
     }
@@ -11876,7 +12207,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     set_Device_Last_Error(nvmeIoCtx->device, 0);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DECLARE_SEATIMER(commandTimer);
     DWORD returned_data = DWORD_C(0);
@@ -11922,8 +12253,12 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
         if (nvmeIoCtx->commandDirection != XFER_DATA_OUT && protocolCommand->DataFromDeviceBufferOffset != 0 &&
             nvmeIoCtx->ptrData)
         {
-            safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize,
-                        &commandBuffer[protocolCommand->DataFromDeviceBufferOffset], nvmeIoCtx->dataSize);
+            if (0 != safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize,
+                                 &commandBuffer[protocolCommand->DataFromDeviceBufferOffset], nvmeIoCtx->dataSize))
+            {
+                perror("Error copying NVMe vendor-specific result data\n");
+                ret = MEMORY_FAILURE;
+            }
         }
     }
 
@@ -11999,8 +12334,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
     {
         ret = OS_COMMAND_TIMEOUT;
     }
-    _aligned_free(commandBuffer);
-    commandBuffer = M_NULLPTR;
+    safe_free_aligned(&commandBuffer);
     return ret;
 }
 
@@ -12036,7 +12370,9 @@ static eReturnValues win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCt
                                                              nvmeIoCtx->device->os_info.minimumAlignment));
         if (reportLunsData)
         {
-            safe_memset(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, 0, nvmeIoCtx->dataSize);
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memset(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, 0, nvmeIoCtx->dataSize),
+                "Initializing NVMe identify active namespace ID list data to exact specified size will never fail");
             if (SUCCESS == (ret = scsi_Report_Luns(nvmeIoCtx->device, 0, reportLunsDataSize, reportLunsData)))
             {
                 // Win10 follows SCSI translation and reports LUNs starting at zero, so for each LUN in the list, add 1
@@ -12220,7 +12556,11 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx* nvmeIoCtx)
         {
             char* identifyControllerData =
                 C_CAST(char*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
-            safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, identifyControllerData, nvmeIoCtx->dataSize);
+            if (0 != safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, identifyControllerData, nvmeIoCtx->dataSize))
+            {
+                perror("Error copying NVMe identify controller result data\n");
+                ret = MEMORY_FAILURE;
+            }
         }
 
         safe_free(&buffer);
@@ -12422,8 +12762,12 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx* nvmeIoCtx)
         uint8_t* logData = C_CAST(uint8_t*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
         if (nvmeIoCtx->ptrData && protocolData->ProtocolDataLength > 0)
         {
-            safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, logData,
-                        M_Min(protocolData->ProtocolDataLength, nvmeIoCtx->dataSize));
+            if (0 != safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, logData,
+                                 M_Min(protocolData->ProtocolDataLength, nvmeIoCtx->dataSize)))
+            {
+                perror("Error copying NVMe get log page result data\n");
+                returnValue = MEMORY_FAILURE;
+            }
         }
         nvmeIoCtx->commandCompletionData.commandSpecific =
             protocolData->FixedProtocolReturnData; // This should only be DWORD 0
@@ -12535,8 +12879,12 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
         uint8_t* featData = C_CAST(uint8_t*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
         if (nvmeIoCtx->ptrData && protocolData->ProtocolDataLength > 0)
         {
-            safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, featData,
-                        M_Min(nvmeIoCtx->dataSize, protocolData->ProtocolDataLength));
+            if (0 != safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, featData,
+                                 M_Min(nvmeIoCtx->dataSize, protocolData->ProtocolDataLength)))
+            {
+                perror("Error coping NVMe get features result data\n");
+                returnValue = MEMORY_FAILURE;
+            }
         }
         nvmeIoCtx->commandCompletionData.commandSpecific =
             protocolData->FixedProtocolReturnData; // This should only be DWORD 0 on a get features command anyways...
@@ -12556,7 +12904,7 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
 #    endif
     // send the activate IOCTL
     STORAGE_HW_FIRMWARE_ACTIVATE downloadActivate;
-    safe_memset(&downloadActivate, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE), 0, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
+    M_INITIALIZE_STRUCTURE(&downloadActivate, sizeof(STORAGE_HW_FIRMWARE_ACTIVATE));
     downloadActivate.Version = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     downloadActivate.Size    = sizeof(STORAGE_HW_FIRMWARE_ACTIVATE);
     downloadActivate.Flags |=
@@ -12577,7 +12925,7 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     DECLARE_SEATIMER(commandTimer);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_FIRMWARE_ACTIVATE, &downloadActivate,
@@ -12665,7 +13013,7 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
     {
         return MEMORY_FAILURE;
     }
-    safe_memset(downloadIO, downloadStructureSize, 0, downloadStructureSize);
+    M_INITIALIZE_STRUCTURE(downloadIO, downloadStructureSize);
 #    if defined(WIN_API_TARGET_VERSION) && !defined(DISABLE_FWDL_V2) &&                                                \
         WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_16299
     downloadIO->Version = sizeof(STORAGE_HW_FIRMWARE_DOWNLOAD_V2);
@@ -12698,7 +13046,12 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
     downloadIO->ImageSize = nvmeIoCtx->dataSize;
 #    endif
     // now copy the buffer into this IOCTL struct
-    safe_memcpy(downloadIO->ImageBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+    if (0 != safe_memcpy(downloadIO->ImageBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize))
+    {
+        perror("Error copying data for NVMe Firmware Download command\n");
+        safe_free(M_REINTERPRET_CAST(void**, &downloadIO));
+        return MEMORY_FAILURE;
+    }
 
 #    if defined(_DEBUG)
     printf("%s: "
@@ -12715,7 +13068,7 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     DECLARE_SEATIMER(commandTimer);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     start_Timer(&commandTimer);
     int fwdlIO = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_FIRMWARE_DOWNLOAD, downloadIO,
@@ -12929,7 +13282,7 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx* nvmeIoCtx)
         if ((maxPowerWatts * 1000.0) >= 1)
         {
             STORAGE_DEVICE_POWER_CAP powerCap;
-            safe_memset(&powerCap, sizeof(STORAGE_DEVICE_POWER_CAP), 0, sizeof(STORAGE_DEVICE_POWER_CAP));
+            M_INITIALIZE_STRUCTURE(&powerCap, sizeof(STORAGE_DEVICE_POWER_CAP));
 
             powerCap.Version    = STORAGE_DEVICE_POWER_CAP_VERSION_V1;
             powerCap.Size       = sizeof(STORAGE_DEVICE_POWER_CAP);
@@ -12982,7 +13335,7 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx* nvmeIoCtx)
     //       supporting/implementing
     STORAGE_TEMPERATURE_THRESHOLD tempThresh;
     // STORAGE_TEMPERATURE_THRESHOLD_FLAG_ADAPTER_REQUEST
-    safe_memset(&tempThresh, sizeof(STORAGE_TEMPERATURE_THRESHOLD), 0, sizeof(STORAGE_TEMPERATURE_THRESHOLD));
+    M_INITIALIZE_STRUCTURE(&tempThresh, sizeof(STORAGE_TEMPERATURE_THRESHOLD));
 
     tempThresh.Version = sizeof(STORAGE_TEMPERATURE_THRESHOLD);
     tempThresh.Size    = sizeof(STORAGE_TEMPERATURE_THRESHOLD);
@@ -13085,8 +13438,13 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
             // if this feature has a databuffer, set it up to transmit it.
             protocolSpecificData->ProtocolDataLength = nvmeIoCtx->dataSize;
             protocolSpecificData->ProtocolDataOffset = sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT);
-            safe_memcpy(C_CAST(uint8_t*, protocolSpecificData) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT),
-                        nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+            if (0 != safe_memcpy(C_CAST(uint8_t*, protocolSpecificData) + sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA_EXT),
+                                 nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize))
+            {
+                perror("Error copying data for NVMe Set Features command\n");
+                safe_free(&bufferData);
+                return MEMORY_FAILURE;
+            }
         }
         else
         {
@@ -14368,7 +14726,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
     //
     // Initialize query data structure to get Identify Controller Data.
     //
-    ZeroMemory(buffer, bufferLength);
+    M_INITIALIZE_STRUCTURE(buffer, bufferLength);
 
     query             = C_CAST(PSTORAGE_PROPERTY_QUERY, buffer);
     protocolDataDescr = C_CAST(PSTORAGE_PROTOCOL_DATA_DESCRIPTOR, buffer);
@@ -14434,7 +14792,11 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
             returnValue = OS_PASSTHROUGH_FAILURE;
         }
         char* logData = C_CAST(char*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, C_CAST(void*, logData), scsiIoCtx->dataLength);
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, C_CAST(void*, logData), scsiIoCtx->dataLength))
+        {
+            perror("Error copying data in for ATA Identify command\n");
+            returnValue = MEMORY_FAILURE;
+        }
     }
 
     safe_free(&buffer);
@@ -14539,7 +14901,11 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx)
             returnValue = OS_PASSTHROUGH_FAILURE;
         }
         char* logData = C_CAST(char*, C_CAST(PCHAR, protocolData) + protocolData->ProtocolDataOffset);
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, C_CAST(void*, logData), scsiIoCtx->dataLength);
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, C_CAST(void*, logData), scsiIoCtx->dataLength))
+        {
+            perror("Error copying ATA log results");
+            returnValue = MEMORY_FAILURE;
+        }
     }
 
     safe_free(&buffer);
@@ -14862,7 +15228,10 @@ static eReturnValues open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice*
         // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea#caching_behavior
         DECLARE_ZERO_INIT_ARRAY(TCHAR, fuaDevice, WIN_MAX_DEVICE_NAME_LENGTH);
         TCHAR* ptrFuaDevice = &fuaDevice[0];
-        _stprintf_s(fuaDevice, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), device->os_info.name);
+        if (0 < _stprintf_s(fuaDevice, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), device->os_info.name))
+        {
+            return MEMORY_FAILURE;
+        }
         device->os_info.forceUnitAccessRWfd = CreateFile(ptrFuaDevice, GENERIC_WRITE | GENERIC_READ,
                                                          FILE_SHARE_READ | FILE_SHARE_WRITE, M_NULLPTR, OPEN_EXISTING,
                                                          FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING |
@@ -14879,90 +15248,81 @@ static eReturnValues open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice*
 }
 
 M_PARAM_RW(1)
-static void set_Command_Completion_For_OS_Read_Write_NVMe(tDevice* device, DWORD lastError)
+static void set_Command_Completion_For_OS_Read_Write_NVMe(tDevice* M_NONNULL device, DWORD lastError)
 {
     // For nvme, set the NVMe status as best we can, then fall through and set SCSI style sense data as well.
     // This switch case will handle many, if not all the same cases as SCSI below, but this seemed like the easier
     // way to solve this problem for now. - TJE if the DISABLE_NVME_PASSTHROUGH flag is refactored, this can
     // probably be cleaned up a lot - TJE
-    device->drive_info.lastNVMeResult.lastNVMeCommandSpecific =
-        0; // cannot report this as far as I know, so clear it to zero
+    uint32_t status = 0;
     switch (lastError)
     {
     case ERROR_NOT_READY: // sense key not ready
         // namespace not ready
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_NS_NOT_READY_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_NS_NOT_READY_);
         break;
     case ERROR_WRITE_PROTECT:
         // attempted to write to read-only range
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
+        status =
             WIN_DUMMY_NVME_STATUS(NVME_SCT_COMMAND_SPECIFIC_STATUS, NVME_CMD_SP_SC_ATTEMPTED_WRITE_TO_READ_ONLY_RANGE);
         break;
     case ERROR_WRITE_FAULT:
         // write fault
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_WRITE_FAULT_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_WRITE_FAULT_);
         break;
     case ERROR_READ_FAULT: // should this be "Deallocated or unwritten logical block on NVME?
     case ERROR_DEVICE_HARDWARE_ERROR:
         // internal device error
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INTERNAL_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INTERNAL_);
         break;
     case ERROR_CRC: // medium error, uncorrectable data
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_UNREC_READ_ERROR_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS, NVME_MED_ERR_SC_UNREC_READ_ERROR_);
         break;
     case ERROR_SEEK:             // cannot find area or track on disk?
         M_FALLTHROUGH;           // Fallthrough for now unless we can figure out a better, more specific error when this
                                  // happens - TJE
     case ERROR_SECTOR_NOT_FOUND: // ID not found (beyond max LBA type error)
         // lba out of range
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_LBA_RANGE_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_LBA_RANGE_);
         break;
     case ERROR_OFFSET_ALIGNMENT_VIOLATION: // alignment error for the device
         // namespace not ready??? THere doesn't seem to be anything similar in the spec like SAS/SATA
         // have...probably because LBAs don't report differing logical and physical size
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_NS_NOT_READY_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_NS_NOT_READY_);
         break;
     case ERROR_TIMEOUT:
         // command abort requested. Assume this system asked to abort this when it took too long
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
         break;
     case ERROR_DEVICE_NOT_CONNECTED: // CRC error???
         // data transfer error?
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_DATA_XFER_ERROR_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_DATA_XFER_ERROR_);
         break;
     case ERROR_BAD_COMMAND:
         // invalid op code??? or invalid field in command? no idea...-TJE
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INVALID_OPCODE_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INVALID_OPCODE_);
         break;
     case ERROR_INVALID_DATA: // Not sure if this is the same as CRC or something else, so this may need changing if
                              // we see it in the future.
     case ERROR_DATA_CHECKSUM_ERROR: // Not sure if this will show up for RAW IO like this is doing or not, but we
                                     // may need a case for this in the future.
         // data transfer error?
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_DATA_XFER_ERROR_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_DATA_XFER_ERROR_);
         break;
     default:
         // setting to abort requested since we don't know what else to set...generic enough
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
+        status = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_ABORT_REQ_);
         break;
     }
+    copy_Last_NVMe_Command_Result_To_tDevice(device, UINT32_C(0), status);
 }
 
 M_PARAM_RW(1)
-static void set_Command_Completion_For_OS_Read_Write_ATA(tDevice* device, DWORD lastError)
+static void set_Command_Completion_For_OS_Read_Write_ATA(tDevice* M_NONNULL device, DWORD lastError)
 {
-    device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
+    ataReturnTFRs rtfrs;
+    M_INITIALIZE_STRUCTURE(&rtfrs, sizeof(ataReturnTFRs));
+    rtfrs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
     switch (lastError)
     {
         // Some of these are in here "just in case", but this is not a comprehensive list of what could be returned.
@@ -14972,43 +15332,48 @@ static void set_Command_Completion_For_OS_Read_Write_ATA(tDevice* device, DWORD 
     case ERROR_WRITE_FAULT:
     case ERROR_READ_FAULT:
     case ERROR_DEVICE_HARDWARE_ERROR:
-        device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_DEVICE_FAULT;
+        rtfrs.status |= ATA_STATUS_BIT_DEVICE_FAULT;
         break;
     case ERROR_CRC: // medium error, uncorrectable data
-        device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_UNCORRECTABLE_DATA;
+        rtfrs.error |= ATA_ERROR_BIT_UNCORRECTABLE_DATA;
         break;
     case ERROR_SEEK:             // cannot find area or track on disk?
         M_FALLTHROUGH;           // Fallthrough for now unless we can figure out a better, more specific error when this
                                  // happens - TJE
     case ERROR_SECTOR_NOT_FOUND: // ID not found (beyond max LBA type error)
-        device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_ID_NOT_FOUND;
+        rtfrs.error |= ATA_ERROR_BIT_ID_NOT_FOUND;
         break;
     case ERROR_OFFSET_ALIGNMENT_VIOLATION: // alignment error for the device
-        device->drive_info.lastCommandRTFRs.status |= ATA_STATUS_BIT_ALIGNMENT_ERROR;
+        rtfrs.status |= ATA_STATUS_BIT_ALIGNMENT_ERROR;
         break;
     default:
         // set the sense key to aborted command...don't set the asc or ascq since we don't know what to set those to
         // right now
-        device->drive_info.lastCommandRTFRs.error |= ATA_ERROR_BIT_ABORT;
+        rtfrs.error |= ATA_ERROR_BIT_ABORT;
         break;
     }
+    copy_Last_Command_RTFRs_To_tDevice(device, &rtfrs);
 }
 
 M_PARAM_RW(1) static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* M_NONNULL device, DWORD lastError)
 {
     eReturnValues ret = SUCCESS;
-    // clear the last command sense data and rtfrs. We'll dummy them up in a minute
-    safe_memset(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs));
-    safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     if (lastError == ERROR_SUCCESS)
     {
-        device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
-        device->drive_info.lastNVMeResult.lastNVMeStatus =
-            WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_SUCCESS_);
+        ataReturnTFRs rtfrs;
+        M_INITIALIZE_STRUCTURE(&rtfrs, sizeof(ataReturnTFRs));
         if (device->drive_info.drive_type == ATA_DRIVE)
         {
-            device->drive_info.lastCommandRTFRs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
+            rtfrs.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE;
+            copy_Last_Command_RTFRs_To_tDevice(device, &rtfrs);
         }
+        else if (device->drive_info.drive_type == NVME_DRIVE)
+        {
+            copy_Last_NVMe_Command_Result_To_tDevice(
+                device, UINT32_C(0), WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_SUCCESS_));
+        }
+        clear_Last_Command_Sense_Data_In_tDevice(device);
     }
     else
     {
@@ -15026,7 +15391,7 @@ M_PARAM_RW(1) static eReturnValues set_Command_Completion_For_OS_Read_Write(tDev
         }
         // NOLINTEND(bugprone-branch-clone)
 
-        device->drive_info.lastCommandSenseData[0] = SCSI_SENSE_CUR_INFO_FIXED;
+        senseData[0] = SCSI_SENSE_CUR_INFO_FIXED;
         switch (device->os_info.last_error)
         {
             // Some of these are in here "just in case", but this is not a comprehensive list of what could be returned.
@@ -15089,15 +15454,15 @@ M_PARAM_RW(1) static eReturnValues set_Command_Completion_For_OS_Read_Write(tDev
             senseKey = SENSE_KEY_ABORTED_COMMAND;
             break;
         }
-        device->drive_info.lastCommandSenseData[2] |= senseKey;
+        senseData[2] |= senseKey;
         if (asc || ascq)
         {
-            device->drive_info.lastCommandSenseData[7] =
-                6; // get to bytes 12 & 13 for asc info...or should this change to a value of 7 to include fru, even
-                   // though that is impossible for us to figure out??? - TJE
-            device->drive_info.lastCommandSenseData[12] = asc;
-            device->drive_info.lastCommandSenseData[13] = ascq;
+            senseData[7] = 6; // get to bytes 12 & 13 for asc info...or should this change to a value of 7 to include
+                              // fru, even though that is impossible for us to figure out??? - TJE
+            senseData[12] = asc;
+            senseData[13] = ascq;
         }
+        copy_Last_Command_Sense_Data_To_tDevice(device, senseData, SPC3_SENSE_LEN);
     }
     return ret;
 }
@@ -15124,7 +15489,7 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     }
     // used for setting the timeout
     COMMTIMEOUTS comTimeout;
-    safe_memset(&comTimeout, sizeof(COMMTIMEOUTS), 0, sizeof(COMMTIMEOUTS));
+    M_INITIALIZE_STRUCTURE(&comTimeout, sizeof(COMMTIMEOUTS));
     /*BOOL timeoutGot = */
     GetCommTimeouts(handleToUse, &comTimeout); // get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = UINT64_C(0);
@@ -15145,9 +15510,9 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     ;
     // for use by the setFilePointerEx function
     LARGE_INTEGER liDistanceToMove;
-    safe_memset(&liDistanceToMove, sizeof(LARGE_INTEGER), 0, sizeof(LARGE_INTEGER));
+    M_INITIALIZE_STRUCTURE(&liDistanceToMove, sizeof(LARGE_INTEGER));
     LARGE_INTEGER lpNewFilePointer;
-    safe_memset(&lpNewFilePointer, sizeof(LARGE_INTEGER), 0, sizeof(LARGE_INTEGER));
+    M_INITIALIZE_STRUCTURE(&lpNewFilePointer, sizeof(LARGE_INTEGER));
     // set the distance to move in bytes
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     // set the offset here
@@ -15165,7 +15530,7 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     // this api call will need some changes when asynchronous support is added in
     DECLARE_SEATIMER(commandTimer);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent     = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     overlappedStruct.Offset     = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
     overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
@@ -15197,7 +15562,7 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_Last_Command_Time_To_tDevice(M_CONST_CAST(tDevice*, device), get_Nano_Seconds(commandTimer));
 
     if (MSFT_BOOL_FALSE(retStatus)) // not successful
     {
@@ -15258,7 +15623,7 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     }
     // used for setting the timeout
     COMMTIMEOUTS comTimeout;
-    safe_memset(&comTimeout, sizeof(COMMTIMEOUTS), 0, sizeof(COMMTIMEOUTS));
+    M_INITIALIZE_STRUCTURE(&comTimeout, sizeof(COMMTIMEOUTS));
     /*BOOL timeoutGot = */
     GetCommTimeouts(handleToUse, &comTimeout); // get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = UINT64_C(0);
@@ -15279,9 +15644,9 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     ;
     // for use by the setFilePointerEx function
     LARGE_INTEGER liDistanceToMove;
-    safe_memset(&liDistanceToMove, sizeof(LARGE_INTEGER), 0, sizeof(LARGE_INTEGER));
+    M_INITIALIZE_STRUCTURE(&liDistanceToMove, sizeof(LARGE_INTEGER));
     LARGE_INTEGER lpNewFilePointer;
-    safe_memset(&lpNewFilePointer, sizeof(LARGE_INTEGER), 0, sizeof(LARGE_INTEGER));
+    M_INITIALIZE_STRUCTURE(&lpNewFilePointer, sizeof(LARGE_INTEGER));
     // set the distance to move in bytes
     liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
     // set the offset here
@@ -15299,7 +15664,7 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     // this api call will need some changes when asynchronous support is added in
     DECLARE_SEATIMER(commandTimer);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent     = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     overlappedStruct.Offset     = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
     overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
@@ -15338,8 +15703,8 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     {
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
     }
-    overlappedStruct.hEvent                                               = M_NULLPTR;
-    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    overlappedStruct.hEvent = M_NULLPTR;
+    set_Last_Command_Time_To_tDevice(M_CONST_CAST(tDevice*, device), get_Nano_Seconds(commandTimer));
 
     if (MSFT_BOOL_FALSE(retStatus)) // not successful
     {
@@ -15384,7 +15749,7 @@ eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
         print_str("Using Windows API to Verify LBAs\n");
     }
     VERIFY_INFORMATION verifyCmd;
-    safe_memset(&verifyCmd, sizeof(VERIFY_INFORMATION), 0, sizeof(VERIFY_INFORMATION));
+    M_INITIALIZE_STRUCTURE(&verifyCmd, sizeof(VERIFY_INFORMATION));
     DECLARE_SEATIMER(verifyTimer);
     verifyCmd.StartingOffset.QuadPart =
         C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize); // LBA needs to be converted to a byte offset
@@ -15400,7 +15765,7 @@ eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
     }
     DWORD      returnedBytes = DWORD_C(0);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent     = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     overlappedStruct.Offset     = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
     overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
@@ -15487,7 +15852,7 @@ eReturnValues os_Flush(const tDevice* device)
     }
     // used for setting the timeout
     COMMTIMEOUTS comTimeout;
-    safe_memset(&comTimeout, sizeof(COMMTIMEOUTS), 0, sizeof(COMMTIMEOUTS));
+    M_INITIALIZE_STRUCTURE(&comTimeout, sizeof(COMMTIMEOUTS));
     /*BOOL timeoutGot = */
     GetCommTimeouts(device->os_info.fd, &comTimeout); // get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = UINT64_C(0);
@@ -15534,7 +15899,7 @@ eReturnValues os_Flush(const tDevice* device)
         ret = SUCCESS;
     }
 
-    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_Last_Command_Time_To_tDevice(M_CONST_CAST(tDevice*, device), get_Nano_Seconds(commandTimer));
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
         print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);

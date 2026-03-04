@@ -133,7 +133,9 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         BOOL                     success = TRUE;
         PNVME_PASS_THROUGH_IOCTL ioctl   = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
         ioctl->SrbIoCtrl.HeaderLength    = sizeof(SRB_IO_CONTROL);
-        safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN),
+            "Copying OF NVMe signature should always pass as destination and source are always equal");
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length      = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
         ioctl->SrbIoCtrl.Timeout     = DEFAULT_COMMAND_TIMEOUT;
@@ -197,7 +199,8 @@ eReturnValues send_OFNVME_Reset(const tDevice* device)
     M_INITIALIZE_STRUCTURE(&ofnvmeReset, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN),
+                             "Copying OF NVMe signature should always pass as destination and source are always equal");
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_RESET_DEVICE);
     ofnvmeReset.Length      = sizeof(SRB_IO_CONTROL);
 
@@ -257,7 +260,8 @@ eReturnValues send_OFNVME_Add_Namespace(const tDevice* device)
     M_INITIALIZE_STRUCTURE(&ofnvmeReset, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN),
+                             "Copying OF NVMe signature should always pass as destination and source are always equal");
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_ADD_NAMESPACE);
     ofnvmeReset.Length      = sizeof(SRB_IO_CONTROL);
 
@@ -317,7 +321,8 @@ eReturnValues send_OFNVME_Remove_Namespace(const tDevice* device)
     M_INITIALIZE_STRUCTURE(&ofnvmeReset, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN),
+                             "Copying OF NVMe signature should always pass as destination and source are always equal");
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_REMOVE_NAMESPACE);
     ofnvmeReset.Length      = sizeof(SRB_IO_CONTROL);
 
@@ -387,7 +392,9 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
         BOOL                     success = TRUE;
         PNVME_PASS_THROUGH_IOCTL ioctl   = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
         ioctl->SrbIoCtrl.HeaderLength    = sizeof(SRB_IO_CONTROL);
-        safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN),
+            "Copying OF NVMe signature should always pass as destination and source are always equal");
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length      = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
         ioctl->SrbIoCtrl.Timeout     = nvmeIoCtx->timeout;
@@ -467,7 +474,12 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
                                      // is interleaved or at the beginning of the buffer
             if (nvmeIoCtx->dataSize > 0 && nvmeIoCtx->ptrData != M_NULLPTR)
             {
-                safe_memcpy(ioctl->DataBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+                if (0 != safe_memcpy(ioctl->DataBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize))
+                {
+                    safe_free_aligned(&passthroughBuffer);
+                    perror("Error coping data out for OF NVMe passthrough\n");
+                    return MEMORY_FAILURE;
+                }
             }
             break;
         case XFER_DATA_IN_OUT:
@@ -522,8 +534,13 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
                     nvmeIoCtx->ptrData != M_NULLPTR)
                 {
                     // copy back in the data that was read from the device.
-                    safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, ioctl->DataBuffer,
-                                M_Min(nvmeIoCtx->dataSize, ioctl->ReturnBufferLen - sizeof(NVME_PASS_THROUGH_IOCTL)));
+                    if (0 != safe_memcpy(
+                                 nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, ioctl->DataBuffer,
+                                 M_Min(nvmeIoCtx->dataSize, ioctl->ReturnBufferLen - sizeof(NVME_PASS_THROUGH_IOCTL))))
+                    {
+                        perror("Error coping data in for OF NVMe passthrough\n");
+                        ret = MEMORY_FAILURE;
+                    }
                 }
                 // copy back completion data
                 nvmeIoCtx->commandCompletionData.commandSpecific = ioctl->CplEntry[0];
@@ -568,7 +585,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
             }
         }
 
-        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        set_Last_Command_Time_To_tDevice(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
 
         safe_free_aligned(&passthroughBuffer);
     }
