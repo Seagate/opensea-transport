@@ -62,7 +62,10 @@ e.g. return c?t?d? from /dev/rdsk/c?t?d?
 static void set_Device_Name(const char* filename, char* name, size_t sizeOfName)
 {
     char* s = strrchr(filename, '/') + 1;
-    snprintf_err_handle(name, sizeOfName, "%s", s);
+    if (0 != safe_strcpy(name, sizeOfName, s))
+    {
+        perror("Error copying device name in set_Device_Name");
+    }
 }
 
 static M_INLINE void close_mnttab(FILE** mnttab)
@@ -137,13 +140,19 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
-        // set the name
-        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
+        DECLARE_ZERO_INIT_ARRAY(char, tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
         // set the friendly name
-        set_Device_Name(deviceHandle, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        set_Device_Name(deviceHandle, &tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+
+        set_Device_Name_In_tDevice(device, deviceHandle, tempFriendlyName);
+
+        DECLARE_ZERO_INIT_ARRAY(char, tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH);
+
         // set the block handle
-        snprintf_err_handle(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s",
-                            device->os_info.friendlyName);
+        snprintf_err_handle(&tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s", tempFriendlyName);
+
+        set_Second_Device_Name_In_tDevice(device, tempSecondName, tempFriendlyName);
+
         // set the partition info
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondName);
 
@@ -173,7 +182,7 @@ static eReturnValues uscsi_Reset(int fd, int resetFlag)
     struct uscsi_cmd uscsi_io;
     eReturnValues    ret = SUCCESS;
 
-    safe_memset(&uscsi_io, sizeof(uscsi_io), 0, sizeof(uscsi_io));
+    M_INITIALIZE_STRUCTURE(&uscsi_io, sizeof(uscsi_io));
 
     uscsi_io.uscsi_flags |= resetFlag;
     int ioctlResult = ioctl(fd, USCSICMD, &uscsi_io);
@@ -259,7 +268,7 @@ eReturnValues send_uscsi_io(ScsiIoCtx* scsiIoCtx)
     struct uscsi_cmd uscsi_io;
     eReturnValues    ret = SUCCESS;
 
-    safe_memset(&uscsi_io, sizeof(uscsi_io), 0, sizeof(uscsi_io));
+    M_INITIALIZE_STRUCTURE(&uscsi_io, sizeof(uscsi_io));
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
         print_str("Sending command with send_IO\n");
@@ -526,8 +535,14 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 continue;
             }
-            safe_memset(name, USCSI_NAME_LEN, 0, USCSI_NAME_LEN); // clear name before reusing it
-            snprintf_err_handle(name, USCSI_NAME_LEN, "%s", devs[driveNumber]);
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memset(name, USCSI_NAME_LEN, 0, USCSI_NAME_LEN),
+                "Clearing name buffer for exact size it was allocated as before reuse. Should never fail");
+            if (0 != safe_strcpy(name, USCSI_NAME_LEN, devs[driveNumber]))
+            {
+                perror("Error copying handle in get_Device_List");
+                continue;
+            }
             fd = -1;
             // lets try to open the device.
             fd = open(name, O_RDWR | O_NONBLOCK);
@@ -659,7 +674,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
     if (device->os_info.lockCount == UINT16_C(1))
     {
         struct flock locks;
-        safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+        M_INITIALIZE_STRUCTURE(&locks, sizeof(struct flock));
         locks.l_type   = F_WRLCK;
         locks.l_whence = SEEK_SET;
         locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
@@ -688,7 +703,7 @@ eReturnValues os_Unlock_Device(const tDevice* device)
     if (device->os_info.lockCount == UINT16_C(1))
     {
         struct flock locks;
-        safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+        M_INITIALIZE_STRUCTURE(&locks, sizeof(struct flock));
         locks.l_type   = F_UNLCK;
         locks.l_whence = SEEK_SET;
         locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;

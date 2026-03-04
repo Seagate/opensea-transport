@@ -47,7 +47,7 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
         int iocret = 0;
         DECLARE_SEATIMER(commandTimer);
         atareq_t atacmd;
-        safe_memset(&atacmd, sizeof(atareq_t), 0, sizeof(atareq_t));
+        M_INITIALIZE_STRUCTURE(&atacmd, sizeof(atareq_t));
         atacmd.flags |= ATACMD_READREG;
         switch (scsiIoCtx->pAtaCmdOpts->commandDirection)
         {

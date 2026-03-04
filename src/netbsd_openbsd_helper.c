@@ -133,8 +133,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         get_BSD_SCSI_Address(device->os_info.fd, &device->os_info.addresstype, &device->os_info.bus,
                              &device->os_info.target, &device->os_info.lun);
     }
-    snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
-    snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", deviceHandle);
+    set_Device_Name_In_tDevice(device, filename, deviceHandle);
     free_Posix_Resolved_Filename(&deviceHandle);
 
 #if defined(__NetBSD__)
@@ -326,8 +325,14 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 continue;
             }
-            safe_memset(name, BSD_DEV_NAME_LEN, 0, BSD_DEV_NAME_LEN); // clear name before reusing it
-            snprintf_err_handle(name, BSD_DEV_NAME_LEN, "%s", devs[driveNumber]);
+            M_IGNORE_SAFE_ERRNO_CALL(safe_memset(name, BSD_DEV_NAME_LEN, 0, BSD_DEV_NAME_LEN),
+                                     "Zeroing device name before use in get_Device_List will never fail since this "
+                                     "matches the allocated size"); // clear name before reusing it
+            if (0 != safe_strcpy(name, BSD_DEV_NAME_LEN, devs[driveNumber]))
+            {
+                perror("Error coping handle value during get_Device_List (likely truncation)");
+                continue;
+            }
             fd = -1;
             // lets try to open the device.
             fd = open(name, O_RDWR | O_NONBLOCK);
@@ -335,7 +340,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 close(fd);
                 eVerbosityLevels temp = d->deviceVerbosity;
-                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
+                M_INITIALIZE_STRUCTURE(d, sizeof(tDevice));
                 d->deviceVerbosity = temp;
                 d->sanity.size     = ver.size;
                 d->sanity.version  = ver.version;

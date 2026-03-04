@@ -91,7 +91,7 @@ int mount_iter_open(MountIter* it)
 int mount_iter_next(MountIter* it, MountEntry* out)
 {
     struct mnttab e;
-    safe_memset(&e, sizeof(struct mnttab), 0, sizeof(struct mnttab));
+    M_INITIALIZE_STRUCTURE(&e, sizeof(struct mnttab));
     // getmntent() returns 0 on success, -1 on EOF.
     // [2](https://unix.stackexchange.com/questions/743036/should-the-use-of-etc-mtab-now-be-considered-deprecated)
     if (getmntent(it->fp, &e) != 0)
@@ -486,14 +486,14 @@ int get_Partition_Count(const char* blockDeviceName)
 {
     int       count = 0;
     MountIter mntit;
-    safe_memset(&mntit, sizeof(MountIter), 0, sizeof(MountIter));
+    M_INITIALIZE_STRUCTURE(&mntit, sizeof(MountIter));
     if (mount_iter_open(&mntit) != 0)
     {
         return -1;
     }
 
     MountEntry mntentry;
-    safe_memset(&mntentry, sizeof(MountEntry), 0, sizeof(MountEntry));
+    M_INITIALIZE_STRUCTURE(&mntentry, sizeof(MountEntry));
     while (mount_iter_next(&mntit, &mntentry) == 0)
     {
         if (mntentry.fsname && blockDeviceName && strstr(mntentry.fsname, blockDeviceName))
@@ -517,14 +517,14 @@ eReturnValues get_Partition_List(const char* blockDeviceName, ptrsPartitionInfo 
     int           matches = 0;
 
     MountIter mntit;
-    safe_memset(&mntit, sizeof(MountIter), 0, sizeof(MountIter));
+    M_INITIALIZE_STRUCTURE(&mntit, sizeof(MountIter));
     if (mount_iter_open(&mntit) != 0)
     {
         return FAILURE;
     }
 
     MountEntry mntentry;
-    safe_memset(&mntentry, sizeof(MountEntry), 0, sizeof(MountEntry));
+    M_INITIALIZE_STRUCTURE(&mntentry, sizeof(MountEntry));
     while (mount_iter_next(&mntit, &mntentry) == 0)
     {
         if (mntentry.fsname && blockDeviceName && strstr(mntentry.fsname, blockDeviceName))
@@ -742,7 +742,7 @@ eReturnValues unmount_Partitions_From_Device(const char* blockDevice)
     }
 
     MountIter mntit;
-    safe_memset(&mntit, sizeof(MountIter), 0, sizeof(MountIter));
+    M_INITIALIZE_STRUCTURE(&mntit, sizeof(MountIter));
     if (mount_iter_open(&mntit) != 0)
     {
         return FAILURE;
@@ -759,7 +759,7 @@ eReturnValues unmount_Partitions_From_Device(const char* blockDevice)
     }
 
     MountEntry mntentry;
-    safe_memset(&mntentry, sizeof(MountEntry), 0, sizeof(MountEntry));
+    M_INITIALIZE_STRUCTURE(&mntentry, sizeof(MountEntry));
     while (mount_iter_next(&mntit, &mntentry) == 0)
     {
         if (mntentry.fsname && strstr(mntentry.fsname, blockDevice))
@@ -776,7 +776,12 @@ eReturnValues unmount_Partitions_From_Device(const char* blockDevice)
                     return MEMORY_FAILURE;
                 }
                 size_t newmemlen = int_to_sizet(cap - size) * sizeof(spartitionInfo);
-                safe_memset(temp + size, newmemlen, 0, newmemlen);
+                if (0 != safe_memset(temp + size, newmemlen, 0, newmemlen))
+                {
+                    free_spartitionInfo_list(&list, size);
+                    mount_iter_close(&mntit);
+                    return MEMORY_FAILURE;
+                }
                 list = temp;
             }
             errno_t err = 0;

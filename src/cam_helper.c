@@ -241,9 +241,8 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
 #    endif
 
     char* baseLink = basename(deviceHandle);
-    // Now we will set up the device name, etc fields in the os_info structure
-    snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
-    snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
+    set_Device_Name_In_tDevice(device, filename, baseLink);
+
     set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
 
     ret = fill_Drive_Info_Data(device);
@@ -337,12 +336,16 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
 
         if (device->os_info.cam_dev != M_NULLPTR)
         {
-            // Set name and friendly name
-            // name
-            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
-            // friendly name
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName,
-                                devUnit);
+            char* tempFriendlyName = M_NULLPTR;
+            if (asprintf(&tempFriendlyName, "%s%d", devName, devUnit) > 0)
+            {
+                set_Device_Name_In_tDevice(device, filename, tempFriendlyName);
+                safe_free(&tempFriendlyName);
+            }
+            else
+            {
+                set_Device_Name_In_tDevice(device, filename, M_NULLPTR);
+            }
 
             device->os_info.fd = devUnit;
 
@@ -622,7 +625,7 @@ static eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
         // commands -TJE
         return OS_COMMAND_NOT_AVAILABLE;
     }
-    safe_memset(&atareq, sizeof(struct ata_ioc_request), 0, sizeof(struct ata_ioc_request));
+    M_INITIALIZE_STRUCTURE(&atareq, sizeof(struct ata_ioc_request));
     atareq.u.ata.command = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
     atareq.u.ata.feature = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
     if (scsiIoCtx->pAtaCmdOpts->commandType > ATA_CMD_TYPE_TASKFILE)
@@ -1687,8 +1690,12 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 continue;
             }
-            safe_memset(name, CAM_DEV_NAME_LEN, 0, CAM_DEV_NAME_LEN); // clear name before reusing it
-            snprintf_err_handle(name, CAM_DEV_NAME_LEN, "%s", devs[driveNumber]);
+            M_INITIALIZE_STRUCTURE(name, CAM_DEV_NAME_LEN); // clear name before reusing it
+            if (0 != safe_strcpy(name, CAM_DEV_NAME_LEN, devs[driveNumber]))
+            {
+                perror("Error copying device name for CAM handle");
+                continue;
+            }
             fd = -1;
             // lets try to open the device.
             if (is_NVMe_Handle(name)
@@ -1720,7 +1727,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                     d->os_info.cam_dev = M_NULLPTR;
                 }*/
                 eVerbosityLevels temp = d->deviceVerbosity;
-                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
+                M_INITIALIZE_STRUCTURE(d, sizeof(tDevice));
                 d->deviceVerbosity = temp;
                 d->sanity.size     = ver.size;
                 d->sanity.version  = ver.version;
@@ -2060,7 +2067,7 @@ static eReturnValues send_IOCTL_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     DECLARE_SEATIMER(commandTimer);
     struct nvme_get_nsid   gnsid;
     struct nvme_pt_command pt;
-    safe_memset(&pt, sizeof(pt), 0, sizeof(pt));
+    M_INITIALIZE_STRUCTURE(&pt, sizeof(pt));
 
     switch (nvmeIoCtx->commandType)
     {

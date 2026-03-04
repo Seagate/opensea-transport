@@ -150,8 +150,12 @@ static void sntl_Set_Sense_Data_For_Translation(
             while (counter < descriptorCount)
             {
                 descriptorLength = descriptor[descriptorOffset + 1] + 1;
-                safe_memcpy(&senseData[senseDataOffset], SPC3_SENSE_LEN - senseDataOffset, descriptor,
-                            descriptorLength);
+                if (0 != safe_memcpy(&senseData[senseDataOffset], SPC3_SENSE_LEN - senseDataOffset, descriptor,
+                                     descriptorLength))
+                    M_UNLIKELY
+                    {
+                        perror("Failed to copy sense descriptor");
+                    }
                 additionalSenseLength += descriptorLength;
                 ++counter;
                 descriptorOffset += descriptorLength;
@@ -203,12 +207,20 @@ static void sntl_Set_Sense_Data_For_Translation(
                                             descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11]);
                     if (descriptorInformation > UINT32_MAX)
                     {
-                        safe_memset(&senseData[3], SPC3_SENSE_LEN - 3, UINT8_MAX, 4);
+                        if (0 != safe_memset(&senseData[3], SPC3_SENSE_LEN - 3, UINT8_MAX, 4))
+                            M_UNLIKELY
+                            {
+                                perror("Failed to copy information");
+                            }
                     }
                     else
                     {
                         // copy lowest 4 bytes
-                        safe_memcpy(&senseData[3], SPC3_SENSE_LEN - 3, &descriptor[descriptorOffset + 8], 4);
+                        if (0 != safe_memcpy(&senseData[3], SPC3_SENSE_LEN - 3, &descriptor[descriptorOffset + 8], 4))
+                            M_UNLIKELY
+                            {
+                                perror("Failed to copy information");
+                            }
                     }
                 }
                 break;
@@ -221,18 +233,30 @@ static void sntl_Set_Sense_Data_For_Translation(
                                             descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11]);
                     if (descriptorCmdInformation > UINT32_MAX)
                     {
-                        safe_memset(&senseData[8], SPC3_SENSE_LEN - 8, UINT8_MAX, 4);
+                        if (0 != safe_memset(&senseData[8], SPC3_SENSE_LEN - 8, UINT8_MAX, 4))
+                            M_UNLIKELY
+                            {
+                                perror("Failed to copy command specific information");
+                            }
                     }
                     else
                     {
                         // copy lowest 4 bytes
-                        safe_memcpy(&senseData[8], SPC3_SENSE_LEN - 8, &descriptor[descriptorOffset + 8], 4);
+                        if (0 != safe_memcpy(&senseData[8], SPC3_SENSE_LEN - 8, &descriptor[descriptorOffset + 8], 4))
+                            M_UNLIKELY
+                            {
+                                perror("Failed to copy command specific information");
+                            }
                     }
                 }
                 break;
                 case 2: // sense key specific
                     // bytes 4, 5 , and 6
-                    safe_memcpy(&senseData[15], SPC3_SENSE_LEN - 15, &descriptor[descriptorOffset + 4], 3);
+                    if (0 != safe_memcpy(&senseData[15], SPC3_SENSE_LEN - 15, &descriptor[descriptorOffset + 4], 3))
+                        M_UNLIKELY
+                        {
+                            perror("Failed to copy sense key specific information");
+                        }
                     break;
                 case 3: // FRU
                     senseData[14] = descriptor[descriptorOffset + 3];
@@ -317,7 +341,11 @@ static void sntl_Set_Sense_Data_For_Translation(
                         senseData[2] |= BIT5;
                     }
                     // bytes 4, 5 , and 6 for sense key specific information
-                    safe_memcpy(&senseData[15], SPC3_SENSE_LEN - 15, &descriptor[descriptorOffset + 4], 3);
+                    if (0 != safe_memcpy(&senseData[15], SPC3_SENSE_LEN - 15, &descriptor[descriptorOffset + 4], 3))
+                        M_UNLIKELY
+                        {
+                            perror("Failed to copy sense key specific information");
+                        }
                     // fru code
                     senseData[14] = descriptor[descriptorOffset + 7];
                     {
@@ -329,12 +357,21 @@ static void sntl_Set_Sense_Data_For_Translation(
                                                 descriptor[descriptorOffset + 14], descriptor[descriptorOffset + 15]);
                         if (descriptorInformation > UINT32_MAX)
                         {
-                            safe_memset(&senseData[3], SPC3_SENSE_LEN - 3, UINT8_MAX, 4);
+                            if (0 != safe_memset(&senseData[3], SPC3_SENSE_LEN - 3, UINT8_MAX, 4))
+                                M_UNLIKELY
+                                {
+                                    perror("Failed to copy information");
+                                }
                         }
                         else
                         {
                             // copy lowest 4 bytes
-                            safe_memcpy(&senseData[3], SPC3_SENSE_LEN - 3, &descriptor[descriptorOffset + 12], 4);
+                            if (0 !=
+                                safe_memcpy(&senseData[3], SPC3_SENSE_LEN - 3, &descriptor[descriptorOffset + 12], 4))
+                                M_UNLIKELY
+                                {
+                                    perror("Failed to copy information");
+                                }
                         }
                         // command specific information
                         uint64_t descriptorCmdInformation =
@@ -344,12 +381,21 @@ static void sntl_Set_Sense_Data_For_Translation(
                                                 descriptor[descriptorOffset + 22], descriptor[descriptorOffset + 23]);
                         if (descriptorCmdInformation > UINT32_MAX)
                         {
-                            safe_memset(&senseData[8], SPC3_SENSE_LEN - 8, UINT8_MAX, 4);
+                            if (0 != safe_memset(&senseData[8], SPC3_SENSE_LEN - 8, UINT8_MAX, 4))
+                                M_UNLIKELY
+                                {
+                                    perror("Failed to copy command specific information");
+                                }
                         }
                         else
                         {
                             // copy lowest 4 bytes
-                            safe_memcpy(&senseData[8], SPC3_SENSE_LEN - 8, &descriptor[descriptorOffset + 20], 4);
+                            if (0 !=
+                                safe_memcpy(&senseData[8], SPC3_SENSE_LEN - 8, &descriptor[descriptorOffset + 20], 4))
+                                M_UNLIKELY
+                                {
+                                    perror("Failed to copy command specific information");
+                                }
                         }
                     }
                     break;
@@ -365,7 +411,10 @@ static void sntl_Set_Sense_Data_For_Translation(
     }
     if (sensePtr)
     {
-        safe_memcpy(sensePtr, senseDataLength, senseData, M_Min(SPC3_SENSE_LEN, senseDataLength));
+        if (0 != safe_memcpy(sensePtr, senseDataLength, senseData, M_Min(SPC3_SENSE_LEN, senseDataLength)))
+        {
+            perror("Failed to copy sense data");
+        }
     }
 }
 
@@ -844,7 +893,12 @@ static eReturnValues sntl_Translate_Supported_VPD_Pages_00h(ScsiIoCtx* scsiIoCtx
     supportedPages[3] = M_Byte0(pageOffset - 4);
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedPages, M_Min(pageOffset, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedPages,
+                             M_Min(pageOffset, scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Failed to copy supported VPD pages data");
+            }
     }
     return ret;
 }
@@ -887,8 +941,12 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(const tDevic
             else
             {
                 DECLARE_ZERO_INIT_ARRAY(char, shortString, 3);
-                snprintf_err_handle(shortString, 3, "%02" PRIX8,
-                                    device->drive_info.IdentifyData.nvme.ns.eui64[euiOffset]);
+                if (0 > snprintf_err_handle(shortString, 3, "%02" PRIX8,
+                                            device->drive_info.IdentifyData.nvme.ns.eui64[euiOffset]))
+                    M_UNLIKELY
+                    {
+                        perror("Error setting SNTL EUI64 string");
+                    }
                 unitSerialNumber[offset]     = C_CAST(uint8_t, shortString[0]);
                 unitSerialNumber[offset + 1] = C_CAST(uint8_t, shortString[1]);
                 offset += 2;
@@ -913,8 +971,12 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(const tDevic
             else
             {
                 DECLARE_ZERO_INIT_ARRAY(char, shortString, 3);
-                snprintf_err_handle(shortString, 3, "%02" PRIX8,
-                                    device->drive_info.IdentifyData.nvme.ns.nguid[nguidOffset]);
+                if (0 > snprintf_err_handle(shortString, 3, "%02" PRIX8,
+                                            device->drive_info.IdentifyData.nvme.ns.nguid[nguidOffset]))
+                    M_UNLIKELY
+                    {
+                        perror("Error setting SNTL NGUID string");
+                    }
                 unitSerialNumber[offset]     = C_CAST(uint8_t, shortString[0]);
                 unitSerialNumber[offset + 1] = C_CAST(uint8_t, shortString[1]);
                 offset += 2;
@@ -939,7 +1001,11 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(const tDevic
             ++counter;
         }
         unitSerialNumber[offset] = '_';
-        snprintf_err_handle(nsidString, NSID_STRING_LENGTH, "%08" PRIX32, device->drive_info.namespaceID);
+        if (0 > snprintf_err_handle(nsidString, NSID_STRING_LENGTH, "%08" PRIX32, device->drive_info.namespaceID))
+            M_UNLIKELY
+            {
+                perror("Error setting SNTL NSID string");
+            }
         counter = 0;
         while (counter < 8)
         {
@@ -955,8 +1021,11 @@ static eReturnValues sntl_Translate_Unit_Serial_Number_VPD_Page_80h(const tDevic
     // now copy all the data we set up back to the scsi io ctx
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, unitSerialNumber,
-                    M_Min(C_CAST(uint32_t, pageLength) + UINT32_C(4), scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, unitSerialNumber,
+                             M_Min(C_CAST(uint32_t, pageLength) + UINT32_C(4), scsiIoCtx->dataLength)))
+        {
+            perror("Failed to copy unit serial number data");
+        }
     }
     return ret;
 }
@@ -1493,7 +1562,11 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(const tDe
     // copy naa first
     if (naaDesignatorLength > 0 && naaDesignator)
     {
-        safe_memcpy(&deviceIdentificationPage[4], devIDPageLen - 4, naaDesignator, naaDesignatorLength);
+        if (0 != safe_memcpy(&deviceIdentificationPage[4], devIDPageLen - 4, naaDesignator, naaDesignatorLength))
+            M_UNLIKELY
+            {
+                perror("Failed to copy NAA designator data");
+            }
     }
     else
     {
@@ -1503,8 +1576,12 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(const tDe
     // t10 second
     if (t10VendorIdDesignatorLength > 0 && t10VendorIdDesignator)
     {
-        safe_memcpy(&deviceIdentificationPage[4 + naaDesignatorLength], devIDPageLen - 4 - naaDesignatorLength,
-                    t10VendorIdDesignator, t10VendorIdDesignatorLength);
+        if (0 != safe_memcpy(&deviceIdentificationPage[4 + naaDesignatorLength], devIDPageLen - 4 - naaDesignatorLength,
+                             t10VendorIdDesignator, t10VendorIdDesignatorLength))
+            M_UNLIKELY
+            {
+                perror("Failed to copy T10 vendor ID designator data");
+            }
     }
     else
     {
@@ -1514,9 +1591,13 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(const tDe
     // scsi name string third
     if (SCSINameStringDesignatorLength > 0 && SCSINameStringDesignator)
     {
-        safe_memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + t10VendorIdDesignatorLength],
-                    devIDPageLen - 4 - naaDesignatorLength - t10VendorIdDesignatorLength, SCSINameStringDesignator,
-                    SCSINameStringDesignatorLength);
+        if (0 != safe_memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + t10VendorIdDesignatorLength],
+                             devIDPageLen - 4 - naaDesignatorLength - t10VendorIdDesignatorLength,
+                             SCSINameStringDesignator, SCSINameStringDesignatorLength))
+            M_UNLIKELY
+            {
+                perror("Failed to copy SCSI name string designator data");
+            }
     }
     else
     {
@@ -1526,11 +1607,15 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(const tDe
     // eui64 last
     if (eui64DesignatorLength > 0 && eui64Designator)
     {
-        safe_memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + t10VendorIdDesignatorLength +
-                                              SCSINameStringDesignatorLength],
-                    devIDPageLen - 4 - naaDesignatorLength - t10VendorIdDesignatorLength -
-                        SCSINameStringDesignatorLength,
-                    eui64Designator, eui64DesignatorLength);
+        if (0 != safe_memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + t10VendorIdDesignatorLength +
+                                                       SCSINameStringDesignatorLength],
+                             devIDPageLen - 4 - naaDesignatorLength - t10VendorIdDesignatorLength -
+                                 SCSINameStringDesignatorLength,
+                             eui64Designator, eui64DesignatorLength))
+            M_UNLIKELY
+            {
+                perror("Failed to copy EUI-64 designator data");
+            }
     }
     else
     {
@@ -1540,10 +1625,14 @@ static eReturnValues sntl_Translate_Device_Identification_VPD_Page_83h(const tDe
     // copy the final data back for the command
     if (scsiIoCtx->pdata && deviceIdentificationPage)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, deviceIdentificationPage,
-                    M_Min(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength +
-                              SCSINameStringDesignatorLength,
-                          scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, deviceIdentificationPage,
+                             M_Min(4U + eui64DesignatorLength + t10VendorIdDesignatorLength + naaDesignatorLength +
+                                       SCSINameStringDesignatorLength,
+                                   scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Failed to copy device identification page data");
+            }
     }
     safe_free(&deviceIdentificationPage);
     return ret;
@@ -1626,7 +1715,12 @@ static eReturnValues sntl_Translate_Extended_Inquiry_Data_VPD_Page_86h(const tDe
 
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, extendedInquiry, M_Min(64, scsiIoCtx->dataLength));
+        if (0 !=
+            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, extendedInquiry, M_Min(64, scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Failed to copy extended inquiry data");
+            }
     }
     return ret;
 }
@@ -1711,7 +1805,11 @@ static eReturnValues sntl_Translate_Block_Limits_VPD_Page_B0h(const tDevice* dev
 
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, blockLimits, M_Min(64, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, blockLimits, M_Min(64, scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Failed to copy block limits data");
+            }
     }
     return ret;
 }
@@ -1737,7 +1835,7 @@ static eReturnValues sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(Sc
         if (supportedLogs)
         {
             nvmeGetLogPageCmdOpts supLogs;
-            safe_memset(&supLogs, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+            M_INITIALIZE_STRUCTURE(&supLogs, sizeof(nvmeGetLogPageCmdOpts));
             supLogs.addr    = supportedLogs;
             supLogs.dataLen = 1024;
             supLogs.lid     = NVME_LOG_SUPPORTED_PAGES_ID;
@@ -1752,7 +1850,7 @@ static eReturnValues sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(Sc
                     // rotational media log is supported.
                     DECLARE_ZERO_INIT_ARRAY(uint8_t, rotMediaInfo, 512);
                     nvmeGetLogPageCmdOpts rotationMediaLog;
-                    safe_memset(&rotationMediaLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+                    M_INITIALIZE_STRUCTURE(&rotationMediaLog, sizeof(nvmeGetLogPageCmdOpts));
                     rotationMediaLog.addr    = rotMediaInfo;
                     rotationMediaLog.dataLen = 512;
                     rotationMediaLog.lid     = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION_ID;
@@ -1785,8 +1883,12 @@ static eReturnValues sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(Sc
     // blockDeviceCharacteriticsPage[8] |= BIT0;//VBULS
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, blockDeviceCharacteriticsPage,
-                    M_Min(64, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, blockDeviceCharacteriticsPage,
+                             M_Min(64, scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Failed to copy block device characteristics page data");
+            }
     }
     return ret;
 }
@@ -1849,7 +1951,12 @@ static eReturnValues sntl_Translate_Logical_Block_Provisioning_VPD_Page_B2h(cons
 
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, logicalBlockProvisioning, M_Min(8, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, logicalBlockProvisioning,
+                             M_Min(8, scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Failed to copy logical block provisioning data");
+            }
     }
     return ret;
 }
@@ -1985,32 +2092,58 @@ static eReturnValues sntl_Translate_SCSI_Inquiry_Command(const tDevice* device, 
             inquiryData[15] = ' ';
             // Product ID (first 16bytes of the ata model number
             DECLARE_ZERO_INIT_ARRAY(char, nvmMN, NVME_CTRL_IDENTIFY_MN_LEN + 1);
-            safe_memcpy(nvmMN, NVME_CTRL_IDENTIFY_MN_LEN + 1, device->drive_info.IdentifyData.nvme.ctrl.mn,
-                        NVME_CTRL_IDENTIFY_MN_LEN);
-            safe_memcpy(&inquiryData[16], INQ_RETURN_DATA_LENGTH - 16, nvmMN, INQ_DATA_PRODUCT_ID_LEN);
+            if (0 != safe_memcpy(nvmMN, NVME_CTRL_IDENTIFY_MN_LEN + 1, device->drive_info.IdentifyData.nvme.ctrl.mn,
+                                 NVME_CTRL_IDENTIFY_MN_LEN))
+                M_UNLIKELY
+                {
+                    perror("Failed to copy model number data to internal structure");
+                }
+            if (0 != safe_memcpy(&inquiryData[16], INQ_RETURN_DATA_LENGTH - 16, nvmMN, INQ_DATA_PRODUCT_ID_LEN))
+                M_UNLIKELY
+                {
+                    perror("Failed to copy model number data to inquiry data");
+                }
             // product revision (truncates to 4 bytes)
             DECLARE_ZERO_INIT_ARRAY(char, nvmFW, NVME_CTRL_IDENTIFY_FW_LEN + 1);
-            safe_memcpy(nvmFW, NVME_CTRL_IDENTIFY_FW_LEN + 1, device->drive_info.IdentifyData.nvme.ctrl.fr,
-                        NVME_CTRL_IDENTIFY_FW_LEN);
+            if (0 != safe_memcpy(nvmFW, NVME_CTRL_IDENTIFY_FW_LEN + 1, device->drive_info.IdentifyData.nvme.ctrl.fr,
+                                 NVME_CTRL_IDENTIFY_FW_LEN))
+                M_UNLIKELY
+                {
+                    perror("Failed to copy firmware data before whitespace removal");
+                }
             remove_Leading_And_Trailing_Whitespace(nvmFW);
             if (safe_strlen(nvmFW) > INQ_DATA_PRODUCT_REV_LEN)
             {
-                safe_memcpy(&inquiryData[32], INQ_RETURN_DATA_LENGTH - 32, &nvmFW[4], INQ_DATA_PRODUCT_REV_LEN);
+                if (0 !=
+                    safe_memcpy(&inquiryData[32], INQ_RETURN_DATA_LENGTH - 32, &nvmFW[4], INQ_DATA_PRODUCT_REV_LEN))
+                {
+                    perror("Failed to copy firmware data (last 4)");
+                }
             }
             else
             {
-                safe_memcpy(&inquiryData[32], INQ_RETURN_DATA_LENGTH - 32, &nvmFW[0], INQ_DATA_PRODUCT_REV_LEN);
+                if (0 !=
+                    safe_memcpy(&inquiryData[32], INQ_RETURN_DATA_LENGTH - 32, &nvmFW[0], INQ_DATA_PRODUCT_REV_LEN))
+                {
+                    perror("Failed to copy firmware data");
+                }
             }
 
             // currently this is where the translation spec ends. Anything below here is above and beyond the spec
 #if defined SNTL_EXT
             // Vendor specific...we'll set the controller SN here
             DECLARE_ZERO_INIT_ARRAY(char, nvmSN, NVME_CTRL_IDENTIFY_SN_LEN + 1);
-            safe_memcpy(nvmSN, NVME_CTRL_IDENTIFY_SN_LEN + 1, device->drive_info.IdentifyData.nvme.ctrl.sn,
-                        NVME_CTRL_IDENTIFY_SN_LEN);
+            if (0 != safe_memcpy(nvmSN, NVME_CTRL_IDENTIFY_SN_LEN + 1, device->drive_info.IdentifyData.nvme.ctrl.sn,
+                                 NVME_CTRL_IDENTIFY_SN_LEN))
+            {
+                perror("Failed to copy serial number data before whitespace removal");
+            }
             remove_Leading_And_Trailing_Whitespace(nvmSN);
-            safe_memcpy(&inquiryData[36], INQ_RETURN_DATA_LENGTH - 36, nvmSN,
-                        M_Min(safe_strlen(nvmSN), NVME_CTRL_IDENTIFY_SN_LEN));
+            if (0 != safe_memcpy(&inquiryData[36], INQ_RETURN_DATA_LENGTH - 36, nvmSN,
+                                 M_Min(safe_strlen(nvmSN), NVME_CTRL_IDENTIFY_SN_LEN)))
+            {
+                perror("Failed to copy serial number data");
+            }
 
             // version descriptors (bytes 58 to 73) (8 max)
             uint16_t versionOffset = UINT16_C(58);
@@ -2045,8 +2178,11 @@ static eReturnValues sntl_Translate_SCSI_Inquiry_Command(const tDevice* device, 
        // now copy the data back
             if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, inquiryData,
-                            M_Min(INQ_RETURN_DATA_LENGTH, scsiIoCtx->dataLength));
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, inquiryData,
+                                     M_Min(INQ_RETURN_DATA_LENGTH, scsiIoCtx->dataLength)))
+                {
+                    perror("Failed to copy inquiry data");
+                }
             }
         }
     }
@@ -2165,8 +2301,12 @@ static eReturnValues sntl_Translate_SCSI_Read_Capacity_Command(const tDevice* de
 
             if (scsiIoCtx->pdata)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readCapacityData,
-                            M_Min(32, scsiIoCtx->dataLength));
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readCapacityData,
+                                     M_Min(32, scsiIoCtx->dataLength)))
+                    M_UNLIKELY
+                    {
+                        perror("Failed to copy read capacity data");
+                    }
             }
         }
         else
@@ -2247,7 +2387,7 @@ static eReturnValues sntl_Translate_Supported_Log_Pages(const tDevice* device, S
         if (supportedLogs)
         {
             nvmeGetLogPageCmdOpts supLogs;
-            safe_memset(&supLogs, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+            M_INITIALIZE_STRUCTURE(&supLogs, sizeof(nvmeGetLogPageCmdOpts));
             supLogs.addr    = supportedLogs;
             supLogs.dataLen = 1024;
             supLogs.lid     = NVME_LOG_SUPPORTED_PAGES_ID;
@@ -2293,8 +2433,12 @@ static eReturnValues sntl_Translate_Supported_Log_Pages(const tDevice* device, S
     supportedPages[3] = M_Byte0(offset - 4);
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedPages,
-                    M_Min(scsiIoCtx->dataLength, C_CAST(uint16_t, M_Min(LEGACY_DRIVE_SEC_SIZE, offset))));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedPages,
+                             M_Min(scsiIoCtx->dataLength, C_CAST(uint16_t, M_Min(LEGACY_DRIVE_SEC_SIZE, offset)))))
+            M_UNLIKELY
+            {
+                perror("Failed to copy supported log pages data");
+            }
     }
     return ret;
 }
@@ -2310,7 +2454,7 @@ static eReturnValues sntl_Translate_Temperature_Log_0x0D(const tDevice* device, 
     uint8_t               bitPointer   = UINT8_C(0);
     uint16_t              fieldPointer = UINT16_C(0);
     nvmeGetLogPageCmdOpts getSMARTHealthData;
-    safe_memset(&getSMARTHealthData, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&getSMARTHealthData, sizeof(nvmeGetLogPageCmdOpts));
     getSMARTHealthData.addr    = logPage;
     getSMARTHealthData.dataLen = 512;
     getSMARTHealthData.lid     = 2; // smart / health log page
@@ -2360,8 +2504,8 @@ static eReturnValues sntl_Translate_Temperature_Log_0x0D(const tDevice* device, 
     {
         // reference temp (get temperature threshold from get features)
         nvmeFeaturesCmdOpt getTempThresh;
-        safe_memset(&getTempThresh, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
-        safe_memset(logPage, 512, 0, 512);
+        M_INITIALIZE_STRUCTURE(&getTempThresh, sizeof(nvmeFeaturesCmdOpt));
+        M_INITIALIZE_STRUCTURE(logPage, 512);
         getTempThresh.fid             = 0x04; // temperature threshold
         getTempThresh.dataPtr         = logPage;
         getTempThresh.dataLength      = 512;
@@ -2389,8 +2533,12 @@ static eReturnValues sntl_Translate_Temperature_Log_0x0D(const tDevice* device, 
     temperatureLog[3] = M_Byte0(offset - 4);
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, temperatureLog,
-                    M_Min(M_Max(16U, offset), scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, temperatureLog,
+                             M_Min(M_Max(16U, offset), scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Failed to copy temperature data");
+            }
     }
     return ret;
 }
@@ -2406,7 +2554,7 @@ static eReturnValues sntl_Translate_Solid_State_Media_Log_0x11(const tDevice* de
     uint8_t               bitPointer   = UINT8_C(0);
     uint16_t              fieldPointer = UINT16_C(0);
     nvmeGetLogPageCmdOpts getSMARTHealthData;
-    safe_memset(&getSMARTHealthData, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&getSMARTHealthData, sizeof(nvmeGetLogPageCmdOpts));
     getSMARTHealthData.addr    = logPage;
     getSMARTHealthData.dataLen = 512;
     getSMARTHealthData.lid     = 2; // smart / health log page
@@ -2458,8 +2606,12 @@ static eReturnValues sntl_Translate_Solid_State_Media_Log_0x11(const tDevice* de
     solidStateMediaLog[3] = M_Byte0(offset - 4);
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, solidStateMediaLog,
-                    M_Min(M_Min(12U, offset), scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, solidStateMediaLog,
+                             M_Min(M_Min(12U, offset), scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Failed to copy solid state media data");
+            }
     }
     return ret;
 }
@@ -2470,7 +2622,7 @@ static eReturnValues sntl_Translate_Informational_Exceptions_Log_Page_2F(const t
     DECLARE_ZERO_INIT_ARRAY(uint8_t, informationalExceptions, 11);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
     nvmeGetLogPageCmdOpts getSMARTHealthData;
-    safe_memset(&getSMARTHealthData, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&getSMARTHealthData, sizeof(nvmeGetLogPageCmdOpts));
     getSMARTHealthData.addr    = logPage;
     getSMARTHealthData.dataLen = 512;
     getSMARTHealthData.lid     = 2; // smart / health log page
@@ -2517,8 +2669,12 @@ static eReturnValues sntl_Translate_Informational_Exceptions_Log_Page_2F(const t
     informationalExceptions[10] = C_CAST(uint8_t, M_BytesTo2ByteValue(logPage[2], logPage[1]) - UINT16_C(273));
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, informationalExceptions,
-                    M_Min(11U, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, informationalExceptions,
+                             M_Min(11U, scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Failed to copy informational exceptions data");
+            }
     }
     return ret;
 }
@@ -2547,7 +2703,7 @@ static eReturnValues sntl_Translate_Background_Scan_Results_Log_0x15(const tDevi
         return ret;
     }
     nvmeGetLogPageCmdOpts readSmartLog;
-    safe_memset(&readSmartLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&readSmartLog, sizeof(nvmeGetLogPageCmdOpts));
     readSmartLog.addr    = logPage;
     readSmartLog.dataLen = 512;
     readSmartLog.lid     = NVME_LOG_SMART_ID;
@@ -2601,7 +2757,12 @@ static eReturnValues sntl_Translate_Background_Scan_Results_Log_0x15(const tDevi
     }
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, backgroundResults, M_Min(20U, scsiIoCtx->dataLength));
+        if (0 !=
+            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, backgroundResults, M_Min(20U, scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying background results data");
+            }
     }
     return ret;
 }
@@ -2630,7 +2791,7 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
         return ret;
     }
     nvmeGetLogPageCmdOpts readSmartLog;
-    safe_memset(&readSmartLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&readSmartLog, sizeof(nvmeGetLogPageCmdOpts));
     readSmartLog.addr    = logPage;
     readSmartLog.dataLen = 512;
     readSmartLog.lid     = NVME_LOG_SMART_ID;
@@ -2763,8 +2924,12 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
     generalStatisticsAndPerformance[3] = M_Byte0(offset - 4);
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, generalStatisticsAndPerformance,
-                    M_Min(M_Min(72U, offset), scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, generalStatisticsAndPerformance,
+                             M_Min(M_Min(72U, offset), scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying general statistics and performance data");
+            }
     }
     return ret;
 }
@@ -2807,7 +2972,7 @@ static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(const tDevice* dev
         if (supportedLogs)
         {
             nvmeGetLogPageCmdOpts supLogs;
-            safe_memset(&supLogs, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+            M_INITIALIZE_STRUCTURE(&supLogs, sizeof(nvmeGetLogPageCmdOpts));
             supLogs.addr    = supportedLogs;
             supLogs.dataLen = 1024;
             supLogs.lid     = NVME_LOG_SUPPORTED_PAGES_ID;
@@ -2822,7 +2987,7 @@ static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(const tDevice* dev
                     // rotational media log is supported.
                     DECLARE_ZERO_INIT_ARRAY(uint8_t, rotMediaInfo, 512);
                     nvmeGetLogPageCmdOpts rotationMediaLog;
-                    safe_memset(&rotationMediaLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+                    M_INITIALIZE_STRUCTURE(&rotationMediaLog, sizeof(nvmeGetLogPageCmdOpts));
                     rotationMediaLog.addr    = rotMediaInfo;
                     rotationMediaLog.dataLen = 512;
                     rotationMediaLog.lid     = NVME_LOG_ROTATIONAL_MEDIA_INFORMATION_ID;
@@ -2899,7 +3064,11 @@ static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(const tDevice* dev
     }
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, startStopLog, M_Min(20U, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, startStopLog, M_Min(20U, scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying start/stop log data");
+            }
     }
     return ret;
 }
@@ -2936,7 +3105,7 @@ static eReturnValues sntl_Translate_Self_Test_Results_Log_0x10(const tDevice* de
     // read the nvme log page
     DECLARE_ZERO_INIT_ARRAY(uint8_t, nvmDSTLog, 564);
     nvmeGetLogPageCmdOpts dstLog;
-    safe_memset(&dstLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&dstLog, sizeof(nvmeGetLogPageCmdOpts));
     dstLog.nsid    = NVME_ALL_NAMESPACES;
     dstLog.addr    = nvmDSTLog;
     dstLog.dataLen = UINT32_C(564);
@@ -3075,7 +3244,12 @@ static eReturnValues sntl_Translate_Self_Test_Results_Log_0x10(const tDevice* de
     }
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, selfTestResults, M_Min(404U, scsiIoCtx->dataLength));
+        if (0 !=
+            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, selfTestResults, M_Min(404U, scsiIoCtx->dataLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying self-test results");
+            }
     }
     return ret;
 }
@@ -3403,12 +3577,20 @@ static eReturnValues sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(con
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&readWriteErrorRecovery[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&readWriteErrorRecovery[0], pageLength, modeParameterHeader, headerLength))
+        M_UNLIKELY
+        {
+            perror("Error copying mode parameter header");
+        }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&readWriteErrorRecovery[headerLength], pageLength - headerLength, dataBlockDescriptor,
-                    blockDescLength);
+        if (0 != safe_memcpy(&readWriteErrorRecovery[headerLength], pageLength - headerLength, dataBlockDescriptor,
+                             blockDescLength))
+            M_UNLIKELY
+            {
+                perror("Error copying data block descriptor");
+            }
     }
     // set the remaining part of the page up
     readWriteErrorRecovery[offset + 0] = 0x01; // page number
@@ -3426,7 +3608,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(con
         readWriteErrorRecovery[offset + 9] = RESERVED;
         // read the current recovery timer value
         nvmeFeaturesCmdOpt getErrRecTime;
-        safe_memset(&getErrRecTime, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+        M_INITIALIZE_STRUCTURE(&getErrRecTime, sizeof(nvmeFeaturesCmdOpt));
         getErrRecTime.fid = 0x05;
         getErrRecTime.sel = 0;
         if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT4)
@@ -3488,8 +3670,12 @@ static eReturnValues sntl_Translate_Mode_Sense_Read_Write_Error_Recovery_01h(con
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readWriteErrorRecovery,
-                    M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readWriteErrorRecovery,
+                             M_Min(pageLength, allocationLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying read/write error recovery page data");
+            }
     }
     safe_free(&readWriteErrorRecovery);
     return ret;
@@ -3552,11 +3738,19 @@ static eReturnValues sntl_Translate_Mode_Sense_Caching_08h(const tDevice* device
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&caching[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&caching[0], pageLength, modeParameterHeader, headerLength))
+        M_UNLIKELY
+        {
+            perror("Error copying mode parameter header");
+        }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&caching[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength);
+        if (0 != safe_memcpy(&caching[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength))
+            M_UNLIKELY
+            {
+                perror("Error copying data block descriptor");
+            }
     }
     // set the remaining part of the page up
     // send an identify command to get up to date read/write cache info
@@ -3577,7 +3771,7 @@ static eReturnValues sntl_Translate_Mode_Sense_Caching_08h(const tDevice* device
         {
             // send get features command
             nvmeFeaturesCmdOpt getVWC;
-            safe_memset(&getVWC, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+            M_INITIALIZE_STRUCTURE(&getVWC, sizeof(nvmeFeaturesCmdOpt));
             getVWC.fid = 0x06;
             getVWC.sel = 0;
             if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT4)
@@ -3650,7 +3844,11 @@ static eReturnValues sntl_Translate_Mode_Sense_Caching_08h(const tDevice* device
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, caching, M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, caching, M_Min(pageLength, allocationLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying caching page data");
+            }
     }
     safe_free(&caching);
     return ret;
@@ -3712,11 +3910,20 @@ static eReturnValues sntl_Translate_Mode_Sense_Control_0Ah(ScsiIoCtx* scsiIoCtx,
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&controlPage[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&controlPage[0], pageLength, modeParameterHeader, headerLength))
+        M_UNLIKELY
+        {
+            perror("Error copying mode parameter header");
+        }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&controlPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength);
+        if (0 !=
+            safe_memcpy(&controlPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength))
+            M_UNLIKELY
+            {
+                perror("Error copying data block descriptor");
+            }
     }
     // set the remaining part of the page up
     controlPage[offset + 0] = 0x0A;
@@ -3758,7 +3965,11 @@ static eReturnValues sntl_Translate_Mode_Sense_Control_0Ah(ScsiIoCtx* scsiIoCtx,
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, controlPage, M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, controlPage, M_Min(pageLength, allocationLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying control page data");
+            }
     }
     safe_free(&controlPage);
     return ret;
@@ -3820,11 +4031,20 @@ static eReturnValues sntl_Translate_Mode_Sense_Power_Condition_1A(ScsiIoCtx* scs
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&powerConditionPage[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&powerConditionPage[0], pageLength, modeParameterHeader, headerLength))
+        M_UNLIKELY
+        {
+            perror("Error copying mode parameter header");
+        }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&powerConditionPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength);
+        if (0 != safe_memcpy(&powerConditionPage[headerLength], pageLength - headerLength, dataBlockDescriptor,
+                             blockDescLength))
+            M_UNLIKELY
+            {
+                perror("Error copying data block descriptor");
+            }
     }
     // set the remaining part of the page up
     powerConditionPage[offset + 0] = 0x1A;
@@ -3844,7 +4064,12 @@ static eReturnValues sntl_Translate_Mode_Sense_Power_Condition_1A(ScsiIoCtx* scs
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, powerConditionPage, M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, powerConditionPage,
+                             M_Min(pageLength, allocationLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying power condition data");
+            }
     }
     safe_free(&powerConditionPage);
     return ret;
@@ -3904,11 +4129,20 @@ static eReturnValues sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoC
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&controlExtPage[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&controlExtPage[0], pageLength, modeParameterHeader, headerLength))
+        M_UNLIKELY
+        {
+            perror("Error copying mode parameter header");
+        }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&controlExtPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength);
+        if (0 !=
+            safe_memcpy(&controlExtPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength))
+            M_UNLIKELY
+            {
+                perror("Error copying data block descriptor");
+            }
     }
     // set the remaining part of the page up
     controlExtPage[offset + 0] = 0x0A;
@@ -3960,7 +4194,12 @@ static eReturnValues sntl_Translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoC
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, controlExtPage, M_Min(pageLength, allocationLength));
+        if (0 !=
+            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, controlExtPage, M_Min(pageLength, allocationLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying control extension data");
+            }
     }
     safe_free(&controlExtPage);
     return ret;
@@ -4019,12 +4258,20 @@ static eReturnValues sntl_Translate_Mode_Sense_Informational_Exceptions_Control_
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&informationalExceptions[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&informationalExceptions[0], pageLength, modeParameterHeader, headerLength))
+        M_UNLIKELY
+        {
+            perror("Error copying mode parameter header");
+        }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&informationalExceptions[headerLength], pageLength - headerLength, dataBlockDescriptor,
-                    blockDescLength);
+        if (0 != safe_memcpy(&informationalExceptions[headerLength], pageLength - headerLength, dataBlockDescriptor,
+                             blockDescLength))
+            M_UNLIKELY
+            {
+                perror("Error copying data block descriptor");
+            }
     }
     // set the remaining part of the page up
     informationalExceptions[offset + 0] = 0x1C; // page number
@@ -4062,8 +4309,12 @@ static eReturnValues sntl_Translate_Mode_Sense_Informational_Exceptions_Control_
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, informationalExceptions,
-                    M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, informationalExceptions,
+                             M_Min(pageLength, allocationLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying informational exceptions data");
+            }
     }
     safe_free(&informationalExceptions);
     return ret;
@@ -4456,7 +4707,7 @@ static eReturnValues sntl_Translate_Mode_Select_Caching_08h(const tDevice* devic
     if (device->drive_info.IdentifyData.nvme.ctrl.vwc & BIT0)
     {
         nvmeFeaturesCmdOpt setWCE;
-        safe_memset(&setWCE, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+        M_INITIALIZE_STRUCTURE(&setWCE, sizeof(nvmeFeaturesCmdOpt));
         setWCE.featSetGetValue = (ptrToBeginningOfModePage[2] & BIT2) > 0 ? 1 : 0;
         setWCE.fid             = 0x06;
         setWCE.sv              = 0;
@@ -5815,7 +6066,11 @@ static eReturnValues sntl_Translate_SCSI_Security_Protocol_In_Command(const tDev
                                         device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
     if (scsiIoCtx->pdata)
     {
-        safe_memset(scsiIoCtx->pdata, scsiIoCtx->dataLength, 0, scsiIoCtx->dataLength);
+        if (0 != safe_memset(scsiIoCtx->pdata, scsiIoCtx->dataLength, 0, scsiIoCtx->dataLength))
+            M_UNLIKELY
+            {
+                perror("Error clearing data buffer");
+            }
     }
     if (scsiIoCtx->cdb[CDB_4] & BIT7) // inc512
     {
@@ -6068,8 +6323,12 @@ static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(const tDevice* devi
     }
     if (scsiIoCtx->pdata && reportLunsData)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, reportLunsData,
-                    M_Min(reportLunsDataLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, reportLunsData,
+                             M_Min(reportLunsDataLength, allocationLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying report luns data");
+            }
     }
     else
     {
@@ -6120,7 +6379,7 @@ static eReturnValues sntl_Translate_SCSI_Test_Unit_Ready_Command(const tDevice* 
         // sanitize is supported. Check if sanitize is currently running or not
         DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
         nvmeGetLogPageCmdOpts sanitizeLog;
-        safe_memset(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+        M_INITIALIZE_STRUCTURE(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts));
         sanitizeLog.addr    = logPage;
         sanitizeLog.dataLen = 512;
         sanitizeLog.lid     = NVME_LOG_SANITIZE_ID;
@@ -6809,7 +7068,7 @@ static eReturnValues sntl_Translate_SCSI_Start_Stop_Unit_Command(const tDevice* 
             if (start)
             {
                 nvmeFeaturesCmdOpt features;
-                safe_memset(&features, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+                M_INITIALIZE_STRUCTURE(&features, sizeof(nvmeFeaturesCmdOpt));
                 features.fid             = NVME_FEAT_POWER_MGMT_;
                 features.featSetGetValue = 0; // power state zero
                 if (!noFlush)
@@ -6833,7 +7092,7 @@ static eReturnValues sntl_Translate_SCSI_Start_Stop_Unit_Command(const tDevice* 
             else
             {
                 nvmeFeaturesCmdOpt features;
-                safe_memset(&features, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+                M_INITIALIZE_STRUCTURE(&features, sizeof(nvmeFeaturesCmdOpt));
                 features.fid = NVME_FEAT_POWER_MGMT_;
                 // send lowest state, which is a higher number value for lowest power consumption (zero means max).
                 features.featSetGetValue = device->drive_info.IdentifyData.nvme.ctrl.npss;
@@ -6873,7 +7132,7 @@ static eReturnValues sntl_Translate_SCSI_Start_Stop_Unit_Command(const tDevice* 
         if (powerConditionModifier == 0)
         {
             nvmeFeaturesCmdOpt features;
-            safe_memset(&features, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+            M_INITIALIZE_STRUCTURE(&features, sizeof(nvmeFeaturesCmdOpt));
             features.fid             = NVME_FEAT_POWER_MGMT_;
             features.featSetGetValue = 0; // power state zero
             if (!noFlush)
@@ -6914,7 +7173,7 @@ static eReturnValues sntl_Translate_SCSI_Start_Stop_Unit_Command(const tDevice* 
         if (powerConditionModifier <= 2)
         {
             nvmeFeaturesCmdOpt features;
-            safe_memset(&features, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+            M_INITIALIZE_STRUCTURE(&features, sizeof(nvmeFeaturesCmdOpt));
             features.fid             = NVME_FEAT_POWER_MGMT_;
             features.featSetGetValue = powerConditionModifier + 1;
             if (!noFlush)
@@ -6955,7 +7214,7 @@ static eReturnValues sntl_Translate_SCSI_Start_Stop_Unit_Command(const tDevice* 
         if (powerConditionModifier == 0)
         {
             nvmeFeaturesCmdOpt features;
-            safe_memset(&features, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+            M_INITIALIZE_STRUCTURE(&features, sizeof(nvmeFeaturesCmdOpt));
             features.fid             = NVME_FEAT_POWER_MGMT_;
             features.featSetGetValue = device->drive_info.IdentifyData.nvme.ctrl.npss - 2;
             if (!noFlush)
@@ -6979,7 +7238,7 @@ static eReturnValues sntl_Translate_SCSI_Start_Stop_Unit_Command(const tDevice* 
         else if (powerConditionModifier == 1)
         {
             nvmeFeaturesCmdOpt features;
-            safe_memset(&features, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+            M_INITIALIZE_STRUCTURE(&features, sizeof(nvmeFeaturesCmdOpt));
             features.fid             = NVME_FEAT_POWER_MGMT_;
             features.featSetGetValue = device->drive_info.IdentifyData.nvme.ctrl.npss - 1;
             if (!noFlush)
@@ -7216,7 +7475,11 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(const tDevice* device, Sc
                                                                false, dsmBuffer, 4096))
                         {
                             // clear the buffer for reuse
-                            safe_memset(dsmBuffer, 4096, 0, 4096);
+                            if (0 != safe_memset(dsmBuffer, 4096, 0, 4096))
+                                M_UNLIKELY
+                                {
+                                    perror("Error clearing DSM buffer");
+                                }
                             // reset the ataTrimOffset
                             nvmeDSMOffset  = 0;
                             numberOfRanges = 0;
@@ -7298,7 +7561,7 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(const tDevice* de
         // sanitize is supported. Check if sanitize is currently running or not
         DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
         nvmeGetLogPageCmdOpts sanitizeLog;
-        safe_memset(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+        M_INITIALIZE_STRUCTURE(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts));
         sanitizeLog.addr    = logPage;
         sanitizeLog.dataLen = 512;
         sanitizeLog.lid     = NVME_LOG_SANITIZE_ID;
@@ -7315,8 +7578,12 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(const tDevice* de
                                                     0x04, 0x1B, descriptorFormat, senseKeySpecificDescriptor, 1);
                 if (scsiIoCtx->pdata)
                 {
-                    safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData,
-                                M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN));
+                    if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData,
+                                         M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN)))
+                        M_UNLIKELY
+                        {
+                            perror("Error copying request sense data");
+                        }
                 }
                 return SUCCESS;
             }
@@ -7326,8 +7593,12 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(const tDevice* de
                                                     0x31, 0x03, descriptorFormat, M_NULLPTR, 0);
                 if (scsiIoCtx->pdata)
                 {
-                    safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData,
-                                M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN));
+                    if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData,
+                                         M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN)))
+                        M_UNLIKELY
+                        {
+                            perror("Error copying request sense data");
+                        }
                 }
                 return SUCCESS;
             }
@@ -7339,7 +7610,7 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(const tDevice* de
     {
         DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 564);
         nvmeGetLogPageCmdOpts dstLog;
-        safe_memset(&dstLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+        M_INITIALIZE_STRUCTURE(&dstLog, sizeof(nvmeGetLogPageCmdOpts));
         dstLog.addr    = logPage;
         dstLog.dataLen = 512;
         dstLog.lid     = NVME_LOG_DEV_SELF_TEST_ID;
@@ -7360,8 +7631,12 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(const tDevice* de
                                                     0x04, 0x09, descriptorFormat, senseKeySpecificDescriptor, 1);
                 if (scsiIoCtx->pdata)
                 {
-                    safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData,
-                                M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN));
+                    if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData,
+                                         M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN)))
+                        M_UNLIKELY
+                        {
+                            perror("Error copying request sense data");
+                        }
                 }
                 return SUCCESS;
             }
@@ -7370,7 +7645,7 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(const tDevice* de
 #endif
     // read the current power state
     nvmeFeaturesCmdOpt powerState;
-    safe_memset(&powerState, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+    M_INITIALIZE_STRUCTURE(&powerState, sizeof(nvmeFeaturesCmdOpt));
     powerState.fid = 0x02;
     if (SUCCESS != nvme_Get_Features(device, &powerState))
     {
@@ -7393,7 +7668,12 @@ static eReturnValues sntl_Translate_SCSI_Request_Sense_Command(const tDevice* de
     // copy back whatever data we set
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData, M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData,
+                             M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN)))
+            M_UNLIKELY
+            {
+                perror("Error copying request sense data");
+            }
     }
     return ret;
 }
@@ -7592,7 +7872,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_In(const tDevice* device,
         }
         // then do a get features with FID set to 83h (reservation persistence)
         nvmeFeaturesCmdOpt getReservationPersistence;
-        safe_memset(&getReservationPersistence, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+        M_INITIALIZE_STRUCTURE(&getReservationPersistence, sizeof(nvmeFeaturesCmdOpt));
         getReservationPersistence.fid = 0x83;
         if (SUCCESS != nvme_Get_Features(device, &getReservationPersistence))
         {
@@ -7781,8 +8061,12 @@ static eReturnValues sntl_Translate_Persistent_Reserve_In(const tDevice* device,
     }
     if (scsiIoCtx->pdata && persistentReserveData)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, persistentReserveData,
-                    M_Min(persistentReserveDataLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, persistentReserveData,
+                             M_Min(persistentReserveDataLength, allocationLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying persistent reserve data");
+            }
     }
     safe_free(&persistentReserveData);
     return ret;
@@ -8033,7 +8317,7 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(const tDevice* device
                     // send a set features for reservation persistence with PTPL set to 1 before sending the reservation
                     // register command
                     nvmeFeaturesCmdOpt setPTPL;
-                    safe_memset(&setPTPL, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+                    M_INITIALIZE_STRUCTURE(&setPTPL, sizeof(nvmeFeaturesCmdOpt));
                     setPTPL.fid             = 0x83;
                     setPTPL.featSetGetValue = BIT0;
                     if (SUCCESS != nvme_Set_Features(device, &setPTPL))
@@ -8236,8 +8520,12 @@ static eReturnValues sntl_Translate_Persistent_Reserve_Out(const tDevice* device
     }
     if (scsiIoCtx->pdata && persistentReserveData)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, persistentReserveData,
-                    M_Min(persistentReserveDataLength, parameterListLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, persistentReserveData,
+                             M_Min(persistentReserveDataLength, parameterListLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying persistent reserve data");
+            }
     }
     safe_free(&persistentReserveData);
     return ret;
@@ -8385,7 +8673,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(const tDevice* device,
                         DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
                         uint8_t               sanitizeStatus = UINT8_C(0x02); // start as in progress
                         nvmeGetLogPageCmdOpts sanitizeLog;
-                        safe_memset(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+                        M_INITIALIZE_STRUCTURE(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts));
                         sanitizeLog.addr    = logPage;
                         sanitizeLog.dataLen = 512;
                         sanitizeLog.lid     = NVME_LOG_SANITIZE_ID;
@@ -8462,7 +8750,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(const tDevice* device,
                         DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
                         uint8_t               sanitizeStatus = UINT8_C(0x02); // start as in progress
                         nvmeGetLogPageCmdOpts sanitizeLog;
-                        safe_memset(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+                        M_INITIALIZE_STRUCTURE(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts));
                         sanitizeLog.addr    = logPage;
                         sanitizeLog.dataLen = 512;
                         sanitizeLog.lid     = NVME_LOG_SANITIZE_ID;
@@ -8538,7 +8826,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(const tDevice* device,
                         DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
                         uint8_t               sanitizeStatus = UINT8_C(0x02); // start as in progress
                         nvmeGetLogPageCmdOpts sanitizeLog;
-                        safe_memset(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+                        M_INITIALIZE_STRUCTURE(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts));
                         sanitizeLog.addr    = logPage;
                         sanitizeLog.dataLen = 512;
                         sanitizeLog.lid     = NVME_LOG_SANITIZE_ID;
@@ -8613,7 +8901,7 @@ static eReturnValues sntl_Translate_SCSI_Sanitize_Command(const tDevice* device,
                     DECLARE_ZERO_INIT_ARRAY(uint8_t, logPage, 512);
                     uint8_t               sanitizeStatus = UINT8_C(0x02); // start as in progress
                     nvmeGetLogPageCmdOpts sanitizeLog;
-                    safe_memset(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+                    M_INITIALIZE_STRUCTURE(&sanitizeLog, sizeof(nvmeGetLogPageCmdOpts));
                     sanitizeLog.addr    = logPage;
                     sanitizeLog.dataLen = 512;
                     sanitizeLog.lid     = NVME_LOG_SANITIZE_ID;
@@ -10798,8 +11086,12 @@ static eReturnValues sntl_Translate_SCSI_Report_Supported_Operation_Codes_Comman
     }
     if (supportedOpData && scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedOpData,
-                    M_Min(supportedOpDataLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedOpData,
+                             M_Min(supportedOpDataLength, allocationLength)))
+            M_UNLIKELY
+            {
+                perror("Error copying supported op codes data");
+            }
     }
     safe_free(&supportedOpData);
     return ret;
@@ -10825,7 +11117,11 @@ eReturnValues sntl_Translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsi
         scsiIoCtx->psense        = M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData);
         scsiIoCtx->senseDataSize = SPC3_SENSE_LEN;
     }
-    safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+    if (0 != safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize))
+        M_UNLIKELY
+        {
+            perror("Error clearing sense data");
+        }
     uint8_t controlByteOffset = scsiIoCtx->cdbLength - 1;
     if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x7E || scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x7F)
     {

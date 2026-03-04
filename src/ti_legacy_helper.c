@@ -140,12 +140,9 @@ eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* device, ataPasst
             print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
         }
     }
-    safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
-                SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(M_CONST_CAST(uint8_t*, &device->drive_info.lastCommandSenseData[0]), SPC3_SENSE_LEN,
-                &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
-    safe_memcpy(M_CONST_CAST(ataReturnTFRs*, &device->drive_info.lastCommandRTFRs), sizeof(ataReturnTFRs),
-                &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
+    copy_Last_Command_Sense_Data_To_tDevice(M_CONST_CAST(tDevice*, device), ataCommandOptions->ptrSenseData,
+                                            M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
+    copy_Last_Command_RTFRs_To_tDevice(M_CONST_CAST(tDevice*, device), &ataCommandOptions->rtfr);
     safe_free_aligned(&senseData);
     if (localSenseData)
     {

@@ -181,7 +181,7 @@ eReturnValues spin_down_drive(const tDevice* device, bool sleepState)
         else
         {
             nvmeFeaturesCmdOpt standby;
-            safe_memset(&standby, sizeof(nvmeFeaturesCmdOpt), 0, sizeof(nvmeFeaturesCmdOpt));
+            M_INITIALIZE_STRUCTURE(&standby, sizeof(nvmeFeaturesCmdOpt));
             standby.fid             = NVME_FEAT_POWER_MGMT_;
             standby.featSetGetValue = device->drive_info.IdentifyData.nvme.ctrl.npss;
             ret                     = nvme_Set_Features(device, &standby);
@@ -672,7 +672,11 @@ eReturnValues security_Send(const tDevice* device,
                     return MEMORY_FAILURE;
                 }
                 // copy packet to new memory pointer before sending it
-                safe_memcpy(tcgBufPtr, uint32_to_sizet(tcgDataSize), ptrData, uint32_to_sizet(dataSize));
+                if (0 != safe_memcpy(tcgBufPtr, uint32_to_sizet(tcgDataSize), ptrData, uint32_to_sizet(dataSize)))
+                {
+                    safe_free_aligned(&tcgBufPtr);
+                    return MEMORY_FAILURE;
+                }
                 useLocalMemory = true;
             }
             // ret = ata_Trusted_Send(device, useDMA, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
@@ -755,7 +759,11 @@ eReturnValues security_Receive(const tDevice* device,
                                                tcgDataSize);
             if (useLocalMemory)
             {
-                safe_memcpy(ptrData, dataSize, tcgBufPtr, uint32_to_sizet(M_Min(dataSize, tcgDataSize)));
+                if (0 != safe_memcpy(ptrData, dataSize, tcgBufPtr, uint32_to_sizet(M_Min(dataSize, tcgDataSize))))
+                {
+                    safe_free_aligned(&tcgBufPtr);
+                    return MEMORY_FAILURE;
+                }
                 safe_free_aligned(&tcgBufPtr);
             }
         }
@@ -1824,7 +1832,7 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
             if (ret != SUCCESS)
             {
                 senseDataFields readSense;
-                safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+                M_INITIALIZE_STRUCTURE(&readSense, sizeof(senseDataFields));
                 get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &readSense);
                 if (readSense.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST &&
                     readSense.scsiStatusCodes.asc == 0x20 && readSense.scsiStatusCodes.ascq == 0x00)

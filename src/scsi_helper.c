@@ -1150,7 +1150,7 @@ void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* pbuf,
                                 uint8_t*       fru)
 {
     senseDataFields senseFields;
-    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
 
     get_Sense_Data_Fields(pbuf, pbufSize, &senseFields);
 
@@ -1166,7 +1166,7 @@ void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
                                      uint64_t*      information)
 {
     senseDataFields senseFields;
-    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
@@ -1185,7 +1185,7 @@ void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
                                                   bool*          illegalLengthIndicator)
 {
     senseDataFields senseFields;
-    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
@@ -1202,7 +1202,7 @@ void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
                                              bool*          illegalLengthIndicator)
 {
     senseDataFields senseFields;
-    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
@@ -1225,7 +1225,7 @@ void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseDat
                                                       uint64_t*      commandSpecificInformation)
 {
     senseDataFields senseFields;
-    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
@@ -1238,13 +1238,18 @@ void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseDat
 void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
 {
     senseDataFields senseFields;
-    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
     if (sksp != M_NULLPTR)
     {
-        safe_memcpy(sksp, sizeof(senseKeySpecific), &senseFields.senseKeySpecificInformation, sizeof(senseKeySpecific));
+        if (0 != safe_memcpy(sksp, sizeof(senseKeySpecific), &senseFields.senseKeySpecificInformation,
+                             sizeof(senseKeySpecific)))
+            M_UNLIKELY
+            {
+                perror("Error copying sense key specific data to buffer");
+            }
     }
 }
 
@@ -1259,7 +1264,7 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
         uint8_t descriptorLength         = UINT8_C(0); // for descriptor format sense data
         uint8_t numOfProgressIndications = UINT8_C(0);
         uint8_t numOfForwardedSenseData  = UINT8_C(0);
-        safe_memset(senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        M_INITIALIZE_STRUCTURE(senseFields, sizeof(senseDataFields));
         switch (format)
         {
         case SCSI_SENSE_NO_SENSE_DATA:
@@ -1340,8 +1345,12 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
                             break;
                         default:
                             senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNKNOWN;
-                            safe_memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, 3, &ptrSenseData[15],
-                                        3);
+                            if (0 != safe_memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, 3,
+                                                 &ptrSenseData[15], 3))
+                                M_UNLIKELY
+                                {
+                                    perror("Error copying unknown sense key specific data");
+                                }
                             break;
                         }
                     }
@@ -1433,8 +1442,11 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
                         break;
                     default:
                         senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNKNOWN;
-                        safe_memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, 3,
-                                    &ptrSenseData[offset + 4], 3);
+                        if (0 != safe_memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, 3,
+                                             &ptrSenseData[offset + 4], 3))
+                        {
+                            perror("Error copying unknown sense key specific data to buffer");
+                        }
                         break;
                     }
                     break;
@@ -1551,8 +1563,12 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
                         break;
                     default:
                         senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNKNOWN;
-                        safe_memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, 3,
-                                    &ptrSenseData[offset + 4], 3);
+                        if (0 != safe_memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, 3,
+                                             &ptrSenseData[offset + 4], 3))
+                            M_UNLIKELY
+                            {
+                                perror("Error copying unknown sense kep specific data to buffer");
+                            }
                         break;
                     }
                     senseFields->scsiStatusCodes.fru   = ptrSenseData[offset + 7];
@@ -1836,11 +1852,26 @@ uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf)
 // \brief copy in the necessary data to our struct from INQ data.
 void copy_Inquiry_Data(uint8_t* pbuf, driveInfo* info)
 {
-    safe_memcpy(info->T10_vendor_ident, T10_VENDOR_ID_LEN + 1, &pbuf[8], INQ_DATA_T10_VENDOR_ID_LEN);
+    if (0 != safe_memcpy(info->T10_vendor_ident, T10_VENDOR_ID_LEN + 1, &pbuf[8], INQ_DATA_T10_VENDOR_ID_LEN))
+        M_UNLIKELY
+        {
+            perror("Error copying inquiry data string to drive info buffer.");
+            return;
+        }
     info->T10_vendor_ident[INQ_DATA_T10_VENDOR_ID_LEN] = '\0';
-    safe_memcpy(info->product_identification, MODEL_NUM_LEN + 1, &pbuf[16], INQ_DATA_PRODUCT_ID_LEN);
+    if (0 != safe_memcpy(info->product_identification, MODEL_NUM_LEN + 1, &pbuf[16], INQ_DATA_PRODUCT_ID_LEN))
+        M_UNLIKELY
+        {
+            perror("Error copying inquiry data string to drive info buffer.");
+            return;
+        }
     info->product_identification[INQ_DATA_PRODUCT_ID_LEN] = '\0';
-    safe_memcpy(info->product_revision, FW_REV_LEN + 1, &pbuf[32], INQ_DATA_PRODUCT_REV_LEN);
+    if (0 != safe_memcpy(info->product_revision, FW_REV_LEN + 1, &pbuf[32], INQ_DATA_PRODUCT_REV_LEN))
+        M_UNLIKELY
+        {
+            perror("Error copying inquiry data string to drive info buffer.");
+            return;
+        }
     info->product_revision[INQ_DATA_PRODUCT_REV_LEN] = '\0';
     // Need to check if vendor ID, MN, and FWRev are printable or not
     // vendor ID
@@ -1879,8 +1910,14 @@ void copy_Serial_Number(uint8_t* pbuf, size_t bufferlen, char* serialNumber, siz
     if (pbuf != M_NULLPTR && serialNumber != M_NULLPTR && bufferlen >= 4 && serialNumberMemLen > 0)
     {
         uint16_t snLen = M_BytesTo2ByteValue(pbuf[2], pbuf[3]);
-        safe_memset(serialNumber, serialNumberMemLen, 0, serialNumberMemLen);
-        safe_memcpy(serialNumber, serialNumberMemLen, &pbuf[4], M_Min(M_Min(snLen, serialNumberMemLen), bufferlen));
+        M_INITIALIZE_STRUCTURE(serialNumber, serialNumberMemLen);
+        if (0 !=
+            safe_memcpy(serialNumber, serialNumberMemLen, &pbuf[4], M_Min(M_Min(snLen, serialNumberMemLen), bufferlen)))
+            M_UNLIKELY
+            {
+                perror("Error copying SN to buffer");
+                return;
+            }
         for (uint16_t iter = UINT16_C(0); iter < SERIAL_NUM_LEN && iter < snLen; ++iter)
         {
             if (!safe_isascii(serialNumber[iter]) || !safe_isprint(serialNumber[iter]))
@@ -1997,7 +2034,7 @@ static eReturnValues private_Scsi_Read_Cap_10(const tDevice* device, readCapacit
 // to this there are a few retries/fallbacks in here, but it will figure this out for the caller to make life easier
 eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* device, readCapacityData* outputData)
 {
-    safe_memset(outputData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
+    M_INITIALIZE_STRUCTURE(outputData, sizeof(readCapacityData));
 
     if (device == M_NULLPTR || outputData == M_NULLPTR)
     {
@@ -2036,12 +2073,26 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
                                         M_ATTR_UNUSED size_t     ataInfoLen)
 {
     // set some of the bridge info in the device structure
-    safe_memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], 9, &ataInformation[SAT_ATA_VPD_T10_VENDOR_OFFSET],
-                SAT_ATA_VPD_T10_VENDOR_LENGTH);
-    safe_memcpy(&device->drive_info.bridge_info.SATproductID[0], 17, &ataInformation[SAT_ATA_VPD_T10_PRODUCT_ID_OFFSET],
-                SAT_ATA_VPD_T10_PRODUCT_ID_LENGTH);
-    safe_memcpy(&device->drive_info.bridge_info.SATfwRev[0], 9, &ataInformation[SAT_ATA_VPD_T10_PRODUCT_REV_OFFSET],
-                SAT_ATA_VPD_T10_PRODUCT_REV_LENGTH);
+    if (0 != safe_memcpy(device->drive_info.bridge_info.t10SATvendorID,
+                         sizeof(device->drive_info.bridge_info.t10SATvendorID),
+                         &ataInformation[SAT_ATA_VPD_T10_VENDOR_OFFSET], SAT_ATA_VPD_T10_VENDOR_LENGTH))
+        M_UNLIKELY
+        {
+            perror("Failed to copy SAT vendor ID");
+        }
+    if (0 != safe_memcpy(device->drive_info.bridge_info.SATproductID,
+                         sizeof(device->drive_info.bridge_info.SATproductID),
+                         &ataInformation[SAT_ATA_VPD_T10_PRODUCT_ID_OFFSET], SAT_ATA_VPD_T10_PRODUCT_ID_LENGTH))
+        M_UNLIKELY
+        {
+            perror("Failed to copy SAT product ID");
+        }
+    if (0 != safe_memcpy(device->drive_info.bridge_info.SATfwRev, sizeof(device->drive_info.bridge_info.SATfwRev),
+                         &ataInformation[SAT_ATA_VPD_T10_PRODUCT_REV_OFFSET], SAT_ATA_VPD_T10_PRODUCT_REV_LENGTH))
+        M_UNLIKELY
+        {
+            perror("Failed to copy SAT product revision");
+        }
 
     // Setup flags for ATA passthrough if we know the SAT vendor/product/rev info
     if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS    ") == 0)
@@ -2256,12 +2307,24 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
     uint8_t responseFormat = M_Nibble0(device->drive_info.scsiVpdData.inquiryData[3]);
     if (responseFormat >= INQ_RESPONSE_FMT_CURRENT)
     {
-        safe_memcpy(vendorID, INQ_DATA_T10_VENDOR_ID_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[8],
-                    INQ_DATA_T10_VENDOR_ID_LEN);
-        safe_memcpy(productID, INQ_DATA_PRODUCT_ID_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[16],
-                    INQ_DATA_PRODUCT_ID_LEN);
-        safe_memcpy(revision, INQ_DATA_PRODUCT_REV_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[32],
-                    INQ_DATA_PRODUCT_REV_LEN);
+        if (0 != safe_memcpy(vendorID, SIZE_OF_STACK_ARRAY(vendorID), &device->drive_info.scsiVpdData.inquiryData[8],
+                             INQ_DATA_T10_VENDOR_ID_LEN))
+            M_UNLIKELY
+            {
+                perror("Error copying vendor ID from inquiry data. (Truncation)");
+            }
+        if (0 != safe_memcpy(productID, SIZE_OF_STACK_ARRAY(productID), &device->drive_info.scsiVpdData.inquiryData[16],
+                             INQ_DATA_PRODUCT_ID_LEN))
+            M_UNLIKELY
+            {
+                perror("Error copying product ID from inquiry data. (Truncation)");
+            }
+        if (0 != safe_memcpy(revision, SIZE_OF_STACK_ARRAY(revision), &device->drive_info.scsiVpdData.inquiryData[32],
+                             INQ_DATA_PRODUCT_REV_LEN))
+            M_UNLIKELY
+            {
+                perror("Error copying product revision from inquiry data. (Truncation)");
+            }
         for (uint8_t iter = UINT8_C(0); iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
         {
             if (!safe_isascii(vendorID[iter]) || !safe_isprint(vendorID[iter]))
@@ -2474,8 +2537,12 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
         cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ................
         cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd cd  ................
         */
-        safe_memcpy(vendorID, INQ_DATA_T10_VENDOR_ID_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[8],
-                    INQ_DATA_T10_VENDOR_ID_LEN);
+        if (0 != safe_memcpy(vendorID, SIZE_OF_STACK_ARRAY(vendorID), &device->drive_info.scsiVpdData.inquiryData[8],
+                             INQ_DATA_T10_VENDOR_ID_LEN))
+            M_UNLIKELY
+            {
+                perror("Error copying vendor ID from inquiry data. (Truncation)");
+            }
 
         for (uint8_t iter = UINT8_C(0); iter < INQ_DATA_T10_VENDOR_ID_LEN; ++iter)
         {
@@ -2488,8 +2555,12 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
         if (strcmp(vendorID, "Seagate") == 0)
         {
             DECLARE_ZERO_INIT_ARRAY(char, internalModel, MODEL_NUM_LEN + 1);
-            safe_memcpy(internalModel, MODEL_NUM_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[54],
-                        MODEL_NUM_LEN);
+            if (0 != safe_memcpy(internalModel, SIZE_OF_STACK_ARRAY(internalModel),
+                                 &device->drive_info.scsiVpdData.inquiryData[54], MODEL_NUM_LEN))
+                M_UNLIKELY
+                {
+                    perror("Error copying internal model from inquiry data. (Truncation)");
+                }
             for (uint8_t iter = UINT8_C(0); iter < MODEL_NUM_LEN; ++iter)
             {
                 if (!safe_isascii(internalModel[iter]) || !safe_isprint(internalModel[iter]))
@@ -2499,10 +2570,18 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             }
             remove_Leading_And_Trailing_Whitespace(internalModel);
             // this looks like format 2 data, but doesn't report that way...
-            safe_memcpy(productID, INQ_DATA_PRODUCT_ID_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[16],
-                        INQ_DATA_PRODUCT_ID_LEN);
-            safe_memcpy(revision, INQ_DATA_PRODUCT_REV_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[32],
-                        INQ_DATA_PRODUCT_REV_LEN);
+            if (0 != safe_memcpy(productID, SIZE_OF_STACK_ARRAY(productID),
+                                 &device->drive_info.scsiVpdData.inquiryData[16], INQ_DATA_PRODUCT_ID_LEN))
+                M_UNLIKELY
+                {
+                    perror("Error copying product ID from inquiry data. (Truncation)");
+                }
+            if (0 != safe_memcpy(revision, SIZE_OF_STACK_ARRAY(revision),
+                                 &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN))
+                M_UNLIKELY
+                {
+                    perror("Error copying revision from inquiry data. (Truncation)");
+                }
             for (uint8_t iter = UINT8_C(0); iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
                 if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
@@ -2533,10 +2612,18 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
         }
         else if (strcmp(vendorID, "Samsung") == 0)
         {
-            safe_memcpy(productID, INQ_DATA_PRODUCT_ID_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[16],
-                        INQ_DATA_PRODUCT_ID_LEN);
-            safe_memcpy(revision, INQ_DATA_PRODUCT_REV_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[36],
-                        INQ_DATA_PRODUCT_REV_LEN);
+            if (0 != safe_memcpy(productID, SIZE_OF_STACK_ARRAY(productID),
+                                 &device->drive_info.scsiVpdData.inquiryData[16], INQ_DATA_PRODUCT_ID_LEN))
+                M_UNLIKELY
+                {
+                    perror("Error copying product ID from inquiry data. (Truncation)");
+                }
+            if (0 != safe_memcpy(revision, SIZE_OF_STACK_ARRAY(revision),
+                                 &device->drive_info.scsiVpdData.inquiryData[36], INQ_DATA_PRODUCT_REV_LEN))
+                M_UNLIKELY
+                {
+                    perror("Error copying revision from inquiry data. (Truncation)");
+                }
             for (uint8_t iter = UINT8_C(0); iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
                 if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
@@ -2556,10 +2643,18 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
         }
         else
         {
-            safe_memcpy(productID, INQ_DATA_PRODUCT_ID_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[8],
-                        INQ_DATA_PRODUCT_ID_LEN);
-            safe_memcpy(revision, INQ_DATA_PRODUCT_REV_LEN + 1, &device->drive_info.scsiVpdData.inquiryData[32],
-                        INQ_DATA_PRODUCT_REV_LEN);
+            if (0 != safe_memcpy(productID, SIZE_OF_STACK_ARRAY(productID),
+                                 &device->drive_info.scsiVpdData.inquiryData[8], INQ_DATA_PRODUCT_ID_LEN))
+                M_UNLIKELY
+                {
+                    perror("Error copying product ID from inquiry data. (Truncation)");
+                }
+            if (0 != safe_memcpy(revision, SIZE_OF_STACK_ARRAY(revision),
+                                 &device->drive_info.scsiVpdData.inquiryData[32], INQ_DATA_PRODUCT_REV_LEN))
+                M_UNLIKELY
+                {
+                    perror("Error copying revision from inquiry data. (Truncation)");
+                }
             for (uint8_t iter = UINT8_C(0); iter < INQ_DATA_PRODUCT_ID_LEN; ++iter)
             {
                 if (!safe_isascii(productID[iter]) || !safe_isprint(productID[iter]))
@@ -2578,7 +2673,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             remove_Leading_And_Trailing_Whitespace(revision);
             if (strcmp(productID, "ST9120826A") == 0)
             {
-                safe_memset(vendorID, INQ_DATA_T10_VENDOR_ID_LEN + 1, 0, INQ_DATA_T10_VENDOR_ID_LEN);
+                M_INITIALIZE_STRUCTURE(vendorID, INQ_DATA_T10_VENDOR_ID_LEN + 1);
                 passthroughTypeSet                                  = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
                 if (device->drive_info.interface_type != USB_INTERFACE)
@@ -2664,8 +2759,12 @@ void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerial
         {
             // SAS Seagate drives have a maximum SN length of 8
             // Other information in here is the PCBA SN
-            safe_memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN], unitSNSize - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                        safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN);
+            if (0 != safe_memset(&(*unitSerialNumber)[SEAGATE_SERIAL_NUMBER_LEN],
+                                 unitSNSize - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                                 safe_strlen((*unitSerialNumber)) - SEAGATE_SERIAL_NUMBER_LEN))
+            {
+                perror("Error clearing PCBA SN from unit serial number.");
+            }
         }
     }
 }
@@ -2679,12 +2778,12 @@ eReturnValues fill_In_Device_Info(tDevice* device)
     int        ret              = FAILURE;
     bool       mediumNotPresent = false; // assume medium is available until we find out otherwise.
     scsiStatus turStatus;
-    uint8_t*   inq_buf;
+    uint8_t*   inq_buf = M_NULLPTR;
 #ifdef _DEBUG
     printf("%s: -->\n", __FUNCTION__);
 #endif
 
-    safe_memset(&turStatus, sizeof(scsiStatus), 0, sizeof(scsiStatus));
+    M_INITIALIZE_STRUCTURE(&turStatus, sizeof(scsiStatus));
     scsi_Test_Unit_Ready(device, &turStatus);
     if (turStatus.senseKey != SENSE_KEY_NO_ERROR)
     {
@@ -2705,14 +2804,10 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         perror("Error allocating memory for standard inquiry data (scsi)");
         return MEMORY_FAILURE;
     }
-    safe_memset(device->drive_info.serialNumber, sizeof(device->drive_info.serialNumber), 0,
-                sizeof(device->drive_info.serialNumber));
-    safe_memset(device->drive_info.T10_vendor_ident, sizeof(device->drive_info.T10_vendor_ident), 0,
-                sizeof(device->drive_info.T10_vendor_ident));
-    safe_memset(device->drive_info.product_identification, sizeof(device->drive_info.product_identification), 0,
-                sizeof(device->drive_info.product_identification));
-    safe_memset(device->drive_info.product_revision, sizeof(device->drive_info.product_revision), 0,
-                sizeof(device->drive_info.product_revision));
+    explicit_zeroes(device->drive_info.serialNumber, sizeof(device->drive_info.serialNumber));
+    explicit_zeroes(device->drive_info.T10_vendor_ident, sizeof(device->drive_info.T10_vendor_ident));
+    explicit_zeroes(device->drive_info.product_identification, sizeof(device->drive_info.product_identification));
+    explicit_zeroes(device->drive_info.product_revision, sizeof(device->drive_info.product_revision));
     if (SUCCESS == scsi_Inquiry(device, inq_buf, INQ_RETURN_DATA_LENGTH, 0, false, false))
     {
         bool                     checkForSAT    = true;
@@ -2727,9 +2822,11 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         bool foundSATStandardDescriptor = false;
         bool foundATAStandardDescriptor = false;
         ret                             = SUCCESS;
-        safe_memcpy(device->drive_info.scsiVpdData.inquiryData, INQ_RETURN_DATA_LENGTH, inq_buf,
-                    INQ_RETURN_DATA_LENGTH); // store this in the device structure to make sure it is available
-                                             // elsewhere in the library as well.
+        if (0 != safe_memcpy(device->drive_info.scsiVpdData.inquiryData,
+                             sizeof(device->drive_info.scsiVpdData.inquiryData), inq_buf, INQ_RETURN_DATA_LENGTH))
+        {
+            perror("Error copying standard inquiry data into device structure");
+        }
         copy_Inquiry_Data(inq_buf, &device->drive_info);
 
         if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
@@ -3291,8 +3388,12 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                         {
                             char*       snPtr     = device->drive_info.serialNumber;
                             const char* t10VIDPtr = device->drive_info.T10_vendor_ident;
-                            safe_memcpy(&device->drive_info.serialNumber[0], SERIAL_NUM_LEN + 1, &unitSerialNumber[4],
-                                        M_Min(SERIAL_NUM_LEN, serialNumberLength));
+                            if (0 != safe_memcpy(device->drive_info.serialNumber,
+                                                 sizeof(device->drive_info.serialNumber), &unitSerialNumber[4],
+                                                 M_Min(SERIAL_NUM_LEN, serialNumberLength)))
+                            {
+                                perror("Error copying serial number from inquiry data.");
+                            }
                             device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                             for (uint8_t iter = UINT8_C(0); iter < SERIAL_NUM_LEN; ++iter)
                             {
@@ -3307,12 +3408,20 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                         }
                         else
                         {
-                            safe_memset(device->drive_info.serialNumber, SERIAL_NUM_LEN + 1, 0, SERIAL_NUM_LEN);
+                            if (0 != safe_memset(device->drive_info.serialNumber,
+                                                 sizeof(device->drive_info.serialNumber), 0, SERIAL_NUM_LEN))
+                            {
+                                perror("Error setting serial number to zero.");
+                            }
                         }
                     }
                     else
                     {
-                        safe_memset(device->drive_info.serialNumber, SERIAL_NUM_LEN + 1, 0, SERIAL_NUM_LEN);
+                        if (0 != safe_memset(device->drive_info.serialNumber, sizeof(device->drive_info.serialNumber),
+                                             0, SERIAL_NUM_LEN))
+                        {
+                            perror("Error setting serial number to zero.");
+                        }
                     }
                 }
                 safe_free_aligned(&unitSerialNumber);
@@ -3321,7 +3430,12 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             {
                 // SN may not be available...just going to read where it may otherwise show up in inquiry data like some
                 // vendors like to put it
-                safe_memcpy(&device->drive_info.serialNumber[0], SERIAL_NUM_LEN + 1, &inq_buf[36], SERIAL_NUM_LEN);
+                if (0 != safe_memcpy(device->drive_info.serialNumber, sizeof(device->drive_info.serialNumber),
+                                     &inq_buf[36], SERIAL_NUM_LEN))
+                    M_UNLIKELY
+                    {
+                        perror("Error copying serial number from inquiry data.");
+                    }
                 device->drive_info.serialNumber[SERIAL_NUM_LEN] = '\0';
                 // make sure the SN is printable if it's coming from here since it's non-standardized
                 for (uint8_t iter = UINT8_C(0); iter < SERIAL_NUM_LEN; ++iter)
@@ -3353,7 +3467,12 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                         // this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need to
                         // go through the descriptors from the device and set it from the correct one. See the
                         // SATChecker util code for how to do this
-                        safe_memcpy(&device->drive_info.worldWideName, sizeof(uint64_t), &deviceIdentification[8], 8);
+                        if (0 != safe_memcpy(&device->drive_info.worldWideName, sizeof(uint64_t),
+                                             &deviceIdentification[8], 8))
+                            M_UNLIKELY
+                            {
+                                perror("Error copying WWN from device identification VPD page.");
+                            }
                         byte_Swap_64(&device->drive_info.worldWideName);
                     }
                 }
@@ -3430,7 +3549,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             uint8_t* supportedVPDPages;
             // from here on we need to check if a VPD page is supported and read it if there is anything in it that we
             // care about to store info in the device struct
-            safe_memset(inq_buf, INQ_RETURN_DATA_LENGTH, 0, INQ_RETURN_DATA_LENGTH);
+            explicit_zeroes(inq_buf, INQ_RETURN_DATA_LENGTH);
             bool dummyUpVPDSupport = false;
             if ((device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable &&
                  device->drive_info.passThroughHacks.scsiHacks.noVPDPages) ||
@@ -3444,7 +3563,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             else if (inq_buf[1] != SUPPORTED_VPD_PAGES)
             {
                 // did not get the list of supported pages! Checking this since occasionally we get back garbage
-                safe_memset(inq_buf, INQ_RETURN_DATA_LENGTH, 0, INQ_RETURN_DATA_LENGTH);
+                explicit_zeroes(inq_buf, INQ_RETURN_DATA_LENGTH);
                 dummyUpVPDSupport = true;
             }
             if (dummyUpVPDSupport == false)
@@ -3519,7 +3638,10 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 safe_free_aligned(&inq_buf);
                 return MEMORY_FAILURE;
             }
-            safe_memcpy(supportedVPDPages, supportedVPDPagesLength, &inq_buf[4], supportedVPDPagesLength);
+            if (0 != safe_memcpy(supportedVPDPages, supportedVPDPagesLength, &inq_buf[4], supportedVPDPagesLength))
+            {
+                perror("Error copying supported VPD pages from inquiry data.");
+            }
             // now loop through and read pages as we need to, only reading the pages that we care about
             // uint16_t vpdIter = UINT16_C(0);
             for (uint16_t vpdIter = UINT16_C(0);
@@ -3552,8 +3674,13 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                             {
                                 char*       snPtr     = device->drive_info.serialNumber;
                                 const char* t10VIDPtr = device->drive_info.T10_vendor_ident;
-                                safe_memcpy(&device->drive_info.serialNumber[0], SERIAL_NUM_LEN + 1,
-                                            &unitSerialNumber[4], M_Min(SERIAL_NUM_LEN, serialNumberLength));
+                                if (0 != safe_memcpy(device->drive_info.serialNumber,
+                                                     sizeof(device->drive_info.serialNumber), &unitSerialNumber[4],
+                                                     M_Min(SERIAL_NUM_LEN, serialNumberLength)))
+                                    M_UNLIKELY
+                                    {
+                                        perror("Error copying serial number from unit serial number VPD page.");
+                                    }
                                 device->drive_info.serialNumber[M_Min(SERIAL_NUM_LEN, serialNumberLength)] = '\0';
                                 for (size_t iter = SIZE_T_C(0);
                                      iter < SERIAL_NUM_LEN && iter < safe_strlen(device->drive_info.serialNumber);
@@ -3591,8 +3718,12 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                             // this SHOULD work for getting a WWN 90% of the time, but if it doesn't, then we will need
                             // to go through the descriptors from the device and set it from the correct one. See the
                             // SATChecker util code for how to do this
-                            safe_memcpy(&device->drive_info.worldWideName, sizeof(uint64_t), &deviceIdentification[8],
-                                        8);
+                            if (0 != safe_memcpy(&device->drive_info.worldWideName, sizeof(uint64_t),
+                                                 &deviceIdentification[8], 8))
+                                M_UNLIKELY
+                                {
+                                    perror("Error copying world wide name from device identification VPD page.");
+                                }
                             byte_Swap_64(&device->drive_info.worldWideName);
                         }
                     }
@@ -3756,7 +3887,12 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         {
             // SN may not be available...just going to read where it may otherwise show up in inquiry data like some
             // vendors like to put it
-            safe_memcpy(&device->drive_info.serialNumber[0], SERIAL_NUM_LEN + 1, &inq_buf[36], SERIAL_NUM_LEN);
+            if (0 != safe_memcpy(device->drive_info.serialNumber, sizeof(device->drive_info.serialNumber), &inq_buf[36],
+                                 SERIAL_NUM_LEN))
+                M_UNLIKELY
+                {
+                    perror("Error copying serial number from inquiry data.");
+                }
             device->drive_info.serialNumber[SERIAL_NUM_LEN] = '\0';
             // make sure the SN is printable if it's coming from here since it's non-standardized
             for (uint8_t iter = UINT8_C(0); iter < SERIAL_NUM_LEN; ++iter)
@@ -3772,7 +3908,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         if (readCapacity && !mediumNotPresent)
         {
             readCapacityData readCapData;
-            safe_memset(&readCapData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
+            M_INITIALIZE_STRUCTURE(&readCapData, sizeof(readCapacityData));
             if (SUCCESS == scsi_Read_Capacity_Cmd_Helper(device, &readCapData))
             {
                 device->drive_info.deviceBlockSize = readCapData.logicalBlockLength;
@@ -4582,481 +4718,212 @@ static scsiVersionDescriptor scsiVersionDescriptorTable[] = {
 };
 
 // Used with bsearch to get the string
-static int cmp_Version_Descriptor(scsiVersionDescriptor* a, scsiVersionDescriptor* b)
+static int cmp_Version_Descriptor(const void* a, const void* b)
 {
-    return (a->versionCode - b->versionCode);
+    const scsiVersionDescriptor* va = M_REINTERPRET_CAST(const scsiVersionDescriptor*, a);
+    const scsiVersionDescriptor* vb = M_REINTERPRET_CAST(const scsiVersionDescriptor*, b);
+    return (va->versionCode - vb->versionCode);
+}
+
+typedef struct s_shortSCSIVersionDescriptor
+{
+    eStandardCode standardCode;
+    const char*   stringDescription;
+} shortSCSIVersionDescriptor;
+
+static shortSCSIVersionDescriptor shortScsiVersionDescriptorTable[] = {
+    {STANDARD_CODE_SAM, "SAM"},
+    {STANDARD_CODE_SAM2, "SAM-2"},
+    {STANDARD_CODE_SAM3, "SAM-3"},
+    {STANDARD_CODE_SAM4, "SAM-4"},
+    {STANDARD_CODE_SAM5, "SAM-5"},
+    {STANDARD_CODE_SAM6, "SAM-6"},
+    {STANDARD_CODE_SPC, "SPC"},
+    {STANDARD_CODE_MMC, "MMC"},
+    {STANDARD_CODE_SCC, "SCC"},
+    {STANDARD_CODE_SBC, "SBC"},
+    {STANDARD_CODE_SMC, "SMC"},
+    {STANDARD_CODE_SES, "SES"},
+    {STANDARD_CODE_SCC2, "SCC-2"},
+    {STANDARD_CODE_SSC, "SSC"},
+    {STANDARD_CODE_RBC, "RBC"},
+    {STANDARD_CODE_MMC2, "MMC-2"},
+    {STANDARD_CODE_SPC2, "SPC-2"},
+    {STANDARD_CODE_OCRW, "OCRW"},
+    {STANDARD_CODE_MMC3, "MMC-3"},
+    {STANDARD_CODE_RMC, "RMC"},
+    {STANDARD_CODE_SMC2, "SMC-2"},
+    {STANDARD_CODE_SPC3, "SPC-3"},
+    {STANDARD_CODE_SBC2, "SBC-2"},
+    {STANDARD_CODE_OSD, "OSD"},
+    {STANDARD_CODE_SSC2, "SSC-2"},
+    {STANDARD_CODE_BCC, "BCC"},
+    {STANDARD_CODE_MMC4, "MMC-4"},
+    {STANDARD_CODE_ADC, "ADC"},
+    {STANDARD_CODE_SES2, "SES-2"},
+    {STANDARD_CODE_SSC3, "SSC-3"},
+    {STANDARD_CODE_MMC5, "MMC-5"},
+    {STANDARD_CODE_OSD2, "OSD-2"},
+    {STANDARD_CODE_SPC4, "SPC-4"},
+    {STANDARD_CODE_SMC3, "SMC-3"},
+    {STANDARD_CODE_ADC2, "ADC-2"},
+    {STANDARD_CODE_SBC3, "SBC-3"},
+    {STANDARD_CODE_MMC6, "MMC-6"},
+    {STANDARD_CODE_ADC3, "ADC-3"},
+    {STANDARD_CODE_SSC4, "SSC-4"},
+    {STANDARD_CODE_OSD3, "OSD-3"},
+    {STANDARD_CODE_SES3, "SES-3"},
+    {STANDARD_CODE_SSC5, "SSC-5"},
+    {STANDARD_CODE_SPC5, "SPC-5"},
+    {STANDARD_CODE_SFSC, "SFSC"},
+    {STANDARD_CODE_SBC4, "SBC-4"},
+    {STANDARD_CODE_ZBC, "ZBC"},
+    {STANDARD_CODE_ADC4, "ADC-4"},
+    {STANDARD_CODE_ZBC2, "ZBC-2"},
+    {STANDARD_CODE_SES4, "SES-4"},
+    {STANDARD_CODE_SSA_TL2, "SSA-TL2"},
+    {STANDARD_CODE_SSA_TL1, "SSA-TL1"},
+    {STANDARD_CODE_SSA_S3P, "SSA-S3P"},
+    {STANDARD_CODE_SSA_S2P, "SSA-S2P"},
+    {STANDARD_CODE_SIP, "SIP"},
+    {STANDARD_CODE_FCP, "FCP"},
+    {STANDARD_CODE_SBP2, "SBP-2"},
+    {STANDARD_CODE_FCP2, "FCP-2"},
+    {STANDARD_CODE_SST, "SST"},
+    {STANDARD_CODE_SRP, "SRP"},
+    {STANDARD_CODE_iSCSI, "iSCSI"},
+    {STANDARD_CODE_SBP3, "SBP-3"},
+    {STANDARD_CODE_SRP2, "SRP-2"},
+    {STANDARD_CODE_ADP, "ADP"},
+    {STANDARD_CODE_ADT, "ADT"},
+    {STANDARD_CODE_FCP3, "FCP-3"},
+    {STANDARD_CODE_ADT2, "ADT-2"},
+    {STANDARD_CODE_FCP4, "FCP-4"},
+    {STANDARD_CODE_ADT3, "ADT-3"},
+    {STANDARD_CODE_SPI, "SPI"},
+    {STANDARD_CODE_FAST20, "Fast-20"},
+    {STANDARD_CODE_SPI2, "SPI-2"},
+    {STANDARD_CODE_SPI3, "SPI-3"},
+    {STANDARD_CODE_EPI, "EPI"},
+    {STANDARD_CODE_SPI4, "SPI-4"},
+    {STANDARD_CODE_SPI5, "SPI-5"},
+    {STANDARD_CODE_SAS, "SAS"},
+    {STANDARD_CODE_SAS1_1, "SAS-1.1"},
+    {STANDARD_CODE_SAS2, "SAS-2"},
+    {STANDARD_CODE_SAS2_1, "SAS-2.1"},
+    {STANDARD_CODE_SAS3, "SAS-3"},
+    {STANDARD_CODE_SAS4, "SAS-4"},
+    {STANDARD_CODE_FC_PH, "FC-PH"},
+    {STANDARD_CODE_FC_AL, "FC-AL"},
+    {STANDARD_CODE_FC_AL2, "FC-AL-2"},
+    {STANDARD_CODE_AC_PH3, "FC-PH-3"},
+    {STANDARD_CODE_FC_FS, "FC-FS"},
+    {STANDARD_CODE_FC_PI, "FC-PI"},
+    {STANDARD_CODE_FC_PI2, "FC-PI-2"},
+    {STANDARD_CODE_FC_FS2, "FC-FS-2"},
+    {STANDARD_CODE_FC_LS, "FC-LS"},
+    {STANDARD_CODE_FC_SP, "FC-SP"},
+    {STANDARD_CODE_FC_PI3, "FC-PI-3"},
+    {STANDARD_CODE_FC_PI4, "FC-PI-4"},
+    {STANDARD_CODE_FC_10GFC, "FC 10GFC"},
+    {STANDARD_CODE_FC_SP2, "FC-SP-2"},
+    {STANDARD_CODE_FC_FS3, "FC-FS-3"},
+    {STANDARD_CODE_FC_LS2, "FC-LS-2"},
+    {STANDARD_CODE_FC_PI5, "FC-PI-5"},
+    {STANDARD_CODE_FC_PI6, "FC-PI-6"},
+    {STANDARD_CODE_FC_FS4, "FC-FS-4"},
+    {STANDARD_CODE_FC_LS3, "FC-LS-3"},
+    {STANDARD_CODE_FC_SCM, "FC-SCM"},
+    {STANDARD_CODE_FC_DA2, "FC-DA-2"},
+    {STANDARD_CODE_FC_DA, "FC-DA"},
+    {STANDARD_CODE_FC_TAPE, "FC-Tape"},
+    {STANDARD_CODE_FC_FLA, "FC-FLA"},
+    {STANDARD_CODE_FC_PLDA, "FC-PLDA"},
+    {STANDARD_CODE_SSA_PH2, "SSA-PH2"},
+    {STANDARD_CODE_SSA_PH3, "SSA-PH3"},
+    {STANDARD_CODE_IEEE_1394_1995, "IEEE-1394-1995"},
+    {STANDARD_CODE_IEEE_1394a, "IEEE-1394a"},
+    {STANDARD_CODE_IEEE_1394b, "IEEE-1394b"},
+    {STANDARD_CODE_ATA_ATAPI6, "ATA/ATAPI-6"},
+    {STANDARD_CODE_ATA_ATAPI7, "ATA/ATAPI-7"},
+    {STANDARD_CODE_ATA_ATAPI8, "ATA8-ACS"},
+    {STANDARD_CODE_USB, "USB"},
+    {STANDARD_CODE_UAS, "UAS"},
+    {STANDARD_CODE_ACSx, "ACS-x"},
+    {STANDARD_CODE_UAS2, "UAS-2"},
+    {STANDARD_CODE_SAT, "SAT"},
+    {STANDARD_CODE_SAT2, "SAT-2"},
+    {STANDARD_CODE_SAT3, "SAT-3"},
+    {STANDARD_CODE_SAT4, "SAT-4"},
+    {STANDARD_CODE_SPL, "SPL"},
+    {STANDARD_CODE_SPL2, "SPL-2"},
+    {STANDARD_CODE_SPL3, "SPL-3"},
+    {STANDARD_CODE_SPL4, "SPL-4"},
+    {STANDARD_CODE_SOP, "SOP"},
+    {STANDARD_CODE_PQI, "PQI"},
+    {STANDARD_CODE_SOP2, "SOP-2"},
+    {STANDARD_CODE_PQI2, "PQI-2"},
+    {STANDARD_CODE_IEEE_1667, "IEEE-1667"},
+    {STANDARD_CODE_RESERVED, "RESERVED"},
+};
+
+static int cmp_Short_Version_Descriptor(const void* a, const void* b)
+{
+    const shortSCSIVersionDescriptor* va = M_REINTERPRET_CAST(const shortSCSIVersionDescriptor*, a);
+    const shortSCSIVersionDescriptor* vb = M_REINTERPRET_CAST(const shortSCSIVersionDescriptor*, b);
+    return (M_STATIC_CAST(int, va->standardCode) - M_STATIC_CAST(int, vb->standardCode));
 }
 
 void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* versionString)
 {
+    return decypher_SCSI_Version_Descriptors_Len(versionDescriptor, versionString,
+                                                 MAX_VERSION_DESCRIPTOR_STRING_LENGTH);
+}
+
+void decypher_SCSI_Version_Descriptors_Len(uint16_t versionDescriptor, char* versionString, rsize_t versionStringLen)
+{
     // use binary search to find it from the massive list above
     // If that fails, fall into the switch below as a fall-back
-    scsiVersionDescriptor* versionDescriptorResult = M_NULLPTR;
-    scsiVersionDescriptor  versionDescriptorKey    = {versionDescriptor, M_NULLPTR};
+    const scsiVersionDescriptor* versionDescriptorResult = M_NULLPTR;
+    const scsiVersionDescriptor  versionDescriptorKey    = {versionDescriptor, M_NULLPTR};
 
-    versionDescriptorResult = C_CAST(
-        scsiVersionDescriptor*,
-        safe_bsearch(&versionDescriptorKey, scsiVersionDescriptorTable,
-                     sizeof(scsiVersionDescriptorTable) / sizeof(scsiVersionDescriptorTable[0]),
-                     sizeof(scsiVersionDescriptorTable[0]), (int (*)(const void*, const void*))cmp_Version_Descriptor));
+    versionDescriptorResult =
+        C_CAST(const scsiVersionDescriptor*,
+               safe_bsearch(&versionDescriptorKey, scsiVersionDescriptorTable,
+                            sizeof(scsiVersionDescriptorTable) / sizeof(scsiVersionDescriptorTable[0]),
+                            sizeof(scsiVersionDescriptorTable[0]), cmp_Version_Descriptor));
     if (versionDescriptorResult)
     {
-        snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "%s",
-                            versionDescriptorResult->stringDescription);
+        if (0 != safe_strcpy(versionString, versionStringLen, versionDescriptorResult->stringDescription))
+            M_UNLIKELY
+            {
+                perror("Error setting SCSI version string into output buffer");
+            }
     }
     else
     {
-        switch (versionDescriptor / UINT16_C(32))
+        const shortSCSIVersionDescriptor* shortVerDescRes = M_NULLPTR;
+        const shortSCSIVersionDescriptor  shortVerDesKey  = {versionDescriptor / UINT16_C(32), M_NULLPTR};
+        shortVerDescRes =
+            C_CAST(const shortSCSIVersionDescriptor*,
+                   safe_bsearch(&shortVerDesKey, shortScsiVersionDescriptorTable,
+                                sizeof(shortScsiVersionDescriptorTable) / sizeof(shortScsiVersionDescriptorTable[0]),
+                                sizeof(shortScsiVersionDescriptorTable[0]), cmp_Short_Version_Descriptor));
+        if (shortVerDescRes)
         {
-            // 1 - 8 architecture model
-        case STANDARD_CODE_SAM:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM");
-            break;
-        case STANDARD_CODE_SAM2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-2");
-            break;
-        case STANDARD_CODE_SAM3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-3");
-            break;
-        case STANDARD_CODE_SAM4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-4");
-            break;
-        case STANDARD_CODE_SAM5:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-5");
-            break;
-        case STANDARD_CODE_SAM6:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAM-6");
-            break;
-            // 9-64 Command Set
-        case STANDARD_CODE_SPC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC");
-            break;
-        case STANDARD_CODE_MMC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC");
-            break;
-        case STANDARD_CODE_SCC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SCC");
-            break;
-        case STANDARD_CODE_SBC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC");
-            break;
-        case STANDARD_CODE_SMC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC");
-            break;
-        case STANDARD_CODE_SES:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES");
-            break;
-        case STANDARD_CODE_SCC2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SCC-2");
-            break;
-        case STANDARD_CODE_SSC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC");
-            break;
-        case STANDARD_CODE_RBC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RBC");
-            break;
-        case STANDARD_CODE_MMC2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-2");
-            break;
-        case STANDARD_CODE_SPC2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-2");
-            break;
-        case STANDARD_CODE_OCRW:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OCRW");
-            break;
-        case STANDARD_CODE_MMC3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-3");
-            break;
-        case STANDARD_CODE_RMC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RMC");
-            break;
-        case STANDARD_CODE_SMC2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC-2");
-            break;
-        case STANDARD_CODE_SPC3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-3");
-            break;
-        case STANDARD_CODE_SBC2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-2");
-            break;
-        case STANDARD_CODE_OSD:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD");
-            break;
-        case STANDARD_CODE_SSC2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-2");
-            break;
-        case STANDARD_CODE_BCC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "BCC");
-            break;
-        case STANDARD_CODE_MMC4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-4");
-            break;
-        case STANDARD_CODE_ADC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC");
-            break;
-        case STANDARD_CODE_SES2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-2");
-            break;
-        case STANDARD_CODE_SSC3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-3");
-            break;
-        case STANDARD_CODE_MMC5:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-5");
-            break;
-        case STANDARD_CODE_OSD2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD-2");
-            break;
-        case STANDARD_CODE_SPC4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-4");
-            break;
-        case STANDARD_CODE_SMC3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SMC-3");
-            break;
-        case STANDARD_CODE_ADC2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-2");
-            break;
-        case STANDARD_CODE_SBC3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-3");
-            break;
-        case STANDARD_CODE_MMC6:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "MMC-6");
-            break;
-        case STANDARD_CODE_ADC3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-3");
-            break;
-        case STANDARD_CODE_SSC4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-4");
-            break;
-        case STANDARD_CODE_OSD3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "OSD-3");
-            break;
-        case STANDARD_CODE_SES3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-3");
-            break;
-        case STANDARD_CODE_SSC5:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSC-5");
-            break;
-        case STANDARD_CODE_SPC5:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPC-5");
-            break;
-        case STANDARD_CODE_SFSC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SFSC");
-            break;
-        case STANDARD_CODE_SBC4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBC-4");
-            break;
-        case STANDARD_CODE_ZBC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ZBC");
-            break;
-        case STANDARD_CODE_ADC4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADC-4");
-            break;
-        case STANDARD_CODE_ZBC2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ZBC-2");
-            break;
-        case STANDARD_CODE_SES4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SES-4");
-            break;
-            // 65 - 84 Physical Mapping protocol
-        case STANDARD_CODE_SSA_TL2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-TL2");
-            break;
-        case STANDARD_CODE_SSA_TL1:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-TL1");
-            break;
-        case STANDARD_CODE_SSA_S3P:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-S3P");
-            break;
-        case STANDARD_CODE_SSA_S2P:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-S2P");
-            break;
-        case STANDARD_CODE_SIP:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SIP");
-            break;
-        case STANDARD_CODE_FCP:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP");
-            break;
-        case STANDARD_CODE_SBP2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBP-2");
-            break;
-        case STANDARD_CODE_FCP2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-2");
-            break;
-        case STANDARD_CODE_SST:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SST");
-            break;
-        case STANDARD_CODE_SRP:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SRP");
-            break;
-        case STANDARD_CODE_iSCSI:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "iSCSI");
-            break;
-        case STANDARD_CODE_SBP3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SBP-3");
-            break;
-        case STANDARD_CODE_SRP2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SRP-2");
-            break;
-        case STANDARD_CODE_ADP:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADP");
-            break;
-        case STANDARD_CODE_ADT:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT");
-            break;
-        case STANDARD_CODE_FCP3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-3");
-            break;
-        case STANDARD_CODE_ADT2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT-2");
-            break;
-        case STANDARD_CODE_FCP4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FCP-4");
-            break;
-        case STANDARD_CODE_ADT3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ADT-3");
-            break;
-            // 85 - 94 Parallel SCSI Physical
-        case STANDARD_CODE_SPI:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI");
-            break;
-        case STANDARD_CODE_FAST20:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "Fast-20");
-            break;
-        case STANDARD_CODE_SPI2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-2");
-            break;
-        case STANDARD_CODE_SPI3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-3");
-            break;
-        case STANDARD_CODE_EPI:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "EPI");
-            break;
-        case STANDARD_CODE_SPI4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-4");
-            break;
-        case STANDARD_CODE_SPI5:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPI-5");
-            break;
-            // 95 - 104 Serial Attached SCSI
-        case STANDARD_CODE_SAS:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS");
-            break;
-        case STANDARD_CODE_SAS1_1:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-1.1");
-            break;
-        case STANDARD_CODE_SAS2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-2");
-            break;
-        case STANDARD_CODE_SAS2_1:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-2.1");
-            break;
-        case STANDARD_CODE_SAS3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-3");
-            break;
-        case STANDARD_CODE_SAS4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAS-4");
-            break;
-            // 105 - 154 Fibre Channel
-        case STANDARD_CODE_FC_PH:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PH");
-            break;
-        case STANDARD_CODE_FC_AL:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-AL");
-            break;
-        case STANDARD_CODE_FC_AL2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-AL-2");
-            break;
-        case STANDARD_CODE_AC_PH3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PH-3");
-            break;
-        case STANDARD_CODE_FC_FS:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS");
-            break;
-        case STANDARD_CODE_FC_PI:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI");
-            break;
-        case STANDARD_CODE_FC_PI2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-2");
-            break;
-        case STANDARD_CODE_FC_FS2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-2");
-            break;
-        case STANDARD_CODE_FC_LS:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS");
-            break;
-        case STANDARD_CODE_FC_SP:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SP");
-            break;
-        case STANDARD_CODE_FC_PI3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-3");
-            break;
-        case STANDARD_CODE_FC_PI4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-4");
-            break;
-        case STANDARD_CODE_FC_10GFC:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC 10GFC");
-            break;
-        case STANDARD_CODE_FC_SP2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SP-2");
-            break;
-        case STANDARD_CODE_FC_FS3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-3");
-            break;
-        case STANDARD_CODE_FC_LS2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS-2");
-            break;
-        case STANDARD_CODE_FC_PI5:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-5");
-            break;
-        case STANDARD_CODE_FC_PI6:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PI-6");
-            break;
-        case STANDARD_CODE_FC_FS4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FS-4");
-            break;
-        case STANDARD_CODE_FC_LS3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-LS-3");
-            break;
-        case STANDARD_CODE_FC_SCM:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-SCM");
-            break;
-        case STANDARD_CODE_FC_DA2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-DA-2");
-            break;
-        case STANDARD_CODE_FC_DA:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-DA");
-            break;
-        case STANDARD_CODE_FC_TAPE:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-Tape");
-            break;
-        case STANDARD_CODE_FC_FLA:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-FLA");
-            break;
-        case STANDARD_CODE_FC_PLDA:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "FC-PLDA");
-            break;
-            // 155 - 164 SSA
-        case STANDARD_CODE_SSA_PH2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-PH2");
-            break;
-        case STANDARD_CODE_SSA_PH3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SSA-PH3");
-            break;
-            // 165 - 174 IEEE 1394
-        case STANDARD_CODE_IEEE_1394_1995:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394-1995");
-            break;
-        case STANDARD_CODE_IEEE_1394a:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394a");
-            break;
-        case STANDARD_CODE_IEEE_1394b:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1394b");
-            break;
-            // 175 - 200 ATAPI & USB
-        case STANDARD_CODE_ATA_ATAPI6:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA/ATAPI-6");
-            break;
-        case STANDARD_CODE_ATA_ATAPI7:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA/ATAPI-7");
-            break;
-        case STANDARD_CODE_ATA_ATAPI8:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ATA8-ACS");
-            break;
-        case STANDARD_CODE_USB:
-            switch (versionDescriptor)
-            {
-            case 0x1728: // USB 1.1
-                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-1.1");
-                break;
-            case 0x1729: // USB 2.0
-                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-2.0");
-                break;
-            case 0x1730: // USB BOT
-                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB-BOT");
-                break;
-            default:
-                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "USB");
-                break;
-            }
-            break;
-        case STANDARD_CODE_UAS:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "UAS");
-            break;
-        case STANDARD_CODE_ACSx:
-            // special case, look at the version descriptor to set an exact version number
-            switch (versionDescriptor)
-            {
-            case 0x1761: // ACS-2
-            case 0x1762:
-                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-2");
-                break;
-            case 0x1765: // ACS-3
-            case 0x1766: // ACS-3 INCITS 522-2014
-                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-3");
-                break;
-            case 0x1767: // ACS-4 INCITS 529-2018
-                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-4");
-                break;
-            default:
-                snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "ACS-x");
-                break;
-            }
-            break;
-        case STANDARD_CODE_UAS2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "UAS-2");
-            break;
-            // 201 - 224 Networking
-            // 225 - 244 ATM
-            // 245 - 260 Translators
-        case STANDARD_CODE_SAT:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT");
-            break;
-        case STANDARD_CODE_SAT2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-2");
-            break;
-        case STANDARD_CODE_SAT3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-3");
-            break;
-        case STANDARD_CODE_SAT4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SAT-4");
-            break;
-            // 261 - 270 SAS Transport Protocols
-        case STANDARD_CODE_SPL:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL");
-            break;
-        case STANDARD_CODE_SPL2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-2");
-            break;
-        case STANDARD_CODE_SPL3:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-3");
-            break;
-        case STANDARD_CODE_SPL4:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SPL-4");
-            break;
-            // 271 - 290 SCSI over PCI Extress Transport Protocols
-        case STANDARD_CODE_SOP:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SOP");
-            break;
-        case STANDARD_CODE_PQI:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "PQI");
-            break;
-        case STANDARD_CODE_SOP2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "SOP-2");
-            break;
-        case STANDARD_CODE_PQI2:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "PQI-2");
-            break;
-            // 291 - 2045 Reserved for Expansion
-        case STANDARD_CODE_IEEE_1667:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "IEEE-1667");
-            break;
-        case STANDARD_CODE_RESERVED:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "RESERVED");
-            break;
-        case STANDARD_CODE_NOT_SUPPORTED:
-        default:
-            snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "----");
-            break;
+            if (0 != safe_strcpy(versionString, versionStringLen, shortVerDescRes->stringDescription))
+                M_UNLIKELY
+                {
+                    perror("Error setting short SCSI version string into output buffer");
+                }
+        }
+        else
+        {
+            if (0 != safe_strcpy(versionString, versionStringLen, "----"))
+                M_UNLIKELY
+                {
+                    perror("Error setting unknown short SCSI version string into output buffer");
+                }
         }
     }
 }
@@ -5302,7 +5169,7 @@ bool check_Sense_For_Specific_Info(const uint8_t* senseData, uint32_t senseLen, 
     bool             match = true;
     eSenseMatchDepth depth = SENSE_MATCH_SENSE_KEY;
     senseDataFields  readSense;
-    safe_memset(&readSense, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&readSense, sizeof(senseDataFields));
     get_Sense_Data_Fields(senseData, senseLen, &readSense);
     while (depth <= check.checkDepth && match == true)
     {

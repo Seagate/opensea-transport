@@ -2918,7 +2918,7 @@ static eReturnValues win_Get_SCSI_Address(HANDLE deviceHandle, PSCSI_ADDRESS scs
     {
         DWORD returnedBytes = DWORD_C(0);
         BOOL  result        = FALSE;
-        safe_memset(scsiAddress, sizeof(SCSI_ADDRESS), 0, sizeof(SCSI_ADDRESS));
+        M_INITIALIZE_STRUCTURE(scsiAddress, sizeof(SCSI_ADDRESS));
         result = DeviceIoControl(deviceHandle, IOCTL_SCSI_GET_ADDRESS, M_NULLPTR, 0, scsiAddress, sizeof(SCSI_ADDRESS),
                                  &returnedBytes, M_NULLPTR);
         if (MSFT_BOOL_FALSE(result))
@@ -3092,7 +3092,7 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE           deviceH
     DECLARE_SEATIMER(commandTimer);
     ULONG      returnedLength = ULONG_C(0);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     if (overlappedStruct.hEvent == M_NULLPTR)
     {
@@ -3289,7 +3289,12 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* M_NONNULL devic
                     for (uint8_t iter = UINT8_C(0); iter < firmwareInfo->SlotCount && iter < UINT8_C(7); ++iter)
                     {
                         DECLARE_ZERO_INIT_ARRAY(char, v1Revision, 9);
-                        snprintf_err_handle(v1Revision, 9, "%s", firmwareInfo->Slot[iter].Revision.Info);
+                        if (0 != safe_strcpy(v1Revision, 9, firmwareInfo->Slot[iter].Revision.Info))
+                            M_UNLIKELY
+                            {
+                                perror("Error copying firmware revision info (truncation likely)");
+                                continue;
+                            }
                         printf("\t    Firmware Slot %d:\n", firmwareInfo->Slot[iter].SlotNumber);
                         printf("\t\tRead Only: %d\n", firmwareInfo->Slot[iter].ReadOnly);
                         printf("\t\tRevision: %s\n", v1Revision); // temp storage since there was not enough room for
@@ -5223,8 +5228,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
 
         device->os_info.scsiSRBHandle = INVALID_HANDLE_VALUE; // set this to invalid ahead of anywhere that it might get
                                                               // opened below for discovering additional capabilities.
-        // set the handle name
-        safe_strcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
+        DECLARE_ZERO_INIT_ARRAY(char, tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
 
         if (strstr(device->os_info.name, WIN_PHYSICAL_DRIVE))
         {
@@ -5234,7 +5238,10 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             {
                 return FAILURE;
             }
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "PD%lu", drive);
+            if (0 > snprintf_err_handle(&tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "PD%lu", drive))
+            {
+                perror("Truncated Physical Device Name");
+            }
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_CDROM_DRIVE))
@@ -5245,7 +5252,10 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             {
                 return FAILURE;
             }
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CDROM%lu", drive);
+            if (0 > snprintf_err_handle(&tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CDROM%lu", drive))
+            {
+                perror("Truncated CDROM Device Name");
+            }
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_TAPE_DRIVE))
@@ -5256,7 +5266,10 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             {
                 return FAILURE;
             }
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "TAPE%lu", drive);
+            if (0 > snprintf_err_handle(&tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "TAPE%lu", drive))
+            {
+                perror("Truncated Tape Device Name");
+            }
             device->os_info.os_drive_number = drive;
         }
         else if (strstr(device->os_info.name, WIN_CHANGER_DEVICE))
@@ -5267,9 +5280,14 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             {
                 return FAILURE;
             }
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%lu", drive);
+            if (0 > snprintf_err_handle(&tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%lu", drive))
+            {
+                perror("Truncated Changer Device Name");
+            }
             device->os_info.os_drive_number = drive;
         }
+
+        set_Device_Name_In_tDevice(device, filename, tempFriendlyName);
         // NOTE: No final else returning failure as we want to support some other handles that don't map to these easy
         // names.
         //       There are very long names for a drive handle we can also support if a caller knows how to pass them in.
@@ -6036,17 +6054,27 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                 // debugging
                 if (device->drive_info.interface_type == IDE_INTERFACE)
                 {
-                    safe_memset(device->drive_info.T10_vendor_ident, sizeof(device->drive_info.T10_vendor_ident), 0,
-                                sizeof(device->drive_info.T10_vendor_ident));
+                    M_IGNORE_SAFE_ERRNO_CALL(
+                        safe_memset(device->drive_info.T10_vendor_ident, sizeof(device->drive_info.T10_vendor_ident), 0,
+                                    sizeof(device->drive_info.T10_vendor_ident)),
+                        "Clearing T10 vendor ID before setting to exact allocated size. Will never fail");
                     // Setting the vendor ID for ATA controllers like this so we can have an idea when we detect what we
                     // think is IDE and what we think is SATA. This may be helpful for debugging later. - TJE
                     if (adapter_desc->BusType == BusTypeSata)
                     {
-                        snprintf_err_handle(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "%s", "SATA");
+                        if (0 != safe_strcpy(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "SATA"))
+                            M_UNLIKELY
+                            {
+                                perror("Error setting Windows SATA T10 vendor to hint value (truncation likely)");
+                            }
                     }
                     else
                     {
-                        snprintf_err_handle(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "%s", "IDE");
+                        if (0 != safe_strcpy(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "IDE"))
+                            M_UNLIKELY
+                            {
+                                perror("Error setting Windows SATA T10 vendor to hint value (truncation likely)");
+                            }
                     }
                 }
                 // now windows api gives us some extra details that we should check to make sure that our
@@ -6615,7 +6643,7 @@ typedef struct s_scsiPassThroughEXIOStruct
 static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx, ptrSCSIPassThroughEXIOStruct psptd)
 {
     eReturnValues ret = SUCCESS;
-    safe_memset(&psptd->scsiPassThroughEX, sizeof(SCSI_PASS_THROUGH_EX), 0, sizeof(SCSI_PASS_THROUGH_EX));
+    M_INITIALIZE_STRUCTURE(&psptd->scsiPassThroughEX, sizeof(SCSI_PASS_THROUGH_EX));
     psptd->scsiPassThroughEX.Version           = 0; // MSDN says set this to zero
     psptd->scsiPassThroughEX.Length            = sizeof(SCSI_PASS_THROUGH_EX);
     psptd->scsiPassThroughEX.CdbLength         = scsiIoCtx->cdbLength;
@@ -6712,7 +6740,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
         return MEMORY_FAILURE;
     }
     DECLARE_SEATIMER(commandTimer);
-    safe_memset(sptdioEx, sizeof(scsiPassThroughEXIOStruct), 0, sizeof(scsiPassThroughEXIOStruct));
+    M_INITIALIZE_STRUCTURE(sptdioEx, sizeof(scsiPassThroughEXIOStruct));
     ret = convert_SCSI_CTX_To_SCSI_Pass_Through_EX(scsiIoCtx, sptdioEx);
     if (SUCCESS == ret)
     {
@@ -6738,7 +6766,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
             break;
         }
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         start_Timer(&commandTimer);
         success =

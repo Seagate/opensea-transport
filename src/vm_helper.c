@@ -196,28 +196,47 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
     // device->drive_info.interface_type = IDE_INTERFACE;
     // sysVmInfo.media_type = MEDIA_HDD;
 
-    safe_memset(&sysVmInfo, sizeof(sysVMLowLevelDeviceInfo), 0, sizeof(sysVMLowLevelDeviceInfo));
+    M_INITIALIZE_STRUCTURE(&sysVmInfo, sizeof(sysVMLowLevelDeviceInfo));
     get_VMV_SYS_FS_Info(handle, &sysVmInfo);
     // now copy the saved data to tDevice. -DB
     if (device)
     {
         device->drive_info.drive_type     = sysVmInfo.drive_type;
         device->drive_info.interface_type = sysVmInfo.interface_type;
-        safe_memcpy(&device->drive_info.adapter_info, sizeof(adapterInfo), &sysVmInfo.adapter_info,
-                    sizeof(adapterInfo));
-        safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysVmInfo.driver_info, sizeof(driverInfo));
-        if (strlen(sysVmInfo.primaryHandleStr) > 0)
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(&device->drive_info.adapter_info, sizeof(adapterInfo), &sysVmInfo.adapter_info,
+                        sizeof(adapterInfo)),
+            "Using exact same internal structure definition of adapterInfo so this should never fail");
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysVmInfo.driver_info,
+                        sizeof(driverInfo)),
+            "Using exact same internal structure definition of driverInfo so this should never fail");
+        if (safe_strlen(sysVmInfo.primaryHandleStr) > 0)
         {
-            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysVmInfo.primaryHandleStr);
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
-                                basename(sysVmInfo.primaryHandleStr));
+            char* dupHandle = M_NULLPTR;
+            if (0 != safe_strdup(&dupHandle, sysVmInfo.primaryHandleStr) || dupHandle == M_NULLPTR)
+            {
+                set_Device_Name_In_tDevice(device, sysVmInfo.primaryHandleStr, M_NULLPTR);
+            }
+            else
+            {
+                set_Device_Name_In_tDevice(device, sysVmInfo.primaryHandleStr, basename(dupHandle));
+            }
+            safe_free(&dupHandle);
         }
-        if (strlen(sysVmInfo.secondaryHandleStr) > 0)
+        if (safe_strlen(sysVmInfo.secondaryHandleStr) > 0)
         {
-            snprintf_err_handle(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
-                                sysVmInfo.secondaryHandleStr);
-            snprintf_err_handle(device->os_info.secondFriendlyName, OS_SECOND_HANDLE_NAME_LENGTH, "%s",
-                                basename(sysVmInfo.secondaryHandleStr));
+            char* dupSecond = M_NULLPTR;
+            if (0 != safe_strdup(&dupSecond, sysVmInfo.secondaryHandleStr) || dupSecond == M_NULLPTR)
+            {
+                set_Second_Device_Name_In_tDevice(device, sysVmInfo.secondaryHandleStr, M_NULLPTR);
+            }
+            else
+            {
+                set_Second_Device_Name_In_tDevice(device, sysVmInfo.secondaryHandleStr, basename(dupSecond));
+            }
+            safe_free(&dupSecond);
+            device->os_info.secondHandleValid = true;
         }
     }
 }
@@ -295,7 +314,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         if ((device->os_info.fd >= 0) && (ret == SUCCESS))
         {
             struct sg_scsi_id hctlInfo;
-            safe_memset(&hctlInfo, sizeof(struct sg_scsi_id), 0, sizeof(struct sg_scsi_id));
+            M_INITIALIZE_STRUCTURE(&hctlInfo, sizeof(struct sg_scsi_id));
             int getHctl = ioctl(device->os_info.fd, SG_GET_SCSI_ID, &hctlInfo);
             if (getHctl == 0 && errno == 0) // when this succeeds, both of these will be zeros
             {
@@ -594,7 +613,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
 
     // int idx = 0;
     //  Start with zapping the io_hdr
-    safe_memset(&io_hdr, sizeof(sg_io_hdr_t), 0, sizeof(sg_io_hdr_t));
+    M_INITIALIZE_STRUCTURE(&io_hdr, sizeof(sg_io_hdr_t));
 
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
     {
@@ -1037,7 +1056,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     DECLARE_SEATIMER(getDeviceTimer);
     DECLARE_SEATIMER(getDeviceListTimer);
 #endif
-    safe_memset(&nvmeAdptList, sizeof(struct nvme_adapter_list), 0, sizeof(struct nvme_adapter_list));
+    M_INITIALIZE_STRUCTURE(&nvmeAdptList, sizeof(struct nvme_adapter_list));
     struct dirent** namelist = M_NULLPTR;
 
     int num_sg_devs = 0;
@@ -1061,24 +1080,33 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     {
         size_t deviceHandleLen = (safe_strlen("/dev/disks/") + safe_strlen(namelist[i]->d_name) + 1) * sizeof(char);
         devs[i]                = M_REINTERPRET_CAST(char*, safe_malloc(deviceHandleLen));
-        snprintf_err_handle(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name);
+        if (0 > snprintf_err_handle(devs[i], deviceHandleLen, "/dev/disks/%s", namelist[i]->d_name))
+        {
+            perror("Error formatting device name in get_Device_List");
+            safe_free_dirent(&namelist[i]);
+            continue;
+        }
         safe_free_dirent(&namelist[i]);
     }
-    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist);
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
 
     // add nvme devices to the list
     for (j = 0; i < (num_sg_devs + num_nvme_devs) && i < MAX_DEVICES_PER_CONTROLLER; i++, j++)
     {
         size_t nvmeAdptNameLen = safe_strlen(nvmeAdptList.adapters[j].name) + 1;
         devs[i]                = M_REINTERPRET_CAST(char*, safe_malloc(nvmeAdptNameLen));
-        safe_memset(devs[i], nvmeAdptNameLen, 0, nvmeAdptNameLen);
-        snprintf_err_handle(devs[i], nvmeAdptNameLen, "%s", nvmeAdptList.adapters[j].name);
+        M_IGNORE_SAFE_ERRNO_CALL(safe_memset(devs[i], nvmeAdptNameLen, 0, nvmeAdptNameLen),
+                                 "Clearing devs[i] where destsz and srclen are the same. Should never fail");
+        if (0 != safe_strcpy(devs[i], nvmeAdptNameLen, nvmeAdptList.adapters[j].name))
+        {
+            perror("Error coping ESXi NVMe handle name");
+            continue;
+        }
 #ifdef _DEBUG
         printf("Discovered NVMe Device index - %d Name - %s \n", j, nvmeAdptList.adapters[j].name);
 #endif
     }
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
-
 
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
@@ -1104,8 +1132,14 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             {
                 continue;
             }
-            safe_memset(name, VM_NAME_LEN, 0, VM_NAME_LEN); // clear name before reusing it
-            snprintf_err_handle(name, VM_NAME_LEN, "%s", devs[driveNumber]);
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memset(name, VM_NAME_LEN, 0, VM_NAME_LEN),
+                "Clearing name buffer for exact size it was allocated as before reuse. Should never fail");
+            if (0 != safe_strcpy(name, VM_NAME_LEN, devs[driveNumber]))
+            {
+                perror("Error copying device name in get_Device_List");
+                continue;
+            }
 
             nvmeDevName = strstr(name, "vmhba");
             isScsi      = (nvmeDevName == M_NULLPTR) ? true : false;
@@ -1300,7 +1334,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     printf("-->%s\n", __FUNCTION__);
 #    endif
 
-    safe_memset(&uio, sizeof(struct usr_io), 0, sizeof(struct usr_io));
+    M_INITIALIZE_STRUCTURE(&uio, sizeof(struct usr_io));
 
     if (nvmeIoCtx == M_NULLPTR)
     {
@@ -1573,7 +1607,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
         else
         {
             struct flock locks;
-            safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+            M_INITIALIZE_STRUCTURE(&locks, sizeof(struct flock));
             locks.l_type   = F_WRLCK;
             locks.l_whence = SEEK_SET;
             locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
@@ -1609,7 +1643,7 @@ eReturnValues os_Unlock_Device(const tDevice* device)
         else
         {
             struct flock locks;
-            safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+            M_INITIALIZE_STRUCTURE(&locks, sizeof(struct flock));
             locks.l_type   = F_UNLCK;
             locks.l_whence = SEEK_SET;
             locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;

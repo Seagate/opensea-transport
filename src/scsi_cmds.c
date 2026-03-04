@@ -67,14 +67,13 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSe
         pSenseFields              = localSenseFields;
     }
     // clear the last command sense data every single time before we issue any commands
-    safe_memset(M_CONST_CAST(uint8_t*, scsiIoCtx->device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
-                SPC3_SENSE_LEN);
+    M_INITIALIZE_STRUCTURE(M_CONST_CAST(uint8_t*, scsiIoCtx->device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN);
     if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0 &&
         M_STATIC_CAST(uintptr_t, scsiIoCtx->psense) !=
             M_STATIC_CAST(uintptr_t, scsiIoCtx->device->drive_info.lastCommandSenseData))
     {
         // set sense data to zero to make sure there is no extra data left over in this buffer
-        safe_memset(M_CONST_CAST(uint8_t*, scsiIoCtx->psense), scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+        explicit_zeroes(M_CONST_CAST(uint8_t*, scsiIoCtx->psense), scsiIoCtx->senseDataSize);
     }
     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
     {
@@ -105,14 +104,8 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSe
         print_str("\n");
     }
 
-    if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0 &&
-        M_STATIC_CAST(uintptr_t, scsiIoCtx->psense) !=
-            M_STATIC_CAST(uintptr_t, scsiIoCtx->device->drive_info.lastCommandSenseData))
-    {
-        // sense pointer is not the same as last command sense data, so memcpy it to that location as well.
-        safe_memcpy(M_CONST_CAST(uint8_t*, scsiIoCtx->device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
-                    scsiIoCtx->psense, M_Min(SPC3_SENSE_LEN, scsiIoCtx->senseDataSize));
-    }
+    copy_Last_Command_Sense_Data_To_tDevice(M_CONST_CAST(tDevice*, scsiIoCtx->device), scsiIoCtx->psense,
+                                            M_Min(SPC3_SENSE_LEN, scsiIoCtx->senseDataSize));
 
     get_Sense_Data_Fields(scsiIoCtx->psense, scsiIoCtx->senseDataSize, pSenseFields);
     ret = check_Sense_Key_ASC_ASCQ_And_FRU(scsiIoCtx->device, pSenseFields->scsiStatusCodes.senseKey,
@@ -172,14 +165,25 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSe
             {
                 uint64_t lastCommandTime = scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds;
                 DECLARE_ZERO_INIT_ARRAY(uint8_t, lastSenseData, SPC3_SENSE_LEN);
-                safe_memcpy(lastSenseData, SPC3_SENSE_LEN, scsiIoCtx->device->drive_info.lastCommandSenseData,
-                            SPC3_SENSE_LEN);
+                if (0 != safe_memcpy(lastSenseData, SIZE_OF_STACK_ARRAY(lastSenseData),
+                                     scsiIoCtx->device->drive_info.lastCommandSenseData,
+                                     sizeof(scsiIoCtx->device->drive_info.lastCommandSenseData)))
+                    M_UNLIKELY
+                    {
+                        perror(
+                            "Error backing up last sense data before TUR workaround. Final result may be truncated.");
+                    }
                 // issue test unit ready
                 scsi_Test_Unit_Ready(scsiIoCtx->device, M_NULLPTR);
                 // copy everything back now.
                 scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = lastCommandTime;
-                safe_memcpy(M_CONST_CAST(uint8_t*, scsiIoCtx->device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
-                            lastSenseData, SPC3_SENSE_LEN);
+                if (0 != safe_memcpy(M_CONST_CAST(uint8_t*, scsiIoCtx->device->drive_info.lastCommandSenseData),
+                                     sizeof(scsiIoCtx->device->drive_info.lastCommandSenseData), lastSenseData,
+                                     SPC3_SENSE_LEN))
+                    M_UNLIKELY
+                    {
+                        perror("Error restoring last sense data after TUR workaround. Final result may be truncated.");
+                    }
             }
         }
     }
@@ -209,7 +213,7 @@ static eReturnValues scsi_Send_Cdb_Int(const tDevice*         device,
     ScsiIoCtx     scsiIoCtx;
     uint8_t*      senseBuffer    = senseData;
     uint32_t      senseBufferLen = senseDataLen;
-    safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
+    M_INITIALIZE_STRUCTURE(&scsiIoCtx, sizeof(ScsiIoCtx));
 
     if (senseData == M_NULLPTR || senseDataLen == UINT32_C(0))
     {
@@ -218,7 +222,7 @@ static eReturnValues scsi_Send_Cdb_Int(const tDevice*         device,
     }
     else
     {
-        safe_memset(senseBuffer, senseDataLen, 0, senseDataLen);
+        explicit_zeroes(senseBuffer, senseDataLen);
     }
     // check a couple of the parameters before continuing
     if (device == M_NULLPTR)
@@ -246,9 +250,13 @@ static eReturnValues scsi_Send_Cdb_Int(const tDevice*         device,
     scsiIoCtx.device        = M_CONST_CAST(tDevice*, device);
     scsiIoCtx.psense        = senseBuffer;
     scsiIoCtx.senseDataSize = senseBufferLen;
-    safe_memcpy(&scsiIoCtx.cdb[CDB_OPERATION_CODE], SCSI_IO_CTX_MAX_CDB_LEN, &cdb[CDB_OPERATION_CODE],
-                C_CAST(size_t, cdbLen)); // this cast to size_t should be safe since cdbLen should never be negative and
-                                         // should match a common value in the enum-TJE
+    if (0 != safe_memcpy(&scsiIoCtx.cdb[CDB_OPERATION_CODE], SCSI_IO_CTX_MAX_CDB_LEN, &cdb[CDB_OPERATION_CODE],
+                         C_CAST(size_t, cdbLen))) // this cast to size_t should be safe since cdbLen should never be
+                                                  // negative and should match a common value in the enum-TJE
+    {
+        perror("Error copying CDB data");
+        return BAD_PARAMETER;
+    }
     scsiIoCtx.cdbLength        = C_CAST(uint8_t, cdbLen);
     scsiIoCtx.direction        = dataDirection;
     scsiIoCtx.pdata            = pdata;
@@ -337,7 +345,7 @@ M_PARAM_RW(1)
 static void set_report_supported_op_codes_hacks(tDevice* M_NONNULL device, bool rctd, uint8_t reportingOptions)
 {
     senseDataFields senseFields;
-    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
     get_Sense_Data_Fields(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                           &senseFields);
     if (senseFields.validStructure)
@@ -470,7 +478,12 @@ static eSCSICmdSupport is_SCSI_Operation_Code_Supported_InqDT(const tDevice* M_N
                 // Set return code. The enum is setup to exactly match the values in the support field
                 cmdsupport                  = M_STATIC_CAST(eSCSICmdSupport, get_bit_range_uint8(inqDT[1], 2, 0));
                 request->cdbUsageDataLength = inqDT[5];
-                safe_memcpy(request->cdbUsageData, CDB_LEN_MAX, &inqDT[6], inqDT[5]);
+                if (0 != safe_memcpy(request->cdbUsageData, CDB_LEN_MAX, &inqDT[6], inqDT[5]))
+                {
+                    perror("Error copying CDB usage data");
+                    safe_free_aligned(&inqDT);
+                    return SCSI_CMD_SUPPORT_UNKNOWN;
+                }
                 if (request->serviceAction != UINT16_C(0))
                 {
                     request->requestRetriedWithoutSA = true;
@@ -563,8 +576,13 @@ static eSCSICmdSupport is_SCSI_Operation_Code_Supported_ReportOP(const tDevice* 
             cmdsupport                    = M_STATIC_CAST(eSCSICmdSupport, get_bit_range_uint8(requestOpCode[1], 2, 0));
             request->multipleLogicalUnits = get_bit_range_uint8(requestOpCode[1], 6, 5);
             request->cdbUsageDataLength   = bytes_To_Uint16(requestOpCode[2], requestOpCode[3]);
-            safe_memcpy(request->cdbUsageData, CDB_LEN_MAX, &requestOpCode[4],
-                        M_Min(request->cdbUsageDataLength, CDB_LEN_MAX));
+            if (0 != safe_memcpy(request->cdbUsageData, CDB_LEN_MAX, &requestOpCode[4],
+                                 M_Min(request->cdbUsageDataLength, CDB_LEN_MAX)))
+            {
+                perror("Error copying CDB usage data");
+                safe_free_aligned(&requestOpCode);
+                return SCSI_CMD_SUPPORT_UNKNOWN;
+            }
         }
         safe_free_aligned(&requestOpCode);
     }
@@ -662,8 +680,6 @@ eReturnValues scsi_Sanitize_Cmd(const tDevice*       device,
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
     eDataTransferDirection dataDir = XFER_NO_DATA;
-
-    safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -769,7 +785,12 @@ eReturnValues scsi_Sanitize_Overwrite(const tDevice*             device,
     overwriteBuffer[3] = M_Byte0(patternLengthBytes);
     if (patternLengthBytes > 0)
     {
-        safe_memcpy(&overwriteBuffer[4], patternLengthBytes, pattern, patternLengthBytes);
+        if (0 != safe_memcpy(&overwriteBuffer[4], patternLengthBytes, pattern, patternLengthBytes))
+        {
+            perror("Error copying SCSI Sanitize Overwrite pattern data data buffer");
+            safe_free_aligned(&overwriteBuffer);
+            return MEMORY_FAILURE;
+        }
     }
     ret = scsi_Sanitize_Cmd(device, SCSI_SANITIZE_OVERWRITE, immediate, znr, allowUnrestrictedSanitizeExit,
                             patternLengthBytes + 4, overwriteBuffer);
@@ -822,7 +843,7 @@ M_PARAM_RW(1)
 static void set_log_sense_hacks(tDevice* M_NONNULL device, uint8_t pageCode, uint8_t subpageCode)
 {
     senseDataFields senseFields;
-    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
     get_Sense_Data_Fields(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                           &senseFields);
     if (senseFields.validStructure)
@@ -916,6 +937,10 @@ eReturnValues scsi_Log_Sense_Cmd(const tDevice* device,
 
     if (dataSize > 0)
     {
+        if (0 != safe_memset(ptrData, dataSize, 0, dataSize))
+        {
+            return MEMORY_FAILURE;
+        }
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_IN,
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
@@ -1136,7 +1161,7 @@ static void set_mode_sense_hacks(tDevice* M_NONNULL    device,
                                  bool                  tenByte)
 {
     senseDataFields senseFields;
-    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
     get_Sense_Data_Fields(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                           &senseFields);
     if (senseFields.validStructure)
@@ -1262,6 +1287,10 @@ eReturnValues scsi_Mode_Sense_6(const tDevice*       device,
     // send the command
     if (allocationLength > 0)
     {
+        if (0 != safe_memset(ptrData, allocationLength, 0, allocationLength))
+        {
+            return MEMORY_FAILURE;
+        }
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -1333,6 +1362,10 @@ eReturnValues scsi_Mode_Sense_10(const tDevice*       device,
     // send the command
     if (allocationLength > 0)
     {
+        if (0 != safe_memset(ptrData, allocationLength, 0, allocationLength))
+        {
+            return MEMORY_FAILURE;
+        }
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -1538,7 +1571,7 @@ static void set_vpd_hacks(tDevice* M_NONNULL device, uint8_t pageCode, bool cmdD
 {
     // check if invalid field in CDB for VPD pages.
     senseDataFields senseFields;
-    safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+    M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
     get_Sense_Data_Fields(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                           &senseFields);
     if (senseFields.validStructure)
@@ -1600,8 +1633,13 @@ static void set_inq_version(tDevice* M_NONNULL device, const uint8_t* M_NONNULL 
     {
         // this should only be copying std inquiry data to thislocation in the device struct to keep it up to
         // date each time an inquiry is sent to the drive.
-        safe_memcpy(device->drive_info.scsiVpdData.inquiryData, SPC_INQ_DATA_LEN, pdata,
-                    M_Min(dataLength, SPC_INQ_DATA_LEN));
+        if (0 != safe_memcpy(device->drive_info.scsiVpdData.inquiryData,
+                             sizeof(device->drive_info.scsiVpdData.inquiryData), pdata,
+                             M_Min(dataLength, SPC_INQ_DATA_LEN)))
+        {
+            perror("Error copying SCSI Inquiry data to tDevice");
+            return;
+        }
     }
     version = pdata[2];
     switch (version) // convert some versions since old standards broke the version number into ANSI vs ECMA vs
@@ -1955,6 +1993,10 @@ eReturnValues scsi_Receive_Diagnostic_Results(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        if (0 != safe_memset(ptrData, allocationLength, 0, allocationLength))
+        {
+            return MEMORY_FAILURE;
+        }
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, timeoutSeconds);
@@ -2257,7 +2299,7 @@ eReturnValues scsi_Report_Timestamp(const tDevice* device, uint32_t allocationLe
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
     ScsiIoCtx scsiIoCtx;
-    safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
+    M_INITIALIZE_STRUCTURE(&scsiIoCtx, sizeof(ScsiIoCtx));
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -4943,7 +4985,6 @@ eReturnValues scsi_Write_Same_32(const tDevice* device,
 //
 //    // Set up the CTX
 //    scsiIoCtx.device = device;
-//    safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
 //    scsiIoCtx.psense = device->drive_info.lastCommandSenseData;
 //    scsiIoCtx.senseDataSize = SPC3_SENSE_LEN;
 //    safe_memcpy(&scsiIoCtx.cdb[CDB_OPERATION_CODE], SCSI_IO_CTX_MAX_CDB_LEN, &cdb[CDB_OPERATION_CODE], CDB_LEN_10);
@@ -5059,7 +5100,6 @@ eReturnValues scsi_Write_Same_32(const tDevice* device,
 //
 //    // Set up the CTX
 //    scsiIoCtx.device = device;
-//    safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
 //    scsiIoCtx.psense = device->drive_info.lastCommandSenseData;
 //    scsiIoCtx.senseDataSize = SPC3_SENSE_LEN;
 //    safe_memcpy(&scsiIoCtx.cdb[CDB_OPERATION_CODE], SCSI_IO_CTX_MAX_CDB_LEN, &cdb[CDB_OPERATION_CODE], CDB_LEN_32);

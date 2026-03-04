@@ -216,7 +216,7 @@ eReturnValues send_SIOC_IO(ScsiIoCtx* scsiIoCtx)
     DECLARE_SEATIMER(commandTimer);
 
     struct sctl_io scsicmd;
-    safe_memset(&scsicmd, sizeof(struct sctl_io), 0, sizeof(struct sctl_io));
+    M_INITIALIZE_STRUCTURE(&scsicmd, sizeof(struct sctl_io));
 
     scsicmd.cdb_length = scsiIoCtx->cdbLength;
     safe_memcpy(&scsicmd.cdb[0], 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
@@ -450,7 +450,10 @@ static bool is_Persistent_Disk_Handle(const char* filename)
 static void set_Device_Name(const char* filename, char* name, size_t sizeOfName)
 {
     char* s = strrchr(filename, '/') + 1;
-    snprintf_err_handle(name, sizeOfName, "%s", s);
+    (0 != safe_strcpy(name, sizeOfName, s))
+    {
+        perror("Error setting HPUX device name");
+    }
 }
 
 eReturnValues get_Device(const char* filename, tDevice* device)
@@ -509,9 +512,10 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
+        DECLARE_ZERO_INIT_ARRAY(char, tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
         // set the name
-        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
-        set_Device_Name(deviceHandle, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        set_Device_Name(deviceHandle, &tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        set_Device_Name_In_tDevice(device, filename, tempFriendlyName);
         // must call this after friendly name has been set!
         // TODO: legacy devices need to have /dev/dsk instead of /dev/rdsk passed in here. For now this assumes no
         // legacy handles
@@ -680,8 +684,14 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 continue;
             }
-            safe_memset(name, HPUX_NAME_LEN, 0, HPUX_NAME_LEN); // clear name before reusing it
-            snprintf_err_handle(name, HPUX_NAME_LEN, "%s", devs[driveNumber]);
+            M_IGNORE_SAFE_ERRNO_CALL(safe_memset(name, HPUX_NAME_LEN, 0, HPUX_NAME_LEN),
+                                     "Zeroing device name before use in get_Device_List will never fail since this "
+                                     "matches the allocated size"); // clear name before reusing it
+            if (0 != safe_strcpy(name, HPUX_NAME_LEN, devs[driveNumber]))
+            {
+                perror("Error copying handle value during get_Device_List (likely truncation)");
+                continue;
+            }
             fd = -1;
             // lets try to open the device.
             fd = open(name, O_RDWR | O_NONBLOCK);

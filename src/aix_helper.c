@@ -919,12 +919,36 @@ static void print_CuDv_Struct(struct CuDv* cudv)
     DECLARE_ZERO_INIT_ARRAY(char, cudvparent, 17);
     DECLARE_ZERO_INIT_ARRAY(char, cudvconnwhere, 17);
     DECLARE_ZERO_INIT_ARRAY(char, cudvPdDvLnLvalue, 49);
-    snprintf_err_handle(cudvName, 17, "%s", cudv->name);
-    snprintf_err_handle(cudvddins, 17, "%s", cudv->ddins);
-    snprintf_err_handle(cudvlocation, 17, "%s", cudv->location);
-    snprintf_err_handle(cudvparent, 17, "%s", cudv->parent);
-    snprintf_err_handle(cudvconnwhere, 17, "%s", cudv->connwhere);
-    snprintf_err_handle(cudvPdDvLnLvalue, 49, "%s", cudv->PdDvLn_Lvalue);
+    if (0 != safe_strcpy(cudvName, 17, cudv->name))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
+    if (0 != safe_strcpy(cudvddins, 17, cudv->ddins))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
+    if (0 != safe_strcpy(cudvlocation, 17, cudv->location))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
+    if (0 != safe_strcpy(cudvparent, 17, cudv->parent))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
+    if (0 != safe_strcpy(cudvconnwhere, 17, cudv->connwhere))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
+    if (0 != safe_strcpy(cudvPdDvLnLvalue, 49, cudv->PdDvLn_Lvalue))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
     print_str("CuDv:\n");
     printf("\tid: %ld\n", cudv->_id);
     printf("\treserved: %ld\n", cudv->_reserved);
@@ -954,21 +978,81 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         DECLARE_ZERO_INIT_ARRAY(char, pddvStop, 257);
         DECLARE_ZERO_INIT_ARRAY(char, pddvuniquetype, 49);
         // making copies to ensure null termination - TJE
-        snprintf_err_handle(pddvtype, 17, "%s", cudv->PdDvLn->type);
-        snprintf_err_handle(pddvclass, 17, "%s", cudv->PdDvLn->class);
-        snprintf_err_handle(pddvsubclass, 17, "%s", cudv->PdDvLn->subclass);
-        snprintf_err_handle(pddvprefix, 17, "%s", cudv->PdDvLn->prefix);
-        snprintf_err_handle(pddvdevid, 17, "%s", cudv->PdDvLn->devid);
-        snprintf_err_handle(pddvcatalog, 17, "%s", cudv->PdDvLn->catalog);
-        snprintf_err_handle(pddvDvDr, 17, "%s", cudv->PdDvLn->DvDr);
-        snprintf_err_handle(pddvDefine, 257, "%s", cudv->PdDvLn->Define);
-        snprintf_err_handle(pddvConfigure, 257, "%s", cudv->PdDvLn->Configure);
-        snprintf_err_handle(pddvChange, 257, "%s", cudv->PdDvLn->Change);
-        snprintf_err_handle(pddvUnconfigure, 257, "%s", cudv->PdDvLn->Unconfigure);
-        snprintf_err_handle(pddvUndefine, 257, "%s", cudv->PdDvLn->Undefine);
-        snprintf_err_handle(pddvStart, 257, "%s", cudv->PdDvLn->Start);
-        snprintf_err_handle(pddvStop, 257, "%s", cudv->PdDvLn->Stop);
-        snprintf_err_handle(pddvuniquetype, 49, "%s", cudv->PdDvLn->uniquetype);
+        if (0 != safe_strcpy(pddvtype, 17, cudv->PdDvLn->type))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvclass, 17, cudv->PdDvLn->class))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvsubclass, 17, cudv->PdDvLn->subclass))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvprefix, 17, cudv->PdDvLn->prefix))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvdevid, 17, cudv->PdDvLn->devid))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvcatalog, 17, cudv->PdDvLn->catalog))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvDvDr, 17, cudv->PdDvLn->DvDr))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvDefine, 257, cudv->PdDvLn->Define))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvConfigure, 257, cudv->PdDvLn->Configure))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvChange, 257, cudv->PdDvLn->Change))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvUnconfigure, 257, cudv->PdDvLn->Unconfigure))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvUndefine, 257, cudv->PdDvLn->Undefine))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvStart, 257, cudv->PdDvLn->Start))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvStop, 257, cudv->PdDvLn->Stop))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvuniquetype, 49, cudv->PdDvLn->uniquetype))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
         print_str("\tPdDv\n");
         printf("\t\tid: %ld\n", cudv->PdDvLn->_id);
         printf("\t\treserved: %ld\n", cudv->PdDvLn->_reserved);
@@ -1004,8 +1088,16 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         // making copies to ensure null termination -TJE
         DECLARE_ZERO_INIT_ARRAY(char, listinfoClassname, MAX_ODMI_NAME + 1);
         DECLARE_ZERO_INIT_ARRAY(char, listinfoCrit, MAX_ODMI_CRIT + 1);
-        snprintf_err_handle(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname);
-        snprintf_err_handle(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit);
+        if (0 != safe_strcpy(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
         print_str("\t\tlistinfo:\n");
         printf("\t\t\tclassname: %s\n", listinfoClassname);
         printf("\t\t\tcrit: %s\n", listinfoCrit);
@@ -1203,13 +1295,15 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                                                           // alignment, but this will most likely take care of that -TJE
         // Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more
         // details -TJE set name and friendly name
-        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
         char*   friendlyName = M_NULLPTR;
         errno_t duperr       = safe_strdup(&friendlyName, filename);
         if (duperr == 0 && friendlyName != M_NULLPTR)
         {
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
-                                basename(friendlyName));
+            set_Device_Name_In_tDevice(device, filename, basename(friendlyName));
+        }
+        else
+        {
+            set_Device_Name_In_tDevice(device, filename, M_NULLPTR);
         }
         safe_free(&friendlyName);
         struct CuDv  cudv;
@@ -2908,8 +3002,14 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             {
                 continue;
             }
-            safe_memset(name, AIX_NAME_LEN, 0, AIX_NAME_LEN); // clear name before reusing it
-            snprintf_err_handle(name, AIX_NAME_LEN, "%s", devs[driveNumber]);
+            M_IGNORE_SAFE_ERRNO_CALL(safe_memset(name, AIX_NAME_LEN, 0, AIX_NAME_LEN),
+                                     "Clearing device handle name in get_Device_List for exact allocated size will "
+                                     "never fail"); // clear name before reusing it
+            if (0 != safe_strcpy(name, AIX_NAME_LEN, devs[driveNumber]))
+            {
+                perror("Error copying AIX handle name in get_Device_List");
+                continue;
+            }
             fd = -1;
             // lets try to open the device.
             // NOTE: When opening a handle, there may be an issue if SC_DIAGNOSTIC is not specified.

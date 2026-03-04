@@ -82,7 +82,7 @@ eReturnValues ata_Soft_Reset(const tDevice* device, uint8_t timeout)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand softReset;
-    safe_memset(&softReset, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
+    M_INITIALIZE_STRUCTURE(&softReset, sizeof(ataPassthroughCommand));
     softReset.commadProtocol   = ATA_PROTOCOL_SOFT_RESET;
     softReset.commandType      = ATA_CMD_TYPE_TASKFILE;
     softReset.commandDirection = XFER_NO_DATA;
@@ -102,7 +102,7 @@ eReturnValues ata_Hard_Reset(const tDevice* device, uint8_t timeout)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand hardReset;
-    safe_memset(&hardReset, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
+    M_INITIALIZE_STRUCTURE(&hardReset, sizeof(ataPassthroughCommand));
     hardReset.commadProtocol   = ATA_PROTOCOL_HARD_RESET;
     hardReset.commandType      = ATA_CMD_TYPE_TASKFILE;
     hardReset.commandDirection = XFER_NO_DATA;
@@ -504,7 +504,7 @@ eReturnValues ata_SMART_Command(const tDevice* device,
         print_str("Sending ATA SMART command - ");
     }
     // zap it
-    safe_memset(&ataCommandOptions, sizeof(ataCommandOptions), 0, sizeof(ataCommandOptions));
+    M_INITIALIZE_STRUCTURE(&ataCommandOptions, sizeof(ataCommandOptions));
     switch (feature)
     {
     case ATA_SMART_READ_LOG:
@@ -620,7 +620,7 @@ eReturnValues ata_SMART_Command(const tDevice* device,
     if (ataCommandOptions.commandDirection == XFER_DATA_IN)
     {
         // make sure the buffer is cleared to zero
-        safe_memset(ptrData, dataSize, 0, dataSize);
+        explicit_zeroes(ptrData, dataSize);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -950,7 +950,11 @@ eReturnValues ata_Accessible_Max_Address_Feature(const tDevice* device,
 
     if (rtfrs != M_NULLPTR)
     {
-        safe_memcpy(rtfrs, sizeof(ataReturnTFRs), &(ataCommandOptions.rtfr), sizeof(ataReturnTFRs));
+        if (0 != safe_memcpy(rtfrs, sizeof(ataReturnTFRs), &(ataCommandOptions.rtfr), sizeof(ataReturnTFRs)))
+            M_UNLIKELY
+            {
+                return MEMORY_FAILURE;
+            }
     }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -965,7 +969,7 @@ eReturnValues ata_Get_Native_Max_Address_Ext(const tDevice* device, uint64_t* na
 {
     eReturnValues ret = UNKNOWN;
     ataReturnTFRs rtfrs;
-    safe_memset(&rtfrs, sizeof(rtfrs), 0, sizeof(rtfrs));
+    M_INITIALIZE_STRUCTURE(&rtfrs, sizeof(rtfrs));
     ret = ata_Accessible_Max_Address_Feature(device, AMAC_GET_NATIVE_MAX_ADDRESS, 0, &rtfrs, 0);
 
     if (ret == SUCCESS && nativeMaxLBA != M_NULLPTR)

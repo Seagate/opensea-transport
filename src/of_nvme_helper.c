@@ -153,7 +153,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         DWORD      last_error = ERROR_SUCCESS;
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         DWORD returned_data     = DWORD_C(0);
         start_Timer(&commandTimer);
@@ -194,7 +194,7 @@ eReturnValues send_OFNVME_Reset(const tDevice* device)
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
+    M_INITIALIZE_STRUCTURE(&ofnvmeReset, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
     safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
@@ -204,7 +204,7 @@ eReturnValues send_OFNVME_Reset(const tDevice* device)
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     set_Device_Last_Error(M_CONST_CAST(tDevice*, device), 0);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data     = DWORD_C(0);
     BOOL  success =
@@ -254,7 +254,7 @@ eReturnValues send_OFNVME_Add_Namespace(const tDevice* device)
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
+    M_INITIALIZE_STRUCTURE(&ofnvmeReset, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
     safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
@@ -264,7 +264,7 @@ eReturnValues send_OFNVME_Add_Namespace(const tDevice* device)
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     set_Device_Last_Error(M_CONST_CAST(tDevice*, device), 0);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data     = DWORD_C(0);
     BOOL  success =
@@ -314,7 +314,7 @@ eReturnValues send_OFNVME_Remove_Namespace(const tDevice* device)
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
+    M_INITIALIZE_STRUCTURE(&ofnvmeReset, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
     safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
@@ -324,7 +324,7 @@ eReturnValues send_OFNVME_Remove_Namespace(const tDevice* device)
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     set_Device_Last_Error(M_CONST_CAST(tDevice*, device), 0);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data     = DWORD_C(0);
     BOOL  success =
@@ -483,7 +483,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         set_Device_Last_Error(nvmeIoCtx->device, 0);
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         DWORD returned_data     = DWORD_C(0);
         start_Timer(&commandTimer);

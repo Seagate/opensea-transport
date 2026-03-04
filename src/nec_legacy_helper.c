@@ -30,7 +30,7 @@
 eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand* ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
-    safe_memset(cdb, 16, 0, CDB_LEN_16);
+    explicit_zeroes(cdb, CDB_16);
     cdb[CDB_OPERATION_CODE] = NEC_WRITE_OPCODE;
     cdb[CDB_1]              = NEC_WRAPPER_SIGNATURE;
     cdb[CDB_2]              = ataCommandOptions->tfr.CommandStatus;
@@ -195,13 +195,9 @@ eReturnValues send_NEC_Legacy_Passthrough_Command(const tDevice* device, ataPass
             ret = FAILURE;
         }
     }
-    // before we get rid of the sense data, copy it back to the last command sense data
-    safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
-                SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(M_CONST_CAST(uint8_t*, &device->drive_info.lastCommandSenseData[0]), SPC3_SENSE_LEN,
-                &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
-    safe_memcpy(M_CONST_CAST(ataReturnTFRs*, &device->drive_info.lastCommandRTFRs), sizeof(ataReturnTFRs),
-                &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
+    copy_Last_Command_Sense_Data_To_tDevice(M_CONST_CAST(tDevice*, device), ataCommandOptions->ptrSenseData,
+                                            M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
+    copy_Last_Command_RTFRs_To_tDevice(M_CONST_CAST(tDevice*, device), &ataCommandOptions->rtfr);
     safe_free_aligned(&senseData);
     if (localSenseData)
     {

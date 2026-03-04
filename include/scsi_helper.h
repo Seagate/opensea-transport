@@ -319,7 +319,7 @@ extern "C"
     typedef senseDataFields*       ptrSenseDataFields;
     typedef const senseDataFields* constPtrSenseDataFields;
 
-    static M_INLINE void safe_free_sensefields(senseDataFields * M_NULLABLE * M_NULLABLE sensefields)
+    static M_INLINE void safe_free_sensefields(senseDataFields* M_NULLABLE* M_NULLABLE sensefields)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, sensefields));
     }
@@ -344,13 +344,13 @@ extern "C"
         uint8_t                cdb[SCSI_IO_CTX_MAX_CDB_LEN]; // 64 just so if we ever get there.
         uint8_t                cdbLength;
         eDataTransferDirection direction;
-        uint8_t* M_NULLABLE    pdata;
         uint32_t               dataLength;
-        uint8_t* M_NULLABLE    psense;
-        uint32_t   senseDataSize; // should be reduced to uint8 in the future as sense data maxes at 252Bytes
-        uint32_t   timeout;       // seconds
-        uint8_t    verbose;
-        scsiStatus returnStatus;
+        M_SIZED_BY_OR_NULL(dataLength) uint8_t* M_NULLABLE pdata;
+        uint32_t senseDataSize; // should be reduced to uint8 in the future as sense data maxes at 252Bytes
+        M_SIZED_BY_OR_NULL(senseDataSize) uint8_t* M_NULLABLE psense;
+        uint32_t                          timeout; // seconds
+        uint8_t                           verbose;
+        scsiStatus                        returnStatus;
         ataPassthroughCommand* M_NULLABLE pAtaCmdOpts;
         bool                              isSoftReset;
         bool                              isHardReset;

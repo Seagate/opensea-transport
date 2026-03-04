@@ -47,7 +47,7 @@ eReturnValues ata_Legacy_Format_Track(const tDevice* device,
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
+    M_INITIALIZE_STRUCTURE(&ataCommandOptions, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection         = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks        = ATA_PT_NO_DATA_TRANSFER;

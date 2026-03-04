@@ -39,7 +39,7 @@ eReturnValues get_BSD_SCSI_Address(int fd, int* type, int* bus, int* target, int
 {
     eReturnValues    ret = SUCCESS;
     struct scsi_addr address;
-    safe_memset(&address, sizeof(struct scsi_addr), 0, sizeof(struct scsi_addr));
+    M_INITIALIZE_STRUCTURE(&address, sizeof(struct scsi_addr));
     if (ioctl(fd, SCIOCIDENTIFY, &address) < 0)
     {
         ret = FAILURE;
@@ -128,7 +128,7 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
             int iocret = 0;
             DECLARE_SEATIMER(commandTimer);
             scsireq_t scsicmd;
-            safe_memset(&scsicmd, sizeof(scsireq_t), 0, sizeof(scsireq_t));
+            M_INITIALIZE_STRUCTURE(&scsicmd, sizeof(scsireq_t));
             switch (scsiIoCtx->direction)
             {
             case XFER_NO_DATA:
@@ -215,7 +215,7 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
                 if (scsicmd.retsts == SCCMD_OK)
                 {
                     ret = SUCCESS;
-                    safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+                    explicit_zeroes(scsiIoCtx->psense, scsiIoCtx->senseDataSize);
                 }
                 else if (scsicmd.retsts & SCCMD_SENSE)
                 {

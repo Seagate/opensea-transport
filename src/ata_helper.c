@@ -653,8 +653,8 @@ eReturnValues send_ATA_SCT_Data_Table(const tDevice* device,
         if (functionCode == 0x0001)
         {
             // now read the log that tells us the table we requested
-            safe_memset(dataBuf, dataSize, 0, dataSize); // clear the buffer before we read in data since we are done
-                                                         // with what we had to send to the drive
+            explicit_zeroes(dataBuf, dataSize); // clear the buffer before we read in data since we are done
+                                                // with what we had to send to the drive
             ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_IN, dataBuf, dataSize);
         }
         // else we need to add functionality since something new was added to the spec
@@ -1773,7 +1773,9 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
 #else
             uint16_t snLimit = M_Min(SERIAL_NUM_LEN, ATA_IDENTIFY_SN_LENGTH);
 #endif
-            safe_memset(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, 0, snLimit + UINT16_C(1));
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memset(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, 0, snLimit + UINT16_C(1)),
+                "Fixed bounds always match due to how SERIAL_NUM_LEN and ATA_IDENTIFY_SN_LENGTH are defined");
             if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->SerNum[0]), ATA_IDENTIFY_SN_LENGTH, ataSN,
                                 ATA_IDENTIFY_SN_LENGTH + 1))
             {
@@ -1787,7 +1789,9 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
 #else
             uint16_t fwLimit = M_Min(FW_REV_LEN, ATA_IDENTIFY_FW_LENGTH);
 #endif
-            safe_memset(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, 0, fwLimit + UINT16_C(1));
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memset(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, 0, fwLimit + UINT16_C(1)),
+                "Fixed bounds always match due to how FW_REV_LEN and ATA_IDENTIFY_FW_LENGTH are defined");
             if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->FirmVer[0]), ATA_IDENTIFY_FW_LENGTH, ataFW,
                                 ATA_IDENTIFY_FW_LENGTH + 1))
             {
@@ -1801,7 +1805,9 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
 #else
             uint16_t mnLimit = M_Min(MODEL_NUM_LEN, ATA_IDENTIFY_MN_LENGTH);
 #endif
-            safe_memset(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, 0, mnLimit + UINT16_C(1));
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memset(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, 0, mnLimit + UINT16_C(1)),
+                "Fixed bounds always match due to how MODEL_NUM_LEN and ATA_IDENTIFY_MN_LENGTH are defined");
             if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->ModelNum[0]), ATA_IDENTIFY_MN_LENGTH, ataMN,
                                 ATA_IDENTIFY_MN_LENGTH + 1))
             {
@@ -2487,12 +2493,22 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         {
             // for the SCSI interface, copy this information back to the main drive info since SCSI translated info may
             // truncate these fields and we don't want that
-            safe_memcpy(device->drive_info.product_identification, MODEL_NUM_LEN + 1,
-                        device->drive_info.bridge_info.childDriveMN, MODEL_NUM_LEN);
-            safe_memcpy(device->drive_info.serialNumber, SERIAL_NUM_LEN + 1,
-                        device->drive_info.bridge_info.childDriveSN, SERIAL_NUM_LEN);
-            safe_memcpy(device->drive_info.product_revision, FW_REV_LEN + 1,
-                        device->drive_info.bridge_info.childDriveFW, FW_REV_LEN);
+            if (0 != safe_memcpy(device->drive_info.product_identification,
+                                 sizeof(device->drive_info.product_identification),
+                                 device->drive_info.bridge_info.childDriveMN, MODEL_NUM_LEN))
+            {
+                return MEMORY_FAILURE;
+            }
+            if (0 != safe_memcpy(device->drive_info.serialNumber, sizeof(device->drive_info.serialNumber),
+                                 device->drive_info.bridge_info.childDriveSN, SERIAL_NUM_LEN))
+            {
+                return MEMORY_FAILURE;
+            }
+            if (0 != safe_memcpy(device->drive_info.product_revision, sizeof(device->drive_info.product_revision),
+                                 device->drive_info.bridge_info.childDriveFW, FW_REV_LEN))
+            {
+                return MEMORY_FAILURE;
+            }
             device->drive_info.worldWideName = device->drive_info.bridge_info.childWWN;
         }
     }
@@ -2592,7 +2608,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
                 bool copyOfIDData          = false;
                 bool supportedCapabilities = false;
                 bool zonedDeviceInfo       = false;
-                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                 if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA,
                                                          ATA_ID_DATA_LOG_SUPPORTED_PAGES, logBuffer,
                                                          ATA_LOG_PAGE_LEN_BYTES, 0))
@@ -2635,14 +2651,14 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
                         }
                     }
                 }
-                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                 if (copyOfIDData && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA,
                                                                          ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA,
                                                                          logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
                 {
                     device->drive_info.softSATFlags.identifyDeviceDataLogSupported = true;
                 }
-                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                 if (supportedCapabilities &&
                     SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA,
                                                          ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer,
@@ -2703,7 +2719,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
                         }
                     }
                 }
-                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                 if (zonedDeviceInfo && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA,
                                                                             ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION,
                                                                             logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
@@ -2727,7 +2743,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             }
             if (readDeviceStatisticsLog)
             {
-                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                 if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_LIST,
                                                          logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
                 {
@@ -2768,7 +2784,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
                     if (device->drive_info.softSATFlags.deviceStatsPages.generalStatisitcsSupported)
                     {
                         // need to read this page and check if the data and time timestamp statistic is supported
-                        safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                        explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                         if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS,
                                                                  ATA_DEVICE_STATS_LOG_GENERAL, logBuffer,
                                                                  ATA_LOG_PAGE_LEN_BYTES, 0))

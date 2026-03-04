@@ -1323,14 +1323,11 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
             tDevice* deviceList = M_REINTERPRET_CAST(tDevice*, safe_calloc_aligned(deviceCount, sizeof(tDevice), 8));
             if (!deviceList)
             {
-                DECLARE_ZERO_INIT_ARRAY(char, errorMessage, 50);
-                snprintf_err_handle(errorMessage, 50, "calloc failure in scan to get %" PRIu32 " devices!",
-                                    deviceCount);
-                perror(errorMessage);
+                print_error_format("calloc failure in scan to get %" PRIu32 " devices!", deviceCount);
                 return MEMORY_FAILURE;
             }
             versionBlock version;
-            safe_memset(&version, sizeof(versionBlock), 0, sizeof(versionBlock));
+            M_INITIALIZE_STRUCTURE(&version, sizeof(versionBlock));
             version.size    = sizeof(tDevice);
             version.version = DEVICE_BLOCK_VERSION;
 
@@ -1353,10 +1350,7 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                 *scanDeviceList = M_REINTERPRET_CAST(scanDriveInfo*, safe_calloc(deviceCount, sizeof(scanDriveInfo)));
                 if (!*scanDeviceList)
                 {
-                    DECLARE_ZERO_INIT_ARRAY(char, errorMessage, 50);
-                    snprintf_err_handle(errorMessage, 50, "calloc failure in scan to get %" PRIu32 " scanDeviceList!",
-                                        deviceCount);
-                    perror(errorMessage);
+                    print_error_format("calloc failure in scan to get %" PRIu32 " scanDeviceList!", deviceCount);
                     return MEMORY_FAILURE;
                 }
 
@@ -1394,17 +1388,26 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                         scan_Interface_Type_Filter(&deviceList[devIter], flags))
                     {
                         // vendor ID
-                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].vendor, T10_VENDOR_ID_LEN + 1, "%s",
-                                            deviceList[devIter].drive_info.T10_vendor_ident);
+                        if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].vendor, T10_VENDOR_ID_LEN + 1,
+                                             deviceList[devIter].drive_info.T10_vendor_ident))
+                        {
+                            perror("Error copying vendor ID for scan output");
+                        }
 
                         // drive handle
 #if defined(_WIN32)
-                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
-                                            SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s",
-                                            deviceList[devIter].os_info.friendlyName);
+                        if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                             SCAN_DISPLAY_HANDLE_STRING_LENGTH,
+                                             deviceList[devIter].os_info.friendlyName))
+                        {
+                            perror("Error copying display handle for scan output");
+                        }
 #else
-                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
-                                            SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s", deviceList[devIter].os_info.name);
+                        if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                             SCAN_DISPLAY_HANDLE_STRING_LENGTH, deviceList[devIter].os_info.name))
+                        {
+                            perror("Error copying display handle for scan output");
+                        }
 #endif
 #if defined(__linux__) && !defined(VMK_CROSS_COMP) && !defined(UEFI_C_SOURCE)
                         if ((flags & SG_TO_SD) > 0)
@@ -1415,8 +1418,12 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                                 map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
                                                             &genName, &blockName))
                             {
-                                snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
-                                                    SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName, blockName);
+                                if (0 > snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                                            SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName,
+                                                            blockName))
+                                {
+                                    perror("Error formatting Linux scan handle for output (map)");
+                                }
                             }
                             safe_free(&genName);
                             safe_free(&blockName);
@@ -1429,8 +1436,11 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
                                 map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
                                                             &genName, &blockName))
                             {
-                                snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
-                                                    SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName);
+                                if (0 > snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                                            SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName))
+                                {
+                                    perror("Error formatting Linux scan handle for output (SD)");
+                                }
                             }
                             safe_free(&genName);
                             safe_free(&blockName);
@@ -1438,25 +1448,41 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
 #endif
 
                         // model number
-                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].modelNumber, MODEL_NUM_LEN + 1,
-                                            "%s", deviceList[devIter].drive_info.product_identification);
+                        if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].modelNumber, MODEL_NUM_LEN + 1,
+                                             deviceList[devIter].drive_info.product_identification))
+                            M_UNLIKELY
+                            {
+                                perror("Error coping drive data for scan output");
+                            }
 
                         // serial number
-                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1,
-                                            "%s", deviceList[devIter].drive_info.serialNumber);
+                        if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1,
+                                             deviceList[devIter].drive_info.serialNumber))
+                            M_UNLIKELY
+                            {
+                                perror("Error coping drive data for scan output");
+                            }
                         // if seagate scsi, need to truncate to 8 digits
                         if (deviceList[devIter].drive_info.drive_type == SCSI_DRIVE &&
                             is_Seagate_Family(&deviceList[devIter]) == SEAGATE)
                         {
-                            safe_memset((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1, 0,
-                                        SERIAL_NUM_LEN);
-                            safe_memcpy((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1,
-                                        deviceList[devIter].drive_info.serialNumber, 8);
+                            M_IGNORE_SAFE_ERRNO_CALL(
+                                safe_memset((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1, 0,
+                                            SERIAL_NUM_LEN),
+                                "Always zeroeing into a larger buffer than source length so should be safe");
+                            M_IGNORE_SAFE_ERRNO_CALL(
+                                safe_memcpy((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1,
+                                            deviceList[devIter].drive_info.serialNumber, 8),
+                                "Always copying into a larger buffer than source length so should be safe");
                         }
 
                         // firmware version
-                        snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].firmwareVersion, FW_REV_LEN + 1,
-                                            "%s", deviceList[devIter].drive_info.product_revision);
+                        if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].firmwareVersion, FW_REV_LEN + 1,
+                                             deviceList[devIter].drive_info.product_revision))
+                            M_UNLIKELY
+                            {
+                                perror("Error coping drive data for scan output");
+                            }
 
                         *numberOfDevices = ++deviceCountToBeShown;
                     }
@@ -1539,17 +1565,20 @@ eReturnValues get_Version_Block(versionBlock* ver)
 
 char* get_Opensea_Transport_Version_str(char* dest_Version_str, size_t dest_len)
 {
-	if (dest_Version_str == M_NULLPTR)
-	{
-		return M_NULLPTR;
-	}
-	safe_strcpy(dest_Version_str, dest_len, OPENSEA_TRANSPORT_VERSION);
-	return dest_Version_str;
+    if (dest_Version_str == M_NULLPTR)
+    {
+        return M_NULLPTR;
+    }
+    if (0 != safe_strcpy(dest_Version_str, dest_len, OPENSEA_TRANSPORT_VERSION))
+    {
+        return M_NULLPTR;
+    }
+    return dest_Version_str;
 }
 
 size_t get_Opensea_Transport_Version_str_len(void)
 {
-	return safe_strlen(OPENSEA_TRANSPORT_VERSION) + 1;
+    return safe_strlen(OPENSEA_TRANSPORT_VERSION) + 1;
 }
 
 static void set_IEEE_OUI(uint32_t* ieeeOUI, const tDevice* device, bool USBchildDrive)
@@ -1595,7 +1624,13 @@ bool is_Maxtor_String(const char* string)
             perror("calloc failure");
             return false;
         }
-        snprintf_err_handle(localString, stringLen + 1, "%s", string);
+        if (0 != safe_strcpy(localString, stringLen + 1, string))
+            M_UNLIKELY
+            {
+                perror("Error copying string");
+                safe_free(&localString);
+                return false;
+            }
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (safe_strlen(localString) >= maxtorLen && strncmp(localString, "MAXTOR", maxtorLen) == 0)
@@ -1665,7 +1700,11 @@ bool is_Seagate_VendorID(const tDevice* device)
             perror("calloc failure");
             return false;
         }
-        snprintf_err_handle(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
+        if (0 != safe_strcpy(localString, stringLen + 1, device->drive_info.T10_vendor_ident))
+            M_UNLIKELY
+            {
+                perror("Error copying vendor identification for checking vendor");
+            }
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (safe_strlen(localString) >= seagateLen && strncmp(localString, "SEAGATE", seagateLen) == 0)
@@ -1690,7 +1729,11 @@ bool is_Seagate_MN(const char* string)
             perror("calloc failure");
             return false;
         }
-        snprintf_err_handle(localString, stringLen + 1, "%s", string);
+        if (0 != safe_strcpy(localString, stringLen + 1, string))
+            M_UNLIKELY
+            {
+                perror("Error copying string to check");
+            }
         localString[stringLen] = '\0';
         // convert_String_To_Upper_Case(localString);//Removing uppercase converstion, thus making this a case sensitive
         // comparison to fix issues with other non-Seagate products being detected as Seagate.
@@ -1795,7 +1838,11 @@ bool is_Conner_VendorID(const tDevice* device)
             perror("calloc failure");
             return false;
         }
-        snprintf_err_handle(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
+        if (0 != safe_strcpy(localString, stringLen + 1, device->drive_info.T10_vendor_ident))
+            M_UNLIKELY
+            {
+                perror("Error copying vendor identification for checking vendor");
+            }
         localString[stringLen] = '\0';
         if (safe_strlen(localString) >= connerLen && strncmp(localString, "CONNER", connerLen) == 0)
         {
@@ -1845,7 +1892,11 @@ bool is_CDC_VendorID(const tDevice* device)
                 perror("calloc failure");
                 return false;
             }
-            snprintf_err_handle(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
+            if (0 != safe_strcpy(localString, stringLen + 1, device->drive_info.T10_vendor_ident))
+                M_UNLIKELY
+                {
+                    perror("Error copying vendor identification for checking vendor");
+                }
             localString[stringLen] = '\0';
             if (safe_strlen(localString) >= cdcLen && strncmp(localString, "CDC", cdcLen) == 0)
             {
@@ -1872,7 +1923,11 @@ bool is_DEC_VendorID(const tDevice* device)
                 perror("calloc failure");
                 return false;
             }
-            snprintf_err_handle(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
+            if (0 != safe_strcpy(localString, stringLen + 1, device->drive_info.T10_vendor_ident))
+                M_UNLIKELY
+                {
+                    perror("Error copying vendor identification for checking vendor");
+                }
             localString[stringLen] = '\0';
             if (safe_strlen(localString) >= cdcLen && strncmp(localString, "DEC", cdcLen) == 0)
             {
@@ -1897,7 +1952,11 @@ bool is_MiniScribe_VendorID(const tDevice* device)
             perror("calloc failure");
             return false;
         }
-        snprintf_err_handle(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
+        if (0 != safe_strcpy(localString, stringLen + 1, device->drive_info.T10_vendor_ident))
+            M_UNLIKELY
+            {
+                perror("Error copying vendor identification for checking vendor");
+            }
         localString[stringLen] = '\0';
         if (safe_strlen(localString) >= miniscribeLen && strncmp(localString, "MINSCRIB", miniscribeLen) == 0)
         {
@@ -1924,7 +1983,11 @@ bool is_Quantum_VendorID(const tDevice* device)
                 perror("calloc failure");
                 return false;
             }
-            snprintf_err_handle(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
+            if (0 != safe_strcpy(localString, stringLen + 1, device->drive_info.T10_vendor_ident))
+                M_UNLIKELY
+                {
+                    perror("Error copying vendor identification for checking vendor");
+                }
             localString[stringLen] = '\0';
             if (safe_strlen(localString) >= quantumLen && strncmp(localString, "QUANTUM", quantumLen) == 0)
             {
@@ -1949,7 +2012,11 @@ bool is_Quantum_Model_Number(const char* string)
             perror("calloc failure");
             return false;
         }
-        snprintf_err_handle(localString, stringLen + 1, "%s", string);
+        if (0 != safe_strcpy(localString, stringLen + 1, string))
+            M_UNLIKELY
+            {
+                perror("Error copying string to check");
+            }
         localString[stringLen] = '\0';
         if (safe_strlen(localString) >= quantumLen &&
             (strncmp(localString, "Quantum", quantumLen) == 0 || strncmp(localString, "QUANTUM", quantumLen) == 0))
@@ -2006,7 +2073,11 @@ bool is_PrarieTek_VendorID(const tDevice* device)
                 perror("calloc failure");
                 return false;
             }
-            snprintf_err_handle(localString, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
+            if (0 != safe_strcpy(localString, stringLen + 1, device->drive_info.T10_vendor_ident))
+                M_UNLIKELY
+                {
+                    perror("Error copying vendor identification for checking vendor");
+                }
             localString[stringLen] = '\0';
             if (safe_strlen(localString) >= prarieTekLen && strncmp(localString, "PRAIRIE", prarieTekLen) == 0)
             {
@@ -2040,7 +2111,10 @@ bool is_LaCie(const tDevice* device)
                 perror("calloc failure");
                 return MEMORY_FAILURE;
             }
-            snprintf_err_handle(vendorID, stringLen + 1, "%s", device->drive_info.T10_vendor_ident);
+            if (0 != safe_strcpy(vendorID, stringLen + 1, device->drive_info.T10_vendor_ident))
+            {
+                perror("Error copying vendor identification for checking LaCie");
+            }
             vendorID[stringLen] = '\0';
             convert_String_To_Upper_Case(vendorID);
             if (safe_strlen(vendorID) >= lacieLen && strncmp(vendorID, "LACIE", lacieLen) == 0)
@@ -2056,21 +2130,34 @@ bool is_LaCie(const tDevice* device)
 // USB, firewire, thunderbolt, etc
 void seagate_External_SN_Cleanup(char** sn, size_t snlen)
 {
-
     if (sn != M_NULLPTR && *sn != M_NULLPTR)
     {
         // sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
         // All of these SNs should be only 8 characters long.
+        char* dupsn =
+            M_NULLPTR; // used to restore original upon error (unlikely to have an error, but best to be certain)
         DECLARE_ZERO_INIT_ARRAY(char, zeroes, SERIAL_NUM_LEN + 1); // making bigger than needed for now.
-        safe_memset(zeroes, SERIAL_NUM_LEN + 1, '0', SERIAL_NUM_LEN);
+        M_IGNORE_SAFE_ERRNO_CALL(safe_memset(zeroes, SERIAL_NUM_LEN + 1, '0', SERIAL_NUM_LEN),
+                                 "Always setting into a buffer sized one larger than necessary, so should never fail");
         zeroes[SERIAL_NUM_LEN] = '\0';
+        if (0 != safe_strndup(&dupsn, *sn, snlen))
+        {
+            return;
+        }
         if (strncmp(zeroes, *sn, SEAGATE_SERIAL_NUMBER_LEN) == 0)
         {
             // 8 zeroes at the beginning. Strip them off
-            safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
-                         safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN);
-            safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                        safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN);
+            if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
+                                  safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN) &&
+                0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                                 safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN))
+            {
+                perror("safe_memmove or safe_memset failure in seagate_External_SN_Cleanup when stripping zeroes from "
+                       "beginning of SN");
+                M_IGNORE_SAFE_ERRNO_CALL(
+                    safe_strcpy(*sn, snlen, dupsn),
+                    "This should always pass since we duplicated the exact string for the exact size of the string");
+            }
         }
         else if (strncmp(zeroes, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN], safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN) == 0)
         {
@@ -2080,54 +2167,102 @@ void seagate_External_SN_Cleanup(char** sn, size_t snlen)
             DECLARE_ZERO_INIT_ARRAY(char, newSerialNumber, SERIAL_NUM_LEN + 1);
             uint8_t serialMaxSize = C_CAST(uint8_t, M_Min(SERIAL_NUM_LEN, snlen));
             // backup current just in case
-            safe_memcpy(currentSerialNumber, SERIAL_NUM_LEN + 1, (*sn), M_Min(SERIAL_NUM_LEN, snlen));
-            for (uint8_t curSN = serialMaxSize, newSN = UINT8_C(0); newSN < serialMaxSize; --curSN)
+            if (0 != safe_memcpy(currentSerialNumber, SERIAL_NUM_LEN + 1, (*sn), M_Min(SERIAL_NUM_LEN, snlen)))
             {
-                if ((*sn)[curSN] != '\0')
-                {
-                    newSerialNumber[newSN] = (*sn)[curSN];
-                    ++newSN;
-                }
-                if (curSN == 0)
-                {
-                    break;
-                }
-            }
-            safe_memcpy((*sn), snlen, newSerialNumber, M_Min(SERIAL_NUM_LEN, snlen));
-            // At this point the zeroes will now all be at the end.
-            if (strncmp(zeroes, (*sn), SEAGATE_SERIAL_NUMBER_LEN) == 0)
-            {
-                // zeroes at the beginning. Strip them off
-                safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
-                             safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN);
-                safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                            safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN);
-            }
-            else if (strncmp(zeroes, (*sn), 4) == 0)
-            {
-                // zeroes at the beginning. Strip them off
-                safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4);
-                safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                            safe_strlen((*sn)) - 4);
+                perror("safe_memcpy failure in seagate_External_SN_Cleanup when backing up SN before reversing");
+                M_IGNORE_SAFE_ERRNO_CALL(
+                    safe_strcpy(*sn, snlen, dupsn),
+                    "This should always pass since we duplicated the exact string for the exact size of the string");
             }
             else
             {
-                // after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from the
-                // end.
-                safe_memcpy((*sn), snlen, currentSerialNumber, M_Min(SERIAL_NUM_LEN, snlen));
-                safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                            safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN);
+                for (uint8_t curSN = serialMaxSize, newSN = UINT8_C(0); newSN < serialMaxSize; --curSN)
+                {
+                    if ((*sn)[curSN] != '\0')
+                    {
+                        newSerialNumber[newSN] = (*sn)[curSN];
+                        ++newSN;
+                    }
+                    if (curSN == 0)
+                    {
+                        break;
+                    }
+                }
+                if (0 != safe_memcpy((*sn), snlen, newSerialNumber, M_Min(SERIAL_NUM_LEN, snlen)))
+                {
+                    perror("safe_memcpy failure in seagate_External_SN_Cleanup when copying reversed SN back to "
+                           "original buffer");
+                    M_IGNORE_SAFE_ERRNO_CALL(safe_strcpy(*sn, snlen, dupsn),
+                                             "This should always pass since we duplicated the exact string for the "
+                                             "exact size of the string");
+                }
+                else
+                {
+                    // At this point the zeroes will now all be at the end.
+                    if (strncmp(zeroes, (*sn), SEAGATE_SERIAL_NUMBER_LEN) == 0)
+                    {
+                        // zeroes at the beginning. Strip them off
+                        if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
+                                              safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN) &&
+                            0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                                             safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN))
+                        {
+                            perror("safe_memmove or safe_memset failure in seagate_External_SN_Cleanup when stripping "
+                                   "zeroes from beginning of SN after reversing");
+                            M_IGNORE_SAFE_ERRNO_CALL(safe_strcpy(*sn, snlen, dupsn),
+                                                     "This should always pass since we duplicated the exact string for "
+                                                     "the exact size of the string");
+                        }
+                    }
+                    else if (strncmp(zeroes, (*sn), 4) == 0)
+                    {
+                        // zeroes at the beginning. Strip them off
+                        if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4) &&
+                            0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                                             safe_strlen((*sn)) - 4))
+                        {
+                            perror("safe_memmove or safe_memset failure in seagate_External_SN_Cleanup when stripping "
+                                   "4 zeroes from beginning of SN after reversing");
+                            M_IGNORE_SAFE_ERRNO_CALL(safe_strcpy(*sn, snlen, dupsn),
+                                                     "This should always pass since we duplicated the exact string for "
+                                                     "the exact size of the string");
+                        }
+                    }
+                    else
+                    {
+                        // after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from
+                        // the end.
+                        if (0 != safe_memcpy((*sn), snlen, currentSerialNumber, M_Min(SERIAL_NUM_LEN, snlen)) &&
+                            0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                                             safe_strlen(currentSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN))
+                        {
+                            perror("safe_memcpy or safe_memset failure in seagate_External_SN_Cleanup when copying SN "
+                                   "back to original buffer after failed reverse attempt");
+                            M_IGNORE_SAFE_ERRNO_CALL(safe_strcpy(*sn, snlen, dupsn),
+                                                     "This should always pass since we duplicated the exact string for "
+                                                     "the exact size of the string");
+                        }
+                    }
+                }
             }
         }
         else if (strncmp(zeroes, (*sn), 4) == 0)
         {
             // 4 zeroes at the beginning. Strip them off
-            safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4);
-            safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                        safe_strlen((*sn)) - 4);
+            if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4) &&
+                0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
+                                 safe_strlen((*sn)) - 4))
+            {
+                perror("safe_memmove or safe_memset failure in seagate_External_SN_Cleanup when stripping 4 zeroes "
+                       "from beginning of SN");
+                M_IGNORE_SAFE_ERRNO_CALL(
+                    safe_strcpy(*sn, snlen, dupsn),
+                    "This should always pass since we duplicated the exact string for the exact size of the string");
+            }
         }
         // NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to
         // add different cases for these older LaCie products.
+        safe_free(&dupsn);
     }
 }
 
@@ -2144,7 +2279,11 @@ bool is_Samsung_String(const char* string)
             perror("calloc failure");
             return false;
         }
-        snprintf_err_handle(localString, stringLen + 1, "%s", string);
+        if (0 != safe_strcpy(localString, stringLen + 1, string))
+            M_UNLIKELY
+            {
+                perror("Error copying string to check");
+            }
         localString[stringLen] = '\0';
         convert_String_To_Upper_Case(localString);
         if (safe_strlen(localString) >= samsungLen && strncmp(localString, "SAMSUNG", samsungLen) == 0)
@@ -3232,30 +3371,36 @@ typedef enum eTimeUnits
 
 static M_INLINE void get_Time_Unit_String(eTimeUnits timeUnit, char* unitString, rsize_t stringSize)
 {
+    errno_t error = 0;
     switch (timeUnit)
     {
     case TIME_UNITS_NS:
-        safe_strcpy(unitString, stringSize, "ns");
+        error = safe_strcpy(unitString, stringSize, "ns");
         break;
     case TIME_UNITS_US:
-        safe_strcpy(unitString, stringSize, "us");
+        error = safe_strcpy(unitString, stringSize, "us");
         break;
     case TIME_UNITS_MS:
-        safe_strcpy(unitString, stringSize, "ms");
+        error = safe_strcpy(unitString, stringSize, "ms");
         break;
     case TIME_UNITS_S:
-        safe_strcpy(unitString, stringSize, "s");
+        error = safe_strcpy(unitString, stringSize, "s");
         break;
     case TIME_UNITS_M:
-        safe_strcpy(unitString, stringSize, "m");
+        error = safe_strcpy(unitString, stringSize, "m");
         break;
     case TIME_UNITS_H:
-        safe_strcpy(unitString, stringSize, "h");
+        error = safe_strcpy(unitString, stringSize, "h");
         break;
     case TIME_UNITS_D:
-        safe_strcpy(unitString, stringSize, "d");
+        error = safe_strcpy(unitString, stringSize, "d");
         break;
     }
+    if (error != 0)
+        M_UNLIKELY
+        {
+            perror("Error copying time unit string");
+        }
 }
 
 static M_INLINE void calculate_Time_Conversion(uint64_t timeInNanoSeconds, double* convertedTime, eTimeUnits* timeUnit)
@@ -3439,15 +3584,19 @@ eReturnValues remove_Device(tDevice* deviceList, uint32_t driveToRemoveIdx, vola
      **/
     if (is_CSMI_Device(deviceList + driveToRemoveIdx))
     {
-        free((deviceList + driveToRemoveIdx)->raid_device);
+        safe_free(&(deviceList + driveToRemoveIdx)->raid_device);
     }
 
     for (i = driveToRemoveIdx; i < *numberOfDevices - UINT32_C(1); i++)
     {
-        safe_memcpy((deviceList + i), sizeof(tDevice), (deviceList + i + UINT32_C(1)), sizeof(tDevice));
+        if (0 != safe_memcpy((deviceList + i), sizeof(tDevice), (deviceList + i + UINT32_C(1)), sizeof(tDevice)))
+            M_UNLIKELY
+            {
+                return MEMORY_FAILURE;
+            }
     }
 
-    safe_memset((deviceList + i), sizeof(tDevice), 0, sizeof(tDevice));
+    M_INITIALIZE_STRUCTURE((deviceList + i), sizeof(tDevice));
     *numberOfDevices -= UINT32_C(1);
     ret = SUCCESS;
 
@@ -6789,7 +6938,7 @@ bool setup_Passthrough_Hacks_By_ID(tDevice* device)
 // helper functions to make tDevice structure opaque
 size_t get_Device_Struct_size(void)
 {
-	return sizeof(tDevice);
+    return sizeof(tDevice);
 }
 
 uint32_t get_Device_Block_Version(void)
@@ -6803,7 +6952,7 @@ int32_t initialize_Device_struct(tDevice* device, uint32_t deviceSize, uint32_t 
     {
         return -1;
     }
-    device->sanity.size = deviceSize;
+    device->sanity.size    = deviceSize;
     device->sanity.version = blockVersion;
 
     return 0;
@@ -6811,17 +6960,17 @@ int32_t initialize_Device_struct(tDevice* device, uint32_t deviceSize, uint32_t 
 
 eDriveType get_Device_DriveType(const tDevice* device)
 {
-	return device->drive_info.drive_type;
+    return device->drive_info.drive_type;
 }
 
 uint32_t get_Device_BlockSize(const tDevice* device)
 {
-	return device->drive_info.deviceBlockSize;
+    return device->drive_info.deviceBlockSize;
 }
 
 uint32_t get_Device_PhyBlockSize(const tDevice* device)
 {
-	return device->drive_info.devicePhyBlockSize;
+    return device->drive_info.devicePhyBlockSize;
 }
 
 int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)
@@ -6831,107 +6980,123 @@ int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)
         return -1;
     }
     *maxLba = device->drive_info.deviceMaxLba;
-	return 0;
+    return 0;
 }
 
 uint32_t get_Device_LUN(const tDevice* device)
 {
-	return device->drive_info.lun;
+    return device->drive_info.lun;
 }
 
 // returns pointer to location of serialNumber in tDevice
 // lenght defined as [SERIAL_NUM_LEN + 1]
 int32_t get_Device_serialNumber(char* dest_serialNumber, size_t dest_len, const tDevice* device)
 {
-	if (dest_serialNumber == M_NULLPTR)
-	{
-		return 0;
-	}
-	safe_strncpy(dest_serialNumber, dest_len, device->drive_info.serialNumber, SERIAL_NUM_LEN + 1);
-	return SERIAL_NUM_LEN + 1;
+    if (dest_serialNumber == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (0 != safe_strncpy(dest_serialNumber, dest_len, device->drive_info.serialNumber, SERIAL_NUM_LEN + 1))
+    {
+        return 0;
+    }
+    return SERIAL_NUM_LEN + 1;
 }
 
 size_t get_Device_serialNumber_length(void)
 {
-	return SERIAL_NUM_LEN + 1;
+    return SERIAL_NUM_LEN + 1;
 }
 
 // returns pointer to location of vender_ident in tDevice
 // lenght defined as [T10_VENDOR_ID_LEN + 1]
 int32_t get_Device_T10_vendor_ident(char* dest_T10_vendor_ident, size_t dest_len, const tDevice* device)
 {
-	if (dest_T10_vendor_ident == M_NULLPTR)
-	{
-		return 0;
-	}
-	safe_strncpy(dest_T10_vendor_ident, dest_len, device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1);
-	return T10_VENDOR_ID_LEN + 1;
+    if (dest_T10_vendor_ident == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (0 != safe_strncpy(dest_T10_vendor_ident, dest_len, device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1))
+    {
+        return 0;
+    }
+    return T10_VENDOR_ID_LEN + 1;
 }
 
 size_t get_Device_T10_vendor_ident_length(void)
 {
-	return T10_VENDOR_ID_LEN + 1;
+    return T10_VENDOR_ID_LEN + 1;
 }
 
 // returns pointer to location of product_identification in tDevice
 // lenght defined as [MODEL_NUM_LEN + 1]
 int32_t get_Device_product_identification(char* dest_product_identification, size_t dest_len, const tDevice* device)
 {
-	if (dest_product_identification == M_NULLPTR)
-	{
-		return 0;
-	}
-	safe_strncpy(dest_product_identification, dest_len, device->drive_info.product_identification, MODEL_NUM_LEN + 1);
-	return MODEL_NUM_LEN + 1;
+    if (dest_product_identification == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (0 != safe_strncpy(dest_product_identification, dest_len, device->drive_info.product_identification,
+                          MODEL_NUM_LEN + 1))
+    {
+        return 0;
+    }
+    return MODEL_NUM_LEN + 1;
 }
 
 size_t get_Device_product_identification_length(void)
 {
-	return MODEL_NUM_LEN + 1;
+    return MODEL_NUM_LEN + 1;
 }
 
 // returns pointer to location of product_revision in tDevice
 // lenght defined as [FW_REV_LEN + 1]
 int32_t get_Device_product_revision(char* dest_product_revision, size_t dest_len, const tDevice* device)
 {
-	if (dest_product_revision == M_NULLPTR)
-	{
-		return 0;
-	}
-	safe_strncpy(dest_product_revision, dest_len, device->drive_info.product_revision, FW_REV_LEN + 1);
-	return FW_REV_LEN + 1;
+    if (dest_product_revision == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (0 != safe_strncpy(dest_product_revision, dest_len, device->drive_info.product_revision, FW_REV_LEN + 1))
+    {
+        return 0;
+    }
+    return FW_REV_LEN + 1;
 }
 
 size_t get_Device_product_revision_length(void)
 {
-	return FW_REV_LEN + 1;
+    return FW_REV_LEN + 1;
 }
 
 int32_t get_Device_worldWideName(uint64_t* worldWideName, const tDevice* device)
 {
-    if(worldWideName == M_NULLPTR)
+    if (worldWideName == M_NULLPTR)
     {
         return -1;
     }
     *worldWideName = device->drive_info.worldWideName;
-	return 0;
+    return 0;
 }
 
 // returns pointer to location of product_revision in tDevice
 // lenght defined as [SPC3_SENSE_LEN]
 int32_t get_Device_lastCommandSenseData(uint8_t* dest_lastCommandSenseData, size_t dest_len, const tDevice* device)
 {
-	if (dest_lastCommandSenseData == M_NULLPTR)
-	{
-		return 0;
-	}
-	safe_memcpy(dest_lastCommandSenseData, dest_len, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN);
-	return SPC3_SENSE_LEN;
+    if (dest_lastCommandSenseData == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (0 != safe_memcpy(dest_lastCommandSenseData, dest_len, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN))
+    {
+        return 0;
+    }
+    return SPC3_SENSE_LEN;
 }
 
 size_t get_Device_lastCommandSenseData_length(void)
 {
-	return SPC3_SENSE_LEN;
+    return SPC3_SENSE_LEN;
 }
 
 uint32_t get_Device_OS_Info_Last_Error(const tDevice* device)
@@ -6941,7 +7106,7 @@ uint32_t get_Device_OS_Info_Last_Error(const tDevice* device)
 
 int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* device)
 {
-    if (verbosity < VERBOSITY_QUIET || verbosity > VERBOSITY_BUFFERS )
+    if (verbosity < VERBOSITY_QUIET || verbosity > VERBOSITY_BUFFERS)
     {
         return -1;
     }
@@ -6951,9 +7116,9 @@ int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* device)
 
 uint8_t get_Device_os_info_scsiAddress_host(const tDevice* device)
 {
-    #if defined (_WIN32)
-        return device->os_info.scsi_addr.PortNumber;
-    #elif defined (__linux__) && !defined (VMK_CROSS_COMP)
+#if defined(_WIN32)
+    return device->os_info.scsi_addr.PortNumber;
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
     if (device->os_info.scsiAddressValid)
     {
         return device->os_info.scsiAddress.host;
@@ -6962,17 +7127,17 @@ uint8_t get_Device_os_info_scsiAddress_host(const tDevice* device)
     {
         return 0;
     }
-    #else
-        M_USE_UNUSED(device);
-        return 0;
-    #endif
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
 }
 
 uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* device)
 {
-    #if defined (_WIN32)
-        return device->os_info.scsi_addr.PathId;
-    #elif defined (__linux__) && !defined (VMK_CROSS_COMP)
+#if defined(_WIN32)
+    return device->os_info.scsi_addr.PathId;
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
     if (device->os_info.scsiAddressValid)
     {
         return device->os_info.scsiAddress.channel;
@@ -6981,17 +7146,17 @@ uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* device)
     {
         return 0;
     }
-    #else
-        M_USE_UNUSED(device);
-        return 0;
-    #endif
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
 }
 
 uint8_t get_Device_os_info_scsiAddress_target(const tDevice* device)
 {
-    #if defined (_WIN32)
+#if defined(_WIN32)
     return device->os_info.scsi_addr.TargetId;
-    #elif defined (__linux__) && !defined (VMK_CROSS_COMP)
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
     if (device->os_info.scsiAddressValid)
     {
         return device->os_info.scsiAddress.target;
@@ -7000,17 +7165,17 @@ uint8_t get_Device_os_info_scsiAddress_target(const tDevice* device)
     {
         return 0;
     }
-    #else
-        M_USE_UNUSED(device);
-        return 0;
-    #endif
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
 }
 
 uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* device)
 {
-    #if defined (_WIN32)
+#if defined(_WIN32)
     return device->os_info.scsi_addr.Lun;
-    #elif defined (__linux__) && !defined (VMK_CROSS_COMP)
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
     if (device->os_info.scsiAddressValid)
     {
         return device->os_info.scsiAddress.lun;
@@ -7019,8 +7184,8 @@ uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* device)
     {
         return 0;
     }
-    #else
-        M_USE_UNUSED(device);
-        return 0;
-    #endif
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
 }

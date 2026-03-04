@@ -1163,8 +1163,8 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
     {
         ScsiIoCtx       scsiIoCtx;
         senseDataFields senseFields;
-        safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
-        safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
+        M_INITIALIZE_STRUCTURE(&scsiIoCtx, sizeof(ScsiIoCtx));
+        M_INITIALIZE_STRUCTURE(&senseFields, sizeof(senseDataFields));
         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
         {
             // Print out ATA Command Information in appropriate verbose mode.
@@ -1172,8 +1172,20 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
         }
         // Now setup the scsiioctx and send the CDB
         scsiIoCtx.device = M_CONST_CAST(tDevice*, device);
-        safe_memcpy(scsiIoCtx.cdb, SCSI_IO_CTX_MAX_CDB_LEN, satCDB,
-                    C_CAST(size_t, satCDBLength)); // should only ever be a known positive integer: 12, 16, or 32
+        // should only ever be a known positive integer: 12, 16, or 32
+        if (0 != safe_memcpy(scsiIoCtx.cdb, SCSI_IO_CTX_MAX_CDB_LEN, satCDB, C_CAST(size_t, satCDBLength)))
+        {
+            perror("SAT failed CDB copy to scsi IO CTX");
+            ret = MEMORY_FAILURE;
+            safe_free_aligned(&satCDB);
+            safe_free_aligned(&senseData);
+            if (localSenseData)
+            {
+                ataCommandOptions->ptrSenseData  = M_NULLPTR;
+                ataCommandOptions->senseDataSize = 0;
+            }
+            return MEMORY_FAILURE;
+        }
         scsiIoCtx.cdbLength        = C_CAST(uint8_t, satCDBLength);
         scsiIoCtx.direction        = ataCommandOptions->commandDirection;
         scsiIoCtx.pdata            = ataCommandOptions->ptrData;
@@ -1188,8 +1200,8 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
         scsiIoCtx.fwdlFirstSegment = ataCommandOptions->fwdlFirstSegment;
         scsiIoCtx.fwdlLastSegment  = ataCommandOptions->fwdlLastSegment;
         // clear the last command sense data every single time before we issue any commands
-        safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
-        M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = UINT64_C(0);
+        clear_Last_Command_Sense_Data_In_tDevice(M_CONST_CAST(tDevice*, device));
+        set_Last_Command_Time_To_tDevice(M_CONST_CAST(tDevice*, device), UINT64_C(0));
 
         ret = private_SCSI_Send_CDB(&scsiIoCtx, &senseFields);
 
@@ -1483,8 +1495,8 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
             print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
         }
 
-        M_CONST_CAST(tDevice*, device)->drive_info.ataSenseData.validData =
-            false; // clear this everytime. will be changed if we got anything
+        // clear out before moving on
+        copy_Last_Command_ATA_Sense_Data_To_tDevice(M_CONST_CAST(tDevice*, device), false, 0, 0, 0);
         if (gotRTFRs)
         {
             // Check the status register to see if the busy bit is set
@@ -1550,12 +1562,9 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
                                                           &ataAdditionalSenseCodeQualifier))
                     {
                         eReturnValues ataSenseRet;
-                        M_CONST_CAST(tDevice*, device)->drive_info.ataSenseData.validData = true;
-                        M_CONST_CAST(tDevice*, device)->drive_info.ataSenseData.senseKey  = ataSenseKey;
-                        M_CONST_CAST(tDevice*, device)->drive_info.ataSenseData.additionalSenseCode =
-                            ataAdditionalSenseCode;
-                        M_CONST_CAST(tDevice*, device)->drive_info.ataSenseData.additionalSenseCodeQualifier =
-                            ataAdditionalSenseCodeQualifier;
+                        copy_Last_Command_ATA_Sense_Data_To_tDevice(M_CONST_CAST(tDevice*, device), true, ataSenseKey,
+                                                                    ataAdditionalSenseCode,
+                                                                    ataAdditionalSenseCodeQualifier);
                         if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
                         {
                             print_str("\t  ATA Sense Data reported:\n");
@@ -1584,24 +1593,20 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
                 // bad status and will return it on the very next command we issue
                 //...SO send a "check Power Mode" command to force it to refresh and prevent this issue from happening
                 // again..basically a test unit ready command - TJE
-                uint64_t commandTimeNanoseconds =
-                    device->drive_info
-                        .lastCommandTimeNanoSeconds; // back this up first since they'll want the time from the command
-                                                     // they issued, not the check power mode.
-                uint8_t powerMode = UINT8_C(0);      // we don't actually care about this...just holding it for now
+                uint64_t commandTimeNanoseconds = get_Last_Command_Time_From_tDevice(device); // backup first
+                uint8_t  powerMode = UINT8_C(0); // we don't actually care about this...just holding it for now
                 ata_Check_Power_Mode(device, &powerMode);
                 // The rtfrs from this command will get overwritten below so this will appear transparent.
-                M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = commandTimeNanoseconds;
+                set_Last_Command_Time_To_tDevice(M_CONST_CAST(tDevice*, device), commandTimeNanoseconds);
             }
         }
     }
     safe_free_aligned(&satCDB);
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if ((get_Last_Command_Time_From_tDevice(device) / UINT64_C(1000000000)) > ataCommandOptions->timeout)
     {
         ret = OS_COMMAND_TIMEOUT;
     }
-    safe_memcpy(M_CONST_CAST(ataReturnTFRs*, &device->drive_info.lastCommandRTFRs), sizeof(ataReturnTFRs),
-                &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
+    copy_Last_Command_RTFRs_To_tDevice(M_CONST_CAST(tDevice*, device), &ataCommandOptions->rtfr);
     safe_free_aligned(&senseData);
     if (localSenseData)
     {
@@ -1706,8 +1711,11 @@ static void set_Sense_Data_For_Translation(
             while (counter < descriptorCount)
             {
                 descriptorLength = descriptor[descriptorOffset + 1] + 1;
-                safe_memcpy(&senseData[senseDataOffset], SPC3_SENSE_LEN - senseDataOffset, descriptor,
-                            descriptorLength);
+                if (0 != safe_memcpy(&senseData[senseDataOffset], SPC3_SENSE_LEN - senseDataOffset, descriptor,
+                                     descriptorLength))
+                {
+                    perror("SATL Error, (72h/73h) failed to copy descriptor to sense data in loop");
+                }
                 additionalSenseLength += descriptorLength;
                 ++counter;
                 descriptorOffset += descriptorLength;
@@ -1760,12 +1768,18 @@ static void set_Sense_Data_For_Translation(
                                             descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11]);
                     if (descriptorInformation > UINT32_MAX)
                     {
-                        safe_memset(&senseData[3], SPC3_SENSE_LEN - 3, UINT8_MAX, 4);
+                        if (0 != safe_memset(&senseData[3], SPC3_SENSE_LEN - 3, UINT8_MAX, 4))
+                        {
+                            perror("SATL Error, (Information) failed to set information in sense data");
+                        }
                     }
                     else
                     {
                         // copy lowest 4 bytes
-                        safe_memcpy(&senseData[3], SPC3_SENSE_LEN - 3, &descriptor[descriptorOffset + 8], 4);
+                        if (0 != safe_memcpy(&senseData[3], SPC3_SENSE_LEN - 3, &descriptor[descriptorOffset + 8], 4))
+                        {
+                            perror("SATL Error, (Information) failed to set information in sense data");
+                        }
                     }
                 }
                 break;
@@ -1778,18 +1792,31 @@ static void set_Sense_Data_For_Translation(
                                             descriptor[descriptorOffset + 10], descriptor[descriptorOffset + 11]);
                     if (descriptorCmdInformation > UINT32_MAX)
                     {
-                        safe_memset(&senseData[8], SPC3_SENSE_LEN - 8, UINT8_MAX, 4);
+                        if (0 != safe_memset(&senseData[8], SPC3_SENSE_LEN - 8, UINT8_MAX, 4))
+                        {
+                            perror("SATL Error, (Command Specific Information) failed to set command specific "
+                                   "information in sense data");
+                        }
                     }
                     else
                     {
                         // copy lowest 4 bytes
-                        safe_memcpy(&senseData[8], SPC3_SENSE_LEN - 8, &descriptor[descriptorOffset + 8], 4);
+                        if (0 != safe_memcpy(&senseData[8], SPC3_SENSE_LEN - 8, &descriptor[descriptorOffset + 8], 4))
+                            M_UNLIKELY
+                            {
+                                perror("SATL Error, (Command Specific Information) failed to set command specific "
+                                       "information in sense data");
+                            }
                     }
                 }
                 break;
                 case 2: // sense key specific
                     // bytes 4, 5 , and 6
-                    safe_memcpy(&senseData[15], SPC3_SENSE_LEN - 15, &descriptor[descriptorOffset + 4], 3);
+                    if (0 != safe_memcpy(&senseData[15], SPC3_SENSE_LEN - 15, &descriptor[descriptorOffset + 4], 3))
+                        M_UNLIKELY
+                        {
+                            perror("SATL Error, (Sense Key Specific) failed to set sense key specific data descriptor");
+                        }
                     break;
                 case 3: // FRU
                     senseData[14] = descriptor[descriptorOffset + 3];
@@ -1874,7 +1901,11 @@ static void set_Sense_Data_For_Translation(
                         senseData[2] |= BIT5;
                     }
                     // bytes 4, 5 , and 6 for sense key specific information
-                    safe_memcpy(&senseData[15], SPC3_SENSE_LEN - 15, &descriptor[descriptorOffset + 4], 3);
+                    if (0 != safe_memcpy(&senseData[15], SPC3_SENSE_LEN - 15, &descriptor[descriptorOffset + 4], 3))
+                    {
+                        perror("SATL Error, (Direct Access Block Device) failed to set sense key specific information "
+                               "in sense data");
+                    }
                     // fru code
                     senseData[14] = descriptor[descriptorOffset + 7];
                     {
@@ -1887,12 +1918,23 @@ static void set_Sense_Data_For_Translation(
                         uint64_t descriptorCmdInformation;
                         if (descriptorInformation > UINT32_MAX)
                         {
-                            safe_memset(&senseData[3], SPC3_SENSE_LEN - 3, UINT8_MAX, 4);
+                            if (0 != safe_memset(&senseData[3], SPC3_SENSE_LEN - 3, UINT8_MAX, 4))
+                                M_UNLIKELY
+                                {
+                                    perror("SATL Error, (Direct Access Block Device) failed to set information field "
+                                           "in sense data");
+                                }
                         }
                         else
                         {
                             // copy lowest 4 bytes
-                            safe_memcpy(&senseData[3], SPC3_SENSE_LEN - 3, &descriptor[descriptorOffset + 12], 4);
+                            if (0 !=
+                                safe_memcpy(&senseData[3], SPC3_SENSE_LEN - 3, &descriptor[descriptorOffset + 12], 4))
+                                M_UNLIKELY
+                                {
+                                    perror("SATL Error, (Direct Access Block Device) failed to set information field "
+                                           "in sense data");
+                                }
                         }
                         // command specific information
                         descriptorCmdInformation =
@@ -1902,12 +1944,23 @@ static void set_Sense_Data_For_Translation(
                                                 descriptor[descriptorOffset + 22], descriptor[descriptorOffset + 23]);
                         if (descriptorCmdInformation > UINT32_MAX)
                         {
-                            safe_memset(&senseData[8], SPC3_SENSE_LEN - 8, UINT8_MAX, 4);
+                            if (0 != safe_memset(&senseData[8], SPC3_SENSE_LEN - 8, UINT8_MAX, 4))
+                                M_UNLIKELY
+                                {
+                                    perror("SATL Error, (Direct Access Block Device) failed to set command specific "
+                                           "information in sense data");
+                                }
                         }
                         else
                         {
                             // copy lowest 4 bytes
-                            safe_memcpy(&senseData[8], SPC3_SENSE_LEN - 8, &descriptor[descriptorOffset + 20], 4);
+                            if (0 !=
+                                safe_memcpy(&senseData[8], SPC3_SENSE_LEN - 8, &descriptor[descriptorOffset + 20], 4))
+                                M_UNLIKELY
+                                {
+                                    perror("SATL Error, (Direct Access Block Device) failed to set command specific "
+                                           "information in sense data");
+                                }
                         }
                     }
                     break;
@@ -1923,7 +1976,10 @@ static void set_Sense_Data_For_Translation(
     }
     if (sensePtr)
     {
-        safe_memcpy(sensePtr, senseDataLength, senseData, senseDataLength);
+        if (0 != safe_memcpy(sensePtr, senseDataLength, senseData, senseDataLength))
+        {
+            perror("SATL Error, failed to set sense data to output sense data buffer");
+        }
     }
 }
 
@@ -2012,13 +2068,20 @@ static void set_Sense_Data_By_RTFRs(const tDevice*       device,
             le16_to_host(device->drive_info.IdentifyData.ata.Word120) & BIT6 && rtfrs->status & BIT1))
     {
         ataReturnTFRs rtfrBackup;
-        safe_memcpy(&rtfrBackup, sizeof(ataReturnTFRs), rtfrs, sizeof(ataReturnTFRs));
+        if (0 != safe_memcpy(&rtfrBackup, sizeof(ataReturnTFRs), rtfrs, sizeof(ataReturnTFRs)))
+        {
+            perror("SATL Error, failed to backup RTFRs during request sense");
+        }
         // if everything goes according to plan, we will return success, otherwise restore back up rtfrs and process
         // based on those.
         if (SUCCESS != ata_Request_Sense_Data(device, &senseKey, &asc, &ascq))
         {
             // restore backed up rtfrs
-            safe_memcpy(M_CONST_CAST(ataReturnTFRs*, rtfrs), sizeof(ataReturnTFRs), &rtfrBackup, sizeof(ataReturnTFRs));
+            if (0 != safe_memcpy(M_CONST_CAST(ataReturnTFRs*, rtfrs), sizeof(ataReturnTFRs), &rtfrBackup,
+                                 sizeof(ataReturnTFRs)))
+            {
+                perror("SATL Error, failed to restore backup RTFRs during request sense");
+            }
         }
     }
     if (returnSenseKeySpecificInfo)
@@ -2529,20 +2592,27 @@ static eReturnValues translate_ATA_Information_VPD_Page_89h(const tDevice* devic
     ataInformation[23] = ' ';
     DECLARE_ZERO_INIT_ARRAY(char, openseaVersionString, 9);
 
-    snprintf_err_handle(openseaVersionString, 9, "%d.%d.%d", OPENSEA_TRANSPORT_MAJOR_VERSION,
-                        OPENSEA_TRANSPORT_MINOR_VERSION, OPENSEA_TRANSPORT_PATCH_VERSION);
+    if (0 > snprintf_err_handle(openseaVersionString, 9, "%d.%d.%d", OPENSEA_TRANSPORT_MAJOR_VERSION,
+                                OPENSEA_TRANSPORT_MINOR_VERSION, OPENSEA_TRANSPORT_PATCH_VERSION))
+    {
+        perror("Error formatting opensea SATL version string");
+    }
 
     if (safe_strlen(openseaVersionString) < 8)
     {
         ataInformation[24] = ' ';
-        safe_memcpy(&ataInformation[25], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 25, openseaVersionString,
-                    safe_strlen(openseaVersionString));
-        // snprintf_err_handle(C_CAST(char*, &ataInformation[24]), 8, " %-s", openseaVersionString);
+        if (0 != safe_memcpy(&ataInformation[25], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 25, openseaVersionString,
+                             safe_strlen(openseaVersionString)))
+        {
+            perror("SATL Error copying OpenSea version string to ATA information");
+        }
     }
     else
     {
-        safe_memcpy(&ataInformation[24], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 24, openseaVersionString, 8);
-        // snprintf_err_handle(C_CAST(char*, &ataInformation[24]), 8, "%-s", openseaVersionString);
+        if (0 != safe_memcpy(&ataInformation[24], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 24, openseaVersionString, 8))
+        {
+            perror("SATL Error copying OpenSea version string to ATA information");
+        }
     }
     // SAT Product Revision -set to SAT Version supported by library
     ataInformation[32] = 'S';
@@ -2664,12 +2734,19 @@ static eReturnValues translate_ATA_Information_VPD_Page_89h(const tDevice* devic
     ataInformation[58] = RESERVED;
     ataInformation[59] = RESERVED;
     // identify device data
-    safe_memcpy(&ataInformation[60], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 60, identifyDriveData, LEGACY_DRIVE_SEC_SIZE);
+    if (0 != safe_memcpy(&ataInformation[60], SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL - 60, identifyDriveData,
+                         LEGACY_DRIVE_SEC_SIZE))
+    {
+        perror("SATL Error copying identify device data to ATA information");
+    }
     // now copy all the data we set up back to the scsi io ctx
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, ataInformation,
-                    M_Min(scsiIoCtx->dataLength, SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, ataInformation,
+                             M_Min(scsiIoCtx->dataLength, SAT_ATA_INFO_VPD_PAGE_LEN_SOFTSATL)))
+        {
+            perror("SATL Error copying ATA information to SCSI I/O context");
+        }
     }
     return ret;
 }
@@ -2689,20 +2766,30 @@ static eReturnValues translate_Unit_Serial_Number_VPD_Page_80h(const tDevice* de
 #endif // SAT_SPEC_SUPPORTED
     unitSerialNumber[0] = peripheralDevice;
     // use the cached information
-    safe_memcpy(ataSerialNumber, ATA_IDENTIFY_SN_LENGTH + 1, device->drive_info.IdentifyData.ata.SerNum,
-                SERIAL_NUM_LEN);
+    if (0 != safe_memcpy(ataSerialNumber, ATA_IDENTIFY_SN_LENGTH + 1, device->drive_info.IdentifyData.ata.SerNum,
+                         SERIAL_NUM_LEN))
+    {
+        perror("SATL Error copying ATA serial number to local buffer");
+    }
     // now byteswap the string
     byte_Swap_String_Len(ataSerialNumber, SERIAL_NUM_LEN);
     unitSerialNumber[1] = UNIT_SERIAL_NUMBER;
     unitSerialNumber[2] = M_Byte1(safe_strlen(ataSerialNumber));
     unitSerialNumber[3] = M_Byte0(safe_strlen(ataSerialNumber));
     // set the string into the data
-    safe_memcpy(&unitSerialNumber[4], SOFT_SATL_UNIT_SN_LEN - 4, ataSerialNumber, safe_strlen(ataSerialNumber));
+    if (0 !=
+        safe_memcpy(&unitSerialNumber[4], SOFT_SATL_UNIT_SN_LEN - 4, ataSerialNumber, safe_strlen(ataSerialNumber)))
+    {
+        perror("SATL Error copying ATA serial number to unit serial number");
+    }
     // now copy all the data we set up back to the scsi io ctx
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, unitSerialNumber,
-                    M_Min(SOFT_SATL_UNIT_SN_LEN, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, unitSerialNumber,
+                             M_Min(SOFT_SATL_UNIT_SN_LEN, scsiIoCtx->dataLength)))
+        {
+            perror("SATL Error copying unit serial number to SCSI I/O context");
+        }
     }
     return ret;
 }
@@ -2754,7 +2841,10 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(const tDevice*
             naaDesignator[11] = M_Byte0(device->drive_info.IdentifyData.ata.Word111);
 
             // now set up the scsi name string identifier
-            snprintf_err_handle(&scsiNameString[0], SAT_SCSI_NAME_STRING_LENGTH, "naa.%" PRIX64, wwn);
+            if (0 > snprintf_err_handle(&scsiNameString[0], SAT_SCSI_NAME_STRING_LENGTH, "naa.%" PRIX64, wwn))
+            {
+                perror("Error formatting naa designator string");
+            }
             SCSINameStringDesignatorLength = 24;
             SCSINameStringDesignator       = M_REINTERPRET_CAST(
                 uint8_t*, safe_calloc(SCSINameStringDesignatorLength * sizeof(uint8_t), sizeof(uint8_t)));
@@ -2765,7 +2855,11 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(const tDevice*
                 SCSINameStringDesignator[1] = 8; // designator type set to 8. Association set to zero. PIV set to zero
                 SCSINameStringDesignator[2] = RESERVED;
                 SCSINameStringDesignator[3] = 20U; // length
-                safe_memcpy(&SCSINameStringDesignator[4], SCSINameStringDesignatorLength - 4, scsiNameString, 20);
+                if (0 !=
+                    safe_memcpy(&SCSINameStringDesignator[4], SCSINameStringDesignatorLength - 4, scsiNameString, 20))
+                {
+                    perror("SATL Error copying SCSI name string to SCSI name string designator");
+                }
             }
             else
             {
@@ -2783,19 +2877,34 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(const tDevice*
     t10VendorIdDesignator[2] = RESERVED;
     t10VendorIdDesignator[3] = 68U; // length
     // set vendor ID to ATA padded with spaces
-    safe_memcpy(&t10VendorIdDesignator[4], SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN - 4, ataVendorId, 8);
+    if (0 != safe_memcpy(&t10VendorIdDesignator[4], SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN - 4, ataVendorId, 8))
+    {
+        perror("SATL Error copying ATA vendor ID to T10 vendor ID designator");
+    }
     // now set MN
-    safe_memcpy(ataModelNumber, ATA_IDENTIFY_MN_LENGTH + 1, device->drive_info.IdentifyData.ata.ModelNum,
-                ATA_IDENTIFY_MN_LENGTH);
+    if (0 != safe_memcpy(ataModelNumber, ATA_IDENTIFY_MN_LENGTH + 1, device->drive_info.IdentifyData.ata.ModelNum,
+                         ATA_IDENTIFY_MN_LENGTH))
+    {
+        perror("SATL Error copying ATA model number to T10 vendor ID designator");
+    }
     byte_Swap_String_Len(ataModelNumber, ATA_IDENTIFY_MN_LENGTH);
-    safe_memcpy(&t10VendorIdDesignator[12], SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN - 12, ataModelNumber,
-                ATA_IDENTIFY_MN_LENGTH);
+    if (0 != safe_memcpy(&t10VendorIdDesignator[12], SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN - 12, ataModelNumber,
+                         ATA_IDENTIFY_MN_LENGTH))
+    {
+        perror("SATL Error copying ATA model number to T10 vendor ID designator");
+    }
     // now set SN
-    safe_memcpy(ataSerialNumber, ATA_IDENTIFY_SN_LENGTH + 1, device->drive_info.IdentifyData.ata.SerNum,
-                ATA_IDENTIFY_SN_LENGTH);
+    if (0 != safe_memcpy(ataSerialNumber, ATA_IDENTIFY_SN_LENGTH + 1, device->drive_info.IdentifyData.ata.SerNum,
+                         ATA_IDENTIFY_SN_LENGTH))
+    {
+        perror("SATL Error copying raw ATA Serial number before byte swap");
+    }
     byte_Swap_String_Len(ataSerialNumber, ATA_IDENTIFY_SN_LENGTH);
-    safe_memcpy(&t10VendorIdDesignator[52], SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN - 52, ataSerialNumber,
-                ATA_IDENTIFY_SN_LENGTH);
+    if (0 != safe_memcpy(&t10VendorIdDesignator[52], SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN - 52, ataSerialNumber,
+                         ATA_IDENTIFY_SN_LENGTH))
+    {
+        perror("SATL Error copying ATA serial number to T10 vendor ID designator");
+    }
 
     // now setup the device identification page
     size_t devIDPageLen = UINT32_C(4) + SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN + C_CAST(uint32_t, naaDesignatorLength) +
@@ -2824,27 +2933,40 @@ static eReturnValues translate_Device_Identification_VPD_Page_83h(const tDevice*
     // copy naa first
     if (naaDesignatorLength > 0)
     {
-        safe_memcpy(&deviceIdentificationPage[4], devIDPageLen - 4, naaDesignator, naaDesignatorLength);
+        if (0 != safe_memcpy(&deviceIdentificationPage[4], devIDPageLen - 4, naaDesignator, naaDesignatorLength))
+        {
+            perror("SATL Error copying NAA designator to device identification page");
+        }
     }
     // scsi name string second
     if (SCSINameStringDesignatorLength > 0)
     {
-        safe_memcpy(&deviceIdentificationPage[4 + naaDesignatorLength], devIDPageLen - 4 - naaDesignatorLength,
-                    SCSINameStringDesignator, SCSINameStringDesignatorLength);
+        if (0 != safe_memcpy(&deviceIdentificationPage[4 + naaDesignatorLength], devIDPageLen - 4 - naaDesignatorLength,
+                             SCSINameStringDesignator, SCSINameStringDesignatorLength))
+        {
+            perror("SATL Error copying SCSI name string designator to device identification page");
+        }
     }
     // t10 vendor identification last
-    safe_memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + SCSINameStringDesignatorLength],
-                devIDPageLen - 4 - naaDesignatorLength - SCSINameStringDesignatorLength, t10VendorIdDesignator,
-                SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN);
+    if (0 != safe_memcpy(&deviceIdentificationPage[4 + naaDesignatorLength + SCSINameStringDesignatorLength],
+                         devIDPageLen - 4 - naaDesignatorLength - SCSINameStringDesignatorLength, t10VendorIdDesignator,
+                         SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN))
+    {
+        perror("SATL Error copying T10 vendor ID designator to device identification page");
+    }
     // now free the memory we no longer need
     safe_free(&naaDesignator);
     safe_free(&SCSINameStringDesignator);
     // copy the final data back for the command
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, deviceIdentificationPage,
-                    M_Min(SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN + naaDesignatorLength + SCSINameStringDesignatorLength,
-                          scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(
+                     scsiIoCtx->pdata, scsiIoCtx->dataLength, deviceIdentificationPage,
+                     M_Min(SOFT_SAT_T10_VENDOR_ID_DESIGNATOR_LEN + naaDesignatorLength + SCSINameStringDesignatorLength,
+                           scsiIoCtx->dataLength)))
+        {
+            perror("SATL Error copying device identification page to pdata");
+        }
     }
     safe_free(&deviceIdentificationPage);
     return ret;
@@ -2897,8 +3019,11 @@ static eReturnValues translate_Block_Device_Characteristics_VPD_Page_B1h(const t
     blockDeviceCharacteriticsPage[8] |= BIT0; // VBULS
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, blockDeviceCharacteriticsPage,
-                    M_Min(64, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, blockDeviceCharacteriticsPage,
+                             M_Min(64, scsiIoCtx->dataLength)))
+        {
+            perror("SATL Error copying block device characteristics to pdata");
+        }
     }
     return ret;
 }
@@ -3014,7 +3139,11 @@ static eReturnValues translate_Power_Condition_VPD_Page_8Ah(const tDevice* devic
         // copy the data back
         if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
         {
-            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, powerConditionPage, M_Min(18, scsiIoCtx->dataLength));
+            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, powerConditionPage,
+                                 M_Min(18, scsiIoCtx->dataLength)))
+            {
+                perror("SATL Error copying power condition page to pdata");
+            }
         }
     }
     else
@@ -3069,7 +3198,11 @@ static eReturnValues translate_Logical_Block_Provisioning_VPD_Page_B2h(const tDe
     // dp (set to zero since we don't support a resource descriptor
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, logicalBlockProvisioning, M_Min(8, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, logicalBlockProvisioning,
+                             M_Min(8, scsiIoCtx->dataLength)))
+        {
+            perror("SATL Error copying logical block provisioning to pdata");
+        }
     }
     return ret;
 }
@@ -3185,7 +3318,10 @@ static eReturnValues translate_Block_Limits_VPD_Page_B0h(const tDevice* device, 
 
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, blockLimits, M_Min(64, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, blockLimits, M_Min(64, scsiIoCtx->dataLength)))
+        {
+            perror("SATL Error copying block limits to pdata");
+        }
     }
     return ret;
 }
@@ -3272,7 +3408,11 @@ static eReturnValues translate_Mode_Page_Policy_VPD_Page_87h(const tDevice* devi
     modePagePolicy[3] = M_Byte0(pageOffset - 4);
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, modePagePolicy, M_Min(pageOffset, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, modePagePolicy,
+                             M_Min(pageOffset, scsiIoCtx->dataLength)))
+        {
+            perror("SATL Error copying mode page policy to pdata");
+        }
     }
     return ret;
 }
@@ -3345,8 +3485,11 @@ static eReturnValues translate_Zoned_Block_Device_Characteristics_VPD_Page_B6h(c
         }
         if (scsiIoCtx->pdata)
         {
-            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, zonedDeviceCharacteristics,
-                        M_Min(64, scsiIoCtx->dataLength));
+            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, zonedDeviceCharacteristics,
+                                 M_Min(64, scsiIoCtx->dataLength)))
+            {
+                perror("SATL Error copying zoned device characteristics to pdata");
+            }
         }
     }
     else
@@ -3427,7 +3570,11 @@ static eReturnValues translate_Extended_Inquiry_Data_VPD_Page_86h(const tDevice*
     }
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, extendedInquiry, M_Min(64, scsiIoCtx->dataLength));
+        if (0 !=
+            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, extendedInquiry, M_Min(64, scsiIoCtx->dataLength)))
+        {
+            perror("SATL Error copying extended inquiry data to pdata");
+        }
     }
     return ret;
 }
@@ -3513,7 +3660,11 @@ static eReturnValues translate_Supported_VPD_Pages_00h(const tDevice* device, Sc
     supportedPages[3] = M_Byte0(pageOffset - 4);
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedPages, M_Min(pageOffset, scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedPages,
+                             M_Min(pageOffset, scsiIoCtx->dataLength)))
+        {
+            perror("SATL Error copying supported VPD pages to pdata");
+        }
     }
     return ret;
 }
@@ -3739,19 +3890,33 @@ static eReturnValues translate_SCSI_Inquiry_Command(const tDevice* device, ScsiI
             fill_ATA_Strings_From_Identify_Data(M_CONST_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000),
                                                 ataMN, ataSN, ataFW);
 
-            safe_memcpy(&inquiryData[16], INQ_RETURN_DATA_LENGTH - 16, ataMN, INQ_DATA_PRODUCT_ID_LEN);
+            if (0 != safe_memcpy(&inquiryData[16], INQ_RETURN_DATA_LENGTH - 16, ataMN, INQ_DATA_PRODUCT_ID_LEN))
+            {
+                perror("SATL Error copying ATA model number to inquiry data");
+            }
             // product revision (truncates to 4 bytes)
             if (safe_strlen(ataFW) > 4)
             {
-                safe_memcpy(&inquiryData[32], INQ_RETURN_DATA_LENGTH - 32, &ataFW[4], INQ_DATA_PRODUCT_REV_LEN);
+                if (0 !=
+                    safe_memcpy(&inquiryData[32], INQ_RETURN_DATA_LENGTH - 32, &ataFW[4], INQ_DATA_PRODUCT_REV_LEN))
+                {
+                    perror("SATL Error copying ATA firmware to inquiry data");
+                }
             }
             else
             {
-                safe_memcpy(&inquiryData[32], INQ_RETURN_DATA_LENGTH - 32, &ataFW[0], INQ_DATA_PRODUCT_REV_LEN);
+                if (0 !=
+                    safe_memcpy(&inquiryData[32], INQ_RETURN_DATA_LENGTH - 32, &ataFW[0], INQ_DATA_PRODUCT_REV_LEN))
+                {
+                    perror("SATL Error copying ATA firmware to inquiry data");
+                }
             }
             // Vendor specific...we'll set the SN here
-            safe_memcpy(&inquiryData[36], INQ_RETURN_DATA_LENGTH - 36, ataSN,
-                        M_Min(safe_strlen(ataSN), ATA_IDENTIFY_SN_LENGTH));
+            if (0 != safe_memcpy(&inquiryData[36], INQ_RETURN_DATA_LENGTH - 36, ataSN,
+                                 M_Min(safe_strlen(ataSN), ATA_IDENTIFY_SN_LENGTH)))
+            {
+                perror("SATL Error copying ATA serial number to inquiry data");
+            }
             // version descriptors (bytes 58 to 73) (8 max)
 
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED < 2
@@ -3837,45 +4002,36 @@ static eReturnValues translate_SCSI_Inquiry_Command(const tDevice* device, ScsiI
        // at this time.
             if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word080)))
             {
-                uint16_t specSupportedWord = le16_to_host(device->drive_info.IdentifyData.ata.Word080);
-                uint16_t ataSpecVersion    = UINT16_C(0);
-                uint8_t  specCounter       = UINT8_C(1);
-                while (specSupportedWord > 0x0001)
+                uint16_t     ataSpecVersion = UINT16_C(0);
+                unsigned int specCounter = first_leading_one(le16_to_host(device->drive_info.IdentifyData.ata.Word080));
+                switch (specCounter)
                 {
-                    if (specSupportedWord & 0x0001)
-                    {
-                        switch (specCounter)
-                        {
-                        case 6: // ATA/ATAPI-6 15E0h
-                            ataSpecVersion = 0x15E0;
-                            break;
-                        case 7: // ATA/ATAPI-7 1600h
-                            ataSpecVersion = 0x1600;
-                            break;
-                        case 8: // ACS(ATA8) 1623h
-                            ataSpecVersion = 0x1623;
-                            break;
+                case 6: // ATA/ATAPI-6 15E0h
+                    ataSpecVersion = 0x15E0;
+                    break;
+                case 7: // ATA/ATAPI-7 1600h
+                    ataSpecVersion = 0x1600;
+                    break;
+                case 8: // ACS(ATA8) 1623h
+                    ataSpecVersion = 0x1623;
+                    break;
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 1
-                        case 9: // ACS2 1761h
-                            ataSpecVersion = 0x1761;
-                            break;
+                case 9: // ACS2 1761h
+                    ataSpecVersion = 0x1761;
+                    break;
 #    if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
-                        case 10: // ACS3 1765h
-                            ataSpecVersion = 0x1765;
-                            break;
+                case 10: // ACS3 1765h
+                    ataSpecVersion = 0x1765;
+                    break;
 #        if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
-                        case 11: // ACS4 1767h
-                            ataSpecVersion = 0x1767;
-                            break;
+                case 11: // ACS4 1767h
+                    ataSpecVersion = 0x1767;
+                    break;
 #        endif // SAT_SPEC_SUPPORTED >3
 #    endif     // SAT_SPEC_SUPPORTED >2
 #endif         // SAT_SPEC_SUPPORTED >1
-                        default:
-                            break;
-                        }
-                    }
-                    specSupportedWord >>= 1;
-                    specCounter++;
+                default:
+                    break;
                 }
                 inquiryData[versionOffset]     = M_Byte1(ataSpecVersion);
                 inquiryData[versionOffset + 1] = M_Byte0(ataSpecVersion);
@@ -3884,8 +4040,11 @@ static eReturnValues translate_SCSI_Inquiry_Command(const tDevice* device, ScsiI
             // now copy the data back
             if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, inquiryData,
-                            M_Min(INQ_RETURN_DATA_LENGTH, scsiIoCtx->dataLength));
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, inquiryData,
+                                     M_Min(INQ_RETURN_DATA_LENGTH, scsiIoCtx->dataLength)))
+                {
+                    perror("SATL Error copying inquiry data to SCSI data buffer");
+                }
             }
         }
     }
@@ -4156,8 +4315,11 @@ static eReturnValues translate_SCSI_Read_Capacity_Command(const tDevice* device,
 
             if (scsiIoCtx->pdata)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readCapacityData,
-                            M_Min(32, scsiIoCtx->dataLength));
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readCapacityData,
+                                     M_Min(32, scsiIoCtx->dataLength)))
+                {
+                    perror("SATL Error copying read capacity data to SCSI data buffer");
+                }
             }
         }
         else
@@ -4201,7 +4363,7 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
     uint8_t*              transferInfoByte     = &scsiIoCtx->cdb[CDB_2];
     bool                  thirtyTwoByteCommand = false;
     uint8_t               protocol;
-    safe_memset(&ataCommand, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
+    M_INITIALIZE_STRUCTURE(&ataCommand, sizeof(ataPassthroughCommand));
 
     if (scsiIoCtx->cdb[CDB_OPERATION_CODE] != ATA_PASS_THROUGH_12 &&
         scsiIoCtx->cdb[CDB_OPERATION_CODE] != ATA_PASS_THROUGH_16)
@@ -4338,8 +4500,11 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
             }
             if (scsiIoCtx->pdata)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, response,
-                            M_Min(scsiIoCtx->dataLength, SIZE_OF_STACK_ARRAY(response)));
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, response,
+                                     M_Min(scsiIoCtx->dataLength, SIZE_OF_STACK_ARRAY(response))))
+                {
+                    perror("SATL Error response info for ATA passthrough command");
+                }
             }
             scsiIoCtx->pAtaCmdOpts = M_NULLPTR;
             return SUCCESS;
@@ -4536,11 +4701,14 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
             M_CONST_CAST(tDevice*, device)->drive_info.softSATFlags.rtfrIndex = 1;
         }
         // now copy the rtfr
-        safe_memcpy(
-            M_CONST_CAST(
-                ataReturnTFRs*,
-                &device->drive_info.softSATFlags.ataPassthroughResults[device->drive_info.softSATFlags.rtfrIndex - 1]),
-            sizeof(ataReturnTFRs), &ataCommand.rtfr, sizeof(ataReturnTFRs));
+        if (0 != safe_memcpy(M_CONST_CAST(ataReturnTFRs*,
+                                          &device->drive_info.softSATFlags
+                                               .ataPassthroughResults[device->drive_info.softSATFlags.rtfrIndex - 1]),
+                             sizeof(ataReturnTFRs), &ataCommand.rtfr, sizeof(ataReturnTFRs)))
+            M_UNLIKELY
+            {
+                perror("SATL Error copying ATA return TFRs to passthrough results");
+            }
         // set the log index
         ataReturnDescriptor[14] = device->drive_info.softSATFlags.rtfrIndex;
         set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_NO_ERROR, 0, 0x1D,
@@ -5054,7 +5222,10 @@ static eReturnValues translate_SCSI_Write_Same_Command(const tDevice* device, Sc
             {
                 if (!ataWritePatternZeros)
                 {
-                    safe_memcpy(writePattern, patternLength, scsiIoCtx->pdata, patternLength);
+                    if (0 != safe_memcpy(writePattern, patternLength, scsiIoCtx->pdata, patternLength))
+                    {
+                        perror("SATL Error copying data to ATA write buffer");
+                    }
                 }
                 ret = satl_Sequential_Write_Commands(scsiIoCtx, logicalBlockAddress, numberOflogicalBlocks,
                                                      writePattern, patternLength);
@@ -5910,10 +6081,15 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                                             for (uint32_t copyIter = UINT32_C(0); copyIter < ataWriteDataLength;
                                                  copyIter += device->drive_info.deviceBlockSize)
                                             {
-                                                safe_memcpy(&ataWritePattern[copyIter],
-                                                            ataWriteDataLength -
-                                                                (copyIter * device->drive_info.deviceBlockSize),
-                                                            initializationPatternPtr, initializationPatternLength);
+                                                if (0 !=
+                                                    safe_memcpy(&ataWritePattern[copyIter],
+                                                                ataWriteDataLength -
+                                                                    (copyIter * device->drive_info.deviceBlockSize),
+                                                                initializationPatternPtr, initializationPatternLength))
+                                                {
+                                                    perror("SATL Error copying initialization pattern to ATA write "
+                                                           "buffer");
+                                                }
                                             }
                                         }
 
@@ -5998,11 +6174,16 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                                                     for (uint32_t copyIter = UINT32_C(0); copyIter < ataWriteDataLength;
                                                          copyIter += device->drive_info.deviceBlockSize)
                                                     {
-                                                        safe_memcpy(&ataWritePattern[copyIter],
-                                                                    ataWriteDataLength -
-                                                                        (copyIter * device->drive_info.deviceBlockSize),
-                                                                    initializationPatternPtr,
-                                                                    initializationPatternLength);
+                                                        if (0 !=
+                                                            safe_memcpy(
+                                                                &ataWritePattern[copyIter],
+                                                                ataWriteDataLength -
+                                                                    (copyIter * device->drive_info.deviceBlockSize),
+                                                                initializationPatternPtr, initializationPatternLength))
+                                                        {
+                                                            perror("SATL Error copying initialization pattern to ATA "
+                                                                   "write buffer");
+                                                        }
                                                     }
                                                 }
                                                 bool unrecoveredReadError = true;
@@ -6362,7 +6543,7 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(const tDevice* 
                                    device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
     if (scsiIoCtx->pdata)
     {
-        safe_memset(scsiIoCtx->pdata, scsiIoCtx->dataLength, 0, scsiIoCtx->dataLength);
+        explicit_zeroes(scsiIoCtx->pdata, scsiIoCtx->dataLength);
     }
     if (scsiIoCtx->cdb[CDB_4] & BIT7)
     {
@@ -6476,8 +6657,11 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(const tDevice* 
             }
             if (scsiIoCtx->pdata && scsiIoCtx->dataLength > 0)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, ataSecurityInformation,
-                            M_Min(16, scsiIoCtx->dataLength));
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, ataSecurityInformation,
+                                     M_Min(16, scsiIoCtx->dataLength)))
+                {
+                    perror("SATL Error copying ATA security information to SCSI IO context");
+                }
             }
         }
     }
@@ -6724,7 +6908,11 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(const tDevice* 
                     }
                     if (scsiIoCtx->pdata)
                     {
-                        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, tempSecurityMemory, allocationLength);
+                        if (0 !=
+                            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, tempSecurityMemory, allocationLength))
+                        {
+                            perror("SATL Error copying security data to SCSI IO context");
+                        }
                     }
                 }
                 safe_free_aligned(&tempSecurityMemory);
@@ -7022,7 +7210,10 @@ static eReturnValues translate_SCSI_Security_Protocol_Out_Command(const tDevice*
                 {
                     return MEMORY_FAILURE;
                 }
-                safe_memcpy(tempSecurityMemory, paddedLength, scsiIoCtx->pdata, transferLength);
+                if (0 != safe_memcpy(tempSecurityMemory, paddedLength, scsiIoCtx->pdata, transferLength))
+                {
+                    perror("SATL Error copying data to temporary security memory");
+                }
                 if (SUCCESS != ata_Trusted_Send(device, device->drive_info.ata_Options.dmaSupported, securityProtocol,
                                                 securityProtocolSpecific, tempSecurityMemory, paddedLength))
                 {
@@ -7625,15 +7816,22 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, S
                     {
                         if (scsiIoCtx->pdata && scsiIoCtx->dataLength == LEGACY_DRIVE_SEC_SIZE)
                         {
-                            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readBufferData, LEGACY_DRIVE_SEC_SIZE);
+                            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readBufferData,
+                                                 LEGACY_DRIVE_SEC_SIZE))
+                            {
+                                perror("SATL Error copying read buffer data to SCSI IO context");
+                            }
                         }
                     }
                     else
                     {
                         if (scsiIoCtx->pdata)
                         {
-                            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readBufferData,
-                                        M_Min(allocationLength, LEGACY_DRIVE_SEC_SIZE));
+                            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readBufferData,
+                                                 M_Min(allocationLength, LEGACY_DRIVE_SEC_SIZE)))
+                            {
+                                perror("SATL Error copying read buffer data to SCSI IO context");
+                            }
                         }
                     }
                 }
@@ -7685,8 +7883,11 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, S
                 readBufferDescriptor[3] = M_Byte2(LEGACY_DRIVE_SEC_SIZE);
                 if (scsiIoCtx->pdata)
                 {
-                    safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readBufferDescriptor,
-                                M_Min(4, allocationLength));
+                    if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readBufferDescriptor,
+                                         M_Min(4, allocationLength)))
+                    {
+                        perror("Error copying read buffer descriptor to SCSI IO context");
+                    }
                 }
             }
             else
@@ -7724,7 +7925,10 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, S
                             device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
                         break;
                     }
-                    safe_memset(gplDirectory, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                    if (0 != safe_memset(gplDirectory, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES))
+                    {
+                        perror("Error initializing gplDirectory to zero before reading more data");
+                    }
                 }
                 // error history directory
                 if (SUCCESS == ata_Read_Log_Ext(device, ATA_LOG_DIRECTORY, 0, gplDirectory, ATA_LOG_PAGE_LEN_BYTES,
@@ -7846,8 +8050,11 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, S
                         }
                         if (scsiIoCtx->pdata)
                         {
-                            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, errorHistoryData,
-                                        M_Min(offset, allocationLength));
+                            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, errorHistoryData,
+                                                 M_Min(offset, allocationLength)))
+                            {
+                                perror("Error copying error history data to SCSI IO context");
+                            }
                         }
                     }
                 }
@@ -7893,7 +8100,10 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, S
                             uint16_t dataArea3    = UINT16_C(0);
                             // We need to byte swap a few fields in the very first data sector because of ATA vs SCSI
                             // endianness. Bytes 0 - 3 are reserved on SCSI, so memset them to zero
-                            safe_memset(&scsiIoCtx->pdata[0], scsiIoCtx->dataLength, 0, 4);
+                            if (0 != safe_memset(&scsiIoCtx->pdata[0], scsiIoCtx->dataLength, 0, 4))
+                            {
+                                perror("Error initializing reserved fields in read buffer ISL translation");
+                            }
                             // Bytes 4 - 7 are the IEEE OUI, but this shows as a DWORD in ACS, so it needs swapping to
                             // SCSI endianness.
                             IEEEOUIField        = M_BytesTo4ByteValue(scsiIoCtx->pdata[7], scsiIoCtx->pdata[6],
@@ -7916,10 +8126,14 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, S
                             scsiIoCtx->pdata[13] = M_Byte0(dataArea3);
                             // Bytes 14 - 17 are mentioned only in SPC5, so we will memset them to zero to prevent
                             // issues with future devices.
-                            safe_memset(&scsiIoCtx->pdata[14], scsiIoCtx->dataLength - 14, 0,
-                                        369 /*this covers bytes 14 through 382*/); // memsetting all reserved fields to
-                                                                                   // make sure this doesn't cause
-                                                                                   // problems later. - TJE
+                            if (0 !=
+                                safe_memset(&scsiIoCtx->pdata[14], scsiIoCtx->dataLength - 14, 0,
+                                            369 /*this covers bytes 14 through 382*/)) // memsetting all reserved fields
+                                                                                       // to make sure this doesn't
+                                                                                       // cause problems later. - TJE
+                            {
+                                perror("Error initializing reserved fields in read buffer ISL translation");
+                            }
                         }
                     }
                     else if (bufferID == 0x11) // saved
@@ -7942,7 +8156,10 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, S
                             uint16_t dataArea3    = UINT16_C(0);
                             // We need to byte swap a few fields in the very first data sector because of ATA vs SCSI
                             // endianness. Bytes 0 - 3 are reserved on SCSI, so memset them to zero
-                            safe_memset(&scsiIoCtx->pdata[0], scsiIoCtx->dataLength, 0, 4);
+                            if (0 != safe_memset(&scsiIoCtx->pdata[0], scsiIoCtx->dataLength, 0, 4))
+                            {
+                                perror("Error initializing reserved fields in log page 0x0F");
+                            }
                             // Bytes 4 - 7 are the IEEE OUI, but this shows as a DWORD in ACS, so it needs swapping to
                             // SCSI endianness.
                             IEEEOUIField        = M_BytesTo4ByteValue(scsiIoCtx->pdata[7], scsiIoCtx->pdata[6],
@@ -7965,10 +8182,14 @@ static eReturnValues translate_SCSI_Read_Buffer_Command(const tDevice* device, S
                             scsiIoCtx->pdata[13] = M_Byte0(dataArea3);
                             // Bytes 14 - 17 are mentioned only in SPC5, so we will memset them to zero to prevent
                             // issues with future devices.
-                            safe_memset(&scsiIoCtx->pdata[14], scsiIoCtx->dataLength, 0,
-                                        369 /*this covers bytes 14 through 382*/); // memsetting all reserved fields to
-                                                                                   // make sure this doesn't cause
-                                                                                   // problems later. - TJE
+                            if (0 !=
+                                safe_memset(&scsiIoCtx->pdata[14], scsiIoCtx->dataLength, 0,
+                                            369 /*this covers bytes 14 through 382*/)) // memsetting all reserved fields
+                                                                                       // to make sure this doesn't
+                                                                                       // cause problems later. - TJE
+                            {
+                                perror("Error initializing reserved fields in log page 0x0F");
+                            }
                         }
                     }
                     else
@@ -8300,7 +8521,10 @@ static eReturnValues translate_SCSI_Report_Luns_Command(const tDevice* device, S
         reportLunsData[15] = 0;
         if (scsiIoCtx->pdata)
         {
-            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, reportLunsData, M_Min(16, allocationLength));
+            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, reportLunsData, M_Min(16, allocationLength)))
+            {
+                perror("SATL Error copying out report luns data");
+            }
         }
         break;
     case 0x01:
@@ -8311,7 +8535,10 @@ static eReturnValues translate_SCSI_Report_Luns_Command(const tDevice* device, S
         // nothing to report, so just copy back the data buffer as it is
         if (scsiIoCtx->pdata)
         {
-            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, reportLunsData, M_Min(16, allocationLength));
+            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, reportLunsData, M_Min(16, allocationLength)))
+            {
+                perror("SATL Error copying out report luns data");
+            }
         }
         break;
     default:
@@ -8508,7 +8735,11 @@ static eReturnValues translate_SCSI_Request_Sense_Command(const tDevice* device,
     // copy back whatever data we set
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData, M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, senseData,
+                             M_Min(scsiIoCtx->cdb[CDB_4], SPC3_SENSE_LEN)))
+        {
+            perror("SATL Error copying out request sense data");
+        }
     }
     return ret;
 }
@@ -9698,9 +9929,13 @@ static eReturnValues translate_Supported_Log_Pages(const tDevice* device, ScsiIo
     supportedPages[3] = M_Byte0(offset - 4);
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(
-            scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedPages,
-            M_Min(scsiIoCtx->dataLength, C_CAST(uint16_t, M_Min(C_CAST(uint16_t, offset), LEGACY_DRIVE_SEC_SIZE))));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedPages,
+                             M_Min(scsiIoCtx->dataLength,
+                                   C_CAST(uint16_t, M_Min(C_CAST(uint16_t, offset), LEGACY_DRIVE_SEC_SIZE)))))
+        {
+            perror("SATL Error copying Supported Pages to return buffer");
+            ret = MEMORY_FAILURE;
+        }
     }
     return ret;
 }
@@ -9769,8 +10004,12 @@ static eReturnValues translate_Informational_Exceptions_Log_Page_2F(const tDevic
         }
         if (scsiIoCtx->pdata)
         {
-            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, informationalExceptions,
-                        M_Min(11U, scsiIoCtx->dataLength));
+            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, informationalExceptions,
+                                 M_Min(11U, scsiIoCtx->dataLength)))
+            {
+                perror("SATL Error copying Informational Exceptions page to return buffer");
+                ret = MEMORY_FAILURE;
+            }
         }
     }
     else // hopefully this doesn't happen...
@@ -10035,8 +10274,12 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(const tDevice* device,
             }
             if (scsiIoCtx->pdata)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, selfTestResults,
-                            M_Min(scsiIoCtx->dataLength, 404U));
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, selfTestResults,
+                                     M_Min(scsiIoCtx->dataLength, 404U)))
+                {
+                    perror("SATL Error copying Self Test Results page to return buffer");
+                    ret = MEMORY_FAILURE;
+                }
             }
         }
     }
@@ -10217,8 +10460,12 @@ static eReturnValues translate_Self_Test_Results_Log_0x10(const tDevice* device,
             }
             if (scsiIoCtx->pdata)
             {
-                safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, selfTestResults,
-                            M_Min(404U, scsiIoCtx->dataLength));
+                if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, selfTestResults,
+                                     M_Min(404U, scsiIoCtx->dataLength)))
+                {
+                    perror("SATL Error copying Self Test Results page to return buffer");
+                    ret = MEMORY_FAILURE;
+                }
             }
         }
         else
@@ -10319,8 +10566,12 @@ static eReturnValues translate_Read_Error_Counters_Log_0x03(const tDevice* devic
         readErrorCountersLog[3] = M_Byte0(offset - 4);
         if (scsiIoCtx->pdata)
         {
-            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readErrorCountersLog,
-                        M_Min(M_Min(20U, offset), scsiIoCtx->dataLength));
+            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readErrorCountersLog,
+                                 M_Min(M_Min(20U, offset), scsiIoCtx->dataLength)))
+            {
+                perror("SATL Error copying Read Error Counters page to return buffer");
+                ret = MEMORY_FAILURE;
+            }
         }
     }
     else // translatable fields aren't valid...
@@ -10423,8 +10674,12 @@ static eReturnValues translate_Temperature_Log_0x0D(const tDevice* device, ScsiI
         temperatureLog[3] = M_Byte0(offset - 4);
         if (scsiIoCtx->pdata)
         {
-            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, temperatureLog,
-                        M_Min(M_Min(14U, offset), scsiIoCtx->dataLength));
+            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, temperatureLog,
+                                 M_Min(M_Min(14U, offset), scsiIoCtx->dataLength)))
+            {
+                perror("SATL Error copying Temperature page to return buffer");
+                ret = MEMORY_FAILURE;
+            }
         }
     }
     else // translatable fields aren't valid...so we need to set bad page code
@@ -10499,8 +10754,12 @@ static eReturnValues translate_Solid_State_Media_Log_0x11(const tDevice* device,
         solidStateMediaLog[3] = M_Byte0(offset - 4);
         if (scsiIoCtx->pdata)
         {
-            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, solidStateMediaLog,
-                        M_Min(M_Min(12U, offset), scsiIoCtx->dataLength));
+            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, solidStateMediaLog,
+                                 M_Min(M_Min(12U, offset), scsiIoCtx->dataLength)))
+            {
+                perror("SATL Error copying Solid State Media page to return buffer");
+                ret = MEMORY_FAILURE;
+            }
         }
     }
     else // the translatable field is not valid, so return unsupported page code
@@ -10584,8 +10843,11 @@ static eReturnValues translate_Background_Scan_Results_Log_0x15(const tDevice* d
         backgroundResults[3] = M_Byte0(offset - 4);
         if (scsiIoCtx->pdata)
         {
-            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, backgroundResults,
-                        M_Min(M_Min(20U, offset), scsiIoCtx->dataLength));
+            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, backgroundResults,
+                                 M_Min(M_Min(20U, offset), scsiIoCtx->dataLength)))
+            {
+                perror("SATL Error copying Background scan results to return buffer");
+            }
         }
     }
     else // cannot translate the one translatable field, so set invalid page code
@@ -10712,8 +10974,15 @@ static eReturnValues translate_General_Statistics_And_Performance_Log_0x19(const
         generalStatisticsAndPerformance[3] = M_Byte0(offset - 4);
         if (scsiIoCtx->pdata)
         {
-            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, generalStatisticsAndPerformance,
-                        M_Min(M_Min(UINT32_C(72), offset), scsiIoCtx->dataLength));
+            if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, generalStatisticsAndPerformance,
+                                 M_Min(M_Min(UINT32_C(72), offset), scsiIoCtx->dataLength)))
+            {
+                set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC,
+                                               0x44, 0, device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                               M_NULLPTR, 0);
+                ret = MEMORY_FAILURE;
+                perror("SATL Error copying General statistics and performance page to return buffer");
+            }
         }
     }
     else // none of the translatable fields are valid, so say this page is not supported
@@ -10791,8 +11060,14 @@ static eReturnValues translate_ATA_Passthrough_Results_Log_Page_16(const tDevice
     ataPassthroughResults[3] = M_Byte0(offset - 4);
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, ataPassthroughResults,
-                    M_Min(M_Min(274U, offset), scsiIoCtx->dataLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, ataPassthroughResults,
+                             M_Min(M_Min(274U, offset), scsiIoCtx->dataLength)))
+        {
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+            ret = MEMORY_FAILURE;
+            perror("SATL Error copying ATA passthrough results log to return buffer");
+        }
     }
     return ret;
 }
@@ -10983,14 +11258,28 @@ static eReturnValues translate_Application_Client_Log_Sense_0x0F(const tDevice* 
                 // set up parameter control byte
                 scsiIoCtx->pdata[offset + 2] = 0x83;
                 scsiIoCtx->pdata[offset + 3] = 0xFC;
-                safe_memcpy(&scsiIoCtx->pdata[offset + 4], scsiIoCtx->dataLength - (offset + 4),
-                            &hostLogData[offsetOnATAPage + 4], 0xFC);
+                if (0 != safe_memcpy(&scsiIoCtx->pdata[offset + 4], scsiIoCtx->dataLength - (offset + 4),
+                                     &hostLogData[offsetOnATAPage + 4], 0xFC))
+                {
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    perror("SATL Error copying ATA log data to SCSI buffer for application client translation.");
+                    return MEMORY_FAILURE;
+                }
             }
             else
             {
                 // simple memcpy is all that's necessary
-                safe_memcpy(&scsiIoCtx->pdata[offset], scsiIoCtx->dataLength - offset, &hostLogData[offsetOnATAPage],
-                            256);
+                if (0 != safe_memcpy(&scsiIoCtx->pdata[offset], scsiIoCtx->dataLength - offset,
+                                     &hostLogData[offsetOnATAPage], 256))
+                {
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    perror("SATL Error copying ATA log data to SCSI buffer for application client translation.");
+                    return MEMORY_FAILURE;
+                }
             }
         }
     }
@@ -11430,7 +11719,17 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(const tDevice*
                 uint8_t, hostLogData,
                 SIZE_T_C(16) *
                     LEGACY_DRIVE_SEC_SIZE); // this memory should be all zeros, but doing a memset to be certain
-            safe_memset(hostLogData, SIZE_T_C(16) * LEGACY_DRIVE_SEC_SIZE, 0, SIZE_T_C(16) * LEGACY_DRIVE_SEC_SIZE);
+            if (0 !=
+                safe_memset(hostLogData, SIZE_T_C(16) * LEGACY_DRIVE_SEC_SIZE, 0, SIZE_T_C(16) * LEGACY_DRIVE_SEC_SIZE))
+                M_UNLIKELY
+                {
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    perror("SATL Error clearing ATA buffer buffer before reusing for next command in application "
+                           "client log.");
+                    return MEMORY_FAILURE;
+                }
             // loop through and set the parameter bytes up correctly.
             for (uint16_t perATAPageCounter = UINT16_C(0), offset = UINT16_C(0); perATAPageCounter < UINT16_C(32);
                  ++perATAPageCounter, offset += UINT16_C(256))
@@ -11715,8 +12014,17 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(const tDevice*
                     }
                     // simple memcpy is all that's necessary. We're copying all of the parameter data (number, control,
                     // length, etc) into the ATA log buffer before we write
-                    safe_memcpy(&hostLogData[offsetOnATAPage], (16 * LEGACY_DRIVE_SEC_SIZE) - offsetOnATAPage,
-                                &scsiIoCtx->pdata[parameterDataOffset], 256);
+                    if (0 != safe_memcpy(&hostLogData[offsetOnATAPage], (16 * LEGACY_DRIVE_SEC_SIZE) - offsetOnATAPage,
+                                         &scsiIoCtx->pdata[parameterDataOffset], 256))
+                    {
+                        set_Sense_Data_For_Translation(
+                            scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                            scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                        safe_free_aligned(&hostLogData);
+                        perror(
+                            "SATL Error copying parameter data to ATA log buffer for application client translation.");
+                        return MEMORY_FAILURE;
+                    }
                 }
                 if (device->drive_info.ata_Options.generalPurposeLoggingSupported) // GPL
                 {
@@ -12120,8 +12428,18 @@ static eReturnValues translate_SCSI_Unmap_Command(const tDevice* device, ScsiIoC
                                                                trimBufferSize * LEGACY_DRIVE_SEC_SIZE, useXL))
                         {
                             // clear the buffer for reuse
-                            safe_memset(trimBuffer, uint16_to_sizet(trimBufferSize) * LEGACY_DRIVE_SEC_SIZE, 0,
-                                        uint16_to_sizet(trimBufferSize) * LEGACY_DRIVE_SEC_SIZE);
+                            if (0 != safe_memset(trimBuffer, uint16_to_sizet(trimBufferSize) * LEGACY_DRIVE_SEC_SIZE, 0,
+                                                 uint16_to_sizet(trimBufferSize) * LEGACY_DRIVE_SEC_SIZE))
+                                M_UNLIKELY
+                                {
+                                    set_Sense_Data_For_Translation(
+                                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR,
+                                        0);
+                                    safe_free_aligned(&trimBuffer);
+                                    perror("SATL Error clearing trim buffer before reusing for next command.");
+                                    return MEMORY_FAILURE;
+                                }
                             // reset the ataTrimOffset
                             ataTrimOffset = 0;
                         }
@@ -12214,11 +12532,30 @@ static eReturnValues translate_Mode_Sense_Control_0Ah(const tDevice* device,
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&controlPage[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&controlPage[0], pageLength, modeParameterHeader, headerLength))
+        M_UNLIKELY
+        {
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            safe_free(&controlPage);
+            perror("SATL Error copying control page to buffer.");
+            return MEMORY_FAILURE;
+        }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&controlPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength);
+        if (0 !=
+            safe_memcpy(&controlPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength))
+            M_UNLIKELY
+            {
+                set_Sense_Data_For_Translation(
+                    scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                    scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                safe_free(&controlPage);
+                perror("SATL Error copying block descriptor to buffer.");
+                return MEMORY_FAILURE;
+            }
     }
     // set the remaining part of the page up
     controlPage[offset + 0] = 0x0A;
@@ -12296,7 +12633,16 @@ static eReturnValues translate_Mode_Sense_Control_0Ah(const tDevice* device,
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, controlPage, M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, controlPage, M_Min(pageLength, allocationLength)))
+        {
+            ret = MEMORY_FAILURE;
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            safe_free(&controlPage);
+            perror("SATL Error copying Control page to return buffer.");
+            return ret;
+        }
     }
     safe_free(&controlPage);
     return ret;
@@ -12355,11 +12701,31 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx* scsiIo
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&pataControlPage[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&pataControlPage[0], pageLength, modeParameterHeader, headerLength))
+    {
+        ret = MEMORY_FAILURE;
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                                       scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR,
+                                       0);
+        safe_free(&pataControlPage);
+        perror("SATL Error copying PATA Control page header to buffer.");
+        return ret;
+    }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&pataControlPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength);
+        if (0 != safe_memcpy(&pataControlPage[headerLength], pageLength - headerLength, dataBlockDescriptor,
+                             blockDescLength))
+            M_UNLIKELY
+            {
+                ret = MEMORY_FAILURE;
+                set_Sense_Data_For_Translation(
+                    scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                    scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                safe_free(&pataControlPage);
+                perror("SATL Error copying block descriptor to PATA Control page.");
+                return ret;
+            }
     }
     // set the remaining part of the page up
     pataControlPage[offset + 0] = 0x0A;
@@ -12477,7 +12843,15 @@ static eReturnValues translate_Mode_Sense_PATA_Control_0Ah_F1h(ScsiIoCtx* scsiIo
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, pataControlPage, M_Min(pageLength, allocationLength));
+        if (0 !=
+            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, pataControlPage, M_Min(pageLength, allocationLength)))
+        {
+            ret = MEMORY_FAILURE;
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            perror("SATL Error copying PATA Control page to return buffer.");
+        }
     }
     safe_free(&pataControlPage);
     return ret;
@@ -12536,11 +12910,31 @@ static eReturnValues translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoCtx* s
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&controlExtPage[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&controlExtPage[0], pageLength, modeParameterHeader, headerLength))
+    {
+        ret = MEMORY_FAILURE;
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                                       scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR,
+                                       0);
+        safe_free(&controlExtPage);
+        perror("SATL Error copying mode parameter header.");
+        return ret;
+    }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&controlExtPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength);
+        if (0 !=
+            safe_memcpy(&controlExtPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength))
+            M_UNLIKELY
+            {
+                ret = MEMORY_FAILURE;
+                set_Sense_Data_For_Translation(
+                    scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                    scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                safe_free(&controlExtPage);
+                perror("SATL Error copying block descriptor.");
+                return ret;
+            }
     }
     // set the remaining part of the page up
     controlExtPage[offset + 0] = 0x0A;
@@ -12592,7 +12986,17 @@ static eReturnValues translate_Mode_Sense_Control_Extension_0Ah_01h(ScsiIoCtx* s
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, controlExtPage, M_Min(pageLength, allocationLength));
+        if (0 !=
+            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, controlExtPage, M_Min(pageLength, allocationLength)))
+        {
+            ret = MEMORY_FAILURE;
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            safe_free(&controlExtPage);
+            perror("SATL Error copying control extension page.");
+            return ret;
+        }
     }
     safe_free(&controlExtPage);
     return ret;
@@ -12654,11 +13058,31 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&powerConditionPage[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&powerConditionPage[0], pageLength, modeParameterHeader, headerLength))
+    {
+        ret = MEMORY_FAILURE;
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                                       scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR,
+                                       0);
+        safe_free(&powerConditionPage);
+        perror("SATL Error copying mode parameter header.");
+        return ret;
+    }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&powerConditionPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength);
+        if (0 != safe_memcpy(&powerConditionPage[headerLength], pageLength - headerLength, dataBlockDescriptor,
+                             blockDescLength))
+            M_UNLIKELY
+            {
+                ret = MEMORY_FAILURE;
+                set_Sense_Data_For_Translation(
+                    scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                    scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                safe_free(&powerConditionPage);
+                perror("SATL Error copying block descriptor.");
+                return ret;
+            }
     }
     // set the remaining part of the page up
     powerConditionPage[offset + 0] = 0x1A;
@@ -12686,8 +13110,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT1;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 4], pageLength - (offset + UINT32_C(4)),
-                        &ataPowerConditionsLog[0 + 12], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 4], pageLength - (offset + UINT32_C(4)),
+                                 &ataPowerConditionsLog[0 + 12], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 4]));
             // idle_b is bytes 64-127
@@ -12696,8 +13130,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT2;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 12], pageLength - (offset + UINT32_C(12)),
-                        &ataPowerConditionsLog[64 + 12], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 12], pageLength - (offset + UINT32_C(12)),
+                                 &ataPowerConditionsLog[64 + 12], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 12]));
             // idle_c is bytes 128-191
@@ -12706,8 +13150,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT3;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 16], pageLength - (offset + UINT32_C(16)),
-                        &ataPowerConditionsLog[128 + 12], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 16], pageLength - (offset + UINT32_C(16)),
+                                 &ataPowerConditionsLog[128 + 12], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 16]));
             // ata page 1
@@ -12717,8 +13171,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 2] |= BIT0;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 20], pageLength - (offset + UINT32_C(20)),
-                        &ataPowerConditionsLog[512 + 384 + 12], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 20], pageLength - (offset + UINT32_C(20)),
+                                 &ataPowerConditionsLog[512 + 384 + 12], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 20]));
             // standby_z is  bytes 448-511
@@ -12727,8 +13191,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT0;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 8], pageLength - (offset + UINT32_C(8)),
-                        &ataPowerConditionsLog[512 + 448 + 12], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 8], pageLength - (offset + UINT32_C(8)),
+                                 &ataPowerConditionsLog[512 + 448 + 12], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 8]));
             break;
@@ -12789,8 +13263,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT1;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 4], pageLength - (offset + UINT32_C(4)),
-                        &ataPowerConditionsLog[0 + 4], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 4], pageLength - (offset + UINT32_C(4)),
+                                 &ataPowerConditionsLog[0 + 4], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 4]));
             // idle_b is bytes 64-127
@@ -12799,8 +13283,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT2;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 12], pageLength - (offset + UINT32_C(12)),
-                        &ataPowerConditionsLog[64 + 4], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 12], pageLength - (offset + UINT32_C(12)),
+                                 &ataPowerConditionsLog[64 + 4], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 12]));
             // idle_c is bytes 128-191
@@ -12809,8 +13303,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT3;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 16], pageLength - (offset + UINT32_C(16)),
-                        &ataPowerConditionsLog[128 + 4], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 16], pageLength - (offset + UINT32_C(16)),
+                                 &ataPowerConditionsLog[128 + 4], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 16]));
             // ata page 1
@@ -12820,8 +13324,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 2] |= BIT0;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 20], pageLength - (offset + UINT32_C(20)),
-                        &ataPowerConditionsLog[512 + 384 + 4], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 20], pageLength - (offset + UINT32_C(20)),
+                                 &ataPowerConditionsLog[512 + 384 + 4], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 20]));
             // standby_z is  bytes 448-511
@@ -12830,8 +13344,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT0;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 8], pageLength - (offset + UINT32_C(8)),
-                        &ataPowerConditionsLog[512 + 448 + 4], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 8], pageLength - (offset + UINT32_C(8)),
+                                 &ataPowerConditionsLog[512 + 448 + 4], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 8]));
             break;
@@ -12843,8 +13367,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT1;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 4], pageLength - (offset + UINT32_C(4)),
-                        &ataPowerConditionsLog[0 + 8], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 4], pageLength - (offset + UINT32_C(4)),
+                                 &ataPowerConditionsLog[0 + 8], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 4]));
             // idle_b is bytes 64-127
@@ -12853,8 +13387,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT2;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 12], pageLength - (offset + UINT32_C(12)),
-                        &ataPowerConditionsLog[64 + 8], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 12], pageLength - (offset + UINT32_C(12)),
+                                 &ataPowerConditionsLog[64 + 8], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 12]));
             // idle_c is bytes 128-191
@@ -12863,8 +13407,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT3;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 16], pageLength - (offset + UINT32_C(16)),
-                        &ataPowerConditionsLog[128 + 8], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 16], pageLength - (offset + UINT32_C(16)),
+                                 &ataPowerConditionsLog[128 + 8], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 16]));
             // ata page 1
@@ -12874,8 +13428,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 2] |= BIT0;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 20], pageLength - (offset + UINT32_C(20)),
-                        &ataPowerConditionsLog[512 + 384 + 8], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 20], pageLength - (offset + UINT32_C(20)),
+                                 &ataPowerConditionsLog[512 + 384 + 8], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 20]));
             // standby_z is  bytes 448-511
@@ -12884,8 +13448,18 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
                 powerConditionPage[offset + 3] |= BIT0;
             }
             // copy the timer value
-            safe_memcpy(&powerConditionPage[offset + 8], pageLength - (offset + UINT32_C(8)),
-                        &ataPowerConditionsLog[512 + 448 + 8], 4);
+            if (0 != safe_memcpy(&powerConditionPage[offset + 8], pageLength - (offset + UINT32_C(8)),
+                                 &ataPowerConditionsLog[512 + 448 + 8], 4))
+                M_UNLIKELY
+                {
+                    perror("SATL Error copying EPC timer before endianness swap.");
+                    set_Sense_Data_For_Translation(
+                        scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                        scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                    ret = MEMORY_FAILURE;
+                    safe_free(&powerConditionPage);
+                    return ret;
+                }
             // byte swap the value
             byte_Swap_32(C_CAST(uint32_t*, &powerConditionPage[offset + 8]));
             break;
@@ -12929,7 +13503,15 @@ static eReturnValues translate_Mode_Sense_Power_Condition_1A(const tDevice* devi
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, powerConditionPage, M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, powerConditionPage,
+                             M_Min(pageLength, allocationLength)))
+        {
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            ret = MEMORY_FAILURE;
+            perror("SATL Error copying power condition page to output buffer");
+        }
     }
     safe_free(&powerConditionPage);
     return ret;
@@ -12992,11 +13574,32 @@ static eReturnValues translate_Mode_Sense_ATA_Power_Condition_1A_F1(const tDevic
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&powerConditionPage[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&powerConditionPage[0], pageLength, modeParameterHeader, headerLength))
+        M_UNLIKELY
+        {
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            ret = MEMORY_FAILURE;
+            perror("SATL Error copying mode parameter header to output buffer");
+            safe_free(&powerConditionPage);
+            return ret;
+        }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&powerConditionPage[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength);
+        if (0 != safe_memcpy(&powerConditionPage[headerLength], pageLength - headerLength, dataBlockDescriptor,
+                             blockDescLength))
+            M_UNLIKELY
+            {
+                set_Sense_Data_For_Translation(
+                    scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                    scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                ret = MEMORY_FAILURE;
+                perror("SATL Error copying block descriptor to output buffer");
+                safe_free(&powerConditionPage);
+                return ret;
+            }
     }
     // set the remaining part of the page up
     powerConditionPage[offset + 0] = 0x1A;
@@ -13061,7 +13664,15 @@ static eReturnValues translate_Mode_Sense_ATA_Power_Condition_1A_F1(const tDevic
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, powerConditionPage, M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, powerConditionPage,
+                             M_Min(pageLength, allocationLength)))
+        {
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            ret = MEMORY_FAILURE;
+            perror("SATL Error copying ATA power condition page to output buffer");
+        }
     }
     safe_free(&powerConditionPage);
     return ret;
@@ -13120,16 +13731,35 @@ static eReturnValues translate_Mode_Sense_Read_Write_Error_Recovery_01h(ScsiIoCt
     readWriteErrorRecovery = M_REINTERPRET_CAST(uint8_t*, safe_calloc(pageLength, sizeof(uint8_t)));
     if (!readWriteErrorRecovery)
     {
-
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&readWriteErrorRecovery[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&readWriteErrorRecovery[0], pageLength, modeParameterHeader, headerLength))
+        M_UNLIKELY
+        {
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            ret = MEMORY_FAILURE;
+            perror("SATL Error copying mode parameter header to output buffer");
+            safe_free(&readWriteErrorRecovery);
+            return ret;
+        }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&readWriteErrorRecovery[headerLength], pageLength - headerLength, dataBlockDescriptor,
-                    blockDescLength);
+        if (0 != safe_memcpy(&readWriteErrorRecovery[headerLength], pageLength - headerLength, dataBlockDescriptor,
+                             blockDescLength))
+            M_UNLIKELY
+            {
+                set_Sense_Data_For_Translation(
+                    scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                    scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                ret = MEMORY_FAILURE;
+                perror("SATL Error copying read/write error recovery page to output buffer");
+                safe_free(&readWriteErrorRecovery);
+                return ret;
+            }
     }
     // set the remaining part of the page up
     readWriteErrorRecovery[offset + 0] = 0x01; // page number
@@ -13160,8 +13790,15 @@ static eReturnValues translate_Mode_Sense_Read_Write_Error_Recovery_01h(ScsiIoCt
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readWriteErrorRecovery,
-                    M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, readWriteErrorRecovery,
+                             M_Min(pageLength, allocationLength)))
+        {
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            ret = MEMORY_FAILURE;
+            perror("SATL Error copying read/write error recovery page to output buffer");
+        }
     }
     safe_free(&readWriteErrorRecovery);
     return ret;
@@ -13225,11 +13862,30 @@ static eReturnValues translate_Mode_Sense_Caching_08h(const tDevice* device,
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&caching[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&caching[0], pageLength, modeParameterHeader, headerLength))
+    {
+        set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                                       scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR,
+                                       0);
+        ret = MEMORY_FAILURE;
+        perror("SATL Error copying caching mode page to output buffer");
+        safe_free(&caching);
+        return ret;
+    }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&caching[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength);
+        if (0 != safe_memcpy(&caching[headerLength], pageLength - headerLength, dataBlockDescriptor, blockDescLength))
+            M_UNLIKELY
+            {
+                set_Sense_Data_For_Translation(
+                    scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44, 0,
+                    scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
+                ret = MEMORY_FAILURE;
+                perror("SATL Error copying caching mode page to output buffer");
+                safe_free(&caching);
+                return ret;
+            }
     }
     // set the remaining part of the page up
     // send an identify command to get up to date read/write cache info
@@ -13307,7 +13963,17 @@ static eReturnValues translate_Mode_Sense_Caching_08h(const tDevice* device,
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, caching, M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, caching, M_Min(pageLength, allocationLength)))
+        {
+            // vendor specific - internal target failure to differentiate from a device fault translation.
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            ret = MEMORY_FAILURE;
+            perror("SATL Error copying caching mode page to output buffer");
+            safe_free(&caching);
+            return ret;
+        }
     }
     safe_free(&caching);
     return ret;
@@ -13370,12 +14036,33 @@ static eReturnValues translate_Mode_Sense_Informational_Exceptions_Control_1Ch(S
         return MEMORY_FAILURE;
     }
     // copy header into place
-    safe_memcpy(&informationalExceptions[0], pageLength, modeParameterHeader, headerLength);
+    if (0 != safe_memcpy(&informationalExceptions[0], pageLength, modeParameterHeader, headerLength))
+        M_UNLIKELY
+        {
+            // vendor specific - internal target failure to differentiate from a device fault translation.
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            ret = MEMORY_FAILURE;
+            perror("SATL Error copying informational exceptions mode page to output buffer");
+            safe_free(&informationalExceptions);
+            return ret;
+        }
     // copy block descriptor if it is to be returned
     if (blockDescLength > 0)
     {
-        safe_memcpy(&informationalExceptions[headerLength], pageLength - headerLength, dataBlockDescriptor,
-                    blockDescLength);
+        if (0 != safe_memcpy(&informationalExceptions[headerLength], pageLength - headerLength, dataBlockDescriptor,
+                             blockDescLength))
+        {
+            // vendor specific - internal target failure to differentiate from a device fault translation.
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            ret = MEMORY_FAILURE;
+            perror("SATL Error copying Zone Management in return data");
+            safe_free(&informationalExceptions);
+            return ret;
+        }
     }
     // set the remaining part of the page up
     informationalExceptions[offset + 0] = 0x1C; // page number
@@ -13413,8 +14100,16 @@ static eReturnValues translate_Mode_Sense_Informational_Exceptions_Control_1Ch(S
     // now copy the data back and return from this function
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, informationalExceptions,
-                    M_Min(pageLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, informationalExceptions,
+                             M_Min(pageLength, allocationLength)))
+        {
+            // vendor specific - internal target failure to differentiate from a device fault translation.
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           M_NULLPTR, 0);
+            ret = MEMORY_FAILURE;
+            perror("SATL Error copying informational exceptions mode page to output buffer");
+        }
     }
     safe_free(&informationalExceptions);
     return ret;
@@ -15430,7 +16125,16 @@ static eReturnValues translate_SCSI_Zone_Management_In_Command(const tDevice* de
     if (localMemory && ret == SUCCESS && allocationLength > 0 && dataBuf)
     {
         // copy the data based on allocation length
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, dataBuf, M_Min(scsiIoCtx->dataLength, dataBufLength));
+        if (0 !=
+            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, dataBuf, M_Min(scsiIoCtx->dataLength, dataBufLength)))
+        {
+            ret = MEMORY_FAILURE;
+            // vendor specific - internal target failure to differentiate from a device fault translation.
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           senseKeySpecificDescriptor, 1);
+            perror("SATL Error copying Zone Management in return data");
+        }
     }
     safe_free_aligned(&dataBuf);
     return ret;
@@ -15598,7 +16302,15 @@ static eReturnValues translate_SCSI_Set_Timestamp_Command(const tDevice* device,
     {
         uint64_t timeStamp =
             M_BytesTo8ByteValue(0, 0, dataBuf[4], dataBuf[5], dataBuf[6], dataBuf[7], dataBuf[8], dataBuf[9]);
-        safe_memcpy(dataBuf, 12, scsiIoCtx->pdata, M_Min(12, parameterListLength));
+        if (0 != safe_memcpy(dataBuf, 12, scsiIoCtx->pdata, M_Min(12, parameterListLength)))
+        {
+            perror("SATL Error copying timestamp to buffer before sending set timestamp command");
+            // vendor specific - internal target failure to differentiate from a device fault translation.
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           senseKeySpecificDescriptor, 1);
+            return MEMORY_FAILURE;
+        }
 
         if (SUCCESS != ata_Set_Date_And_Time(device, timeStamp))
         {
@@ -15683,7 +16395,15 @@ static eReturnValues translate_SCSI_Report_Timestamp_Command(const tDevice* devi
     }
     if (allocationLength > 0 && scsiIoCtx->pdata && ret == SUCCESS)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, dataBuf, M_Min(12, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, dataBuf, M_Min(12, allocationLength)))
+        {
+            perror("SATL Error copying timestamp to return data buffer");
+            // vendor specific - internal target failure to differentiate from a device fault translation.
+            set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_VENDOR_SPECIFIC, 0x44,
+                                           0, device->drive_info.softSATFlags.senseDataDescriptorFormat,
+                                           senseKeySpecificDescriptor, 1);
+            ret = MEMORY_FAILURE;
+        }
     }
     return ret;
 }
@@ -15728,18 +16448,28 @@ static eReturnValues translate_SCSI_Read_Media_Serial_Number_Command(const tDevi
          le16_to_host(device->drive_info.IdentifyData.ata.Word087) & BIT2))
     {
         DECLARE_ZERO_INIT_ARRAY(char, ataMediaSN, 61);
-        safe_memcpy(ataMediaSN, 61, iddataPtr + 352, 60);
+        if (0 != safe_memcpy(ataMediaSN, 61, iddataPtr + 352, 60))
+        {
+            perror("SATL Error copying ATA media serial number to buffer");
+        }
         byte_Swap_String_Len(ataMediaSN, 60);
         mediaSerialNumberPage[0] = 0;
         mediaSerialNumberPage[1] = 0;
         mediaSerialNumberPage[2] = 0;
         mediaSerialNumberPage[3] = 15; // length
         // now set the media serial number
-        safe_memcpy(&mediaSerialNumberPage[4], 61, ataMediaSN, 60);
+        if (0 != safe_memcpy(&mediaSerialNumberPage[4], 61, ataMediaSN, 60))
+        {
+            perror("SATL Error copying ATA media serial number to buffer");
+        }
     }
     if (scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, mediaSerialNumberPage, M_Min(allocationLength, 64));
+        if (0 !=
+            safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, mediaSerialNumberPage, M_Min(allocationLength, 64)))
+        {
+            perror("SATL Error copying media serial number to return data buffer");
+        }
     }
     return ret;
 }
@@ -18495,8 +19225,11 @@ static eReturnValues translate_SCSI_Report_Supported_Operation_Codes_Command(con
     }
     if (supportedOpData && scsiIoCtx->pdata)
     {
-        safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedOpData,
-                    M_Min(supportedOpDataLength, allocationLength));
+        if (0 != safe_memcpy(scsiIoCtx->pdata, scsiIoCtx->dataLength, supportedOpData,
+                             M_Min(supportedOpDataLength, allocationLength)))
+        {
+            perror("SATL Error copying supported op codes to return data buffer");
+        }
     }
     safe_free(&supportedOpData);
     return ret;
@@ -18517,7 +19250,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
     if (!satConfigInitialized)
     {
     //TODO: initialize it with empty data
-    safe_memset(&satConfig, sizeof(satPassthroughConfiguration), 0, sizeof(satPassthroughConfiguration));
+    M_INITIALIZE_STRUCTURE(&satConfig, sizeof(satPassthroughConfiguration));
     satConfigInitialized = true;
     }
     */
@@ -18527,7 +19260,11 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
         scsiIoCtx->psense        = M_CONST_CAST(tDevice*, device)->drive_info.lastCommandSenseData;
         scsiIoCtx->senseDataSize = SPC3_SENSE_LEN;
     }
-    safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
+    if (0 != safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize))
+        M_UNLIKELY
+        {
+            perror("Error clearing sense data buffer before setting it");
+        }
     controlByteOffset = scsiIoCtx->cdbLength - 1;
     if (scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x7E || scsiIoCtx->cdb[CDB_OPERATION_CODE] == 0x7F)
     {

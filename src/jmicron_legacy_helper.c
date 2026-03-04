@@ -54,7 +54,7 @@ eReturnValues build_JMicron_Legacy_PT_CDB(uint8_t                          cdb[M
     {
         return OS_COMMAND_NOT_AVAILABLE;
     }
-    safe_memset(cdb, JM_PROLIFIC_CDB_LEN, 0, JM_PROLIFIC_CDB_LEN);
+    explicit_zeroes(cdb, JM_PROLIFIC_CDB_LEN);
     cdb[OPERATION_CODE] = JM_ATA_PT_OPCODE;
     switch (ataCommandOptions->commandDirection)
     {
@@ -296,13 +296,10 @@ eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* device, ata
                 ret = FAILURE;
             }
         }
-        // before we get rid of the sense data, copy it back to the last command sense data
-        safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
-                    SPC3_SENSE_LEN); // clear before copying over data
-        safe_memcpy(M_CONST_CAST(uint8_t*, &device->drive_info.lastCommandSenseData[0]), SPC3_SENSE_LEN,
-                    &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
-        safe_memcpy(M_CONST_CAST(ataReturnTFRs*, &device->drive_info.lastCommandRTFRs), sizeof(ataReturnTFRs),
-                    &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
+
+        copy_Last_Command_Sense_Data_To_tDevice(M_CONST_CAST(tDevice*, device), ataCommandOptions->ptrSenseData,
+                                                M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
+        copy_Last_Command_RTFRs_To_tDevice(M_CONST_CAST(tDevice*, device), &ataCommandOptions->rtfr);
     }
     safe_free_aligned(&senseData);
     if (localSenseData)
