@@ -1539,17 +1539,17 @@ eReturnValues get_Version_Block(versionBlock* ver)
 
 char* get_Opensea_Transport_Version_str(char* dest_Version_str, size_t dest_len)
 {
-	if (dest_Version_str == M_NULLPTR)
-	{
-		return M_NULLPTR;
-	}
-	safe_strcpy(dest_Version_str, dest_len, OPENSEA_TRANSPORT_VERSION);
-	return dest_Version_str;
+    if (dest_Version_str == M_NULLPTR)
+    {
+        return M_NULLPTR;
+    }
+    safe_strcpy(dest_Version_str, dest_len, OPENSEA_TRANSPORT_VERSION);
+    return dest_Version_str;
 }
 
 size_t get_Opensea_Transport_Version_str_len(void)
 {
-	return safe_strlen(OPENSEA_TRANSPORT_VERSION) + 1;
+    return safe_strlen(OPENSEA_TRANSPORT_VERSION) + 1;
 }
 
 static void set_IEEE_OUI(uint32_t* ieeeOUI, const tDevice* device, bool USBchildDrive)
@@ -6789,7 +6789,7 @@ bool setup_Passthrough_Hacks_By_ID(tDevice* device)
 // helper functions to make tDevice structure opaque
 size_t get_Device_Struct_size(void)
 {
-	return sizeof(tDevice);
+    return sizeof(tDevice);
 }
 
 uint32_t get_Device_Block_Version(void)
@@ -6803,7 +6803,7 @@ int32_t initialize_Device_struct(tDevice* device, uint32_t deviceSize, uint32_t 
     {
         return -1;
     }
-    device->sanity.size = deviceSize;
+    device->sanity.size    = deviceSize;
     device->sanity.version = blockVersion;
 
     return 0;
@@ -6811,17 +6811,17 @@ int32_t initialize_Device_struct(tDevice* device, uint32_t deviceSize, uint32_t 
 
 eDriveType get_Device_DriveType(const tDevice* device)
 {
-	return device->drive_info.drive_type;
+    return device->drive_info.drive_type;
 }
 
 uint32_t get_Device_BlockSize(const tDevice* device)
 {
-	return device->drive_info.deviceBlockSize;
+    return device->drive_info.deviceBlockSize;
 }
 
 uint32_t get_Device_PhyBlockSize(const tDevice* device)
 {
-	return device->drive_info.devicePhyBlockSize;
+    return device->drive_info.devicePhyBlockSize;
 }
 
 int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)
@@ -6831,107 +6831,127 @@ int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)
         return -1;
     }
     *maxLba = device->drive_info.deviceMaxLba;
-	return 0;
+    return 0;
 }
 
 uint32_t get_Device_LUN(const tDevice* device)
 {
-	return device->drive_info.lun;
+    return device->drive_info.lun;
 }
 
 // returns pointer to location of serialNumber in tDevice
 // lenght defined as [SERIAL_NUM_LEN + 1]
 int32_t get_Device_serialNumber(char* dest_serialNumber, size_t dest_len, const tDevice* device)
 {
-	if (dest_serialNumber == M_NULLPTR)
-	{
-		return 0;
-	}
-	safe_strncpy(dest_serialNumber, dest_len, device->drive_info.serialNumber, SERIAL_NUM_LEN + 1);
-	return SERIAL_NUM_LEN + 1;
+    if (dest_serialNumber == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (dest_serialNumber == device->drive_info.serialNumber)
+    {
+        return SERIAL_NUM_LEN + 1; // already pointing to the right place, so no need to copy
+    }
+    safe_strnmove(dest_serialNumber, dest_len, device->drive_info.serialNumber, SERIAL_NUM_LEN + 1);
+    return SERIAL_NUM_LEN + 1;
 }
 
 size_t get_Device_serialNumber_length(void)
 {
-	return SERIAL_NUM_LEN + 1;
+    return SERIAL_NUM_LEN + 1;
 }
 
 // returns pointer to location of vender_ident in tDevice
 // lenght defined as [T10_VENDOR_ID_LEN + 1]
 int32_t get_Device_T10_vendor_ident(char* dest_T10_vendor_ident, size_t dest_len, const tDevice* device)
 {
-	if (dest_T10_vendor_ident == M_NULLPTR)
-	{
-		return 0;
-	}
-	safe_strncpy(dest_T10_vendor_ident, dest_len, device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1);
-	return T10_VENDOR_ID_LEN + 1;
+    if (dest_T10_vendor_ident == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (dest_T10_vendor_ident == device->drive_info.T10_vendor_ident)
+    {
+        return T10_VENDOR_ID_LEN + 1; // already pointing to the right place, so no need to copy
+    }
+    safe_strnmove(dest_T10_vendor_ident, dest_len, device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1);
+    return T10_VENDOR_ID_LEN + 1;
 }
 
 size_t get_Device_T10_vendor_ident_length(void)
 {
-	return T10_VENDOR_ID_LEN + 1;
+    return T10_VENDOR_ID_LEN + 1;
 }
 
 // returns pointer to location of product_identification in tDevice
 // lenght defined as [MODEL_NUM_LEN + 1]
 int32_t get_Device_product_identification(char* dest_product_identification, size_t dest_len, const tDevice* device)
 {
-	if (dest_product_identification == M_NULLPTR)
-	{
-		return 0;
-	}
-	safe_strncpy(dest_product_identification, dest_len, device->drive_info.product_identification, MODEL_NUM_LEN + 1);
-	return MODEL_NUM_LEN + 1;
+    if (dest_product_identification == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (dest_product_identification == device->drive_info.product_identification)
+    {
+        return MODEL_NUM_LEN + 1; // already pointing to the right place, so no need to copy
+    }
+    safe_strnmove(dest_product_identification, dest_len, device->drive_info.product_identification, MODEL_NUM_LEN + 1);
+    return MODEL_NUM_LEN + 1;
 }
 
 size_t get_Device_product_identification_length(void)
 {
-	return MODEL_NUM_LEN + 1;
+    return MODEL_NUM_LEN + 1;
 }
 
 // returns pointer to location of product_revision in tDevice
 // lenght defined as [FW_REV_LEN + 1]
 int32_t get_Device_product_revision(char* dest_product_revision, size_t dest_len, const tDevice* device)
 {
-	if (dest_product_revision == M_NULLPTR)
-	{
-		return 0;
-	}
-	safe_strncpy(dest_product_revision, dest_len, device->drive_info.product_revision, FW_REV_LEN + 1);
-	return FW_REV_LEN + 1;
+    if (dest_product_revision == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (dest_product_revision == device->drive_info.product_revision)
+    {
+        return FW_REV_LEN + 1; // already pointing to the right place, so no need to copy
+    }
+    safe_strnmove(dest_product_revision, dest_len, device->drive_info.product_revision, FW_REV_LEN + 1);
+    return FW_REV_LEN + 1;
 }
 
 size_t get_Device_product_revision_length(void)
 {
-	return FW_REV_LEN + 1;
+    return FW_REV_LEN + 1;
 }
 
 int32_t get_Device_worldWideName(uint64_t* worldWideName, const tDevice* device)
 {
-    if(worldWideName == M_NULLPTR)
+    if (worldWideName == M_NULLPTR)
     {
         return -1;
     }
     *worldWideName = device->drive_info.worldWideName;
-	return 0;
+    return 0;
 }
 
 // returns pointer to location of product_revision in tDevice
 // lenght defined as [SPC3_SENSE_LEN]
 int32_t get_Device_lastCommandSenseData(uint8_t* dest_lastCommandSenseData, size_t dest_len, const tDevice* device)
 {
-	if (dest_lastCommandSenseData == M_NULLPTR)
-	{
-		return 0;
-	}
-	safe_memcpy(dest_lastCommandSenseData, dest_len, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN);
-	return SPC3_SENSE_LEN;
+    if (dest_lastCommandSenseData == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (dest_lastCommandSenseData == device->drive_info.lastCommandSenseData)
+    {
+        return SPC3_SENSE_LEN; // already pointing to the right place, so no need to copy
+    }
+    safe_memmove(dest_lastCommandSenseData, dest_len, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN);
+    return SPC3_SENSE_LEN;
 }
 
 size_t get_Device_lastCommandSenseData_length(void)
 {
-	return SPC3_SENSE_LEN;
+    return SPC3_SENSE_LEN;
 }
 
 uint32_t get_Device_OS_Info_Last_Error(const tDevice* device)
@@ -6941,7 +6961,7 @@ uint32_t get_Device_OS_Info_Last_Error(const tDevice* device)
 
 int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* device)
 {
-    if (verbosity < VERBOSITY_QUIET || verbosity > VERBOSITY_BUFFERS )
+    if (verbosity < VERBOSITY_QUIET || verbosity > VERBOSITY_BUFFERS)
     {
         return -1;
     }
@@ -6951,9 +6971,9 @@ int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* device)
 
 uint8_t get_Device_os_info_scsiAddress_host(const tDevice* device)
 {
-    #if defined (_WIN32)
-        return device->os_info.scsi_addr.PortNumber;
-    #elif defined (__linux__) && !defined (VMK_CROSS_COMP)
+#if defined(_WIN32)
+    return device->os_info.scsi_addr.PortNumber;
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
     if (device->os_info.scsiAddressValid)
     {
         return device->os_info.scsiAddress.host;
@@ -6962,17 +6982,17 @@ uint8_t get_Device_os_info_scsiAddress_host(const tDevice* device)
     {
         return 0;
     }
-    #else
-        M_USE_UNUSED(device);
-        return 0;
-    #endif
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
 }
 
 uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* device)
 {
-    #if defined (_WIN32)
-        return device->os_info.scsi_addr.PathId;
-    #elif defined (__linux__) && !defined (VMK_CROSS_COMP)
+#if defined(_WIN32)
+    return device->os_info.scsi_addr.PathId;
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
     if (device->os_info.scsiAddressValid)
     {
         return device->os_info.scsiAddress.channel;
@@ -6981,17 +7001,17 @@ uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* device)
     {
         return 0;
     }
-    #else
-        M_USE_UNUSED(device);
-        return 0;
-    #endif
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
 }
 
 uint8_t get_Device_os_info_scsiAddress_target(const tDevice* device)
 {
-    #if defined (_WIN32)
+#if defined(_WIN32)
     return device->os_info.scsi_addr.TargetId;
-    #elif defined (__linux__) && !defined (VMK_CROSS_COMP)
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
     if (device->os_info.scsiAddressValid)
     {
         return device->os_info.scsiAddress.target;
@@ -7000,17 +7020,17 @@ uint8_t get_Device_os_info_scsiAddress_target(const tDevice* device)
     {
         return 0;
     }
-    #else
-        M_USE_UNUSED(device);
-        return 0;
-    #endif
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
 }
 
 uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* device)
 {
-    #if defined (_WIN32)
+#if defined(_WIN32)
     return device->os_info.scsi_addr.Lun;
-    #elif defined (__linux__) && !defined (VMK_CROSS_COMP)
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
     if (device->os_info.scsiAddressValid)
     {
         return device->os_info.scsiAddress.lun;
@@ -7019,8 +7039,8 @@ uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* device)
     {
         return 0;
     }
-    #else
-        M_USE_UNUSED(device);
-        return 0;
-    #endif
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
 }

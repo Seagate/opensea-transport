@@ -230,7 +230,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     int                      rc           = 0;
     struct nvme_adapter_list nvmeAdptList;
     bool                     isScsi      = false;
-    const char*                    nvmeDevName = M_NULLPTR;
+    const char*              nvmeDevName = M_NULLPTR;
 
     /**
      * In VMWare NVMe device the drivename (for NDDK)

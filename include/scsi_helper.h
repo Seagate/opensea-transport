@@ -319,7 +319,7 @@ extern "C"
     typedef senseDataFields*       ptrSenseDataFields;
     typedef const senseDataFields* constPtrSenseDataFields;
 
-    static M_INLINE void safe_free_sensefields(senseDataFields * M_NULLABLE * M_NULLABLE sensefields)
+    static M_INLINE void safe_free_sensefields(senseDataFields* M_NULLABLE* M_NULLABLE sensefields)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, sensefields));
     }

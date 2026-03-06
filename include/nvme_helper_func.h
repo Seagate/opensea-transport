@@ -503,11 +503,11 @@ extern "C"
 
     M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues nvme_Write_Zeroes(const tDevice* M_NONNULL device,
-                                    uint64_t                 startingLBA,
-                                    uint16_t                 numberOfLogicalBlocks,
-                                    bool                     limitedRetry,
-                                    bool                     forceUnitAccess,
-                                    bool                     deallocate);
+                                                          uint64_t                 startingLBA,
+                                                          uint16_t                 numberOfLogicalBlocks,
+                                                          bool                     limitedRetry,
+                                                          bool                     forceUnitAccess,
+                                                          bool                     deallocate);
 
     M_PARAM_RO(1)
     M_PARAM_RO(7)
