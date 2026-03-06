@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -230,7 +230,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     int                      rc           = 0;
     struct nvme_adapter_list nvmeAdptList;
     bool                     isScsi      = false;
-    const char*                    nvmeDevName = M_NULLPTR;
+    const char*              nvmeDevName = M_NULLPTR;
 
     /**
      * In VMWare NVMe device the drivename (for NDDK)

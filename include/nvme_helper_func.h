@@ -5,7 +5,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -503,11 +503,11 @@ extern "C"
 
     M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues nvme_Write_Zeroes(const tDevice* M_NONNULL device,
-                                    uint64_t                 startingLBA,
-                                    uint16_t                 numberOfLogicalBlocks,
-                                    bool                     limitedRetry,
-                                    bool                     forceUnitAccess,
-                                    bool                     deallocate);
+                                                          uint64_t                 startingLBA,
+                                                          uint16_t                 numberOfLogicalBlocks,
+                                                          bool                     limitedRetry,
+                                                          bool                     forceUnitAccess,
+                                                          bool                     deallocate);
 
     M_PARAM_RO(1)
     M_PARAM_RO(7)

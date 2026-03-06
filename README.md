@@ -2,7 +2,7 @@
 
 ## Cross platform library for sending commands to storage devices through various operating systems, HBAs, and adapters.
 
-### Copyright (c) 2014-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+### Copyright (c) 2014-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 
 Welcome to opensea-transport, part of the openSeaChest open source project!
 You can find the openSeaChest project [here](https://github.com/Seagate/openSeaChest).

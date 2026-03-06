@@ -5,7 +5,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -319,7 +319,7 @@ extern "C"
     typedef senseDataFields*       ptrSenseDataFields;
     typedef const senseDataFields* constPtrSenseDataFields;
 
-    static M_INLINE void safe_free_sensefields(senseDataFields * M_NULLABLE * M_NULLABLE sensefields)
+    static M_INLINE void safe_free_sensefields(senseDataFields* M_NULLABLE* M_NULLABLE sensefields)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, sensefields));
     }

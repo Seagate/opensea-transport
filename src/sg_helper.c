@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -593,7 +593,8 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[4] = '/';
     safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
     snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
-    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/ata")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/ata")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0)
     {
         char* pciPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -689,7 +690,8 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[4] = '/';
     safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
     snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
-    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0)
     {
         char* usbPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -865,7 +867,8 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     safe_memmove(&fullFWPath[5], PATH_MAX - 5, &fullFWPath[6], safe_strlen(fullFWPath));
     snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullFWPath);
     // now we need to go up a few directories to get the modalias file to parse
-    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullFWPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullFWPath);
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullFWPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullFWPath);
     if (newStrLen > 0)
     {
         char* fwPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -938,7 +941,8 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     // printf("/host location string: %s\n", strstr(fullPciPath, "/host"));
     // printf("FULL: %" PRIXPTR "\t/HOST: %" PRIXPTR "\n", C_CAST(uintptr_t, fullPciPath), C_CAST(uintptr_t,
     // strstr(fullPciPath, "/host")));
-    intptr_t newStrLen = M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0)
     {
         char* pciPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
