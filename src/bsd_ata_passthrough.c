@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2025-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2025-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,6 +14,7 @@
 
 #include "common_types.h"
 #include "error_translation.h"
+#include "io_utils.h"
 #include "precision_timer.h"
 #include "type_conversion.h"
 
@@ -119,7 +120,7 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                timeoutmilliseconds = UINT32_C(15000); // default to 15 second timeout
+                timeoutmilliseconds = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
         atacmd.timeout = timeoutmilliseconds > INT_MAX ? INT_MAX : M_STATIC_CAST(int, timeoutmilliseconds);
@@ -130,13 +131,13 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
         if (iocret < 0)
         {
             // something went wrong with the ioctl.
-            scsiIoCtx->device->os_info.last_error = errno;
-            ret                                   = OS_PASSTHROUGH_FAILURE;
+            set_Device_Last_Error(scsiIoCtx->device, errno);
+            ret = OS_PASSTHROUGH_FAILURE;
             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
                 if (scsiIoCtx->device->os_info.last_error != 0)
                 {
-                    printf("Error: ");
+                    print_str("Error: ");
                     print_Errno_To_Screen(errno);
                 }
             }

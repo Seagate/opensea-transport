@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2025-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2025-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -21,11 +21,12 @@
 #include "type_conversion.h"
 
 #include "bsd_ata_passthrough.h"
-#include "bsd_mount_info.h"
 #include "bsd_scsi_passthrough.h"
 #include "cmds.h"
 #include "common_public.h"
 #include "netbsd_openbsd_helper.h"
+#include "nix_mounts.h"
+#include "posix_common_lowlevel.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -45,7 +46,7 @@ static int rsd_filter(const struct dirent* entry)
     {
         return !daHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -63,7 +64,7 @@ static int rwd_filter(const struct dirent* entry)
     {
         return !adaHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -76,78 +77,45 @@ static int rwd_filter(const struct dirent* entry)
 
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
-    int           fd           = 0;
-    eReturnValues ret          = SUCCESS;
-    char*         deviceHandle = M_NULLPTR;
-    errno_t       duphandle    = safe_strdup(&deviceHandle, filename);
-    if (duphandle != 0 || deviceHandle == M_NULLPTR)
-    {
-        return MEMORY_FAILURE;
-    }
-    int handleFlags = O_RDWR | O_NONBLOCK;
-    int attempts    = 0;
-#define BSD_OPEN_ATTEMPTS_MAX 2
-    if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
-    {
-        handleFlags |= O_EXCL;
-    }
-    do
-    {
-        ++attempts;
-        if ((device->os_info.fd = open(deviceHandle, handleFlags)) < 0)
-        {
-            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
-            {
-                handleFlags &= ~O_EXCL;
-                continue;
-            }
-            perror("open");
-            device->os_info.last_error = errno;
-            printf("open failure\n");
-            printf("Error: ");
-            print_Errno_To_Screen(errno);
-            if (device->os_info.last_error == EACCES)
-            {
-                safe_free(&deviceHandle);
-                return PERMISSION_DENIED;
-            }
-            else if (device->os_info.last_error == EBUSY)
-            {
-                safe_free(&deviceHandle);
-                return DEVICE_BUSY;
-            }
-            else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
-            {
-                safe_free(&deviceHandle);
-                return DEVICE_INVALID;
-            }
-            else
-            {
-                safe_free(&deviceHandle);
-                return FAILURE;
-            }
-        }
-        else
-        {
-            break;
-        }
-    } while (attempts < BSD_OPEN_ATTEMPTS_MAX);
+    eReturnValues     ret          = SUCCESS;
+    char*             deviceHandle = M_NULLPTR;
+    ePosixHandleFlags handleFlags  = POSIX_HANDLE_FLAGS_DEFAULT;
 
-    if (handleFlags & O_EXCL)
+    ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
+    if (ret != SUCCESS)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
     }
-    else
+
+    if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUIRE_EXCLUSIVE;
+    }
+    else if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
+    }
+
+    ret = posix_Get_Device_Handle(deviceHandle, &device->os_info.fd, &handleFlags, 0);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+    if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
     {
         device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
     }
-
-    device->os_info.fd = fd;
+    else
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+    }
 
     // setup any other necessary enumeration of the device
     device->drive_info.drive_type     = SCSI_DRIVE;
     device->drive_info.interface_type = SCSI_INTERFACE;
-    if (strstr(filename, "wd"))
+    if (strstr(deviceHandle, "wd"))
     {
         device->drive_info.drive_type                                 = ATA_DRIVE;
         device->drive_info.interface_type                             = IDE_INTERFACE;
@@ -165,6 +133,9 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         get_BSD_SCSI_Address(device->os_info.fd, &device->os_info.addresstype, &device->os_info.bus,
                              &device->os_info.target, &device->os_info.lun);
     }
+    snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
+    snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", deviceHandle);
+    free_Posix_Resolved_Filename(&deviceHandle);
 
 #if defined(__NetBSD__)
     device->os_info.osType = OS_NETBSD;
@@ -178,7 +149,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         return ret;
     }
 
-    set_BSD_Device_Partition_Info(device);
+    set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
     ret = fill_Drive_Info_Data(device);
     return ret;
 }
@@ -336,7 +307,6 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &wdnamelist));
     // safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &nvmenamelist));
 
-    DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
@@ -381,7 +351,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
-                    printf("Failed open, reason: ");
+                    print_str("Failed open, reason: ");
                     print_Errno_To_Screen(errno);
                 }
                 ++failedGetDeviceCount;
@@ -417,7 +387,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
     {
@@ -426,30 +396,30 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED tDevice* device,
-                      M_ATTR_UNUSED uint64_t lba,
-                      M_ATTR_UNUSED bool     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* ptrData,
-                      M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
+                      M_ATTR_UNUSED uint64_t       lba,
+                      M_ATTR_UNUSED bool           forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t*       ptrData,
+                      M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED tDevice* device,
-                       M_ATTR_UNUSED uint64_t lba,
-                       M_ATTR_UNUSED bool     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* ptrData,
-                       M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
+                       M_ATTR_UNUSED uint64_t       lba,
+                       M_ATTR_UNUSED bool           forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t*       ptrData,
+                       M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
@@ -467,7 +437,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-eReturnValues os_Device_Reset(tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* device)
 {
     switch (device->os_info.passthroughType)
     {
@@ -480,7 +450,7 @@ eReturnValues os_Device_Reset(tDevice* device)
     }
 }
 
-eReturnValues os_Bus_Reset(tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* device)
 {
     switch (device->os_info.passthroughType)
     {
@@ -493,13 +463,13 @@ eReturnValues os_Bus_Reset(tDevice* device)
     }
 }
 
-eReturnValues os_Controller_Reset(tDevice* device)
+eReturnValues os_Controller_Reset(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize)
 {
     M_USE_UNUSED(device);
     M_USE_UNUSED(pData);
@@ -513,49 +483,58 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Reset(tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Lock_Device(tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* device)
 {
     // flock?
     M_USE_UNUSED(device);
+    if (device->os_info.lockCount < UINT16_MAX)
+    {
+        // Always increment this so we know how many times we've been requested to lock
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
+    }
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Unlock_Device(tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* device)
 {
     // flock?
     M_USE_UNUSED(device);
+    if (device->os_info.lockCount > 0)
+    {
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
+    }
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Update_File_System_Cache(tDevice* device)
+eReturnValues os_Update_File_System_Cache(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
-    return bsd_Unmount_From_Matching_Dev(device);
+    return unmount_Partitions_From_Device(device->os_info.name);
 }
 
-eReturnValues os_Erase_Boot_Sectors(tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(const tDevice* device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;

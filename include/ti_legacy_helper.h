@@ -8,7 +8,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -18,6 +18,7 @@
 #include "ata_helper.h"
 #include "common_public.h"
 #include "common_types.h"
+#include "scsi_helper.h"
 
 #if defined(__cplusplus)
 extern 'C'
@@ -47,10 +48,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RW(1)
     M_PARAM_RO(2)
-    eReturnValues build_TI_Legacy_CDB(uint8_t cdb[16], ataPassthroughCommand * ataCommandOptions, bool olderOpCode,
+    eReturnValues build_TI_Legacy_CDB(uint8_t                          cdb[M_NONNULL_ARRAY CDB_16],
+                                      ataPassthroughCommand* M_NONNULL ataCommandOptions, bool olderOpCode,
                                       bool forceMode, uint8_t modeValue);
 
     //-----------------------------------------------------------------------------
@@ -68,10 +69,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues send_TI_Legacy_Passthrough_Command(tDevice * device, ataPassthroughCommand * ataCommandOptions);
+    eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                     ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
 #if defined(__cplusplus)
 }

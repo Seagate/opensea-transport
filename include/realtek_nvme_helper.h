@@ -8,7 +8,7 @@
 //!\copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2024-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2024-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -50,20 +50,29 @@ extern "C"
         REALTEK_DATA_OUT = 0x0002
     } eRealtekDataXfer;
 
-    M_NONNULL_PARAM_LIST(1, 2, 6)
-    M_PARAM_WO(1)
+    M_PARAM_RW(1)
     M_PARAM_WO(2)
     M_NONNULL_IF_NONZERO_PARAM(3, 4)
     M_PARAM_RW_SIZE(3, 4)
     M_PARAM_RO(6)
-    eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
-                                                     eDataTransferDirection* cdbDataDirection,
-                                                     uint8_t*                dataPtr,
-                                                     uint32_t                dataSize,
-                                                     eRealtekNVMCMDPhase     phase,
-                                                     nvmeCmdCtx*             nvmCmd);
+    eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t cdb[M_NONNULL_ARRAY REALTEK_NVME_CDB_SIZE],
+                                                     eDataTransferDirection* M_NONNULL cdbDataDirection,
+                                                     uint8_t* M_NULLABLE               dataPtr,
+                                                     uint32_t                          dataSize,
+                                                     eRealtekNVMCMDPhase               phase,
+                                                     nvmeCmdCtx* M_NONNULL             nvmCmd);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd);
+    M_PARAM_RW(1) eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd);
+
+// Basic command is far more limited and does not allow everything the above method does.
+#define REALTEK_BASIC_MAX_TRANSFER_SIZE_BYTES UINT16_MAX
+
+    M_PARAM_RW(1)
+    M_PARAM_RO(2)
+    eReturnValues build_Realtek_Basic_NVMe_CDB_And_Payload(uint8_t cdb[M_NONNULL_ARRAY REALTEK_NVME_CDB_SIZE],
+                                                           nvmeCmdCtx* M_NONNULL nvmCmd);
+
+    M_PARAM_RW(1) eReturnValues send_Realtek_Basic_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd);
 
 #if defined(__cplusplus)
 }

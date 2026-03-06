@@ -6,7 +6,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -54,9 +54,9 @@ extern "C"
 #    endif
 
 #    if defined(_WIN32)
-#        define CSMI_HANDLE               HANDLE
+#        define CSMI_HANDLE               HANDLE M_NONNULL
 #        define CSMI_INVALID_HANDLE       INVALID_HANDLE_VALUE
-#        define CSMI_HANDLE_PARAM(argnum) M_NONNULL_PARAM_LIST(argnum) M_PARAM_RW(argnum)
+#        define CSMI_HANDLE_PARAM(argnum) M_PARAM_RW(argnum)
 #    else
 #        define CSMI_HANDLE               int
 #        define CSMI_INVALID_HANDLE       (-1)

@@ -5,7 +5,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2021-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2021-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -35,36 +35,34 @@ extern "C"
     // These filter functions help with scandir on /dev to find ciss compatible devices.
     // NOTE: On Linux, new devices are given /dev/sg, and those need to be tested for support in addition to these
     // filters. NOTE: smartpqi filter is only available on freeBSD. It will return 0 on all other OS's.
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) int ciss_filter(const struct dirent* entry);
+    M_PARAM_RO(1) int ciss_filter(const struct dirent* M_NONNULL entry);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) int smartpqi_filter(const struct dirent* entry);
+    M_PARAM_RO(1) int smartpqi_filter(const struct dirent* M_NONNULL entry);
 #    endif //__unix__
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) M_NULL_TERM_STRING(1) bool is_Supported_ciss_Dev(const char* devName);
+    M_PARAM_RO(1) M_NULL_TERM_STRING(1) bool is_Supported_ciss_Dev(const char* M_NONNULL devName);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues issue_io_ciss_Dev(ScsiIoCtx* scsiIoCtx);
+    M_PARAM_RW(1) eReturnValues issue_io_ciss_Dev(ScsiIoCtx* M_NONNULL scsiIoCtx);
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_NULL_TERM_STRING(1) M_PARAM_RW(2) eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device);
+    M_NULL_TERM_STRING(1)
+    M_PARAM_RW(2) eReturnValues get_CISS_RAID_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues close_CISS_RAID_Device(tDevice* device);
+    M_PARAM_RW(1) eReturnValues close_CISS_RAID_Device(tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
     M_PARAM_RW(3)
-    eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
-                                             M_ATTR_UNUSED uint64_t flags,
-                                             ptrRaidHandleToScan*   beginningOfList);
+    eReturnValues get_CISS_RAID_Device_Count(uint32_t* M_NONNULL                      numberOfDevices,
+                                             M_ATTR_UNUSED uint64_t                   flags,
+                                             ptrRaidHandleToScan M_NONNULL* M_NONNULL beginningOfList);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
     M_PARAM_RW(5)
-    eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
-                                            uint32_t             sizeInBytes,
-                                            versionBlock         ver,
-                                            uint64_t             flags,
-                                            ptrRaidHandleToScan* beginningOfList);
+    eReturnValues get_CISS_RAID_Device_List(tDevice* const M_NONNULL                 ptrToDeviceList,
+                                            uint32_t                                 sizeInBytes,
+                                            versionBlock                             ver,
+                                            uint64_t                                 flags,
+                                            ptrRaidHandleToScan M_NONNULL* M_NONNULL beginningOfList);
 
 #    if defined(__cplusplus)
 }

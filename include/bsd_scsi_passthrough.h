@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2025-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2025-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,14 +17,30 @@
 
 #pragma once
 
-M_PARAM_WO(2)
-M_PARAM_WO(3)
-M_PARAM_WO(4)
-M_PARAM_WO(5)
-eReturnValues get_BSD_SCSI_Address(int fd, int* type, int* bus, int* target, int* lun);
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
 
-eReturnValues send_BSD_SCSI_Reset(int fd);
+    M_FILE_DESCRIPTOR(1)
+    M_PARAM_WO(2)
+    M_PARAM_WO(3)
+    M_PARAM_WO(4)
+    M_PARAM_WO(5)
+    eReturnValues get_BSD_SCSI_Address(int            fd,
+                                       int* M_NONNULL type,
+                                       int* M_NONNULL bus,
+                                       int* M_NONNULL target,
+                                       int* M_NONNULL lun);
 
-eReturnValues send_BSD_SCSI_Bus_Reset(int fd);
+    M_FILE_DESCRIPTOR(1)
+    eReturnValues send_BSD_SCSI_Reset(int fd);
 
-M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx);
+    M_FILE_DESCRIPTOR(1)
+    eReturnValues send_BSD_SCSI_Bus_Reset(int fd);
+
+    M_PARAM_RW(1) eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx);
+
+#if defined(__cplusplus)
+}
+#endif

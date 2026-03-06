@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -24,9 +24,10 @@
 #include "type_conversion.h"
 
 #include "ata_helper_func.h"
-#include "bsd_mount_info.h"
 #include "cam_helper.h"
+#include "nix_mounts.h"
 #include "nvme_helper_func.h"
+#include "posix_common_lowlevel.h"
 #include "sat_helper_func.h"
 #include "scsi_helper_func.h"
 #include "sntl_helper.h"
@@ -41,13 +42,20 @@
 #    include <dev/nvme/nvme.h>
 #endif // DISABLE_NVME_PASSTHROUGH
 
+#if defined(__DragonFly__)
+#    include <sys/nata.h>
+#else
+#    include <sys/ata.h>
+#endif
+
 extern bool validate_Device_Struct(versionBlock);
 
 #if !defined(CCB_CLEAR_ALL_EXCEPT_HDR)
 // This is defined in newer versions of cam in FreeBSD, and is really useful.
 // This is being redefined here in case it is missing for backwards compatibility with old FreeBSD versions
 #    define CCB_CLEAR_ALL_EXCEPT_HDR(ccbp)                                                                             \
-        bzero((char*)(ccbp) + sizeof((ccbp)->ccb_h), sizeof(*(ccbp)) - sizeof((ccbp)->ccb_h))
+        safe_memset((char*)(ccbp) + sizeof((ccbp)->ccb_h), sizeof(*(ccbp)) - sizeof((ccbp)->ccb_h), 0,                 \
+                    sizeof(*(ccbp)) - sizeof((ccbp)->ccb_h))
 #endif
 
 // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise
@@ -57,9 +65,9 @@ bool os_Is_Infinite_Timeout_Supported(void)
     return true;
 }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-static bool is_NVMe_Handle(char* handle)
+static bool is_NVMe_Handle(const char* handle)
 {
+#if !defined(DISABLE_NVME_PASSTHROUGH)
     bool isNVMeDevice = false;
     if (handle && safe_strlen(handle))
     {
@@ -69,10 +77,183 @@ static bool is_NVMe_Handle(char* handle)
         }
     }
     return isNVMeDevice;
-}
+#else
+    M_USE_UNUSED(handle);
+    return false;
 #endif // !DISABLE_NVME_PASSTHROUGH
+}
 
-eReturnValues get_Device(const char* filename, tDevice* device)
+#if defined(IOCATAREQUEST)
+static bool is_ad_device(const char* handle)
+{
+    if (strncmp("/dev/ad", handle, 7) == 0 && strncmp("/dev/ada", handle, 7) != 0)
+    {
+        return true;
+    }
+    return false;
+}
+#endif // IOCATAREQUEST
+
+static bool is_ATA_CAM_Available(void)
+{
+    static bool checked   = false;
+    static bool available = false;
+#if IS_FREEBSD_VERSION(8, 0, 0)
+    // https://people.freebsd.org/~mav/ata-cam_final_en.pdf
+    if (!checked)
+    {
+        if (feature_present("ata_cam"))
+        {
+            available = true;
+        }
+        checked = true;
+    }
+#else
+    M_USE_UNUSED(checked);
+    M_USE_UNUSED(available);
+#endif
+    return available;
+}
+
+#if defined(IOCATAREQUEST)
+#    define AD_OPEN_ATTEMPTS_MAX 2
+
+static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device)
+{
+    eReturnValues ret          = SUCCESS;
+    char*         deviceHandle = M_NULLPTR;
+
+    ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+
+    ePosixHandleFlags handleFlags = POSIX_HANDLE_FLAGS_DEFAULT;
+    if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUIRE_EXCLUSIVE;
+    }
+    else if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
+    }
+
+    ret = posix_Get_Device_Handle(deviceHandle, &device->os_info.fd, &handleFlags, 0);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+    if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+    }
+    else
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+    }
+
+    device->os_info.minimumAlignment = sizeof(void*);
+
+    device->drive_info.drive_type     = ATA_DRIVE;
+    device->drive_info.interface_type = IDE_INTERFACE;
+    device->drive_info.media_type     = MEDIA_HDD;
+#    if defined(__DragonFly__)
+    device->os_info.osType = OS_DRAGONFLYBSD;
+#    else
+    device->os_info.osType = OS_FREEBSD;
+#    endif
+
+    device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported   = true;
+    device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = INT_MAX;
+
+    if (device->dFlags == OPEN_HANDLE_ONLY)
+    {
+        return ret;
+    }
+
+    free_Posix_Resolved_Filename(&deviceHandle);
+
+    set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
+    ret = fill_Drive_Info_Data(device);
+    return ret;
+}
+#endif // IOCATAREQUEST
+
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
+{
+    struct nvme_get_nsid gnsid;
+    eReturnValues        ret          = SUCCESS;
+    char*                deviceHandle = M_NULLPTR;
+
+    ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+
+    device->os_info.cam_dev       = M_NULLPTR;
+    ePosixHandleFlags handleFlags = POSIX_HANDLE_FLAGS_DEFAULT;
+    if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUIRE_EXCLUSIVE;
+    }
+    else if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+    {
+        handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
+    }
+    ret = posix_Get_Device_Handle(deviceHandle, &device->os_info.fd, &handleFlags, 0);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+    if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+    }
+    else
+    {
+        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+    }
+
+    device->os_info.minimumAlignment = sizeof(void*);
+
+    device->drive_info.drive_type     = NVME_DRIVE;
+    device->drive_info.interface_type = NVME_INTERFACE;
+    device->drive_info.media_type     = MEDIA_NVM;
+    // ret = ioctl(device->os_info.fd, NVME_IOCTL_ID)
+    // if ( ret < 0 )
+    //{
+    //     perror("nvme_ioctl_id");
+    //	  return ret;
+    // }
+    ioctl(device->os_info.fd, NVME_GET_NSID, &gnsid);
+    device->drive_info.namespaceID = gnsid.nsid;
+#    if defined(__DragonFly__)
+    device->os_info.osType = OS_DRAGONFLYBSD;
+#    else
+    device->os_info.osType = OS_FREEBSD;
+#    endif
+
+    char* baseLink = basename(deviceHandle);
+    // Now we will set up the device name, etc fields in the os_info structure
+    snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
+    snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
+    set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
+
+    ret = fill_Drive_Info_Data(device);
+
+    safe_free(&deviceHandle);
+    return ret;
+}
+#endif // DISABLE_NVME_PASSTHROUGH
+
+static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
 {
     struct ccb_getdev  cgd;
     struct ccb_pathinq cpi;
@@ -85,367 +266,479 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     errno_t duphandle       = safe_strdup(&deviceHandle, filename);
     device->os_info.cam_dev = M_NULLPTR; // initialize this to M_NULLPTR (which it already should be) just to make sure
                                          // everything else functions as expected
-
     if (duphandle != 0 || deviceHandle == M_NULLPTR)
     {
         return MEMORY_FAILURE;
     }
 
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-    struct nvme_get_nsid gnsid;
-
-    if (is_NVMe_Handle(deviceHandle))
+    if (cam_get_device(filename, devName, 20, &devUnit) == -1)
     {
-        if ((device->os_info.fd = open(deviceHandle, O_RDWR | O_NONBLOCK)) < 0)
+        ret                = FAILURE;
+        device->os_info.fd = -1;
+        printf("%s failed\n", __FUNCTION__);
+    }
+    else
+    {
+        // O_NONBLOCK is not allowed
+        int handleFlags = O_RDWR;
+        int attempts    = 0;
+#define CAM_OPEN_MAX_ATTEMPTS 2
+        if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
         {
-            perror("open");
-            device->os_info.fd = errno;
-            printf("open failure");
-            printf("Error:");
-            print_Errno_To_Screen(errno);
-            if (device->os_info.fd == EACCES)
+            handleFlags |= O_EXCL;
+        }
+        do
+        {
+            ++attempts;
+            device->os_info.cam_dev = cam_open_spec_device(devName, devUnit, handleFlags, M_NULLPTR);
+            // NOTE: Checking for errno like we have below is not really documented.
+            //       If you read through the cam code in the kernel though, you can find that it calls "open"
+            //       within this function. Open can report these errors and if we do get a failure it is
+            //       most likely from the open failing. It can fail for other things inside this function
+            //       but this will be ok. -TJE
+            if (device->os_info.cam_dev == M_NULLPTR)
             {
-                safe_free(&deviceHandle);
-                return PERMISSION_DENIED;
+                if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+                {
+                    handleFlags &= ~O_EXCL;
+                    continue;
+                }
+                perror("open");
+                set_Device_Last_Error(device, errno);
+                print_str("open failure\n");
+                print_str("Error: ");
+                print_Errno_To_Screen(errno);
+                if (device->os_info.last_error == EACCES)
+                {
+                    safe_free(&deviceHandle);
+                    return PERMISSION_DENIED;
+                }
+                else if (device->os_info.last_error == EBUSY)
+                {
+                    safe_free(&deviceHandle);
+                    return DEVICE_BUSY;
+                }
+                else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
+                {
+                    safe_free(&deviceHandle);
+                    return DEVICE_INVALID;
+                }
+                else
+                {
+                    safe_free(&deviceHandle);
+                    return FAILURE;
+                }
             }
             else
             {
-                safe_free(&deviceHandle);
-                return FAILURE;
+                break;
             }
-        }
+        } while (attempts < CAM_OPEN_MAX_ATTEMPTS);
 
-        device->os_info.minimumAlignment = sizeof(void*);
-
-        device->drive_info.drive_type     = NVME_DRIVE;
-        device->drive_info.interface_type = NVME_INTERFACE;
-        device->drive_info.media_type     = MEDIA_NVM;
-        // ret = ioctl(device->os_info.fd, NVME_IOCTL_ID)
-        // if ( ret < 0 )
-        //{
-        //     perror("nvme_ioctl_id");
-        //	  return ret;
-        // }
-        ioctl(device->os_info.fd, NVME_GET_NSID, &gnsid);
-        device->drive_info.namespaceID = gnsid.nsid;
-        device->os_info.osType         = OS_FREEBSD;
-
-        char* baseLink = basename(deviceHandle);
-        // Now we will set up the device name, etc fields in the os_info structure
-        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
-        snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
-        set_BSD_Device_Partition_Info(device);
-
-        ret = fill_Drive_Info_Data(device);
-
-        safe_free(&deviceHandle);
-        return ret;
-    }
-    else
-#endif //! DISABLE_NVME_PASSTHROUGH
-
-        if (cam_get_device(filename, devName, 20, &devUnit) == -1)
+        if (device->os_info.cam_dev != M_NULLPTR)
         {
-            ret                = FAILURE;
-            device->os_info.fd = -1;
-            printf("%s failed\n", __FUNCTION__);
-        }
-        else
-        {
-            // O_NONBLOCK is not allowed
-            int handleFlags = O_RDWR;
-            int attempts    = 0;
-#define CAM_OPEN_MAX_ATTEMPTS 2
-            if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS || device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+            // Set name and friendly name
+            // name
+            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+            // friendly name
+            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName,
+                                devUnit);
+
+            device->os_info.fd = devUnit;
+
+            if (handleFlags & O_EXCL)
             {
-                handleFlags |= O_EXCL;
+                device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
             }
-            do
+            else
             {
-                ++attempts;
-                device->os_info.cam_dev = cam_open_spec_device(devName, devUnit, handleFlags, M_NULLPTR);
-                // NOTE: Checking for errno like we have below is not really documented.
-                //       If you read through the cam code in the kernel though, you can find that it calls "open"
-                //       within this function. Open can report these errors and if we do get a failure it is
-                //       most likely from the open failing. It can fail for other things inside this function
-                //       but this will be ok. -TJE
-                if (device->os_info.cam_dev == M_NULLPTR)
-                {
-                    if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
-                    {
-                        handleFlags &= ~O_EXCL;
-                        continue;
-                    }
-                    perror("open");
-                    device->os_info.last_error = errno;
-                    printf("open failure\n");
-                    printf("Error: ");
-                    print_Errno_To_Screen(errno);
-                    if (device->os_info.last_error == EACCES)
-                    {
-                        safe_free(&deviceHandle);
-                        return PERMISSION_DENIED;
-                    }
-                    else if (device->os_info.last_error == EBUSY)
-                    {
-                        safe_free(&deviceHandle);
-                        return DEVICE_BUSY;
-                    }
-                    else if (device->os_info.last_error == ENOENT || device->os_info.last_error == ENODEV)
-                    {
-                        safe_free(&deviceHandle);
-                        return DEVICE_INVALID;
-                    }
-                    else
-                    {
-                        safe_free(&deviceHandle);
-                        return FAILURE;
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            } while (attempts < CAM_OPEN_MAX_ATTEMPTS);
-
-            if (device->os_info.cam_dev != M_NULLPTR)
-            {
-                // Set name and friendly name
-                // name
-                snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
-                // friendly name
-                snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName,
-                                    devUnit);
-
-                device->os_info.fd = devUnit;
-
-                if (handleFlags & O_EXCL)
-                {
-                    device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
-                }
-                else
-                {
-                    device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
-                }
+                device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+            }
 
 // set the OS Type
 #if defined(__DragonFly__)
-                device->os_info.osType = OS_DRAGONFLYBSD;
+            device->os_info.osType = OS_DRAGONFLYBSD;
 #else
             device->os_info.osType = OS_FREEBSD;
 #endif
-                device->os_info.minimumAlignment = sizeof(void*);
+            device->os_info.minimumAlignment = sizeof(void*);
 
-                if (device->dFlags == OPEN_HANDLE_ONLY)
-                {
-                    return ret;
-                }
+            if (device->dFlags == OPEN_HANDLE_ONLY)
+            {
+                return ret;
+            }
 
-                // printf("%s Successfully opened\n",__FUNCTION__);
-                ccb = cam_getccb(device->os_info.cam_dev);
-                if (ccb != M_NULLPTR)
+            // printf("%s Successfully opened\n",__FUNCTION__);
+            ccb = cam_getccb(device->os_info.cam_dev);
+            if (ccb != M_NULLPTR)
+            {
+                CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+                ccb->ccb_h.func_code = XPT_GDEV_TYPE;
+                if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
                 {
-                    CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
-                    ccb->ccb_h.func_code = XPT_GDEV_TYPE;
-                    if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
+                    if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                     {
-                        if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
-                        {
-                            safe_memcpy(&cgd, sizeof(struct ccb_getdev), &ccb->cgd, sizeof(struct ccb_getdev));
+                        safe_memcpy(&cgd, sizeof(struct ccb_getdev), &ccb->cgd, sizeof(struct ccb_getdev));
 
-                            // default to scsi drive and scsi interface
-                            device->drive_info.drive_type     = SCSI_DRIVE;
-                            device->drive_info.interface_type = SCSI_INTERFACE;
-                            // get interface info
-                            CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
-                            ccb->ccb_h.func_code = XPT_PATH_INQ;
-                            if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
+                        // default to scsi drive and scsi interface
+                        device->drive_info.drive_type     = SCSI_DRIVE;
+                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        // get interface info
+                        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+                        ccb->ccb_h.func_code = XPT_PATH_INQ;
+                        if (cam_send_ccb(device->os_info.cam_dev, ccb) >= 0)
+                        {
+                            if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
                             {
-                                if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP)
+                                safe_memcpy(&cpi, sizeof(struct ccb_pathinq), &ccb->cpi, sizeof(struct ccb_pathinq));
+                                // set the interface from a ccb_pathinq struct
+                                switch (cpi.transport)
                                 {
-                                    safe_memcpy(&cpi, sizeof(struct ccb_pathinq), &ccb->cpi,
-                                                sizeof(struct ccb_pathinq));
-                                    // set the interface from a ccb_pathinq struct
-                                    switch (cpi.transport)
+                                case XPORT_SATA:
+                                case XPORT_ATA:
+                                    device->drive_info.drive_type = ATA_DRIVE;
+                                    device->drive_info.interface_type =
+                                        IDE_INTERFACE; // Seeing IDE may look strange, but that is how old code was
+                                                       // written to identify an ATA interface regardless of
+                                                       // parallel or serial.
+                                    break;
+                                case XPORT_USB:
+                                    device->drive_info.interface_type = USB_INTERFACE;
+                                    break;
+                                case XPORT_SPI:
+                                    device->drive_info.interface_type = SCSI_INTERFACE;
+                                    // firewire is reported as SPI.
+                                    // Check hba_vid for "SBP" to tell the difference and set the proper interface
+                                    if (strncmp(cpi.hba_vid, "SBP", 3) == 0 &&
+                                        cpi.hba_misc &
+                                            (PIM_NOBUSRESET | PIM_NO_6_BYTE)) // or check initiator_id? That's defined
+                                                                              // but not sure if that could be confused
+                                                                              // with other SPI devices - TJE
                                     {
-                                    case XPORT_SATA:
-                                    case XPORT_ATA:
-                                        device->drive_info.drive_type = ATA_DRIVE;
-                                        device->drive_info.interface_type =
-                                            IDE_INTERFACE; // Seeing IDE may look strange, but that is how old code was
-                                                           // written to identify an ATA interface regardless of
-                                                           // parallel or serial.
-                                        break;
-                                    case XPORT_USB:
-                                        device->drive_info.interface_type = USB_INTERFACE;
-                                        break;
-                                    case XPORT_SPI:
-                                        device->drive_info.interface_type = SCSI_INTERFACE;
-                                        // firewire is reported as SPI.
-                                        // Check hba_vid for "SBP" to tell the difference and set the proper interface
-                                        if (strncmp(cpi.hba_vid, "SBP", 3) == 0 &&
-                                            cpi.hba_misc & (PIM_NOBUSRESET |
-                                                            PIM_NO_6_BYTE)) // or check initiator_id? That's defined but
-                                                                            // not sure if that could be confused with
-                                                                            // other SPI devices - TJE
-                                        {
-                                            device->drive_info.interface_type = IEEE_1394_INTERFACE;
-                                            // TODO: Figure out where to get device unique firewire IDs for specific
-                                            // device compatibility lookups
-                                        }
-                                        break;
-                                    case XPORT_SAS:
-                                    // case XPORT_ISCSI: //Only in freeBSD. Since this falls into default, just
-                                    // commenting it out - TJE
-                                    case XPORT_SSA:
-                                    case XPORT_FC:
-                                    case XPORT_UNSPECIFIED:
-                                    case XPORT_UNKNOWN:
-                                    default:
-                                        device->drive_info.interface_type = SCSI_INTERFACE;
-                                        break;
+                                        device->drive_info.interface_type = IEEE_1394_INTERFACE;
+                                        // TODO: Figure out where to get device unique firewire IDs for specific
+                                        // device compatibility lookups
                                     }
-                                    // TODO: Parse other flags to set hacks and capabilities to help with adapter or
-                                    // interface specific limitations
-                                    //        - target flags which may help identify device capabilities (no 6-byte
-                                    //        commands, group 6 & 7 command support, ata_ext request support.
-                                    //        - target flag that says no 6-byte commands can help uniquely identify
-                                    //        IEEE1394 devices
-                                    //       These should be saved later when we run into compatibility issues or need
-                                    //       to make other improvements. For now, getting the interface is a huge help
+                                    break;
+#if defined(XPORT_IS_NVME)
+                                case XPORT_NVME:
+                                    device->drive_info.drive_type     = NVME_DRIVE;
+                                    device->drive_info.interface_type = NVME_INTERFACE;
+                                    device->drive_info.namespaceID    = cpi.xport_specific.nvme.nsid;
+                                    break;
+#    if IS_FREEBSD_VERSION(15, 0, 0)
+                                case XPORT_NVMF:
+                                    device->drive_info.drive_type     = NVME_DRIVE;
+                                    device->drive_info.interface_type = NVME_INTERFACE;
+                                    device->drive_info.namespaceID    = cpi.xport_specific.nvmf.nsid;
+                                    break;
+#    endif // IS_FREEBSD_VERSION(15,0,0)
+#endif     // XPORT_IS_NVME
+                                case XPORT_SAS:
+                                // case XPORT_ISCSI: //Only in freeBSD. Since this falls into default, just
+                                // commenting it out - TJE
+                                case XPORT_SSA:
+                                case XPORT_FC:
+                                case XPORT_UNSPECIFIED:
+                                case XPORT_UNKNOWN:
+                                default:
+                                    device->drive_info.interface_type = SCSI_INTERFACE;
+                                    break;
+                                }
+                                // TODO: Parse other flags to set hacks and capabilities to help with adapter or
+                                // interface specific limitations
+                                //        - target flags which may help identify device capabilities (no 6-byte
+                                //        commands, group 6 & 7 command support, ata_ext request support.
+                                //        - target flag that says no 6-byte commands can help uniquely identify
+                                //        IEEE1394 devices
+                                //       These should be saved later when we run into compatibility issues or need
+                                //       to make other improvements. For now, getting the interface is a huge help
 
 #if IS_FREEBSD_VERSION(9, 0, 0)
-                                    if (device->drive_info.interface_type != USB_INTERFACE &&
-                                        device->drive_info.interface_type != IEEE_1394_INTERFACE)
-                                    {
-                                        // NOTE: Not entirely sure EXACTLY when this was introduced, but this is a best
-                                        // guess from looking through cam_ccb.h history
-                                        if (cpi.hba_vendor != 0 &&
-                                            cpi.hba_device != 0) // try to filter out when information is not available
-                                        {
-                                            device->drive_info.adapter_info.infoType       = ADAPTER_INFO_PCI;
-                                            device->drive_info.adapter_info.productIDValid = true;
-                                            device->drive_info.adapter_info.vendorIDValid  = true;
-                                            device->drive_info.adapter_info.productID      = cpi.hba_device;
-                                            device->drive_info.adapter_info.vendorID       = cpi.hba_vendor;
-                                            // NOT: Subvendor and subdevice seem to specify something further up the
-                                            // tree from the adapter itself.
-                                        }
-                                    }
-#endif
-                                }
-                                else
+                                if (device->drive_info.interface_type != USB_INTERFACE &&
+                                    device->drive_info.interface_type != IEEE_1394_INTERFACE)
                                 {
-                                    printf("WARN: XPT_PATH_INQ I/O status failed\n");
+                                    // NOTE: Not entirely sure EXACTLY when this was introduced, but this is a best
+                                    // guess from looking through cam_ccb.h history
+                                    if (cpi.hba_vendor != 0 &&
+                                        cpi.hba_device != 0) // try to filter out when information is not available
+                                    {
+                                        device->drive_info.adapter_info.infoType       = ADAPTER_INFO_PCI;
+                                        device->drive_info.adapter_info.productIDValid = true;
+                                        device->drive_info.adapter_info.vendorIDValid  = true;
+                                        device->drive_info.adapter_info.productID      = cpi.hba_device;
+                                        device->drive_info.adapter_info.vendorID       = cpi.hba_vendor;
+                                        // NOT: Subvendor and subdevice seem to specify something further up the
+                                        // tree from the adapter itself.
+                                    }
                                 }
+#endif
                             }
-                            // let the library now go out and set up the device struct after sending some commands.
-                            if (device->drive_info.interface_type == USB_INTERFACE ||
-                                device->drive_info.interface_type == IEEE_1394_INTERFACE)
+                            else
                             {
-                                // TODO: Actually get the VID and PID set before calling this.
-                                //       This will require some more research, but we should be able to do this now that
-                                //       we know the interface
-                                setup_Passthrough_Hacks_By_ID(device);
+                                print_str("WARN: XPT_PATH_INQ I/O status failed\n");
                             }
-                            set_BSD_Device_Partition_Info(device);
-                            ret = fill_Drive_Info_Data(device);
                         }
-                        else
+                        // let the library now go out and set up the device struct after sending some commands.
+                        if (device->drive_info.interface_type == USB_INTERFACE ||
+                            device->drive_info.interface_type == IEEE_1394_INTERFACE)
                         {
-                            printf("WARN: XPT_GDEV_TYPE I/O status failed\n");
-                            ret = FAILURE;
+                            // TODO: Actually get the VID and PID set before calling this.
+                            //       This will require some more research, but we should be able to do this now that
+                            //       we know the interface
+                            setup_Passthrough_Hacks_By_ID(device);
                         }
+                        set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
+                        ret = fill_Drive_Info_Data(device);
                     }
                     else
                     {
-                        printf("WARN: XPT_GDEV_TYPE I/O failed\n");
+                        print_str("WARN: XPT_GDEV_TYPE I/O status failed\n");
                         ret = FAILURE;
                     }
                 }
                 else
                 {
-                    printf("WARN: Could not allocate CCB\n");
+                    print_str("WARN: XPT_GDEV_TYPE I/O failed\n");
                     ret = FAILURE;
                 }
             }
             else
             {
-                printf("%s Opened Failed\n", __FUNCTION__);
+                print_str("WARN: Could not allocate CCB\n");
                 ret = FAILURE;
             }
         }
-
+        else
+        {
+            printf("%s Opened Failed\n", __FUNCTION__);
+            ret = FAILURE;
+        }
+    }
     if (ccb != M_NULLPTR)
     {
         cam_freeccb(ccb);
     }
-
     return ret;
 }
 
-eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues get_Device(const char* filename, tDevice* device)
 {
-    eReturnValues ret = FAILURE;
-    // printf("%s -->\n",__FUNCTION__);
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+    if (is_NVMe_Handle(filename))
+    {
+        return get_NVMe_Device(filename, device);
+    }
+#endif //! DISABLE_NVME_PASSTHROUGH
+#if defined(IOCATAREQUEST)
+    if (is_ad_device(filename) && !is_ATA_CAM_Available())
+    {
+        return get_Legacy_ATA_Device(filename, device);
+    }
+#endif // IOCATAREQUEST
+    return get_CAM_Device(filename, device);
+}
 
-    if (scsiIoCtx->device->drive_info.interface_type == SCSI_INTERFACE)
+// This function depends on the caller already putting the RTFR's into the ata structure.
+// This just creates a single simple place to translate the error back for the upper layers that expect a sense data
+// structure -TJE
+static M_INLINE void set_ATA_PT_Sense_Data(ScsiIoCtx* scsiIoCtx)
+{
+    if (scsiIoCtx != M_NULLPTR)
     {
-        ret = send_Scsi_Cam_IO(scsiIoCtx);
-    }
-    else if (scsiIoCtx->device->drive_info.interface_type == NVME_INTERFACE)
-    {
-        ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
-    }
-    else if (scsiIoCtx->device->drive_info.interface_type == IDE_INTERFACE)
-    {
-#if defined(__DragonFly__)
-        // Dragonfly BSD has SCSI translation in ahci_cam.c
-        ret = send_Scsi_Cam_IO(scsiIoCtx);
-#else
-        if (scsiIoCtx->pAtaCmdOpts)
+        if (scsiIoCtx->psense != M_NULLPTR) // check that the pointer is valid
         {
-            ret = send_Ata_Cam_IO(scsiIoCtx);
-        }
-        else
-        {
-            ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
-        }
-#endif //__DragonFly__
-    }
-    else if (scsiIoCtx->device->drive_info.interface_type == RAID_INTERFACE)
-    {
-        if (scsiIoCtx->device->issue_io != M_NULLPTR)
-        {
-            ret = scsiIoCtx->device->issue_io(scsiIoCtx);
-        }
-        else
-        {
-            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
+            if (scsiIoCtx->senseDataSize >= 22) // check that the sense data buffer is big enough to fill in
+                                                // our rtfrs using descriptor format
             {
-                printf("No Raid PassThrough IO Routine present for this device\n");
+                scsiIoCtx->returnStatus.format   = SCSI_SENSE_CUR_INFO_DESC;
+                scsiIoCtx->returnStatus.senseKey = SENSE_KEY_RECOVERED_ERROR;
+                // setting ASC/ASCQ to ATA Passthrough Information Available
+                scsiIoCtx->returnStatus.asc  = 0x00;
+                scsiIoCtx->returnStatus.ascq = 0x1D;
+                // now fill in the sens buffer
+                scsiIoCtx->psense[0] = SCSI_SENSE_CUR_INFO_DESC;
+                scsiIoCtx->psense[1] = SENSE_KEY_RECOVERED_ERROR;
+                // setting ASC/ASCQ to ATA Passthrough Information Available
+                scsiIoCtx->psense[2]  = 0x00; // ASC
+                scsiIoCtx->psense[3]  = 0x1D; // ASCQ
+                scsiIoCtx->psense[4]  = 0;
+                scsiIoCtx->psense[5]  = 0;
+                scsiIoCtx->psense[6]  = 0;
+                scsiIoCtx->psense[7]  = 0x0E; // additional sense length
+                scsiIoCtx->psense[8]  = 0x09; // descriptor code
+                scsiIoCtx->psense[9]  = 0x0C; // additional descriptor length
+                scsiIoCtx->psense[10] = 0;
+                if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+                {
+                    scsiIoCtx->psense[10] |= 0x01; // set the extend bit
+                    // fill in the ext registers while we're in this if...no need for another one
+                    scsiIoCtx->psense[12] = scsiIoCtx->pAtaCmdOpts->rtfr.secCntExt; // Sector Count Ext
+                    scsiIoCtx->psense[14] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLowExt; // LBA Lo Ext
+                    scsiIoCtx->psense[16] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMidExt; // LBA Mid Ext
+                    scsiIoCtx->psense[18] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHiExt;  // LBA Hi
+                }
+                // fill in the returned 28bit registers
+                scsiIoCtx->psense[11] = scsiIoCtx->pAtaCmdOpts->rtfr.error;  // Error
+                scsiIoCtx->psense[13] = scsiIoCtx->pAtaCmdOpts->rtfr.secCnt; // Sector Count
+                scsiIoCtx->psense[15] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow; // LBA Lo
+                scsiIoCtx->psense[17] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid; // LBA Mid
+                scsiIoCtx->psense[19] = scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi;  // LBA Hi
+                scsiIoCtx->psense[20] = scsiIoCtx->pAtaCmdOpts->rtfr.device; // Device/Head
+                scsiIoCtx->psense[21] = scsiIoCtx->pAtaCmdOpts->rtfr.status; // Status
             }
+        }
+    }
+}
+
+#if defined(IOCATAREQUEST)
+// For legacy ATA disk devices only right now.
+// If we wanted to support ATAPI we need to check protocol for packet to copy the CDB into place instead.
+// This is not done right now since this code focusses on disks. - TJE
+static eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
+{
+    eReturnValues          ret = SUCCESS;
+    struct ata_ioc_request atareq;
+    DECLARE_SEATIMER(commandTimer);
+    if ((scsiIoCtx->pAtaCmdOpts->commandType > ATA_CMD_TYPE_TASKFILE && scsiIoCtx->pAtaCmdOpts->tfr.Feature48 != 0) ||
+        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA ||
+        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA_FPDMA ||
+        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DMA_QUE ||
+        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_DEV_RESET ||
+        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_HARD_RESET ||
+        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_PACKET ||
+        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_PACKET_DMA ||
+        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_UDMA ||
+        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_UNKNOWN ||
+        scsiIoCtx->pAtaCmdOpts->commadProtocol == ATA_PROTOCOL_MAX_VALUE || scsiIoCtx->pAtaCmdOpts->dataSize > INT_MAX)
+    {
+        // There is some support for ext commands.
+        // in the ata-lowlevel.c it checks and converts certain 28bit commands to 48 bit as needed in
+        // ata_modify_if_48bit() which is in ata-all.c This is part of the same path that handles the IOCTL, so extended
+        // commands should be possible, but only PIO mode since it is not possible to set the DMA flag with the IOCTL.
+        // https://github.com/freebsd/freebsd-src/blob/release/8.0.0/sys/dev/ata/ata-all.c#L799
+        // The other option is to set the 28 bit command field and make the kernel do the conversion.
+        // Not sure whether that is a better option or not, so for now just leaving this as is to try sending the 48 bit
+        // commands -TJE
+        return OS_COMMAND_NOT_AVAILABLE;
+    }
+    safe_memset(&atareq, sizeof(struct ata_ioc_request), 0, sizeof(struct ata_ioc_request));
+    atareq.u.ata.command = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
+    atareq.u.ata.feature = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
+    if (scsiIoCtx->pAtaCmdOpts->commandType > ATA_CMD_TYPE_TASKFILE)
+    {
+        atareq.u.ata.lba =
+            M_BytesTo8ByteValue(0, 0, scsiIoCtx->pAtaCmdOpts->tfr.LbaHi48, scsiIoCtx->pAtaCmdOpts->tfr.LbaMid48,
+                                scsiIoCtx->pAtaCmdOpts->tfr.LbaLow48, scsiIoCtx->pAtaCmdOpts->tfr.LbaHi,
+                                scsiIoCtx->pAtaCmdOpts->tfr.LbaMid, scsiIoCtx->pAtaCmdOpts->tfr.LbaLow);
+        atareq.u.ata.count =
+            M_BytesTo2ByteValue(scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48, scsiIoCtx->pAtaCmdOpts->tfr.SectorCount);
+    }
+    else
+    {
+        // for 28bit commands this has no separate register for device/head
+        // so need to take the LBA value from device head to append to the "LBA" field and let the kernel handle setting
+        // the register correctly
+        atareq.u.ata.lba =
+            M_BytesTo4ByteValue(M_Nibble0(scsiIoCtx->pAtaCmdOpts->tfr.DeviceHead), scsiIoCtx->pAtaCmdOpts->tfr.LbaHi,
+                                scsiIoCtx->pAtaCmdOpts->tfr.LbaMid, scsiIoCtx->pAtaCmdOpts->tfr.LbaLow);
+        atareq.u.ata.count = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
+    }
+
+    atareq.flags        = ATA_CMD_CONTROL;
+    uint32_t ataTimeout = scsiIoCtx->pAtaCmdOpts->timeout;
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
+        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->pAtaCmdOpts->timeout)
+    {
+        ataTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
+        // that we DON'T do a conversion and leave the time as the max...
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= INT_MAX)
+        {
+            ataTimeout = INT_MAX; // no timeout or maximum timeout
         }
     }
     else
     {
-        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
+        if (scsiIoCtx->pAtaCmdOpts->timeout != UINT32_C(0))
         {
-            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
+            ataTimeout = scsiIoCtx->pAtaCmdOpts->timeout;
+            // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata
+            // security) that we DON'T do a conversion and leave the time as the max...
+            if (scsiIoCtx->pAtaCmdOpts->timeout >= INT_MAX)
+            {
+                ataTimeout = INT_MAX; // no timeout or maximum timeout
+            }
+        }
+        else
+        {
+            ataTimeout = DEFAULT_COMMAND_TIMEOUT; // default to 15 second timeout
         }
     }
-    // printf("<-- %s\n",__FUNCTION__);
-    if (scsiIoCtx->device->delay_io)
+    atareq.timeout = M_STATIC_CAST(int, ataTimeout);
+
+    switch (scsiIoCtx->pAtaCmdOpts->commandDirection)
     {
-        delay_Milliseconds(scsiIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
-        }
+    case XFER_NO_DATA:
+        atareq.data  = M_NULLPTR;
+        atareq.count = 0;
+        break;
+    case XFER_DATA_IN:
+        atareq.flags |= ATA_CMD_READ;
+        atareq.data  = M_REINTERPRET_CAST(caddr_t, scsiIoCtx->pAtaCmdOpts->ptrData);
+        atareq.count = M_STATIC_CAST(int, scsiIoCtx->pAtaCmdOpts->dataSize);
+        break;
+    case XFER_DATA_OUT:
+        atareq.flags |= ATA_CMD_WRITE;
+        atareq.data  = M_REINTERPRET_CAST(caddr_t, scsiIoCtx->pAtaCmdOpts->ptrData);
+        atareq.count = M_STATIC_CAST(int, scsiIoCtx->pAtaCmdOpts->dataSize);
+        break;
+    case XFER_DATA_IN_OUT:
+    case XFER_DATA_OUT_IN:
+        return OS_COMMAND_NOT_AVAILABLE;
     }
 
+    start_Timer(&commandTimer);
+    int iocres = ioctl(scsiIoCtx->device->os_info.fd, IOCATAREQUEST, &atareq);
+    stop_Timer(&commandTimer);
+    if (iocres < 0)
+    {
+        perror("error sending legacy ATA I/O");
+        ret                                   = OS_PASSTHROUGH_FAILURE;
+        scsiIoCtx->device->os_info.last_error = errno;
+    }
+    else
+    {
+        // copy back output registers
+        scsiIoCtx->pAtaCmdOpts->rtfr.status = atareq.u.ata.command;
+        scsiIoCtx->pAtaCmdOpts->rtfr.error  = atareq.u.ata.feature;
+        if (scsiIoCtx->pAtaCmdOpts->commandType > ATA_CMD_TYPE_TASKFILE)
+        {
+            scsiIoCtx->pAtaCmdOpts->rtfr.lbaHiExt  = M_Byte5(atareq.u.ata.lba);
+            scsiIoCtx->pAtaCmdOpts->rtfr.lbaMidExt = M_Byte4(atareq.u.ata.lba);
+            scsiIoCtx->pAtaCmdOpts->rtfr.lbaLowExt = M_Byte3(atareq.u.ata.lba);
+            scsiIoCtx->pAtaCmdOpts->rtfr.secCntExt = M_Byte1(atareq.u.ata.count);
+        }
+        else
+        {
+            scsiIoCtx->pAtaCmdOpts->rtfr.lbaHiExt  = UINT8_C(0);
+            scsiIoCtx->pAtaCmdOpts->rtfr.lbaMidExt = UINT8_C(0);
+            scsiIoCtx->pAtaCmdOpts->rtfr.lbaLowExt = UINT8_C(0);
+            scsiIoCtx->pAtaCmdOpts->rtfr.secCntExt = UINT8_C(0);
+            scsiIoCtx->pAtaCmdOpts->rtfr.secCntExt = UINT8_C(0);
+            // 28 bit commands put head/last 4 bits of LBA here so need to get them back this way - TJE
+            scsiIoCtx->pAtaCmdOpts->rtfr.device = M_Nibble0(M_Byte3(atareq.u.ata.lba));
+        }
+        scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi  = M_Byte2(atareq.u.ata.lba);
+        scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid = M_Byte1(atareq.u.ata.lba);
+        scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow = M_Byte0(atareq.u.ata.lba);
+        scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = M_Byte0(atareq.u.ata.count);
+        set_ATA_PT_Sense_Data(scsiIoCtx);
+    }
+    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     return ret;
 }
+#endif // IOCATAREQUEST
 
 #if !defined(__DragonFly__)
 eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
@@ -459,10 +752,8 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 
     if (ccb != M_NULLPTR)
     {
-        ataio = &ccb->ataio;
-
-        /* cam_getccb cleans up the header, caller has to zero the payload */
         CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+        ataio = &ccb->ataio;
 
         switch (scsiIoCtx->direction)
         {
@@ -517,7 +808,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                camTimeout = UINT32_C(15) * UINT32_C(1000); // default to 15 second timeout
+                camTimeout = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
 
@@ -532,7 +823,6 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 
         if (scsiIoCtx->pAtaCmdOpts != M_NULLPTR)
         {
-            bzero(&ataio->cmd, sizeof(ataio->cmd));
             if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_TASKFILE)
             {
                 // NOLINTBEGIN(bugprone-branch-clone)
@@ -647,7 +937,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             else
             {
                 ret = BAD_PARAMETER;
-                printf("WARN: Unsupported ATA Command type\n");
+                print_str("WARN: Unsupported ATA Command type\n");
             }
 
             if (ret == SUCCESS)
@@ -697,7 +987,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
                         {
                             if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
                             {
-                                printf("WARN: I/O CAM_CMD_TIMEOUT occured\n");
+                                print_str("WARN: I/O CAM_CMD_TIMEOUT occured\n");
                             }
                         }
                         else
@@ -715,56 +1005,32 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 #    endif
                     }
                     ret = SUCCESS;
-
-                    // get the rtfrs and put them into a "sense buffer". In other words, fill in the sense buffer with
-                    // the rtfrs in descriptor format
-                    if (scsiIoCtx->psense != M_NULLPTR) // check that the pointer is valid
+                    if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
                     {
-                        if (scsiIoCtx->senseDataSize >= 22) // check that the sense data buffer is big enough to fill in
-                                                            // our rtfrs using descriptor format
+                        if (ataio->res.flags & CAM_ATAIO_48BIT) /* check this flag to make sure we read valid data */
                         {
-                            scsiIoCtx->returnStatus.format = 0x72;
-                            scsiIoCtx->returnStatus.senseKey =
-                                0x01; // Not setting check condition since the IO was in fact successful
-                            // setting ASC/ASCQ to ATA Passthrough Information Available
-                            scsiIoCtx->returnStatus.asc  = 0x00;
-                            scsiIoCtx->returnStatus.ascq = 0x1D;
-                            // now fill in the sens buffer
-                            scsiIoCtx->psense[0] = 0x72;
-                            scsiIoCtx->psense[1] = 0x01; // recovered error
-                            // setting ASC/ASCQ to ATA Passthrough Information Available
-                            scsiIoCtx->psense[2]  = 0x00; // ASC
-                            scsiIoCtx->psense[3]  = 0x1D; // ASCQ
-                            scsiIoCtx->psense[4]  = 0;
-                            scsiIoCtx->psense[5]  = 0;
-                            scsiIoCtx->psense[6]  = 0;
-                            scsiIoCtx->psense[7]  = 0x0E; // additional sense length
-                            scsiIoCtx->psense[8]  = 0x09; // descriptor code
-                            scsiIoCtx->psense[9]  = 0x0C; // additional descriptor length
-                            scsiIoCtx->psense[10] = 0;
-                            if (scsiIoCtx->pAtaCmdOpts->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
-                            {
-                                scsiIoCtx->psense[10] |= 0x01; // set the extend bit
-                                // fill in the ext registers while we're in this if...no need for another one
-                                if (ataio->res.flags &
-                                    CAM_ATAIO_48BIT) /* check this flag to make sure we read valid data */
-                                {
-                                    scsiIoCtx->psense[12] = ataio->res.sector_count_exp; // Sector Count Ext
-                                    scsiIoCtx->psense[14] = ataio->res.lba_low_exp;      // LBA Lo Ext
-                                    scsiIoCtx->psense[16] = ataio->res.lba_mid_exp;      // LBA Mid Ext
-                                    scsiIoCtx->psense[18] = ataio->res.lba_high_exp;     // LBA Hi
-                                }
-                            }
-                            // fill in the returned 28bit registers
-                            scsiIoCtx->psense[11] = ataio->res.error;        // Error
-                            scsiIoCtx->psense[13] = ataio->res.sector_count; // Sector Count
-                            scsiIoCtx->psense[15] = ataio->res.lba_low;      // LBA Lo
-                            scsiIoCtx->psense[17] = ataio->res.lba_mid;      // LBA Mid
-                            scsiIoCtx->psense[19] = ataio->res.lba_high;     // LBA Hi
-                            scsiIoCtx->psense[20] = ataio->res.device;       // Device/Head
-                            scsiIoCtx->psense[21] = ataio->res.status;       // Status
+                            scsiIoCtx->pAtaCmdOpts->rtfr.secCntExt = ataio->res.sector_count_exp; // Sector Count Ext
+                            scsiIoCtx->pAtaCmdOpts->rtfr.lbaLowExt = ataio->res.lba_low_exp;      // LBA Lo Ext
+                            scsiIoCtx->pAtaCmdOpts->rtfr.lbaMidExt = ataio->res.lba_mid_exp;      // LBA Mid Ext
+                            scsiIoCtx->pAtaCmdOpts->rtfr.lbaHiExt  = ataio->res.lba_high_exp;     // LBA Hi
+                        }
+                        else
+                        {
+                            scsiIoCtx->pAtaCmdOpts->rtfr.secCntExt = UINT8_C(0);
+                            scsiIoCtx->pAtaCmdOpts->rtfr.lbaLowExt = UINT8_C(0);
+                            scsiIoCtx->pAtaCmdOpts->rtfr.lbaMidExt = UINT8_C(0);
+                            scsiIoCtx->pAtaCmdOpts->rtfr.lbaHiExt  = UINT8_C(0);
                         }
                     }
+                    // fill in the returned 28bit registers
+                    scsiIoCtx->pAtaCmdOpts->rtfr.error  = ataio->res.error;        // Error
+                    scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = ataio->res.sector_count; // Sector Count
+                    scsiIoCtx->pAtaCmdOpts->rtfr.lbaLow = ataio->res.lba_low;      // LBA Lo
+                    scsiIoCtx->pAtaCmdOpts->rtfr.lbaMid = ataio->res.lba_mid;      // LBA Mid
+                    scsiIoCtx->pAtaCmdOpts->rtfr.lbaHi  = ataio->res.lba_high;     // LBA Hi
+                    scsiIoCtx->pAtaCmdOpts->rtfr.device = ataio->res.device;       // Device/Head
+                    scsiIoCtx->pAtaCmdOpts->rtfr.status = ataio->res.status;       // Status
+                    set_ATA_PT_Sense_Data(scsiIoCtx);
                 }
                 scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
             }
@@ -773,15 +1039,19 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
         {
             if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT "
-                       "Specification]\n");
+                print_str("WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT "
+                          "Specification]\n");
             }
             ret = BAD_PARAMETER;
+        }
+        if (ccb != M_NULLPTR)
+        {
+            cam_freeccb(ccb);
         }
     }
     else
     {
-        printf("WARN: couldn't allocate CCB");
+        print_str("WARN: couldn't allocate CCB");
     }
 
     return ret;
@@ -813,9 +1083,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
 
     if (ccb != M_NULLPTR)
     {
-        // Following is copy/paste from different funtions in camcontrol.c
-        /* cam_getccb cleans up the header, caller has to zero the payload */
-        bzero(&(&ccb->ccb_h)[1], sizeof(struct ccb_scsiio) - sizeof(struct ccb_hdr));
+        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
 
         csio = &ccb->csio;
 
@@ -856,7 +1124,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
             }
             else
             {
-                camTimeout = UINT32_C(15) * UINT32_C(1000); // default to 15 second timeout
+                camTimeout = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
             }
         }
         csio->ccb_h.timeout = camTimeout;
@@ -898,7 +1166,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
         ccb->ccb_h.flags |= CAM_DEV_QFRZDIS;
         // ccb->ccb_h.flags |= CAM_PASS_ERR_RECOVER; // Needed?
 
-        safe_memcpy(&csio->cdb_io.cdb_bytes[0], IOCDBLEN, &scsiIoCtx->cdb[0], IOCDBLEN);
+        safe_memcpy(&csio->cdb_io.cdb_bytes[0], IOCDBLEN, &scsiIoCtx->cdb[CDB_OPERATION_CODE], IOCDBLEN);
 #if defined(_DEBUG)
         printf("%s cdb [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x] \n\t \
                [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",
@@ -977,7 +1245,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
     }
     else
     {
-        printf("ccb is Null\n");
+        print_str("ccb is Null\n");
         ret = BAD_PARAMETER; // Should this be MEMORY FAILURE?
     }
 
@@ -990,15 +1258,94 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
+eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+{
+    eReturnValues ret = FAILURE;
+    // printf("%s -->\n",__FUNCTION__);
+
+    switch (scsiIoCtx->device->drive_info.interface_type)
+    {
+    case NVME_INTERFACE:
+        ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
+        break;
+    case IDE_INTERFACE:
+#if defined(__DragonFly__)
+#    if defined(IOCATAREQUEST)
+        if (is_ad_device(scsiIoCtx->device->os_info.name))
+        {
+            ret = send_Legacy_ATA_PT(scsiIoCtx);
+            break;
+        }
+#    endif // IOCATAREQUEST
+        // Dragonfly BSD has SCSI translation in ahci_cam.c
+        M_FALLTHROUGH;
+#else
+        if (scsiIoCtx->pAtaCmdOpts)
+        {
+#    if defined(IOCATAREQUEST)
+            if (is_ad_device(scsiIoCtx->device->os_info.name) && !is_ATA_CAM_Available())
+            {
+                ret = send_Legacy_ATA_PT(scsiIoCtx);
+            }
+            else
+#    endif // IOCATAREQUEST
+            {
+                ret = send_Ata_Cam_IO(scsiIoCtx);
+            }
+        }
+        else
+        {
+            ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
+        }
+        break;
+#endif     //__DragonFly__
+    case IEEE_1394_INTERFACE:
+    case USB_INTERFACE:
+    case SCSI_INTERFACE:
+        ret = send_Scsi_Cam_IO(scsiIoCtx);
+        break;
+    case RAID_INTERFACE:
+        if (scsiIoCtx->device->issue_io != M_NULLPTR)
+        {
+            ret = scsiIoCtx->device->issue_io(scsiIoCtx);
+        }
+        else
+        {
+            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
+            {
+                print_str("No Raid PassThrough IO Routine present for this device\n");
+            }
+        }
+        break;
+    default:
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
+        }
+    }
+    // printf("<-- %s\n",__FUNCTION__);
+    if (scsiIoCtx->device->delay_io)
+    {
+        delay_Milliseconds(scsiIoCtx->device->delay_io);
+        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        }
+    }
+
+    return ret;
+}
+
 #if !defined(DISABLE_NVME_PASSTHROUGH)
+#    if !defined(XPORT_IS_NVME)
 static int nvme_filter(const struct dirent* entry)
 {
-    int nvmeHandle = strncmp("nvme", entry->d_name, 3);
+    int nvmeHandle = strncmp("nvme", entry->d_name, 4);
     if (nvmeHandle != 0)
     {
         return !nvmeHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -1008,7 +1355,26 @@ static int nvme_filter(const struct dirent* entry)
         return !nvmeHandle;
     }
 }
-#endif
+#    else
+static int nda_filter(const struct dirent* entry)
+{
+    int nvmeHandle = strncmp("nda", entry->d_name, 3);
+    if (nvmeHandle != 0)
+    {
+        return !nvmeHandle;
+    }
+    const char* partition = strpbrk(entry->d_name, "pPsS");
+    if (partition != M_NULLPTR)
+    {
+        return 0;
+    }
+    else
+    {
+        return !nvmeHandle;
+    }
+}
+#    endif // !defined(XPORT_IS_NVME)
+#endif     // !defined(DISABLE_NVME_PASSTHROUGH)
 
 static int da_filter(const struct dirent* entry)
 {
@@ -1017,7 +1383,7 @@ static int da_filter(const struct dirent* entry)
     {
         return !daHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -1035,7 +1401,7 @@ static int ada_filter(const struct dirent* entry)
     {
         return !adaHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -1046,12 +1412,44 @@ static int ada_filter(const struct dirent* entry)
     }
 }
 
+#if defined(IOCATAREQUEST)
+// Legacy ATA Passthrough filter
+// Only checking for ATA disks.
+// adX = ata disk
+// acdX = ata CD/DVD
+// afd = ata floppy
+// ast = ata tape
+static int ad_filter(const struct dirent* entry)
+{
+    int adaHandle = strncmp("ad", entry->d_name, 2);
+    if (adaHandle != 0)
+    {
+        return !adaHandle;
+    }
+    const char* partition = strpbrk(entry->d_name, "pPsS");
+    if (partition != M_NULLPTR)
+    {
+        return 0;
+    }
+    else
+    {
+        return !adaHandle;
+    }
+}
+#endif // IOCATAREQUEST
+
 eReturnValues close_Device(tDevice* dev)
 {
     if (dev->os_info.cam_dev)
     {
         cam_close_device(dev->os_info.cam_dev);
         dev->os_info.cam_dev = M_NULLPTR;
+    }
+    else if (dev->os_info.fd > 0)
+    {
+        close(dev->os_info.fd);
+        dev->os_info.last_error = errno;
+        dev->os_info.fd         = -1;
     }
     return SUCCESS;
 }
@@ -1083,17 +1481,33 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
     struct dirent** adanamelist  = M_NULLPTR;
     struct dirent** nvmenamelist = M_NULLPTR;
 
-    num_da_devs  = scandir("/dev", &danamelist, da_filter, alphasort);
-    num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
-#if !defined(DISABLE_NVME_PASSTHROUGH)
-    num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
-#endif
-
-    // free the list of names to not leak memory
-    for (int iter = 0; iter < num_da_devs; ++iter)
+    num_da_devs = scandir("/dev", &danamelist, da_filter, alphasort);
+    if (is_ATA_CAM_Available())
     {
-        safe_free_dirent(&danamelist[iter]);
+        num_ada_devs = scandir("/dev", &adanamelist, ada_filter, alphasort);
     }
+#if defined(IOCATAREQUEST)
+    else
+    {
+        num_ada_devs = scandir("/dev", &adanamelist, ad_filter, alphasort);
+    }
+#endif // IOCATAREQUEST
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+#    if defined(XPORT_IS_NVME)
+    num_nvme_devs = scandir("/dev", &nvmenamelist, nda_filter, alphasort);
+    if (num_nvme_devs == 0)
+#    else
+    {
+        num_nvme_devs = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
+    }
+#    endif
+#endif // DISABLE_NVME_PASSTHROUGH
+
+        // free the list of names to not leak memory
+        for (int iter = 0; iter < num_da_devs; ++iter)
+        {
+            safe_free_dirent(&danamelist[iter]);
+        }
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &danamelist));
     // free the list of names to not leak memory
     for (int iter = 0; iter < num_ada_devs; ++iter)
@@ -1192,18 +1606,34 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     {
         num_da_devs = C_CAST(uint32_t, scandirres);
     }
-    scandirres = scandir("/dev", &adanamelist, ada_filter, alphasort);
+    if (is_ATA_CAM_Available())
+    {
+        scandirres = scandir("/dev", &adanamelist, ada_filter, alphasort);
+    }
+#if defined(IOCATAREQUEST)
+    else
+    {
+        scandirres = scandir("/dev", &adanamelist, ad_filter, alphasort);
+    }
+#endif // IOCATAREQUEST
     if (scandirres > 0)
     {
         num_ada_devs = C_CAST(uint32_t, scandirres);
     }
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-    scandirres = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
-    if (scandirres > 0)
+#    if defined(XPORT_IS_NVME)
+    scandirres = scandir("/dev", &nvmenamelist, nda_filter, alphasort);
+    if (scandirres == 0)
+#    else
     {
-        num_nvme_devs = C_CAST(uint32_t, scandirres);
+        scandirres = scandir("/dev", &nvmenamelist, nvme_filter, alphasort);
     }
-#endif
+#    endif
+        if (scandirres > 0)
+        {
+            num_nvme_devs = C_CAST(uint32_t, scandirres);
+        }
+#endif // DISABLE_NVME_PASSTHROUGH
     uint32_t totalDevs = num_da_devs + num_ada_devs + num_nvme_devs;
 
     char**   devs = M_REINTERPRET_CAST(char**, safe_calloc(totalDevs + 1, sizeof(char*)));
@@ -1238,7 +1668,6 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &adanamelist));
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &nvmenamelist));
 
-    DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
@@ -1262,9 +1691,28 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             snprintf_err_handle(name, CAM_DEV_NAME_LEN, "%s", devs[driveNumber]);
             fd = -1;
             // lets try to open the device.
-            fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);
+            if (is_NVMe_Handle(name)
+#if defined(IOCATAREQUEST)
+                || (is_ad_device(name) && !is_ATA_CAM_Available())
+#endif // IOCATAREQUEST
+            )
+            {
+                fd = open(name, O_RDWR);
+            }
+            else
+            {
+                fd = cam_get_device(name, d->os_info.name, sizeof(d->os_info.name), &d->os_info.fd);
+            }
             if (fd >= 0)
             {
+                if (is_NVMe_Handle(name)
+#if defined(IOCATAREQUEST)
+                    || (is_ad_device(name) && !is_ATA_CAM_Available())
+#endif // IOCATAREQUEST
+                )
+                {
+                    close(fd);
+                }
                 // Not sure this is necessary, but add back in if we find any issues - TJE
                 /*if (d->os_info.cam_dev)
                 {
@@ -1288,7 +1736,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
-                    printf("Failed open, reason: ");
+                    print_str("Failed open, reason: ");
                     print_Errno_To_Screen(errno);
                 }
                 ++failedGetDeviceCount;
@@ -1324,7 +1772,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
     {
@@ -1333,35 +1781,35 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED tDevice* device,
-                      M_ATTR_UNUSED uint64_t lba,
-                      M_ATTR_UNUSED bool     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* ptrData,
-                      M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
+                      M_ATTR_UNUSED uint64_t       lba,
+                      M_ATTR_UNUSED bool           forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t*       ptrData,
+                      M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED tDevice* device,
-                       M_ATTR_UNUSED uint64_t lba,
-                       M_ATTR_UNUSED bool     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* ptrData,
-                       M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
+                       M_ATTR_UNUSED uint64_t       lba,
+                       M_ATTR_UNUSED bool           forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t*       ptrData,
+                       M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Device_Reset(tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
@@ -1385,7 +1833,7 @@ eReturnValues os_Device_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues os_Bus_Reset(tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
@@ -1409,17 +1857,204 @@ eReturnValues os_Bus_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+#if !defined(DISABLE_NVME_PASSTHROUGH)
+#    if defined(XPORT_IS_NVME)
+
+#        if !IS_FREEBSD_VERSION(14, 0, 0)
+#            define CAM_NVME_STATUS_ERROR 0x20
+#        endif
+
+static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 {
-#if defined(DISABLE_NVME_PASSTHROUGH)
-    M_USE_UNUSED(nvmeIoCtx);
-    return OS_COMMAND_NOT_AVAILABLE;
-#else // DISABLE_NVME_PASSTHROUGH
+    eReturnValues ret = SUCCESS;
+    DECLARE_SEATIMER(commandTimer);
+    union ccb*         ccb    = M_NULLPTR;
+    struct ccb_nvmeio* nvmeio = M_NULLPTR;
+
+    ccb = cam_getccb(nvmeIoCtx->device->os_info.cam_dev);
+
+    if (ccb != M_NULLPTR)
+    {
+        nvmeio = &ccb->nvmeio;
+        CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
+        uint32_t camFlags   = CAM_DEV_QFRZDIS;
+        uint32_t camTimeout = nvmeIoCtx->timeout;
+        if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
+            nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
+        {
+            camTimeout = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
+            // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
+            // that we DON'T do a conversion and leave the time as the max...
+            if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds < CAM_MAX_CMD_TIMEOUT_SECONDS)
+            {
+                camTimeout *= UINT32_C(1000); // convert to milliseconds
+            }
+            else
+            {
+                camTimeout = UINT32_MAX; // no timeout or maximum timeout
+            }
+        }
+        else
+        {
+            if (nvmeIoCtx->timeout != UINT32_C(0))
+            {
+                camTimeout = nvmeIoCtx->timeout;
+                // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata
+                // security) that we DON'T do a conversion and leave the time as the max...
+                if (nvmeIoCtx->timeout < CAM_MAX_CMD_TIMEOUT_SECONDS)
+                {
+                    camTimeout *= UINT32_C(1000); // convert to milliseconds
+                }
+                else
+                {
+                    camTimeout = UINT32_MAX; // no timeout or maximum timeout
+                }
+            }
+            else
+            {
+                camTimeout = DEFAULT_COMMAND_TIMEOUT * UINT32_C(1000); // default to 15 second timeout
+            }
+        }
+
+        switch (nvmeIoCtx->commandDirection)
+        {
+        case XFER_DATA_IN:
+            camFlags |= CAM_DIR_IN;
+            break;
+        case XFER_DATA_OUT:
+            camFlags |= CAM_DIR_OUT;
+            break;
+        case XFER_NO_DATA:
+            camFlags |= CAM_DIR_NONE;
+            break;
+        case XFER_DATA_IN_OUT:
+        case XFER_DATA_OUT_IN:
+            camFlags |= CAM_DIR_BOTH;
+            break;
+        }
+
+        if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
+        {
+            nvmeio->cmd.opc   = nvmeIoCtx->cmd.adminCmd.opcode;
+            nvmeio->cmd.fuse  = nvmeIoCtx->cmd.adminCmd.flags;
+            nvmeio->cmd.cid   = 0; // this will be set somewhere below us in the driver/CAM layer
+            nvmeio->cmd.nsid  = nvmeIoCtx->cmd.adminCmd.nsid;
+            nvmeio->cmd.rsvd2 = nvmeIoCtx->cmd.adminCmd.cdw2;
+            nvmeio->cmd.rsvd3 = nvmeIoCtx->cmd.adminCmd.cdw3;
+            nvmeio->cmd.mptr  = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
+            nvmeio->cmd.prp1  = nvmeIoCtx->cmd.adminCmd.addr;
+            nvmeio->cmd.prp2  = nvmeIoCtx->cmd.adminCmd.metadataLen;
+            nvmeio->cmd.cdw10 = nvmeIoCtx->cmd.adminCmd.cdw10;
+            nvmeio->cmd.cdw11 = nvmeIoCtx->cmd.adminCmd.cdw11;
+            nvmeio->cmd.cdw12 = nvmeIoCtx->cmd.adminCmd.cdw12;
+            nvmeio->cmd.cdw13 = nvmeIoCtx->cmd.adminCmd.cdw13;
+            nvmeio->cmd.cdw14 = nvmeIoCtx->cmd.adminCmd.cdw14;
+            nvmeio->cmd.cdw15 = nvmeIoCtx->cmd.adminCmd.cdw15;
+            cam_fill_nvmeadmin(nvmeio, 0 /* retries */, M_NULLPTR, camFlags, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize,
+                               camTimeout);
+        }
+        else
+        {
+            nvmeio->cmd.opc  = nvmeIoCtx->cmd.nvmCmd.opcode;
+            nvmeio->cmd.fuse = nvmeIoCtx->cmd.nvmCmd.flags;
+            nvmeio->cmd.cid =
+                nvmeIoCtx->cmd.nvmCmd.commandId; // this will be set somewhere below us in the driver/CAM layer
+            nvmeio->cmd.nsid  = nvmeIoCtx->cmd.nvmCmd.nsid;
+            nvmeio->cmd.rsvd2 = nvmeIoCtx->cmd.nvmCmd.cdw2;
+            nvmeio->cmd.rsvd3 = nvmeIoCtx->cmd.nvmCmd.cdw3;
+            nvmeio->cmd.mptr  = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.adminCmd.metadata));
+            nvmeio->cmd.prp1  = nvmeIoCtx->cmd.nvmCmd.prp1;
+            nvmeio->cmd.prp2  = nvmeIoCtx->cmd.nvmCmd.prp2;
+            nvmeio->cmd.cdw10 = nvmeIoCtx->cmd.nvmCmd.cdw10;
+            nvmeio->cmd.cdw11 = nvmeIoCtx->cmd.nvmCmd.cdw11;
+            nvmeio->cmd.cdw12 = nvmeIoCtx->cmd.nvmCmd.cdw12;
+            nvmeio->cmd.cdw13 = nvmeIoCtx->cmd.nvmCmd.cdw13;
+            nvmeio->cmd.cdw14 = nvmeIoCtx->cmd.nvmCmd.cdw14;
+            nvmeio->cmd.cdw15 = nvmeIoCtx->cmd.nvmCmd.cdw15;
+            cam_fill_nvmeio(nvmeio, 0 /* retries */, M_NULLPTR, camFlags, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize,
+                            camTimeout);
+        }
+        start_Timer(&commandTimer);
+        int ioctlResult = cam_send_ccb(nvmeIoCtx->device->os_info.cam_dev, ccb);
+        stop_Timer(&commandTimer);
+        if (ioctlResult < 0)
+        {
+            perror("error sending NVMe I/O");
+            cam_error_print(nvmeIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/, CAM_EPF_ALL,
+                            stdout);
+            ret = FAILURE;
+        }
+        else
+        {
+            // cam_error_print(nvmeIoCtx->device->os_info.cam_dev, ccb, CAM_ESF_ALL /*error string flags*/,
+            // CAM_EPF_ALL, stdout);
+            if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP)
+            {
+                if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_NVME_STATUS_ERROR)
+                {
+                    ret = COMMAND_FAILURE;
+                }
+                else if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT)
+                {
+                    if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
+                    {
+                        print_str("WARN: I/O CAM_CMD_TIMEOUT occured\n");
+                    }
+                }
+                else
+                {
+                    if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
+                    {
+                        printf("WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
+                    }
+                }
+            }
+            else
+            {
+#        if defined(_DEBUG)
+                printf("I/O went through status %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
+#        endif
+            }
+            ret                                                      = SUCCESS;
+            nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            // Fill the nvme CommandCompletionData
+            nvmeIoCtx->commandCompletionData.dw0      = nvmeio->cpl.cdw0;
+            nvmeIoCtx->commandCompletionData.dw1      = nvmeio->cpl.rsvd1;
+            nvmeIoCtx->commandCompletionData.dw2      = M_WordsTo4ByteValue(nvmeio->cpl.sqid, nvmeio->cpl.sqhd);
+            nvmeIoCtx->commandCompletionData.dw3      = M_WordsTo4ByteValue(nvmeio->cpl.status, nvmeio->cpl.cid);
+            nvmeIoCtx->commandCompletionData.dw0Valid = true;
+            nvmeIoCtx->commandCompletionData.dw1Valid = true;
+            nvmeIoCtx->commandCompletionData.dw2Valid = true;
+            nvmeIoCtx->commandCompletionData.dw3Valid = true;
+        }
+        if (nvmeIoCtx->device->delay_io)
+        {
+            delay_Milliseconds(nvmeIoCtx->device->delay_io);
+            if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
+            {
+                printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
+            }
+        }
+        if (ccb != M_NULLPTR)
+        {
+            cam_freeccb(ccb);
+        }
+    }
+    else
+    {
+        ret = OS_PASSTHROUGH_FAILURE;
+    }
+    return ret;
+}
+#    endif // XPORT_IS_NVME
+
+static eReturnValues send_IOCTL_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+{
     eReturnValues ret         = SUCCESS;
     int           ioctlResult = 0;
     DECLARE_SEATIMER(commandTimer);
@@ -1497,11 +2132,11 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     stop_Timer(&commandTimer);
     if (ioctlResult < 0)
     {
-        nvmeIoCtx->device->os_info.last_error = errno;
-        ret                                   = OS_PASSTHROUGH_FAILURE;
+        set_Device_Last_Error(nvmeIoCtx->device, errno);
+        ret = OS_PASSTHROUGH_FAILURE;
         printf("\nError : %d", nvmeIoCtx->device->os_info.last_error);
         printf("Error %s\n", strerror(C_CAST(int, nvmeIoCtx->device->os_info.last_error)));
-        printf("\n OS_PASSTHROUGH_FAILURE. ");
+        print_str("\n OS_PASSTHROUGH_FAILURE. ");
         print_Errno_To_Screen(C_CAST(int, nvmeIoCtx->device->os_info.last_error));
     }
     else
@@ -1539,24 +2174,43 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         }
     }
     return ret;
+}
 #endif // DISABLE_NVME_PASSTHROUGH
+
+eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+{
+#if defined(DISABLE_NVME_PASSTHROUGH)
+    M_USE_UNUSED(nvmeIoCtx);
+    return OS_COMMAND_NOT_AVAILABLE;
+#else // DISABLE_NVME_PASSTHROUGH
+#    if defined(XPORT_IS_NVME)
+    if (nvmeIoCtx->device->os_info.cam_dev != M_NULLPTR)
+    {
+        return send_CAM_NVMe_IO(nvmeIoCtx);
+    }
+    else
+#    endif // XPORT_IS_NVME
+    {
+        return send_IOCTL_NVMe_IO(nvmeIoCtx);
+    }
+#endif     // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Reset(tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret           = OS_PASSTHROUGH_FAILURE;
     int           handleToReset = device->os_info.fd;
     DECLARE_SEATIMER(commandTimer);
     int ioRes = 0;
+    if (device->os_info.cam_dev != M_NULLPTR)
+    {
+        handleToReset = device->os_info.cam_dev->fd;
+    }
 
     start_Timer(&commandTimer);
     ioRes = ioctl(handleToReset, NVME_RESET_CONTROLLER);
     stop_Timer(&commandTimer);
-
-    device->drive_info.lastCommandTimeNanoSeconds             = get_Nano_Seconds(commandTimer);
-    device->drive_info.lastNVMeResult.lastNVMeStatus          = 0;
-    device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = 0;
 
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
@@ -1566,10 +2220,10 @@ eReturnValues os_nvme_Reset(tDevice* device)
     if (ioRes < 0)
     {
         // failed
-        device->os_info.last_error = errno;
+        set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
         if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
         {
-            printf("Error :");
+            print_str("Error :");
             print_Errno_To_Screen(C_CAST(int, device->os_info.last_error));
         }
     }
@@ -1578,7 +2232,6 @@ eReturnValues os_nvme_Reset(tDevice* device)
         // success
         ret = SUCCESS;
     }
-
     return ret;
 #else  // DISABLE_NVME_PASSTHROUGH
     M_USE_UNUSED(device);
@@ -1586,27 +2239,41 @@ eReturnValues os_nvme_Reset(tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED tDevice* device,
-                               M_ATTR_UNUSED uint8_t* pData,
-                               M_ATTR_UNUSED uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
+                               M_ATTR_UNUSED uint8_t*       pData,
+                               M_ATTR_UNUSED uint32_t       dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Lock_Device(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
 {
-    // There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
     return SUCCESS;
 }
 
-eReturnValues os_Unlock_Device(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* device)
+{
+    // There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
+    if (device->os_info.lockCount < UINT16_MAX)
+    {
+        // Always increment this so we know how many times we've been requested to lock
+        ++M_CONST_CAST(tDevice*, device)->os_info.lockCount;
+    }
+    return SUCCESS;
+}
+
+eReturnValues os_Unlock_Device(const tDevice* device)
 {
     // There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
+    if (device->os_info.lockCount > 0)
+    {
+        --M_CONST_CAST(tDevice*, device)->os_info.lockCount;
+    }
     return SUCCESS;
 }
 
@@ -1618,7 +2285,7 @@ eReturnValues os_Unlock_Device(M_ATTR_UNUSED tDevice* device)
 // looks very similar to the Linux getmntent: getfsent
 // ???https://www.freebsd.org/cgi/man.cgi?query=getfsent&sektion=3&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
 {
     // TODO: I have not found an analog to Linux which is usually the most helpful for figuring out what to do.
     //       I haven't found any other API or IOCTL that reloads the partition table on the disk (which is pretty close)
@@ -1630,12 +2297,12 @@ eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED tDevice* device)
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
-    return bsd_Unmount_From_Matching_Dev(device);
+    return unmount_Partitions_From_Device(device->os_info.name);
 }

@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -29,7 +29,7 @@
 #include "jmicron_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
-eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
+eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t                 cdb[M_NONNULL_ARRAY JMICRON_NVME_CDB_SIZE],
                                             eDataTransferDirection* cdbDataDirection,
                                             uint8_t*                dataPtr,
                                             uint32_t                dataSize,
@@ -37,19 +37,22 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
                                             eJMNvmeVendorControl    jmCtrl,
                                             nvmeCmdCtx*             nvmCmd)
 {
+
     DISABLE_NONNULL_COMPARE
+    // static array should force passing a non-null pointer, but checking anyways
     if (cdb == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     safe_memset(cdb, JMICRON_NVME_CDB_SIZE, 0, JMICRON_NVME_CDB_SIZE);
 
     uint32_t parameterListLength = UINT32_C(0);
 
-    cdb[0]  = JMICRON_NVME_PT_OPCODE;
-    cdb[1]  = C_CAST(uint8_t, jmProtocol);
-    cdb[11] = 0; // control byte
+    cdb[CDB_OPERATION_CODE] = JMICRON_NVME_PT_OPCODE;
+    cdb[CDB_1]              = C_CAST(uint8_t, jmProtocol);
+    cdb[CDB_11]             = 0; // control byte
 
     // CDB bytes 3, 4, & 5 are the parameter list length
     // These bytes will be set depending on the size of the transfer for the protocol
@@ -79,7 +82,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
                     if (nvmCmd->commandType == NVM_ADMIN_CMD)
                     {
                         // set the admin bit
-                        cdb[1] |= BIT7;
+                        cdb[CDB_1] |= BIT7;
                         // Now setup the remaining command fields.
                         // CDW0 is bytes 11:8
                         dataPtr[8] = nvmCmd->cmd.adminCmd.opcode;
@@ -125,7 +128,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
                     else
                     {
                         // CDW0 is bytes 11:8
-                        cdb[8] = nvmCmd->cmd.nvmCmd.opcode;
+                        cdb[CDB_8] = nvmCmd->cmd.nvmCmd.opcode;
                         // NOTE: bytes 9, 10, 11 hold fused bits, prp vs sgl, and CID. None of these are filled in for
                         // now...-TJE NSID is 15:12
                         dataPtr[12] = M_Byte0(nvmCmd->cmd.nvmCmd.nsid);
@@ -182,7 +185,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
                 // set the admin bit
-                cdb[1] |= JMICRON_NVME_ADMIN_BIT;
+                cdb[CDB_1] |= JMICRON_NVME_ADMIN_BIT;
             }
         }
         else
@@ -199,7 +202,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
                 // set the admin bit
-                cdb[1] |= JMICRON_NVME_ADMIN_BIT;
+                cdb[CDB_1] |= JMICRON_NVME_ADMIN_BIT;
             }
         }
         else
@@ -215,7 +218,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
                 // set the admin bit
-                cdb[1] |= JMICRON_NVME_ADMIN_BIT;
+                cdb[CDB_1] |= JMICRON_NVME_ADMIN_BIT;
             }
         }
         else
@@ -231,7 +234,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
                 // set the admin bit
-                cdb[1] |= JMICRON_NVME_ADMIN_BIT;
+                cdb[CDB_1] |= JMICRON_NVME_ADMIN_BIT;
             }
         }
         else
@@ -244,11 +247,9 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t*                cdb,
     }
 
     // set parameter list length
-    cdb[3] = M_Byte2(parameterListLength);
-    cdb[4] = M_Byte1(parameterListLength);
-    cdb[5] = M_Byte0(parameterListLength);
-
-    RESTORE_NONNULL_COMPARE
+    cdb[CDB_3] = M_Byte2(parameterListLength);
+    cdb[CDB_4] = M_Byte1(parameterListLength);
+    cdb[CDB_5] = M_Byte0(parameterListLength);
 
     return SUCCESS;
 }
@@ -259,12 +260,12 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmCDB, JMICRON_NVME_CDB_SIZE);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE);
     eDataTransferDirection jmCDBDir = 0;
-    DISABLE_NONNULL_COMPARE
+
     if (nvmCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     // 1. build CDB & data for command to send
     // Send CDB to set the command values that will be used to issue a command.
     ret = build_JM_NVMe_CDB_And_Payload(jmCDB, &jmCDBDir, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE,
@@ -274,7 +275,7 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
         return ret;
     }
     ret = scsi_Send_Cdb(nvmCmd->device, jmCDB, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE,
-                        jmCDBDir, M_NULLPTR, 0, 15);
+                        jmCDBDir, M_NULLPTR, 0, DEFAULT_COMMAND_TIMEOUT);
     if (SUCCESS != ret)
     {
         return ret;
@@ -362,7 +363,7 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     return ret;
 }
 
-static eReturnValues jm_NVMe_Normal_Shutdown(tDevice* device)
+static eReturnValues jm_NVMe_Normal_Shutdown(const tDevice* device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JMICRON_NVME_CDB_SIZE);
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -373,7 +374,7 @@ static eReturnValues jm_NVMe_Normal_Shutdown(tDevice* device)
     if (ret == SUCCESS)
     {
         ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir,
-                            M_NULLPTR, 0, 15);
+                            M_NULLPTR, 0, DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
@@ -382,7 +383,7 @@ static eReturnValues jm_NVMe_Normal_Shutdown(tDevice* device)
     return ret;
 }
 
-static eReturnValues jm_NVMe_MCU_Reset(tDevice* device)
+static eReturnValues jm_NVMe_MCU_Reset(const tDevice* device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JMICRON_NVME_CDB_SIZE);
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -392,7 +393,7 @@ static eReturnValues jm_NVMe_MCU_Reset(tDevice* device)
     if (ret == SUCCESS)
     {
         ret = scsi_Send_Cdb(device, cdb, JMICRON_NVME_CDB_SIZE, jmPayload, JMICRON_NVME_CMD_PAYLOAD_SIZE, jmCDBDir,
-                            M_NULLPTR, 0, 15);
+                            M_NULLPTR, 0, DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
@@ -401,12 +402,12 @@ static eReturnValues jm_NVMe_MCU_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues jm_nvme_Reset(tDevice* device)
+eReturnValues jm_nvme_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Sending JMicron NVMe Reset\n");
+        print_str("Sending JMicron NVMe Reset\n");
     }
     if (SUCCESS == jm_NVMe_Normal_Shutdown(device))
     {
@@ -426,12 +427,12 @@ eReturnValues jm_nvme_Reset(tDevice* device)
     return ret;
 }
 
-eReturnValues jm_nvme_Subsystem_Reset(tDevice* device)
+eReturnValues jm_nvme_Subsystem_Reset(const tDevice* device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Sending JMicron NVMe Subsystem Reset\n");
+        print_str("Sending JMicron NVMe Subsystem Reset\n");
     }
     if (SUCCESS == jm_NVMe_Normal_Shutdown(device))
     {

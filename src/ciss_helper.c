@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2021-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2021-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -25,6 +25,7 @@
 #    include "precision_timer.h"
 #    include "string_utils.h"
 #    include "type_conversion.h"
+#    include "warning_ctl.h"
 
 #    if defined(__unix__) // this is only done in case someone sets weird defines for Windows even though this isn't
                           // supported
@@ -313,34 +314,34 @@ int smartpqi_filter(const struct dirent* entry)
 // may be different. -TJE
 
 /*
-static eReturnValues ciss_Scsi_Report_Logical_LUNs(tDevice *device, uint8_t extendedDataType, uint8_t* ptrData, uint32_t
-dataLength)
+static eReturnValues ciss_Scsi_Report_Logical_LUNs(const tDevice *device, uint8_t extendedDataType, uint8_t* ptrData,
+uint32_t dataLength)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
-    cdb[OPERATION_CODE] = CISS_REPORT_LOGICAL_LUNS_OP;
-    cdb[1] = extendedDataType;//can set to receive extended information, but we don't care about this right now...
-    cdb[2] = RESERVED;
-    cdb[3] = RESERVED;
-    cdb[4] = RESERVED;
-    cdb[5] = RESERVED;
-    cdb[6] = M_Byte3(dataLength);
-    cdb[7] = M_Byte2(dataLength);
-    cdb[8] = M_Byte1(dataLength);
-    cdb[9] = M_Byte0(dataLength);
-    cdb[10] = RESERVED;
-    cdb[11] = 0;//control byte
+    cdb[CDB_OPERATION_CODE] = CISS_REPORT_LOGICAL_LUNS_OP;
+    cdb[CDB_1] = extendedDataType;//can set to receive extended information, but we don't care about this right now...
+    cdb[CDB_2] = RESERVED;
+    cdb[CDB_3] = RESERVED;
+    cdb[CDB_4] = RESERVED;
+    cdb[CDB_5] = RESERVED;
+    cdb[CDB_6] = M_Byte3(dataLength);
+    cdb[CDB_7] = M_Byte2(dataLength);
+    cdb[CDB_8] = M_Byte1(dataLength);
+    cdb[CDB_9] = M_Byte0(dataLength);
+    cdb[CDB_10] = RESERVED;
+    cdb[CDB_11] = 0;//control byte
 
     //CDB is created...let's send it!
     if(ptrData && dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, ptrData, dataLength, XFER_DATA_IN,
-device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA,
-device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
     return ret;
 }
@@ -358,44 +359,46 @@ device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
 // NOTE: "Other physical device info" does not indicate a length that I can see different from the 16B node data, but
 // may be different. -TJE
 
-static eReturnValues ciss_Scsi_Report_Physical_LUNs(tDevice* device,
-                                                    uint8_t  extendedDataType,
-                                                    uint8_t* ptrData,
-                                                    uint32_t dataLength)
+static eReturnValues ciss_Scsi_Report_Physical_LUNs(const tDevice* device,
+                                                    uint8_t        extendedDataType,
+                                                    uint8_t*       ptrData,
+                                                    uint32_t       dataLength)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
-    cdb[OPERATION_CODE] = CISS_REPORT_PHYSICAL_LUNS_OP;
-    cdb[1]  = extendedDataType; // can set to receive extended information, but we don't care about this right now...
-    cdb[2]  = RESERVED;
-    cdb[3]  = RESERVED;
-    cdb[4]  = RESERVED;
-    cdb[5]  = RESERVED;
-    cdb[6]  = M_Byte3(dataLength);
-    cdb[7]  = M_Byte2(dataLength);
-    cdb[8]  = M_Byte1(dataLength);
-    cdb[9]  = M_Byte0(dataLength);
-    cdb[10] = RESERVED;
-    cdb[11] = 0; // control byte
+    cdb[CDB_OPERATION_CODE] = CISS_REPORT_PHYSICAL_LUNS_OP;
+    cdb[CDB_1] = extendedDataType; // can set to receive extended information, but we don't care about this right now...
+    cdb[CDB_2] = RESERVED;
+    cdb[CDB_3] = RESERVED;
+    cdb[CDB_4] = RESERVED;
+    cdb[CDB_5] = RESERVED;
+    cdb[CDB_6] = M_Byte3(dataLength);
+    cdb[CDB_7] = M_Byte2(dataLength);
+    cdb[CDB_8] = M_Byte1(dataLength);
+    cdb[CDB_9] = M_Byte0(dataLength);
+    cdb[CDB_10] = RESERVED;
+    cdb[CDB_11] = 0; // control byte
 
     // CDB is created...let's send it!
     if (ptrData && dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, ptrData, dataLength, XFER_DATA_IN,
-                            device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
+                            DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA,
-                            device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 15);
+                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
+                            DEFAULT_COMMAND_TIMEOUT);
     }
     return ret;
 }
 
 // This is a reworked old function from first internal code to support CISS...is this still needed like this?-TJE
-static eReturnValues get_Physical_Device_Location_Data(tDevice* device,
-                                                       uint8_t* physicalLocationData,
-                                                       uint32_t physicalLocationDataLength)
+static eReturnValues get_Physical_Device_Location_Data(const tDevice* device,
+                                                       uint8_t*       physicalLocationData,
+                                                       uint32_t       physicalLocationDataLength)
 {
     eReturnValues ret            = UNKNOWN;
     uint32_t      dataLength     = UINT32_C(8) + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
@@ -460,7 +463,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
     {
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Sending CISS Passthrough command\n");
+            print_str("Sending CISS Passthrough command\n");
         }
         if (scsiIoCtx->cdbLength <= 16 && scsiIoCtx->dataLength <= UINT16_MAX)
         {
@@ -524,7 +527,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                 }
                 else
                 {
-                    pqiCmd.Request.Timeout = 15;
+                    pqiCmd.Request.Timeout = DEFAULT_COMMAND_TIMEOUT;
                 }
                 safe_memcpy(pqiCmd.Request.CDB, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
@@ -537,8 +540,8 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                 stop_Timer(&commandTimer);
                 if (ioctlRet < 0)
                 {
-                    ret                                   = OS_PASSTHROUGH_FAILURE;
-                    scsiIoCtx->device->os_info.last_error = errno;
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    set_Device_Last_Error(scsiIoCtx->device, errno);
                     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                     {
                         print_Errno_To_Screen(errno);
@@ -563,44 +566,44 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                     switch (pqiCmd.error_info.CommandStatus)
                     {
                     case CMD_SUCCESS:
-                        printf("CISS Success\n");
+                        print_str("CISS Success\n");
                         break;
                     case CMD_TARGET_STATUS:
-                        printf("CISS Target Status: ");
+                        print_str("CISS Target Status: ");
                         switch (pqiCmd.error_info.ScsiStatus)
                         {
                         case SAM_STATUS_GOOD:
-                            printf("Good\n");
+                            print_str("Good\n");
                             break;
                         case SAM_STATUS_CHECK_CONDITION:
-                            printf("Check Condition\n");
+                            print_str("Check Condition\n");
                             break;
                         case SAM_STATUS_CONDITION_MET:
-                            printf("Condition Met\n");
+                            print_str("Condition Met\n");
                             break;
                         case SAM_STATUS_INTERMEDIATE:
-                            printf("Intermediate\n");
+                            print_str("Intermediate\n");
                             break;
                         case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
-                            printf("Intermediate Condition Met\n");
+                            print_str("Intermediate Condition Met\n");
                             break;
                         case SAM_STATUS_COMMAND_TERMINATED:
-                            printf("Command Terminated\n");
+                            print_str("Command Terminated\n");
                             break;
                         case SAM_STATUS_BUSY:
-                            printf("Busy\n");
+                            print_str("Busy\n");
                             break;
                         case SAM_STATUS_RESERVATION_CONFLICT:
-                            printf("Reservation Conflict\n");
+                            print_str("Reservation Conflict\n");
                             break;
                         case SAM_STATUS_TASK_SET_FULL:
-                            printf("Task Set Full\n");
+                            print_str("Task Set Full\n");
                             break;
                         case SAM_STATUS_ACA_ACTIVE:
-                            printf("ACA Active\n");
+                            print_str("ACA Active\n");
                             break;
                         case SAM_STATUS_TASK_ABORTED:
-                            printf("Task Aborted\n");
+                            print_str("Task Aborted\n");
                             break;
                         default:
                             printf("Unknown: %02X\n", pqiCmd.error_info.ScsiStatus);
@@ -608,13 +611,13 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                         }
                         break;
                     case CMD_DATA_UNDERRUN:
-                        printf("CISS Data Underrun\n");
+                        print_str("CISS Data Underrun\n");
                         break;
                     case CMD_DATA_OVERRUN:
-                        printf("CISS Data Overrun\n");
+                        print_str("CISS Data Overrun\n");
                         break;
                     case CMD_INVALID:
-                        printf("CISS Invalid\n");
+                        print_str("CISS Invalid\n");
                         // print out additional invalid command info
                         printf("\toffense_size  = %" PRIu8 "\n",
                                pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_size);
@@ -623,28 +626,28 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                                pqiCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_value);
                         break;
                     case CMD_TIMEOUT:
-                        printf("CISS Timeout\n");
+                        print_str("CISS Timeout\n");
                         break;
                     case CMD_PROTOCOL_ERR:
-                        printf("CISS Protocol Error\n");
+                        print_str("CISS Protocol Error\n");
                         break;
                     case CMD_HARDWARE_ERR:
-                        printf("CISS Hardware Error\n");
+                        print_str("CISS Hardware Error\n");
                         break;
                     case CMD_CONNECTION_LOST:
-                        printf("CISS Connection Lost\n");
+                        print_str("CISS Connection Lost\n");
                         break;
                     case CMD_ABORTED:
-                        printf("CISS Command Aborted\n");
+                        print_str("CISS Command Aborted\n");
                         break;
                     case CMD_ABORT_FAILED:
-                        printf("CISS Abort Failed\n");
+                        print_str("CISS Abort Failed\n");
                         break;
                     case CMD_UNSOLICITED_ABORT:
-                        printf("CISS Unsolicited Abort\n");
+                        print_str("CISS Unsolicited Abort\n");
                         break;
                     case CMD_UNABORTABLE:
-                        printf("CISS Unabortable\n");
+                        print_str("CISS Unabortable\n");
                         break;
                     default:
                         printf("CISS unknown error: %u\n", pqiCmd.error_info.CommandStatus);
@@ -758,7 +761,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                 }
                 else
                 {
-                    cissCmd.Request.Timeout = 15;
+                    cissCmd.Request.Timeout = DEFAULT_COMMAND_TIMEOUT;
                 }
                 safe_memcpy(cissCmd.Request.CDB, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
@@ -771,8 +774,8 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                 stop_Timer(&commandTimer);
                 if (ioctlRet < 0)
                 {
-                    ret                                   = OS_PASSTHROUGH_FAILURE;
-                    scsiIoCtx->device->os_info.last_error = errno;
+                    ret = OS_PASSTHROUGH_FAILURE;
+                    set_Device_Last_Error(scsiIoCtx->device, errno);
                     if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                     {
                         print_Errno_To_Screen(errno);
@@ -797,44 +800,44 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                     switch (cissCmd.error_info.CommandStatus)
                     {
                     case CMD_SUCCESS:
-                        printf("CISS Success\n");
+                        print_str("CISS Success\n");
                         break;
                     case CMD_TARGET_STATUS:
-                        printf("CISS Target Status: ");
+                        print_str("CISS Target Status: ");
                         switch (cissCmd.error_info.ScsiStatus)
                         {
                         case SAM_STATUS_GOOD:
-                            printf("Good\n");
+                            print_str("Good\n");
                             break;
                         case SAM_STATUS_CHECK_CONDITION:
-                            printf("Check Condition\n");
+                            print_str("Check Condition\n");
                             break;
                         case SAM_STATUS_CONDITION_MET:
-                            printf("Condition Met\n");
+                            print_str("Condition Met\n");
                             break;
                         case SAM_STATUS_INTERMEDIATE:
-                            printf("Intermediate\n");
+                            print_str("Intermediate\n");
                             break;
                         case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
-                            printf("Intermediate Condition Met\n");
+                            print_str("Intermediate Condition Met\n");
                             break;
                         case SAM_STATUS_COMMAND_TERMINATED:
-                            printf("Command Terminated\n");
+                            print_str("Command Terminated\n");
                             break;
                         case SAM_STATUS_BUSY:
-                            printf("Busy\n");
+                            print_str("Busy\n");
                             break;
                         case SAM_STATUS_RESERVATION_CONFLICT:
-                            printf("Reservation Conflict\n");
+                            print_str("Reservation Conflict\n");
                             break;
                         case SAM_STATUS_TASK_SET_FULL:
-                            printf("Task Set Full\n");
+                            print_str("Task Set Full\n");
                             break;
                         case SAM_STATUS_ACA_ACTIVE:
-                            printf("ACA Active\n");
+                            print_str("ACA Active\n");
                             break;
                         case SAM_STATUS_TASK_ABORTED:
-                            printf("Task Aborted\n");
+                            print_str("Task Aborted\n");
                             break;
                         default:
                             printf("Unknown: %02X\n", cissCmd.error_info.ScsiStatus);
@@ -842,13 +845,13 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                         }
                         break;
                     case CMD_DATA_UNDERRUN:
-                        printf("CISS Data Underrun\n");
+                        print_str("CISS Data Underrun\n");
                         break;
                     case CMD_DATA_OVERRUN:
-                        printf("CISS Data Overrun\n");
+                        print_str("CISS Data Overrun\n");
                         break;
                     case CMD_INVALID:
-                        printf("CISS Invalid\n");
+                        print_str("CISS Invalid\n");
                         // print out additional invalid command info
                         printf("\toffense_size  = %" PRIu8 "\n",
                                cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_size);
@@ -858,28 +861,28 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                                cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_value);
                         break;
                     case CMD_TIMEOUT:
-                        printf("CISS Timeout\n");
+                        print_str("CISS Timeout\n");
                         break;
                     case CMD_PROTOCOL_ERR:
-                        printf("CISS Protocol Error\n");
+                        print_str("CISS Protocol Error\n");
                         break;
                     case CMD_HARDWARE_ERR:
-                        printf("CISS Hardware Error\n");
+                        print_str("CISS Hardware Error\n");
                         break;
                     case CMD_CONNECTION_LOST:
-                        printf("CISS Connection Lost\n");
+                        print_str("CISS Connection Lost\n");
                         break;
                     case CMD_ABORTED:
-                        printf("CISS Command Aborted\n");
+                        print_str("CISS Command Aborted\n");
                         break;
                     case CMD_ABORT_FAILED:
-                        printf("CISS Abort Failed\n");
+                        print_str("CISS Abort Failed\n");
                         break;
                     case CMD_UNSOLICITED_ABORT:
-                        printf("CISS Unsolicited Abort\n");
+                        print_str("CISS Unsolicited Abort\n");
                         break;
                     case CMD_UNABORTABLE:
-                        printf("CISS Unabortable\n");
+                        print_str("CISS Unabortable\n");
                         break;
                     default:
                         printf("CISS unknown error: %u\n", cissCmd.error_info.CommandStatus);
@@ -981,7 +984,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
             }
             else
             {
-                cissCmd.Timeout = 15;
+                cissCmd.Timeout = DEFAULT_COMMAND_TIMEOUT;
             }
             safe_memcpy(cissCmd.cdb, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
@@ -994,8 +997,8 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
             stop_Timer(&commandTimer);
             if (ioctlRet < 0)
             {
-                ret                                   = OS_PASSTHROUGH_FAILURE;
-                scsiIoCtx->device->os_info.last_error = errno;
+                ret = OS_PASSTHROUGH_FAILURE;
+                set_Device_Last_Error(scsiIoCtx->device, errno);
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
                     print_Errno_To_Screen(errno);
@@ -1020,44 +1023,44 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                 switch (cissCmd.err_info.CommandStatus)
                 {
                 case CMD_SUCCESS:
-                    printf("CISS Success\n");
+                    print_str("CISS Success\n");
                     break;
                 case CMD_TARGET_STATUS:
-                    printf("CISS Target Status: ");
+                    print_str("CISS Target Status: ");
                     switch (cissCmd.err_info.ScsiStatus)
                     {
                     case SAM_STATUS_GOOD:
-                        printf("Good\n");
+                        print_str("Good\n");
                         break;
                     case SAM_STATUS_CHECK_CONDITION:
-                        printf("Check Condition\n");
+                        print_str("Check Condition\n");
                         break;
                     case SAM_STATUS_CONDITION_MET:
-                        printf("Condition Met\n");
+                        print_str("Condition Met\n");
                         break;
                     case SAM_STATUS_INTERMEDIATE:
-                        printf("Intermediate\n");
+                        print_str("Intermediate\n");
                         break;
                     case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
-                        printf("Intermediate Condition Met\n");
+                        print_str("Intermediate Condition Met\n");
                         break;
                     case SAM_STATUS_COMMAND_TERMINATED:
-                        printf("Command Terminated\n");
+                        print_str("Command Terminated\n");
                         break;
                     case SAM_STATUS_BUSY:
-                        printf("Busy\n");
+                        print_str("Busy\n");
                         break;
                     case SAM_STATUS_RESERVATION_CONFLICT:
-                        printf("Reservation Conflict\n");
+                        print_str("Reservation Conflict\n");
                         break;
                     case SAM_STATUS_TASK_SET_FULL:
-                        printf("Task Set Full\n");
+                        print_str("Task Set Full\n");
                         break;
                     case SAM_STATUS_ACA_ACTIVE:
-                        printf("ACA Active\n");
+                        print_str("ACA Active\n");
                         break;
                     case SAM_STATUS_TASK_ABORTED:
-                        printf("Task Aborted\n");
+                        print_str("Task Aborted\n");
                         break;
                     default:
                         printf("Unknown: %02X\n", cissCmd.err_info.ScsiStatus);
@@ -1065,41 +1068,41 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                     }
                     break;
                 case CMD_DATA_UNDERRUN:
-                    printf("CISS Data Underrun\n");
+                    print_str("CISS Data Underrun\n");
                     break;
                 case CMD_DATA_OVERRUN:
-                    printf("CISS Data Overrun\n");
+                    print_str("CISS Data Overrun\n");
                     break;
                 case CMD_INVALID:
-                    printf("CISS Invalid\n");
+                    print_str("CISS Invalid\n");
                     // print out additional invalid command info
                     printf("\toffense_size  = %" PRIu8 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_size);
                     printf("\toffense_num   = %" PRIu8 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_num);
                     printf("\toffense_value = %" PRIu32 "\n", cissCmd.err_info.MoreErrInfo.Invalid_Cmd.offense_value);
                     break;
                 case CMD_TIMEOUT:
-                    printf("CISS Timeout\n");
+                    print_str("CISS Timeout\n");
                     break;
                 case CMD_PROTOCOL_ERR:
-                    printf("CISS Protocol Error\n");
+                    print_str("CISS Protocol Error\n");
                     break;
                 case CMD_HARDWARE_ERR:
-                    printf("CISS Hardware Error\n");
+                    print_str("CISS Hardware Error\n");
                     break;
                 case CMD_CONNECTION_LOST:
-                    printf("CISS Connection Lost\n");
+                    print_str("CISS Connection Lost\n");
                     break;
                 case CMD_ABORTED:
-                    printf("CISS Command Aborted\n");
+                    print_str("CISS Command Aborted\n");
                     break;
                 case CMD_ABORT_FAILED:
-                    printf("CISS Abort Failed\n");
+                    print_str("CISS Abort Failed\n");
                     break;
                 case CMD_UNSOLICITED_ABORT:
-                    printf("CISS Unsolicited Abort\n");
+                    print_str("CISS Unsolicited Abort\n");
                     break;
                 case CMD_UNABORTABLE:
-                    printf("CISS Unabortable\n");
+                    print_str("CISS Unabortable\n");
                     break;
                 default:
                     printf("CISS unknown error: %u\n", cissCmd.err_info.CommandStatus);
@@ -1185,7 +1188,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType c
 
             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
-                printf("Sending CISS Big Passthrough\n");
+                print_str("Sending CISS Big Passthrough\n");
             }
 
             switch (cmdType)
@@ -1240,7 +1243,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType c
             }
             else
             {
-                cissCmd.Request.Timeout = 15;
+                cissCmd.Request.Timeout = DEFAULT_COMMAND_TIMEOUT;
             }
             safe_memcpy(cissCmd.Request.CDB, 16, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
 
@@ -1270,44 +1273,44 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType c
                 switch (cissCmd.error_info.CommandStatus)
                 {
                 case CMD_SUCCESS:
-                    printf("CISS Success\n");
+                    print_str("CISS Success\n");
                     break;
                 case CMD_TARGET_STATUS:
-                    printf("CISS Target Status: ");
+                    print_str("CISS Target Status: ");
                     switch (cissCmd.error_info.ScsiStatus)
                     {
                     case SAM_STATUS_GOOD:
-                        printf("Good\n");
+                        print_str("Good\n");
                         break;
                     case SAM_STATUS_CHECK_CONDITION:
-                        printf("Check Condition\n");
+                        print_str("Check Condition\n");
                         break;
                     case SAM_STATUS_CONDITION_MET:
-                        printf("Condition Met\n");
+                        print_str("Condition Met\n");
                         break;
                     case SAM_STATUS_INTERMEDIATE:
-                        printf("Intermediate\n");
+                        print_str("Intermediate\n");
                         break;
                     case SAM_STATUS_INTERMEDIATE_CONDITION_MET:
-                        printf("Intermediate Condition Met\n");
+                        print_str("Intermediate Condition Met\n");
                         break;
                     case SAM_STATUS_COMMAND_TERMINATED:
-                        printf("Command Terminated\n");
+                        print_str("Command Terminated\n");
                         break;
                     case SAM_STATUS_BUSY:
-                        printf("Busy\n");
+                        print_str("Busy\n");
                         break;
                     case SAM_STATUS_RESERVATION_CONFLICT:
-                        printf("Reservation Conflict\n");
+                        print_str("Reservation Conflict\n");
                         break;
                     case SAM_STATUS_TASK_SET_FULL:
-                        printf("Task Set Full\n");
+                        print_str("Task Set Full\n");
                         break;
                     case SAM_STATUS_ACA_ACTIVE:
-                        printf("ACA Active\n");
+                        print_str("ACA Active\n");
                         break;
                     case SAM_STATUS_TASK_ABORTED:
-                        printf("Task Aborted\n");
+                        print_str("Task Aborted\n");
                         break;
                     default:
                         printf("Unknown: %02X\n", cissCmd.error_info.ScsiStatus);
@@ -1315,41 +1318,41 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType c
                     }
                     break;
                 case CMD_DATA_UNDERRUN:
-                    printf("CISS Data Underrun\n");
+                    print_str("CISS Data Underrun\n");
                     break;
                 case CMD_DATA_OVERRUN:
-                    printf("CISS Data Overrun\n");
+                    print_str("CISS Data Overrun\n");
                     break;
                 case CMD_INVALID:
-                    printf("CISS Invalid\n");
+                    print_str("CISS Invalid\n");
                     // print out additional invalid command info
                     printf("\toffense_size  = %" PRIu8 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_size);
                     printf("\toffense_num   = %" PRIu8 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_num);
                     printf("\toffense_value = %" PRIu32 "\n", cissCmd.error_info.MoreErrInfo.Invalid_Cmd.offense_value);
                     break;
                 case CMD_TIMEOUT:
-                    printf("CISS Timeout\n");
+                    print_str("CISS Timeout\n");
                     break;
                 case CMD_PROTOCOL_ERR:
-                    printf("CISS Protocol Error\n");
+                    print_str("CISS Protocol Error\n");
                     break;
                 case CMD_HARDWARE_ERR:
-                    printf("CISS Hardware Error\n");
+                    print_str("CISS Hardware Error\n");
                     break;
                 case CMD_CONNECTION_LOST:
-                    printf("CISS Connection Lost\n");
+                    print_str("CISS Connection Lost\n");
                     break;
                 case CMD_ABORTED:
-                    printf("CISS Command Aborted\n");
+                    print_str("CISS Command Aborted\n");
                     break;
                 case CMD_ABORT_FAILED:
-                    printf("CISS Abort Failed\n");
+                    print_str("CISS Abort Failed\n");
                     break;
                 case CMD_UNSOLICITED_ABORT:
-                    printf("CISS Unsolicited Abort\n");
+                    print_str("CISS Unsolicited Abort\n");
                     break;
                 case CMD_UNABORTABLE:
-                    printf("CISS Unabortable\n");
+                    print_str("CISS Unabortable\n");
                     break;
                 default:
                     printf("CISS unknown error: %u\n", cissCmd.error_info.CommandStatus);
@@ -1529,12 +1532,12 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
 
 eReturnValues close_CISS_RAID_Device(tDevice* device)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (device != M_NULLPTR && device->os_info.cissDeviceData)
     {
         if (close(device->os_info.cissDeviceData->cissHandle))
         {
-            device->os_info.last_error = errno;
+            set_Device_Last_Error(device, errno);
         }
         else
         {
@@ -1549,7 +1552,6 @@ eReturnValues close_CISS_RAID_Device(tDevice* device)
     {
         return MEMORY_FAILURE;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t* count)
@@ -1574,19 +1576,19 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t* count)
             pseudoDev.sanity.size    = sizeof(tDevice);
 
             // setup the cdb
-            cdb[OPERATION_CODE] = CISS_REPORT_PHYSICAL_LUNS_OP;
-            cdb[1] = 0; // no extended data as it is not needed and this will maximize compatibility with controllers
-                        // and firmwares.
-            cdb[2]  = RESERVED;
-            cdb[3]  = RESERVED;
-            cdb[4]  = RESERVED;
-            cdb[5]  = RESERVED;
-            cdb[6]  = M_Byte3(dataLength);
-            cdb[7]  = M_Byte2(dataLength);
-            cdb[8]  = M_Byte1(dataLength);
-            cdb[9]  = M_Byte0(dataLength);
-            cdb[10] = RESERVED;
-            cdb[11] = 0; // control byte
+            cdb[CDB_OPERATION_CODE] = CISS_REPORT_PHYSICAL_LUNS_OP;
+            cdb[CDB_1] = 0; // no extended data as it is not needed and this will maximize compatibility with
+                            // controllers and firmwares.
+            cdb[CDB_2]  = RESERVED;
+            cdb[CDB_3]  = RESERVED;
+            cdb[CDB_4]  = RESERVED;
+            cdb[CDB_5]  = RESERVED;
+            cdb[CDB_6]  = M_Byte3(dataLength);
+            cdb[CDB_7]  = M_Byte2(dataLength);
+            cdb[CDB_8]  = M_Byte1(dataLength);
+            cdb[CDB_9]  = M_Byte0(dataLength);
+            cdb[CDB_10] = RESERVED;
+            cdb[CDB_11] = 0; // control byte
 
             // setup the scsiIoCtx
             safe_memset(&physicalLunCMD, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
@@ -1595,7 +1597,7 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t* count)
             physicalLunCMD.pdata         = data;
             physicalLunCMD.psense        = pseudoDev.drive_info.lastCommandSenseData;
             physicalLunCMD.senseDataSize = SPC3_SENSE_LEN;
-            physicalLunCMD.timeout       = 15;
+            physicalLunCMD.timeout       = DEFAULT_COMMAND_TIMEOUT;
             physicalLunCMD.dataLength    = dataLength;
             physicalLunCMD.cdbLength     = 12;
             safe_memcpy(physicalLunCMD.cdb, SCSI_IO_CTX_MAX_CDB_LEN, cdb, 12);
@@ -1728,9 +1730,9 @@ eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
             }
             else
             {
-                printf("Failed to open handle with error: ");
+                print_str("Failed to open handle with error: ");
                 print_Errno_To_Screen(errno);
-                printf("\n");
+                print_str("\n");
             }
         }
         if (!handleRemoved)
@@ -1741,12 +1743,12 @@ eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
             raidList = raidList->next;
         }
     }
-    DISABLE_NONNULL_COMPARE
+
     if (numberOfDevices != M_NULLPTR)
     {
         *numberOfDevices = found;
     }
-    RESTORE_NONNULL_COMPARE
+
     return SUCCESS;
 }
 
@@ -1789,7 +1791,6 @@ eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
         return SUCCESS;
     }
 
-    DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         return BAD_PARAMETER;
@@ -1895,7 +1896,7 @@ eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     return returnValue;
 }
 #endif // ENABLE_CISS

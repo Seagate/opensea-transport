@@ -5,7 +5,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -76,10 +76,9 @@ extern "C"
     // Used internally to set the flags above for the new firmware update IOCTL.
     // NOTE: This versions checks win10/11 to determine when the requested mode is supporetd.
     // If not supported, it returns OS_COMMAND_NOT_AVAILABLE
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RW(1)
     M_PARAM_RW(2)
-    eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* nvmeIoCtx, uint32_t* currentFlags);
+    eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* M_NONNULL nvmeIoCtx, uint32_t* M_NONNULL currentFlags);
 
 #define WIN_SCSI_SRB       "\\\\.\\SCSI" // can be used to issue mini port ioctls. Not really supported right now...
 #define WIN_PHYSICAL_DRIVE "\\\\.\\PhysicalDrive"
@@ -110,11 +109,11 @@ extern "C"
     // \brief Function to send a ioctl after converting it from the ScsiIoCtx to OS tSPTIoContext
     // \param ScsiIoCtx
     // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* scsiIoCtx);
+    M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
-    //  os_Device_Reset(tDevice *device)
+    //  os_Device_Reset(const tDevice *device)
     //
     //! \brief   Description:  Attempts a device reset through OS functions available. NOTE: This won't work on every
     //! device
@@ -128,11 +127,11 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Device_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  os_Bus_Reset(tDevice *device)
+    //  os_Bus_Reset(const tDevice *device)
     //
     //! \brief   Description:  Attempts a bus reset through OS functions available. NOTE: This won't work on every
     //! device
@@ -146,11 +145,11 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Bus_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  os_Controller_Reset(tDevice *device)
+    //  os_Controller_Reset(const tDevice *device)
     //
     //! \brief   Description:  Attempts a controller reset through OS functions available. NOTE: This won't work on
     //! every device
@@ -164,11 +163,11 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Controller_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  os_Lock_Device(tDevice *device)
+    //  os_Lock_Device(const tDevice *device)
     //
     //! \brief   Description:  Issues the FSCTL_LOCK_VOLUME ioctl on the open handle to prevent any interuptions during
     //! a command or sequence of commands.
@@ -183,13 +182,13 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Lock_Device(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device);
 
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Get_Exclusive(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  os_Unlock_Device(tDevice *device)
+    //  os_Unlock_Device(const tDevice *device)
     //
     //! \brief   Description:  Issues the FSCTL_UNLOCK_VOLUME ioctl on the open handle to restore shared functionality
     //! on the device.
@@ -202,11 +201,11 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Unlock_Device(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  os_Unlock_Device(tDevice *device)
+    //  os_Unlock_Device(const tDevice *device)
     //
     //! \brief   Description:  Issues IOCTL_DISK_UPDATE_PROPERTIES to force an update of the known filesystem...or
     //! attempts to.
@@ -218,8 +217,7 @@ extern "C"
     //!   \return SUCCESS = pass, NOT_SUPPORTED = IOCTL not available, or did not work. - TJE
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues
-        os_Update_File_System_Cache(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Update_File_System_Cache(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -239,9 +237,9 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(2, 3) eReturnValues pci_Read_Bar_Reg(tDevice* device, uint8_t* pData, uint32_t dataSize);
+    M_PARAM_WO_SIZE(2, 3)
+    eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -256,16 +254,16 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx);
+    M_PARAM_RO(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx);
 
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_nvme_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device);
 
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device);
 
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues
-        os_Unmount_File_Systems_On_Device(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
+        os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device);
 
-    OPENSEA_TRANSPORT_API M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device);
 
 #if defined(__cplusplus)
 }

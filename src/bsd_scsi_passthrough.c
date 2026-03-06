@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2025-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2025-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,6 +14,7 @@
 
 #include "common_types.h"
 #include "error_translation.h"
+#include "io_utils.h"
 #include "math_utils.h"
 #include "precision_timer.h"
 #include "type_conversion.h"
@@ -184,7 +185,7 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
                 }
                 else
                 {
-                    scsicmd.timeout = 15000UL; // default to 15 second timeout
+                    scsicmd.timeout = DEFAULT_COMMAND_TIMEOUT * 1000UL; // default to 15 second timeout
                 }
             }
             safe_memcpy(scsicmd.cmd, CMDBUFLEN, scsiIoCtx->cdb, scsiIoCtx->cdbLength);
@@ -198,13 +199,13 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
             if (iocret < 0)
             {
                 // something went wrong with the ioctl.
-                scsiIoCtx->device->os_info.last_error = errno;
-                ret                                   = OS_PASSTHROUGH_FAILURE;
+                set_Device_Last_Error(scsiIoCtx->device, errno);
+                ret = OS_PASSTHROUGH_FAILURE;
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
                     if (scsiIoCtx->device->os_info.last_error != 0)
                     {
-                        printf("Error: ");
+                        print_str("Error: ");
                         print_Errno_To_Screen(errno);
                     }
                 }

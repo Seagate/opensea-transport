@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -89,7 +89,7 @@ eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t                lowC
     return ret;
 }
 
-eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice*               device,
+eReturnValues get_RTFRs_From_Prolific_Legacy(const tDevice*         device,
                                              ataPassthroughCommand* ataCommandOptions,
                                              eReturnValues          commandRet)
 {
@@ -101,12 +101,12 @@ eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice*               device,
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 16);
-    cdb[OPERATION_CODE] = PROLIFIC_GET_REGISTERS_OPCODE;
-    cdb[1]              = RESERVED;
-    cdb[2]              = RESERVED;
-    cdb[3]              = RESERVED;
-    cdb[4]              = M_Byte1(CHECK_WORD);
-    cdb[5]              = M_Byte0(CHECK_WORD);
+    cdb[CDB_OPERATION_CODE] = PROLIFIC_GET_REGISTERS_OPCODE;
+    cdb[CDB_1]              = RESERVED;
+    cdb[CDB_2]              = RESERVED;
+    cdb[CDB_3]              = RESERVED;
+    cdb[CDB_4]              = M_Byte1(CHECK_WORD);
+    cdb[CDB_5]              = M_Byte0(CHECK_WORD);
     ret = scsi_Send_Cdb(device, cdb, CDB_LEN_6, returnData, 16, XFER_DATA_IN, senseData, SPC3_SENSE_LEN, 0);
     if (ret == SUCCESS)
     {
@@ -125,7 +125,7 @@ eReturnValues get_RTFRs_From_Prolific_Legacy(tDevice*               device,
     return ret;
 }
 
-eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_Prolific_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, prolificLowCDB, CDB_LEN_16);
@@ -197,12 +197,12 @@ eReturnValues send_Prolific_Legacy_Passthrough_Command(tDevice* device, ataPasst
         }
     }
     // before we get rid of the sense data, copy it back to the last command sense data
-    safe_memset(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, 0,
+    safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(&device->drive_info.lastCommandSenseData[0], SPC3_SENSE_LEN, &ataCommandOptions->ptrSenseData,
-                M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
-    safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(ataReturnTFRs), &ataCommandOptions->rtfr,
-                sizeof(ataReturnTFRs));
+    safe_memcpy(M_CONST_CAST(uint8_t*, &device->drive_info.lastCommandSenseData[0]), SPC3_SENSE_LEN,
+                &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
+    safe_memcpy(M_CONST_CAST(ataReturnTFRs*, &device->drive_info.lastCommandRTFRs), sizeof(ataReturnTFRs),
+                &ataCommandOptions->rtfr, sizeof(ataReturnTFRs));
     safe_free_aligned(&senseData);
     if (localSenseData)
     {

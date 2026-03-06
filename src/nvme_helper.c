@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -202,43 +202,43 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
 
 void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* cmdCtx)
 {
-    printf("Sending NVM Command:\n");
-    printf("\tType: ");
+    print_str("Sending NVM Command:\n");
+    print_str("\tType: ");
     switch (cmdCtx->commandType)
     {
     case NVM_ADMIN_CMD:
-        printf("Admin");
+        print_str("Admin");
         break;
     case NVM_CMD:
-        printf("NVM");
+        print_str("NVM");
         break;
     case NVM_UNKNOWN_CMD_SET:
     default:
-        printf("Unknown");
+        print_str("Unknown");
         break;
     }
-    printf("\n");
-    printf("\tData Direction: ");
+    print_str("\n");
+    print_str("\tData Direction: ");
     // Data Direction:
     switch (cmdCtx->commandDirection)
     {
     case XFER_NO_DATA:
-        printf("No Data");
+        print_str("No Data");
         break;
     case XFER_DATA_IN:
-        printf("Data In");
+        print_str("Data In");
         break;
     case XFER_DATA_OUT:
-        printf("Data Out");
+        print_str("Data Out");
         break;
     default:
-        printf("Unknown");
+        print_str("Unknown");
         break;
     }
-    printf("\n");
+    print_str("\n");
     printf("Data Length: %" PRIu32 "\n", cmdCtx->dataSize);
     // printf("Cmd result 0x%02X\n", cmdCtx->result);
-    printf("Command Bytes:\n");
+    print_str("Command Bytes:\n");
     switch (cmdCtx->commandType)
     {
     case NVM_ADMIN_CMD:
@@ -294,7 +294,7 @@ void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* cmdCtx)
         printf("\tCDW15 = %08" PRIX32 "h\n", cmdCtx->cmd.dwords.cdw15);
         break;
     }
-    printf("\n");
+    print_str("\n");
 }
 
 void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
@@ -303,7 +303,7 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
                                        uint8_t* statusCodeType,
                                        uint8_t* statusCode)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (doNotRetry != M_NULLPTR && more != M_NULLPTR && statusCodeType != M_NULLPTR && statusCode != M_NULLPTR)
     {
         *doNotRetry     = nvmeStatusDWord & BIT31;
@@ -311,7 +311,6 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
         *statusCodeType = get_8bit_range_uint32(nvmeStatusDWord, 27, 25);
         *statusCode     = get_8bit_range_uint32(nvmeStatusDWord, 24, 17);
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 // Status codes must be in numeric order!
@@ -537,35 +536,35 @@ eReturnValues check_NVMe_Status(uint32_t nvmeStatusDWord)
 
 void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* cmdCtx)
 {
-    printf("NVM Command Completion:\n");
-    printf("\tCommand Specific (DW0): ");
+    print_str("NVM Command Completion:\n");
+    print_str("\tCommand Specific (DW0): ");
     if (cmdCtx->commandCompletionData.dw0Valid)
     {
         printf("%" PRIX32 "h\n", cmdCtx->commandCompletionData.commandSpecific);
     }
     else
     {
-        printf("Unavailable from OS\n");
+        print_str("Unavailable from OS\n");
     }
-    printf("\tReserved (DW1): ");
+    print_str("\tReserved (DW1): ");
     if (cmdCtx->commandCompletionData.dw1Valid)
     {
         printf("%" PRIX32 "h\n", cmdCtx->commandCompletionData.dw1Reserved);
     }
     else
     {
-        printf("Unavailable from OS\n");
+        print_str("Unavailable from OS\n");
     }
-    printf("\tSQ ID & SQ Head Ptr (DW2): ");
+    print_str("\tSQ ID & SQ Head Ptr (DW2): ");
     if (cmdCtx->commandCompletionData.dw2Valid)
     {
         printf("%" PRIX32 "h\n", cmdCtx->commandCompletionData.sqIDandHeadPtr);
     }
     else
     {
-        printf("Unavailable from OS\n");
+        print_str("Unavailable from OS\n");
     }
-    printf("\tStatus & CID (DW3): ");
+    print_str("\tStatus & CID (DW3): ");
     if (cmdCtx->commandCompletionData.dw3Valid)
     {
         bool    dnr            = false;
@@ -575,23 +574,23 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* cmdCtx)
         printf("%" PRIX32 "h\n", cmdCtx->commandCompletionData.statusAndCID);
         get_NVMe_Status_Fields_From_DWord(cmdCtx->commandCompletionData.statusAndCID, &dnr, &more, &statusCodeType,
                                           &statusCode);
-        printf("\t\tDo Not Retry: ");
+        print_str("\t\tDo Not Retry: ");
         if (dnr)
         {
-            printf("True\n");
+            print_str("True\n");
         }
         else
         {
-            printf("False\n");
+            print_str("False\n");
         }
-        printf("\t\tMore: ");
+        print_str("\t\tMore: ");
         if (more)
         {
-            printf("True\n");
+            print_str("True\n");
         }
         else
         {
-            printf("False\n");
+            print_str("False\n");
         }
 #define NVME_STATUS_CODE_TYPE_STRING_LENGTH 32
 #define NVME_STATUS_CODE_STRING_LENGTH      62
@@ -642,16 +641,16 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* cmdCtx)
     }
     else
     {
-        printf("Unavailable from OS\n");
+        print_str("Unavailable from OS\n");
     }
-    printf("\n");
+    print_str("\n");
 }
 
-const char* nvme_cmd_to_string(int admin, uint8_t opcode)
+M_RETURNS_NONNULL const char* nvme_cmd_to_string(int admin, uint8_t opcode)
 {
     if (admin)
     {
-        switch (opcode)
+        switch (M_STATIC_CAST(eNVMeAdminOpCodes, opcode))
         {
         case NVME_ADMIN_CMD_DELETE_SQ:
             return "Delete I/O Submission Queue";
@@ -711,7 +710,7 @@ const char* nvme_cmd_to_string(int admin, uint8_t opcode)
     }
     else
     {
-        switch (opcode)
+        switch (M_STATIC_CAST(eNvmeOPCodes, opcode))
         {
         case NVME_CMD_FLUSH:
             return "Flush";
@@ -727,6 +726,8 @@ const char* nvme_cmd_to_string(int admin, uint8_t opcode)
             return "Write Zeroes";
         case NVME_CMD_DATA_SET_MANAGEMENT:
             return "Dataset Management";
+        case NVME_CMD_VERIFY:
+            return "Verify";
         case NVME_CMD_RESERVATION_REGISTER:
             return "Reservation Register";
         case NVME_CMD_RESERVATION_REPORT:
@@ -741,7 +742,7 @@ const char* nvme_cmd_to_string(int admin, uint8_t opcode)
     return "Unknown";
 }
 
-eReturnValues nvme_Get_SMART_Log_Page(tDevice* device, uint32_t nsid, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_SMART_Log_Page(const tDevice* device, uint32_t nsid, uint8_t* pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -749,12 +750,11 @@ eReturnValues nvme_Get_SMART_Log_Page(tDevice* device, uint32_t nsid, uint8_t* p
 #ifdef _DEBUG
     printf("-->%s\n", __FUNCTION__);
 #endif
-    DISABLE_NONNULL_COMPARE
+
     if (pData == M_NULLPTR || (dataLen < NVME_SMART_HEALTH_LOG_LEN))
     {
         return ret;
     }
-    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     smartLog = C_CAST(nvmeSmartLog*, pData);
@@ -772,7 +772,7 @@ eReturnValues nvme_Get_SMART_Log_Page(tDevice* device, uint32_t nsid, uint8_t* p
     return ret;
 }
 
-eReturnValues nvme_Get_ERROR_Log_Page(tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -780,12 +780,11 @@ eReturnValues nvme_Get_ERROR_Log_Page(tDevice* device, uint8_t* pData, uint32_t 
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    DISABLE_NONNULL_COMPARE
+
     if (pData == M_NULLPTR || (dataLen < sizeof(nvmeErrLogEntry)))
     {
         return ret;
     }
-    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
@@ -799,7 +798,7 @@ eReturnValues nvme_Get_ERROR_Log_Page(tDevice* device, uint8_t* pData, uint32_t 
     return ret;
 }
 
-eReturnValues nvme_Get_FWSLOTS_Log_Page(tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -807,12 +806,11 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(tDevice* device, uint8_t* pData, uint32_
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    DISABLE_NONNULL_COMPARE
+
     if (pData == M_NULLPTR || (dataLen < sizeof(nvmeFirmwareSlotInfo)))
     {
         return ret;
     }
-    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
@@ -826,7 +824,7 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(tDevice* device, uint8_t* pData, uint32_
     return ret;
 }
 
-eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -834,12 +832,11 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice* device, uint8_t* pData, uint
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    DISABLE_NONNULL_COMPARE
+
     if (pData == M_NULLPTR || (dataLen < sizeof(nvmeEffectsLog)))
     {
         return ret;
     }
-    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
@@ -853,7 +850,7 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(tDevice* device, uint8_t* pData, uint
     return ret;
 }
 
-eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -861,12 +858,11 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice* device, uint8_t* pData, uin
     printf("-->%s\n", __FUNCTION__);
 #endif
     // Should be able to pull at least one entry.
-    DISABLE_NONNULL_COMPARE
+
     if (pData == M_NULLPTR || (dataLen < sizeof(nvmeSelfTestLog)))
     {
         return ret;
     }
-    RESTORE_NONNULL_COMPARE
 
     safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
@@ -881,7 +877,7 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(tDevice* device, uint8_t* pData, uin
 }
 
 // Seagate unique?
-eReturnValues nvme_Read_Ext_Smt_Log(tDevice* device, EXTENDED_SMART_INFO_T* ExtdSMARTInfo)
+eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* device, EXTENDED_SMART_INFO_T* ExtdSMARTInfo)
 {
     eReturnValues         ret = SUCCESS;
     nvmeGetLogPageCmdOpts getExtSMARTLog;
@@ -893,7 +889,7 @@ eReturnValues nvme_Read_Ext_Smt_Log(tDevice* device, EXTENDED_SMART_INFO_T* Extd
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
-        printf("Reading NVMe Ext SMART Log\n");
+        print_str("Reading NVMe Ext SMART Log\n");
     }
     ret = nvme_Get_Log_Page(device, &getExtSMARTLog);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)

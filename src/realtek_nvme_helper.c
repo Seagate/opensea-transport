@@ -18,18 +18,21 @@
 #include "realtek_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
-eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
-                                                 eDataTransferDirection* cdbDataDirection,
-                                                 uint8_t*                dataPtr,
-                                                 uint32_t                dataSize,
-                                                 eRealtekNVMCMDPhase     phase,
-                                                 nvmeCmdCtx*             nvmCmd)
+eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t cdb[M_NONNULL_ARRAY REALTEK_NVME_CDB_SIZE],
+                                                 eDataTransferDirection* M_NONNULL cdbDataDirection,
+                                                 uint8_t* M_NULLABLE               dataPtr,
+                                                 uint32_t                          dataSize,
+                                                 eRealtekNVMCMDPhase               phase,
+                                                 nvmeCmdCtx* M_NONNULL             nvmCmd)
 {
+    // static array should force passing a non-null pointer, but checking anyways since MSVC doesn't support marking
+    // static arrays
     DISABLE_NONNULL_COMPARE
     if (cdb == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     safe_memset(cdb, REALTEK_NVME_CDB_SIZE, 0, REALTEK_NVME_CDB_SIZE);
 
@@ -44,26 +47,26 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
         else
         {
             safe_memset(dataPtr, REALTEK_NVME_CMD_PAYLOAD_LEN, 0, REALTEK_NVME_CMD_PAYLOAD_LEN);
-            cdb[OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_OUT;
+            cdb[CDB_OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_OUT;
             // set length to 0x40 - aka 64 bytes
-            cdb[1] = M_Byte0(REALTEK_NVME_CMD_PAYLOAD_LEN); // length
-            cdb[2] = M_Byte1(REALTEK_NVME_CMD_PAYLOAD_LEN); // length
-            cdb[3] = C_CAST(uint8_t, REALTEK_PHASE_COMMAND);
+            cdb[CDB_1] = M_Byte0(REALTEK_NVME_CMD_PAYLOAD_LEN); // length
+            cdb[CDB_2] = M_Byte1(REALTEK_NVME_CMD_PAYLOAD_LEN); // length
+            cdb[CDB_3] = C_CAST(uint8_t, REALTEK_PHASE_COMMAND);
             if (nvmCmd->commandType == NVM_ADMIN_CMD)
             {
                 // set the cmd set field cdb 4-7
-                cdb[4] = M_Byte0(REALTEK_NVME_ADMIN_CMD);
-                cdb[5] = M_Byte1(REALTEK_NVME_ADMIN_CMD);
-                cdb[6] = M_Byte2(REALTEK_NVME_ADMIN_CMD);
-                cdb[7] = M_Byte3(REALTEK_NVME_ADMIN_CMD);
+                cdb[CDB_4] = M_Byte0(REALTEK_NVME_ADMIN_CMD);
+                cdb[CDB_5] = M_Byte1(REALTEK_NVME_ADMIN_CMD);
+                cdb[CDB_6] = M_Byte2(REALTEK_NVME_ADMIN_CMD);
+                cdb[CDB_7] = M_Byte3(REALTEK_NVME_ADMIN_CMD);
             }
             else
             {
                 // set the cmd set field cdb 4-7
-                cdb[4] = M_Byte0(REALTEK_NVME_IO_CMD);
-                cdb[5] = M_Byte1(REALTEK_NVME_IO_CMD);
-                cdb[6] = M_Byte2(REALTEK_NVME_IO_CMD);
-                cdb[7] = M_Byte3(REALTEK_NVME_IO_CMD);
+                cdb[CDB_4] = M_Byte0(REALTEK_NVME_IO_CMD);
+                cdb[CDB_5] = M_Byte1(REALTEK_NVME_IO_CMD);
+                cdb[CDB_6] = M_Byte2(REALTEK_NVME_IO_CMD);
+                cdb[CDB_7] = M_Byte3(REALTEK_NVME_IO_CMD);
             }
             // Now setup the remaining command fields.
             // CDW0 is bytes 3:0
@@ -152,43 +155,43 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
         // read uses in, write and non-data use out
         if (nvmCmd->commandDirection == XFER_DATA_IN)
         {
-            cdb[OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_IN;
-            *cdbDataDirection   = XFER_DATA_IN;
-            cdb[6]              = M_Byte0(REALTEK_DATA_IN);
-            cdb[7]              = M_Byte1(REALTEK_DATA_IN);
+            cdb[CDB_OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_IN;
+            *cdbDataDirection       = XFER_DATA_IN;
+            cdb[CDB_6]              = M_Byte0(REALTEK_DATA_IN);
+            cdb[CDB_7]              = M_Byte1(REALTEK_DATA_IN);
         }
         else
         {
-            cdb[OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_OUT;
-            *cdbDataDirection   = XFER_DATA_OUT;
-            cdb[6]              = M_Byte0(REALTEK_DATA_OUT);
-            cdb[7]              = M_Byte1(REALTEK_DATA_OUT);
+            cdb[CDB_OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_OUT;
+            *cdbDataDirection       = XFER_DATA_OUT;
+            cdb[CDB_6]              = M_Byte0(REALTEK_DATA_OUT);
+            cdb[CDB_7]              = M_Byte1(REALTEK_DATA_OUT);
         }
         // length of transfer can be zero to 256KiB
-        cdb[1] = M_Byte0(nvmCmd->dataSize); // length
-        cdb[2] = M_Byte1(nvmCmd->dataSize); // length
-        cdb[4] = M_Byte2(nvmCmd->dataSize); // length
-        cdb[5] = M_Byte3(nvmCmd->dataSize); // length
+        cdb[CDB_1] = M_Byte0(nvmCmd->dataSize); // length
+        cdb[CDB_2] = M_Byte1(nvmCmd->dataSize); // length
+        cdb[CDB_4] = M_Byte2(nvmCmd->dataSize); // length
+        cdb[CDB_5] = M_Byte3(nvmCmd->dataSize); // length
         if (nvmCmd->dataSize == UINT32_C(0))
         {
             *cdbDataDirection = XFER_NO_DATA;
-            cdb[6]            = M_Byte0(REALTEK_NO_DATA);
-            cdb[7]            = M_Byte1(REALTEK_NO_DATA);
+            cdb[CDB_6]        = M_Byte0(REALTEK_NO_DATA);
+            cdb[CDB_7]        = M_Byte1(REALTEK_NO_DATA);
         }
-        cdb[3] = C_CAST(uint8_t, REALTEK_PHASE_DATA);
+        cdb[CDB_3] = C_CAST(uint8_t, REALTEK_PHASE_DATA);
         break;
     case REALTEK_PHASE_COMPLETION:
-        *cdbDataDirection   = XFER_DATA_IN;
-        cdb[OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_IN;
+        *cdbDataDirection       = XFER_DATA_IN;
+        cdb[CDB_OPERATION_CODE] = REALTEK_NVME_PT_OPCODE_IN;
         // length must be 16 bytes
-        cdb[1] = M_Byte0(REALTEK_NVME_COMPLETION_PAYLOAD_LEN);
-        cdb[2] = M_Byte1(REALTEK_NVME_COMPLETION_PAYLOAD_LEN);
-        cdb[3] = C_CAST(uint8_t, REALTEK_PHASE_COMPLETION);
+        cdb[CDB_1] = M_Byte0(REALTEK_NVME_COMPLETION_PAYLOAD_LEN);
+        cdb[CDB_2] = M_Byte1(REALTEK_NVME_COMPLETION_PAYLOAD_LEN);
+        cdb[CDB_3] = C_CAST(uint8_t, REALTEK_PHASE_COMPLETION);
         break;
     default:
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     return SUCCESS;
 }
 
@@ -198,12 +201,12 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekCDB, REALTEK_NVME_CDB_SIZE);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekPayload, REALTEK_NVME_CMD_PAYLOAD_LEN);
     eDataTransferDirection realtekCDBDir = 0;
-    DISABLE_NONNULL_COMPARE
+
     if (nvmCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     if (nvmCmd->dataSize > REALTEK_NVME_MAX_TRANSFER_SIZE_BYTES || nvmCmd->commandDirection == XFER_DATA_IN_OUT ||
         nvmCmd->commandDirection == XFER_DATA_OUT_IN)
     {
@@ -218,7 +221,7 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
         return ret;
     }
     ret = scsi_Send_Cdb(nvmCmd->device, realtekCDB, REALTEK_NVME_CDB_SIZE, realtekPayload, REALTEK_NVME_CMD_PAYLOAD_LEN,
-                        realtekCDBDir, NULL, 0, 15);
+                        realtekCDBDir, NULL, 0, DEFAULT_COMMAND_TIMEOUT);
     if (SUCCESS != ret)
     {
         return ret;
@@ -267,4 +270,77 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
         }
     }
     return ret;
+}
+
+// cmds supported:
+// admin:
+//  - get log page (2)
+//  - identify (6)
+//  - security send/receive
+//  - get features (no way to get completion registers at this time)
+//  - format
+// CMDs to test:
+//  - firmware image download - cdw 11 instead??? this is offset, whereas xfer size is cdw10 as dwords
+//  - firmware image commit - action and slot at most
+
+// NOT SUPPORTED:
+//  device self-test
+//  sanitize
+//  set features
+
+eReturnValues build_Realtek_Basic_NVMe_CDB_And_Payload(uint8_t     cdb[M_NONNULL_ARRAY REALTEK_NVME_CDB_SIZE],
+                                                       nvmeCmdCtx* nvmCmd)
+{
+    eReturnValues ret = SUCCESS;
+    if (nvmCmd->commandType != NVM_ADMIN_CMD || nvmCmd->dataSize > REALTEK_BASIC_MAX_TRANSFER_SIZE_BYTES)
+    {
+        return OS_COMMAND_NOT_AVAILABLE;
+    }
+    if ((nvmCmd->commandDirection == XFER_DATA_OUT && nvmCmd->dataSize > 0) || nvmCmd->commandDirection == XFER_NO_DATA)
+    {
+        // use for data out and no-data. No data tested with non-data command
+        cdb[0] = REALTEK_NVME_PT_OPCODE_OUT;
+    }
+    else
+    {
+        cdb[0] = REALTEK_NVME_PT_OPCODE_IN;
+    }
+    cdb[1] = M_Byte0(nvmCmd->dataSize);
+    cdb[2] = M_Byte1(nvmCmd->dataSize);
+    cdb[3] = nvmCmd->cmd.adminCmd.opcode;
+    // general rule that lowest byte of dword 0 goes here.
+    // This seems to work for get log page, get features, identify commands - TJE
+    cdb[4] = M_Byte0(nvmCmd->cmd.adminCmd.cdw10);
+    if (nvmCmd->cmd.adminCmd.opcode == NVME_ADMIN_CMD_FORMAT_NVM)
+    {
+        // Note sure if CDB[5] gets used or not. It seems accepted for specifying which LBA format, but that is
+        //  part of cdb[4]...not sure if SES can be specified or not?
+        // cdb[5] = M_Byte1(nvmCmd->cmd.adminCmd.cdw10) >> 1;
+    }
+    return ret;
+}
+
+eReturnValues send_Realtek_Basic_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
+{
+    eReturnValues ret = SUCCESS;
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekCDB, REALTEK_NVME_CDB_SIZE);
+
+    if (nvmCmd == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
+
+    ret = build_Realtek_Basic_NVMe_CDB_And_Payload(realtekCDB, nvmCmd);
+    if (SUCCESS != ret)
+    {
+        return ret;
+    }
+    eReturnValues sendRet = scsi_Send_Cdb(nvmCmd->device, realtekCDB, REALTEK_NVME_CDB_SIZE, nvmCmd->ptrData,
+                                          nvmCmd->dataSize, nvmCmd->commandDirection, NULL, 0, nvmCmd->timeout);
+    // TODO: Translate sense to NVMe status?
+    // NOTE: There does not appear to be a way to read completion DWords from the adapter from what I can tell - TJE
+    // NOTE: For unsupported commands over this passthrough, the sense data returns invalid command operation code,
+    // meaning
+    //       the NVMe opcode, not the SCSI E4/E5 opcode. -TJE
+    return sendRet;
 }
