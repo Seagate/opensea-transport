@@ -184,6 +184,7 @@ eReturnValues ata_Legacy_Read_DMA_CHS(const tDevice*         device,
         }
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -239,6 +240,7 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(const tDevice*         device,
         }
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -347,7 +349,7 @@ eReturnValues ata_Legacy_Read_Sectors_CHS(const tDevice*         device,
             print_str("Sending ATA Read Sectors (CHS)\n");
         }
     }
-
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -689,6 +691,7 @@ eReturnValues ata_Legacy_Read_Long_CHS(const tDevice* device,
         print_str("Sending ATA Read Long (CHS)\n");
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -724,6 +727,7 @@ eReturnValues ata_Legacy_Read_Long(const tDevice* device,
         print_str("Sending ATA Read Long\n");
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1003,6 +1007,7 @@ eReturnValues ata_Legacy_Identify_Device_DMA(const tDevice* device, uint8_t* ptr
     {
         print_str("Sending ATA Identify DMA command\n");
     }
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &identify);
 
     if (ret == SUCCESS)

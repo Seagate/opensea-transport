@@ -316,6 +316,7 @@ eReturnValues scsi_SecurityProtocol_In(const tDevice* device,
 
     if (ptrData && allocationLength)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -430,6 +431,7 @@ eReturnValues scsi_Report_Supported_Operation_Codes(const tDevice* device,
 
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -808,6 +810,7 @@ eReturnValues scsi_Request_Sense_Cmd(const tDevice* device, bool descriptorBit, 
     }
     cdb[CDB6_CONTROL] = set_Control_Field(false, false, false);
 
+    explicit_zeroes(pdata, dataSize);
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), pdata, dataSize, XFER_DATA_IN,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
@@ -916,6 +919,7 @@ eReturnValues scsi_Log_Sense_Cmd(const tDevice* device,
 
     if (dataSize > 0)
     {
+        explicit_zeroes(ptrData, dataSize);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_IN,
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
@@ -1065,6 +1069,7 @@ eReturnValues scsi_Read_Capacity_10(const tDevice* device, uint8_t* pdata, uint1
     // send the command
     if (dataSize > 0 && pdata)
     {
+        explicit_zeroes(pdata, dataSize);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), pdata, dataSize, XFER_DATA_IN,
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
@@ -1112,6 +1117,7 @@ eReturnValues scsi_Read_Capacity_16(const tDevice* device, uint8_t* pdata, uint3
     // send the command
     if (dataSize > 0)
     {
+        explicit_zeroes(pdata, dataSize);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), pdata, dataSize, XFER_DATA_IN,
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
@@ -1262,6 +1268,7 @@ eReturnValues scsi_Mode_Sense_6(const tDevice*       device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -1333,6 +1340,7 @@ eReturnValues scsi_Mode_Sense_10(const tDevice*       device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -1680,6 +1688,7 @@ eReturnValues scsi_Inquiry(const tDevice* device,
     // send the command
     if (dataLength > 0)
     {
+        explicit_zeroes(pdata, dataLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), pdata, dataLength, XFER_DATA_IN,
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
@@ -1742,6 +1751,7 @@ eReturnValues scsi_Read_Media_Serial_Number(const tDevice* device, uint32_t allo
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -1802,6 +1812,7 @@ eReturnValues scsi_Read_Attribute(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -1852,6 +1863,7 @@ eReturnValues scsi_Read_Buffer(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -1909,6 +1921,7 @@ eReturnValues scsi_Read_Buffer_16(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -1955,6 +1968,7 @@ eReturnValues scsi_Receive_Diagnostic_Results(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, timeoutSeconds);
@@ -2046,6 +2060,7 @@ eReturnValues scsi_Report_Aliases(const tDevice* device, uint32_t allocationLeng
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -2094,6 +2109,7 @@ eReturnValues scsi_Report_Identifying_Information(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -2138,6 +2154,7 @@ eReturnValues scsi_Report_Luns(const tDevice* device, uint8_t selectReport, uint
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -2185,6 +2202,7 @@ eReturnValues scsi_Report_Priority(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -2235,6 +2253,7 @@ eReturnValues scsi_Report_Supported_Task_Management_Functions(const tDevice* dev
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -2281,6 +2300,7 @@ eReturnValues scsi_Report_Timestamp(const tDevice* device, uint32_t allocationLe
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -2831,6 +2851,7 @@ eReturnValues scsi_Get_Lba_Status(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -3114,6 +3135,7 @@ eReturnValues scsi_Read_6(const tDevice* device,
                                    set_Control_Field(false, false, false));
 
     // send the command
+    explicit_zeroes(ptrData, transferLengthBytes);
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes,
                         XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
@@ -3169,6 +3191,7 @@ eReturnValues scsi_Read_10(const tDevice* device,
     // send the command
     if (transferLengthBlocks > 0)
     {
+        explicit_zeroes(ptrData, transferLengthBytes);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -3233,6 +3256,7 @@ eReturnValues scsi_Read_12(const tDevice* device,
     // send the command
     if (transferLengthBlocks > 0)
     {
+        explicit_zeroes(ptrData, transferLengthBytes);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -3301,6 +3325,7 @@ eReturnValues scsi_Read_16(const tDevice* device,
     // send the command
     if (transferLengthBlocks > 0)
     {
+        explicit_zeroes(ptrData, transferLengthBytes);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -3361,6 +3386,7 @@ eReturnValues scsi_Read_32(const tDevice* device,
     // send the command
     if (transferLengthBlocks > 0)
     {
+        explicit_zeroes(ptrData, transferLengthBytes);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -3415,6 +3441,7 @@ eReturnValues scsi_Read_Defect_Data_10(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -3472,6 +3499,7 @@ eReturnValues scsi_Read_Defect_Data_12(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -3525,6 +3553,7 @@ eReturnValues scsi_Read_Long_10(const tDevice* device,
     // send the command
     if (byteTransferLength > 0)
     {
+        explicit_zeroes(ptrData, byteTransferLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, byteTransferLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -3584,6 +3613,7 @@ eReturnValues scsi_Read_Long_16(const tDevice* device,
     // send the command
     if (byteTransferLength > 0)
     {
+        explicit_zeroes(ptrData, byteTransferLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, byteTransferLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -3682,6 +3712,7 @@ eReturnValues scsi_Report_Referrals(const tDevice* device,
     // send the command
     if (allocationLength > 0)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
@@ -5376,6 +5407,10 @@ eReturnValues scsi_Zone_Management_In_Report(const tDevice* device,
     {
         print_str("Sending SCSI Zone Management In\n");
     }
+    if (allocationLength > 0)
+    {
+        explicit_zeroes(ptrData, allocationLength);
+    }
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
@@ -5445,6 +5480,10 @@ eReturnValues scsi_Zone_Management_In_ZD(const tDevice* device,
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_str("Sending SCSI Zone Management In\n");
+    }
+    if (allocationLength > 0)
+    {
+        explicit_zeroes(ptrData, allocationLength);
     }
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
@@ -5554,6 +5593,10 @@ eReturnValues scsi_Get_Physical_Element_Status(const tDevice* device,
     if (allocationLength == 0)
     {
         dataDir = XFER_NO_DATA;
+    }
+    else
+    {
+        explicit_zeroes(ptrData, allocationLength);
     }
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
@@ -5690,6 +5733,7 @@ eReturnValues scsi_Persistent_Reserve_In(const tDevice* device,
     // send the command
     if (ptrData && allocationLength)
     {
+        explicit_zeroes(ptrData, allocationLength);
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength,
                             XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);

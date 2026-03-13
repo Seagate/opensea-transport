@@ -1774,7 +1774,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t snLimit = M_Min(SERIAL_NUM_LEN, ATA_IDENTIFY_SN_LENGTH);
 #endif
             safe_memset(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, 0, snLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->SerNum[0]), ATA_IDENTIFY_SN_LENGTH, ataSN,
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, idData->SerNum), ATA_IDENTIFY_SN_LENGTH, ataSN,
                                 ATA_IDENTIFY_SN_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
@@ -1788,7 +1788,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t fwLimit = M_Min(FW_REV_LEN, ATA_IDENTIFY_FW_LENGTH);
 #endif
             safe_memset(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, 0, fwLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->FirmVer[0]), ATA_IDENTIFY_FW_LENGTH, ataFW,
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, idData->FirmVer), ATA_IDENTIFY_FW_LENGTH, ataFW,
                                 ATA_IDENTIFY_FW_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
@@ -1802,7 +1802,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t mnLimit = M_Min(MODEL_NUM_LEN, ATA_IDENTIFY_MN_LENGTH);
 #endif
             safe_memset(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, 0, mnLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->ModelNum[0]), ATA_IDENTIFY_MN_LENGTH, ataMN,
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, idData->ModelNum), ATA_IDENTIFY_MN_LENGTH, ataMN,
                                 ATA_IDENTIFY_MN_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
