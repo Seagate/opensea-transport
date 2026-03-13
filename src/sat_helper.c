@@ -356,7 +356,12 @@ eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(const tDevice*         devi
             if (resultsLogPageParameterPointer > 0)
             {
                 // rtfrs from passthrough results log
-                ret = get_Return_TFRs_From_Passthrough_Results_Log(device, &ataCmd->rtfr, (ptrSenseData[8] & 0x0F) - 1);
+                ataReturnTFRs tempRtfrs = initialize_ATA_RTFRs();
+                ret = get_Return_TFRs_From_Passthrough_Results_Log(device, &tempRtfrs, (ptrSenseData[8] & 0x0F) - 1);
+                if (ret == SUCCESS)
+                {
+                    ataCmd->rtfr = tempRtfrs;
+                }
             }
             if (ret != SUCCESS &&
                 !device->drive_info.passThroughHacks.ataPTHacks
@@ -372,8 +377,13 @@ eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(const tDevice*         devi
                 // try a request sense to get descriptor sense data
                 if (SUCCESS == scsi_Request_Sense_Cmd(device, true, descriptorFormatSenseData, SPC3_SENSE_LEN))
                 {
+                    ataReturnTFRs tempRtfrs = initialize_ATA_RTFRs();
                     ret = get_RTFRs_From_Descriptor_Format_Sense_Data(descriptorFormatSenseData, SPC3_SENSE_LEN,
-                                                                      &ataCmd->rtfr);
+                                                                      &tempRtfrs);
+                    if (ret == SUCCESS)
+                    {
+                        ataCmd->rtfr = tempRtfrs;
+                    }
                     if (ret == FAILURE)
                     {
                         // preserve the incomplete RTFR warning
@@ -1261,8 +1271,13 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
                         if (resultsLogIndex > UINT8_C(0))
                         {
                             // scsi log sense to passthrough results log page with the value in the log index
-                            ret = get_Return_TFRs_From_Passthrough_Results_Log(device, &ataCommandOptions->rtfr,
+                            ataReturnTFRs tempRtfrs = initialize_ATA_RTFRs();
+                            ret = get_Return_TFRs_From_Passthrough_Results_Log(device, &tempRtfrs,
                                                                                resultsLogIndex - UINT8_C(1));
+                            if (ret == SUCCESS)
+                            {
+                                ataCommandOptions->rtfr = tempRtfrs;
+                            }
                         }
                         else if (senseFields.additionalDataAvailable &&
                                  scsiIoCtx.psense[senseFields.additionalDataOffset] == 0x09 &&
@@ -1300,10 +1315,15 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
                         }
                         else if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
                         {
-                            if (NOT_SUPPORTED == request_Return_TFRs_From_Device(device, &ataCommandOptions->rtfr))
+                            ataReturnTFRs tempRtfrs = initialize_ATA_RTFRs();
+                            if (NOT_SUPPORTED == request_Return_TFRs_From_Device(device, &tempRtfrs))
                             {
                                 M_CONST_CAST(tDevice*, device)
                                     ->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = false;
+                            }
+                            else if (SUCCESS == ret)
+                            {
+                                ataCommandOptions->rtfr = tempRtfrs;
                             }
                         }
                     }

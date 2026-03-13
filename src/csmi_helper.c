@@ -1048,6 +1048,38 @@ static void print_CSMI_RAID_Failure_Code(__u32 uFailureCode)
     }
 }
 
+// More explicit check that is_Empty call and avoids false positive stringop overflow warning
+static M_INLINE bool is_Config_Last_20B_Empty(PCSMI_SAS_RAID_CONFIG config)
+{
+    bool empty = true;
+    if (config)
+    {
+        if (config->bDataType != 0)
+        {
+            empty = false;
+        }
+        else
+        {
+            for (size_t iter = 0; iter < sizeof(config->bReserved); ++iter)
+            {
+                if (config->bReserved[iter] != 0)
+                {
+                    empty = false;
+                    break;
+                }
+            }
+            if (empty)
+            {
+                if (config->uFailureCode != 0 || config->uChangeCount != 0)
+                {
+                    empty = false;
+                }
+            }
+        }
+    }
+    return empty;
+}
+
 // TODO: Need to pass in CSMI version information
 static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t configLength)
 {
@@ -1113,7 +1145,7 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
         }
         // Use DataType to switch between what was reported back
         // this is being checked since failure code and change count were added later
-        if (!is_Empty(config, 20))
+        if (!is_Config_Last_20B_Empty(config))
         {
             print_str("\tFailure Code: ");
             print_CSMI_RAID_Failure_Code(config->uFailureCode);

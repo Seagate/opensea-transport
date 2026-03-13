@@ -751,6 +751,24 @@ extern "C"
         uint8_t padding[5]; // empty padding to make sure this structure endds on an 8byte aligned boundary
     } ataReturnTFRs;
 
+    static M_INLINE ataReturnTFRs initialize_ATA_RTFRs(void)
+    {
+        ataReturnTFRs init;
+        init.error = UINT8_C(0);
+        init.secCntExt = UINT8_C(0);
+        init.secCnt = UINT8_C(0);
+        init.lbaLowExt = UINT8_C(0);
+        init.lbaLow = UINT8_C(0);
+        init.lbaMidExt = UINT8_C(0);
+        init.lbaMid = UINT8_C(0);
+        init.lbaHiExt = UINT8_C(0);
+        init.lbaHi = UINT8_C(0);
+        init.device = UINT8_C(0);
+        init.status = UINT8_C(0);
+        M_STATIC_CAST(void, safe_memset(init.padding, sizeof(init.padding), 0, sizeof(init.padding)));
+        return init;
+    }
+
 // Defined by SPC3 as the maximum sense length
 #define SPC3_SENSE_LEN   UINT8_C(252)
 #define SPC_INQ_DATA_LEN UINT8_C(96)

@@ -320,6 +320,7 @@ eReturnValues send_ATA_SCT_Status(const tDevice* device, uint8_t* dataBuf, uint3
     {
         return FAILURE;
     }
+    explicit_zeroes(dataBuf, dataSize);
     ret = send_ATA_SCT(device, XFER_DATA_IN, ATA_SCT_COMMAND_STATUS, dataBuf, LEGACY_DRIVE_SEC_SIZE, false);
 
     return ret;
@@ -1774,11 +1775,19 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t snLimit = M_Min(SERIAL_NUM_LEN, ATA_IDENTIFY_SN_LENGTH);
 #endif
             safe_memset(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, 0, snLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, idData->SerNum), ATA_IDENTIFY_SN_LENGTH, ataSN,
+            uint8_t* snBuffer = M_REINTERPRET_CAST(uint8_t*, &idData->SerNum[0]);
+            DISABLE_WARNING_STRINGOP_OVERREAD
+            // Disable to stop false-positive compiler warnings. Since the buffer passed to read_ATA_String is a union
+            // of uint16's and an array of uint8's, the compiler thinks we are doing an over-read since it thinks
+            // the provide length is beyond the length of the first word in the union. While that is true, the memory
+            // we are actually trying to access is the array in the union and more than large enough and should
+            // not actually overread at all.
+            if (read_ATA_String(snBuffer, ATA_IDENTIFY_SN_LENGTH, ataSN,
                                 ATA_IDENTIFY_SN_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
             }
+            RESTORE_WARNING_STRINGOP_OVERREAD
         }
         if (validFW && ataFW != M_NULLPTR)
         {
@@ -1788,11 +1797,19 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t fwLimit = M_Min(FW_REV_LEN, ATA_IDENTIFY_FW_LENGTH);
 #endif
             safe_memset(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, 0, fwLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, idData->FirmVer), ATA_IDENTIFY_FW_LENGTH, ataFW,
+            uint8_t* fwBuffer = M_REINTERPRET_CAST(uint8_t*, &idData->FirmVer[0]);
+            DISABLE_WARNING_STRINGOP_OVERREAD
+            // Disable to stop false-positive compiler warnings. Since the buffer passed to read_ATA_String is a union
+            // of uint16's and an array of uint8's, the compiler thinks we are doing an over-read since it thinks
+            // the provide length is beyond the length of the first word in the union. While that is true, the memory
+            // we are actually trying to access is the array in the union and more than large enough and should
+            // not actually overread at all.
+            if (read_ATA_String(fwBuffer, ATA_IDENTIFY_FW_LENGTH, ataFW,
                                 ATA_IDENTIFY_FW_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
             }
+            RESTORE_WARNING_STRINGOP_OVERREAD
         }
         if (validMN && ataMN != M_NULLPTR)
         {
@@ -1802,11 +1819,19 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t mnLimit = M_Min(MODEL_NUM_LEN, ATA_IDENTIFY_MN_LENGTH);
 #endif
             safe_memset(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, 0, mnLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, idData->ModelNum), ATA_IDENTIFY_MN_LENGTH, ataMN,
+            uint8_t* mnBuffer = M_REINTERPRET_CAST(uint8_t*, &idData->ModelNum[0]);
+            DISABLE_WARNING_STRINGOP_OVERREAD
+            // Disable to stop false-positive compiler warnings. Since the buffer passed to read_ATA_String is a union
+            // of uint16's and an array of uint8's, the compiler thinks we are doing an over-read since it thinks
+            // the provide length is beyond the length of the first word in the union. While that is true, the memory
+            // we are actually trying to access is the array in the union and more than large enough and should
+            // not actually overread at all.
+            if (read_ATA_String(mnBuffer, ATA_IDENTIFY_MN_LENGTH, ataMN,
                                 ATA_IDENTIFY_MN_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
             }
+            RESTORE_WARNING_STRINGOP_OVERREAD
         }
         RESTORE_NONNULL_COMPARE
     }
