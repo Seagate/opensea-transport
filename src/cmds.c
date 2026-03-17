@@ -939,6 +939,7 @@ static eReturnValues determine_scsi_write_same_cmd(
     return ret;
 }
 
+// TODO: Handle write same number of logical blocks > uint32_max
 static eReturnValues scsi_Write_Same_Cmd(const tDevice* device,
                                          uint64_t       startingLba,
                                          uint64_t       numberOfLogicalBlocks,
@@ -991,13 +992,13 @@ static eReturnValues scsi_Write_Same_Cmd(const tDevice* device,
             {
                 return MEMORY_FAILURE;
             }
-            ret = scsi_Write_Same_16(device, 0, anchor, unmap, false, startingLba, 0, numberOfLogicalBlocks, zeroBuf,
+            ret = scsi_Write_Same_16(device, 0, anchor, unmap, false, startingLba, 0, C_CAST(uint32_t, numberOfLogicalBlocks), zeroBuf,
                                      device->drive_info.deviceBlockSize);
             safe_free_aligned(&zeroBuf);
         }
         else
         {
-            ret = scsi_Write_Same_16(device, 0, anchor, unmap, noDataOut, startingLba, 0, numberOfLogicalBlocks,
+            ret = scsi_Write_Same_16(device, 0, anchor, unmap, noDataOut, startingLba, 0, C_CAST(uint32_t, numberOfLogicalBlocks),
                                      pattern, patternSize);
         }
     }
@@ -1005,7 +1006,7 @@ static eReturnValues scsi_Write_Same_Cmd(const tDevice* device,
     {
         // need to determine which command to use
         ret = determine_scsi_write_same_cmd(M_CONST_CAST(tDevice*, device), startingLba, anchor, unmap, noDataOut,
-                                            numberOfLogicalBlocks, pattern, patternSize);
+                                            C_CAST(uint32_t, numberOfLogicalBlocks), pattern, patternSize);
     }
     return ret;
 }
