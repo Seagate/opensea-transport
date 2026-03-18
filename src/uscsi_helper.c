@@ -266,16 +266,17 @@ eReturnValues send_uscsi_io(ScsiIoCtx* scsiIoCtx)
     }
 
     if (scsiIoCtx->timeout > USCSI_MAX_CMD_TIMEOUT_SECONDS ||
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > USCSI_MAX_CMD_TIMEOUT_SECONDS)
+        get_tDevice_Default_Command_Timeout(scsiIoCtx->device) > USCSI_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
 
     uscsi_io.uscsi_timeout = scsiIoCtx->timeout;
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > UINT32_C(0) &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > UINT32_C(0) &&
+        deviceTimeout > scsiIoCtx->timeout)
     {
-        uscsi_io.uscsi_timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        uscsi_io.uscsi_timeout = deviceTimeout;
     }
     else
     {

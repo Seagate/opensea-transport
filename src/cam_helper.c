@@ -647,13 +647,14 @@ static eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
 
     atareq.flags        = ATA_CMD_CONTROL;
     uint32_t ataTimeout = scsiIoCtx->pAtaCmdOpts->timeout;
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->pAtaCmdOpts->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 &&
+        deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
     {
-        ataTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        ataTimeout = deviceTimeout;
         // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
         // that we DON'T do a conversion and leave the time as the max...
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= INT_MAX)
+        if (deviceTimeout >= INT_MAX)
         {
             ataTimeout = INT_MAX; // no timeout or maximum timeout
         }
@@ -775,13 +776,14 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
         }
 
         uint32_t camTimeout = scsiIoCtx->timeout;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-            scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+        const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+        if (deviceTimeout > 0 &&
+            deviceTimeout > scsiIoCtx->timeout)
         {
-            camTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            camTimeout = deviceTimeout;
             // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
             // that we DON'T do a conversion and leave the time as the max...
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < CAM_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout < CAM_MAX_CMD_TIMEOUT_SECONDS)
             {
                 camTimeout *= UINT32_C(1000); // convert to milliseconds
             }
@@ -1091,13 +1093,14 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
         csio->ccb_h.retry_count = UINT32_C(0); // should we change it to 1?
         csio->ccb_h.cbfcnp      = M_NULLPTR;
         uint32_t camTimeout     = scsiIoCtx->timeout;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > UINT32_C(0) &&
-            scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+        const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+        if (deviceTimeout > UINT32_C(0) &&
+            deviceTimeout > scsiIoCtx->timeout)
         {
-            camTimeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            camTimeout = deviceTimeout;
             // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
             // that we DON'T do a conversion and leave the time as the max...
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < CAM_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout < CAM_MAX_CMD_TIMEOUT_SECONDS)
             {
                 camTimeout *= UINT32_C(1000); // convert to milliseconds
             }
@@ -1884,13 +1887,14 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
         uint32_t camFlags   = CAM_DEV_QFRZDIS;
         uint32_t camTimeout = nvmeIoCtx->timeout;
-        if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-            nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
+        const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
+        if (deviceTimeout > 0 &&
+            deviceTimeout > nvmeIoCtx->timeout)
         {
-            camTimeout = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
+            camTimeout = deviceTimeout;
             // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
             // that we DON'T do a conversion and leave the time as the max...
-            if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds < CAM_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout < CAM_MAX_CMD_TIMEOUT_SECONDS)
             {
                 camTimeout *= UINT32_C(1000); // convert to milliseconds
             }

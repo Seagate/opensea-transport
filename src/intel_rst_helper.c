@@ -240,10 +240,11 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
             raidFirmwareRequest->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
             safe_memcpy(raidFirmwareRequest->Header.Signature, 8, INTEL_RAID_FW_SIGNATURE, 8);
             raidFirmwareRequest->Header.Timeout = timeoutSeconds;
-            if (device->drive_info.defaultTimeoutSeconds > 0 &&
-                device->drive_info.defaultTimeoutSeconds > timeoutSeconds)
+            const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
+            if (deviceTimeout > 0 &&
+                deviceTimeout > timeoutSeconds)
             {
-                raidFirmwareRequest->Header.Timeout = device->drive_info.defaultTimeoutSeconds;
+                raidFirmwareRequest->Header.Timeout = deviceTimeout;
             }
             else
             {
@@ -732,10 +733,11 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
             nvmPassthroughCommand->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
             safe_memcpy(nvmPassthroughCommand->Header.Signature, 8, INTELNVM_SIGNATURE, 8);
             nvmPassthroughCommand->Header.Timeout = nvmeIoCtx->timeout;
-            if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-                nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
+            const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
+            if (deviceTimeout > 0 &&
+                deviceTimeout > nvmeIoCtx->timeout)
             {
-                nvmPassthroughCommand->Header.Timeout = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
+                nvmPassthroughCommand->Header.Timeout = deviceTimeout;
             }
             else
             {

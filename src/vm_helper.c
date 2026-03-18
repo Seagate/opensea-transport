@@ -650,13 +650,14 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
     io_hdr.dxfer_len = scsiIoCtx->dataLength;
     io_hdr.dxferp    = scsiIoCtx->pdata;
     io_hdr.cmdp      = scsiIoCtx->cdb;
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 &&
+        deviceTimeout > scsiIoCtx->timeout)
     {
-        io_hdr.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        io_hdr.timeout = deviceTimeout;
         // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that
         // we DON'T do a conversion and leave the time as the max...
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < SG_MAX_CMD_TIMEOUT_SECONDS)
+        if (deviceTimeout < SG_MAX_CMD_TIMEOUT_SECONDS)
         {
             io_hdr.timeout *= 1000; // convert to milliseconds
         }

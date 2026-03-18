@@ -1745,11 +1745,12 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         aixIoCmd.data_length = scsiIoCtx->dataLength;
 //         aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->pdata);
 
-//         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-//         scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+//         const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+//         if (deviceTimeout > 0 &&
+//         deviceTimeout > scsiIoCtx->timeout)
 //         {
-//             aixIoCmd.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-//             if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//             aixIoCmd.timeout_value = deviceTimeout;
+//             if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
 //             {
 //                 aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
 //             }
@@ -1759,7 +1760,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             if (scsiIoCtx->timeout != 0)
 //             {
 //                 aixIoCmd.timeout_value = scsiIoCtx->timeout;
-//                 if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//                 if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
 //                 {
 //                     aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
 //                 }
@@ -1858,11 +1859,12 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         aixIoCmd.data_length = scsiIoCtx->dataLength;
 //         aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->pdata);
 
-//         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-//         scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+//         const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+//         if (deviceTimeout > 0 &&
+//         deviceTimeout > scsiIoCtx->timeout)
 //         {
-//             aixIoCmd.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-//             if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//             aixIoCmd.timeout_value = deviceTimeout;
+//             if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
 //             {
 //                 aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
 //             }
@@ -1872,7 +1874,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             if (scsiIoCtx->timeout != 0)
 //             {
 //                 aixIoCmd.timeout_value = scsiIoCtx->timeout;
-//                 if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//                 if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
 //                 {
 //                     aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
 //                 }
@@ -2086,11 +2088,12 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
     aixPassthrough.world_wide_name = 0; // TODO: Discover and save this to pass it here???
     aixPassthrough.node_name       = 0; // TODO: Discover and save this to pass it here???
 
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 &&
+        deviceTimeout > scsiIoCtx->timeout)
     {
-        aixPassthrough.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+        aixPassthrough.timeout_value = deviceTimeout;
+        if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
         {
             aixPassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
         }
@@ -2100,7 +2103,7 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->timeout != 0)
         {
             aixPassthrough.timeout_value = scsiIoCtx->timeout;
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
             {
                 aixPassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
             }
@@ -2263,11 +2266,12 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     idePassthrough.buffsize = scsiIoCtx->pAtaCmdOpts->dataSize;
     idePassthrough.data_ptr = scsiIoCtx->pAtaCmdOpts->ptrData;
 
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->pAtaCmdOpts->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 &&
+        deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
     {
-        idePassthrough.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+        idePassthrough.timeout_value = deviceTimeout;
+        if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
         {
             idePassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
         }
@@ -2277,7 +2281,7 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->pAtaCmdOpts->timeout != 0)
         {
             idePassthrough.timeout_value = scsiIoCtx->pAtaCmdOpts->timeout;
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
             {
                 idePassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
             }
@@ -2360,11 +2364,12 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
     idePassthrough.buffsize = scsiIoCtx->dataLength;
     idePassthrough.data_ptr = scsiIoCtx->pdata;
 
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 &&
+        deviceTimeout > scsiIoCtx->timeout)
     {
-        idePassthrough.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+        idePassthrough.timeout_value = deviceTimeout;
+        if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
         {
             idePassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
         }
@@ -2374,7 +2379,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->timeout != 0)
         {
             idePassthrough.timeout_value = scsiIoCtx->timeout;
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
             {
                 idePassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
             }
@@ -2549,11 +2554,12 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     sataPassthrough.buffsize = scsiIoCtx->pAtaCmdOpts->dataSize;
     sataPassthrough.data_ptr = scsiIoCtx->pAtaCmdOpts->ptrData;
 
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->pAtaCmdOpts->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 &&
+        deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
     {
-        sataPassthrough.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+        sataPassthrough.timeout_value = deviceTimeout;
+        if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
         {
             sataPassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
         }
@@ -2563,7 +2569,7 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->pAtaCmdOpts->timeout != UINT32_C(0))
         {
             sataPassthrough.timeout_value = scsiIoCtx->pAtaCmdOpts->timeout;
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
             {
                 sataPassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
             }
@@ -3107,11 +3113,12 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     nvmePassthrough.cmd.data_length = nvmeIoCtx->dataSize;
     nvmePassthrough.cmd.data        = nvmeIoCtx->ptrData;
     // set the timeout
-    if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
+    if (deviceTimeout > 0 &&
+        deviceTimeout > nvmeIoCtx->timeout)
     {
-        nvmePassthrough.cmd.timeout = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+        nvmePassthrough.cmd.timeout = deviceTimeout;
+        if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
         {
             nvmePassthrough.cmd.timeout = UINT32_MAX; // no timeout or maximum timeout
         }
@@ -3121,7 +3128,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         if (nvmeIoCtx->timeout != 0)
         {
             nvmePassthrough.cmd.timeout = nvmeIoCtx->timeout;
-            if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
             {
                 nvmePassthrough.cmd.timeout = UINT32_MAX; // no timeout or maximum timeout
             }

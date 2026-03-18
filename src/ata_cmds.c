@@ -121,6 +121,7 @@ eReturnValues ata_Hard_Reset(const tDevice* device, uint8_t timeout)
 eReturnValues ata_Identify(const tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues         ret = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand identify =
         create_ata_pio_in_cmd(device, ATA_IDENTIFY, ATA_CMD_TYPE_TASKFILE, 1, ptrData, dataSize);
 
@@ -128,7 +129,6 @@ eReturnValues ata_Identify(const tDevice* device, uint8_t* ptrData, uint32_t dat
     {
         print_str("Sending ATA Identify command\n");
     }
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &identify);
 
     if (ret == SUCCESS)
@@ -1443,6 +1443,7 @@ eReturnValues ata_Read_Buffer(const tDevice* device, uint8_t* ptrData, bool useD
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
+    explicit_zeroes(ptrData, LEGACY_DRIVE_SEC_SIZE);
     if (useDMA)
     {
         ataCommandOptions =
@@ -1471,7 +1472,6 @@ eReturnValues ata_Read_Buffer(const tDevice* device, uint8_t* ptrData, bool useD
         }
     }
 
-    explicit_zeroes(ptrData, LEGACY_DRIVE_SEC_SIZE);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1650,6 +1650,7 @@ eReturnValues ata_Read_Sectors_No_Retry(const tDevice* device,
                                         uint32_t       dataSize)
 {
     eReturnValues         ret               = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions = create_ata_pio_read_lba_cmd(
         device, ATA_READ_SECT_NORETRY, ATA_CMD_TYPE_TASKFILE, sectorCount, LBA, ptrData, dataSize);
 
@@ -1663,7 +1664,6 @@ eReturnValues ata_Read_Sectors_No_Retry(const tDevice* device,
         print_str("Sending ATA Read Sectors(No Retry)\n");
     }
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1984,6 +1984,7 @@ eReturnValues ata_Trusted_Receive(const tDevice* device,
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
+    explicit_zeroes(ptrData, dataSize);
     if (useDMA)
     {
         ataCommandOptions =
@@ -2022,7 +2023,6 @@ eReturnValues ata_Trusted_Receive(const tDevice* device,
                securityProtocolSpecific);
     }
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2659,6 +2659,7 @@ eReturnValues ata_Set_Features(const tDevice* device,
 eReturnValues ata_Identify_Packet_Device(const tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues         ret = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions =
         create_ata_pio_in_cmd(device, ATAPI_IDENTIFY, ATA_CMD_TYPE_TASKFILE, 1, ptrData, dataSize);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2666,7 +2667,6 @@ eReturnValues ata_Identify_Packet_Device(const tDevice* device, uint8_t* ptrData
         print_str("Sending ATA Identify Packet Device\n");
     }
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (ret == SUCCESS)
@@ -2845,6 +2845,7 @@ eReturnValues ata_ZAC_Management_In(const tDevice* device,
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
+    explicit_zeroes(ptrData, dataSize);
     switch (action)
     {
     case ZM_ACTION_REPORT_ZONES:
@@ -2874,7 +2875,6 @@ eReturnValues ata_ZAC_Management_In(const tDevice* device,
         print_str("Sending ATA Zone Management In\n");
     }
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3259,6 +3259,7 @@ eReturnValues ata_Get_Physical_Element_Status(const tDevice* device,
                                               uint32_t       dataSize)
 {
     eReturnValues         ret = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions =
         create_ata_dma_in_cmd(device, ATA_GET_PHYSICAL_ELEMENT_STATUS, ATA_CMD_TYPE_EXTENDED_TASKFILE,
                               M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
@@ -3273,7 +3274,6 @@ eReturnValues ata_Get_Physical_Element_Status(const tDevice* device,
         print_str("Sending ATA Get Physical Element Status\n");
     }
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3523,6 +3523,7 @@ eReturnValues ata_NCQ_Receive_FPDMA_Queued(const tDevice* device,
                                            uint32_t       dataSize)
 {
     eReturnValues         ret = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions =
         create_ata_queued_cmd(device, ATA_RECEIVE_FPDMA, ATA_CMD_TYPE_EXTENDED_TASKFILE, true, ncqTag, XFER_DATA_IN,
                               M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
@@ -3538,7 +3539,6 @@ eReturnValues ata_NCQ_Receive_FPDMA_Queued(const tDevice* device,
         printf("Sending ATA Receive FPDMA Queued, Subcommand %u\n", subCommand);
     }
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)

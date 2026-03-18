@@ -1394,7 +1394,7 @@ extern "C"
     {
         eAtaProtocol dmaProtocol = ATA_PROTOCOL_DMA;
 
-        if (device != M_NULLPTR && device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_UDMA)
+        if (device != M_NULLPTR && get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_UDMA)
         {
             dmaProtocol = ATA_PROTOCOL_UDMA;
         }

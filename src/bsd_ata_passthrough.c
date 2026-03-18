@@ -87,13 +87,14 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
 // TODO: Error if attempting LBA mode???
 #endif // ATACMD_LBA
         uint32_t timeoutmilliseconds = UINT32_C(0);
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-            scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+        const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+        if (deviceTimeout > 0 &&
+            deviceTimeout > scsiIoCtx->timeout)
         {
-            timeoutmilliseconds = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            timeoutmilliseconds = deviceTimeout;
             // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
             // that we DON'T do a conversion and leave the time as the max...
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < BSD_ATA_PT_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout < BSD_ATA_PT_MAX_CMD_TIMEOUT_SECONDS)
             {
                 timeoutmilliseconds *= UINT32_C(1000); // convert to milliseconds
             }

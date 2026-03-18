@@ -152,13 +152,14 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
                 scsicmd.datalen = scsiIoCtx->dataLength;
                 break;
             }
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-                scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+            const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+            if (deviceTimeout > 0 &&
+                deviceTimeout > scsiIoCtx->timeout)
             {
-                scsicmd.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+                scsicmd.timeout = deviceTimeout;
                 // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata
                 // security) that we DON'T do a conversion and leave the time as the max...
-                if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < BSD_SCSI_PT_MAX_CMD_TIMEOUT_SECONDS)
+                if (deviceTimeout < BSD_SCSI_PT_MAX_CMD_TIMEOUT_SECONDS)
                 {
                     scsicmd.timeout *= 1000UL; // convert to milliseconds
                 }

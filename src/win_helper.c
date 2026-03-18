@@ -6669,15 +6669,15 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoC
         ret = FAILURE;
         break;
     }
-    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 &&
+        deviceTimeout > scsiIoCtx->timeout)
     {
-        psptd->scsiPassThroughEX.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        psptd->scsiPassThroughEX.TimeOutValue = deviceTimeout;
     }
     else
     {
@@ -6889,15 +6889,16 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* 
         ret = FAILURE;
         break;
     }
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
     if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+        deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 &&
+        deviceTimeout > scsiIoCtx->timeout)
     {
-        psptd->scsiPassThroughEXDirect.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        psptd->scsiPassThroughEXDirect.TimeOutValue = deviceTimeout;
     }
     else
     {
@@ -7126,15 +7127,16 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx*    
         ret = FAILURE;
         break;
     }
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
     if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+        deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 &&
+        deviceTimeout > scsiIoCtx->timeout)
     {
-        psptd->scsiPassthroughDirect.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        psptd->scsiPassthroughDirect.TimeOutValue = deviceTimeout;
     }
     else
     {
@@ -7193,15 +7195,16 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiI
         ret = FAILURE;
         break;
     }
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
     if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+        deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 &&
+        deviceTimeout > scsiIoCtx->timeout)
     {
-        psptd->scsiPassthrough.TimeOutValue = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        psptd->scsiPassthrough.TimeOutValue = deviceTimeout;
     }
     else
     {
@@ -7635,14 +7638,15 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
         return NOT_SUPPORTED;
     }
     if (p_scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+        get_tDevice_Default_Command_Timeout(p_scsiIoCtx->device) > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > UINT32_C(0) &&
-        p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > p_scsiIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(p_scsiIoCtx->device);
+    if (deviceTimeout > UINT32_C(0) &&
+        deviceTimeout > p_scsiIoCtx->timeout)
     {
-        ptrATAPassThroughDirect->TimeOutValue = p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        ptrATAPassThroughDirect->TimeOutValue = deviceTimeout;
     }
     else
     {
@@ -7966,15 +7970,16 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
         ret = NOT_SUPPORTED;
         break;
     }
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(p_scsiIoCtx->device);
     if (p_scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+        deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds > p_scsiIoCtx->timeout)
+    if (deviceTimeout > 0 &&
+        deviceTimeout > p_scsiIoCtx->timeout)
     {
-        p_t_ata_pt->ataPTCommand.TimeOutValue = p_scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        p_t_ata_pt->ataPTCommand.TimeOutValue = deviceTimeout;
     }
     else
     {
@@ -11820,17 +11825,18 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
         break;
     }
 
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
     if (nvmeIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > WIN_MAX_CMD_TIMEOUT_SECONDS)
+        deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         safe_free_aligned(&commandBuffer);
         return OS_TIMEOUT_TOO_LARGE;
     }
 
-    if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
+    if (deviceTimeout > 0 &&
+        deviceTimeout > nvmeIoCtx->timeout)
     {
-        protocolCommand->TimeOutValue = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
+        protocolCommand->TimeOutValue = deviceTimeout;
     }
     else
     {
@@ -14022,9 +14028,9 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
             // NOTE: immediate bit must be set to false for MSFT translation to work.
             bool             ause           = M_ToBool(nvmeIoCtx->cmd.adminCmd.cdw10 & BIT3);
             eVerbosityLevels temp           = nvmeIoCtx->device->deviceVerbosity;
-            uint32_t         currentTimeout = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
-            nvmeIoCtx->device->drive_info.defaultTimeoutSeconds =
-                600; // change to 10 minutes since this does not return immediately in Windows-TJE
+            uint32_t         currentTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
+            set_tDevice_Default_Command_Timeout(nvmeIoCtx->device,
+                600); // change to 10 minutes since this does not return immediately in Windows-TJE
             nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
             if (action == 4) // crypto
             {
@@ -14034,8 +14040,8 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
             {
                 ret = scsi_Sanitize_Block_Erase(nvmeIoCtx->device, ause, false, false);
             }
-            nvmeIoCtx->device->deviceVerbosity                  = temp;
-            nvmeIoCtx->device->drive_info.defaultTimeoutSeconds = currentTimeout;
+            nvmeIoCtx->device->deviceVerbosity = temp;
+            set_tDevice_Default_Command_Timeout(nvmeIoCtx->device, currentTimeout);
         }
     }
     return ret;
@@ -15100,7 +15106,8 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     /*BOOL timeoutGot = */
     GetCommTimeouts(handleToUse, &comTimeout); // get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = UINT64_C(0);
-    if (device->drive_info.defaultTimeoutSeconds == 0)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
+    if (deviceTimeout == 0)
     {
         comTimeout.ReadTotalTimeoutConstant = DEFAULT_COMMAND_TIMEOUT * 1000; // 15 seconds
         timeoutInSeconds                    = DEFAULT_COMMAND_TIMEOUT;
@@ -15108,8 +15115,8 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     else
     {
         comTimeout.ReadTotalTimeoutConstant =
-            device->drive_info.defaultTimeoutSeconds * 1000; // convert time in seconds to milliseconds
-        timeoutInSeconds = device->drive_info.defaultTimeoutSeconds;
+            deviceTimeout * 1000; // convert time in seconds to milliseconds
+        timeoutInSeconds = deviceTimeout;
     }
     /*BOOL timeoutSet = */
     SetCommTimeouts(handleToUse, &comTimeout);
@@ -15234,7 +15241,8 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     /*BOOL timeoutGot = */
     GetCommTimeouts(handleToUse, &comTimeout); // get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = UINT64_C(0);
-    if (device->drive_info.defaultTimeoutSeconds == 0)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
+    if (deviceTimeout == 0)
     {
         comTimeout.WriteTotalTimeoutConstant = DEFAULT_COMMAND_TIMEOUT * 1000; // 15 seconds
         timeoutInSeconds                     = DEFAULT_COMMAND_TIMEOUT;
@@ -15242,8 +15250,8 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     else
     {
         comTimeout.WriteTotalTimeoutConstant =
-            device->drive_info.defaultTimeoutSeconds * 1000; // convert time in seconds to milliseconds
-        timeoutInSeconds = device->drive_info.defaultTimeoutSeconds;
+            deviceTimeout * 1000; // convert time in seconds to milliseconds
+        timeoutInSeconds = deviceTimeout;
     }
     /*BOOL timeoutSet = */
     SetCommTimeouts(handleToUse, &comTimeout);
@@ -15362,13 +15370,14 @@ eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
         C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize); // LBA needs to be converted to a byte offset
     verifyCmd.Length          = range * device->drive_info.deviceBlockSize; // needs to be a range in bytes!
     uint64_t timeoutInSeconds = UINT64_C(0);
-    if (device->drive_info.defaultTimeoutSeconds == 0)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
+    if (deviceTimeout == 0)
     {
         timeoutInSeconds = DEFAULT_COMMAND_TIMEOUT;
     }
     else
     {
-        timeoutInSeconds = device->drive_info.defaultTimeoutSeconds;
+        timeoutInSeconds = deviceTimeout;
     }
     DWORD      returnedBytes = DWORD_C(0);
     OVERLAPPED overlappedStruct;
@@ -15463,7 +15472,8 @@ eReturnValues os_Flush(const tDevice* device)
     /*BOOL timeoutGot = */
     GetCommTimeouts(device->os_info.fd, &comTimeout); // get timeouts if possible before trying to change them...
     uint64_t timeoutInSeconds = UINT64_C(0);
-    if (device->drive_info.defaultTimeoutSeconds == 0)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
+    if (deviceTimeout == 0)
     {
         comTimeout.ReadTotalTimeoutConstant = DEFAULT_COMMAND_TIMEOUT * 1000; // 15 seconds
         timeoutInSeconds                    = DEFAULT_COMMAND_TIMEOUT;
@@ -15471,8 +15481,8 @@ eReturnValues os_Flush(const tDevice* device)
     else
     {
         comTimeout.ReadTotalTimeoutConstant =
-            device->drive_info.defaultTimeoutSeconds * 1000; // convert time in seconds to milliseconds
-        timeoutInSeconds = device->drive_info.defaultTimeoutSeconds;
+            deviceTimeout * 1000; // convert time in seconds to milliseconds
+        timeoutInSeconds = deviceTimeout;
     }
     /*BOOL timeoutSet = */
     SetCommTimeouts(device->os_info.fd, &comTimeout);

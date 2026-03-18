@@ -1162,10 +1162,11 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
         ataCommandOptions->ptrSenseData  = senseData;
         ataCommandOptions->senseDataSize = SPC3_SENSE_LEN;
     }
-    ataCommandOptions->timeout = M_Max(ataCommandOptions->timeout, device->drive_info.defaultTimeoutSeconds);
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
+    ataCommandOptions->timeout = M_Max(ataCommandOptions->timeout, deviceTimeout);
     if (ataCommandOptions->timeout == 0)
     {
-        ataCommandOptions->timeout = M_Max(DEFAULT_COMMAND_TIMEOUT, device->drive_info.defaultTimeoutSeconds);
+        ataCommandOptions->timeout = M_Max(DEFAULT_COMMAND_TIMEOUT, deviceTimeout);
     }
     // First build the CDB
     ret = build_SAT_CDB(device, &satCDB, &satCDBLength, ataCommandOptions);
@@ -5014,11 +5015,11 @@ static eReturnValues translate_SCSI_Write_Same_Command(const tDevice* device, Sc
                     le16_to_host(device->drive_info.IdentifyData.ata.Word206) & BIT2)
                 {
                     DECLARE_ZERO_INIT_ARRAY(uint8_t, pattern, 4); // 32bits set to zero
-                    uint32_t currentTimeout = device->drive_info.defaultTimeoutSeconds;
-                    M_CONST_CAST(tDevice*, device)->drive_info.defaultTimeoutSeconds = UINT32_MAX;
+                    uint32_t currentTimeout = get_tDevice_Default_Command_Timeout(device);
+                    set_tDevice_Default_Command_Timeout(M_CONST_CAST(tDevice*, device), UINT32_MAX);
                     ret = send_ATA_SCT_Write_Same(device, 0x0101, logicalBlockAddress, numberOflogicalBlocks,
                                                   &pattern[0], 4);
-                    M_CONST_CAST(tDevice*, device)->drive_info.defaultTimeoutSeconds = currentTimeout;
+                    set_tDevice_Default_Command_Timeout(M_CONST_CAST(tDevice*, device), currentTimeout);
                 }
                 else
                 {

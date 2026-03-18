@@ -238,9 +238,10 @@ void print_Low_Level_Info(const tDevice* device)
             print_str("\t\t---ata flags---\n");
         }
         // TODO: Software SAT flags? These are currently always setup even when software translator is not active.
-        if (device->drive_info.defaultTimeoutSeconds > 0)
+        const uint32_t timeoutValue = get_tDevice_Default_Command_Timeout(device);
+        if (timeoutValue > 0)
         {
-            printf("\t\tDefault timeout overridden as %" PRIu32 " seconds\n", device->drive_info.defaultTimeoutSeconds);
+            printf("\t\tDefault timeout overridden as %" PRIu32 " seconds\n", timeoutValue);
         }
         if (device->drive_info.drive_type == NVME_DRIVE)
         {
@@ -7043,4 +7044,85 @@ uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* device)
     M_USE_UNUSED(device);
     return 0;
 #endif
+}
+
+eReturnValues set_tDevice_Default_Command_Timeout(tDevice* device, const uint32_t timeoutSeconds)
+{
+    eReturnValues ret = BAD_PARAMETER;
+    if (device != M_NULLPTR)
+    {
+        ret = SUCCESS;
+        if (timeoutSeconds == UINT32_C(0))
+        {
+            device->drive_info.defaultTimeoutSeconds = DEFAULT_COMMAND_TIMEOUT;
+        }
+        else
+        {
+            if (timeoutSeconds > get_Maximum_Command_Timeout_Seconds(device))
+            {
+                ret = OS_TIMEOUT_TOO_LARGE;
+            }
+            else
+            {
+                device->drive_info.defaultTimeoutSeconds = timeoutSeconds;
+            }
+        }
+    }
+    return ret;
+}
+
+uint32_t get_tDevice_Default_Command_Timeout(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.defaultTimeoutSeconds;
+    }
+    else
+    {
+        return UINT32_C(0);
+    }
+}
+
+// Note: tDevice not currently accessed, but put in the definition because it is possible in some systems that the max
+// varies by drive-type. Like SAS can do XXXXX, but SATA can only do XXX but this is not something we really support today.
+// Puting this parameter in for the future so we can make that kind of decision one-day. -TJE
+uint32_t get_Maximum_Command_Timeout_Seconds(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+{
+    M_USE_UNUSED(device);
+    return MAX_CMD_TIMEOUT_SECONDS;
+}
+
+void set_tDevice_ATA_DMA_Mode(tDevice* M_NONNULL device, eATASynchronousDMAMode mode)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.ata_Options.dmaMode = mode;
+    }
+}
+
+eATASynchronousDMAMode get_tDevice_ATA_DMA_Mode(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.ata_Options.dmaMode;
+    }
+    else
+    {
+        return ATA_DMA_MODE_NO_DMA;
+    }
+}
+
+void disable_tDevice_ATA_DMA(tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_NO_DMA);
+        device->drive_info.ata_Options.dmaSupported = false;
+        device->drive_info.ata_Options.readLogWriteLogDMASupported = false;
+        device->drive_info.ata_Options.readBufferDMASupported = false;
+        device->drive_info.ata_Options.writeBufferDMASupported = false;
+        device->drive_info.ata_Options.downloadMicrocodeDMASupported = false;
+        device->drive_info.ata_Options.dcoDMASupported = false;
+        device->drive_info.ata_Options.hpaSecurityExtDMASupported = false;
+    }
 }

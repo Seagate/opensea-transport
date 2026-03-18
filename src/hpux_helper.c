@@ -98,13 +98,14 @@ static uint32_t get_SIOC_Timeout_Value(ScsiIoCtx* scsiIoCtx, uint32_t ioctlMaxTi
 {
     uint32_t timeout = UINT32_C(0);
     // set timeout
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > UINT32_C(0) &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > UINT32_C(0) &&
+        deviceTimeout > scsiIoCtx->timeout)
     {
-        timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        timeout = deviceTimeout;
         // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
         // that we DON'T do a conversion and leave the time as the max...
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < ioctlMaxTimeout)
+        if (deviceTimeout < ioctlMaxTimeout)
         {
             timeout *= UINT32_C(1000); // convert to milliseconds
         }

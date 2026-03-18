@@ -157,6 +157,7 @@ eReturnValues ata_Legacy_Read_DMA_CHS(const tDevice*         device,
                                       bool                   extendedCmd)
 {
     eReturnValues         ret               = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions = create_ata_dma_in_cmd(
         device, extendedCmd ? ATA_READ_DMA_EXT : ATA_READ_DMA_RETRY_CMD,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
@@ -184,7 +185,6 @@ eReturnValues ata_Legacy_Read_DMA_CHS(const tDevice*         device,
         }
     }
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -212,6 +212,7 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(const tDevice*         device,
                                            bool                   extendedCmd)
 {
     eReturnValues         ret               = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions = create_ata_pio_in_cmd(
         device, extendedCmd ? ATA_READ_READ_MULTIPLE_EXT : ATA_READ_MULTIPLE_CMD,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
@@ -240,7 +241,6 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(const tDevice*         device,
         }
     }
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -323,6 +323,7 @@ eReturnValues ata_Legacy_Read_Sectors_CHS(const tDevice*         device,
                                           bool                   extendedCmd)
 {
     eReturnValues         ret               = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions = create_ata_pio_in_cmd(
         device, extendedCmd ? ATA_READ_SECT_EXT : ATA_READ_SECT,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
@@ -349,7 +350,6 @@ eReturnValues ata_Legacy_Read_Sectors_CHS(const tDevice*         device,
             print_str("Sending ATA Read Sectors (CHS)\n");
         }
     }
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -674,6 +674,7 @@ eReturnValues ata_Legacy_Read_Long_CHS(const tDevice* device,
                                        uint32_t       dataSize)
 {
     eReturnValues         ret               = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions = create_ata_pio_in_cmd(
         device, retries ? ATA_READ_LONG_RETRY_CMD : ATA_READ_LONG_NORETRY, ATA_CMD_TYPE_TASKFILE, 1, ptrData, dataSize);
     // this must be used since the transfer is some number of bytes
@@ -691,7 +692,6 @@ eReturnValues ata_Legacy_Read_Long_CHS(const tDevice* device,
         print_str("Sending ATA Read Long (CHS)\n");
     }
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -709,7 +709,7 @@ eReturnValues ata_Legacy_Read_Long(const tDevice* device,
                                    uint32_t       dataSize)
 {
     eReturnValues ret = UNKNOWN;
-
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions =
         create_ata_pio_read_lba_cmd(device, retries ? ATA_READ_LONG_RETRY_CMD : ATA_READ_LONG_NORETRY,
                                     ATA_CMD_TYPE_TASKFILE, 1, lba, ptrData, dataSize);
@@ -727,7 +727,6 @@ eReturnValues ata_Legacy_Read_Long(const tDevice* device,
         print_str("Sending ATA Read Long\n");
     }
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1000,6 +999,7 @@ eReturnValues ata_Legacy_Write_Verify(const tDevice* device, uint32_t lba, uint8
 eReturnValues ata_Legacy_Identify_Device_DMA(const tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues         ret = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand identify =
         create_ata_dma_in_cmd(device, ATA_IDENTIFY_DMA, ATA_CMD_TYPE_TASKFILE, 1, ptrData, dataSize);
 
@@ -1007,7 +1007,6 @@ eReturnValues ata_Legacy_Identify_Device_DMA(const tDevice* device, uint8_t* ptr
     {
         print_str("Sending ATA Identify DMA command\n");
     }
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &identify);
 
     if (ret == SUCCESS)

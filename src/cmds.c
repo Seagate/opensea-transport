@@ -1456,7 +1456,7 @@ eReturnValues ata_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess
         }
         else
         {
-            if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
+            if (get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_NO_DMA)
             {
                 // use PIO commands
                 ret = ata_PIO_Read(device, lba, ptrData, dataSize);
@@ -1624,7 +1624,7 @@ eReturnValues ata_Write(const tDevice* device, uint64_t lba, bool forceUnitAcces
     }
     else
     {
-        if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
+        if (get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_NO_DMA)
         {
             // use PIO commands
             ret = ata_PIO_Write(device, lba, forceUnitAccess, &writeDMAFUA, ptrData, dataSize);

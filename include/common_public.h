@@ -86,6 +86,9 @@ extern "C"
 #define T10_VENDOR_ID_LEN          (8)
 #define DEFAULT_COMMAND_TIMEOUT    (15) // Seconds
 
+    // Forward declare tDevice.
+    typedef struct s_tDevice tDevice;
+
     typedef struct s_apiVersionInfo
     {
         uint8_t majorVersion;
@@ -976,6 +979,15 @@ extern "C"
         uint8_t reserved[4]; // reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
     } ataOptions;
 
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API void set_tDevice_ATA_DMA_Mode(tDevice* M_NONNULL device, eATASynchronousDMAMode mode);
+
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eATASynchronousDMAMode get_tDevice_ATA_DMA_Mode(const tDevice* M_NONNULL device);
+
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API void disable_tDevice_ATA_DMA(tDevice* M_NONNULL device); // restore is only possible with fill_drive_info call
+
     typedef enum eZonedDeviceTypeEnum
     {
         ZONED_TYPE_NOT_ZONED      = 0,
@@ -1372,6 +1384,18 @@ extern "C"
         // 9304 bytes to make divisible by 8
         passthroughHacks passThroughHacks;
     } driveInfo;
+
+    // Sets the default command timeout value in tDevice
+    // If timeoutSeconds is set to zero, a default value of 15 seconds will be used.
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API eReturnValues set_tDevice_Default_Command_Timeout(tDevice* M_NONNULL device, const uint32_t timeoutSeconds);
+
+    // Gets the default command timeout value in tDevice. If this is zero, a default value of 15 seconds will be used.
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API uint32_t get_tDevice_Default_Command_Timeout(const tDevice* M_NONNULL device);
+
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API uint32_t get_Maximum_Command_Timeout_Seconds(M_ATTR_UNUSED const tDevice* M_NONNULL device);
 
 #if defined(UEFI_C_SOURCE)
     typedef enum eUEFIPassthroughTypeEnum

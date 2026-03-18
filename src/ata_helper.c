@@ -150,7 +150,7 @@ static M_INLINE eReturnValues send_ATA_Read_Log_Ext_Cmd_impl(tDevice* M_NONNULL 
             // This uses SATA id word 76 to identify the case and adjust which command to issue in this case.
             sataLogRequiresPIO = true;
         }
-        if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA &&
+        if (get_tDevice_ATA_DMA_Mode(device) != ATA_DMA_MODE_NO_DMA &&
             device->drive_info.ata_Options.readLogWriteLogDMASupported && !sataLogRequiresPIO)
         {
             // try a read log ext DMA command
@@ -196,6 +196,7 @@ eReturnValues send_ATA_Read_Log_Ext_Cmd(const tDevice* device,
                                         uint32_t       dataSize,
                                         uint16_t       featureRegister)
 {
+    explicit_zeroes(ptrData, dataSize);
     return send_ATA_Read_Log_Ext_Cmd_impl(M_CONST_CAST(tDevice*, device), logAddress, pageNumber, ptrData, dataSize,
                                           featureRegister);
 }
@@ -213,7 +214,7 @@ static M_INLINE eReturnValues send_ATA_Write_Log_Ext_Cmd_impl(tDevice* M_NONNULL
     if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
     {
         bool dmaRetry = false;
-        if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA &&
+        if (get_tDevice_ATA_DMA_Mode(device) != ATA_DMA_MODE_NO_DMA &&
             device->drive_info.ata_Options.readLogWriteLogDMASupported)
         {
             // try a write log ext DMA command
@@ -678,7 +679,7 @@ static M_INLINE eReturnValues send_ATA_Download_Microcode_Cmd_impl(tDevice* M_NO
 {
     eReturnValues ret      = NOT_SUPPORTED;
     bool          dmaRetry = false;
-    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA &&
+    if (get_tDevice_ATA_DMA_Mode(device) != ATA_DMA_MODE_NO_DMA &&
         device->drive_info.ata_Options.downloadMicrocodeDMASupported)
     {
         ret = ata_Download_Microcode(device, subCommand, blockCount, bufferOffset, true, pData, dataLen, firstSegment,
@@ -739,7 +740,7 @@ static M_INLINE eReturnValues send_ATA_Trusted_Send_Cmd_impl(tDevice* M_NONNULL 
     eReturnValues ret           = NOT_SUPPORTED;
     bool          dmaRetry      = false;
     static bool   dmaTrustedCmd = true;
-    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && dmaTrustedCmd &&
+    if (get_tDevice_ATA_DMA_Mode(device) != ATA_DMA_MODE_NO_DMA && dmaTrustedCmd &&
         device->drive_info.ata_Options.dmaSupported)
     {
         ret = ata_Trusted_Send(device, true, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
@@ -794,7 +795,7 @@ static M_INLINE eReturnValues send_ATA_Trusted_Receive_Cmd_impl(tDevice* M_NONNU
     eReturnValues ret           = NOT_SUPPORTED;
     bool          dmaRetry      = false;
     static bool   dmaTrustedCmd = true;
-    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && dmaTrustedCmd &&
+    if (get_tDevice_ATA_DMA_Mode(device) != ATA_DMA_MODE_NO_DMA && dmaTrustedCmd &&
         device->drive_info.ata_Options.dmaSupported)
     {
         ret = ata_Trusted_Receive(device, true, securityProtocol, securityProtocolSpecific, ptrData, dataSize);
@@ -834,6 +835,7 @@ eReturnValues send_ATA_Trusted_Receive_Cmd(const tDevice* device,
                                            uint8_t*       ptrData,
                                            uint32_t       dataSize)
 {
+    explicit_zeroes(ptrData, dataSize);
     return send_ATA_Trusted_Receive_Cmd_impl(M_CONST_CAST(tDevice*, device), securityProtocol, securityProtocolSpecific,
                                              ptrData, dataSize);
 }
@@ -844,7 +846,7 @@ static M_INLINE eReturnValues send_ATA_Read_Buffer_Cmd_impl(tDevice* M_NONNULL d
 {
     eReturnValues ret      = NOT_SUPPORTED;
     bool          dmaRetry = false;
-    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA &&
+    if (get_tDevice_ATA_DMA_Mode(device) != ATA_DMA_MODE_NO_DMA &&
         device->drive_info.ata_Options.readBufferDMASupported)
     {
         ret = ata_Read_Buffer(device, ptrData, true);
@@ -880,6 +882,7 @@ static M_INLINE eReturnValues send_ATA_Read_Buffer_Cmd_impl(tDevice* M_NONNULL d
 
 eReturnValues send_ATA_Read_Buffer_Cmd(const tDevice* device, uint8_t* ptrData)
 {
+    explicit_zeroes(ptrData, LEGACY_DRIVE_SEC_SIZE);
     return send_ATA_Read_Buffer_Cmd_impl(M_CONST_CAST(tDevice*, device), ptrData);
 }
 
@@ -889,7 +892,7 @@ static M_INLINE eReturnValues send_ATA_Write_Buffer_Cmd_impl(tDevice* M_NONNULL 
 {
     eReturnValues ret      = NOT_SUPPORTED;
     bool          dmaRetry = false;
-    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA &&
+    if (get_tDevice_ATA_DMA_Mode(device) != ATA_DMA_MODE_NO_DMA &&
         device->drive_info.ata_Options.writeBufferDMASupported)
     {
         ret = ata_Write_Buffer(device, ptrData, true);
@@ -942,7 +945,7 @@ static M_INLINE eReturnValues send_ATA_Read_Stream_Cmd_impl(tDevice* M_NONNULL d
     eReturnValues ret       = NOT_SUPPORTED;
     bool          dmaRetry  = false;
     static bool   streamDMA = true;
-    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && streamDMA &&
+    if (get_tDevice_ATA_DMA_Mode(device) != ATA_DMA_MODE_NO_DMA && streamDMA &&
         device->drive_info.ata_Options.dmaSupported)
     {
         ret = ata_Read_Stream_Ext(device, true, streamID, notSequential, readContinuous, commandCCTL, LBA, ptrData,
@@ -987,6 +990,7 @@ eReturnValues send_ATA_Read_Stream_Cmd(const tDevice* device,
                                        uint8_t*       ptrData,
                                        uint32_t       dataSize)
 {
+    explicit_zeroes(ptrData, dataSize);
     return send_ATA_Read_Stream_Cmd_impl(M_CONST_CAST(tDevice*, device), streamID, notSequential, readContinuous,
                                          commandCCTL, LBA, ptrData, dataSize);
 }
@@ -1005,7 +1009,7 @@ static M_INLINE eReturnValues send_ATA_Write_Stream_Cmd_impl(tDevice* M_NONNULL 
     eReturnValues ret       = NOT_SUPPORTED;
     bool          dmaRetry  = false;
     static bool   streamDMA = true;
-    if (device->drive_info.ata_Options.dmaMode != ATA_DMA_MODE_NO_DMA && streamDMA &&
+    if (get_tDevice_ATA_DMA_Mode(device) != ATA_DMA_MODE_NO_DMA && streamDMA &&
         device->drive_info.ata_Options.dmaSupported)
     {
         ret = ata_Write_Stream_Ext(device, true, streamID, flush, writeContinuous, commandCCTL, LBA, ptrData, dataSize);
@@ -1873,6 +1877,7 @@ static M_INLINE eReturnValues get_Identify_Data_impl(tDevice* M_NONNULL device,
 
 eReturnValues get_Identify_Data(const tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 {
+    explicit_zeroes(ptrData, dataSize);
     return get_Identify_Data_impl(M_CONST_CAST(tDevice*, device), ptrData, dataSize);
 }
 
@@ -2107,7 +2112,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         *fillLogicalSectorSize  = LEGACY_DRIVE_SEC_SIZE; // start with this and change later
         *fillPhysicalSectorSize = LEGACY_DRIVE_SEC_SIZE; // start with this and change later
         // clear DMA support until it is found later
-        device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_NO_DMA;
+        set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_NO_DMA);
         if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[49])))
         {
             if (le16_to_host(ident_word[49]) & BIT9)
@@ -2190,7 +2195,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             uint8_t swdmaSelected = get_8bit_range_uint16(le16_to_host(ident_word[62]), 10, 8);
             if (swdmaSelected)
             {
-                device->drive_info.ata_Options.dmaMode      = ATA_DMA_MODE_NO_DMA;
+                set_tDevice_ATA_DMA_Mode(device,  ATA_DMA_MODE_NO_DMA);
                 device->drive_info.ata_Options.dmaSupported = false;
             }
         }
@@ -2202,8 +2207,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             uint8_t mwdmaSelected = get_8bit_range_uint16(le16_to_host(ident_word[63]), 10, 8);
             if (mwdmaSelected)
             {
-                device->drive_info.ata_Options.dmaMode =
-                    ATA_DMA_MODE_MWDMA; // assume this until we find MWDMA or UDMA modes
+                set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_MWDMA); // assume this until we find MWDMA or UDMA modes
             }
         }
 
@@ -2320,7 +2324,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         if (word88Valid && is_ATA_Identify_Word_Valid(le16_to_host(ident_word[88])) &&
             le16_to_host(ident_word[88]) & 0x007F)
         {
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
+            set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_UDMA);
         }
 
         // another check to make sure we've identified device 1 correctly
@@ -2449,7 +2453,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             device->drive_info.media_type = MEDIA_SSD;
         }
 
-        if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA &&
+        if (get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_NO_DMA &&
             device->drive_info.ata_Options.dmaSupported && device->drive_info.ata_Options.isParallelTransport)
         {
             if (device->drive_info.ata_Options.isParallelTransport)
@@ -2463,14 +2467,14 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             {
                 // weird case as all SATA will support DMA...so set the lowest DMA mode...should be compatible as any
                 // incompatible translators will retry and turn this off
-                device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+                set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_DMA);
             }
         }
 
         if (device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
         {
             // turn off the DMA supported bits so upper layers issue PIO mode commands instead.
-            device->drive_info.ata_Options.dmaMode                       = ATA_DMA_MODE_NO_DMA;
+            set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_NO_DMA);
             device->drive_info.ata_Options.dmaSupported                  = false;
             device->drive_info.ata_Options.readLogWriteLogDMASupported   = false;
             device->drive_info.ata_Options.readBufferDMASupported        = false;
@@ -2486,14 +2490,14 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         // and will never be ATAPI So this should be a reasonably good check to catch this thing for now.
         if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe &&
             (!device->drive_info.ata_Options.dmaSupported &&
-             device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 &&
+             get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 &&
              device->drive_info.drive_type != ATAPI_DRIVE))
         {
             // This means it's an emulated NVMe device where only the MN/SN/FW were reported.
             device->drive_info.drive_type = SCSI_DRIVE;
         }
         else if ((!device->drive_info.ata_Options.dmaSupported &&
-                  device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 &&
+                  get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 &&
                   device->drive_info.drive_type != ATAPI_DRIVE) &&
                  word84Valid == false && word87Valid == false && words119to120Valid == false &&
                  sanitizeSupported == false && smartSupported == false)
@@ -2544,7 +2548,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA)
         {
             // forcing using DMA mode instead of UDMA since the translator doesn't like UDMA mode set
-            device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+            set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_DMA);
         }
     }
 
@@ -2552,7 +2556,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
     if ((device->dFlags & FORCE_ATA_PIO_ONLY) != 0)
     {
         // turn off the DMA supported bits so upper layers issue PIO mode commands instead.
-        device->drive_info.ata_Options.dmaMode                       = ATA_DMA_MODE_NO_DMA;
+        set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_NO_DMA);
         device->drive_info.ata_Options.dmaSupported                  = false;
         device->drive_info.ata_Options.readLogWriteLogDMASupported   = false;
         device->drive_info.ata_Options.readBufferDMASupported        = false;
@@ -2566,13 +2570,13 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
     // from identify)
     if ((device->dFlags & FORCE_ATA_DMA_SAT_MODE) != 0)
     {
-        device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+        set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_DMA);
     }
     // check if we're being asked to set the protocol to UDMA for DMA commands (default behavior depends on drive
     // support from identify)
     if ((device->dFlags & FORCE_ATA_UDMA_SAT_MODE) != 0)
     {
-        device->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
+        set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_UDMA);
     }
 
     // device->drive_info.softSATFlags.senseDataDescriptorFormat = true;//by default software SAT will set this to
@@ -3156,7 +3160,7 @@ void print_Verbose_ATA_Command_Result_Information(const ataPassthroughCommand* a
             // CRC error will only be possible to detect with SATA or UDMA transfers
             // NOTE: Since some translators only allow SAT set to DMA, need to make sure drive's mode is UDMA and
             // protocol can be DMA. Not perfect and can be further improved
-            if (is_SATA(device) || (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_UDMA &&
+            if (is_SATA(device) || (get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_UDMA &&
                                     (ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA ||
                                      ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA)))
             {

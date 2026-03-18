@@ -254,12 +254,12 @@ static eReturnValues scsi_Send_Cdb_Int(const tDevice*         device,
     scsiIoCtx.pdata            = pdata;
     scsiIoCtx.dataLength       = dataLen;
     scsiIoCtx.verbose          = 0;
-    scsiIoCtx.timeout          = M_Max(timeoutSeconds, device->drive_info.defaultTimeoutSeconds);
+    scsiIoCtx.timeout          = M_Max(timeoutSeconds, get_tDevice_Default_Command_Timeout(device));
     scsiIoCtx.fwdlFirstSegment = fwdlFirstSegment;
     scsiIoCtx.fwdlLastSegment  = fwdlLastSegment;
     if (timeoutSeconds == 0)
     {
-        scsiIoCtx.timeout = M_Max(DEFAULT_COMMAND_TIMEOUT, device->drive_info.defaultTimeoutSeconds);
+        scsiIoCtx.timeout = M_Max(DEFAULT_COMMAND_TIMEOUT, get_tDevice_Default_Command_Timeout(device));
     }
 
     ret = private_SCSI_Send_CDB(&scsiIoCtx, M_NULLPTR);
