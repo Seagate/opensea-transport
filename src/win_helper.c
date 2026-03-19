@@ -5179,11 +5179,11 @@ static eReturnValues open_Win_Handle(const char* M_NONNULL filename, tDevice* M_
         {
             if (sharemode == EXCLUSIVE_ACCESS_SHARE_FLAGS)
             {
-                device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+                set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
             }
             else
             {
-                device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+                set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
             }
             break;
         }
@@ -5224,52 +5224,53 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
         device->os_info.scsiSRBHandle = INVALID_HANDLE_VALUE; // set this to invalid ahead of anywhere that it might get
                                                               // opened below for discovering additional capabilities.
         // set the handle name
-        safe_strcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename);
-
-        if (strstr(device->os_info.name, WIN_PHYSICAL_DRIVE))
+        set_Device_Handle_Name(device, filename);
+        DECLARE_ZERO_INIT_ARRAY(char, friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        if (strstr(get_Device_Handle_Name(device), WIN_PHYSICAL_DRIVE))
         {
             unsigned long drive    = 0UL;
-            char*         drivenum = strstr(device->os_info.name, WIN_PHYSICAL_DRIVE) + safe_strlen(WIN_PHYSICAL_DRIVE);
+            char*         drivenum = strstr(get_Device_Handle_Name(device), WIN_PHYSICAL_DRIVE) + safe_strlen(WIN_PHYSICAL_DRIVE);
             if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
             }
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "PD%lu", drive);
+            snprintf_err_handle(friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "PD%lu", drive);
             device->os_info.os_drive_number = drive;
         }
-        else if (strstr(device->os_info.name, WIN_CDROM_DRIVE))
+        else if (strstr(get_Device_Handle_Name(device), WIN_CDROM_DRIVE))
         {
             unsigned long drive    = 0UL;
-            char*         drivenum = strstr(device->os_info.name, WIN_CDROM_DRIVE) + safe_strlen(WIN_CDROM_DRIVE);
+            char*         drivenum = strstr(get_Device_Handle_Name(device), WIN_CDROM_DRIVE) + safe_strlen(WIN_CDROM_DRIVE);
             if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
             }
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CDROM%lu", drive);
+            snprintf_err_handle(friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CDROM%lu", drive);
             device->os_info.os_drive_number = drive;
         }
-        else if (strstr(device->os_info.name, WIN_TAPE_DRIVE))
+        else if (strstr(get_Device_Handle_Name(device), WIN_TAPE_DRIVE))
         {
             unsigned long drive    = 0UL;
-            char*         drivenum = strstr(device->os_info.name, WIN_TAPE_DRIVE) + safe_strlen(WIN_TAPE_DRIVE);
+            char*         drivenum = strstr(get_Device_Handle_Name(device), WIN_TAPE_DRIVE) + safe_strlen(WIN_TAPE_DRIVE);
             if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
             }
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "TAPE%lu", drive);
+            snprintf_err_handle(friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "TAPE%lu", drive);
             device->os_info.os_drive_number = drive;
         }
-        else if (strstr(device->os_info.name, WIN_CHANGER_DEVICE))
+        else if (strstr(get_Device_Handle_Name(device), WIN_CHANGER_DEVICE))
         {
             unsigned long drive    = 0UL;
-            char*         drivenum = strstr(device->os_info.name, WIN_CHANGER_DEVICE) + safe_strlen(WIN_CHANGER_DEVICE);
+            char*         drivenum = strstr(get_Device_Handle_Name(device), WIN_CHANGER_DEVICE) + safe_strlen(WIN_CHANGER_DEVICE);
             if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
             }
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%lu", drive);
+            snprintf_err_handle(friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "CHGR%lu", drive);
             device->os_info.os_drive_number = drive;
         }
+        set_Device_Handle_Friendly_Name(device, friendlyName);
         // NOTE: No final else returning failure as we want to support some other handles that don't map to these easy
         // names.
         //       There are very long names for a drive handle we can also support if a caller knows how to pass them in.
@@ -9557,13 +9558,13 @@ eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
 eReturnValues os_Get_Exclusive(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->os_info.handleFlags == HANDLE_FLAGS_DEFAULT && strstr(device->os_info.name, "PHYSICAL") != M_NULLPTR)
+    if (get_Device_Handle_Open_Flags(device) == HANDLE_FLAGS_DEFAULT && strstr(get_Device_Handle_Name(device), "PHYSICAL") != M_NULLPTR)
     {
         // attempt to reopen with exclusive access. If it fails, that is ok, we still have this other lock
         // This is the same way the linux code is working. -TJE
         CloseHandle(device->os_info.fd);
         device->dFlags |= HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
-        ret = open_Win_Handle(device->os_info.name, device);
+        ret = open_Win_Handle(get_Device_Handle_Name(device), device);
     }
     return ret;
 }
@@ -12176,7 +12177,7 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx* nvmeIoCtx)
         // Send request down.
         */
 #    if defined(_DEBUG)
-        printf("%s: Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
+        printf("%s: Drive Path = %s", __FUNCTION__, get_Device_Handle_Name(nvmeIoCtx->device));
 #    endif
 
         DECLARE_SEATIMER(commandTimer);
@@ -12357,7 +12358,7 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx* nvmeIoCtx)
     // Send request down.
     //
 #    if defined(_DEBUG)
-    printf("%s Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
+    printf("%s Drive Path = %s", __FUNCTION__, get_Device_Handle_Name(nvmeIoCtx->device));
 #    endif
     DECLARE_SEATIMER(commandTimer);
     start_Timer(&commandTimer);
@@ -12470,7 +12471,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
     // Send request down.
     //
 #    if defined(_DEBUG)
-    printf("%s Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
+    printf("%s Drive Path = %s", __FUNCTION__, get_Device_Handle_Name(nvmeIoCtx->device));
 #    endif
     DECLARE_SEATIMER(commandTimer);
     start_Timer(&commandTimer);
@@ -13081,7 +13082,7 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
         // Send request down.
         //
 #        if defined(_DEBUG)
-        printf("%s Drive Path = %s", __FUNCTION__, nvmeIoCtx->device->os_info.name);
+        printf("%s Drive Path = %s", __FUNCTION__, get_Device_Handle_Name(nvmeIoCtx->device));
 #        endif
         DECLARE_SEATIMER(commandTimer);
         start_Timer(&commandTimer);
@@ -14371,7 +14372,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
     // Send request down.
     //
 #    if defined(_DEBUG)
-    printf("%s Drive Path = %s", __FUNCTION__, scsiIoCtx->device->os_info.name);
+    printf("%s Drive Path = %s", __FUNCTION__, get_Device_Handle_Name(scsiIoCtx->device));
 #    endif
     DECLARE_SEATIMER(commandTimer);
     start_Timer(&commandTimer);
@@ -14476,7 +14477,7 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx)
     // Send request down.
     //
 #    if defined(_DEBUG)
-    printf("%s Drive Path = %s", __FUNCTION__, scsiIoCtx->device->os_info.name);
+    printf("%s Drive Path = %s", __FUNCTION__, get_Device_Handle_Name(scsiIoCtx->device));
 #    endif
     DECLARE_SEATIMER(commandTimer);
     start_Timer(&commandTimer);
@@ -14842,7 +14843,7 @@ static eReturnValues open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice*
         // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea#caching_behavior
         DECLARE_ZERO_INIT_ARRAY(TCHAR, fuaDevice, WIN_MAX_DEVICE_NAME_LENGTH);
         TCHAR* ptrFuaDevice = &fuaDevice[0];
-        _stprintf_s(fuaDevice, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), device->os_info.name);
+        _stprintf_s(fuaDevice, WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), get_Device_Handle_Name(device));
         device->os_info.forceUnitAccessRWfd = CreateFile(ptrFuaDevice, GENERIC_WRITE | GENERIC_READ,
                                                          FILE_SHARE_READ | FILE_SHARE_WRITE, M_NULLPTR, OPEN_EXISTING,
                                                          FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING |

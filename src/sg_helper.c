@@ -1300,9 +1300,8 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
         safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysFsInfo.driver_info, sizeof(driverInfo));
         if (safe_strlen(sysFsInfo.primaryHandleStr) > 0)
         {
-            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysFsInfo.primaryHandleStr);
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
-                                basename(sysFsInfo.primaryHandleStr));
+            set_Device_Handle_Name(device, sysFsInfo.primaryHandleStr);
+            set_Device_Handle_Friendly_Name(device, basename(sysFsInfo.primaryHandleStr));
         }
         if (safe_strlen(sysFsInfo.secondaryHandleStr) > 0)
         {
@@ -1641,8 +1640,8 @@ static eReturnValues linux_Get_NVMe_Device(tDevice* device, const char* deviceHa
 
     char* baseLink = basename(dupHandle);
     // Now we will set up the device name, etc fields in the os_info structure.
-    snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
-    snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
+    set_Device_Handle_Name(device, dupHandle);
+    set_Device_Handle_Friendly_Name(device, baseLink);
     safe_free(&dupHandle);
     return ret;
 #else // DISABLE_NVME_PASSTHROUGH
@@ -1715,8 +1714,8 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* device, const char* deviceHa
         setup_Passthrough_Hacks_By_ID(device);
 
 #if defined(_DEBUG)
-        printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", device->os_info.name,
-               device->os_info.friendlyName, device->os_info.secondName, device->os_info.secondFriendlyName);
+        printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", get_Device_Handle_Name(device),
+               get_Device_Handle_Friendly_Name(device), device->os_info.secondName, device->os_info.secondFriendlyName);
         printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel,
                device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
 
@@ -1775,11 +1774,11 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
     }
     if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
     }
     else
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
     }
 
     // set the OS Type
@@ -1797,7 +1796,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
         setup_Passthrough_Hacks_By_ID(device);
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondHandleValid
                                                                        ? device->os_info.secondName
-                                                                       : device->os_info.name);
+                                                                       : get_Device_Handle_Name(device));
         safe_free(&genericHandle);
         return ret;
     }
@@ -1817,7 +1816,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
         {
             set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondHandleValid
                                                                            ? device->os_info.secondName
-                                                                           : device->os_info.name);
+                                                                           : get_Device_Handle_Name(device));
 
             ret = fill_Drive_Info_Data(device);
         }
@@ -3130,7 +3129,7 @@ static eReturnValues linux_NVMe_Reset(tDevice* M_NONNULL device, bool subsystemR
     bool openedControllerHandle = false; // used so we can close the handle at the end.
     // Need to make sure the handle we use to issue the reset is a controller handle and not a namespace handle.
     char* endptr = M_NULLPTR;
-    char* handle = strstr(&device->os_info.name[0], "/dev/nvme");
+    const char* handle = strstr(get_Device_Handle_Name(device), "/dev/nvme");
     if (handle)
     {
         handle += safe_strlen("/dev/nvme");
@@ -3298,7 +3297,7 @@ eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t d
     int           fd      = 0;
     void*         barRegs = M_NULLPTR;
     DECLARE_ZERO_INIT_ARRAY(char, sysfsPath, PATH_MAX);
-    snprintf_err_handle(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
+    snprintf_err_handle(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", get_Device_Handle_Name(device));
     fd = open(sysfsPath, O_RDONLY);
     if (fd >= 0)
     {
@@ -3319,7 +3318,7 @@ eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t d
     {
         if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
-            printf("couldn't open device %s\n", device->os_info.name);
+            printf("couldn't open device %s\n", get_Device_Handle_Name(device));
         }
         ret = BAD_PARAMETER;
     }
@@ -3424,7 +3423,7 @@ static bool lock_unlock_handle(int fd, bool lock, eVerbosityLevels verboseLevel)
 eReturnValues os_Get_Exclusive(tDevice* device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->os_info.handleFlags != HANDLE_FLAGS_EXCLUSIVE)
+    if (get_Device_Handle_Open_Flags(device) != HANDLE_FLAGS_EXCLUSIVE)
     {
         int attempts = 0;
 #define EXCL_ATTEMPT_MAX 2
@@ -3434,12 +3433,12 @@ eReturnValues os_Get_Exclusive(tDevice* device)
         close(device->os_info.fd);
         do
         {
-            device->os_info.fd = open(device->os_info.name, handleFlags);
+            device->os_info.fd = open(get_Device_Handle_Name(device), handleFlags);
             if (device->os_info.fd < 0)
             {
                 if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
                 {
-                    printf("WARNING: Failed to acquire exclusive access to %s\n", device->os_info.name);
+                    printf("WARNING: Failed to acquire exclusive access to %s\n", get_Device_Handle_Name(device));
                 }
                 handleFlags &= ~O_EXCL;
                 ret = FAILURE;
@@ -3448,7 +3447,7 @@ eReturnValues os_Get_Exclusive(tDevice* device)
             {
                 if (handleFlags & O_EXCL)
                 {
-                    device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+                    set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
                     ret                         = SUCCESS;
                 }
                 else
@@ -3561,7 +3560,7 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     return unmount_Partitions_From_Device(device->os_info.secondHandleValid ? device->os_info.secondName
-                                                                            : device->os_info.name);
+                                                                            : get_Device_Handle_Name(device));
 }
 
 // This should be at the end of this file to undefine _GNU_SOURCE if this file manually enabled it

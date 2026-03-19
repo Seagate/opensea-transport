@@ -105,11 +105,11 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     }
     if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
     }
     else
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
     }
 
     // setup any other necessary enumeration of the device
@@ -133,8 +133,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         get_BSD_SCSI_Address(device->os_info.fd, &device->os_info.addresstype, &device->os_info.bus,
                              &device->os_info.target, &device->os_info.lun);
     }
-    snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
-    snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", deviceHandle);
+    set_Device_Handle_Name(device, deviceHandle);
+    set_Device_Handle_Friendly_Name(device, deviceHandle);
     free_Posix_Resolved_Filename(&deviceHandle);
 
 #if defined(__NetBSD__)
@@ -149,7 +149,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         return ret;
     }
 
-    set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
+    set_Device_Partition_Info(&device->os_info.fileSystemInfo, get_Device_Handle_Name(device));
     ret = fill_Drive_Info_Data(device);
     return ret;
 }
@@ -531,7 +531,7 @@ eReturnValues os_Update_File_System_Cache(const tDevice* device)
 
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
-    return unmount_Partitions_From_Device(device->os_info.name);
+    return unmount_Partitions_From_Device(get_Device_Handle_Name(device));
 }
 
 eReturnValues os_Erase_Boot_Sectors(const tDevice* device)

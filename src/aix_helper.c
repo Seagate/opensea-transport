@@ -1202,13 +1202,12 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         set_Device_IO_Minimum_Alignment(device, sizeof(void*));
         // Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more
         // details -TJE set name and friendly name
-        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+        set_Device_Handle_Name(device, filename);
         char*   friendlyName = M_NULLPTR;
         errno_t duperr       = safe_strdup(&friendlyName, filename);
         if (duperr == 0 && friendlyName != M_NULLPTR)
         {
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
-                                basename(friendlyName));
+            set_Device_Handle_Friendly_Name(device, basename(friendlyName));
         }
         safe_free(&friendlyName);
         struct CuDv  cudv;
@@ -3326,7 +3325,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
             close(device->os_info.fd); // this must be done first or the openx will fail!
             // try opening with the diagnostic flag.
             long extensionFlag = SC_DIAGNOSTIC;
-            device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+            device->os_info.fd = openx(get_Device_Handle_Name(device), 0, 0, extensionFlag);
             if (device->os_info.fd >= 0)
             {
                 device->os_info.diagnosticModeFlagInUse = true;
@@ -3335,7 +3334,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
             {
                 // reopen original fd without SC_DIAGNOSTIC
                 extensionFlag      = 0;
-                device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+                device->os_info.fd = openx(get_Device_Handle_Name(device), 0, 0, extensionFlag);
                 ret                = FAILURE;
             }
         }
@@ -3359,7 +3358,7 @@ eReturnValues os_Unlock_Device(const tDevice* device)
             close(device->os_info.fd); // this must be done first or the openx will fail!
             // try opening without the diagnostic flag.
             long extensionFlag = 0L;
-            device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+            device->os_info.fd = openx(get_Device_Handle_Name(device), 0, 0, extensionFlag);
             if (device->os_info.fd >= 0)
             {
                 device->os_info.diagnosticModeFlagInUse = false;
@@ -3368,7 +3367,7 @@ eReturnValues os_Unlock_Device(const tDevice* device)
             {
                 // reopen original fd without SC_DIAGNOSTIC
                 extensionFlag      = SC_DIAGNOSTIC;
-                device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+                device->os_info.fd = openx(get_Device_Handle_Name(device), 0, 0, extensionFlag);
                 ret                = FAILURE;
             }
         }

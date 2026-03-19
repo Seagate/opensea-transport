@@ -208,9 +208,8 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
         safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysVmInfo.driver_info, sizeof(driverInfo));
         if (strlen(sysVmInfo.primaryHandleStr) > 0)
         {
-            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysVmInfo.primaryHandleStr);
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
-                                basename(sysVmInfo.primaryHandleStr));
+            set_Device_Handle_Name(device, sysVmInfo.primaryHandleStr);
+            set_Device_Handle_Friendly_Name(device, basename(sysVmInfo.primaryHandleStr));
         }
         if (strlen(sysVmInfo.secondaryHandleStr) > 0)
         {
@@ -326,7 +325,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             // set the OS Type
             device->os_info.osType = OS_ESX;
 
-            safe_memcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, deviceHandle, safe_strlen(deviceHandle) + 1);
+            set_Device_Handle_Name(device, deviceHandle);
 
             // set scsi interface and scsi drive until we know otherwise
             set_Device_DriveType(device, SCSI_DRIVE);
@@ -346,8 +345,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             // set_Device_MediaType(device, MEDIA_UNKNOWN);
 
 #if defined(_DEBUG)
-            printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", device->os_info.name,
-                   device->os_info.friendlyName, device->os_info.secondName, device->os_info.secondFriendlyName);
+            printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", get_Device_Handle_Name(device),
+                   get_Device_Handle_Friendly_Name(device), device->os_info.secondName, device->os_info.secondFriendlyName);
             printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel,
                    device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
 
@@ -452,7 +451,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             set_Device_MediaType(device, MEDIA_NVM);
             safe_memcpy(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe", 4);
             device->os_info.osType = OS_ESX;
-            safe_memcpy(&(device->os_info.name), OS_HANDLE_NAME_MAX_LENGTH, filename, safe_strlen(filename) + 1);
+            set_Device_Handle_Name(device, filename);
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
             if (get_Device_InterfaceType(device) == NVME_INTERFACE)
@@ -1495,7 +1494,7 @@ eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t d
     int           fd      = 0;
     void*         barRegs = M_NULLPTR;
     DECLARE_ZERO_INIT_ARRAY(char, sysfsPath, PATH_MAX);
-    snprintf_err_handle(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
+    snprintf_err_handle(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", get_Device_Handle_Name(device));
     fd = open(sysfsPath, O_RDONLY);
     if (fd >= 0)
     {
@@ -1516,7 +1515,7 @@ eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t d
     {
         if (VERBOSITY_QUIET < device->deviceVerbosity)
         {
-            printf("couldn't open device %s\n", device->os_info.name);
+            printf("couldn't open device %s\n", get_Device_Handle_Name(device));
         }
         ret = BAD_PARAMETER;
     }

@@ -4085,7 +4085,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
         return LIBRARY_MISMATCH;
     }
     // set the handle name first...since the tokenizing below will break it apart
-    safe_memcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename, safe_strlen(filename));
+    set_Device_Handle_Name(device, filename);
     bool      intelNVMe   = false;
     uint32_t *intelPathID = &portID, *intelTargetID = &phyID, *intelLun = &lun;
     char*     baseHandle = M_NULLPTR;
@@ -4105,16 +4105,17 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
     }
     else
     {
+        DECLARE_ZERO_INIT_ARRAY(char, friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
         int snprintfres = 0;
         if (intelNVMe)
         {
-            snprintfres = snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
+            snprintfres = snprintf_err_handle(friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
                                               CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":N:%" PRIu32 ":%" PRIu32 ":%" PRIu32,
                                               controllerNum, portID, phyID, lun);
         }
         else
         {
-            snprintfres = snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
+            snprintfres = snprintf_err_handle(friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
                                               CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32,
                                               controllerNum, portID, phyID, lun);
         }
@@ -4123,6 +4124,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
             safe_free(&baseHandle);
             return BAD_PARAMETER;
         }
+        set_Device_Handle_Friendly_Name(device, friendlyName);
     }
 #    else  //_WIN32
     M_USE_UNUSED(intelLun);
@@ -4130,8 +4132,9 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
     M_USE_UNUSED(intelTargetID);
     if (baseHandle && safe_strlen(baseHandle) > 0 && !intelNVMe)
     {
+        DECLARE_ZERO_INIT_ARRAY(char, friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
         int snprintfres =
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
+            snprintf_err_handle(friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH,
                                 CSMI_HANDLE_BASE_NAME ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%" PRIu32 ":%s",
                                 controllerNum, portID, phyID, lun, baseHandle);
         if (snprintfres < 1 || snprintfres > OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
@@ -4139,6 +4142,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
             safe_free(&baseHandle);
             return BAD_PARAMETER;
         }
+        set_Device_Handle_Friendly_Name(device, friendlyName);
     }
     else
     {

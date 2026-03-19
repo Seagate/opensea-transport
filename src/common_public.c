@@ -617,9 +617,9 @@ void print_Low_Level_Info(const tDevice* device)
         // print out the os_info unique things. This has a lot of ifdefs for the different OSs/configurations so need to
         // watch out for the differences in here
         print_str("\t---OS Info---\n");
-        printf("\t\thandle name: %s\n", device->os_info.name);
-        printf("\t\tfriendly name: %s\n", device->os_info.friendlyName);
-        printf("\t\tminimum memory alignment: %" PRIu8 "\n", get_Device_IO_Minimum_Alignment(device));
+        printf("\t\thandle name: %s\n", get_Device_Handle_Name(device));
+        printf("\t\tfriendly name: %s\n", get_Device_Handle_Friendly_Name(device));
+        printf("\t\tminimum memory alignment: %zu\n", get_Device_IO_Minimum_Alignment(device));
 #if defined(UEFI_C_SOURCE)
         print_str("\t\t---UEFI Unique Info---\n");
         // TODO: fd and device path
@@ -3459,11 +3459,11 @@ bool is_CSMI_Device(const tDevice* device)
     bool csmiDevice = true;
 
 #ifdef _DEBUG
-    printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n", device->os_info.friendlyName,
+    printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n", get_Device_Handle_Friendly_Name(device),
            get_Device_InterfaceType(device), C_CAST(uintptr_t, device->raid_device));
 #endif
 
-    csmiDevice = csmiDevice && (strncmp(device->os_info.friendlyName, "SCSI", SIZE_T_C(4)) == 0);
+    csmiDevice = csmiDevice && (strncmp(get_Device_Handle_Friendly_Name(device), "SCSI", SIZE_T_C(4)) == 0);
     csmiDevice = csmiDevice && (get_Device_InterfaceType(device) == RAID_INTERFACE);
     csmiDevice = csmiDevice && (device->raid_device != M_NULLPTR);
 
@@ -6833,6 +6833,115 @@ void set_Device_IO_Minimum_Alignment(tDevice* M_NONNULL device, size_t alignment
     }
 }
 
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_NODISCARD eHandleOpenFlags get_Device_Handle_Open_Flags(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        return device->os_info.handleFlags;
+    }
+    return HANDLE_FLAGS_DEFAULT;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API void set_Device_Handle_Open_Flags(tDevice* M_NONNULL device, eHandleOpenFlags flags)
+{
+    if (device != M_NULLPTR)
+    {
+        device->os_info.handleFlags = flags;
+    }
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_NODISCARD const char* M_NULLABLE get_Device_Handle_Name(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        if (safe_strnlen(device->os_info.name, sizeof(device->os_info.name)) == 0)
+        {
+            return M_NULLPTR;
+        }
+        else if (safe_strnlen(device->os_info.name, sizeof(device->os_info.name)) == sizeof(device->os_info.name)) M_UNLIKELY
+        {
+            return M_NULLPTR;
+        }
+        return M_REINTERPRET_CAST(const char*, device->os_info.name);
+    }
+    return M_NULLPTR;
+}
+
+M_PARAM_RW(1)
+M_PARAM_RO(2)
+M_NULL_TERM_STRING(2)
+OPENSEA_TRANSPORT_API bool set_Device_Handle_Name(tDevice* M_NONNULL device, const char* M_NULLABLE name)
+{
+    if (device != M_NULLPTR)
+    {
+        errno_t error = EINVAL;
+        if (name != M_NULLPTR)
+        {
+            error = safe_strcpy(device->os_info.name, sizeof(device->os_info.name), name);
+        }
+        else
+        {
+            // Do not change error to 0 here. Name should never be empty or null.
+            // Zeroing this out is the safest bet in case anything attempts to access any part of this expecting null termination
+            // By setting all bytes to 0, that effectively sets any possible access to a string of length 0
+            (void)safe_memset(device->os_info.name, sizeof(device->os_info.name), 0, sizeof(device->os_info.name));
+        }
+        if (error == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_NODISCARD const char* M_NULLABLE get_Device_Handle_Friendly_Name(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        if (safe_strnlen(device->os_info.friendlyName, sizeof(device->os_info.friendlyName)) == 0)
+        {
+            return M_NULLPTR;
+        }
+        else if (safe_strnlen(device->os_info.friendlyName, sizeof(device->os_info.friendlyName)) == sizeof(device->os_info.friendlyName)) M_UNLIKELY
+        {
+            return M_NULLPTR;
+        }
+        return M_REINTERPRET_CAST(const char*, device->os_info.friendlyName);
+    }
+    return M_NULLPTR;
+}
+
+M_PARAM_RW(1)
+M_PARAM_RO(2)
+M_NULL_TERM_STRING(2)
+OPENSEA_TRANSPORT_API bool set_Device_Handle_Friendly_Name(tDevice* M_NONNULL device, const char* M_NULLABLE name)
+{
+    if (device != M_NULLPTR)
+    {
+        errno_t error = EINVAL;
+        if (name != M_NULLPTR)
+        {
+            error = safe_strcpy(device->os_info.friendlyName, sizeof(device->os_info.friendlyName), name);
+        }
+        else
+        {
+            // Do not change error to 0 here. Name should never be empty or null.
+            // Zeroing this out is the safest bet in case anything attempts to access any part of this expecting null termination
+            // By setting all bytes to 0, that effectively sets any possible access to a string of length 0
+            (void)safe_memset(device->os_info.friendlyName, sizeof(device->os_info.friendlyName), 0, sizeof(device->os_info.friendlyName));
+        }
+        if (error == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 eDriveType get_Device_DriveType(const tDevice* device)
 {
     return device->drive_info.drive_type;
@@ -6895,7 +7004,7 @@ uint32_t get_Device_PhyBlockSize(const tDevice* device)
     {
         if (device->drive_info.devicePhyBlockSize == 0)
         {
-            return get_Device_BlockSize(device); // if phy block size is not set, assume it is the same as block size
+            return device->drive_info.deviceBlockSize; // if phy block size is not set, assume it is the same as block size
         }
         return device->drive_info.devicePhyBlockSize;
     }
@@ -6931,11 +7040,11 @@ uint16_t get_Logical_Sectors_Per_Physical_Sector(const tDevice* device)
 {
     if (device != M_NULLPTR)
     {
-        if (get_Device_PhyBlockSize(device) == 0)
+        if (device->drive_info.devicePhyBlockSize == 0)
         {
             return UINT16_C(1); // avoid division by zero
         }
-        return C_CAST(uint16_t,get_Device_BlockSize(device) / get_Device_PhyBlockSize(device));
+        return C_CAST(uint16_t,device->drive_info.deviceBlockSize / device->drive_info.devicePhyBlockSize);
     }
     return 0;
 }
@@ -6963,7 +7072,7 @@ uint32_t get_Device_Child_PhyBlockSize(const tDevice* device)
     {
         if (device->drive_info.bridge_info.childDevicePhyBlockSize == 0)
         {
-            return get_Device_Child_BlockSize(device); // if phy block size is not set, assume it is the same as block size
+            return device->drive_info.bridge_info.childDeviceBlockSize; // if phy block size is not set, assume it is the same as block size
         }
         return device->drive_info.bridge_info.childDevicePhyBlockSize;
     }
@@ -6999,11 +7108,11 @@ uint16_t get_Child_Logical_Sectors_Per_Physical_Sector(const tDevice* device)
 {
     if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
     {
-        if (get_Device_Child_PhyBlockSize(device) == 0)
+        if (device->drive_info.bridge_info.childDevicePhyBlockSize == 0)
         {
             return UINT16_C(1); // avoid division by zero
         }
-        return C_CAST(uint16_t, get_Device_Child_BlockSize(device) / get_Device_Child_PhyBlockSize(device));
+        return C_CAST(uint16_t, device->drive_info.bridge_info.childDeviceBlockSize / device->drive_info.bridge_info.childDevicePhyBlockSize);
     }
     return 0;
 }

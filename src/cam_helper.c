@@ -148,11 +148,11 @@ static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device
     }
     if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
     }
     else
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
     }
 
     set_Device_IO_Minimum_Alignment(device, sizeof(void*));
@@ -176,7 +176,7 @@ static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device
 
     free_Posix_Resolved_Filename(&deviceHandle);
 
-    set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
+    set_Device_Partition_Info(&device->os_info.fileSystemInfo, get_Device_Handle_Name(device));
     ret = fill_Drive_Info_Data(device);
     return ret;
 }
@@ -214,11 +214,11 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
     }
     if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
     }
     else
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
     }
 
     set_Device_IO_Minimum_Alignment(device, sizeof(void*));
@@ -242,9 +242,9 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
 
     char* baseLink = basename(deviceHandle);
     // Now we will set up the device name, etc fields in the os_info structure
-    snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s", baseLink);
-    snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", baseLink);
-    set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
+    set_Device_Handle_Name(device, deviceHandle);
+    set_Device_Handle_Friendly_Name(device, baseLink);
+    set_Device_Partition_Info(&device->os_info.fileSystemInfo, get_Device_Handle_Name(device));
 
     ret = fill_Drive_Info_Data(device);
 
@@ -339,20 +339,21 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
         {
             // Set name and friendly name
             // name
-            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+            set_Device_Handle_Name(device, filename);
             // friendly name
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName,
-                                devUnit);
+            DECLARE_ZERO_INIT_ARRAY(char, formatFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
+            snprintf_err_handle(formatFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName, devUnit);
+            set_Device_Handle_Friendly_Name(device, formatFriendlyName);
 
             device->os_info.fd = devUnit;
 
             if (handleFlags & O_EXCL)
             {
-                device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+                set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
             }
             else
             {
-                device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+                set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
             }
 
 // set the OS Type
@@ -487,7 +488,7 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                             //       we know the interface
                             setup_Passthrough_Hacks_By_ID(device);
                         }
-                        set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
+                        set_Device_Partition_Info(&device->os_info.fileSystemInfo, get_Device_Handle_Name(device));
                         ret = fill_Drive_Info_Data(device);
                     }
                     else
@@ -1273,7 +1274,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     case IDE_INTERFACE:
 #if defined(__DragonFly__)
 #    if defined(IOCATAREQUEST)
-        if (is_ad_device(scsiIoCtx->device->os_info.name))
+        if (is_ad_device(get_Device_Handle_Name(scsiIoCtx->device)))
         {
             ret = send_Legacy_ATA_PT(scsiIoCtx);
             break;
@@ -1285,7 +1286,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->pAtaCmdOpts)
         {
 #    if defined(IOCATAREQUEST)
-            if (is_ad_device(scsiIoCtx->device->os_info.name) && !is_ATA_CAM_Available())
+            if (is_ad_device(get_Device_Handle_Name(scsiIoCtx->device)) && !is_ATA_CAM_Available())
             {
                 ret = send_Legacy_ATA_PT(scsiIoCtx);
             }
@@ -2307,5 +2308,5 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
-    return unmount_Partitions_From_Device(device->os_info.name);
+    return unmount_Partitions_From_Device(get_Device_Handle_Name(device));
 }

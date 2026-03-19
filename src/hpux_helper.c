@@ -483,11 +483,11 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     }
     if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
     }
     else
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
     }
 
     device->os_info.osType = OS_HPUX;
@@ -510,12 +510,12 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         // set the name
-        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
-        set_Device_Name(deviceHandle, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        set_Device_Handle_Name(device, deviceHandle);
+        set_Device_Handle_Friendly_Name(device, deviceHandle);
         // must call this after friendly name has been set!
         // TODO: legacy devices need to have /dev/dsk instead of /dev/rdsk passed in here. For now this assumes no
         // legacy handles
-        set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
+        set_Device_Partition_Info(&device->os_info.fileSystemInfo, get_Device_Handle_Name(device));
 
         set_Device_InterfaceType(device, SCSI_INTERFACE);
         set_Device_DriveType(device, SCSI_DRIVE);

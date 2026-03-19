@@ -110,11 +110,11 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     }
     if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
     }
     else
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
     }
 
     device->os_info.osType = OS_SOLARIS;
@@ -137,12 +137,14 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         // set the name
-        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
+        set_Device_Handle_Name(device, deviceHandle);
         // set the friendly name
-        set_Device_Name(deviceHandle, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        DECLARE_ZERO_INIT_ARRAY(char, friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        set_Device_Name(deviceHandle, friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        set_Device_Handle_Friendly_Name(device, friendlyName);
         // set the block handle
         snprintf_err_handle(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s",
-                            device->os_info.friendlyName);
+                            get_Device_Handle_Friendly_Name(device));
         // set the partition info
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondName);
 
@@ -723,5 +725,5 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     return unmount_Partitions_From_Device(device->os_info.secondHandleValid ? device->os_info.secondName
-                                                                            : device->os_info.name);
+                                                                            : get_Device_Handle_Name(device));
 }

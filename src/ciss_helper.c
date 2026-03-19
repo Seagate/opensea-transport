@@ -1454,7 +1454,7 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
         return LIBRARY_MISMATCH;
     }
     // set the name that was provided for other display.
-    safe_memcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, filename, safe_strlen(filename));
+    set_Device_Handle_Name(device, filename);
     if (PARSE_COUNT_SUCCESS == parse_CISS_Handle(filename, handlePtr, &driveNumber))
     {
         device->os_info.cissDeviceData = safe_calloc(1, sizeof(cissDeviceInfo));
@@ -1484,9 +1484,8 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
                     device->issue_io                            = C_CAST(issue_io_func, issue_io_ciss_Dev);
                     set_Device_DriveType(device, SCSI_DRIVE);
                     set_Device_InterfaceType(device, RAID_INTERFACE);
-                    snprintf_err_handle(&device->os_info.name[0], OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
-                    snprintf_err_handle(&device->os_info.friendlyName[0], OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
-                                        filename);
+                    set_Device_Handle_Name(device, filename);
+                    set_Device_Handle_Friendly_Name(device, filename);
                     device->os_info.minimumAlignment = sizeof(void*);
                     device->os_info.cissDeviceData->smartpqi =
                         is_SmartPQI_Unique_IOCTLs_Supported(device->os_info.cissDeviceData->cissHandle);

@@ -532,8 +532,8 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
 
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
-    snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
-    snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s", filename);
+    set_Device_Handle_Name(device, filename);
+    set_Device_Handle_Friendly_Name(device, filename);
     device->os_info.osType = OS_UEFI;
     if (strstr(filename, "ata") == filename) // this can only be at the beginning of the string
     {
