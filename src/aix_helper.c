@@ -1199,8 +1199,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 ret = FAILURE;
             }
         }
-        device->os_info.minimumAlignment = sizeof(void*); // for now use this. There are some devices that require 4B
-                                                          // alignment, but this will most likely take care of that -TJE
+        set_Device_IO_Minimum_Alignment(device, sizeof(void*));
         // Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more
         // details -TJE set name and friendly name
         snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);

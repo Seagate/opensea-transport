@@ -666,7 +666,7 @@ eReturnValues security_Send(const tDevice* device,
                 // round up to nearest 512byte sector
                 tcgDataSize = uint32_round_up_power2(dataSize, 512);
                 tcgBufPtr   = C_CAST(uint8_t*, safe_calloc_aligned(uint32_to_sizet(tcgDataSize), sizeof(uint8_t),
-                                                                   device->os_info.minimumAlignment));
+                                                                   get_Device_IO_Minimum_Alignment(device)));
                 if (tcgBufPtr == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
@@ -740,7 +740,7 @@ eReturnValues security_Receive(const tDevice* device,
                 // round up to nearest 512byte sector
                 tcgDataSize = uint32_round_up_power2(dataSize, 512);
                 tcgBufPtr   = C_CAST(uint8_t*, safe_calloc_aligned(uint32_to_sizet(tcgDataSize), sizeof(uint8_t),
-                                                                   device->os_info.minimumAlignment));
+                                                                   get_Device_IO_Minimum_Alignment(device)));
                 if (tcgBufPtr == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
@@ -812,7 +812,7 @@ static eReturnValues determine_scsi_write_same_cmd(
     {
         // there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care
         // about in here), so just based on transfer length and the maxLBA
-        if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && numberOfLogicalBlocks <= UINT16_MAX &&
+        if (return_Device_MaxLba(device) <= SCSI_MAX_32_LBA && numberOfLogicalBlocks <= UINT16_MAX &&
             lba <= SCSI_MAX_32_LBA)
         {
             cmdSize = SCSI_CMD_SIZE_10;
@@ -835,15 +835,15 @@ static eReturnValues determine_scsi_write_same_cmd(
                 device->drive_info.passThroughHacks.scsiHacks.writeSameDataOutRequired)
             {
                 // no data out bit not supported on this version of the command
-                uint8_t* zeroBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize,
+                uint8_t* zeroBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device),
                                                                                     sizeof(uint8_t),
-                                                                                    device->os_info.minimumAlignment));
+                                                                                    get_Device_IO_Minimum_Alignment(device)));
                 if (zeroBuf == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
                 }
                 ret = scsi_Write_Same_16(device, 0, anchor, unmap, false, lba, 0, numberOfLogicalBlocks, zeroBuf,
-                                         device->drive_info.deviceBlockSize);
+                                         get_Device_BlockSize(device));
                 safe_free_aligned(&zeroBuf);
             }
             else
@@ -857,16 +857,16 @@ static eReturnValues determine_scsi_write_same_cmd(
             {
                 // This bit is not supported on this command. The equivalent behavior is to zend a logical block sized
                 // buffer of zeroes.
-                uint8_t* zeroBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize,
+                uint8_t* zeroBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device),
                                                                                     sizeof(uint8_t),
-                                                                                    device->os_info.minimumAlignment));
+                                                                                    get_Device_IO_Minimum_Alignment(device)));
                 if (zeroBuf == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
                 }
                 ret = scsi_Write_Same_10(device, 0, anchor, unmap, C_CAST(uint32_t, lba), 0,
                                          C_CAST(uint16_t, numberOfLogicalBlocks), zeroBuf,
-                                         device->drive_info.deviceBlockSize);
+                                         get_Device_BlockSize(device));
                 safe_free_aligned(&zeroBuf);
             }
             else
@@ -962,15 +962,15 @@ static eReturnValues scsi_Write_Same_Cmd(const tDevice* device,
             // This bit is not supported on this command. The equivalent behavior is to zend a logical block sized
             // buffer of zeroes.
             uint8_t* zeroBuf =
-                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t),
-                                                                 device->os_info.minimumAlignment));
+                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device), sizeof(uint8_t),
+                                                                 get_Device_IO_Minimum_Alignment(device)));
             if (zeroBuf == M_NULLPTR)
             {
                 return MEMORY_FAILURE;
             }
             ret = scsi_Write_Same_10(device, 0, anchor, unmap, C_CAST(uint32_t, startingLba), 0,
                                      C_CAST(uint16_t, numberOfLogicalBlocks), zeroBuf,
-                                     device->drive_info.deviceBlockSize);
+                                     get_Device_BlockSize(device));
             safe_free_aligned(&zeroBuf);
         }
         else
@@ -986,14 +986,14 @@ static eReturnValues scsi_Write_Same_Cmd(const tDevice* device,
         {
             // no data out bit not supported on this version of the command
             uint8_t* zeroBuf =
-                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t),
-                                                                 device->os_info.minimumAlignment));
+                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device), sizeof(uint8_t),
+                                                                 get_Device_IO_Minimum_Alignment(device)));
             if (zeroBuf == M_NULLPTR)
             {
                 return MEMORY_FAILURE;
             }
             ret = scsi_Write_Same_16(device, 0, anchor, unmap, false, startingLba, 0, C_CAST(uint32_t, numberOfLogicalBlocks), zeroBuf,
-                                     device->drive_info.deviceBlockSize);
+                                     get_Device_BlockSize(device));
             safe_free_aligned(&zeroBuf);
         }
         else
@@ -1033,7 +1033,7 @@ static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
         {
             ret = send_ATA_SCT_Write_Same(device, WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR, startingLba,
                                           numberOfLogicalBlocks, pattern,
-                                          patternSize / device->drive_info.deviceBlockSize);
+                                          patternSize / get_Device_BlockSize(device));
         }
     }
     else if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word080)) &&
@@ -1053,12 +1053,12 @@ static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
         if (noDataOut)
         {
             pattern =
-                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t),
-                                                                 device->os_info.minimumAlignment));
+                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device), sizeof(uint8_t),
+                                                                 get_Device_IO_Minimum_Alignment(device)));
             localPattern = true;
         }
         // Check range to see which feature to use
-        if (startingLba == 0 && numberOfLogicalBlocks == (device->drive_info.deviceMaxLba + 1))
+        if (startingLba == 0 && numberOfLogicalBlocks == (return_Device_MaxLba(device) + 1))
         {
             feature               = LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS;
             numberOfLogicalBlocks = 0;
@@ -1078,7 +1078,7 @@ static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
                 if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, startingLba), &cylinder, &head, &sector))
                 {
                     ret = ata_Legacy_Write_Same_CHS(device, feature, C_CAST(uint8_t, numberOfLogicalBlocks), cylinder,
-                                                    head, sector, pattern, device->drive_info.deviceBlockSize);
+                                                    head, sector, pattern, get_Device_BlockSize(device));
                 }
                 else
                 {
@@ -1088,7 +1088,7 @@ static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
             else
             {
                 ret = ata_Legacy_Write_Same(device, feature, C_CAST(uint8_t, numberOfLogicalBlocks),
-                                            C_CAST(uint32_t, startingLba), pattern, device->drive_info.deviceBlockSize);
+                                            C_CAST(uint32_t, startingLba), pattern, get_Device_BlockSize(device));
             }
         }
         else
@@ -1119,12 +1119,12 @@ eReturnValues write_Same(const tDevice* device, uint64_t startingLba, uint64_t n
     {
     case ATA_DRIVE:
         ret = ata_Write_Same_Cmd(device, startingLba, numberOfLogicalBlocks, pattern,
-                                 noDataTransfer ? 0 : device->drive_info.deviceBlockSize, noDataTransfer);
+                                 noDataTransfer ? 0 : get_Device_BlockSize(device), noDataTransfer);
         break;
     case SCSI_DRIVE:
         ret =
             scsi_Write_Same_Cmd(device, startingLba, numberOfLogicalBlocks, pattern,
-                                noDataTransfer ? 0 : device->drive_info.deviceBlockSize, false, false, noDataTransfer);
+                                noDataTransfer ? 0 : get_Device_BlockSize(device), false, false, noDataTransfer);
         break;
     default:
         ret = NOT_SUPPORTED;
@@ -1171,9 +1171,8 @@ eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* device, uint64_t c
 {
     eReturnValues ret                        = UNKNOWN;
     bool          multipleLogicalPerPhysical = false; // used to set the physical block bit when applicable
-    uint16_t      logicalPerPhysicalBlocks =
-        C_CAST(uint16_t, device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
-    if (logicalPerPhysicalBlocks > 1)
+    uint16_t      logicalPerPhysicalBlocks =get_Logical_Sectors_Per_Physical_Sector(device);
+    if (logicalPerPhysicalBlocks > UINT16_C(1))
     {
         // since this device has multiple logical blocks per physical block, we also need to adjust the LBA to be at the
         // start of the physical block do this by dividing by the number of logical sectors per physical sector. This
@@ -1203,7 +1202,7 @@ eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* device, uint64_t c
         ret = NOT_SUPPORTED;
         break;
     case SCSI_DRIVE:
-        if (device->drive_info.deviceMaxLba > UINT32_MAX)
+        if (return_Device_MaxLba(device) > UINT32_MAX)
         {
             ret = scsi_Write_Long_16(device, false, true, multipleLogicalPerPhysical, corruptLBA, 0, M_NULLPTR);
         }
@@ -1278,7 +1277,7 @@ eReturnValues write_Flagged_Uncorrectable_Error(const tDevice* device, uint64_t 
         ret = nvme_Write_Uncorrectable(device, corruptLBA, NVME_0_BASED_ADJUST(1));
         break;
     case SCSI_DRIVE:
-        if (device->drive_info.deviceMaxLba > UINT32_MAX)
+        if (return_Device_MaxLba(device) > UINT32_MAX)
         {
             ret = scsi_Write_Long_16(device, true, true, false, corruptLBA, 0, M_NULLPTR);
         }
@@ -1351,7 +1350,7 @@ static bool use_ATA_Multiple_Mode(const tDevice* M_NONNULL device)
 static eReturnValues ata_PIO_Read(const tDevice* device, uint64_t lba, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
-    uint32_t      sectors = dataSize / device->drive_info.deviceBlockSize;
+    uint32_t      sectors = dataSize / get_Device_BlockSize(device);
     if (use_ATA_Multiple_Mode(device))
     {
         // read multiple supported and drive is currently configured in a mode that will work.
@@ -1407,7 +1406,7 @@ static eReturnValues ata_PIO_Read(const tDevice* device, uint64_t lba, uint8_t* 
 static eReturnValues ata_DMA_Read(const tDevice* device, uint64_t lba, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
-    uint32_t      sectors = dataSize / device->drive_info.deviceBlockSize;
+    uint32_t      sectors = dataSize / get_Device_BlockSize(device);
     if (device->drive_info.ata_Options.chsModeOnly)
     {
         uint16_t cylinder = UINT16_C(0);
@@ -1437,16 +1436,16 @@ eReturnValues ata_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess
     eReturnValues ret     = SUCCESS; // assume success
     uint32_t      sectors = UINT32_C(0);
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
-    sectors = dataSize / device->drive_info.deviceBlockSize;
+    sectors = dataSize / get_Device_BlockSize(device);
     if (forceUnitAccess)
     {
         // The synchronous commands in here are not able to set a bit for this, so the closest thing is to issue a
         // read-verify to force cached data to the media ahead of the read
-        ret = ata_Read_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+        ret = ata_Read_Verify(device, lba, dataSize / get_Device_BlockSize(device));
     }
     if (SUCCESS == ret) // don't try the read if the read verify fails
     {
@@ -1613,11 +1612,11 @@ eReturnValues ata_Write(const tDevice* device, uint64_t lba, bool forceUnitAcces
     uint32_t      sectors     = UINT32_C(0);
     bool          writeDMAFUA = false;
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
-    sectors = dataSize / device->drive_info.deviceBlockSize;
+    sectors = dataSize / get_Device_BlockSize(device);
     if (!verify_ATA_Xfer_Len(device, lba, &sectors))
     {
         ret = BAD_PARAMETER;
@@ -1655,7 +1654,7 @@ eReturnValues ata_Write(const tDevice* device, uint64_t lba, bool forceUnitAcces
     {
         // The synchronous commands in here are not able to set a bit for this, so the closest thing is to issue a
         // read-verify to force cached data to the media ahead of the read
-        ret = ata_Read_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+        ret = ata_Read_Verify(device, lba, dataSize / get_Device_BlockSize(device));
     }
     return ret;
 }
@@ -1705,7 +1704,7 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
     {
         // there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care
         // about in here), so just based on transfer length and the maxLBA
-        if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && sectors <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
+        if (return_Device_MaxLba(device) <= SCSI_MAX_32_LBA && sectors <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
         {
             cmdSize = SCSI_CMD_SIZE_10;
         }
@@ -1919,18 +1918,18 @@ eReturnValues scsi_Read(const tDevice* device, uint64_t lba, bool forceUnitAcces
     uint32_t      sectors = UINT32_C(0);
     bool          fua     = false;
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
-    sectors = dataSize / device->drive_info.deviceBlockSize;
+    sectors = dataSize / get_Device_BlockSize(device);
     if (forceUnitAccess)
     {
         get_SCSI_DPO_FUA_Support(M_CONST_CAST(tDevice*, device));
         if (!device->drive_info.dpoFUA)
         {
             // send verify first since FUA is not available
-            ret = scsi_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+            ret = scsi_Verify(device, lba, dataSize / get_Device_BlockSize(device));
         }
         fua = device->drive_info.dpoFUA;
     }
@@ -1983,11 +1982,11 @@ eReturnValues scsi_Write(const tDevice* device, uint64_t lba, bool forceUnitAcce
     uint32_t      sectors = UINT32_C(0);
     bool          fua     = false;
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
-    sectors = dataSize / device->drive_info.deviceBlockSize;
+    sectors = dataSize / get_Device_BlockSize(device);
     if (forceUnitAccess)
     {
         get_SCSI_DPO_FUA_Support(M_CONST_CAST(tDevice*, device));
@@ -2029,7 +2028,7 @@ eReturnValues scsi_Write(const tDevice* device, uint64_t lba, bool forceUnitAcce
     if (forceUnitAccess && !device->drive_info.dpoFUA)
     {
         // send verify after write since FUA is not available
-        ret = scsi_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+        ret = scsi_Verify(device, lba, dataSize / get_Device_BlockSize(device));
     }
     return ret;
 }
@@ -2037,7 +2036,7 @@ eReturnValues scsi_Write(const tDevice* device, uint64_t lba, bool forceUnitAcce
 eReturnValues io_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
@@ -2056,7 +2055,7 @@ eReturnValues io_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
         return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
     case NVME_INTERFACE:
         return nvme_Read(device, lba,
-                         C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)), false,
+                         C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / get_Device_BlockSize(device))), false,
                          forceUnitAccess, 0, ptrData, dataSize);
     case RAID_INTERFACE:
         // perform SCSI reads for now. We may need to add unique functions for NVMe and RAID reads later
@@ -2069,7 +2068,7 @@ eReturnValues io_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
 eReturnValues io_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
 {
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
@@ -2088,7 +2087,7 @@ eReturnValues io_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
         return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
     case NVME_INTERFACE:
         return nvme_Write(device, lba,
-                          C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)), false,
+                          C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / get_Device_BlockSize(device))), false,
                           forceUnitAccess, 0, 0, ptrData, dataSize);
     case RAID_INTERFACE:
         // perform SCSI writes for now. We may need to add unique functions for NVMe and RAID writes later
@@ -2207,7 +2206,7 @@ static eReturnValues generic_Compare(const tDevice* device, uint64_t lba, uint8_
     // To perform the same behavior, read then compare the data buffers
     eReturnValues ret = SUCCESS;
     uint8_t*      readData =
-        M_STATIC_CAST(uint8_t*, calloc_aligned(dataSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+        M_STATIC_CAST(uint8_t*, calloc_aligned(dataSize, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (readData != M_NULLPTR)
     {
         ret = read_LBA(device, lba, false, readData, dataSize);
@@ -2232,12 +2231,12 @@ static eReturnValues scsi_Compare(const tDevice* device, uint64_t lba, uint8_t* 
     eReturnValues ret = SUCCESS; // assume success
     // there's no real way to tell when scsi drive supports verify 10 vs verify 16 (which are all we will care about in
     // here), so just based on transfer length and the maxLBA
-    uint32_t range = dataSize / device->drive_info.deviceBlockSize;
+    uint32_t range = dataSize / get_Device_BlockSize(device);
 
     if (device->drive_info.scsiVersion >= SCSI_VERSION_SCSI2 &&
         !device->drive_info.passThroughHacks.scsiHacks.noCompareLogicalBlocks)
     {
-        if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && range <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
+        if (return_Device_MaxLba(device) <= SCSI_MAX_32_LBA && range <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
         {
             // use verify 10
             ret = scsi_Verify_10(device, 0, false, SCSI_VERIFY_LOGICAL_BLOCKS, C_CAST(uint32_t, lba), 0,
@@ -2287,7 +2286,7 @@ eReturnValues compare_LBA(const tDevice* device, uint64_t lba, uint8_t* ptrData,
 #endif
         )
         {
-            return nvme_Compare(device, lba, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize), false,
+            return nvme_Compare(device, lba, NVME_0_BASED_ADJUST(dataSize / get_Device_BlockSize(device)), false,
                                 false, 0, ptrData, dataSize);
         }
         else
@@ -2318,9 +2317,9 @@ eReturnValues nvme_Verify_LBA(const tDevice* device, uint64_t lba, uint32_t rang
     {
         // NVME doesn't have a verify command like ATA or SCSI, so we're going to substitute by doing a read with FUA
         // set....should be the same minus doing a data transfer.
-        uint32_t dataLength = device->drive_info.deviceBlockSize * range;
+        uint32_t dataLength = get_Device_BlockSize(device) * range;
         uint8_t* data       = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (data != M_NULLPTR)
         {
             ret =

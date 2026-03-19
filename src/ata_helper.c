@@ -436,7 +436,7 @@ eReturnValues send_ATA_SCT_Write_Same(const tDevice*         device,
 {
     eReturnValues ret             = UNKNOWN;
     uint8_t*      writeSameBuffer = M_REINTERPRET_CAST(
-        uint8_t*, safe_calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (!writeSameBuffer)
     {
         perror("Calloc failure!\n");
@@ -510,7 +510,7 @@ eReturnValues send_ATA_SCT_Write_Same(const tDevice*         device,
     {
         // send the pattern to the data transfer log
         ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_OUT, pattern,
-                                         C_CAST(uint32_t, patternLength * device->drive_info.deviceBlockSize));
+                                         C_CAST(uint32_t, patternLength * get_Device_BlockSize(device)));
     }
 
     safe_free_aligned(&writeSameBuffer);
@@ -525,7 +525,7 @@ eReturnValues send_ATA_SCT_Error_Recovery_Control(const tDevice* device,
 {
     eReturnValues ret                 = UNKNOWN;
     uint8_t*      errorRecoveryBuffer = M_REINTERPRET_CAST(
-        uint8_t*, safe_calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (!errorRecoveryBuffer)
     {
         perror("Calloc failure!\n");
@@ -571,7 +571,7 @@ eReturnValues send_ATA_SCT_Feature_Control(const tDevice* device,
 {
     eReturnValues ret                  = UNKNOWN;
     uint8_t*      featureControlBuffer = M_REINTERPRET_CAST(
-        uint8_t*, safe_calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (!featureControlBuffer)
     {
         perror("Calloc Failure!\n");

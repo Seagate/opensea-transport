@@ -562,7 +562,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         // issuing commands!
                         device->drive_info.ata_Options.isDevice1 = true;
                     }
-                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
+                    set_Device_IO_Minimum_Alignment(device,  pPassthru->Mode->IoAlign);
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                     set_Console_Colors(true, CONSOLE_COLOR_GREEN);
                     printf("Protocol Mode = %d\n",
@@ -609,7 +609,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 {
                     safe_memcpy(&device->os_info.devicePath, sizeof(EFI_DEV_PATH), devicePath,
                                 M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
-                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
+                    set_Device_IO_Minimum_Alignment(device, pPassthru->Mode->IoAlign);
                 }
                 else
                 {
@@ -643,7 +643,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 {
                     safe_memcpy(&device->os_info.devicePath, sizeof(EFI_DEV_PATH), devicePath,
                                 M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
-                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
+                    set_Device_IO_Minimum_Alignment(device, pPassthru->Mode->IoAlign);
                 }
                 else
                 {
@@ -681,7 +681,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 {
                     safe_memcpy(&device->os_info.devicePath, sizeof(EFI_DEV_PATH), devicePath,
                                 M_BytesTo2ByteValue(devicePath->Length[1], devicePath->Length[0]));
-                    device->os_info.minimumAlignment = pPassthru->Mode->IoAlign > 0 ? pPassthru->Mode->IoAlign : 1;
+                    set_Device_IO_Minimum_Alignment(device, pPassthru->Mode->IoAlign);
                 }
                 else
                 {

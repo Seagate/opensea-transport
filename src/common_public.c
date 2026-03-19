@@ -619,7 +619,7 @@ void print_Low_Level_Info(const tDevice* device)
         print_str("\t---OS Info---\n");
         printf("\t\thandle name: %s\n", device->os_info.name);
         printf("\t\tfriendly name: %s\n", device->os_info.friendlyName);
-        printf("\t\tminimum memory alignment: %" PRIu8 "\n", device->os_info.minimumAlignment);
+        printf("\t\tminimum memory alignment: %" PRIu8 "\n", get_Device_IO_Minimum_Alignment(device));
 #if defined(UEFI_C_SOURCE)
         print_str("\t\t---UEFI Unique Info---\n");
         // TODO: fd and device path
@@ -3072,16 +3072,16 @@ bool is_Sector_Size_Emulation_Active(const tDevice* device)
     bool emulationActive = false;
     if (device->drive_info.bridge_info.isValid)
     {
-        if (device->drive_info.deviceBlockSize > UINT32_C(0) &&
-            device->drive_info.bridge_info.childDeviceBlockSize > UINT32_C(0))
+        if (get_Device_BlockSize(device) > UINT32_C(0) &&
+            get_Device_Child_BlockSize(device) > UINT32_C(0))
         {
-            if (device->drive_info.deviceBlockSize > device->drive_info.bridge_info.childDeviceBlockSize)
+            if (get_Device_BlockSize(device) > get_Device_Child_BlockSize(device))
             {
                 if (get_Device_InterfaceType(device) == USB_INTERFACE)
                 {
                     emulationActive = true;
                 }
-                else if ((device->drive_info.deviceBlockSize % device->drive_info.bridge_info.childDeviceBlockSize) ==
+                else if ((get_Device_BlockSize(device) % get_Device_Child_BlockSize(device)) ==
                          UINT32_C(0))
                 {
                     // One more check to rule out out of sync drive issues.
@@ -3090,9 +3090,9 @@ bool is_Sector_Size_Emulation_Active(const tDevice* device)
                     // Some OS's we cannot detect it is on USB interface, which is why this part of the check is more
                     // "generic"
                     uint32_t emulatedSectors =
-                        device->drive_info.deviceBlockSize / device->drive_info.bridge_info.childDeviceBlockSize;
-                    if ((device->drive_info.deviceMaxLba + UINT64_C(1)) ==
-                        (device->drive_info.bridge_info.childDeviceMaxLba / M_STATIC_CAST(uint64_t, emulatedSectors)))
+                        get_Device_BlockSize(device) / get_Device_Child_BlockSize(device);
+                    if ((return_Device_MaxLba(device) + UINT64_C(1)) ==
+                        (return_Device_Child_MaxLba(device) / M_STATIC_CAST(uint64_t, emulatedSectors)))
                     {
                         emulationActive = true;
                     }
@@ -3108,12 +3108,12 @@ bool is_Blocksize_And_Capacity_In_Sync(const tDevice* device)
     bool insync = true;
     if (device->drive_info.bridge_info.isValid && !is_Sector_Size_Emulation_Active(device))
     {
-        if (device->drive_info.deviceBlockSize != device->drive_info.bridge_info.childDeviceBlockSize)
+        if (get_Device_BlockSize(device) != get_Device_Child_BlockSize(device))
         {
             insync = false;
         }
-        else if (device->drive_info.bridge_info.childDeviceMaxLba > 0 &&
-                 device->drive_info.deviceMaxLba != device->drive_info.bridge_info.childDeviceMaxLba)
+        else if (return_Device_Child_MaxLba(device) > 0 &&
+                 return_Device_MaxLba(device) != return_Device_Child_MaxLba(device))
         {
             insync = false;
         }
@@ -3157,14 +3157,14 @@ uint32_t get_Sector_Count_For_Read_Write(const tDevice* device)
     case NVME_INTERFACE:
         // set the sector count for a 64k transfer. This is most compatible (typically 128 sectors at a time-512B sector
         // size) - TJE
-        return DATA_64K / device->drive_info.deviceBlockSize;
+        return DATA_64K / get_Device_BlockSize(device);
     case USB_INTERFACE:
     case MMC_INTERFACE:
     case SD_INTERFACE:
     case IEEE_1394_INTERFACE:
         // set the sector count for a 32k transfer. This is most compatible on these external interface drives since
         // they typically have RAM limitations on the bridge chip - TJE
-        return DATA_32K / device->drive_info.deviceBlockSize;
+        return DATA_32K / get_Device_BlockSize(device);
     default:
         return 64; // just set something in case they try to use this value but didn't check the return code from this
                    // function - TJE
@@ -3338,14 +3338,13 @@ void print_Command_Time(uint64_t timeInNanoSeconds)
 
 uint64_t align_LBA(const tDevice* device, uint64_t LBA)
 {
-    uint16_t logicalPerPhysical =
-        C_CAST(uint16_t, device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
+    uint16_t logicalPerPhysical = get_Logical_Sectors_Per_Physical_Sector(device);
     if (logicalPerPhysical > 1)
     {
         // make sure the incoming LBA is aligned to the start of the physical sector it is in
         uint64_t tempLBA = LBA / C_CAST(uint64_t, logicalPerPhysical);
         tempLBA *= C_CAST(uint64_t, logicalPerPhysical);
-        LBA = tempLBA - device->drive_info.sectorAlignment;
+        LBA = tempLBA - get_Device_Sector_Alignment(device);
     }
     return LBA;
 }
@@ -6809,6 +6808,31 @@ int32_t initialize_Device_struct(tDevice* device, uint32_t deviceSize, uint32_t 
     return 0;
 }
 
+size_t get_Device_IO_Minimum_Alignment(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        if (device->os_info.minimumAlignment == 0)
+        {
+            return sizeof(void*);
+        }
+        return device->os_info.minimumAlignment;
+    }
+    return 0;
+}
+
+void set_Device_IO_Minimum_Alignment(tDevice* M_NONNULL device, size_t alignment)
+{
+    if (device != M_NULLPTR)
+    {
+        if (alignment < sizeof(void*))
+        {
+            alignment = sizeof(void*);
+        }
+        device->os_info.minimumAlignment = M_STATIC_CAST(uint16_t, alignment);
+    }
+}
+
 eDriveType get_Device_DriveType(const tDevice* device)
 {
     return device->drive_info.drive_type;
@@ -6850,26 +6874,143 @@ void set_Device_MediaType(tDevice* M_NONNULL device, eMediaType mediaType)
 
 uint32_t get_Device_BlockSize(const tDevice* device)
 {
-    return device->drive_info.deviceBlockSize;
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.deviceBlockSize;
+    }
+    return 0;
+}
+
+void set_Device_BlockSize(tDevice* M_NONNULL device, uint32_t blockSize)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.deviceBlockSize = blockSize;
+    }
 }
 
 uint32_t get_Device_PhyBlockSize(const tDevice* device)
 {
-    return device->drive_info.devicePhyBlockSize;
+    if (device != M_NULLPTR)
+    {
+        if (device->drive_info.devicePhyBlockSize == 0)
+        {
+            return get_Device_BlockSize(device); // if phy block size is not set, assume it is the same as block size
+        }
+        return device->drive_info.devicePhyBlockSize;
+    }
+    return 0;
 }
 
-uint32_t get_Logical_Sectors_Per_Physical_Sector(const tDevice* device)
+void set_Device_PhyBlockSize(tDevice* M_NONNULL device, uint32_t phyBlockSize)
 {
-    if (device->drive_info.devicePhyBlockSize == 0)
+    if (device != M_NULLPTR)
     {
-        return UINT32_C(1); // avoid division by zero
+        device->drive_info.devicePhyBlockSize = phyBlockSize;
     }
-    return device->drive_info.deviceBlockSize / device->drive_info.devicePhyBlockSize;
+}
+
+M_NODISCARD uint16_t get_Device_Sector_Alignment(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.sectorAlignment;
+    }
+    return 0;
+}
+
+void set_Device_Sector_Alignment(tDevice* M_NONNULL device, uint16_t sectorAlignment)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.sectorAlignment = sectorAlignment;
+    }
+}
+
+uint16_t get_Logical_Sectors_Per_Physical_Sector(const tDevice* device)
+{
+    if (device != M_NULLPTR)
+    {
+        if (get_Device_PhyBlockSize(device) == 0)
+        {
+            return UINT16_C(1); // avoid division by zero
+        }
+        return C_CAST(uint16_t,get_Device_BlockSize(device) / get_Device_PhyBlockSize(device));
+    }
+    return 0;
+}
+
+uint32_t get_Device_Child_BlockSize(const tDevice* device)
+{
+    if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
+    {
+        return device->drive_info.bridge_info.childDeviceBlockSize;
+    }
+    return 0;
+}
+
+void set_Device_Child_BlockSize(tDevice* M_NONNULL device, uint32_t blockSize)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.bridge_info.childDeviceBlockSize = blockSize;
+    }
+}
+
+uint32_t get_Device_Child_PhyBlockSize(const tDevice* device)
+{
+    if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
+    {
+        if (device->drive_info.bridge_info.childDevicePhyBlockSize == 0)
+        {
+            return get_Device_Child_BlockSize(device); // if phy block size is not set, assume it is the same as block size
+        }
+        return device->drive_info.bridge_info.childDevicePhyBlockSize;
+    }
+    return 0;
+}
+
+void set_Device_Child_PhyBlockSize(tDevice* M_NONNULL device, uint32_t phyBlockSize)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.bridge_info.childDevicePhyBlockSize = phyBlockSize;
+    }
+}
+
+M_NODISCARD uint16_t get_Device_Child_Sector_Alignment(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
+    {
+        return device->drive_info.bridge_info.childSectorAlignment;
+    }
+    return 0;
+}
+
+void set_Device_Child_Sector_Alignment(tDevice* M_NONNULL device, uint16_t sectorAlignment)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.bridge_info.childSectorAlignment = sectorAlignment;
+    }
+}
+
+uint16_t get_Child_Logical_Sectors_Per_Physical_Sector(const tDevice* device)
+{
+    if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
+    {
+        if (get_Device_Child_PhyBlockSize(device) == 0)
+        {
+            return UINT16_C(1); // avoid division by zero
+        }
+        return C_CAST(uint16_t, get_Device_Child_BlockSize(device) / get_Device_Child_PhyBlockSize(device));
+    }
+    return 0;
 }
 
 int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)
 {
-    if (maxLba == M_NULLPTR)
+    if (maxLba == M_NULLPTR || device == M_NULLPTR)
     {
         return -1;
     }
@@ -6877,9 +7018,39 @@ int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)
     return 0;
 }
 
+void set_Device_MaxLba(tDevice* M_NONNULL device, uint64_t maxLba)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.deviceMaxLba = maxLba;
+    }
+}
+
+int32_t get_Device_Child_MaxLba(uint64_t* maxLba, const tDevice* device)
+{
+    if (maxLba == M_NULLPTR || device == M_NULLPTR)
+    {
+        return -1;
+    }
+    *maxLba = device->drive_info.bridge_info.childDeviceMaxLba;
+    return 0;
+}
+
+void set_Device_Child_MaxLba(tDevice* M_NONNULL device, uint64_t maxLba)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.bridge_info.childDeviceMaxLba = maxLba;
+    }
+}
+
 uint32_t get_Device_LUN(const tDevice* device)
 {
-    return device->drive_info.lun;
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.lun;
+    }
+    return 0;
 }
 
 // returns pointer to location of serialNumber in tDevice

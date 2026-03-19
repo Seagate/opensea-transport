@@ -5400,7 +5400,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             {
                 device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
             }
-            device->os_info.minimumAlignment = C_CAST(uint8_t, adapter_desc->AlignmentMask + 1);
+            set_Device_IO_Minimum_Alignment(device, adapter_desc->AlignmentMask + 1);
             device->os_info.alignmentMask    = adapter_desc->AlignmentMask; // may be needed later....currently unused
 #if defined(WIN_DEBUG)
             print_str("WIN: get device descriptor\n");
@@ -6507,7 +6507,7 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks(ScsiIoCtx* scsiIoCtx)
         DWORD            reassignStructLen = sizeof(REASSIGN_BLOCKS) + (lbaEntries * sizeof(DWORD));
         PREASSIGN_BLOCKS winReassignBlocks =
             M_REINTERPRET_CAST(PREASSIGN_BLOCKS, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t),
-                                                                     scsiIoCtx->device->os_info.minimumAlignment));
+                                                                     get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
         if (winReassignBlocks == M_NULLPTR)
         {
             return MEMORY_FAILURE;
@@ -6563,7 +6563,7 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks_Ex(ScsiIoCtx* scsiIoCtx
         DWORD               reassignStructLen = sizeof(REASSIGN_BLOCKS_EX) + (lbaEntries * sizeof(LARGE_INTEGER));
         PREASSIGN_BLOCKS_EX winReassignBlocks =
             M_REINTERPRET_CAST(PREASSIGN_BLOCKS_EX, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t),
-                                                                        scsiIoCtx->device->os_info.minimumAlignment));
+                                                                        get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
         if (winReassignBlocks == M_NULLPTR)
         {
             return MEMORY_FAILURE;
@@ -10276,7 +10276,7 @@ static eReturnValues wbst_Read(ScsiIoCtx* scsiIoCtx, uint64_t lba, bool fua, uin
 {
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->device && scsiIoCtx->pdata && transferLength > 0 && scsiIoCtx->dataLength > 0 &&
-        (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize) == scsiIoCtx->dataLength)
+        (transferLength * get_Device_BlockSize(scsiIoCtx->device)) == scsiIoCtx->dataLength)
     {
         uint8_t senseKey     = UINT8_C(0);
         uint8_t asc          = UINT8_C(0);
@@ -10289,7 +10289,7 @@ static eReturnValues wbst_Read(ScsiIoCtx* scsiIoCtx, uint64_t lba, bool fua, uin
         if (ret == SUCCESS)
         {
             ret = os_Read(scsiIoCtx->device, lba, 0, scsiIoCtx->pdata,
-                          (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize));
+                          (transferLength * get_Device_BlockSize(scsiIoCtx->device)));
         }
         if (ret != SUCCESS)
         {
@@ -10523,14 +10523,14 @@ static eReturnValues wbst_Write(ScsiIoCtx* scsiIoCtx, uint64_t lba, bool fua, ui
 {
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx && scsiIoCtx->device && scsiIoCtx->pdata && transferLength > 0 && scsiIoCtx->dataLength > 0 &&
-        (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize) == scsiIoCtx->dataLength)
+        (transferLength * get_Device_BlockSize(scsiIoCtx->device)) == scsiIoCtx->dataLength)
     {
         uint8_t senseKey     = UINT8_C(0);
         uint8_t asc          = UINT8_C(0);
         uint8_t ascq         = UINT8_C(0);
         bool    setSenseData = false;
         ret                  = os_Write(scsiIoCtx->device, lba, false, scsiIoCtx->pdata,
-                                        (transferLength * scsiIoCtx->device->drive_info.deviceBlockSize));
+                                        (transferLength * get_Device_BlockSize(scsiIoCtx->device)));
         if (fua && ret == SUCCESS)
         {
             ret = os_Verify(scsiIoCtx->device, lba, transferLength);
@@ -11376,7 +11376,7 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
                             {
                                 // make sure the initialization pattern is less than or equal to the logical block
                                 // length
-                                if (initializationPatternLength > scsiIoCtx->device->drive_info.deviceBlockSize)
+                                if (initializationPatternLength > get_Device_BlockSize(scsiIoCtx->device))
                                 {
                                     // invalid field in parameter list
                                     senseKey     = SENSE_KEY_ILLEGAL_REQUEST;
@@ -11387,37 +11387,39 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
                                 else
                                 {
                                     uint32_t writeSectors64K =
-                                        UINT32_C(65535) / scsiIoCtx->device->drive_info.deviceBlockSize;
+                                        UINT32_C(65535) / get_Device_BlockSize(scsiIoCtx->device);
                                     // Write commands
                                     uint32_t writeDataLength =
-                                        writeSectors64K * scsiIoCtx->device->drive_info.deviceBlockSize;
+                                        writeSectors64K * get_Device_BlockSize(scsiIoCtx->device);
                                     uint8_t* writePattern = C_CAST(
                                         uint8_t*, safe_calloc_aligned(writeDataLength, sizeof(uint8_t),
-                                                                      scsiIoCtx->device->os_info.minimumAlignment));
+                                                                      get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
                                     if (writePattern)
                                     {
                                         uint32_t numberOfLBAs =
-                                            writeDataLength / scsiIoCtx->device->drive_info.deviceBlockSize;
+                                            writeDataLength / get_Device_BlockSize(scsiIoCtx->device);
                                         if (initializationPatternLength > 0)
                                         {
                                             // copy the provided pattern into our buffer
                                             for (uint32_t copyIter = UINT32_C(0); copyIter < writeDataLength;
-                                                 copyIter += scsiIoCtx->device->drive_info.deviceBlockSize)
+                                                 copyIter += get_Device_BlockSize(scsiIoCtx->device))
                                             {
                                                 safe_memcpy(&writePattern[copyIter], writeDataLength - copyIter,
                                                             initializationPatternPtr, initializationPatternLength);
                                             }
                                         }
+                                        uint64_t devMaxLBA = UINT64_C(0);
+                                        get_Device_MaxLba(scsiIoCtx->device, &devMaxLBA);
                                         for (uint64_t lba = UINT64_C(0);
-                                             lba < scsiIoCtx->device->drive_info.deviceMaxLba; lba += numberOfLBAs)
+                                             lba < devMaxLBA; lba += numberOfLBAs)
                                         {
-                                            if ((lba + numberOfLBAs) > scsiIoCtx->device->drive_info.deviceMaxLba)
+                                            if ((lba + numberOfLBAs) > devMaxLBA)
                                             {
                                                 // end of range...don't over do it!
                                                 numberOfLBAs =
-                                                    C_CAST(uint32_t, scsiIoCtx->device->drive_info.deviceMaxLba - lba);
+                                                    C_CAST(uint32_t, devMaxLBA - lba);
                                                 writeDataLength =
-                                                    numberOfLBAs * scsiIoCtx->device->drive_info.deviceBlockSize;
+                                                    numberOfLBAs * get_Device_BlockSize(scsiIoCtx->device);
                                             }
                                             ret =
                                                 os_Write(scsiIoCtx->device, lba, false, writePattern, writeDataLength);
@@ -12011,7 +12013,7 @@ static eReturnValues win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCt
         uint32_t reportLunsDataSize = UINT32_C(16) + (UINT32_C(1024) * UINT32_C(8)); // 131072B
         uint8_t* reportLunsData =
             M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(reportLunsDataSize, sizeof(uint8_t),
-                                                             nvmeIoCtx->device->os_info.minimumAlignment));
+                                                             get_Device_IO_Minimum_Alignment(nvmeIoCtx->device)));
         if (reportLunsData)
         {
             safe_memset(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, 0, nvmeIoCtx->dataSize);
@@ -12808,7 +12810,7 @@ static eReturnValues win10_Translate_Set_Error_Recovery_Time_Limit(nvmeCmdCtx* n
         // use read-write error recovery MP - recovery time limit field
         uint8_t* errorRecoveryMP = M_REINTERPRET_CAST(
             uint8_t*, safe_calloc_aligned(MODE_HEADER_LENGTH10 + MP_READ_WRITE_ERROR_RECOVERY_LEN, sizeof(uint8_t),
-                                          nvmeIoCtx->device->os_info.minimumAlignment));
+                                          get_Device_IO_Minimum_Alignment(nvmeIoCtx->device)));
         if (errorRecoveryMP)
         {
             // first, read the page into memory
@@ -12847,7 +12849,7 @@ static eReturnValues win10_Translate_Set_Volatile_Write_Cache(nvmeCmdCtx* nvmeIo
         // use caching MP - write back cache enabled field
         uint8_t* cachingMP =
             M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(MODE_HEADER_LENGTH10 + MP_CACHING_LEN, sizeof(uint8_t),
-                                                             nvmeIoCtx->device->os_info.minimumAlignment));
+                                                             get_Device_IO_Minimum_Alignment(nvmeIoCtx->device)));
         if (cachingMP)
         {
             // first, read the page into memory
@@ -13292,7 +13294,7 @@ static eNVM_ReInit_Compatible is_NVMe_Cmd_Compatible_With_Reinitialize_Media_IOC
                                 lbaSize = lbaSize << UINT32_C(1); // multiply by 2
                                 --powerOfTwo;
                             }
-                            if (lbaSize == nvmeIoCtx->device->drive_info.deviceBlockSize)
+                            if (lbaSize == get_Device_BlockSize(nvmeIoCtx->device))
                             {
                                 compat = NVM_REINIT_COMPATIBLE_FORMAT_CRYPTO;
                             }
@@ -13501,7 +13503,7 @@ static eReturnValues win10_Translate_Format(nvmeCmdCtx* nvmeIoCtx)
             lbaSize = lbaSize << UINT32_C(1); // multiply by 2
             --powerOfTwo;
         }
-        if (lbaSize != nvmeIoCtx->device->drive_info.deviceBlockSize)
+        if (lbaSize != get_Device_BlockSize(nvmeIoCtx->device))
         {
             // This is NOT supported from what I can tell.
             // The only mode page supported by Windows is the caching mode page. with size set to 0x0A for a total of
@@ -13904,7 +13906,7 @@ static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx* nvmeIoCtx)
         uint8_t* unmapParameterData       = C_CAST(
             uint8_t*, safe_calloc_aligned(
                           unmapParameterDataLength, sizeof(uint8_t),
-                          nvmeIoCtx->device->os_info.minimumAlignment)); // each range is 16 bytes plus an 8 byte header
+                          get_Device_IO_Minimum_Alignment(nvmeIoCtx->device))); // each range is 16 bytes plus an 8 byte header
         if (unmapParameterData)
         {
             // in a loop, set the unmap descriptors
@@ -15128,7 +15130,7 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     LARGE_INTEGER lpNewFilePointer;
     safe_memset(&lpNewFilePointer, sizeof(LARGE_INTEGER), 0, sizeof(LARGE_INTEGER));
     // set the distance to move in bytes
-    liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
+    liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * get_Device_BlockSize(device));
     // set the offset here
     BOOL retStatus = SetFilePointerEx(handleToUse, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
     if (MSFT_BOOL_FALSE(retStatus))
@@ -15146,14 +15148,14 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     OVERLAPPED overlappedStruct;
     safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent     = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
-    overlappedStruct.Offset     = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
-    overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
+    overlappedStruct.Offset     = M_DoubleWord0(lba * get_Device_BlockSize(device));
+    overlappedStruct.OffsetHigh = M_DoubleWord1(lba * get_Device_BlockSize(device));
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     start_Timer(&commandTimer);
     if (forceUnitAccess && openFUA != SUCCESS)
     {
         // could not get a FUA handle...so emulate with a verify command before the read - TJE
-        os_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+        os_Verify(device, lba, dataSize / get_Device_BlockSize(device));
     }
     retStatus = ReadFile(handleToUse, ptrData, dataSize, &bytesReturned, &overlappedStruct);
     set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
@@ -15263,7 +15265,7 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     LARGE_INTEGER lpNewFilePointer;
     safe_memset(&lpNewFilePointer, sizeof(LARGE_INTEGER), 0, sizeof(LARGE_INTEGER));
     // set the distance to move in bytes
-    liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize);
+    liDistanceToMove.QuadPart = C_CAST(LONGLONG, lba * get_Device_BlockSize(device));
     // set the offset here
     BOOL retStatus = SetFilePointerEx(handleToUse, liDistanceToMove, &lpNewFilePointer, FILE_BEGIN);
     if (MSFT_BOOL_FALSE(retStatus))
@@ -15281,8 +15283,8 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     OVERLAPPED overlappedStruct;
     safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent     = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
-    overlappedStruct.Offset     = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
-    overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
+    overlappedStruct.Offset     = M_DoubleWord0(lba * get_Device_BlockSize(device));
+    overlappedStruct.OffsetHigh = M_DoubleWord1(lba * get_Device_BlockSize(device));
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
 
     if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != M_NULLPTR)
@@ -15309,7 +15311,7 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     if (forceUnitAccess && openFUA != SUCCESS)
     {
         // could not get a FUA handle...so emulate with a verify command after the write - TJE
-        os_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+        os_Verify(device, lba, dataSize / get_Device_BlockSize(device));
     }
     stop_Timer(&commandTimer);
     set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
@@ -15367,8 +15369,8 @@ eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
     safe_memset(&verifyCmd, sizeof(VERIFY_INFORMATION), 0, sizeof(VERIFY_INFORMATION));
     DECLARE_SEATIMER(verifyTimer);
     verifyCmd.StartingOffset.QuadPart =
-        C_CAST(LONGLONG, lba * device->drive_info.deviceBlockSize); // LBA needs to be converted to a byte offset
-    verifyCmd.Length          = range * device->drive_info.deviceBlockSize; // needs to be a range in bytes!
+        C_CAST(LONGLONG, lba * get_Device_BlockSize(device)); // LBA needs to be converted to a byte offset
+    verifyCmd.Length          = range * get_Device_BlockSize(device); // needs to be a range in bytes!
     uint64_t timeoutInSeconds = UINT64_C(0);
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
     if (deviceTimeout == 0)
@@ -15383,8 +15385,8 @@ eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
     OVERLAPPED overlappedStruct;
     safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
     overlappedStruct.hEvent     = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
-    overlappedStruct.Offset     = M_DoubleWord0(lba * device->drive_info.deviceBlockSize);
-    overlappedStruct.OffsetHigh = M_DoubleWord1(lba * device->drive_info.deviceBlockSize);
+    overlappedStruct.Offset     = M_DoubleWord0(lba * get_Device_BlockSize(device));
+    overlappedStruct.OffsetHigh = M_DoubleWord1(lba * get_Device_BlockSize(device));
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     start_Timer(&verifyTimer);
     BOOL success = DeviceIoControl(device->os_info.fd, IOCTL_DISK_VERIFY, &verifyCmd, sizeof(VERIFY_INFORMATION),
@@ -15444,10 +15446,10 @@ eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
     // now do a read and throw away the data
     uint8_t* readData = M_REINTERPRET_CAST(
         uint8_t*,
-        safe_calloc(uint32_to_sizet(device->drive_info.deviceBlockSize) * uint32_to_sizet(range), sizeof(uint8_t)));
+        safe_calloc(uint32_to_sizet(get_Device_BlockSize(device)) * uint32_to_sizet(range), sizeof(uint8_t)));
     if (readData)
     {
-        ret = os_Read(device, lba, false, readData, device->drive_info.deviceBlockSize * range);
+        ret = os_Read(device, lba, false, readData, get_Device_BlockSize(device) * range);
         safe_free(&readData);
     }
     else

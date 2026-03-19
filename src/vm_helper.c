@@ -277,7 +277,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             }
         }
 
-        device->os_info.minimumAlignment = sizeof(void*);
+        set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
         // Adding support for different device discovery options.
         if (device->dFlags == OPEN_HANDLE_ONLY)
@@ -427,7 +427,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             print_str("Error: Unable to read NSID\n");
         }
 
-        device->os_info.minimumAlignment = sizeof(void*);
+        set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
         // Adding support for different device discovery options.
         if (device->dFlags == OPEN_HANDLE_ONLY)
@@ -614,7 +614,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
     {
         localSenseBuffer =
             M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t),
-                                                             scsiIoCtx->device->os_info.minimumAlignment));
+                                                             get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
         if (!localSenseBuffer)
         {
             return MEMORY_FAILURE;

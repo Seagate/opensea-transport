@@ -161,7 +161,7 @@ eReturnValues ata_Legacy_Read_DMA_CHS(const tDevice*         device,
     ataPassthroughCommand ataCommandOptions = create_ata_dma_in_cmd(
         device, extendedCmd ? ATA_READ_DMA_EXT : ATA_READ_DMA_RETRY_CMD,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
@@ -216,7 +216,7 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(const tDevice*         device,
     ataPassthroughCommand ataCommandOptions = create_ata_pio_in_cmd(
         device, extendedCmd ? ATA_READ_READ_MULTIPLE_EXT : ATA_READ_MULTIPLE_CMD,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
@@ -327,7 +327,7 @@ eReturnValues ata_Legacy_Read_Sectors_CHS(const tDevice*         device,
     ataPassthroughCommand ataCommandOptions = create_ata_pio_in_cmd(
         device, extendedCmd ? ATA_READ_SECT_EXT : ATA_READ_SECT,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
@@ -473,7 +473,7 @@ eReturnValues ata_Legacy_Write_DMA_CHS(const tDevice* device,
     ataPassthroughCommand ataCommandOptions = create_ata_dma_out_cmd(
         device, extendedCmd ? (fua ? ATA_WRITE_DMA_FUA_EXT : ATA_WRITE_DMA_EXT) : ATA_WRITE_DMA_RETRY_CMD,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
@@ -525,7 +525,7 @@ eReturnValues ata_Legacy_Write_Multiple_CHS(const tDevice* device,
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
         device, extendedCmd ? (fua ? ATA_WRITE_MULTIPLE_FUA_EXT : ATA_WRITE_MULTIPLE_EXT) : ATA_WRITE_MULTIPLE_CMD,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -577,7 +577,7 @@ eReturnValues ata_Legacy_Write_Sectors_CHS(const tDevice* device,
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
         device, extendedCmd ? ATA_WRITE_SECT_EXT : ATA_WRITE_SECT,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
@@ -944,7 +944,7 @@ eReturnValues ata_Legacy_Write_Verify_CHS(const tDevice* device,
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
         device, ATA_WRITE_SECTV_RETRY, ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), false), ptrData,
         dataSize);
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
@@ -973,7 +973,7 @@ eReturnValues ata_Legacy_Write_Verify(const tDevice* device, uint32_t lba, uint8
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_write_lba_cmd(
         device, ATA_WRITE_SECTV_RETRY, ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), lba, ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), false), lba, ptrData,
         dataSize);
 
     if (ptrData == M_NULLPTR)

@@ -1784,7 +1784,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
 
     // set the OS Type
     device->os_info.osType           = OS_LINUX;
-    device->os_info.minimumAlignment = sizeof(void*);
+    set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
     // Adding support for different device discovery options.
     if (M_Byte0(device->dFlags) == OPEN_HANDLE_ONLY)
@@ -1993,7 +1993,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
     {
         localSenseBuffer =
             M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t),
-                                                             scsiIoCtx->device->os_info.minimumAlignment));
+                                                             get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
         if (!localSenseBuffer)
         {
             return MEMORY_FAILURE;

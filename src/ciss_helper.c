@@ -403,7 +403,7 @@ static eReturnValues get_Physical_Device_Location_Data(const tDevice* device,
     eReturnValues ret            = UNKNOWN;
     uint32_t      dataLength     = UINT32_C(8) + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
     uint8_t*      physicalDrives = M_REINTERPRET_CAST(
-        uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (physicalDrives != M_NULLPTR)
     {
         ret = ciss_Scsi_Report_Physical_LUNs(device, CISS_REPORT_PHYSICAL_LUNS_NO_EXTENDED_DATA, physicalDrives,

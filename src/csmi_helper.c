@@ -4179,9 +4179,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
 #    if defined(CSMI_DEBUG)
         print_str("GRD: Successfully opened handle. Setting up default CSMI info.\n");
 #    endif // CSMI_DEBUG
-        device->os_info.minimumAlignment =
-            sizeof(void*); // setting alignment this way to be compatible across OSs since CSMI doesn't really dictate
-                           // an alignment, but we should set something. - TJE
+        set_Device_IO_Minimum_Alignment(device, sizeof(void*));
         device->issue_io                  = C_CAST(issue_io_func, send_CSMI_IO);
         set_Device_DriveType(device, SCSI_DRIVE); // assume SCSI for now. Can be changed later
         set_Device_InterfaceType(device, RAID_INTERFACE);

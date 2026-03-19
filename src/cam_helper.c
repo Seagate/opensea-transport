@@ -155,7 +155,7 @@ static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device
         device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
     }
 
-    device->os_info.minimumAlignment = sizeof(void*);
+    set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
     set_Device_DriveType(device, ATA_DRIVE);
     set_Device_InterfaceType(device, IDE_INTERFACE);
@@ -221,7 +221,7 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
         device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
     }
 
-    device->os_info.minimumAlignment = sizeof(void*);
+    set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
     set_Device_DriveType(device, NVME_DRIVE);
     set_Device_InterfaceType(device, NVME_INTERFACE);
@@ -361,7 +361,7 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
 #else
             device->os_info.osType = OS_FREEBSD;
 #endif
-            device->os_info.minimumAlignment = sizeof(void*);
+            set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
             if (device->dFlags == OPEN_HANDLE_ONLY)
             {
@@ -397,8 +397,7 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                                 case XPORT_SATA:
                                 case XPORT_ATA:
                                     set_Device_DriveType(device, ATA_DRIVE);
-                                    device->drive_info.interface_type =
-                                        IDE_INTERFACE; // Seeing IDE may look strange, but that is how old code was
+                                    set_Device_InterfaceType(device, IDE_INTERFACE); // Seeing IDE may look strange, but that is how old code was
                                                        // written to identify an ATA interface regardless of
                                                        // parallel or serial.
                                     break;

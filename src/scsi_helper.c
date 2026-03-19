@@ -1927,7 +1927,7 @@ void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
 static eReturnValues private_Scsi_Read_Cap_16(const tDevice* device, readCapacityData* outputData)
 {
     uint8_t* readCapData = M_STATIC_CAST(
-        uint8_t*, safe_calloc_aligned(READ_CAPACITY_16_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(READ_CAPACITY_16_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (readCapData == M_NULLPTR)
     {
         return MEMORY_FAILURE;
@@ -1969,7 +1969,7 @@ static eReturnValues private_Scsi_Read_Cap_16(const tDevice* device, readCapacit
 static eReturnValues private_Scsi_Read_Cap_10(const tDevice* device, readCapacityData* outputData)
 {
     uint8_t* readCapData = M_STATIC_CAST(
-        uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (readCapData == M_NULLPTR)
     {
         return MEMORY_FAILURE;
@@ -2199,7 +2199,7 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device)
     {
         uint32_t ataInfoLen = VPD_ATA_INFORMATION_LEN;
         uint8_t* ataInformation =
-            C_CAST(uint8_t*, safe_calloc_aligned(ataInfoLen, sizeof(uint8_t), device->os_info.minimumAlignment));
+            C_CAST(uint8_t*, safe_calloc_aligned(ataInfoLen, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (!ataInformation)
         {
             perror("Error allocating memory to read the ATA Information VPD page");
@@ -2699,7 +2699,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
     }
 
     inq_buf =
-        C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
+        C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (!inq_buf)
     {
         perror("Error allocating memory for standard inquiry data (scsi)");
@@ -3071,7 +3071,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                     // will attempt to check for full passthrough support first
                     uint8_t* nvmeIdentify =
                         M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(NVME_IDENTIFY_DATA_LEN, sizeof(uint8_t),
-                                                                         device->os_info.minimumAlignment));
+                                                                         get_Device_IO_Minimum_Alignment(device)));
                     bool fullCmdSupport = false;
                     // setup hacks/flags common for both types of passthrough
                     set_Device_DriveType(device, NVME_DRIVE);
@@ -3274,7 +3274,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 uint8_t  unitSerialNumberPageLength = SERIAL_NUM_LEN + 4; // adding 4 bytes extra for the header
                 uint8_t* unitSerialNumber =
                     M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t),
-                                                                     device->os_info.minimumAlignment));
+                                                                     get_Device_IO_Minimum_Alignment(device)));
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
@@ -3338,7 +3338,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             {
                 uint8_t* deviceIdentification =
                     M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t),
-                                                                     device->os_info.minimumAlignment));
+                                                                     get_Device_IO_Minimum_Alignment(device)));
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
@@ -3535,7 +3535,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                     uint8_t  unitSerialNumberPageLength = SERIAL_NUM_LEN + 4; // adding 4 bytes extra for the header
                     uint8_t* unitSerialNumber =
                         M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t),
-                                                                         device->os_info.minimumAlignment));
+                                                                         get_Device_IO_Minimum_Alignment(device)));
                     if (!unitSerialNumber)
                     {
                         perror("Error allocating memory to read the unit serial number");
@@ -3577,7 +3577,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 {
                     uint8_t* deviceIdentification =
                         M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t),
-                                                                         device->os_info.minimumAlignment));
+                                                                         get_Device_IO_Minimum_Alignment(device)));
                     if (!deviceIdentification)
                     {
                         perror("Error allocating memory to read device identification VPD page");
@@ -3655,7 +3655,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 {
                     uint8_t* blockDeviceCharacteristics = M_REINTERPRET_CAST(
                         uint8_t*, safe_calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t),
-                                                      device->os_info.minimumAlignment));
+                                                      get_Device_IO_Minimum_Alignment(device)));
                     if (!blockDeviceCharacteristics)
                     {
                         perror("Error allocating memory to read block device characteistics VPD page");
@@ -3775,14 +3775,13 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             safe_memset(&readCapData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
             if (SUCCESS == scsi_Read_Capacity_Cmd_Helper(device, &readCapData))
             {
-                device->drive_info.deviceBlockSize = readCapData.logicalBlockLength;
-                device->drive_info.deviceMaxLba    = readCapData.returnedLBA;
+                set_Device_BlockSize(device, readCapData.logicalBlockLength);
+                set_Device_MaxLba(device, readCapData.returnedLBA);
                 if (readCapData.readCap16)
                 {
-                    device->drive_info.devicePhyBlockSize =
-                        readCapData.logicalBlockLength *
-                        M_STATIC_CAST(uint32_t, power_Of_Two(readCapData.logicalBlocksPerPhysicalBlockExponent));
-                    device->drive_info.sectorAlignment       = readCapData.lowestAlignedLogicalBlock;
+                    set_Device_PhyBlockSize(device, readCapData.logicalBlockLength *
+                        M_STATIC_CAST(uint32_t, power_Of_Two(readCapData.logicalBlocksPerPhysicalBlockExponent)));
+                    set_Device_Sector_Alignment(device, readCapData.lowestAlignedLogicalBlock);
                     device->drive_info.currentProtectionType = readCapData.ptype;
                     device->drive_info.piExponent            = readCapData.piexponent;
                     if (readCapData.protectionEnabled || readCapData.ptype != 0)
@@ -3792,17 +3791,9 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 }
                 else
                 {
-                    device->drive_info.devicePhyBlockSize = readCapData.logicalBlockLength;
+                    set_Device_PhyBlockSize(device, readCapData.logicalBlockLength);
                 }
             }
-            else
-            {
-                device->drive_info.devicePhyBlockSize = 1; // to prevent divide by zero in some places.
-            }
-        }
-        else
-        {
-            device->drive_info.devicePhyBlockSize = 1; // to prevent divide by zero in some places.
         }
 
         // NOTE: You would think that checking if physical and logical block sizes don't match you can filter NVMe (they
@@ -3822,7 +3813,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         }
 
         bool checkRealtekNVMe = false;
-        if (satCheck == SUCCESS && device->drive_info.bridge_info.childDeviceMaxLba == 0 &&
+        if (satCheck == SUCCESS && return_Device_Child_MaxLba(device) == 0 &&
             safe_strlen(device->drive_info.bridge_info.childDriveMN) &&
             safe_strlen(device->drive_info.bridge_info.childDriveSN) &&
             safe_strlen(device->drive_info.bridge_info.childDriveFW) &&

@@ -491,8 +491,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     }
 
     device->os_info.osType = OS_HPUX;
-    device->os_info.minimumAlignment =
-        sizeof(void*); // setting to be compatible with certain aligned memory allocation functions.
+    set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
     if (is_Persistent_Disk_Handle(filename))
     {

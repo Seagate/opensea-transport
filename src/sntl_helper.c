@@ -1659,12 +1659,12 @@ static eReturnValues sntl_Translate_Block_Limits_VPD_Page_B0h(const tDevice* dev
     blockLimits[10] = M_Byte1(maxTransferLength);
     blockLimits[11] = M_Byte0(maxTransferLength);
     // optimal transfer length (unspecified....we decide)
-    if (device->drive_info.deviceBlockSize > 0)
+    if (get_Device_BlockSize(device) > 0)
     {
-        blockLimits[12] = M_Byte3(65536 / device->drive_info.deviceBlockSize);
-        blockLimits[13] = M_Byte2(65536 / device->drive_info.deviceBlockSize);
-        blockLimits[14] = M_Byte1(65536 / device->drive_info.deviceBlockSize);
-        blockLimits[15] = M_Byte0(65536 / device->drive_info.deviceBlockSize);
+        blockLimits[12] = M_Byte3(65536 / get_Device_BlockSize(device));
+        blockLimits[13] = M_Byte2(65536 / get_Device_BlockSize(device));
+        blockLimits[14] = M_Byte1(65536 / get_Device_BlockSize(device));
+        blockLimits[15] = M_Byte0(65536 / get_Device_BlockSize(device));
     }
     // maximum prefetch length (unspecified....we decide) - leave at zero since we don't support the prefetch command
 
@@ -1691,14 +1691,14 @@ static eReturnValues sntl_Translate_Block_Limits_VPD_Page_B0h(const tDevice* dev
     }
     // set a maximum for write same length. Currently zero since we aren't supporting the command right now
     // maximum write same length (unspecified....we decide). We will allow the full drive to be write same'd
-    /*blockLimits[36] = M_Byte7(device->drive_info.deviceMaxLba);
-    blockLimits[37] = M_Byte6(device->drive_info.deviceMaxLba);
-    blockLimits[38] = M_Byte5(device->drive_info.deviceMaxLba);
-    blockLimits[39] = M_Byte4(device->drive_info.deviceMaxLba);
-    blockLimits[40] = M_Byte3(device->drive_info.deviceMaxLba);
-    blockLimits[41] = M_Byte2(device->drive_info.deviceMaxLba);
-    blockLimits[42] = M_Byte1(device->drive_info.deviceMaxLba);
-    blockLimits[43] = M_Byte0(device->drive_info.deviceMaxLba);*/
+    /*blockLimits[36] = M_Byte7(return_Device_MaxLba(device));
+    blockLimits[37] = M_Byte6(return_Device_MaxLba(device));
+    blockLimits[38] = M_Byte5(return_Device_MaxLba(device));
+    blockLimits[39] = M_Byte4(return_Device_MaxLba(device));
+    blockLimits[40] = M_Byte3(return_Device_MaxLba(device));
+    blockLimits[41] = M_Byte2(return_Device_MaxLba(device));
+    blockLimits[42] = M_Byte1(return_Device_MaxLba(device));
+    blockLimits[43] = M_Byte0(return_Device_MaxLba(device));*/
     // maximum atomic length - leave at zero
 
     // atomic alignment - leave at zero
@@ -1733,7 +1733,7 @@ static eReturnValues sntl_Translate_Block_Device_Characteristics_VPD_Page_B1h(Sc
         // Check if this is an HDD
         // First read the supported logs log page, then if the rotating media log is there, read it.
         uint8_t* supportedLogs = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
         if (supportedLogs)
         {
             nvmeGetLogPageCmdOpts supLogs;
@@ -2243,7 +2243,7 @@ static eReturnValues sntl_Translate_Supported_Log_Pages(const tDevice* device, S
         // Check if this is an HDD
         // First read the supported logs log page, then if the rotating media log is there, read it.
         uint8_t* supportedLogs = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
         if (supportedLogs)
         {
             nvmeGetLogPageCmdOpts supLogs;
@@ -2705,10 +2705,10 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
         // number of logical blocks received
         {
             double nvmeWritesInLBAs = 0.0;
-            if (device->drive_info.deviceBlockSize != 0)
+            if (get_Device_BlockSize(device) != 0)
             {
                 nvmeWritesInLBAs =
-                    (convert_128bit_to_double(&logPage[48]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+                    (convert_128bit_to_double(&logPage[48]) * 1000 * 512) / get_Device_BlockSize(device);
             }
             uint64_t numLogBlocksWritten = UINT64_C(0);
             if (nvmeWritesInLBAs >= C_CAST(double, UINT64_MAX))
@@ -2732,10 +2732,10 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
         {
             double nvmeReadsInLBAs = 0.0;
 
-            if (device->drive_info.deviceBlockSize != 0)
+            if (get_Device_BlockSize(device) != 0)
             {
                 nvmeReadsInLBAs =
-                    (convert_128bit_to_double(&logPage[32]) * 1000 * 512) / device->drive_info.deviceBlockSize;
+                    (convert_128bit_to_double(&logPage[32]) * 1000 * 512) / get_Device_BlockSize(device);
             }
             uint64_t numLogBlocksRead = UINT64_C(0);
             if (nvmeReadsInLBAs >= C_CAST(double, UINT64_MAX))
@@ -2803,7 +2803,7 @@ static eReturnValues sntl_Translate_Start_Stop_Cycle_Log_0x0E(const tDevice* dev
         // Check if this is an HDD
         // First read the supported logs log page, then if the rotating media log is there, read it.
         uint8_t* supportedLogs = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), scsiIoCtx->device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
         if (supportedLogs)
         {
             nvmeGetLogPageCmdOpts supLogs;
@@ -4226,8 +4226,8 @@ static eReturnValues sntl_Translate_SCSI_Mode_Sense_Command(const tDevice* devic
     }
     if (returnDataBlockDescriptor)
     {
-        fill_Mode_Data_Block_Descriptor(dataBlockDescriptor, longLBABit, device->drive_info.deviceMaxLba,
-                                        device->drive_info.deviceBlockSize);
+        fill_Mode_Data_Block_Descriptor(dataBlockDescriptor, longLBABit, return_Device_MaxLba(device),
+                                        get_Device_BlockSize(device));
     }
     switch (pageCode)
     {
@@ -4745,7 +4745,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(const tDevice* devi
                                             scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 13],
                                             scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 14],
                                             scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 15]);
-                    if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
+                    if (numberOfLogicalBlocks != return_Device_MaxLba(device))
                     {
                         bitPointer   = UINT8_C(7);
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 0;
@@ -4782,7 +4782,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(const tDevice* devi
                             device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                         return NOT_SUPPORTED;
                     }
-                    if (logicalBlockLength != device->drive_info.deviceBlockSize)
+                    if (logicalBlockLength != get_Device_BlockSize(device))
                     {
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 12;
                         bitPointer   = UINT8_C(7);
@@ -4801,7 +4801,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(const tDevice* devi
                                                                          scsiIoCtx->pdata[10], scsiIoCtx->pdata[11]);
                     uint32_t logicalBlockLength =
                         M_BytesTo4ByteValue(0, scsiIoCtx->pdata[13], scsiIoCtx->pdata[14], scsiIoCtx->pdata[15]);
-                    if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
+                    if (numberOfLogicalBlocks != return_Device_MaxLba(device))
                     {
                         bitPointer   = UINT8_C(7);
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 0;
@@ -4832,7 +4832,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(const tDevice* devi
                             device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                         return NOT_SUPPORTED;
                     }
-                    if (logicalBlockLength != device->drive_info.deviceBlockSize)
+                    if (logicalBlockLength != get_Device_BlockSize(device))
                     {
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 5;
                         bitPointer   = UINT8_C(7);
@@ -4855,7 +4855,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(const tDevice* devi
                 uint32_t logicalBlockLength = M_BytesTo4ByteValue(0, scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 5],
                                                                   scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 6],
                                                                   scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 7]);
-                if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
+                if (numberOfLogicalBlocks != return_Device_MaxLba(device))
                 {
                     bitPointer   = UINT8_C(7);
                     fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 0;
@@ -4886,7 +4886,7 @@ static eReturnValues sntl_Translate_SCSI_Mode_Select_Command(const tDevice* devi
                         device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     return NOT_SUPPORTED;
                 }
-                if (logicalBlockLength != device->drive_info.deviceBlockSize)
+                if (logicalBlockLength != get_Device_BlockSize(device))
                 {
                     fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 5;
                     bitPointer   = UINT8_C(7);
@@ -5979,7 +5979,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(const tDevice* devi
         {
             bool     singleLun        = false;
             uint8_t* activeNamespaces = M_REINTERPRET_CAST(
-                uint8_t*, safe_calloc_aligned(4096, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t*, safe_calloc_aligned(4096, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
             if (activeNamespaces)
             {
                 if (SUCCESS == nvme_Identify(device, activeNamespaces, 0, 2))
@@ -7093,7 +7093,7 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(const tDevice* device, Sc
             uint8_t* dsmBuffer = C_CAST(
                 uint8_t*, safe_calloc_aligned(
                               4096, sizeof(uint8_t),
-                              device->os_info.minimumAlignment)); // allocate the max size the device supports...we'll
+                              get_Device_IO_Minimum_Alignment(device))); // allocate the max size the device supports...we'll
                                                                   // fill in as much as we need to
             // need to check to make sure there weren't any truncated block descriptors before we begin
             uint16_t minBlockDescriptorLength =
@@ -7139,7 +7139,7 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(const tDevice* device, Sc
                 // loop)
                 numberOfLBAsToDeallocate += unmapNumberOfLogicalBlocks;
                 // check we aren't trying to go over the end of the drive
-                if (unmapLogicalBlockAddress > device->drive_info.deviceMaxLba)
+                if (unmapLogicalBlockAddress > return_Device_MaxLba(device))
                 {
                     fieldPointer = unmapBlockDescriptorIter + 0;
                     bitPointer   = UINT8_C(7);
@@ -7151,7 +7151,7 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(const tDevice* device, Sc
                         device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     break;
                 }
-                else if (unmapLogicalBlockAddress + unmapNumberOfLogicalBlocks > device->drive_info.deviceMaxLba)
+                else if (unmapLogicalBlockAddress + unmapNumberOfLogicalBlocks > return_Device_MaxLba(device))
                 {
                     fieldPointer = unmapBlockDescriptorIter + 8;
                     bitPointer   = UINT8_C(7);

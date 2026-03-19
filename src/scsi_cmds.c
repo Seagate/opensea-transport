@@ -463,7 +463,7 @@ static eSCSICmdSupport is_SCSI_Operation_Code_Supported_InqDT(const tDevice* M_N
     {
         // Use cmdDT
         uint8_t* inqDT = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(UINT8_MAX, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(UINT8_MAX, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (inqDT != M_NULLPTR)
         {
             if (SUCCESS == scsi_Inquiry(device, inqDT, UINT8_MAX, request->operationCode, false, true))
@@ -506,7 +506,7 @@ static eSCSICmdSupport is_SCSI_Operation_Code_Supported_ReportOP(const tDevice* 
     eSCSICmdSupport cmdsupport    = SCSI_CMD_SUPPORT_UNKNOWN;
     uint32_t        requestOpSize = CDB_LEN_MAX + UINT32_C(4);
     uint8_t*        requestOpCode = M_REINTERPRET_CAST(
-        uint8_t*, safe_calloc_aligned(requestOpSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(requestOpSize, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (requestOpCode != M_NULLPTR)
     {
 // use report supported operation codes to check this CDB
@@ -582,7 +582,7 @@ static bool check_inq_cmddt(tDevice* M_NONNULL device)
 {
     bool     cmddtSupported = false;
     uint8_t* inqDT =
-        M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(18, sizeof(uint8_t), device->os_info.minimumAlignment));
+        M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(18, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (inqDT != M_NULLPTR)
     {
         if (SUCCESS == scsi_Inquiry(device, inqDT, UINT32_C(18), INQUIRY_CMD, false, true))
@@ -750,12 +750,12 @@ eReturnValues scsi_Sanitize_Overwrite(const tDevice*             device,
                                       uint16_t                   patternLengthBytes)
 {
     eReturnValues ret = UNKNOWN;
-    if ((patternLengthBytes != 0 && pattern == M_NULLPTR) || (patternLengthBytes > device->drive_info.deviceBlockSize))
+    if ((patternLengthBytes != 0 && pattern == M_NULLPTR) || (patternLengthBytes > get_Device_BlockSize(device)))
     {
         return BAD_PARAMETER;
     }
     uint8_t* overwriteBuffer =
-        safe_calloc_aligned(patternLengthBytes + 4, sizeof(uint8_t), device->os_info.minimumAlignment);
+        safe_calloc_aligned(patternLengthBytes + 4, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device));
     if (!overwriteBuffer)
     {
         return MEMORY_FAILURE;
@@ -4982,9 +4982,9 @@ eReturnValues scsi_Write_Same_32(const tDevice* device,
 //    scsiIoCtx.direction = XFER_DATA_OUT_IN;
 //    //set the buffer info in the bidirectional command structure
 //    scsiIoCtx.biDirectionalBuffers.dataInBuffer = ptrDataIn;
-//    scsiIoCtx.biDirectionalBuffers.dataInBufferSize = transferLength * device->drive_info.deviceBlockSize;
+//    scsiIoCtx.biDirectionalBuffers.dataInBufferSize = transferLength * get_Device_BlockSize(device);
 //    scsiIoCtx.biDirectionalBuffers.dataOutBuffer = ptrDataOut;
-//    scsiIoCtx.biDirectionalBuffers.dataOutBufferSize = transferLength * device->drive_info.deviceBlockSize;
+//    scsiIoCtx.biDirectionalBuffers.dataOutBufferSize = transferLength * get_Device_BlockSize(device);
 //    scsiIoCtx.verbose = 0;
 //
 //    //while this command is all typed up the lower level windows or linux passthrough code needs some work before this
@@ -5098,9 +5098,9 @@ eReturnValues scsi_Write_Same_32(const tDevice* device,
 //    scsiIoCtx.direction = XFER_DATA_OUT_IN;
 //    //set the buffer info in the bidirectional command structure
 //    scsiIoCtx.biDirectionalBuffers.dataInBuffer = ptrDataIn;
-//    scsiIoCtx.biDirectionalBuffers.dataInBufferSize = transferLength * device->drive_info.deviceBlockSize;
+//    scsiIoCtx.biDirectionalBuffers.dataInBufferSize = transferLength * get_Device_BlockSize(device);
 //    scsiIoCtx.biDirectionalBuffers.dataOutBuffer = ptrDataOut;
-//    scsiIoCtx.biDirectionalBuffers.dataOutBufferSize = transferLength * device->drive_info.deviceBlockSize;
+//    scsiIoCtx.biDirectionalBuffers.dataOutBufferSize = transferLength * get_Device_BlockSize(device);
 //    scsiIoCtx.verbose = 0;
 //
 //    //while this command is all typed up the lower level windows or linux passthrough code needs some work before this
@@ -5154,7 +5154,7 @@ eReturnValues scsi_xp_Write_10(const tDevice* device,
 
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData,
-                        transferLength * device->drive_info.deviceBlockSize, XFER_DATA_OUT,
+                        transferLength * get_Device_BlockSize(device), XFER_DATA_OUT,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -5206,7 +5206,7 @@ eReturnValues scsi_xp_Write_32(const tDevice* device,
 
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData,
-                        transferLength * device->drive_info.deviceBlockSize, XFER_DATA_OUT,
+                        transferLength * get_Device_BlockSize(device), XFER_DATA_OUT,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)

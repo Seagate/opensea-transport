@@ -142,7 +142,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 #else
     device->os_info.osType = OS_OPENBSD;
 #endif
-    device->os_info.minimumAlignment = sizeof(void*);
+    set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
     if (device->dFlags == OPEN_HANDLE_ONLY)
     {

@@ -165,7 +165,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
                 // Check if this is an HDD
                 // First read the supported logs log page, then if the rotating media log is there, read it.
                 uint8_t* supportedLogs = M_REINTERPRET_CAST(
-                    uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                 if (supportedLogs)
                 {
                     nvmeGetLogPageCmdOpts supLogs;

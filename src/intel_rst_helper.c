@@ -231,7 +231,7 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
         size_t                      allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
         IOCTL_RAID_FIRMWARE_BUFFER* raidFirmwareRequest =
             C_CAST(IOCTL_RAID_FIRMWARE_BUFFER*,
-                   safe_calloc_aligned(allocationSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+                   safe_calloc_aligned(allocationSize, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (raidFirmwareRequest)
         {
             DECLARE_SEATIMER(commandTimer);
@@ -722,7 +722,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
         size_t                   allocationSize        = sizeof(NVME_IOCTL_PASS_THROUGH) + nvmeIoCtx->dataSize;
         nvmPassthroughCommand =
             C_CAST(NVME_IOCTL_PASS_THROUGH*,
-                   safe_calloc_aligned(allocationSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
+                   safe_calloc_aligned(allocationSize, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(nvmeIoCtx->device)));
         if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
         {
             print_str("\n====Sending Intel RST NVMe Command====\n");

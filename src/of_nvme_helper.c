@@ -380,7 +380,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
         sizeof(NVME_PASS_THROUGH_IOCTL) +
         nvmeIoCtx->dataSize; // NOTE: No metadata. Don't think Windows supports a separate metadata buffer
     uint8_t* passthroughBuffer = M_REINTERPRET_CAST(
-        uint8_t*, safe_calloc_aligned(bufferSize, sizeof(uint8_t), nvmeIoCtx->device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(bufferSize, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(nvmeIoCtx->device)));
     if (passthroughBuffer)
     {
         DECLARE_SEATIMER(commandTimer);

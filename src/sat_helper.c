@@ -68,7 +68,7 @@ eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(const tDevice* device
     uint8_t*      sense70logBuffer = C_CAST(
         uint8_t*,
         safe_calloc_aligned(14 + LOG_PAGE_HEADER_LENGTH, sizeof(uint8_t),
-                                 device->os_info.minimumAlignment)); // allocate a buffer to get the rtfrs in. the size of 12
+                                 get_Device_IO_Minimum_Alignment(device))); // allocate a buffer to get the rtfrs in. the size of 12
                                                                 // is ATA Passthrough Descriptor + 4byte log page header
     if (!sense70logBuffer)
     {
@@ -369,7 +369,7 @@ eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(const tDevice*         devi
             {
                 // request descriptor format data
                 uint8_t* descriptorFormatSenseData = C_CAST(
-                    uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                 if (!descriptorFormatSenseData)
                 {
                     return MEMORY_FAILURE;
@@ -780,10 +780,10 @@ eReturnValues request_Return_TFRs_From_Device(const tDevice* device, ataReturnTF
         C_CAST(uint8_t*,
                safe_calloc_aligned(
                    14, sizeof(uint8_t),
-                   device->os_info.minimumAlignment)); // this size is the size of the ATA pass through descriptor which
+                   get_Device_IO_Minimum_Alignment(device))); // this size is the size of the ATA pass through descriptor which
                                                        // is all that should be returned from the SATL with this command
     uint8_t* rtfr_senseData = M_REINTERPRET_CAST(
-        uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     uint8_t* requestRTFRs       = M_NULLPTR;
     uint8_t  cdbLen             = CDB_LEN_12;
     uint8_t  protocolOffset     = SAT_PROTOCOL_OFFSET;
@@ -793,7 +793,7 @@ eReturnValues request_Return_TFRs_From_Device(const tDevice* device, ataReturnTF
         cdbLen = CDB_LEN_16;
     }
     requestRTFRs =
-        M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(cdbLen, sizeof(uint8_t), device->os_info.minimumAlignment));
+        M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(cdbLen, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (!rtfrBuffer || !rtfr_senseData || !requestRTFRs)
     {
         perror("Calloc aligned Failure!\n");
@@ -927,7 +927,7 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
             {
                 *satCDB =
                     M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t),
-                                                                     device->os_info.minimumAlignment));
+                                                                     get_Device_IO_Minimum_Alignment(device)));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -949,7 +949,7 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
             {
                 *satCDB =
                     M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t),
-                                                                     device->os_info.minimumAlignment));
+                                                                     get_Device_IO_Minimum_Alignment(device)));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -961,7 +961,7 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
             break;
         case 32:
             *satCDB = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(ataCommandOptions->forceCDBSize, sizeof(uint8_t),
-                                                                       device->os_info.minimumAlignment));
+                                                                       get_Device_IO_Minimum_Alignment(device)));
             if (!*satCDB)
             {
                 return MEMORY_FAILURE;
@@ -999,7 +999,7 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
             {
                 // 12B CDB
                 *satCDB = C_CAST(uint8_t*,
-                                 safe_calloc_aligned(CDB_LEN_12, sizeof(uint8_t), device->os_info.minimumAlignment));
+                                 safe_calloc_aligned(CDB_LEN_12, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -1012,7 +1012,7 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
             {
                 // 16B CDB
                 *satCDB = C_CAST(uint8_t*,
-                                 safe_calloc_aligned(CDB_LEN_16, sizeof(uint8_t), device->os_info.minimumAlignment));
+                                 safe_calloc_aligned(CDB_LEN_16, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -1034,7 +1034,7 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
                     // No ext registers are set, so we will issue the command with a 12B CDB. This is a major hack, but
                     // might help some devices get some more support. 12B CDB
                     *satCDB = C_CAST(
-                        uint8_t*, safe_calloc_aligned(CDB_LEN_12, sizeof(uint8_t), device->os_info.minimumAlignment));
+                        uint8_t*, safe_calloc_aligned(CDB_LEN_12, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                     if (!*satCDB)
                     {
                         return MEMORY_FAILURE;
@@ -1048,7 +1048,7 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
             {
                 // 16B CDB
                 *satCDB = C_CAST(uint8_t*,
-                                 safe_calloc_aligned(CDB_LEN_16, sizeof(uint8_t), device->os_info.minimumAlignment));
+                                 safe_calloc_aligned(CDB_LEN_16, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -1061,7 +1061,7 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
         case ATA_CMD_TYPE_COMPLETE_TASKFILE:
             // 32B CDB
             *satCDB = M_REINTERPRET_CAST(
-                uint8_t*, safe_calloc_aligned(CDB_LEN_32, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t*, safe_calloc_aligned(CDB_LEN_32, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
             if (!*satCDB)
             {
                 return MEMORY_FAILURE;
@@ -1153,7 +1153,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
     if (ataCommandOptions->ptrSenseData == M_NULLPTR)
     {
         senseData = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -2077,8 +2077,8 @@ static eReturnValues satl_Read_Command(ScsiIoCtx* scsiIoCtx,
     // check if 48bit
     if (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word083) & BIT10)
     {
-        uint16_t scnt = C_CAST(uint16_t, dataSize / scsiIoCtx->device->drive_info.deviceBlockSize);
-        if (dataSize > (UINT32_C(65536) * scsiIoCtx->device->drive_info.deviceBlockSize))
+        uint16_t scnt = C_CAST(uint16_t, dataSize / get_Device_BlockSize(scsiIoCtx->device));
+        if (dataSize > (UINT32_C(65536) * get_Device_BlockSize(scsiIoCtx->device)))
         {
             // return an error
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24,
@@ -2103,7 +2103,7 @@ static eReturnValues satl_Read_Command(ScsiIoCtx* scsiIoCtx,
     else // 28bit command
     {
         uint16_t scnt;
-        if (dataSize > (256 * scsiIoCtx->device->drive_info.deviceBlockSize))
+        if (dataSize > (256 * get_Device_BlockSize(scsiIoCtx->device)))
         {
             // return an error
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24,
@@ -2111,7 +2111,7 @@ static eReturnValues satl_Read_Command(ScsiIoCtx* scsiIoCtx,
                                            M_NULLPTR, 0);
             return SUCCESS;
         }
-        scnt = C_CAST(uint16_t, dataSize / scsiIoCtx->device->drive_info.deviceBlockSize);
+        scnt = C_CAST(uint16_t, dataSize / get_Device_BlockSize(scsiIoCtx->device));
         if (scnt == 256)
         {
             // ATA Spec says to transfer this may sectors, you must set the sector count to zero (Not that any
@@ -2157,8 +2157,8 @@ static eReturnValues satl_Write_Command(ScsiIoCtx* scsiIoCtx,
     // check if 48bit
     if (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word083) & BIT10)
     {
-        uint32_t scnt = dataSize / scsiIoCtx->device->drive_info.deviceBlockSize;
-        if (dataSize > (UINT32_C(65536) * scsiIoCtx->device->drive_info.deviceBlockSize))
+        uint32_t scnt = dataSize / get_Device_BlockSize(scsiIoCtx->device);
+        if (dataSize > (UINT32_C(65536) * get_Device_BlockSize(scsiIoCtx->device)))
         {
             // return an error
             set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST, 0x24,
@@ -2188,7 +2188,7 @@ static eReturnValues satl_Write_Command(ScsiIoCtx* scsiIoCtx,
     }
     else // 28bit command
     {
-        uint16_t scnt = C_CAST(uint16_t, dataSize / scsiIoCtx->device->drive_info.deviceBlockSize);
+        uint16_t scnt = C_CAST(uint16_t, dataSize / get_Device_BlockSize(scsiIoCtx->device));
         if (scnt > 256)
         {
             // return an error
@@ -2227,7 +2227,7 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx* scsiIoCtx, uint64_t lba
 {
     eReturnValues ret                = SUCCESS;
     bool          dmaSupported       = false;
-    uint32_t      verificationLength = dataSize / scsiIoCtx->device->drive_info.deviceBlockSize;
+    uint32_t      verificationLength = dataSize / get_Device_BlockSize(scsiIoCtx->device);
     if (le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word049) & BIT8) // lba mode
     {
         if ((le16_to_host(scsiIoCtx->device->drive_info.IdentifyData.ata.Word063) & (BIT0 | BIT1 | BIT2)) ||
@@ -2263,7 +2263,7 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx* scsiIoCtx, uint64_t lba
                 return SUCCESS;
             }
             compareBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
-                                                                          scsiIoCtx->device->os_info.minimumAlignment));
+                                                                          get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
             if (!compareBuf)
             {
                 set_Sense_Data_For_Translation(
@@ -2295,10 +2295,10 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx* scsiIoCtx, uint64_t lba
                 // compare each logical sector to the data sent into this command
 
                 uint32_t iter = UINT32_C(0);
-                for (; iter < scsiIoCtx->dataLength; iter += scsiIoCtx->device->drive_info.deviceBlockSize)
+                for (; iter < scsiIoCtx->dataLength; iter += get_Device_BlockSize(scsiIoCtx->device))
                 {
                     if (memcmp(&compareBuf[iter], scsiIoCtx->pdata,
-                               M_Min(scsiIoCtx->device->drive_info.deviceBlockSize, scsiIoCtx->dataLength)) != 0)
+                               M_Min(get_Device_BlockSize(scsiIoCtx->device), scsiIoCtx->dataLength)) != 0)
                     {
                         errorFound = true;
                         break;
@@ -2358,7 +2358,7 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx* scsiIoCtx, uint64_t lba
                 return SUCCESS;
             }
             compareBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
-                                                                          scsiIoCtx->device->os_info.minimumAlignment));
+                                                                          get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
             if (!compareBuf)
             {
                 set_Sense_Data_For_Translation(
@@ -2390,10 +2390,10 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx* scsiIoCtx, uint64_t lba
                 // compare each logical sector to the data sent into this command
 
                 uint32_t iter = UINT32_C(0);
-                for (; iter < scsiIoCtx->dataLength; iter += scsiIoCtx->device->drive_info.deviceBlockSize)
+                for (; iter < scsiIoCtx->dataLength; iter += get_Device_BlockSize(scsiIoCtx->device))
                 {
                     if (memcmp(&compareBuf[iter], scsiIoCtx->pdata,
-                               M_Min(scsiIoCtx->device->drive_info.deviceBlockSize, scsiIoCtx->dataLength)) != 0)
+                               M_Min(get_Device_BlockSize(scsiIoCtx->device), scsiIoCtx->dataLength)) != 0)
                     {
                         errorFound = true;
                         break;
@@ -2436,14 +2436,14 @@ static eReturnValues satl_Sequential_Write_Commands(ScsiIoCtx* scsiIoCtx,
     // eReturnValues satl_Write_Command(ScsiIoCtx *scsiIoCtx, uint64_t lba, uint8_t *ptrData, uint32_t dataSize, bool
     // fua)
     uint64_t endingLBA    = startLba + range;
-    uint32_t numberOfLBAs = patternLength / scsiIoCtx->device->drive_info.deviceBlockSize;
+    uint32_t numberOfLBAs = patternLength / get_Device_BlockSize(scsiIoCtx->device);
     for (; startLba < endingLBA; startLba += numberOfLBAs)
     {
         if ((startLba + numberOfLBAs) > endingLBA)
         {
             // end of range...don't over do it!
             numberOfLBAs  = C_CAST(uint32_t, endingLBA - startLba);
-            patternLength = numberOfLBAs * scsiIoCtx->device->drive_info.deviceBlockSize;
+            patternLength = numberOfLBAs * get_Device_BlockSize(scsiIoCtx->device);
         }
         ret = satl_Write_Command(scsiIoCtx, startLba, pattern, patternLength, false);
         if (ret != SUCCESS)
@@ -3118,10 +3118,9 @@ static eReturnValues translate_Block_Limits_VPD_Page_B0h(const tDevice* device, 
     blockLimits[5] = 0;
     // optimal transfer length granularity (unspecified....we decide) - setting to number of logical per physical
     // sectors
-    if (device->drive_info.devicePhyBlockSize > 0)
+    if (get_Device_PhyBlockSize(device) > 0)
     {
-        uint16_t logicalPerPhysical =
-            C_CAST(uint16_t, device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
+        uint16_t logicalPerPhysical = get_Logical_Sectors_Per_Physical_Sector(device);
         blockLimits[6] = M_Byte1(logicalPerPhysical);
         blockLimits[7] = M_Byte0(logicalPerPhysical);
     }
@@ -3186,14 +3185,14 @@ static eReturnValues translate_Block_Limits_VPD_Page_B0h(const tDevice* device, 
         // unmap granularity alignment (unspecified....we decide) - leave at zero
     }
     // maximum write same length (unspecified....we decide). We will allow the full drive to be write same'd
-    blockLimits[36] = M_Byte7(device->drive_info.deviceMaxLba);
-    blockLimits[37] = M_Byte6(device->drive_info.deviceMaxLba);
-    blockLimits[38] = M_Byte5(device->drive_info.deviceMaxLba);
-    blockLimits[39] = M_Byte4(device->drive_info.deviceMaxLba);
-    blockLimits[40] = M_Byte3(device->drive_info.deviceMaxLba);
-    blockLimits[41] = M_Byte2(device->drive_info.deviceMaxLba);
-    blockLimits[42] = M_Byte1(device->drive_info.deviceMaxLba);
-    blockLimits[43] = M_Byte0(device->drive_info.deviceMaxLba);
+    blockLimits[36] = M_Byte7(return_Device_MaxLba(device));
+    blockLimits[37] = M_Byte6(return_Device_MaxLba(device));
+    blockLimits[38] = M_Byte5(return_Device_MaxLba(device));
+    blockLimits[39] = M_Byte4(return_Device_MaxLba(device));
+    blockLimits[40] = M_Byte3(return_Device_MaxLba(device));
+    blockLimits[41] = M_Byte2(return_Device_MaxLba(device));
+    blockLimits[42] = M_Byte1(return_Device_MaxLba(device));
+    blockLimits[43] = M_Byte0(return_Device_MaxLba(device));
     // maximum atomic length - leave at zero
 
     // atomic alignment - leave at zero
@@ -4727,7 +4726,7 @@ static eReturnValues translate_SCSI_Read_Command(const tDevice* device, ScsiIoCt
                                        senseKeySpecificDescriptor, 1);
         return SUCCESS;
     }
-    return satl_Read_Command(scsiIoCtx, lba, scsiIoCtx->pdata, transferLength * device->drive_info.deviceBlockSize,
+    return satl_Read_Command(scsiIoCtx, lba, scsiIoCtx->pdata, transferLength * get_Device_BlockSize(device),
                              fua);
 }
 
@@ -4881,7 +4880,7 @@ static eReturnValues translate_SCSI_Write_Command(const tDevice* device, ScsiIoC
         return SUCCESS;
     }
     return satl_Write_Command(scsiIoCtx, lba, scsiIoCtx->pdata,
-                              transferLength * scsiIoCtx->device->drive_info.deviceBlockSize, fua);
+                              transferLength * get_Device_BlockSize(scsiIoCtx->device), fua);
 }
 
 static eReturnValues translate_SCSI_Write_Same_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
@@ -4976,7 +4975,7 @@ static eReturnValues translate_SCSI_Write_Same_Command(const tDevice* device, Sc
     if (numberOflogicalBlocks == 0)
     {
         // Support a value of zero to overwrite the whole drive.
-        numberOflogicalBlocks = device->drive_info.deviceMaxLba;
+        numberOflogicalBlocks = return_Device_MaxLba(device);
     }
     // perform the write same operation...
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 2
@@ -5070,7 +5069,7 @@ static eReturnValues translate_SCSI_Write_Same_Command(const tDevice* device, Sc
                 patternLength = 65535; // 64k
             }
             writePattern = M_REINTERPRET_CAST(
-                uint8_t*, safe_calloc_aligned(patternLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+                uint8_t*, safe_calloc_aligned(patternLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
             if (writePattern)
             {
                 if (!ataWritePatternZeros)
@@ -5280,7 +5279,7 @@ static eReturnValues translate_SCSI_Verify_Command(const tDevice* device, ScsiIo
                                        senseKeySpecificDescriptor, 1);
         return NOT_SUPPORTED;
     }
-    return satl_Read_Verify_Command(scsiIoCtx, lba, verificationLength * device->drive_info.deviceBlockSize, byteCheck);
+    return satl_Read_Verify_Command(scsiIoCtx, lba, verificationLength * get_Device_BlockSize(device), byteCheck);
 }
 
 static eReturnValues translate_SCSI_Write_And_Verify_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
@@ -5442,7 +5441,7 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(const tDevice* devi
                 return SUCCESS;
             }
             compareBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
-                                                                          device->os_info.minimumAlignment));
+                                                                          get_Device_IO_Minimum_Alignment(device)));
             if (!compareBuf)
             {
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST,
@@ -5474,10 +5473,10 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(const tDevice* devi
                 // compare each logical sector to the data sent into this command
 
                 uint32_t iter = UINT32_C(0);
-                for (; iter < scsiIoCtx->dataLength; iter += device->drive_info.deviceBlockSize)
+                for (; iter < scsiIoCtx->dataLength; iter += get_Device_BlockSize(device))
                 {
                     if (memcmp(&compareBuf[iter], scsiIoCtx->pdata,
-                               M_Min(device->drive_info.deviceBlockSize, scsiIoCtx->dataLength)) != 0)
+                               M_Min(get_Device_BlockSize(device), scsiIoCtx->dataLength)) != 0)
                     {
                         errorFound = true;
                         break;
@@ -5548,7 +5547,7 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(const tDevice* devi
                 return SUCCESS;
             }
             compareBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
-                                                                          device->os_info.minimumAlignment));
+                                                                          get_Device_IO_Minimum_Alignment(device)));
             if (!compareBuf)
             {
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_ILLEGAL_REQUEST,
@@ -5580,10 +5579,10 @@ static eReturnValues translate_SCSI_Write_And_Verify_Command(const tDevice* devi
                 // compare each logical sector to the data sent into this command
 
                 uint32_t iter = UINT32_C(0);
-                for (; iter < scsiIoCtx->dataLength; iter += device->drive_info.deviceBlockSize)
+                for (; iter < scsiIoCtx->dataLength; iter += get_Device_BlockSize(device))
                 {
                     if (memcmp(&compareBuf[iter], scsiIoCtx->pdata,
-                               M_Min(device->drive_info.deviceBlockSize, scsiIoCtx->dataLength)) != 0)
+                               M_Min(get_Device_BlockSize(device), scsiIoCtx->dataLength)) != 0)
                     {
                         errorFound = true;
                         break;
@@ -5890,7 +5889,7 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                             {
                                 // SCT write same
                                 ret = send_ATA_SCT_Write_Same(device, WRITE_SAME_BACKGROUND_USE_PATTERN_FIELD, 0,
-                                                              device->drive_info.deviceMaxLba, initializationPatternPtr,
+                                                              return_Device_MaxLba(device), initializationPatternPtr,
                                                               initializationPatternLength);
                                 if (ret != SUCCESS)
                                 {
@@ -5902,7 +5901,7 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                             {
                                 // make sure the initialization pattern is less than or equal to the logical block
                                 // length
-                                if (initializationPatternLength > device->drive_info.deviceBlockSize)
+                                if (initializationPatternLength > get_Device_BlockSize(device))
                                 {
                                     fieldPointer = initializationPatternOffset + 2;
                                     bitPointer   = UINT8_C(7);
@@ -5917,29 +5916,29 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                                 }
                                 else
                                 {
-                                    uint32_t writeSectors64K = UINT32_C(65535) / device->drive_info.deviceBlockSize;
+                                    uint32_t writeSectors64K = UINT32_C(65535) / get_Device_BlockSize(device);
                                     // ATA Write commands
-                                    uint32_t ataWriteDataLength = writeSectors64K * device->drive_info.deviceBlockSize;
+                                    uint32_t ataWriteDataLength = writeSectors64K * get_Device_BlockSize(device);
                                     uint8_t* ataWritePattern    = M_REINTERPRET_CAST(
                                         uint8_t*, safe_calloc_aligned(ataWriteDataLength, sizeof(uint8_t),
-                                                                         device->os_info.minimumAlignment));
+                                                                         get_Device_IO_Minimum_Alignment(device)));
                                     if (ataWritePattern)
                                     {
                                         if (initializationPatternLength > 0)
                                         {
                                             // copy the provided pattern into our buffer
                                             for (uint32_t copyIter = UINT32_C(0); copyIter < ataWriteDataLength;
-                                                 copyIter += device->drive_info.deviceBlockSize)
+                                                 copyIter += get_Device_BlockSize(device))
                                             {
                                                 safe_memcpy(&ataWritePattern[copyIter],
                                                             ataWriteDataLength -
-                                                                (copyIter * device->drive_info.deviceBlockSize),
+                                                                (copyIter * get_Device_BlockSize(device)),
                                                             initializationPatternPtr, initializationPatternLength);
                                             }
                                         }
 
                                         ret = satl_Sequential_Write_Commands(scsiIoCtx, 0,
-                                                                             device->drive_info.deviceMaxLba,
+                                                                             return_Device_MaxLba(device),
                                                                              ataWritePattern, ataWriteDataLength);
                                         if (ret != SUCCESS)
                                         {
@@ -5965,7 +5964,7 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                             // the SATL will continually try write commands to the sector until it is fixed or an error
                             // other than unrecoverable read error is returned make sure the initialization pattern is
                             // less than or equal to the logical block length
-                            if (initializationPatternLength > device->drive_info.deviceBlockSize)
+                            if (initializationPatternLength > get_Device_BlockSize(device))
                             {
                                 fieldPointer = initializationPatternOffset + 2;
                                 bitPointer   = UINT8_C(7);
@@ -5980,16 +5979,16 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                             }
                             else
                             {
-                                uint32_t verifySectors64K = UINT32_C(65535) / device->drive_info.deviceBlockSize;
+                                uint32_t verifySectors64K = UINT32_C(65535) / get_Device_BlockSize(device);
                                 bool     deviceFault      = false;
                                 for (uint64_t lbaIter = UINT64_C(0);
-                                     lbaIter < device->drive_info.deviceMaxLba && !deviceFault;
+                                     lbaIter < return_Device_MaxLba(device) && !deviceFault;
                                      lbaIter += verifySectors64K)
                                 {
-                                    if (lbaIter + verifySectors64K > device->drive_info.deviceMaxLba)
+                                    if (lbaIter + verifySectors64K > return_Device_MaxLba(device))
                                     {
                                         // make sure we don't try to write off the end of the drive!
-                                        verifySectors64K = C_CAST(uint32_t, device->drive_info.deviceMaxLba - lbaIter);
+                                        verifySectors64K = C_CAST(uint32_t, return_Device_MaxLba(device) - lbaIter);
                                     }
                                     ret = satl_Read_Verify_Command(scsiIoCtx, lbaIter, verifySectors64K, 0);
                                     if (ret != SUCCESS)
@@ -6004,24 +6003,24 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                                             // if we are talking to something that doesn't give back all RTFRs (SAT to
                                             // OS) or is a broken driver, this won't work
                                             uint32_t writeSectors64K =
-                                                UINT32_C(65536) / device->drive_info.deviceBlockSize;
+                                                UINT32_C(65536) / get_Device_BlockSize(device);
                                             // ATA Write commands
                                             uint32_t ataWriteDataLength =
-                                                writeSectors64K * device->drive_info.deviceBlockSize;
+                                                writeSectors64K * get_Device_BlockSize(device);
                                             uint8_t* ataWritePattern = C_CAST(
                                                 uint8_t*, safe_calloc_aligned(ataWriteDataLength, sizeof(uint8_t),
-                                                                              device->os_info.minimumAlignment));
+                                                                              get_Device_IO_Minimum_Alignment(device)));
                                             if (ataWritePattern)
                                             {
                                                 if (initializationPatternLength > 0)
                                                 {
                                                     // copy the provided pattern into our buffer
                                                     for (uint32_t copyIter = UINT32_C(0); copyIter < ataWriteDataLength;
-                                                         copyIter += device->drive_info.deviceBlockSize)
+                                                         copyIter += get_Device_BlockSize(device))
                                                     {
                                                         safe_memcpy(&ataWritePattern[copyIter],
                                                                     ataWriteDataLength -
-                                                                        (copyIter * device->drive_info.deviceBlockSize),
+                                                                        (copyIter * get_Device_BlockSize(device)),
                                                                     initializationPatternPtr,
                                                                     initializationPatternLength);
                                                     }
@@ -6033,11 +6032,11 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                                                     unrecoveredReadError =
                                                         false; // set to false before writing and re-verifying. This
                                                                // will get changed if it's still an unrecovered error
-                                                    if (lbaIter + writeSectors64K > device->drive_info.deviceMaxLba)
+                                                    if (lbaIter + writeSectors64K > return_Device_MaxLba(device))
                                                     {
                                                         // make sure we don't try to write off the end of the drive!
                                                         writeSectors64K =
-                                                            C_CAST(uint32_t, device->drive_info.deviceMaxLba - lbaIter);
+                                                            C_CAST(uint32_t, return_Device_MaxLba(device) - lbaIter);
                                                     }
                                                     ret = satl_Write_Command(scsiIoCtx, lbaIter, ataWritePattern,
                                                                              ataWriteDataLength, false);
@@ -6262,8 +6261,8 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(const tDevice* devic
                                        senseKeySpecificDescriptor, 1);
         return ret;
     }
-    writeData = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t),
-                                                                 device->os_info.minimumAlignment));
+    writeData = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device), sizeof(uint8_t),
+                                                                 get_Device_IO_Minimum_Alignment(device)));
     if (writeData == M_NULLPTR)
     {
         return MEMORY_FAILURE;
@@ -6305,7 +6304,7 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(const tDevice* devic
             currentLBA = M_BytesTo4ByteValue(scsiIoCtx->pdata[iterator + 0], scsiIoCtx->pdata[iterator + 1],
                                              scsiIoCtx->pdata[iterator + 2], scsiIoCtx->pdata[iterator + 3]);
         }
-        if (currentLBA > device->drive_info.deviceMaxLba)
+        if (currentLBA > return_Device_MaxLba(device))
         {
             ret = FAILURE;
             // set LBA out of range
@@ -6317,7 +6316,7 @@ static eReturnValues translate_SCSI_Reassign_Blocks_Command(const tDevice* devic
         if (SUCCESS != ata_Read_Verify_Sectors(device, extCommand, 1, currentLBA))
         {
             // issue a write command
-            if (SUCCESS != ata_Write(device, currentLBA, false, writeData, device->drive_info.deviceBlockSize))
+            if (SUCCESS != ata_Write(device, currentLBA, false, writeData, get_Device_BlockSize(device)))
             {
                 ret = FAILURE;
                 set_Sense_Data_For_Translation(scsiIoCtx->psense, scsiIoCtx->senseDataSize, SENSE_KEY_MEDIUM_ERROR,
@@ -6632,7 +6631,7 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(const tDevice* 
                 uint32_t paddedLength = ((allocationLength + 511) / 512) * LEGACY_DRIVE_SEC_SIZE;
                 // allocate memory and pad data....then copy back the amount that was requested
                 uint8_t* tempSecurityMemory = C_CAST(
-                    uint8_t*, safe_calloc_aligned(paddedLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t*, safe_calloc_aligned(paddedLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                 if (!tempSecurityMemory)
                 {
                     return MEMORY_FAILURE;
@@ -7038,7 +7037,7 @@ static eReturnValues translate_SCSI_Security_Protocol_Out_Command(const tDevice*
                 uint32_t paddedLength = ((transferLength + 511) / 512);
                 // allocate memory and pad data....then copy back the amount that was requested
                 uint8_t* tempSecurityMemory = C_CAST(
-                    uint8_t*, safe_calloc_aligned(paddedLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t*, safe_calloc_aligned(paddedLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                 if (!tempSecurityMemory)
                 {
                     return MEMORY_FAILURE;
@@ -8135,7 +8134,7 @@ static eReturnValues translate_SCSI_Send_Diagnostic_Command(const tDevice* devic
                 }
                 else
                 {
-                    if (SUCCESS != ata_Read_Verify_Sectors(device, extCommand, 1, device->drive_info.deviceMaxLba))
+                    if (SUCCESS != ata_Read_Verify_Sectors(device, extCommand, 1, return_Device_MaxLba(device)))
                     {
                         ret = FAILURE;
                         set_Sense_Data_For_Translation(
@@ -8146,7 +8145,7 @@ static eReturnValues translate_SCSI_Send_Diagnostic_Command(const tDevice* devic
                     {
                         uint64_t randomLba = UINT64_C(0);
                         seed_64(12432545);
-                        randomLba = random_Range_64(0, device->drive_info.deviceMaxLba);
+                        randomLba = random_Range_64(0, return_Device_MaxLba(device));
                         if (SUCCESS != ata_Read_Verify_Sectors(device, extCommand, 1, randomLba))
                         {
                             ret = FAILURE;
@@ -8975,7 +8974,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
                         extCommand = true;
                     }
                     seed_64(12432545);
-                    randomLba = random_Range_64(0, device->drive_info.deviceMaxLba);
+                    randomLba = random_Range_64(0, return_Device_MaxLba(device));
                     if (SUCCESS != ata_Read_Verify_Sectors(device, extCommand, 1, randomLba) &&
                         !immediate) // uhh....the spec  doens't mention what happens if this command fails...I'll return
                                     // an error - TJE
@@ -9064,7 +9063,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
                     extCommand = true;
                 }
                 seed_64(1985733);
-                randomLba = random_Range_64(0, device->drive_info.deviceMaxLba);
+                randomLba = random_Range_64(0, return_Device_MaxLba(device));
                 if (SUCCESS != ata_Read_Verify_Sectors(device, extCommand, 1, randomLba) && !immediate)
                 {
                     ret = ABORTED;
@@ -9343,7 +9342,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
                         extCommand = true;
                     }
                     seed_64(1985733);
-                    randomLba = random_Range_64(0, device->drive_info.deviceMaxLba);
+                    randomLba = random_Range_64(0, return_Device_MaxLba(device));
                     if (SUCCESS != ata_Read_Verify_Sectors(device, extCommand, 1, randomLba) &&
                         !immediate) // uhh....the spec  doens't mention what happens if this command fails...I'll return
                                     // an error - TJE
@@ -9426,7 +9425,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
                     extCommand = true;
                 }
                 seed_64(189843);
-                randomLba = random_Range_64(0, device->drive_info.deviceMaxLba);
+                randomLba = random_Range_64(0, return_Device_MaxLba(device));
                 if (SUCCESS != ata_Read_Verify_Sectors(device, extCommand, 1, randomLba) && !immediate)
                 {
                     ret = ABORTED;
@@ -9556,7 +9555,7 @@ static eReturnValues translate_SCSI_Start_Stop_Unit_Command(const tDevice* devic
                             extCommand = true;
                         }
                         seed_64(4894653);
-                        randomLba = random_Range_64(0, device->drive_info.deviceMaxLba);
+                        randomLba = random_Range_64(0, return_Device_MaxLba(device));
                         if (SUCCESS != ata_Read_Verify_Sectors(device, extCommand, 1, randomLba) && !immediate)
                         {
                             ret = ABORTED;
@@ -11578,7 +11577,7 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(const tDevice*
                 parameterLength = ptrData[parameterDataOffset + 3];
                 hostLogData     = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(SIZE_T_C(16) * LEGACY_DRIVE_SEC_SIZE,
                                                                                    sizeof(uint8_t),
-                                                                                   device->os_info.minimumAlignment));
+                                                                                   get_Device_IO_Minimum_Alignment(device)));
                 if (hostLogData == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
@@ -11972,7 +11971,7 @@ static eReturnValues translate_SCSI_Unmap_Command(const tDevice* device, ScsiIoC
             uint8_t* trimBuffer = C_CAST(
                 uint8_t*, safe_calloc_aligned(
                               uint16_to_sizet(trimBufferSize) * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t),
-                              device->os_info.minimumAlignment)); // allocate the max size the device supports...we'll
+                              get_Device_IO_Minimum_Alignment(device))); // allocate the max size the device supports...we'll
                                                                   // fill in as much as we need to
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
             bool     useXL                  = device->drive_info.softSATFlags.dataSetManagementXLSupported;
@@ -12002,7 +12001,7 @@ static eReturnValues translate_SCSI_Unmap_Command(const tDevice* device, ScsiIoC
             trimBuffer = C_CAST(
                 uint8_t*,
                 calloc_aligned(uint16_to_sizet(trimBufferSize) * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t),
-                               device->os_info.minimumAlignment)); // allocate the max size the device supports...we'll
+                               get_Device_IO_Minimum_Alignment(device))); // allocate the max size the device supports...we'll
                                                                    // fill in as much as we need to
 
             if (!trimBuffer)
@@ -12039,7 +12038,7 @@ static eReturnValues translate_SCSI_Unmap_Command(const tDevice* device, ScsiIoC
                 // loop)
                 numberOfLBAsToTRIM += unmapNumberOfLogicalBlocks;
                 // check we aren't trying to go over the end of the drive
-                if (unmapLogicalBlockAddress > device->drive_info.deviceMaxLba)
+                if (unmapLogicalBlockAddress > return_Device_MaxLba(device))
                 {
                     fieldPointer = unmapBlockDescriptorIter + 0;
                     bitPointer   = UINT8_C(7);
@@ -12052,7 +12051,7 @@ static eReturnValues translate_SCSI_Unmap_Command(const tDevice* device, ScsiIoC
                     exitLoop = true;
                     break;
                 }
-                else if (unmapLogicalBlockAddress + unmapNumberOfLogicalBlocks > device->drive_info.deviceMaxLba)
+                else if (unmapLogicalBlockAddress + unmapNumberOfLogicalBlocks > return_Device_MaxLba(device))
                 {
                     fieldPointer = unmapBlockDescriptorIter + 8;
                     bitPointer   = UINT8_C(7);
@@ -13555,35 +13554,35 @@ static eReturnValues translate_SCSI_Mode_Sense_Command(const tDevice* device, Sc
         if (longLBABit)
         {
             // 16 byte long format
-            dataBlockDescriptor[0]  = M_Byte7(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[1]  = M_Byte6(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[2]  = M_Byte5(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[3]  = M_Byte4(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[4]  = M_Byte3(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[5]  = M_Byte2(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[6]  = M_Byte1(device->drive_info.deviceMaxLba);
-            dataBlockDescriptor[7]  = M_Byte0(device->drive_info.deviceMaxLba);
+            dataBlockDescriptor[0]  = M_Byte7(return_Device_MaxLba(device));
+            dataBlockDescriptor[1]  = M_Byte6(return_Device_MaxLba(device));
+            dataBlockDescriptor[2]  = M_Byte5(return_Device_MaxLba(device));
+            dataBlockDescriptor[3]  = M_Byte4(return_Device_MaxLba(device));
+            dataBlockDescriptor[4]  = M_Byte3(return_Device_MaxLba(device));
+            dataBlockDescriptor[5]  = M_Byte2(return_Device_MaxLba(device));
+            dataBlockDescriptor[6]  = M_Byte1(return_Device_MaxLba(device));
+            dataBlockDescriptor[7]  = M_Byte0(return_Device_MaxLba(device));
             dataBlockDescriptor[8]  = RESERVED;
             dataBlockDescriptor[9]  = RESERVED;
             dataBlockDescriptor[10] = RESERVED;
             dataBlockDescriptor[11] = RESERVED;
-            dataBlockDescriptor[12] = M_Byte3(device->drive_info.deviceBlockSize);
-            dataBlockDescriptor[13] = M_Byte2(device->drive_info.deviceBlockSize);
-            dataBlockDescriptor[14] = M_Byte1(device->drive_info.deviceBlockSize);
-            dataBlockDescriptor[15] = M_Byte0(device->drive_info.deviceBlockSize);
+            dataBlockDescriptor[12] = M_Byte3(get_Device_BlockSize(device));
+            dataBlockDescriptor[13] = M_Byte2(get_Device_BlockSize(device));
+            dataBlockDescriptor[14] = M_Byte1(get_Device_BlockSize(device));
+            dataBlockDescriptor[15] = M_Byte0(get_Device_BlockSize(device));
         }
         else
         {
             // 8 byte short format
-            uint32_t maxLBA        = C_CAST(uint32_t, M_Min(UINT32_MAX, device->drive_info.deviceMaxLba));
+            uint32_t maxLBA        = C_CAST(uint32_t, M_Min(UINT32_MAX, return_Device_MaxLba(device)));
             dataBlockDescriptor[0] = M_Byte3(maxLBA);
             dataBlockDescriptor[1] = M_Byte2(maxLBA);
             dataBlockDescriptor[2] = M_Byte1(maxLBA);
             dataBlockDescriptor[3] = M_Byte0(maxLBA);
             dataBlockDescriptor[4] = RESERVED;
-            dataBlockDescriptor[5] = M_Byte2(device->drive_info.deviceBlockSize);
-            dataBlockDescriptor[6] = M_Byte1(device->drive_info.deviceBlockSize);
-            dataBlockDescriptor[7] = M_Byte0(device->drive_info.deviceBlockSize);
+            dataBlockDescriptor[5] = M_Byte2(get_Device_BlockSize(device));
+            dataBlockDescriptor[6] = M_Byte1(get_Device_BlockSize(device));
+            dataBlockDescriptor[7] = M_Byte0(get_Device_BlockSize(device));
         }
     }
     switch (pageCode)
@@ -15018,7 +15017,7 @@ static eReturnValues translate_SCSI_Mode_Select_Command(const tDevice* device, S
                                             scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 13],
                                             scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 14],
                                             scsiIoCtx->pdata[MODE_PARAMETER_HEADER_10_LEN + 15]);
-                    if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
+                    if (numberOfLogicalBlocks != return_Device_MaxLba(device))
                     {
                         bitPointer   = UINT8_C(7);
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 0;
@@ -15055,7 +15054,7 @@ static eReturnValues translate_SCSI_Mode_Select_Command(const tDevice* device, S
                             device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                         return NOT_SUPPORTED;
                     }
-                    if (logicalBlockLength != device->drive_info.deviceBlockSize)
+                    if (logicalBlockLength != get_Device_BlockSize(device))
                     {
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 12;
                         bitPointer   = UINT8_C(7);
@@ -15074,7 +15073,7 @@ static eReturnValues translate_SCSI_Mode_Select_Command(const tDevice* device, S
                                                                          scsiIoCtx->pdata[10], scsiIoCtx->pdata[11]);
                     uint32_t logicalBlockLength =
                         M_BytesTo4ByteValue(0, scsiIoCtx->pdata[13], scsiIoCtx->pdata[14], scsiIoCtx->pdata[15]);
-                    if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
+                    if (numberOfLogicalBlocks != return_Device_MaxLba(device))
                     {
                         bitPointer   = UINT8_C(7);
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 0;
@@ -15106,7 +15105,7 @@ static eReturnValues translate_SCSI_Mode_Select_Command(const tDevice* device, S
                             device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                         return NOT_SUPPORTED;
                     }
-                    if (logicalBlockLength != device->drive_info.deviceBlockSize)
+                    if (logicalBlockLength != get_Device_BlockSize(device))
                     {
                         fieldPointer = MODE_PARAMETER_HEADER_10_LEN + 5;
                         bitPointer   = UINT8_C(7);
@@ -15129,7 +15128,7 @@ static eReturnValues translate_SCSI_Mode_Select_Command(const tDevice* device, S
                 uint32_t logicalBlockLength = M_BytesTo4ByteValue(0, scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 5],
                                                                   scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 6],
                                                                   scsiIoCtx->pdata[MODE_PARAMETER_HEADER_6_LEN + 7]);
-                if (numberOfLogicalBlocks != device->drive_info.deviceMaxLba)
+                if (numberOfLogicalBlocks != return_Device_MaxLba(device))
                 {
                     bitPointer   = UINT8_C(7);
                     fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 0;
@@ -15161,7 +15160,7 @@ static eReturnValues translate_SCSI_Mode_Select_Command(const tDevice* device, S
                         device->drive_info.softSATFlags.senseDataDescriptorFormat, senseKeySpecificDescriptor, 1);
                     return NOT_SUPPORTED;
                 }
-                if (logicalBlockLength != device->drive_info.deviceBlockSize)
+                if (logicalBlockLength != get_Device_BlockSize(device))
                 {
                     fieldPointer = MODE_PARAMETER_HEADER_6_LEN + 5;
                     bitPointer   = UINT8_C(7);
@@ -15370,14 +15369,14 @@ static eReturnValues translate_SCSI_Zone_Management_In_Command(const tDevice* de
     {
         dataBufLength = (allocationLength + 511) / 512;
         dataBuf       = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         localMemory = true;
     }
     else if (allocationLength == 0)
     {
         dataBufLength = 512;
         dataBuf       = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (!dataBuf)
         {
             return MEMORY_FAILURE;
@@ -15480,13 +15479,13 @@ static eReturnValues translate_SCSI_Zone_Management_Out_Command(const tDevice* d
     //{
     //     dataBufLength = (allocationLength + 511) / 512;
     //     dataBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t),
-    //     device->os_info.minimumAlignment)); localMemory = true;
+    //     get_Device_IO_Minimum_Alignment(device))); localMemory = true;
     // }
     // else if (allocationLength == 0)
     //{
     //     dataBufLength = 512;
     //     dataBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(dataBufLength, sizeof(uint8_t),
-    //     device->os_info.minimumAlignment)); localMemory = true;
+    //     get_Device_IO_Minimum_Alignment(device))); localMemory = true;
     // }
     // else
     //{
