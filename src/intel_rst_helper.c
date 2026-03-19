@@ -430,7 +430,7 @@ bool supports_Intel_Firmware_Download(const tDevice* device)
     {
         uint32_t flags      = UINT32_C(0);
         uint32_t returnCode = UINT32_C(0);
-        if (device->drive_info.drive_type == NVME_DRIVE)
+        if (get_Device_DriveType(device) == NVME_DRIVE)
         {
             flags |= INTEL_FIRMWARE_REQUEST_FLAG_CONTROLLER;
         }

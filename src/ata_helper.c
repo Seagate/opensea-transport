@@ -1849,7 +1849,7 @@ static M_INLINE eReturnValues get_Identify_Data_impl(tDevice* M_NONNULL device,
 {
     eReturnValues ret = FAILURE;
 
-    if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE)
+    if (get_Device_DriveType(device) == ATAPI_DRIVE || get_Device_DriveType(device) == LEGACY_TAPE_DRIVE)
     {
         if (SUCCESS == ata_Identify_Packet_Device(device, ptrData, dataSize) && is_Buffer_Non_Zero(ptrData, dataSize))
         {
@@ -1868,7 +1868,7 @@ static M_INLINE eReturnValues get_Identify_Data_impl(tDevice* M_NONNULL device,
                 is_Buffer_Non_Zero(ptrData, dataSize))
             {
                 ret                           = SUCCESS;
-                device->drive_info.drive_type = ATAPI_DRIVE;
+                set_Device_DriveType(device, ATAPI_DRIVE);
             }
         }
     }
@@ -1888,8 +1888,8 @@ static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
     eReturnValues ret           = NOT_SUPPORTED;
     bool          noMoreRetries = false;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, iddata, LEGACY_DRIVE_SEC_SIZE);
-    if ((device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE ||
-         device->drive_info.media_type == MEDIA_OPTICAL || device->drive_info.media_type == MEDIA_TAPE) &&
+    if ((get_Device_DriveType(device) == ATAPI_DRIVE || get_Device_DriveType(device) == LEGACY_TAPE_DRIVE ||
+         get_Device_MediaType(device) == MEDIA_OPTICAL || get_Device_MediaType(device)== MEDIA_TAPE) &&
         !(device->drive_info.passThroughHacks.hacksSetByReportedID ||
           device->drive_info.passThroughHacks.someHacksSetByOSDiscovery))
     {
@@ -1945,7 +1945,7 @@ static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
                         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
                         noMoreRetries                                                   = false;
                     }
-                    else if (device->drive_info.interface_type == USB_INTERFACE &&
+                    else if (get_Device_InterfaceType(device) == USB_INTERFACE &&
                              !device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition &&
                              device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
                     {
@@ -1969,7 +1969,7 @@ static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
                     }
                 }
             }
-            if (device->drive_info.interface_type != IDE_INTERFACE)
+            if (get_Device_InterfaceType(device) != IDE_INTERFACE)
             {
                 // This can help prevent overwhelming some adapters when multiple commands fail causing unnecessary
                 // delays Only when not IDE Interface since that is only set at the low-level when using a native ATA
@@ -2006,7 +2006,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         uint16_t* fillSectorAlignment    = M_NULLPTR;
         uint64_t* fillMaxLba             = M_NULLPTR;
 
-        if (device->drive_info.interface_type == IDE_INTERFACE &&
+        if (get_Device_InterfaceType(device) == IDE_INTERFACE &&
             device->drive_info.scsiVersion == SCSI_VERSION_NO_STANDARD)
         {
             device->drive_info.scsiVersion =
@@ -2024,12 +2024,12 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
 
         if (le16_to_host(ident_word[0]) & BIT15)
         {
-            device->drive_info.drive_type = ATAPI_DRIVE;
-            device->drive_info.media_type = MEDIA_OPTICAL;
+            set_Device_DriveType(device, ATAPI_DRIVE);
+            set_Device_MediaType(device, MEDIA_OPTICAL);
         }
         else
         {
-            device->drive_info.drive_type = ATA_DRIVE;
+            set_Device_DriveType(device, ATA_DRIVE);
         }
 
         if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[1])) &&
@@ -2057,8 +2057,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         // don't touch the drive info that was filled in by the SCSI commands since that is how the OS talks to it for
         // read/write and we don't want to disrupt that Everything else is some sort of SAT interface (UDS, SAS,
         // IEEE1394, etc) so we want to fill in bridge info here
-        if ((device->drive_info.interface_type != IDE_INTERFACE) &&
-            (device->drive_info.interface_type != RAID_INTERFACE))
+        if ((get_Device_InterfaceType(device) != IDE_INTERFACE) &&
+            (get_Device_InterfaceType(device) != RAID_INTERFACE))
         {
             device->drive_info.bridge_info.isValid = true;
             fillWWN                                = &device->drive_info.bridge_info.childWWN;
@@ -2082,8 +2082,8 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         }
         device->drive_info.numberOfLUs = 1;
 
-        if ((device->drive_info.interface_type != IDE_INTERFACE) &&
-            (device->drive_info.interface_type != RAID_INTERFACE))
+        if ((get_Device_InterfaceType(device) != IDE_INTERFACE) &&
+            (get_Device_InterfaceType(device) != RAID_INTERFACE))
         {
             fill_ATA_Strings_From_Identify_Data(identifyData, device->drive_info.bridge_info.childDriveMN,
                                                 device->drive_info.bridge_info.childDriveSN,
@@ -2405,7 +2405,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
 
         if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[217])) && le16_to_host(ident_word[217]) == 0x0001)
         {
-            device->drive_info.media_type = MEDIA_SSD;
+            set_Device_MediaType(device, MEDIA_SSD);
         }
 
         if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[222])))
@@ -2442,7 +2442,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
 
         // Special case for SSD detection. One of these SSDs didn't set the media_type to SSD
         // but it is an SSD. So this match will catch it when this happens. It should be uncommon to find though -TJE
-        if (device->drive_info.media_type != MEDIA_SSD &&
+        if (get_Device_MediaType(device) != MEDIA_SSD &&
             safe_strlen(device->drive_info.bridge_info.childDriveMN) > 0 &&
             ((strstr(device->drive_info.bridge_info.childDriveMN, "Seagate SSD") != M_NULLPTR) ||
              (strstr(device->drive_info.bridge_info.childDriveMN, "Rugged SSD") != M_NULLPTR)) &&
@@ -2450,7 +2450,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             ((strstr(device->drive_info.bridge_info.childDriveFW, "UHFS") != M_NULLPTR) ||
              (strstr(device->drive_info.bridge_info.childDriveFW, "ULFS") != M_NULLPTR)))
         {
-            device->drive_info.media_type = MEDIA_SSD;
+            set_Device_MediaType(device, MEDIA_SSD);
         }
 
         if (get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_NO_DMA &&
@@ -2491,14 +2491,14 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe &&
             (!device->drive_info.ata_Options.dmaSupported &&
              get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 &&
-             device->drive_info.drive_type != ATAPI_DRIVE))
+             get_Device_DriveType(device) != ATAPI_DRIVE))
         {
             // This means it's an emulated NVMe device where only the MN/SN/FW were reported.
-            device->drive_info.drive_type = SCSI_DRIVE;
+            set_Device_DriveType(device, SCSI_DRIVE);
         }
         else if ((!device->drive_info.ata_Options.dmaSupported &&
                   get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_NO_DMA && *fillMaxLba == 0 &&
-                  device->drive_info.drive_type != ATAPI_DRIVE) &&
+                  get_Device_DriveType(device) != ATAPI_DRIVE) &&
                  word84Valid == false && word87Valid == false && words119to120Valid == false &&
                  sanitizeSupported == false && smartSupported == false)
         {
@@ -2512,7 +2512,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe = true;
         }
 
-        if (device->drive_info.interface_type == SCSI_INTERFACE)
+        if (get_Device_InterfaceType(device) == SCSI_INTERFACE)
         {
             // for the SCSI interface, copy this information back to the main drive info since SCSI translated info may
             // truncate these fields and we don't want that
@@ -2534,9 +2534,9 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
     {
 #ifdef _DEBUG
         printf("Quiting device discovery early for %s per DO_NOT_WAKE_DRIVE\n", device->drive_info.serialNumber);
-        printf("Drive type: %d\n", device->drive_info.drive_type);
-        printf("Interface type: %d\n", device->drive_info.interface_type);
-        printf("Media type: %d\n", device->drive_info.media_type);
+        printf("Drive type: %d\n", get_Device_DriveType(device));
+        printf("Interface type: %d\n", get_Device_InterfaceType(device));
+        printf("Media type: %d\n", get_Device_MediaType(device));
         printf("SN: %s\n", device->drive_info.serialNumber);
         printf("%s <--\n", __FUNCTION__);
 #endif
@@ -2824,9 +2824,9 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
         }
     }
 #ifdef _DEBUG
-    printf("Drive type: %d\n", device->drive_info.drive_type);
-    printf("Interface type: %d\n", device->drive_info.interface_type);
-    printf("Media type: %d\n", device->drive_info.media_type);
+    printf("Drive type: %d\n", get_Device_DriveType(device));
+    printf("Interface type: %d\n", get_Device_InterfaceType(device));
+    printf("Media type: %d\n", get_Device_MediaType(device));
     printf("SN: %s\n", device->drive_info.serialNumber);
     printf("%s <--\n", __FUNCTION__);
 #endif

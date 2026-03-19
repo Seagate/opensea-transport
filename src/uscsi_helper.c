@@ -151,10 +151,10 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         device->os_info.osType = OS_SOLARIS;
 
         // uscsi documentation: http://docs.oracle.com/cd/E23824_01/html/821-1475/uscsi-7i.html
-        device->drive_info.interface_type = SCSI_INTERFACE;
-        device->drive_info.drive_type     = SCSI_DRIVE;
-        if (device->drive_info.interface_type == USB_INTERFACE ||
-            device->drive_info.interface_type == IEEE_1394_INTERFACE)
+        set_Device_InterfaceType(device, SCSI_INTERFACE);
+        set_Device_DriveType(device, SCSI_DRIVE);
+        if (get_Device_InterfaceType(device) == USB_INTERFACE ||
+            get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
         {
             // TODO: Actually get the VID and PID set before calling this.
             setup_Passthrough_Hacks_By_ID(device);
@@ -209,7 +209,7 @@ eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
 eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
-    switch (scsiIoCtx->device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(scsiIoCtx->device))
     {
     case SCSI_INTERFACE:
     case IDE_INTERFACE:
@@ -237,7 +237,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
+            printf("Target Device does not have a valid interface %d\n", get_Device_InterfaceType(scsiIoCtx->device));
         }
     }
 

@@ -1293,7 +1293,7 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
 
     if (device != M_NULLPTR)
     {
-        device->drive_info.drive_type     = sysFsInfo.drive_type;
+        set_Device_DriveType(device, sysFsInfo.drive_type);
         device->drive_info.interface_type = sysFsInfo.interface_type;
         safe_memcpy(&device->drive_info.adapter_info, sizeof(adapterInfo), &sysFsInfo.adapter_info,
                     sizeof(adapterInfo));
@@ -1622,9 +1622,9 @@ static eReturnValues linux_Get_NVMe_Device(tDevice* device, const char* deviceHa
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = SUCCESS;
     // Do NVMe specific setup and enumeration
-    device->drive_info.drive_type     = NVME_DRIVE;
-    device->drive_info.interface_type = NVME_INTERFACE;
-    device->drive_info.media_type     = MEDIA_NVM;
+    set_Device_DriveType(device, NVME_DRIVE);
+    set_Device_InterfaceType(device, NVME_INTERFACE);
+    set_Device_MediaType(device, MEDIA_NVM);
     int ioctlResult                   = ioctl(device->os_info.fd, NVME_IOCTL_ID);
     if (ioctlResult < 0)
     {
@@ -1704,9 +1704,9 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* device, const char* deviceHa
                                 (device->os_info.sgDriverVersion.minorVersion * 100));
 
         // set scsi interface and scsi drive until we know otherwise
-        device->drive_info.drive_type     = SCSI_DRIVE;
-        device->drive_info.interface_type = SCSI_INTERFACE;
-        device->drive_info.media_type     = MEDIA_HDD;
+        set_Device_DriveType(device, SCSI_DRIVE);
+        set_Device_InterfaceType(device, SCSI_INTERFACE);
+        set_Device_MediaType(device, MEDIA_HDD);
         // now have the device information fields set
 #if defined(_DEBUG)
         print_str("Setting interface, drive type, secondary handles\n");
@@ -1790,9 +1790,9 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
     if (M_Byte0(device->dFlags) == OPEN_HANDLE_ONLY)
     {
         // set scsi interface and scsi drive until we know otherwise
-        device->drive_info.drive_type     = SCSI_DRIVE;
-        device->drive_info.interface_type = SCSI_INTERFACE;
-        device->drive_info.media_type     = MEDIA_HDD;
+        set_Device_DriveType(device, SCSI_DRIVE);
+        set_Device_InterfaceType(device, SCSI_INTERFACE);
+        set_Device_MediaType(device, MEDIA_HDD);
         set_Device_Fields_From_Handle(genericHandle, device);
         setup_Passthrough_Hacks_By_ID(device);
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondHandleValid
@@ -1826,9 +1826,9 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* device)
 
 #if defined(_DEBUG)
     print_str("\nsg helper\n");
-    printf("Drive type: %d\n", device->drive_info.drive_type);
-    printf("Interface type: %d\n", device->drive_info.interface_type);
-    printf("Media type: %d\n", device->drive_info.media_type);
+    printf("Drive type: %d\n", get_Device_DriveType(device));
+    printf("Interface type: %d\n", get_Device_InterfaceType(device));
+    printf("Media type: %d\n", get_Device_MediaType(device));
 #endif
     return ret;
 }
@@ -1907,7 +1907,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
 #ifdef _DEBUG
     printf("-->%s \n", __FUNCTION__);
 #endif
-    switch (scsiIoCtx->device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(scsiIoCtx->device))
     {
     case NVME_INTERFACE:
         return sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
@@ -1934,7 +1934,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
+            printf("Target Device does not have a valid interface %d\n", get_Device_InterfaceType(scsiIoCtx->device));
         }
         break;
     }

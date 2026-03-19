@@ -973,7 +973,7 @@ void print_Field_Replacable_Unit_Code(const tDevice* device, const char* fruMess
     // we'll only print out a translatable string for seagate drives since fru is vendor specific
 
     if (is_Seagate(device, false) == true && fruMessage != M_NULLPTR && strlen(fruMessage) > 0 &&
-        device->drive_info.interface_type == SCSI_INTERFACE)
+        get_Device_InterfaceType(device) == SCSI_INTERFACE)
     {
         printf("FRU: %" PRIX8 "h = %s\n", fruCode, fruMessage);
     }
@@ -2154,15 +2154,15 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
                                   // should use these.
     {
         *issueSATIdentify             = true;
-        device->drive_info.media_type = MEDIA_HDD;
-        device->drive_info.drive_type = ATA_DRIVE;
+        set_Device_MediaType(device, MEDIA_HDD);
+        set_Device_DriveType(device, ATA_DRIVE);
     }
     else if (ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATAPI_IDENTIFY)
     {
         *issueSATIdentify = false; // Do not read it since we want to treat ATAPI as SCSI/with SCSI commands
                                    // (at least for now)-TJE
-        device->drive_info.media_type = MEDIA_OPTICAL;
-        device->drive_info.drive_type = ATAPI_DRIVE;
+        set_Device_MediaType(device, MEDIA_OPTICAL);
+        set_Device_DriveType(device, ATAPI_DRIVE);
     }
     else
     {
@@ -2179,14 +2179,14 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device)
 {
     eReturnValues ret              = FAILURE;
     bool          issueSATIdentify = true; // default to ALWAYS reading this unless something else says not to. - TJE
-    if (device->drive_info.interface_type == IDE_INTERFACE || device->drive_info.interface_type == USB_INTERFACE ||
-        device->drive_info.interface_type == IEEE_1394_INTERFACE)
+    if (get_Device_InterfaceType(device) == IDE_INTERFACE || get_Device_InterfaceType(device)== USB_INTERFACE ||
+        get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
     {
         // always do this on IDE_INTERFACE since we know it will work here. Doesn't matter if the VPD page read fails or
         // not
         issueSATIdentify = true;
     }
-    if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE)
+    if (get_Device_DriveType(device) == ATAPI_DRIVE || get_Device_DriveType(device) == LEGACY_TAPE_DRIVE)
     {
         // DO NOT try a SAT identify on these devices if we already know what they are. These should be treated as SCSI
         // since they are either SCSI or ATA packet devices
@@ -2218,9 +2218,9 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device)
                 issueSATIdentify = true;
             }
         }
-        else if (device->drive_info.interface_type == MMC_INTERFACE ||
-                 device->drive_info.interface_type == NVME_INTERFACE ||
-                 device->drive_info.interface_type == SD_INTERFACE)
+        else if (get_Device_InterfaceType(device) == MMC_INTERFACE ||
+                 get_Device_InterfaceType(device) == NVME_INTERFACE ||
+                 get_Device_InterfaceType(device) == SD_INTERFACE)
         {
             return NOT_SUPPORTED;
         }
@@ -2336,7 +2336,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             {
                 passthroughTypeSet                                  = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
-                device->drive_info.media_type                       = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 // this should prevent sending it bad commands!
             }
         }
@@ -2344,7 +2344,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
         {
             passthroughTypeSet                                  = true;
             device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
-            device->drive_info.media_type                       = MEDIA_SSM_FLASH;
+            set_Device_MediaType(device, MEDIA_SSM_FLASH);
             // this should prevent sending it bad commands!
         }
         else if (strcmp(vendorID, "SEAGATE") ==
@@ -2357,9 +2357,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
                 passthroughTypeSet                                         = true;
                 device->drive_info.passThroughHacks.passthroughType        = ATA_PASSTHROUGH_NEC;
                 device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
-                if (device->drive_info.interface_type != USB_INTERFACE)
+                if (get_Device_InterfaceType(device) != USB_INTERFACE)
                 {
-                    device->drive_info.interface_type = USB_INTERFACE;
+                    set_Device_InterfaceType(device, USB_INTERFACE);
                 }
             }
         }
@@ -2371,9 +2371,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
             device->drive_info.passThroughHacks.turfValue =
                 TURF_LIMIT + 1; // Doing this generically here for now to force this!
-            if (device->drive_info.interface_type != USB_INTERFACE)
+            if (get_Device_InterfaceType(device) != USB_INTERFACE)
             {
-                device->drive_info.interface_type = USB_INTERFACE;
+                set_Device_InterfaceType(device, USB_INTERFACE);
             }
             // known device specific hacks
             if (strcmp(revision, "PMAP") == 0)
@@ -2435,9 +2435,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
             }
-            if (device->drive_info.interface_type != USB_INTERFACE)
+            if (get_Device_InterfaceType(device) != USB_INTERFACE)
             {
-                device->drive_info.interface_type = USB_INTERFACE;
+                set_Device_InterfaceType(device, USB_INTERFACE);
             }
         }
         else
@@ -2525,9 +2525,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             {
                 passthroughTypeSet                                  = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
-                if (device->drive_info.interface_type != USB_INTERFACE)
+                if (get_Device_InterfaceType(device) != USB_INTERFACE)
                 {
-                    device->drive_info.interface_type = USB_INTERFACE;
+                    set_Device_InterfaceType(device, USB_INTERFACE);
                 }
             }
         }
@@ -2581,9 +2581,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
                 safe_memset(vendorID, INQ_DATA_T10_VENDOR_ID_LEN + 1, 0, INQ_DATA_T10_VENDOR_ID_LEN);
                 passthroughTypeSet                                  = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
-                if (device->drive_info.interface_type != USB_INTERFACE)
+                if (get_Device_InterfaceType(device) != USB_INTERFACE)
                 {
-                    device->drive_info.interface_type = USB_INTERFACE;
+                    set_Device_InterfaceType(device, USB_INTERFACE);
                 }
             }
         }
@@ -2745,7 +2745,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         {
         case 0:
             version = SCSI_VERSION_NO_STANDARD;
-            if (device->drive_info.interface_type != USB_INTERFACE &&
+            if (get_Device_InterfaceType(device) != USB_INTERFACE &&
                 !device->drive_info.passThroughHacks.hacksSetByReportedID)
             {
                 checkForSAT =
@@ -2756,7 +2756,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             break;
         case 0x81:
             version = SCSI_VERSION_SCSI; // changing to 1 for SCSI
-            if (device->drive_info.interface_type != USB_INTERFACE &&
+            if (get_Device_InterfaceType(device) != USB_INTERFACE &&
                 !device->drive_info.passThroughHacks.hacksSetByReportedID)
             {
                 checkForSAT =
@@ -2793,34 +2793,34 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         switch (peripheralDeviceType)
         {
         case PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE:
-            device->drive_info.media_type =
-                MEDIA_HDD; // this may not be correct because it may be SSD or USB Flash drive which use this same code
+             // this may not be correct because it may be SSD or USB Flash drive which use this same code
+            set_Device_MediaType(device, MEDIA_HDD);
             break;
         case PERIPHERAL_HOST_MANAGED_ZONED_BLOCK_DEVICE:
-            device->drive_info.media_type =
-                MEDIA_HDD; // this may not be correct because it may be SSD or USB Flash drive which use this same code
+             // this may not be correct because it may be SSD or USB Flash drive which use this same code
+            set_Device_MediaType(device, MEDIA_HDD);
             device->drive_info.zonedType = ZONED_TYPE_HOST_MANAGED;
             break;
         case PERIPHERAL_SEQUENTIAL_ACCESS_BLOCK_DEVICE:
-            device->drive_info.media_type = MEDIA_TAPE;
+            set_Device_MediaType(device, MEDIA_TAPE);
             checkForSAT                   = false;
             break;
         case PERIPHERAL_WRITE_ONCE_DEVICE:
         case PERIPHERAL_CD_DVD_DEVICE:
         case PERIPHERAL_OPTICAL_MEMORY_DEVICE:
         case PERIPHERAL_OPTICAL_CARD_READER_WRITER_DEVICE:
-            device->drive_info.media_type = MEDIA_OPTICAL;
+            set_Device_MediaType(device, MEDIA_OPTICAL);
             checkForSAT                   = false;
             break;
         case PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE:
-            device->drive_info.media_type = MEDIA_HDD;
+            set_Device_MediaType(device, MEDIA_HDD);
             checkForSAT                   = false;
             break;
         case PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE: // some USB flash drives show up as this according to the USB
                                                          // mass storage specification...but unfortunately all the ones
                                                          // I've tested show up as Direct Access Block Device just like
                                                          // an HDD :(
-            device->drive_info.media_type = MEDIA_SSM_FLASH;
+            set_Device_MediaType(device, MEDIA_SSM_FLASH);
             if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
             {
                 checkForSAT = false;
@@ -2852,7 +2852,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         default:
             readCapacity                  = false;
             checkForSAT                   = false;
-            device->drive_info.media_type = MEDIA_UNKNOWN;
+            set_Device_MediaType(device, MEDIA_UNKNOWN);
             break;
         }
 
@@ -2888,21 +2888,21 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         }
 
         // special USB detection case. If not already USB interface, do a few more checks to get the interface correct
-        if (device->drive_info.interface_type == SCSI_INTERFACE)
+        if (get_Device_InterfaceType(device) == SCSI_INTERFACE)
         {
             if (foundUSBStandardDescriptor)
             {
-                device->drive_info.interface_type = USB_INTERFACE;
+                set_Device_InterfaceType(device, USB_INTERFACE);
             }
 
             // Only rely on this as a last resort. Try using version descriptors when possible
             // NOTE: This is different from SAS where the ID is in all CAPS, which makes this identification possible.
             // TODO: LaCie? Need to make sure this only catches USB and not something else like thunderbolt
-            if (device->drive_info.interface_type == SCSI_INTERFACE)
+            if (get_Device_InterfaceType(device) == SCSI_INTERFACE)
             {
                 if (is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident))
                 {
-                    device->drive_info.interface_type = USB_INTERFACE;
+                    set_Device_InterfaceType(device, USB_INTERFACE);
                 }
             }
         }
@@ -2917,7 +2917,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             // check that response format is 2 (or higher). SAT spec says the response format should be set to 2
             // Not checking this on USB since some adapters set this purposely to avoid certain commands, BUT DO support
             // SAT
-            if (M_Nibble0(inq_buf[3]) < 2 && device->drive_info.interface_type != USB_INTERFACE)
+            if (M_Nibble0(inq_buf[3]) < 2 && get_Device_InterfaceType(device) != USB_INTERFACE)
             {
                 checkForSAT = false;
             }
@@ -2983,7 +2983,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             // will be most useful. Not sure about the others, but I doubt many controllers will set them...certainly no
             // USB device will.
             if ((inq_buf[6] & BIT5 || inq_buf[7] & BIT0) &&
-                (device->drive_info.interface_type != USB_INTERFACE)) // vendor specific bits. Ignore USB Interface
+                (get_Device_InterfaceType(device) != USB_INTERFACE)) // vendor specific bits. Ignore USB Interface
             {
                 checkForSAT = false;
             }
@@ -2998,8 +2998,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
              device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN))
         {
             // DO NOT set the drive type to NVMe here. We need to treat it as a SCSI device since we can only issue SCSI
-            // translatable commands!!! device->drive_info.drive_type  = NVME_DRIVE;
-            device->drive_info.media_type = MEDIA_NVM;
+            // translatable commands!!! set_Device_DriveType(device, NVME_DRIVE);
+            set_Device_MediaType(device, MEDIA_NVM);
             checkForSAT                   = false;
         }
         else if (device->drive_info.passThroughHacks.hacksSetByReportedID &&
@@ -3025,8 +3025,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             {
                 // TODO: We have "FLASH_DRIVE" as a type, but it won't ba handled well in the rest of the library.
                 //       Either need to start using it, or make more changes to handle it better -TJE
-                // device->drive_info.drive_type = FLASH_DRIVE;
-                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                // set_Device_DriveType(device, FLASH_DRIVE);
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 if (strcmp(device->drive_info.product_identification, "Compact Flash") != 0 || mediumNotPresent)
                 {
                     // Only check for SAT on compact flash since it uses ATA commands. May need another case for CFast
@@ -3074,7 +3074,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                                                                          device->os_info.minimumAlignment));
                     bool fullCmdSupport = false;
                     // setup hacks/flags common for both types of passthrough
-                    device->drive_info.drive_type                                           = NVME_DRIVE;
+                    set_Device_DriveType(device, NVME_DRIVE);
                     device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                     device->drive_info.passThroughHacks.turfValue                           = 33;
                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
@@ -3194,7 +3194,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         //    // will not be present at all, so we can use this to filter between the drives.
         //}
 
-        if (device->drive_info.interface_type == SCSI_INTERFACE &&
+        if (get_Device_InterfaceType(device) == SCSI_INTERFACE &&
             is_Seagate_SAS_Vendor_ID(device->drive_info.T10_vendor_ident))
         {
             // do NOT do a SAT check. For some reason sometimes a combo of HBA and some SAS drives will respond with no
@@ -3223,10 +3223,10 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             // (which is good enough for now)
             if (checkForSAT && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON &&
                 (satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 ||
-                 device->drive_info.interface_type == USB_INTERFACE ||
-                 device->drive_info.interface_type == IEEE_1394_INTERFACE ||
-                 device->drive_info.interface_type == IDE_INTERFACE) &&
-                (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE))
+                 get_Device_InterfaceType(device) == USB_INTERFACE ||
+                 get_Device_InterfaceType(device)== IEEE_1394_INTERFACE ||
+                 get_Device_InterfaceType(device) == IDE_INTERFACE) &&
+                (get_Device_DriveType(device) != ATAPI_DRIVE && get_Device_DriveType(device) != LEGACY_TAPE_DRIVE))
             {
                 ret = fill_In_ATA_Drive_Info(device);
                 if (ret != SUCCESS && checkJMicronNVMe)
@@ -3238,7 +3238,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                         device->drive_info.passThroughHacks.turfValue                           = 13;
                         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true; // set this so in
-                        device->drive_info.drive_type                                   = NVME_DRIVE;
+                        set_Device_DriveType(device, NVME_DRIVE);
                         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
                         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
                         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -3371,7 +3371,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                         device->drive_info.passThroughHacks.turfValue                           = 13;
                         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true; // set this so in
-                        device->drive_info.drive_type                                   = NVME_DRIVE;
+                        set_Device_DriveType(device, NVME_DRIVE);
                         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
                         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
                         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -3395,8 +3395,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             return ret;
         }
 
-        if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2 && device->drive_info.interface_type != USB_INTERFACE &&
-            device->drive_info.interface_type != IEEE_1394_INTERFACE)
+        if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2 && get_Device_InterfaceType(device) != USB_INTERFACE &&
+            get_Device_InterfaceType(device) != IEEE_1394_INTERFACE)
         {
             // Issue report LUNs to figure out how many logical units are present.
             DECLARE_ZERO_INIT_ARRAY(uint8_t, reportLuns,
@@ -3625,7 +3625,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                                     device->drive_info.passThroughHacks.turfValue                           = 13;
                                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
                                         true; // set this so in
-                                    device->drive_info.drive_type = NVME_DRIVE;
+                                    set_Device_DriveType(device, NVME_DRIVE);
                                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
                                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
                                     device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -3670,7 +3670,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                             uint16_t mediumRotationRate =
                                 M_BytesTo2ByteValue(blockDeviceCharacteristics[4], blockDeviceCharacteristics[5]);
                             uint8_t productType = blockDeviceCharacteristics[6];
-                            if (device->drive_info.media_type !=
+                            if (get_Device_MediaType(device) !=
                                 MEDIA_SSM_FLASH) // if this is already set, we don't want to change it because this is a
                                                  // helpful filter for some card-reader type devices.
                             {
@@ -3678,14 +3678,14 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                                 {
                                     if (!satVPDPageRead)
                                     {
-                                        device->drive_info.media_type = MEDIA_SSD;
+                                        set_Device_MediaType(device, MEDIA_SSD);
                                     }
                                 }
                                 else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
                                 {
                                     if (!satVPDPageRead)
                                     {
-                                        device->drive_info.media_type = MEDIA_HDD;
+                                        set_Device_MediaType(device, MEDIA_HDD);
                                     }
                                     if (checkJMicronNVMe)
                                     {
@@ -3706,7 +3706,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                             case 0x07: // Universal Flash Storage
                                 if (!satVPDPageRead)
                                 {
-                                    device->drive_info.media_type = MEDIA_SSM_FLASH;
+                                    set_Device_MediaType(device, MEDIA_SSM_FLASH);
                                 }
                                 break;
                             default: // not indicated or reserved or vendor unique so do nothing
@@ -3814,8 +3814,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         eReturnValues satCheck = FAILURE;
         // if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just
         // issue a SAT identify in here to set things up...might reduce multiple commands later
-        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) &&
-            (device->drive_info.drive_type != NVME_DRIVE) && device->drive_info.media_type != MEDIA_UNKNOWN &&
+        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (get_Device_DriveType(device) != RAID_DRIVE) &&
+            (get_Device_DriveType(device) != NVME_DRIVE) && get_Device_MediaType(device) != MEDIA_UNKNOWN &&
             device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
         {
             satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
@@ -3855,7 +3855,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                     device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
                     device->drive_info.passThroughHacks.turfValue                             = 13;
                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported           = true; // set this so in
-                    device->drive_info.drive_type                                             = NVME_DRIVE;
+                    set_Device_DriveType(device, NVME_DRIVE);
                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
                     device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -3872,7 +3872,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 {
                     if (device->drive_info.passThroughHacks.passthroughType == NVME_PASSTHROUGH_REALTEK_BASIC)
                     {
-                        device->drive_info.drive_type                                           = NVME_DRIVE;
+                        set_Device_DriveType(device, NVME_DRIVE);
                         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                         device->drive_info.passThroughHacks.turfValue                           = 34;
                         device->drive_info.passThroughHacks.scsiHacks.readWrite.available       = true;
@@ -3924,7 +3924,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 }
                 else if (ret == SUCCESS)
                 {
-                    device->drive_info.drive_type = NVME_DRIVE;
+                    set_Device_DriveType(device, NVME_DRIVE);
                 }
                 else
                 {
@@ -3946,9 +3946,9 @@ eReturnValues fill_In_Device_Info(tDevice* device)
 
 #ifdef _DEBUG
     print_str("\nscsi helper\n");
-    printf("Drive type: %d\n", device->drive_info.drive_type);
-    printf("Interface type: %d\n", device->drive_info.interface_type);
-    printf("Media type: %d\n", device->drive_info.media_type);
+    printf("Drive type: %d\n", get_Device_DriveType(device));
+    printf("Interface type: %d\n", get_Device_InterfaceType(device));
+    printf("Media type: %d\n", get_Device_MediaType(device));
     printf("%s: <--\n", __FUNCTION__);
 #endif
     return ret;

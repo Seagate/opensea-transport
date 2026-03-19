@@ -191,9 +191,9 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
      * Setting up defaults
      */
     // sysVmInfo.drive_type = SCSI_DRIVE;
-    // device->drive_info.drive_type = ATA_DRIVE;
+    // set_Device_DriveType(device, ATA_DRIVE);
     // sysVmInfo.interface_type = SCSI_INTERFACE;
-    // device->drive_info.interface_type = IDE_INTERFACE;
+    // set_Device_InterfaceType(device, IDE_INTERFACE);
     // sysVmInfo.media_type = MEDIA_HDD;
 
     safe_memset(&sysVmInfo, sizeof(sysVMLowLevelDeviceInfo), 0, sizeof(sysVMLowLevelDeviceInfo));
@@ -201,7 +201,7 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
     // now copy the saved data to tDevice. -DB
     if (device)
     {
-        device->drive_info.drive_type     = sysVmInfo.drive_type;
+        set_Device_DriveType(device, sysVmInfo.drive_type);
         device->drive_info.interface_type = sysVmInfo.interface_type;
         safe_memcpy(&device->drive_info.adapter_info, sizeof(adapterInfo), &sysVmInfo.adapter_info,
                     sizeof(adapterInfo));
@@ -283,9 +283,9 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         if (device->dFlags == OPEN_HANDLE_ONLY)
         {
             // set scsi interface and scsi drive until we know otherwise
-            device->drive_info.drive_type     = SCSI_DRIVE;
-            device->drive_info.interface_type = SCSI_INTERFACE;
-            device->drive_info.media_type     = MEDIA_HDD;
+            set_Device_DriveType(device, SCSI_DRIVE);
+            set_Device_InterfaceType(device, SCSI_INTERFACE);
+            set_Device_MediaType(device, MEDIA_HDD);
             set_Device_Fields_From_Handle(deviceHandle, device);
             setup_Passthrough_Hacks_By_ID(device);
             safe_free(&deviceHandle);
@@ -329,11 +329,11 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             safe_memcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, deviceHandle, safe_strlen(deviceHandle) + 1);
 
             // set scsi interface and scsi drive until we know otherwise
-            device->drive_info.drive_type = SCSI_DRIVE;
-            // device->drive_info.drive_type = ATA_DRIVE;
-            device->drive_info.interface_type = SCSI_INTERFACE;
-            // device->drive_info.interface_type = IDE_INTERFACE;
-            device->drive_info.media_type = MEDIA_HDD;
+            set_Device_DriveType(device, SCSI_DRIVE);
+            // set_Device_DriveType(device, ATA_DRIVE);
+            set_Device_InterfaceType(device, SCSI_INTERFACE);
+            // set_Device_InterfaceType(device, IDE_INTERFACE);
+            set_Device_MediaType(device, MEDIA_HDD);
             // now have the device information fields set
 #if defined(_DEBUG)
             print_str("Setting interface, drive type, secondary handles\n");
@@ -341,9 +341,9 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 
             set_Device_Fields_From_Handle(deviceHandle, device);
             setup_Passthrough_Hacks_By_ID(device);
-            // device->drive_info.interface_type = SCSI_INTERFACE;
-            // device->drive_info.drive_type = UNKNOWN_DRIVE;
-            // device->drive_info.media_type = MEDIA_UNKNOWN;
+            // set_Device_InterfaceType(device, SCSI_INTERFACE);
+            // set_Device_DriveType(device, UNKNOWN_DRIVE);
+            // set_Device_MediaType(device, MEDIA_UNKNOWN);
 
 #if defined(_DEBUG)
             printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", device->os_info.name,
@@ -359,7 +359,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             // this code to set up passthrough commands for USB and IEEE1394 has been removed for now to match Windows
             // functionality. Need better intelligence than this. Some of these old pass-through types issue vendor
             // specific op codes that could be misinterpretted on some devices.
-            //              if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type
+            //              if (get_Device_InterfaceType(device) == USB_INTERFACE || get_Device_InterfaceType(device)
             //              == IEEE_1394_INTERFACE)
             //              {
             //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
@@ -369,9 +369,9 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 
 #if defined(_DEBUG)
             print_str("\nvm helper\n");
-            printf("Drive type: %d\n", device->drive_info.drive_type);
-            printf("Interface type: %d\n", device->drive_info.interface_type);
-            printf("Media type: %d\n", device->drive_info.media_type);
+            printf("Drive type: %d\n", get_Device_DriveType(device));
+            printf("Interface type: %d\n", get_Device_InterfaceType(device));
+            printf("Media type: %d\n", get_Device_MediaType(device));
 #endif
         }
         safe_free(&deviceHandle);
@@ -447,24 +447,24 @@ eReturnValues get_Device(const char* filename, tDevice* device)
              * Setting up NVMe drive blindly for now
              */
 
-            device->drive_info.interface_type = NVME_INTERFACE;
-            device->drive_info.drive_type     = NVME_DRIVE;
-            device->drive_info.media_type     = MEDIA_NVM;
+            set_Device_InterfaceType(device, NVME_INTERFACE);
+            set_Device_DriveType(device, NVME_DRIVE);
+            set_Device_MediaType(device, MEDIA_NVM);
             safe_memcpy(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe", 4);
             device->os_info.osType = OS_ESX;
             safe_memcpy(&(device->os_info.name), OS_HANDLE_NAME_MAX_LENGTH, filename, safe_strlen(filename) + 1);
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-            if (device->drive_info.interface_type == NVME_INTERFACE)
+            if (get_Device_InterfaceType(device) == NVME_INTERFACE)
             {
                 ret = fill_In_NVMe_Device_Info(device);
             }
 #endif
 #if defined(_DEBUG)
             print_str("\nvm helper\n");
-            printf("Drive type: %d\n", device->drive_info.drive_type);
-            printf("Interface type: %d\n", device->drive_info.interface_type);
-            printf("Media type: %d\n", device->drive_info.media_type);
+            printf("Drive type: %d\n", get_Device_DriveType(device));
+            printf("Interface type: %d\n", get_Device_InterfaceType(device));
+            printf("Media type: %d\n", get_Device_MediaType(device));
 #endif
         }
         safe_free(&deviceHandle);
@@ -535,7 +535,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
 #ifdef _DEBUG
     printf("-->%s \n", __FUNCTION__);
 #endif
-    switch (scsiIoCtx->device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(scsiIoCtx->device))
     {
     case NVME_INTERFACE:
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -564,7 +564,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
+            printf("Target Device does not have a valid interface %d\n", get_Device_InterfaceType(scsiIoCtx->device));
         }
         break;
     }
@@ -1567,7 +1567,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
     {
-        if (device->drive_info.drive_type == NVME_DRIVE)
+        if (get_Device_DriveType(device) == NVME_DRIVE)
         {
             // Not sure what to do
         }
@@ -1603,7 +1603,7 @@ eReturnValues os_Unlock_Device(const tDevice* device)
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
     {
-        if (device->drive_info.drive_type == NVME_DRIVE)
+        if (get_Device_DriveType(device) == NVME_DRIVE)
         {
             // Not sure what to do
         }

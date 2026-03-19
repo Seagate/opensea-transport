@@ -113,12 +113,12 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     }
 
     // setup any other necessary enumeration of the device
-    device->drive_info.drive_type     = SCSI_DRIVE;
-    device->drive_info.interface_type = SCSI_INTERFACE;
+    set_Device_DriveType(device, SCSI_DRIVE);
+    set_Device_InterfaceType(device, SCSI_INTERFACE);
     if (strstr(deviceHandle, "wd"))
     {
-        device->drive_info.drive_type                                 = ATA_DRIVE;
-        device->drive_info.interface_type                             = IDE_INTERFACE;
+        set_Device_DriveType(device, ATA_DRIVE);
+        set_Device_InterfaceType(device, IDE_INTERFACE);
         device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly   = true;
         device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
         // TODO: See if there is some other method available to get some kind of ATA address

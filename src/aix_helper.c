@@ -1269,8 +1269,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         device->os_info.adapterType = AIX_ADAPTER_SATA;
                         device->os_info.ptType = AIX_PASSTHROUGH_SATA; // If we ever get a handle other than rhdisk,
                                                                        // switch to atapi or SCSI for those handles-TJE
-                        device->drive_info.drive_type     = ATA_DRIVE;
-                        device->drive_info.interface_type = IDE_INTERFACE;
+                        set_Device_DriveType(device, ATA_DRIVE);
+                        set_Device_InterfaceType(device, IDE_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "ide"))
                     {
@@ -1278,65 +1278,65 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         device->os_info.adapterType = AIX_ADAPTER_IDE;
                         device->os_info.ptType = AIX_PASSTHROUGH_IDE_ATA; // If we ever get a handle other than rhdisk,
                                                                           // switch to atapi for those handles-TJE
-                        device->drive_info.drive_type     = ATA_DRIVE;
-                        device->drive_info.interface_type = IDE_INTERFACE;
+                        set_Device_DriveType(device, ATA_DRIVE);
+                        set_Device_InterfaceType(device, IDE_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "fscsi")) // fibre channel
                     {
                         device->os_info.adapterType       = AIX_ADAPTER_FC;
                         device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "vscsi")) // virtual scsi?
                     {
                         device->os_info.adapterType       = AIX_ADAPTER_VSCSI;
                         device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "iscsi")) // iSCSI
                     {
                         device->os_info.adapterType       = AIX_ADAPTER_ISCSI;
                         device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "scsi")) // note this is parallel scsi
                     {
                         // SCSI passthrough.
                         device->os_info.adapterType       = AIX_ADAPTER_SCSI;
                         device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "sas"))
                     {
                         device->os_info.adapterType       = AIX_ADAPTER_SAS;
                         device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "nvme"))
                     {
                         device->os_info.adapterType       = AIX_ADAPTER_NVME;
                         device->os_info.ptType            = AIX_PASSTHROUGH_NVME;
-                        device->drive_info.drive_type     = NVME_DRIVE;
-                        device->drive_info.interface_type = NVME_INTERFACE;
+                        set_Device_DriveType(device, NVME_DRIVE);
+                        set_Device_InterfaceType(device, NVME_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "serdasd"))
                     {
                         device->os_info.adapterType       = AIX_ADAPTER_DASD;
                         device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = USB_INTERFACE;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, USB_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "usb"))
                     {
                         device->os_info.adapterType       = AIX_ADAPTER_USB;
                         device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = USB_INTERFACE;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, USB_INTERFACE);
                     }
                     // NOLINTEND(bugprone-branch-clone)
                     else
@@ -1360,13 +1360,13 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                     //                                     //unexpected behavior will likely occur. -TJE
                     //                                     if (device->os_info.ctrlfdValid)
                     //                                     {
-                    //                                         device->drive_info.drive_type = NVME_DRIVE;
-                    //                                         device->drive_info.interface_type = NVME_INTERFACE;
+                    //                                         set_Device_DriveType(device, NVME_DRIVE);
+                    //                                         set_Device_InterfaceType(device, NVME_INTERFACE);
                     //                                     }
                     //                                     else
                     //                                     {
-                    //                                         device->drive_info.drive_type = SCSI_DRIVE;
-                    //                                         device->drive_info.interface_type = SCSI_INTERFACE;
+                    //                                         set_Device_DriveType(device, SCSI_DRIVE);
+                    //                                         set_Device_InterfaceType(device, SCSI_INTERFACE);
                     //                                     }
                     //                                 }
                     //                                 else //not NVMe
@@ -2720,7 +2720,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
 {
     // switch based on value stored in os_info to define which passthrough interface to use to issue commands -TJE
     eReturnValues ret = SUCCESS;
-    switch (scsiIoCtx->device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(scsiIoCtx->device))
     {
     case IDE_INTERFACE:
     case SCSI_INTERFACE:

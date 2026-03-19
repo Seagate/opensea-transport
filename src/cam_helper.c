@@ -157,9 +157,9 @@ static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device
 
     device->os_info.minimumAlignment = sizeof(void*);
 
-    device->drive_info.drive_type     = ATA_DRIVE;
-    device->drive_info.interface_type = IDE_INTERFACE;
-    device->drive_info.media_type     = MEDIA_HDD;
+    set_Device_DriveType(device, ATA_DRIVE);
+    set_Device_InterfaceType(device, IDE_INTERFACE);
+    set_Device_MediaType(device, MEDIA_HDD);
 #    if defined(__DragonFly__)
     device->os_info.osType = OS_DRAGONFLYBSD;
 #    else
@@ -223,9 +223,9 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
 
     device->os_info.minimumAlignment = sizeof(void*);
 
-    device->drive_info.drive_type     = NVME_DRIVE;
-    device->drive_info.interface_type = NVME_INTERFACE;
-    device->drive_info.media_type     = MEDIA_NVM;
+    set_Device_DriveType(device, NVME_DRIVE);
+    set_Device_InterfaceType(device, NVME_INTERFACE);
+    set_Device_MediaType(device, MEDIA_NVM);
     // ret = ioctl(device->os_info.fd, NVME_IOCTL_ID)
     // if ( ret < 0 )
     //{
@@ -381,8 +381,8 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                         safe_memcpy(&cgd, sizeof(struct ccb_getdev), &ccb->cgd, sizeof(struct ccb_getdev));
 
                         // default to scsi drive and scsi interface
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                         // get interface info
                         CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
                         ccb->ccb_h.func_code = XPT_PATH_INQ;
@@ -396,17 +396,17 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                                 {
                                 case XPORT_SATA:
                                 case XPORT_ATA:
-                                    device->drive_info.drive_type = ATA_DRIVE;
+                                    set_Device_DriveType(device, ATA_DRIVE);
                                     device->drive_info.interface_type =
                                         IDE_INTERFACE; // Seeing IDE may look strange, but that is how old code was
                                                        // written to identify an ATA interface regardless of
                                                        // parallel or serial.
                                     break;
                                 case XPORT_USB:
-                                    device->drive_info.interface_type = USB_INTERFACE;
+                                    set_Device_InterfaceType(device, USB_INTERFACE);
                                     break;
                                 case XPORT_SPI:
-                                    device->drive_info.interface_type = SCSI_INTERFACE;
+                                    set_Device_InterfaceType(device, SCSI_INTERFACE);
                                     // firewire is reported as SPI.
                                     // Check hba_vid for "SBP" to tell the difference and set the proper interface
                                     if (strncmp(cpi.hba_vid, "SBP", 3) == 0 &&
@@ -415,21 +415,21 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                                                                               // but not sure if that could be confused
                                                                               // with other SPI devices - TJE
                                     {
-                                        device->drive_info.interface_type = IEEE_1394_INTERFACE;
+                                        set_Device_InterfaceType(device, IEEE_1394_INTERFACE);
                                         // TODO: Figure out where to get device unique firewire IDs for specific
                                         // device compatibility lookups
                                     }
                                     break;
 #if defined(XPORT_IS_NVME)
                                 case XPORT_NVME:
-                                    device->drive_info.drive_type     = NVME_DRIVE;
-                                    device->drive_info.interface_type = NVME_INTERFACE;
+                                    set_Device_DriveType(device, NVME_DRIVE);
+                                    set_Device_InterfaceType(device, NVME_INTERFACE);
                                     device->drive_info.namespaceID    = cpi.xport_specific.nvme.nsid;
                                     break;
 #    if IS_FREEBSD_VERSION(15, 0, 0)
                                 case XPORT_NVMF:
-                                    device->drive_info.drive_type     = NVME_DRIVE;
-                                    device->drive_info.interface_type = NVME_INTERFACE;
+                                    set_Device_DriveType(device, NVME_DRIVE);
+                                    set_Device_InterfaceType(device, NVME_INTERFACE);
                                     device->drive_info.namespaceID    = cpi.xport_specific.nvmf.nsid;
                                     break;
 #    endif // IS_FREEBSD_VERSION(15,0,0)
@@ -442,7 +442,7 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                                 case XPORT_UNSPECIFIED:
                                 case XPORT_UNKNOWN:
                                 default:
-                                    device->drive_info.interface_type = SCSI_INTERFACE;
+                                    set_Device_InterfaceType(device, SCSI_INTERFACE);
                                     break;
                                 }
                                 // TODO: Parse other flags to set hacks and capabilities to help with adapter or
@@ -455,8 +455,8 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                                 //       to make other improvements. For now, getting the interface is a huge help
 
 #if IS_FREEBSD_VERSION(9, 0, 0)
-                                if (device->drive_info.interface_type != USB_INTERFACE &&
-                                    device->drive_info.interface_type != IEEE_1394_INTERFACE)
+                                if (get_Device_InterfaceType(device) != USB_INTERFACE &&
+                                    get_Device_InterfaceType(device) != IEEE_1394_INTERFACE)
                                 {
                                     // NOTE: Not entirely sure EXACTLY when this was introduced, but this is a best
                                     // guess from looking through cam_ccb.h history
@@ -480,8 +480,8 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                             }
                         }
                         // let the library now go out and set up the device struct after sending some commands.
-                        if (device->drive_info.interface_type == USB_INTERFACE ||
-                            device->drive_info.interface_type == IEEE_1394_INTERFACE)
+                        if (get_Device_InterfaceType(device) == USB_INTERFACE ||
+                            get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
                         {
                             // TODO: Actually get the VID and PID set before calling this.
                             //       This will require some more research, but we should be able to do this now that
@@ -1208,7 +1208,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
             // if ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) == 0)
             // {
             //     // Since we have no sense data fake it for ATA
-            //     if (scsiIoCtx->device->drive_info.drive_type == ATA_DRIVE)
+            //     if (get_Device_DriveType(scsiIoCtx->device) == ATA_DRIVE)
             //     {
             //         if (scsiIoCtx->returnStatus.senseKey == SCSI_STATUS_OK)
             //         {
@@ -1266,7 +1266,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     eReturnValues ret = FAILURE;
     // printf("%s -->\n",__FUNCTION__);
 
-    switch (scsiIoCtx->device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(scsiIoCtx->device))
     {
     case NVME_INTERFACE:
         ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
@@ -1323,7 +1323,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     default:
         if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
         {
-            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
+            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->get_Device_InterfaceType(device));
         }
     }
     // printf("<-- %s\n",__FUNCTION__);

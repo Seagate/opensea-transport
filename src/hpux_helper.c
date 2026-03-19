@@ -518,10 +518,10 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         // legacy handles
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
 
-        device->drive_info.interface_type = SCSI_INTERFACE;
-        device->drive_info.drive_type     = SCSI_DRIVE;
-        // if (device->drive_info.interface_type == USB_INTERFACE ||
-        //     device->drive_info.interface_type == IEEE_1394_INTERFACE)
+        set_Device_InterfaceType(device, SCSI_INTERFACE);
+        set_Device_DriveType(device, SCSI_DRIVE);
+        // if (get_Device_InterfaceType(device) == USB_INTERFACE ||
+        //     get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
         // {
         //     // TODO: Actually get the VID and PID set before calling this.
         //     setup_Passthrough_Hacks_By_ID(device);

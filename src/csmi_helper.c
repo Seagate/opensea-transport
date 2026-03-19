@@ -4183,8 +4183,8 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
             sizeof(void*); // setting alignment this way to be compatible across OSs since CSMI doesn't really dictate
                            // an alignment, but we should set something. - TJE
         device->issue_io                  = C_CAST(issue_io_func, send_CSMI_IO);
-        device->drive_info.drive_type     = SCSI_DRIVE; // assume SCSI for now. Can be changed later
-        device->drive_info.interface_type = RAID_INTERFACE;
+        set_Device_DriveType(device, SCSI_DRIVE); // assume SCSI for now. Can be changed later
+        set_Device_InterfaceType(device, RAID_INTERFACE);
         device->os_info.csmiDeviceData = M_REINTERPRET_CAST(ptrCsmiDeviceInfo, safe_calloc(1, sizeof(csmiDeviceInfo)));
         if (!device->os_info.csmiDeviceData)
         {
@@ -4248,7 +4248,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
 #        if defined(CSMI_DEBUG)
             print_str("GRD: Setting Intel NVMe function pointers\n");
 #        endif // CSMI_DEBUG
-            device->drive_info.drive_type = NVME_DRIVE;
+            set_Device_DriveType(device, NVME_DRIVE);
             device->issue_io              = C_CAST(issue_io_func, send_Intel_NVM_SCSI_Command);
             device->issue_nvme_io         = C_CAST(issue_io_func, send_Intel_NVM_Command);
             device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported = true;
@@ -4463,7 +4463,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
                 print_str("GRD: Getting SATA signature\n");
 #    endif // CSMI_DEBUG
                 CSMI_SAS_SATA_SIGNATURE_BUFFER signature;
-                device->drive_info.drive_type = ATA_DRIVE;
+                set_Device_DriveType(device, ATA_DRIVE);
                 // get sata signature fis and set pmport
                 if (SUCCESS == csmi_Get_SATA_Signature(device->os_info.csmiDeviceData->csmiDevHandle,
                                                        device->os_info.csmiDeviceData->controllerNumber, &signature,
@@ -6662,7 +6662,7 @@ eReturnValues send_CSMI_IO(ScsiIoCtx* scsiIoCtx)
         ret = send_SSP_Passthrough_Command(scsiIoCtx);
     }
     // Need case to translate SCSI CDB to ATA command!
-    else if (scsiIoCtx->device->drive_info.drive_type == ATA_DRIVE)
+    else if (get_Device_DriveType(scsiIoCtx->device) == ATA_DRIVE)
     {
         // Software SAT translation
         ret = translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);

@@ -1482,8 +1482,8 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
                     // setup all the things we need to be able to issue commands in the code
                     device->os_info.cissDeviceData->driveNumber = driveNumber;
                     device->issue_io                            = C_CAST(issue_io_func, issue_io_ciss_Dev);
-                    device->drive_info.drive_type               = SCSI_DRIVE;
-                    device->drive_info.interface_type           = RAID_INTERFACE;
+                    set_Device_DriveType(device, SCSI_DRIVE);
+                    set_Device_InterfaceType(device, RAID_INTERFACE);
                     snprintf_err_handle(&device->os_info.name[0], OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
                     snprintf_err_handle(&device->os_info.friendlyName[0], OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
                                         filename);

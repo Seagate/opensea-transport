@@ -3167,7 +3167,7 @@ static eReturnValues sntl_Translate_SCSI_Log_Sense_Command(const tDevice* device
                 {
                 case 0:
                     // This will only be supported on rotating media for start-stop cycle counter and load-unload counts
-                    if (device->drive_info.media_type ==
+                    if (get_Device_MediaType(device) ==
                         MEDIA_HDD) // this check is good enough for now for how SNTL gets used today - TJE
                     {
                         ret = sntl_Translate_Start_Stop_Cycle_Log_0x0E(device, scsiIoCtx);

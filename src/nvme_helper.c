@@ -76,7 +76,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
     // If not an NVMe interface, such as USB, then we need to store things differently
     // RAID Interface should be treated as "Native" or "NVME_INTERFACE" since there is likely an underlying API
     // providing direct access of some kind.
-    if (device->drive_info.interface_type != NVME_INTERFACE && device->drive_info.interface_type != RAID_INTERFACE)
+    if (get_Device_InterfaceType(device) != NVME_INTERFACE && get_Device_InterfaceType(device) != RAID_INTERFACE)
     {
         device->drive_info.bridge_info.isValid = true;
         fillWWN                                = &device->drive_info.bridge_info.childWWN;
@@ -102,7 +102,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
     if (ret == SUCCESS)
     {
         uint16_t enduranceGroup = UINT16_C(0);
-        if (device->drive_info.interface_type != NVME_INTERFACE && device->drive_info.interface_type != RAID_INTERFACE)
+        if (get_Device_InterfaceType(device) != NVME_INTERFACE && get_Device_InterfaceType(device) != RAID_INTERFACE)
         {
             fill_NVMe_Strings_From_Ctrl_Data(C_CAST(uint8_t*, ctrlData), device->drive_info.bridge_info.childDriveMN,
                                              device->drive_info.bridge_info.childDriveSN,
@@ -115,8 +115,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
         }
         // set the t10 vendor id to NVMe
         snprintf_err_handle(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
-        device->drive_info.media_type =
-            MEDIA_NVM; // This will bite us someday when someone decided to put non-ssds on NVMe interface.
+        set_Device_MediaType(device, MEDIA_NVM); // This will bite us someday when someone decided to put non-ssds on NVMe interface.
         // set scsi version to 6 if it is not already set
         if (device->drive_info.scsiVersion == 0)
         {
@@ -133,7 +132,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
 
         // Do not overwrite this with non-NVMe interfaces. This is used by USB to figure out and track bridge chip
         // specific things that are stored in this location
-        if (device->drive_info.interface_type == NVME_INTERFACE && !device->drive_info.adapter_info.vendorIDValid)
+        if (get_Device_InterfaceType(device) == NVME_INTERFACE && !device->drive_info.adapter_info.vendorIDValid)
         {
             device->drive_info.adapter_info.vendorID      = le16_to_host(ctrlData->vid);
             device->drive_info.adapter_info.vendorIDValid = true;
@@ -185,7 +184,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
                             // rotational media log is supported.
                             // Set the media type because this is supported, at least for now. We can read the log and
                             // the actual rotation rate if needed.
-                            device->drive_info.media_type = MEDIA_HDD;
+                            set_Device_MediaType(device, MEDIA_HDD);
                         }
                     }
                     safe_free_aligned(&supportedLogs);

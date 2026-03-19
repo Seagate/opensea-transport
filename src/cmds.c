@@ -43,7 +43,7 @@ typedef enum
 eReturnValues send_Sanitize_Block_Erase(const tDevice* device, bool exitFailureMode, bool znr)
 {
     eReturnValues ret = NOT_SUPPORTED;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Sanitize_Block_Erase(device, exitFailureMode, znr);
@@ -63,7 +63,7 @@ eReturnValues send_Sanitize_Block_Erase(const tDevice* device, bool exitFailureM
 eReturnValues send_Sanitize_Crypto_Erase(const tDevice* device, bool exitFailureMode, bool znr)
 {
     eReturnValues ret = NOT_SUPPORTED;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Sanitize_Crypto_Scramble(device, exitFailureMode, znr);
@@ -101,7 +101,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* device,
         patternPtr    = M_REINTERPRET_CAST(uint8_t*, &shortPattern);
         patternLength = sizeof(shortPattern);
     }
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         // Note: ATA drives have a "definitive ending pattern bit"
@@ -141,7 +141,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* device,
 eReturnValues send_Sanitize_Exit_Failure_Mode(const tDevice* device)
 {
     eReturnValues ret = NOT_SUPPORTED;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Sanitize_Status(device, true);
@@ -161,7 +161,7 @@ eReturnValues send_Sanitize_Exit_Failure_Mode(const tDevice* device)
 eReturnValues spin_down_drive(const tDevice* device, bool sleepState)
 {
     eReturnValues ret = NOT_SUPPORTED;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (sleepState) // send sleep command
@@ -241,17 +241,17 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
 
     if (device != M_NULLPTR)
     {
-        if (device->drive_info.interface_type == UNKNOWN_INTERFACE)
+        if (get_Device_InterfaceType(device) == UNKNOWN_INTERFACE)
         {
             status = BAD_PARAMETER;
             return status;
         }
-        switch (device->drive_info.interface_type)
+        switch (get_Device_InterfaceType(device))
         {
         case IDE_INTERFACE:
             // We know this is an ATA interface and we SHOULD be able to send either an ATA or ATAPI identify...but that
             // doesn't work right, so if the OS layer told us it is ATAPI, do SCSI device discovery
-            if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE)
+            if (get_Device_DriveType(device) == ATAPI_DRIVE || get_Device_DriveType(device) == LEGACY_TAPE_DRIVE)
             {
                 status = fill_In_Device_Info(device);
             }
@@ -279,7 +279,7 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
         case RAID_INTERFACE:
             // if it's RAID interface, the low-level RAID code may already have set the drive type, so treat it based
             // off of what drive type is set to
-            switch (device->drive_info.drive_type)
+            switch (get_Device_DriveType(device))
             {
             case ATA_DRIVE:
                 status = fill_In_ATA_Drive_Info(device);
@@ -307,9 +307,9 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
 #ifdef _DEBUG
     if (device != M_NULLPTR)
     {
-        printf("Drive type: %d\n", device->drive_info.drive_type);
-        printf("Interface type: %d\n", device->drive_info.interface_type);
-        printf("Media type: %d\n", device->drive_info.media_type);
+        printf("Drive type: %d\n", get_Device_DriveType(device));
+        printf("Interface type: %d\n", get_Device_InterfaceType(device));
+        printf("Media type: %d\n", get_Device_MediaType(device));
     }
     printf("%s: <--\n", __FUNCTION__);
 #endif
@@ -607,7 +607,7 @@ eReturnValues firmware_Download_Command(const tDevice* device,
 #ifdef _DEBUG
     printf("-->%s\n", __FUNCTION__);
 #endif
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Firmware_Download_Command(device, dlMode, offset, xferLen, ptrData, firstSegment, lastSegment,
@@ -651,7 +651,7 @@ eReturnValues security_Send(const tDevice* device,
                             uint32_t       dataSize)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
     {
@@ -700,7 +700,7 @@ eReturnValues security_Send(const tDevice* device,
         // for now we'll leave it here.
         bool inc512 = false;
         if ((dataSize >= LEGACY_DRIVE_SEC_SIZE && (dataSize % LEGACY_DRIVE_SEC_SIZE) == 0) &&
-            ((device->drive_info.drive_type != NVME_DRIVE &&
+            ((get_Device_DriveType(device) != NVME_DRIVE &&
               strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0) ||
              device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512))
         {
@@ -725,7 +725,7 @@ eReturnValues security_Receive(const tDevice* device,
                                uint32_t       dataSize)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
     {
@@ -774,7 +774,7 @@ eReturnValues security_Receive(const tDevice* device,
         // for now we'll leave it here.
         bool inc512 = false;
         if ((dataSize >= LEGACY_DRIVE_SEC_SIZE && (dataSize % LEGACY_DRIVE_SEC_SIZE) == 0) &&
-            ((device->drive_info.drive_type != NVME_DRIVE &&
+            ((get_Device_DriveType(device) != NVME_DRIVE &&
               strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0) ||
              device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512))
         {
@@ -1115,7 +1115,7 @@ eReturnValues write_Same(const tDevice* device, uint64_t startingLba, uint64_t n
     {
         noDataTransfer = true;
     }
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Write_Same_Cmd(device, startingLba, numberOfLogicalBlocks, pattern,
@@ -1136,7 +1136,7 @@ eReturnValues write_Same(const tDevice* device, uint64_t startingLba, uint64_t n
 bool is_Write_Psuedo_Uncorrectable_Supported(const tDevice* device)
 {
     bool supported = false;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
@@ -1186,7 +1186,7 @@ eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* device, uint64_t c
         // set this flag for SCSI
         multipleLogicalPerPhysical = true;
     }
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
@@ -1223,7 +1223,7 @@ eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* device, uint64_t c
 bool is_Write_Flagged_Uncorrectable_Supported(const tDevice* device)
 {
     bool supported = false;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
@@ -1261,7 +1261,7 @@ eReturnValues write_Flagged_Uncorrectable_Error(const tDevice* device, uint64_t 
 {
     eReturnValues ret = UNKNOWN;
     // This will only flag individual logical blocks
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
@@ -2042,7 +2042,7 @@ eReturnValues io_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
         return BAD_PARAMETER;
     }
 
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
         // perform ATA reads
@@ -2074,7 +2074,7 @@ eReturnValues io_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
         return BAD_PARAMETER;
     }
 
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
         // perform ATA writes
@@ -2266,13 +2266,13 @@ static eReturnValues scsi_Compare(const tDevice* device, uint64_t lba, uint8_t* 
 // When it is not, need to emulate with read and memcmp(like ATA does)
 eReturnValues compare_LBA(const tDevice* device, uint64_t lba, uint8_t* ptrData, uint32_t dataSize)
 {
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
         return generic_Compare(device, lba, ptrData, dataSize);
     case SCSI_INTERFACE:
         // perform SCSI verifies
-        if (device->drive_info.drive_type == SCSI_DRIVE || is_Blocksize_And_Capacity_In_Sync(device))
+        if (get_Device_DriveType(device) == SCSI_DRIVE || is_Blocksize_And_Capacity_In_Sync(device))
         {
             return scsi_Compare(device, lba, ptrData, dataSize);
         }
@@ -2343,7 +2343,7 @@ eReturnValues verify_LBA(const tDevice* device, uint64_t lba, uint32_t range)
     }
     else
     {
-        switch (device->drive_info.interface_type)
+        switch (get_Device_InterfaceType(device))
         {
         case IDE_INTERFACE:
             // perform ATA verifies
@@ -2406,7 +2406,7 @@ eReturnValues flush_Cache(const tDevice* device)
     }
     else
     {
-        switch (device->drive_info.interface_type)
+        switch (get_Device_InterfaceType(device))
         {
         case IDE_INTERFACE:
             // perform ATA writes
@@ -2432,7 +2432,7 @@ eReturnValues flush_Cache(const tDevice* device)
 eReturnValues close_Zone(const tDevice* device, bool closeAll, uint64_t zoneID, uint16_t zoneCount)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Close_Zone_Ext(device, closeAll, zoneID, zoneCount);
@@ -2450,7 +2450,7 @@ eReturnValues close_Zone(const tDevice* device, bool closeAll, uint64_t zoneID, 
 eReturnValues finish_Zone(const tDevice* device, bool finishAll, uint64_t zoneID, uint16_t zoneCount)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Finish_Zone_Ext(device, finishAll, zoneID, zoneCount);
@@ -2468,7 +2468,7 @@ eReturnValues finish_Zone(const tDevice* device, bool finishAll, uint64_t zoneID
 eReturnValues open_Zone(const tDevice* device, bool openAll, uint64_t zoneID, uint16_t zoneCount)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Open_Zone_Ext(device, openAll, zoneID, zoneCount);
@@ -2486,7 +2486,7 @@ eReturnValues open_Zone(const tDevice* device, bool openAll, uint64_t zoneID, ui
 eReturnValues reset_Write_Pointer(const tDevice* device, bool resetAll, uint64_t zoneID, uint16_t zoneCount)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Reset_Write_Pointers_Ext(device, resetAll, zoneID, zoneCount);
@@ -2509,7 +2509,7 @@ eReturnValues report_Zones(const tDevice*        device,
                            uint32_t              dataSize)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (dataSize % LEGACY_DRIVE_SEC_SIZE != 0)

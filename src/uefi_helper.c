@@ -540,8 +540,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         if (get_ATA_Device_Handle(filename, &device->os_info.controllerNum, &device->os_info.address.ata.port,
                                   &device->os_info.address.ata.portMultiplierPort))
         {
-            device->drive_info.interface_type     = IDE_INTERFACE;
-            device->drive_info.drive_type         = ATA_DRIVE;
+            set_Device_InterfaceType(device, IDE_INTERFACE);
+            set_Device_DriveType(device, ATA_DRIVE);
             device->os_info.passthroughType       = UEFI_PASSTHROUGH_ATA;
             EFI_ATA_PASS_THRU_PROTOCOL* pPassthru = M_NULLPTR;
             if (SUCCESS == get_ATA_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
@@ -595,8 +595,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         if (get_SCSIEX_Device_Handle(filename, &device->os_info.controllerNum, device->os_info.address.scsiEx.target,
                                      &device->os_info.address.scsiEx.lun))
         {
-            device->drive_info.interface_type = SCSI_INTERFACE;
-            device->drive_info.drive_type     = SCSI_DRIVE;
+            set_Device_InterfaceType(device, SCSI_INTERFACE);
+            set_Device_DriveType(device, SCSI_DRIVE);
             device->os_info.passthroughType   = UEFI_PASSTHROUGH_SCSI_EXT;
             EFI_EXT_SCSI_PASS_THRU_PROTOCOL* pPassthru;
             if (SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
@@ -630,8 +630,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         if (get_SCSI_Device_Handle(filename, &device->os_info.controllerNum, &device->os_info.address.scsi.target,
                                    &device->os_info.address.scsi.lun))
         {
-            device->drive_info.interface_type = SCSI_INTERFACE;
-            device->drive_info.drive_type     = SCSI_DRIVE;
+            set_Device_InterfaceType(device, SCSI_INTERFACE);
+            set_Device_DriveType(device, SCSI_DRIVE);
             device->os_info.passthroughType   = UEFI_PASSTHROUGH_SCSI;
             EFI_SCSI_PASS_THRU_PROTOCOL* pPassthru;
             if (SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
@@ -668,8 +668,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     {
         if (get_NVMe_Device_Handle(filename, &device->os_info.controllerNum, &device->os_info.address.nvme.namespaceID))
         {
-            device->drive_info.interface_type = NVME_INTERFACE;
-            device->drive_info.drive_type     = NVME_DRIVE;
+            set_Device_InterfaceType(device, NVME_INTERFACE);
+            set_Device_DriveType(device, NVME_DRIVE);
             device->os_info.passthroughType   = UEFI_PASSTHROUGH_NVME;
             EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL* pPassthru;
             if (SUCCESS == get_NVMe_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))

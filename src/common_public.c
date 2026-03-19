@@ -66,7 +66,7 @@ void print_Low_Level_Info(const tDevice* device)
         print_str("\t---Drive Info---\n");
         // print things from drive info structure that will be useful
         print_str("\t\tmedia type: ");
-        switch (device->drive_info.media_type)
+        switch (get_Device_MediaType(device))
         {
         case MEDIA_HDD:
             print_str("HDD\n");
@@ -94,7 +94,7 @@ void print_Low_Level_Info(const tDevice* device)
             break;
         }
         print_str("\t\tdrive type: ");
-        switch (device->drive_info.drive_type)
+        switch (get_Device_DriveType(device))
         {
         case ATA_DRIVE:
             print_str("ATA\n");
@@ -122,7 +122,7 @@ void print_Low_Level_Info(const tDevice* device)
             break;
         }
         print_str("\t\tinterface type: ");
-        switch (device->drive_info.interface_type)
+        switch (get_Device_InterfaceType(device))
         {
         case IDE_INTERFACE:
             print_str("IDE/ATA\n");
@@ -231,7 +231,7 @@ void print_Low_Level_Info(const tDevice* device)
         {
             printf("\t\t\t\tbuild number: %" PRIu32 "\n", device->drive_info.driver_info.driverBuildNumber);
         }
-        if (device->drive_info.drive_type == ATA_DRIVE)
+        if (get_Device_DriveType(device) == ATA_DRIVE)
         {
             // TODO: print ataoptions struct? This is things setup based on detection from identify and helps with how
             // some commands are built/issued
@@ -243,7 +243,7 @@ void print_Low_Level_Info(const tDevice* device)
         {
             printf("\t\tDefault timeout overridden as %" PRIu32 " seconds\n", timeoutValue);
         }
-        if (device->drive_info.drive_type == NVME_DRIVE)
+        if (get_Device_DriveType(device) == NVME_DRIVE)
         {
             printf("\t\tNamespace ID set as %" PRIX32 "\n", device->drive_info.namespaceID);
         }
@@ -1159,24 +1159,24 @@ bool scan_Drive_Type_Filter(const tDevice* device, uint32_t scanFlags)
         }
         if (showATA)
         {
-            if (device->drive_info.drive_type == ATA_DRIVE && device->drive_info.interface_type != USB_INTERFACE)
+            if (get_Device_DriveType(device) == ATA_DRIVE && get_Device_InterfaceType(device) != USB_INTERFACE)
             {
                 showDevice = true;
             }
         }
-        if (showUSB && device->drive_info.interface_type == USB_INTERFACE)
+        if (showUSB && get_Device_InterfaceType(device) == USB_INTERFACE)
         {
             showDevice = true;
         }
-        if (showSCSI && device->drive_info.drive_type == SCSI_DRIVE)
+        if (showSCSI && get_Device_DriveType(device) == SCSI_DRIVE)
         {
             showDevice = true;
         }
-        if (showNVMe && device->drive_info.drive_type == NVME_DRIVE)
+        if (showNVMe && get_Device_DriveType(device) == NVME_DRIVE)
         {
             showDevice = true;
         }
-        if (showRAID && device->drive_info.drive_type == RAID_DRIVE)
+        if (showRAID && get_Device_DriveType(device) == RAID_DRIVE)
         {
             showDevice = true;
         }
@@ -1221,23 +1221,23 @@ bool scan_Interface_Type_Filter(const tDevice* device, uint32_t scanFlags)
         {
             showRAIDInterface = true;
         }
-        if (showUSBInterface && device->drive_info.interface_type == USB_INTERFACE)
+        if (showUSBInterface && get_Device_InterfaceType(device) == USB_INTERFACE)
         {
             showInterface = true;
         }
-        if (showATAInterface && device->drive_info.interface_type == IDE_INTERFACE)
+        if (showATAInterface && get_Device_InterfaceType(device) == IDE_INTERFACE)
         {
             showInterface = true;
         }
-        if (showSCSIInterface && device->drive_info.interface_type == SCSI_INTERFACE)
+        if (showSCSIInterface && get_Device_InterfaceType(device) == SCSI_INTERFACE)
         {
             showInterface = true;
         }
-        if (showNVMeInterface && device->drive_info.interface_type == NVME_INTERFACE)
+        if (showNVMeInterface && get_Device_InterfaceType(device) == NVME_INTERFACE)
         {
             showInterface = true;
         }
-        if (showRAIDInterface && device->drive_info.interface_type == RAID_INTERFACE)
+        if (showRAIDInterface && get_Device_InterfaceType(device) == RAID_INTERFACE)
         {
             showInterface = true;
         }
@@ -1619,7 +1619,7 @@ bool is_Maxtor(const tDevice* device, bool USBchildDrive)
         isMaxtor = true;
         break;
     default:
-        if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive)
+        if (get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive)
         {
             // on a USB drive, check the child information as well as the bridge information
             isMaxtor = is_Maxtor(device, true);
@@ -1633,8 +1633,8 @@ bool is_Maxtor(const tDevice* device, bool USBchildDrive)
     if (!isMaxtor)
     {
         // we need to check the Vendor ID if SCSI or USB interface
-        if (device->drive_info.interface_type == USB_INTERFACE ||
-            (device->drive_info.interface_type == SCSI_INTERFACE && device->drive_info.drive_type != ATA_DRIVE))
+        if (get_Device_InterfaceType(device) == USB_INTERFACE ||
+            (get_Device_InterfaceType(device) == SCSI_INTERFACE && get_Device_DriveType(device) != ATA_DRIVE))
         {
             isMaxtor = is_Maxtor_String(device->drive_info.T10_vendor_ident);
         }
@@ -1644,7 +1644,7 @@ bool is_Maxtor(const tDevice* device, bool USBchildDrive)
             isMaxtor = is_Maxtor_String(device->drive_info.product_identification);
             // if after a model number check, the result is still false and it's USB, we need to check the child drive
             // information just to be certain
-            if (!isMaxtor && device->drive_info.interface_type == USB_INTERFACE)
+            if (!isMaxtor && get_Device_InterfaceType(device) == USB_INTERFACE)
             {
                 isMaxtor = is_Maxtor_String(device->drive_info.bridge_info.childDriveMN);
             }
@@ -1711,7 +1711,7 @@ bool is_Seagate(const tDevice* device, bool USBchildDrive)
 
     // This check should work well enough, but we do support checking the IEEE OUI as well now. It must be set in the
     // WWN correctly with the NAA field set to 5h or 6h - TJE
-    if ((device->drive_info.interface_type == NVME_INTERFACE) &&
+    if ((get_Device_InterfaceType(device) == NVME_INTERFACE) &&
         (device->drive_info.adapter_info.vendorID == SEAGATE_VENDOR_ID))
     {
         return true;
@@ -1731,13 +1731,13 @@ bool is_Seagate(const tDevice* device, bool USBchildDrive)
         isSeagate = true;
         break;
     case IEEE_SEAGATE_NVME:
-        if (device->drive_info.drive_type == NVME_DRIVE)
+        if (get_Device_DriveType(device) == NVME_DRIVE)
         {
             isSeagate = true;
         }
         break;
     default:
-        if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive)
+        if (get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive)
         {
             // on a USB drive, check the child information as well as the bridge information
             isSeagate = is_Seagate(device, true);
@@ -1751,8 +1751,8 @@ bool is_Seagate(const tDevice* device, bool USBchildDrive)
     if (!isSeagate)
     {
         // we need to check the Vendor ID if SCSI or USB interface
-        if (device->drive_info.interface_type == USB_INTERFACE ||
-            (device->drive_info.interface_type == SCSI_INTERFACE && device->drive_info.drive_type != ATA_DRIVE))
+        if (get_Device_InterfaceType(device) == USB_INTERFACE ||
+            (get_Device_InterfaceType(device) == SCSI_INTERFACE && get_Device_DriveType(device) != ATA_DRIVE))
         {
             isSeagate = is_Seagate_VendorID(device);
         }
@@ -1762,7 +1762,7 @@ bool is_Seagate(const tDevice* device, bool USBchildDrive)
             isSeagate = is_Seagate_MN(device->drive_info.product_identification);
             // if after a model number check, the result is still false and it's USB, we need to check the child drive
             // information just to be certain
-            if (!isSeagate && device->drive_info.interface_type == USB_INTERFACE)
+            if (!isSeagate && get_Device_InterfaceType(device) == USB_INTERFACE)
             {
                 isSeagate = is_Seagate_MN(device->drive_info.bridge_info.childDriveMN);
             }
@@ -1809,7 +1809,7 @@ bool is_Conner_VendorID(const tDevice* device)
 
 bool is_Connor(const tDevice* device, bool USBchildDrive)
 {
-    if (device->drive_info.drive_type == SCSI_DRIVE)
+    if (get_Device_DriveType(device) == SCSI_DRIVE)
     {
         return is_Conner_VendorID(device);
     }
@@ -1822,7 +1822,7 @@ bool is_Connor(const tDevice* device, bool USBchildDrive)
         else
         {
             bool result = is_Conner_Model_Number(device->drive_info.product_identification);
-            if (!result && device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive)
+            if (!result && get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive)
             {
                 return is_Conner_Model_Number(device->drive_info.bridge_info.childDriveMN);
             }
@@ -1964,7 +1964,7 @@ bool is_Quantum_Model_Number(const char* string)
 
 bool is_Quantum(const tDevice* device, bool USBchildDrive)
 {
-    if (device->drive_info.drive_type == SCSI_DRIVE)
+    if (get_Device_DriveType(device) == SCSI_DRIVE)
     {
         return is_Quantum_VendorID(device);
     }
@@ -1982,7 +1982,7 @@ bool is_Quantum(const tDevice* device, bool USBchildDrive)
             {
                 result = is_Quantum_Model_Number(device->drive_info.product_identification);
             }
-            if (!result && device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive)
+            if (!result && get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive)
             {
                 return is_Quantum_Model_Number(device->drive_info.bridge_info.childDriveMN);
             }
@@ -2022,7 +2022,7 @@ bool is_PrarieTek_VendorID(const tDevice* device)
 bool is_LaCie(const tDevice* device)
 {
     bool isLaCie = false;
-    if ((device->drive_info.interface_type == NVME_INTERFACE) &&
+    if ((get_Device_InterfaceType(device) == NVME_INTERFACE) &&
         (device->drive_info.adapter_info.vendorID == LACIE_VENDOR_ID))
     {
         return true;
@@ -2174,7 +2174,7 @@ bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive)
         isSSD = true;
         M_FALLTHROUGH;
     default:
-        if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive && !isSSD)
+        if (get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive && !isSSD)
         {
             // on a USB drive, check the child information as well as the bridge information
             isSamsung = is_Samsung_HDD(device, true);
@@ -2191,8 +2191,8 @@ bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive)
         // this fall back method should only be called on samsung HDD's and these should only be really old ones without
         // a WWN which should be a minority. All drives with IEEE_SEAGATE_SAMSUNG_HDD should be caught long before this
         // we need to check the Vendor ID if SCSI or USB interface
-        if (device->drive_info.interface_type == USB_INTERFACE ||
-            (device->drive_info.interface_type == SCSI_INTERFACE && device->drive_info.drive_type != ATA_DRIVE))
+        if (get_Device_InterfaceType(device) == USB_INTERFACE ||
+            (get_Device_InterfaceType(device) == SCSI_INTERFACE && get_Device_DriveType(device) != ATA_DRIVE))
         {
             isSamsung = is_Samsung_String(device->drive_info.T10_vendor_ident);
         }
@@ -2202,7 +2202,7 @@ bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive)
             isSamsung = is_Samsung_String(device->drive_info.product_identification);
             // if after a model number check, the result is still false and it's USB, we need to check the child drive
             // information just to be certain
-            if (!isSamsung && device->drive_info.interface_type == USB_INTERFACE)
+            if (!isSamsung && get_Device_InterfaceType(device) == USB_INTERFACE)
             {
                 isSamsung = is_Samsung_String(device->drive_info.bridge_info.childDriveMN);
             }
@@ -2214,7 +2214,7 @@ bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive)
 bool is_Seagate_Model_Vendor_A(const tDevice* device)
 {
     bool isSeagateVendorA = false;
-    if (device->drive_info.drive_type == SCSI_DRIVE)
+    if (get_Device_DriveType(device) == SCSI_DRIVE)
     {
         const char* vendorAModel1 = "S650DC";
         const char* vendorAModel2 = "S630DC";
@@ -2241,7 +2241,7 @@ bool is_Vendor_A(const tDevice* device, bool USBchildDrive)
         isVendorA = true;
         break;
     default:
-        if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive)
+        if (get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive)
         {
             // on a USB drive, check the child information as well as the bridge information
             isVendorA = is_Vendor_A(device, true);
@@ -2257,8 +2257,8 @@ bool is_Vendor_A(const tDevice* device, bool USBchildDrive)
         // this fall back method should only be called on samsung HDD's and these should only be really old ones without
         // a WWN which should be a minority. All drives with IEEE_SEAGATE_SAMSUNG_HDD should be caught long before this
         // we need to check the Vendor ID if SCSI or USB interface
-        // if (device->drive_info.interface_type == USB_INTERFACE || (device->drive_info.interface_type ==
-        // SCSI_INTERFACE && device->drive_info.drive_type != ATA_DRIVE))
+        // if (get_Device_InterfaceType(device) == USB_INTERFACE || (get_Device_InterfaceType(device)==
+        // SCSI_INTERFACE && get_Device_DriveType(device) != ATA_DRIVE))
         //{
         //     isVendorA = is_Vendor_A_String(device->drive_info.T10_vendor_ident);
         // }
@@ -2267,7 +2267,7 @@ bool is_Vendor_A(const tDevice* device, bool USBchildDrive)
         //{
         //    isVendorA = is_Vendor_A_String(device->drive_info.product_identification);
         //     //if after a model number check, the result is still false and it's USB, we need to check the child drive
-        //     information just to be certain if (!isVendorA && device->drive_info.interface_type == USB_INTERFACE)
+        //     information just to be certain if (!isVendorA && get_Device_InterfaceType(device) == USB_INTERFACE)
         //     {
         //         isVendorA = is_Vendor_A_String(device->drive_info.bridge_info.childDriveMN);
         //     }
@@ -2899,7 +2899,7 @@ eSeagateFamily is_Seagate_Family(const tDevice* device)
             {
                 // If this is an NVMe drive, we need to check if it's Seagate since both Samsung HDD's and Seagate NVMe
                 // drives use the same IEEE OUI
-                if (device->drive_info.drive_type == NVME_DRIVE)
+                if (get_Device_DriveType(device) == NVME_DRIVE)
                 {
                     if (is_Seagate(device, false))
                     {
@@ -3042,7 +3042,7 @@ eSeagateFamily is_Seagate_Family(const tDevice* device)
 bool is_SSD(const tDevice* device)
 {
     bool isSSD = false;
-    if (device->drive_info.media_type == MEDIA_NVM || device->drive_info.media_type == MEDIA_SSD)
+    if (get_Device_MediaType(device) == MEDIA_NVM || get_Device_MediaType(device)== MEDIA_SSD)
     {
         isSSD = true;
     }
@@ -3056,7 +3056,7 @@ bool is_SSD(const tDevice* device)
 bool is_SATA(const tDevice* device)
 {
     bool isSata = false;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    if (get_Device_DriveType(device) == ATA_DRIVE)
     {
         // Word 76 will be greater than zero, and never 0xFFFF on a SATA drive (bit 0 must be cleared to zero)
         if (is_ATA_Identify_Word_Valid_SATA(le16_to_host(device->drive_info.IdentifyData.ata.Word076)))
@@ -3077,7 +3077,7 @@ bool is_Sector_Size_Emulation_Active(const tDevice* device)
         {
             if (device->drive_info.deviceBlockSize > device->drive_info.bridge_info.childDeviceBlockSize)
             {
-                if (device->drive_info.interface_type == USB_INTERFACE)
+                if (get_Device_InterfaceType(device) == USB_INTERFACE)
                 {
                     emulationActive = true;
                 }
@@ -3149,7 +3149,7 @@ eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize)
 
 uint32_t get_Sector_Count_For_Read_Write(const tDevice* device)
 {
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
     case SCSI_INTERFACE:
@@ -3173,7 +3173,7 @@ uint32_t get_Sector_Count_For_Read_Write(const tDevice* device)
 
 uint32_t get_Sector_Count_For_512B_Based_XFers(const tDevice* device)
 {
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
     case SCSI_INTERFACE:
@@ -3196,7 +3196,7 @@ uint32_t get_Sector_Count_For_512B_Based_XFers(const tDevice* device)
 
 uint32_t get_Sector_Count_For_4096B_Based_XFers(const tDevice* device)
 {
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
     case SCSI_INTERFACE:
@@ -3461,11 +3461,11 @@ bool is_CSMI_Device(const tDevice* device)
 
 #ifdef _DEBUG
     printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n", device->os_info.friendlyName,
-           device->drive_info.interface_type, C_CAST(uintptr_t, device->raid_device));
+           get_Device_InterfaceType(device), C_CAST(uintptr_t, device->raid_device));
 #endif
 
     csmiDevice = csmiDevice && (strncmp(device->os_info.friendlyName, "SCSI", SIZE_T_C(4)) == 0);
-    csmiDevice = csmiDevice && (device->drive_info.interface_type == RAID_INTERFACE);
+    csmiDevice = csmiDevice && (get_Device_InterfaceType(device) == RAID_INTERFACE);
     csmiDevice = csmiDevice && (device->raid_device != M_NULLPTR);
 
 #ifdef _DEBUG
@@ -3521,19 +3521,19 @@ bool is_Removable_Media(const tDevice* device)
     bool    result = false;
     uint8_t scsiDevType;
 
-    if (device->drive_info.interface_type == IDE_INTERFACE)
+    if (get_Device_InterfaceType(device) == IDE_INTERFACE)
     {
-        if (device->drive_info.drive_type == UNKNOWN_DRIVE || device->drive_info.drive_type == FLASH_DRIVE ||
-            device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.media_type == MEDIA_OPTICAL ||
-            device->drive_info.media_type == MEDIA_SSM_FLASH || device->drive_info.media_type == MEDIA_TAPE ||
-            device->drive_info.media_type == MEDIA_UNKNOWN ||
+        if (get_Device_DriveType(device) == UNKNOWN_DRIVE || get_Device_DriveType(device) == FLASH_DRIVE ||
+            get_Device_DriveType(device) == ATAPI_DRIVE || get_Device_MediaType(device) == MEDIA_OPTICAL ||
+            get_Device_MediaType(device) == MEDIA_SSM_FLASH || get_Device_MediaType(device)== MEDIA_TAPE ||
+            get_Device_MediaType(device) == MEDIA_UNKNOWN ||
             (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word000)) &&
              le16_to_host(device->drive_info.IdentifyData.ata.Word000) & BIT7))
         {
             result = true;
         }
     }
-    else if (device->drive_info.interface_type == SCSI_INTERFACE)
+    else if (get_Device_InterfaceType(device) == SCSI_INTERFACE)
     {
         scsiDevType = device->drive_info.scsiVpdData.inquiryData[0] & 0x1F;
 
@@ -5023,7 +5023,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         // ASMedia bridge chip tests.
         passthroughHacksSet                                                     = true;
         device->drive_info.passThroughHacks.passthroughType                     = NVME_PASSTHROUGH_ASMEDIA;
-        device->drive_info.drive_type                                           = NVME_DRIVE;
+        set_Device_DriveType(device, NVME_DRIVE);
         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
         device->drive_info.passThroughHacks.turfValue                           = 33;
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
@@ -5276,7 +5276,7 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
             true; // set this so in the case an ATA passthrough command is attempted, it won't try this opcode
                   // since it can cause performance problems or crash the bridge
-        device->drive_info.drive_type                                             = NVME_DRIVE;
+        set_Device_DriveType(device, NVME_DRIVE);
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -5600,7 +5600,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
             true; // set this so in the case an ATA passthrough command is attempted, it won't try this opcode
                   // since it can cause performance problems or crash the bridge
-        device->drive_info.drive_type                                             = NVME_DRIVE;
+        set_Device_DriveType(device, NVME_DRIVE);
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -5649,7 +5649,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
             true; // set this so in the case an ATA passthrough command is attempted, it won't try this opcode
                   // since it can cause performance problems or crash the bridge
-        device->drive_info.drive_type                                             = NVME_DRIVE;
+        set_Device_DriveType(device, NVME_DRIVE);
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -5755,7 +5755,7 @@ static bool set_ASMedia_USB_Hacks_By_PID(tDevice* device)
         // here, or add a hack to check INQ data to finish setting up remaining hacks
         passthroughHacksSet                                                     = true;
         device->drive_info.passThroughHacks.passthroughType                     = NVME_PASSTHROUGH_ASMEDIA_BASIC;
-        device->drive_info.drive_type                                           = NVME_DRIVE;
+        set_Device_DriveType(device, NVME_DRIVE);
         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
         device->drive_info.passThroughHacks.turfValue                           = 33;
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
@@ -6171,7 +6171,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
 {
     bool passthroughHacksSet = false;
     // only change the ATA Passthrough type for USB (for legacy USB bridges)
-    if (device->drive_info.interface_type == USB_INTERFACE)
+    if (get_Device_InterfaceType(device) == USB_INTERFACE)
     {
         // Most USB bridges are SAT so they'll probably fall into the default cases and issue an identify command for
         // SAT
@@ -6301,7 +6301,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             case 0x1000: // USB DISK - Rev1100
                 // Don't set a passthrough type! This is a USB flash memory, that responds to one of the legacy command
                 // requests and it will break it!
-                device->drive_info.media_type                       = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
                 passthroughHacksSet                                 = true;
                 // this device also supports the device identification VPD page even though the list of pages doesn't
@@ -6327,7 +6327,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x2093: // v3.1.0.4
-                device->drive_info.media_type                                             = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType                       = PASSTHROUGH_NONE;
                 passthroughHacksSet                                                       = true;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
@@ -6354,7 +6354,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             case 0x9380: // flash drive
             case 0x9381: // flash drive
             case 0x9382: // flash drive
-                device->drive_info.media_type                       = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
                 passthroughHacksSet                                 = true;
                 break;
@@ -6367,7 +6367,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             {
             case 0x1172: // flash drive
             case 0x1176: // flash drive - rev 0100
-                device->drive_info.media_type                       = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
                 passthroughHacksSet                                 = true;
                 break;
@@ -6380,7 +6380,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             {
             case 0x5575: // Cruzer Glide
                 passthroughHacksSet                                                       = true;
-                device->drive_info.media_type                                             = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType                       = PASSTHROUGH_NONE;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
                 device->drive_info.passThroughHacks.turfValue                             = 16;
@@ -6395,9 +6395,8 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 break;
             case 0x5580: // Extreme
                 passthroughHacksSet = true;
-                device->drive_info.media_type =
-                    MEDIA_SSM_FLASH; // Leaving this as flash since it is a flash drive/thumb drive, but this is an odd
-                                     // one that seems to do SAT commands.
+                set_Device_MediaType(device, MEDIA_SSM_FLASH); // Leaving this as flash since it is a flash drive/thumb drive, but this is an odd
+                                                               // one that seems to do SAT commands.
                 device->drive_info.passThroughHacks.passthroughType                          = ATA_PASSTHROUGH_SAT;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure      = true;
                 device->drive_info.passThroughHacks.turfValue                                = 15;
@@ -6420,7 +6419,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 break;
             case 0x5583: // Ultra Fit
                 passthroughHacksSet                                                       = true;
-                device->drive_info.media_type                                             = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType                       = PASSTHROUGH_NONE;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
                 device->drive_info.passThroughHacks.turfValue                             = 14;
@@ -6442,7 +6441,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             {
             case 0x3600: // Patriot Memory PMA
                 passthroughHacksSet                                                     = true;
-                device->drive_info.media_type                                           = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType                     = PASSTHROUGH_NONE;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                 device->drive_info.passThroughHacks.turfValue                           = 4;
@@ -6471,7 +6470,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             {
             case 0x1300: // USB DISK 2.0
                 passthroughHacksSet                                                     = true;
-                device->drive_info.media_type                                           = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType                     = PASSTHROUGH_NONE;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                 device->drive_info.passThroughHacks.turfValue                           = 33;
@@ -6595,7 +6594,7 @@ M_PARAM_RW(1)
 static bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
 {
     bool passthroughHacksSet = false;
-    if (device->drive_info.interface_type == IEEE_1394_INTERFACE)
+    if (get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
     {
         // It is unknown if any IEEE 1394 devices support any ATA passthrough.
         // Some devices had both USB and IEEE1394 interfaces and one may have passthrough while the other does not. They
@@ -6815,6 +6814,40 @@ eDriveType get_Device_DriveType(const tDevice* device)
     return device->drive_info.drive_type;
 }
 
+void set_Device_DriveType(tDevice* M_NONNULL device, eDriveType driveType)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.drive_type = driveType;
+    }
+}
+
+eInterfaceType get_Device_InterfaceType(const tDevice* device)
+{
+    return device->drive_info.interface_type;
+}
+
+void set_Device_InterfaceType(tDevice* M_NONNULL device, eInterfaceType interfaceType)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.interface_type = interfaceType;
+    }
+}
+
+eMediaType get_Device_MediaType(const tDevice* device)
+{
+    return device->drive_info.media_type;
+}
+
+void set_Device_MediaType(tDevice* M_NONNULL device, eMediaType mediaType)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.media_type = mediaType;
+    }
+}
+
 uint32_t get_Device_BlockSize(const tDevice* device)
 {
     return device->drive_info.deviceBlockSize;
@@ -6823,6 +6856,15 @@ uint32_t get_Device_BlockSize(const tDevice* device)
 uint32_t get_Device_PhyBlockSize(const tDevice* device)
 {
     return device->drive_info.devicePhyBlockSize;
+}
+
+uint32_t get_Logical_Sectors_Per_Physical_Sector(const tDevice* device)
+{
+    if (device->drive_info.devicePhyBlockSize == 0)
+    {
+        return UINT32_C(1); // avoid division by zero
+    }
+    return device->drive_info.deviceBlockSize / device->drive_info.devicePhyBlockSize;
 }
 
 int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)

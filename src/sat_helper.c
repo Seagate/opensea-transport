@@ -1119,7 +1119,7 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
     // registers
     ret = set_Registers(*satCDB, ataCommandOptions);
     // set the check condition bit as we need it
-    if (device->os_info.osType == OS_WINDOWS && device->drive_info.interface_type == IDE_INTERFACE)
+    if (device->os_info.osType == OS_WINDOWS && get_Device_InterfaceType(device) == IDE_INTERFACE)
     {
         // always set the check condition bit since in this case we won't get RTFRs even if there is an error...Windows
         // low level driver workaround
@@ -1598,7 +1598,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
 
             // Windows has a problem where if a command fails, the next command that is sent will return the same stale
             // status even if it was good. We need to flush the command out with a check power more command
-            if (device->os_info.osType == OS_WINDOWS && device->drive_info.interface_type == IDE_INTERFACE &&
+            if (device->os_info.osType == OS_WINDOWS && get_Device_InterfaceType(device) == IDE_INTERFACE &&
                 ret != SUCCESS && ataCommandOptions->tfr.CommandStatus != ATA_CHECK_POWER_MODE_CMD)
             {
                 // On Windows AHCI controller (IDE Interface), for whatever reason, the controller sometimes caches the
@@ -4335,7 +4335,7 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
     case 15: // return response information
         // just get whatever is in the last command rtfrs of the device, and set that into the data return buffer and
         // return success
-        if (device->drive_info.interface_type == IDE_INTERFACE)
+        if (get_Device_InterfaceType(device) == IDE_INTERFACE)
         {
             DECLARE_ZERO_INIT_ARRAY(uint8_t, response, 14);
             response[0]  = 0x09;
@@ -4524,7 +4524,7 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
 
     // now we need to dummy up sense data if we are on the IDE_INTERFACE (ATA) and it was unsuccessful or the check
     // condition bit was set, otherwise the SATL (USB or SAS) will do this for us
-    if ((ret != SUCCESS || scsiIoCtx->cdb[CDB_2] & BIT5) && device->drive_info.interface_type == IDE_INTERFACE)
+    if ((ret != SUCCESS || scsiIoCtx->cdb[CDB_2] & BIT5) && get_Device_InterfaceType(device) == IDE_INTERFACE)
     {
         DECLARE_ZERO_INIT_ARRAY(uint8_t, ataReturnDescriptor,
                                 15); // making this 1 byte larger than it needs to be. This is done so that the log
@@ -18602,7 +18602,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
             //     &device->drive_info.IdentifyData.ata.Word000), LEGACY_DRIVE_SEC_SIZE))
             //     {
             //         //set that we are an ATAPI_DEVICE, then this function will just encapsulate every scsi command
-            //         into an ATA_PACKET command device->drive_info.drive_type = ATAPI_DRIVE;
+            //         into an ATA_PACKET command set_Device_DriveType(device, ATAPI_DRIVE);
             //     }
             //     else //something is horribly wrong...return a failure
             //     {
@@ -18615,7 +18615,7 @@ eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx
             deviceInfoAvailable = true;
         }
     }
-    if (device->drive_info.drive_type == ATAPI_DRIVE)
+    if (get_Device_DriveType(device) == ATAPI_DRIVE)
     {
         // TODO: set up an ata packet command and send it to the device to let it handle the scsi command translation
         // NOTE: There are a few things that actually do need translation to an ATAPI:
