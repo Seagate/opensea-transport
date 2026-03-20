@@ -14385,7 +14385,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
             print_str("Windows Error: ");
-            print_Windows_Error_To_Screen(get_Device_Last_Error(scsiIoCtx->device));
+            print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
         }
         returnValue = OS_PASSTHROUGH_FAILURE;
     }
