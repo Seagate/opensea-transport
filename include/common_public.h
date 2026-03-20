@@ -3118,16 +3118,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_MaxLba(uint64_t* M_NONNULL maxLba, const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_INLINE uint64_t return_Device_MaxLba(const tDevice* M_NONNULL device)
-    {
-        uint64_t maxLba = 0;
-        int32_t result = get_Device_MaxLba(&maxLba, device);
-        if (result < 0)
-        {
-            return 0;
-        }
-        return maxLba;
-    }
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_MaxLba(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_MaxLba(tDevice* M_NONNULL device, uint64_t maxLba);
@@ -3137,16 +3128,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_Child_MaxLba(uint64_t* M_NONNULL maxLba, const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_INLINE uint64_t return_Device_Child_MaxLba(const tDevice* M_NONNULL device)
-    {
-        uint64_t maxLba = 0;
-        int32_t result = get_Device_Child_MaxLba(&maxLba, device);
-        if (result < 0)
-        {
-            return 0;
-        }
-        return maxLba;
-    }
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_Child_MaxLba(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_Child_MaxLba(tDevice* M_NONNULL device, uint64_t maxLba);

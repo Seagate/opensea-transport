@@ -2088,7 +2088,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
         {
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
             {
                 print_str("Error: ");
                 print_Errno_To_Screen(errno);

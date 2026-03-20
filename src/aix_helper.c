@@ -1782,10 +1782,10 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             ret = OS_PASSTHROUGH_FAILURE;
 //             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
 //             {
-//                 if (scsiIoCtx->device->os_info.last_error != 0)
+//                 if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
 //                 {
 //                     print_str("Error: ");
-//                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+//                     print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
 //                 }
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
 //                 ioctlCode == DKIOCMD ? SC_ADAP_SC_ERR : SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
@@ -1896,10 +1896,10 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             ret = OS_PASSTHROUGH_FAILURE;
 //             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
 //             {
-//                 if (scsiIoCtx->device->os_info.last_error != 0)
+//                 if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
 //                 {
 //                     print_str("Error: ");
-//                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+//                     print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
 //                 }
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
 //                 SC_ADAP_SAM_ERR, aixIoCmd.adapter_status); print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
@@ -1981,10 +1981,10 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             ret = OS_PASSTHROUGH_FAILURE;
 //             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
 //             {
-//                 if (scsiIoCtx->device->os_info.last_error != 0)
+//                 if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
 //                 {
 //                     print_str("Error: ");
-//                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+//                     print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
 //                 }
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
 //                 ioctlCode == DKIOCMD ? SC_ADAP_SC_ERR : SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
@@ -2123,10 +2123,10 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
         {
             // https://github.com/RobinTMiller/dt/blob/master/scsilib-aix.c
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
             {
                 print_str("Error: ");
-                print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
             print_Passthrough_Bus_And_Adapter_Status(aixPassthrough.status_validity, aixPassthrough.scsi_bus_status,
                                                      aixPassthrough.adap_status_type, aixPassthrough.adapter_status);
@@ -2142,7 +2142,7 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             printf("Additional Device Status: %u\n", aixPassthrough.add_device_status);
             print_Adapter_Queue_Status(aixPassthrough.adap_q_status);
 
-            if (scsiIoCtx->device->os_info.last_error == EINVAL)
+            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) == EINVAL)
             {
                 // TODO: Some of these, upon error will return an allowed value. Look at showing these in this error
                 // output.-TJE
@@ -2309,10 +2309,10 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
         {
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
             {
                 print_str("Error: ");
-                print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
         }
     }
@@ -2423,10 +2423,10 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
         {
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
             {
                 print_str("Error: ");
-                print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
             printf("IDE ATAPI Passthru Status: %02" PRIX8 "h\n", idePassthrough.ata_status);
             printf("IDE ATAPI Passthru Error:  %02" PRIX8 "h\n", idePassthrough.ata_error);
@@ -2647,10 +2647,10 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         ret = OS_PASSTHROUGH_FAILURE;
         if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
         {
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
             {
                 print_str("Error: ");
-                print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
         }
         // adapter_set_flags will have some output information upon completion to detect errors-TJE

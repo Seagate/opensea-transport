@@ -7127,6 +7127,16 @@ int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)
     return 0;
 }
 
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_MaxLba(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.deviceMaxLba;
+    }
+    return 0;
+}
+
 void set_Device_MaxLba(tDevice* M_NONNULL device, uint64_t maxLba)
 {
     if (device != M_NULLPTR)
@@ -7142,6 +7152,16 @@ int32_t get_Device_Child_MaxLba(uint64_t* maxLba, const tDevice* device)
         return -1;
     }
     *maxLba = device->drive_info.bridge_info.childDeviceMaxLba;
+    return 0;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_Child_MaxLba(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
+    {
+        return device->drive_info.bridge_info.childDeviceMaxLba;
+    }
     return 0;
 }
 

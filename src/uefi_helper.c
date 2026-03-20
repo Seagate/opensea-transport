@@ -980,7 +980,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-        scsiIoCtx->device->os_info.last_error                    = Status;
+        set_Device_Last_Error(scsiIoCtx->device, Status);
 
         if (Status == EFI_SUCCESS)
         {
@@ -1001,7 +1001,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             {
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
                 print_str("EFI Status: ");
-                print_EFI_STATUS_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_EFI_STATUS_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
             if (Status == EFI_WRITE_PROTECTED)
@@ -1341,7 +1341,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
 #endif
 
         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-        scsiIoCtx->device->os_info.last_error                    = Status;
+        set_Device_Last_Error(scsiIoCtx->device, Status);
 
         if (Status == EFI_SUCCESS)
         {
@@ -1362,7 +1362,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
             {
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
                 print_str("EFI Status: ");
-                print_EFI_STATUS_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_EFI_STATUS_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
             if (Status == EFI_WRITE_PROTECTED)
@@ -1647,7 +1647,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
 #endif
 
         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
-        scsiIoCtx->device->os_info.last_error                    = Status;
+        set_Device_Last_Error(scsiIoCtx->device, Status);
 
         if (Status == EFI_SUCCESS)
         {
@@ -1712,7 +1712,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
             {
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
                 print_str("EFI Status: ");
-                print_EFI_STATUS_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_EFI_STATUS_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
             }
             else if (Status == EFI_WRITE_PROTECTED)

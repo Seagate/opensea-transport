@@ -6523,7 +6523,7 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks(ScsiIoCtx* scsiIoCtx)
         }
         BOOL ioResult = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_DISK_REASSIGN_BLOCKS, winReassignBlocks,
                                         reassignStructLen, M_NULLPTR, 0, &bytesReturned, M_NULLPTR);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         if (MSFT_BOOL_FALSE(ioResult))
         {
             // Need to figure out error mapping for this IOCTL. Not clearly documented what errors can be returned here.
@@ -6580,7 +6580,7 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks_Ex(ScsiIoCtx* scsiIoCtx
         }
         BOOL ioResult = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_DISK_REASSIGN_BLOCKS_EX, winReassignBlocks,
                                         reassignStructLen, M_NULLPTR, 0, &bytesReturned, M_NULLPTR);
-        scsiIoCtx->device->os_info.last_error = GetLastError();
+        set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         if (MSFT_BOOL_FALSE(ioResult))
         {
             // Need to figure out error mapping for this IOCTL. Not clearly documented what errors can be returned here.
@@ -6754,7 +6754,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
             set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
-        else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+        else if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != ERROR_SUCCESS)
         {
             ret = OS_PASSTHROUGH_FAILURE;
         }
@@ -6775,7 +6775,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -6791,7 +6791,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 print_str("Windows Error: ");
-                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
         }
 
@@ -6993,7 +6993,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
             set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
-        else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+        else if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != ERROR_SUCCESS)
         {
             ret = OS_PASSTHROUGH_FAILURE;
         }
@@ -7014,7 +7014,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -7030,7 +7030,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 print_str("Windows Error: ");
-                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
         }
 
@@ -7286,7 +7286,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
             set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
-        else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+        else if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != ERROR_SUCCESS)
         {
             ret = OS_PASSTHROUGH_FAILURE;
         }
@@ -7305,7 +7305,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -7321,7 +7321,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 print_str("Windows Error: ");
-                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
         }
         scsiIoCtx->returnStatus.senseKey = sptdioDB->scsiPassthrough.ScsiStatus;
@@ -7430,7 +7430,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
             set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
-        else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+        else if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != ERROR_SUCCESS)
         {
             ret = OS_PASSTHROUGH_FAILURE;
         }
@@ -7449,7 +7449,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -7465,7 +7465,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 print_str("Windows Error: ");
-                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
         }
 
@@ -7755,9 +7755,9 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
             set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
-        else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+        else if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != ERROR_SUCCESS)
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -7774,7 +7774,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 print_str("Windows Error: ");
-                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
         }
         stop_Timer(&commandTimer);
@@ -7798,7 +7798,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -8079,9 +8079,9 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
             set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
-        else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+        else if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != ERROR_SUCCESS)
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -8113,7 +8113,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -8129,7 +8129,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 print_str("Windows Error: ");
-                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
             scsiIoCtx->returnStatus.senseKey = 0x01;
         }
@@ -8361,9 +8361,9 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
             set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
-        else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+        else if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != ERROR_SUCCESS)
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -8375,7 +8375,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 print_str("Windows Error: ");
-                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
         }
         stop_Timer(&commandTimer);
@@ -8400,7 +8400,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -8639,7 +8639,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
         fwdlIO = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
         set_Device_Last_Error(scsiIoCtx->device, GetLastError());
     }
-    else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+    else if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != ERROR_SUCCESS)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
@@ -8696,7 +8696,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     }
     else
     {
-        switch (scsiIoCtx->device->os_info.last_error)
+        switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
         {
         case ERROR_IO_DEVICE: // aborted command is the best we can do
             safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
@@ -8764,7 +8764,7 @@ static eReturnValues win10_FW_Activate_IO_SCSI(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
             print_str("Windows Error: ");
-            print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+            print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
         }
     }
     return ret;
@@ -8878,7 +8878,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
         fwdlIO = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
         set_Device_Last_Error(scsiIoCtx->device, GetLastError());
     }
-    else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+    else if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != ERROR_SUCCESS)
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
@@ -8941,7 +8941,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
     }
     else
     {
-        switch (scsiIoCtx->device->os_info.last_error)
+        switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
         {
         case ERROR_IO_DEVICE: // aborted command is the best we can do
             safe_memset(scsiIoCtx->psense, scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
@@ -9010,7 +9010,7 @@ static eReturnValues win10_FW_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
             print_str("Windows Error: ");
-            print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+            print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
         }
     }
     safe_free_hwfwdl(&downloadIO);
@@ -9346,9 +9346,9 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
             success = GetOverlappedResult(scsiIoCtx->device->os_info.fd, &overlappedStruct, &returned_data, TRUE);
             set_Device_Last_Error(scsiIoCtx->device, GetLastError());
         }
-        else if (scsiIoCtx->device->os_info.last_error != ERROR_SUCCESS)
+        else if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != ERROR_SUCCESS)
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -9377,7 +9377,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            switch (scsiIoCtx->device->os_info.last_error)
+            switch (get_Device_OS_Info_Last_Error(scsiIoCtx->device))
             {
             case ERROR_ACCESS_DENIED:
                 ret = PERMISSION_DENIED;
@@ -9390,7 +9390,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
             if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
             {
                 print_str("Windows Error: ");
-                print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             }
             scsiIoCtx->returnStatus.senseKey = 0x01;
         }
@@ -14378,14 +14378,14 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
     result = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_STORAGE_QUERY_PROPERTY, buffer, bufferLength, buffer,
                              bufferLength, &returnedLength, M_NULLPTR);
     stop_Timer(&commandTimer);
-    scsiIoCtx->device->os_info.last_error                    = GetLastError();
+    set_Device_Last_Error(scsiIoCtx->device, GetLastError());
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     if (MSFT_BOOL_FALSE(result) || (returnedLength == 0))
     {
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
             print_str("Windows Error: ");
-            print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+            print_Windows_Error_To_Screen(get_Device_Last_Error(scsiIoCtx->device));
         }
         returnValue = OS_PASSTHROUGH_FAILURE;
     }
@@ -14483,14 +14483,14 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx)
     result = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_STORAGE_QUERY_PROPERTY, buffer, bufferLength, buffer,
                              bufferLength, &returnedLength, M_NULLPTR);
     stop_Timer(&commandTimer);
-    scsiIoCtx->device->os_info.last_error                    = GetLastError();
+    set_Device_Last_Error(scsiIoCtx->device, GetLastError());
     scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
     if (MSFT_BOOL_FALSE(result) || (returnedLength == 0))
     {
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
             print_str("Windows Error: ");
-            print_Windows_Error_To_Screen(scsiIoCtx->device->os_info.last_error);
+            print_Windows_Error_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
         }
         returnValue = OS_PASSTHROUGH_FAILURE;
     }

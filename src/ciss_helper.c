@@ -1486,7 +1486,7 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
                     set_Device_InterfaceType(device, RAID_INTERFACE);
                     set_Device_Handle_Name(device, filename);
                     set_Device_Handle_Friendly_Name(device, filename);
-                    device->os_info.minimumAlignment = sizeof(void*);
+                    set_Device_IO_Minimum_Alignment( device, sizeof(void*));
                     device->os_info.cissDeviceData->smartpqi =
                         is_SmartPQI_Unique_IOCTLs_Supported(device->os_info.cissDeviceData->cissHandle);
                     device->os_info.fd =

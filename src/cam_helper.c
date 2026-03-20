@@ -706,7 +706,7 @@ static eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
     {
         perror("error sending legacy ATA I/O");
         ret                                   = OS_PASSTHROUGH_FAILURE;
-        scsiIoCtx->device->os_info.last_error = errno;
+        set_Device_Last_Error(scsiIoCtx->device, errno);
     }
     else
     {
