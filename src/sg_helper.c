@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -36,6 +36,7 @@
 #include "string_utils.h"
 #include "time_utils.h"
 #include "type_conversion.h"
+#include "warning_ctl.h"
 
 #include "ata_helper_func.h"
 #include "cmds.h"
@@ -179,7 +180,7 @@ static int sd_filter(const struct dirent* entry)
     {
         return !sdHandle;
     }
-    char* partition = strpbrk(entry->d_name, "0123456789");
+    const char* partition = strpbrk(entry->d_name, "0123456789");
     if (partition != M_NULLPTR)
     {
         return sdHandle;
@@ -448,9 +449,9 @@ static void get_Driver_Version_Info_From_Path(const char* driverPath, sysFSLowLe
         errno_t fileopenerr = safe_fopen(&versionFile, driverVersionFilePath, "r");
         if (fileopenerr == 0 && versionFile != M_NULLPTR)
         {
-            char*  versionFileData = M_NULLPTR;
-            size_t versionFileAlloc = SIZE_T_C(0);
-            ssize_t versionFileSize = getline(&versionFileData, &versionFileAlloc, versionFile);
+            char*   versionFileData  = M_NULLPTR;
+            size_t  versionFileAlloc = SIZE_T_C(0);
+            ssize_t versionFileSize  = getline(&versionFileData, &versionFileAlloc, versionFile);
             if (versionFileSize > 0)
             {
                 trim_ctrl_from_line(versionFileData, versionFileSize);
@@ -525,9 +526,9 @@ static bool read_sysfs_file_uint8(FILE* sysfsfile, uint8_t* value)
     bool success = false;
     if (sysfsfile != M_NULLPTR && value != M_NULLPTR)
     {
-        char*  line    = M_NULLPTR;
-        size_t linealloc = SIZE_T_C(0);
-        ssize_t linelen = getline(&line, &linealloc, sysfsfile);
+        char*   line      = M_NULLPTR;
+        size_t  linealloc = SIZE_T_C(0);
+        ssize_t linelen   = getline(&line, &linealloc, sysfsfile);
         if (linelen != SSIZE_T_C(-1) && linelen > SSIZE_T_C(0))
         {
             trim_ctrl_from_line(line, linelen);
@@ -543,9 +544,9 @@ static bool read_sysfs_file_uint16(FILE* sysfsfile, uint16_t* value)
     bool success = false;
     if (sysfsfile != M_NULLPTR && value != M_NULLPTR)
     {
-        char*  line    = M_NULLPTR;
-        size_t linealloc = SIZE_T_C(0);
-        ssize_t linelen = getline(&line, &linealloc, sysfsfile);
+        char*   line      = M_NULLPTR;
+        size_t  linealloc = SIZE_T_C(0);
+        ssize_t linelen   = getline(&line, &linealloc, sysfsfile);
         if (linelen != SSIZE_T_C(-1) && linelen > SSIZE_T_C(0))
         {
             trim_ctrl_from_line(line, linelen);
@@ -561,9 +562,9 @@ static bool read_sysfs_file_uint32(FILE* sysfsfile, uint32_t* value)
     bool success = false;
     if (sysfsfile != M_NULLPTR && value != M_NULLPTR)
     {
-        char*  line    = M_NULLPTR;
-        size_t linealloc = SIZE_T_C(0);
-        ssize_t linelen = getline(&line, &linealloc, sysfsfile);
+        char*   line      = M_NULLPTR;
+        size_t  linealloc = SIZE_T_C(0);
+        ssize_t linelen   = getline(&line, &linealloc, sysfsfile);
         if (linelen != SSIZE_T_C(-1) && linelen > SSIZE_T_C(0))
         {
             trim_ctrl_from_line(line, linelen);
@@ -592,7 +593,8 @@ static void get_SYS_FS_ATA_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[4] = '/';
     safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
     snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
-    intptr_t newStrLen = strstr(fullPciPath, "/ata") - fullPciPath;
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/ata")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0)
     {
         char* pciPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -646,9 +648,9 @@ static M_INLINE bool get_usb_file_id_hex(FILE* usbFile, uint32_t* hexvalue)
 
     if (usbFile != M_NULLPTR && hexvalue != M_NULLPTR)
     {
-        char*  line    = M_NULLPTR;
-        size_t linealloc = SIZE_T_C(0);
-        ssize_t linelen = getline(&line, &linealloc, usbFile);
+        char*   line      = M_NULLPTR;
+        size_t  linealloc = SIZE_T_C(0);
+        ssize_t linelen   = getline(&line, &linealloc, usbFile);
         if (linelen != SSIZE_T_C(-1) && linelen > SSIZE_T_C(0))
         {
             unsigned long temp = 0UL;
@@ -688,7 +690,8 @@ static void get_SYS_FS_USB_Info(const char* inHandleLink, sysFSLowLevelDeviceInf
     fullPciPath[4] = '/';
     safe_memmove(&fullPciPath[5], PATH_MAX - 5, &fullPciPath[6], safe_strlen(fullPciPath));
     snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullPciPath);
-    intptr_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath;
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0)
     {
         char* usbPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -752,9 +755,9 @@ static bool get_ieee1394_ids(FILE*     idFile,
     if (idFile != M_NULLPTR && vendorID != M_NULLPTR && productID != M_NULLPTR && specifierID != M_NULLPTR &&
         revision != M_NULLPTR)
     {
-        char*  line = M_NULLPTR;
-        size_t linealloc  = SIZE_T_C(0);
-        ssize_t linelen = getline(&line, &linealloc, idFile);
+        char*   line      = M_NULLPTR;
+        size_t  linealloc = SIZE_T_C(0);
+        ssize_t linelen   = getline(&line, &linealloc, idFile);
         if (linelen != SSIZE_T_C(-1) && linelen > SSIZE_T_C(0))
         {
             // line format: ieee1394:venXXXXXXXXmoXXXXXXXXspXXXXXXXXverXXXXXXXX
@@ -864,7 +867,8 @@ static void get_SYS_FS_1394_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     safe_memmove(&fullFWPath[5], PATH_MAX - 5, &fullFWPath[6], safe_strlen(fullFWPath));
     snprintf_err_handle(sysFsInfo->fullDevicePath, OPENSEA_PATH_MAX, "%s", fullFWPath);
     // now we need to go up a few directories to get the modalias file to parse
-    intptr_t newStrLen = strstr(fullFWPath, "/host") - fullFWPath;
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullFWPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullFWPath);
     if (newStrLen > 0)
     {
         char* fwPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -937,7 +941,8 @@ static void get_SYS_FS_SCSI_Info(const char* inHandleLink, sysFSLowLevelDeviceIn
     // printf("/host location string: %s\n", strstr(fullPciPath, "/host"));
     // printf("FULL: %" PRIXPTR "\t/HOST: %" PRIXPTR "\n", C_CAST(uintptr_t, fullPciPath), C_CAST(uintptr_t,
     // strstr(fullPciPath, "/host")));
-    intptr_t newStrLen = strstr(fullPciPath, "/host") - fullPciPath;
+    intptr_t newStrLen =
+        M_REINTERPRET_CAST(intptr_t, strstr(fullPciPath, "/host")) - M_REINTERPRET_CAST(intptr_t, fullPciPath);
     if (newStrLen > 0)
     {
         char* pciPath = M_REINTERPRET_CAST(char*, safe_calloc(PATH_MAX, sizeof(char)));
@@ -1174,15 +1179,15 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                         // ../../devices/pci0000:00/0000:00:1c.5/0000:04:00.0/0000:05:09.0/0000:0b:00.0/0000:0c:02.0/fw1/fw1.0/host13/target13:0:0/13:0:0:0/scsi_generic/sg3
                         // example sata over sas device link:
                         // ../../devices/pci0000:00/0000:00:1c.0/0000:02:00.0/host0/port-0:1/end_device-0:1/target0:0:1/0:0:1:0/scsi_generic/sg5
-                        if (strstr(inHandleLink, "ata") != 0)
+                        if (strstr(inHandleLink, "ata"))
                         {
                             get_SYS_FS_ATA_Info(inHandleLink, sysFsInfo);
                         }
-                        else if (strstr(inHandleLink, "usb") != 0)
+                        else if (strstr(inHandleLink, "usb"))
                         {
                             get_SYS_FS_USB_Info(inHandleLink, sysFsInfo);
                         }
-                        else if (strstr(inHandleLink, "fw") != 0)
+                        else if (strstr(inHandleLink, "fw"))
                         {
                             get_SYS_FS_1394_Info(inHandleLink, sysFsInfo);
                         }
@@ -1273,11 +1278,10 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
     }
 }
 
-M_NONNULL_PARAM_LIST(1, 2)
 M_NULL_TERM_STRING(1)
 M_PARAM_RO(1)
 M_PARAM_RW(2)
-static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
+static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice* M_NONNULL device)
 {
     sysFSLowLevelDeviceInfo sysFsInfo;
     safe_memset(&sysFsInfo, sizeof(sysFSLowLevelDeviceInfo), 0, sizeof(sysFSLowLevelDeviceInfo));
@@ -1286,7 +1290,7 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
     sysFsInfo.interface_type = SCSI_INTERFACE;
     get_Linux_SYS_FS_Info(handle, &sysFsInfo);
     // now copy the saved data to tDevice. -TJE
-    DISABLE_NONNULL_COMPARE
+
     if (device != M_NULLPTR)
     {
         device->drive_info.drive_type     = sysFsInfo.drive_type;
@@ -1309,7 +1313,6 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
             device->os_info.secondHandleValid = true;
         }
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 // map a block handle (sd) to a generic handle (sg or bsg)
@@ -1317,12 +1320,12 @@ static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
 // This depends on mapping in the file system provided by 2.6 and later.
 eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHandle, char** blockHandle)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (handle == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     // if the handle passed in contains "nvme" then we know it's a device on the nvme interface
     if (strstr(handle, "nvme") != M_NULLPTR)
     {
@@ -1520,9 +1523,8 @@ eReturnValues map_Block_To_Generic_Handle(const char* handle, char** genericHand
 // This is used to open device->os_info.fd2 which is where we will store
 // a /dev/sd handle which is a block device handle for SCSI devices.
 // This will do nothing on NVMe as it is not needed. - TJE
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static eReturnValues open_fd2(tDevice* device)
+static eReturnValues open_fd2(tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.secondHandleValid && !device->os_info.secondHandleOpened)
@@ -2371,7 +2373,7 @@ static int nvme_filter(const struct dirent* entry)
         {
             return 0;
         }
-        char* partition = strpbrk(entry->d_name, "p");
+        const char* partition = strpbrk(entry->d_name, "p");
         if (partition != M_NULLPTR)
         {
             return nvmeHandle;
@@ -2711,7 +2713,6 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
         safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &ccisslist));
     }
 
-    DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
@@ -2798,7 +2799,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             {
                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
-                    printf("Failed open, reason: ");
+                    print_str("Failed open, reason: ");
                     print_Errno_To_Screen(errno);
                 }
                 ++failedGetDeviceCount;
@@ -2857,7 +2858,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
     {
@@ -2882,7 +2883,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 eReturnValues close_Device(tDevice* dev)
 {
     int retValue = 0;
-    DISABLE_NONNULL_COMPARE
+
     if (dev != M_NULLPTR)
     {
         if (dev->os_info.cissDeviceData)
@@ -2917,7 +2918,6 @@ eReturnValues close_Device(tDevice* dev)
     {
         return MEMORY_FAILURE;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
@@ -2937,12 +2937,10 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 
     int ioctlResult = 0;
 
-    DISABLE_NONNULL_COMPARE
     if (nvmeIoCtx == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     switch (nvmeIoCtx->commandType)
     {
@@ -3119,9 +3117,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static eReturnValues linux_NVMe_Reset(tDevice* device, bool subsystemReset)
+static eReturnValues linux_NVMe_Reset(tDevice* M_NONNULL device, bool subsystemReset)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH) && defined(NVME_IOCTL_SUBSYS_RESET) && defined(NVME_IOCTL_RESET)
     // Can only do a reset on a controller handle. Need to get the controller handle if this is a namespace handle!!!
@@ -3394,7 +3391,7 @@ static bool lock_unlock_handle(int fd, bool lock, eVerbosityLevels verboseLevel)
             if (verboseLevel >= VERBOSITY_COMMAND_NAMES)
             {
                 printf("Failed to set Linux F_OFD_SETLK %s flags with fcntl\n", lock == true ? "lock" : "unlock");
-                printf("Will retry with the standard POSIX method\n");
+                print_str("Will retry with the standard POSIX method\n");
                 print_Errno_To_Screen(errno);
             }
             retryPOSIXstd = true;
@@ -3563,7 +3560,7 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     return unmount_Partitions_From_Device(device->os_info.secondHandleValid ? device->os_info.secondName
-                                                                 : device->os_info.name);
+                                                                            : device->os_info.name);
 }
 
 // This should be at the end of this file to undefine _GNU_SOURCE if this file manually enabled it

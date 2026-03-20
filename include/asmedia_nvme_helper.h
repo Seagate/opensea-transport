@@ -5,7 +5,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2019-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2019-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -41,9 +41,8 @@ extern "C"
 #define ASMEDIA_NVME_PT_NVME_OP_OFFSET    1
 #define ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE UINT8_C(16)
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx* nvmCmd);
+    eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd);
 
     /////////////////////////////////////
     // ASMEDIA Full packet passthrough //
@@ -108,17 +107,14 @@ extern "C"
 #define ASM_NVMP_DATA_IN  UINT8_C(1)
 #define ASM_NVMP_DATA_OUT UINT8_C(2)
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd);
+    eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    eReturnValues asm_nvme_Reset(const tDevice* device);
+    eReturnValues asm_nvme_Reset(const tDevice* M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    eReturnValues asm_nvme_Subsystem_Reset(const tDevice* device);
+    eReturnValues asm_nvme_Subsystem_Reset(const tDevice* M_NONNULL device);
 
 #if defined(__cplusplus)
 }

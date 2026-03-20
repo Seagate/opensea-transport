@@ -6,7 +6,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -39,11 +39,10 @@ extern "C"
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Block_Erase(const tDevice* device,
-                                                                  bool           exitFailureMode,
-                                                                  bool           znr);
+    OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Block_Erase(const tDevice* M_NONNULL device,
+                                                                  bool                     exitFailureMode,
+                                                                  bool                     znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -61,11 +60,10 @@ extern "C"
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Crypto_Erase(const tDevice* device,
-                                                                   bool           exitFailureMode,
-                                                                   bool           znr);
+    OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Crypto_Erase(const tDevice* M_NONNULL device,
+                                                                   bool                     exitFailureMode,
+                                                                   bool                     znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -88,16 +86,16 @@ extern "C"
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(5, 6)
-    OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* device,
-                                                                      bool           exitFailureMode,
-                                                                      bool           invertBetweenPasses,
-                                                                      uint8_t        overwritePasses,
-                                                                      uint8_t*       pattern,
-                                                                      uint16_t       patternLength,
-                                                                      bool           znr);
+    M_NONNULL_IF_NONZERO_PARAM(5, 6)
+    OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* M_NONNULL device,
+                                                                      bool                     exitFailureMode,
+                                                                      bool                     invertBetweenPasses,
+                                                                      uint8_t                  overwritePasses,
+                                                                      uint8_t* M_NULLABLE      pattern,
+                                                                      uint16_t                 patternLength,
+                                                                      bool                     znr);
 
     //-----------------------------------------------------------------------------
     //
@@ -113,12 +111,11 @@ extern "C"
     //!   \return SUCCESS = pass, FAILURE = fail
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Exit_Failure_Mode(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Exit_Failure_Mode(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
-    //  spin_down_drive( tDevice * device, bool sleepState )
+    //  spin_down_drive( tDevice* M_NONNULL device, bool sleepState )
     //
     //! \brief   Spin down a drive (The OS may still be able to spin it up which cannot be controlled).
     //
@@ -131,8 +128,7 @@ extern "C"
     //!   \return SUCCESS = good, !SUCCESS something went wrong see error codes
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues spin_down_drive(const tDevice* device, bool sleepState);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues spin_down_drive(const tDevice* M_NONNULL device, bool sleepState);
 
     //-----------------------------------------------------------------------------
     //
@@ -149,7 +145,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_Drive_Info_Data(tDevice* device);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_Drive_Info_Data(tDevice* M_NONNULL device);
 
     typedef enum eDownloadModeEnum
     {
@@ -190,23 +186,22 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(5, 4)
     M_PARAM_RO_SIZE(5, 4)
-    OPENSEA_TRANSPORT_API eReturnValues firmware_Download_Command(const tDevice* device,
-                                                                  eDownloadMode  dlMode,
-                                                                  uint32_t       offset,
-                                                                  uint32_t       xferLen,
-                                                                  uint8_t*       ptrData,
-                                                                  uint8_t        slotNumber,
-                                                                  bool           existingImage,
-                                                                  bool           firstSegment,
-                                                                  bool           lastSegment,
-                                                                  uint32_t       timeoutSeconds,
-                                                                  bool           nvmeForceCA,
-                                                                  uint8_t        commitAction,
-                                                                  bool           forceDisableReset);
+    OPENSEA_TRANSPORT_API eReturnValues firmware_Download_Command(const tDevice* M_NONNULL device,
+                                                                  eDownloadMode            dlMode,
+                                                                  uint32_t                 offset,
+                                                                  uint32_t                 xferLen,
+                                                                  uint8_t* M_NULLABLE      ptrData,
+                                                                  uint8_t                  slotNumber,
+                                                                  bool                     existingImage,
+                                                                  bool                     firstSegment,
+                                                                  bool                     lastSegment,
+                                                                  uint32_t                 timeoutSeconds,
+                                                                  bool                     nvmeForceCA,
+                                                                  uint8_t                  commitAction,
+                                                                  bool                     forceDisableReset);
 
     //-----------------------------------------------------------------------------
     //
@@ -229,15 +224,14 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues firmware_Download_Activate(const tDevice* device,
-                                                                   uint8_t        slotNumber,
-                                                                   bool           existingImage,
-                                                                   uint32_t       timeoutSeconds,
-                                                                   bool           nvmeForceCA,
-                                                                   uint8_t        commitAction,
-                                                                   bool           forceDisableReset);
+    OPENSEA_TRANSPORT_API eReturnValues firmware_Download_Activate(const tDevice* M_NONNULL device,
+                                                                   uint8_t                  slotNumber,
+                                                                   bool                     existingImage,
+                                                                   uint32_t                 timeoutSeconds,
+                                                                   bool                     nvmeForceCA,
+                                                                   uint8_t                  commitAction,
+                                                                   bool                     forceDisableReset);
 
     typedef enum eSecurityProtocolsEnum
     {
@@ -283,15 +277,14 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(4, 5)
     M_PARAM_RO_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues security_Send(const tDevice* device,
-                                                      uint8_t        securityProtocol,
-                                                      uint16_t       securityProtocolSpecific,
-                                                      uint8_t*       ptrData,
-                                                      uint32_t       dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues security_Send(const tDevice* M_NONNULL device,
+                                                      uint8_t                  securityProtocol,
+                                                      uint16_t                 securityProtocolSpecific,
+                                                      uint8_t* M_NULLABLE      ptrData,
+                                                      uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -309,15 +302,14 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_NONNULL_IF_NONZERO_PARAM(4, 5)
     M_PARAM_RW_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues security_Receive(const tDevice* device,
-                                                         uint8_t        securityProtocol,
-                                                         uint16_t       securityProtocolSpecific,
-                                                         uint8_t*       ptrData,
-                                                         uint32_t       dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues security_Receive(const tDevice* M_NONNULL device,
+                                                         uint8_t                  securityProtocol,
+                                                         uint16_t                 securityProtocolSpecific,
+                                                         uint8_t* M_NULLABLE      ptrData,
+                                                         uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -339,16 +331,14 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
     M_PARAM_RO(4)
-    OPENSEA_TRANSPORT_API eReturnValues write_Same(const tDevice* device,
-                                                   uint64_t       startingLba,
-                                                   uint64_t       numberOfLogicalBlocks,
-                                                   uint8_t*       pattern);
+    OPENSEA_TRANSPORT_API eReturnValues write_Same(const tDevice* M_NONNULL device,
+                                                   uint64_t                 startingLba,
+                                                   uint64_t                 numberOfLogicalBlocks,
+                                                   uint8_t* M_NULLABLE      pattern);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Write_Psuedo_Uncorrectable_Supported(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Write_Psuedo_Uncorrectable_Supported(const tDevice* M_NONNULL device);
     //-----------------------------------------------------------------------------
     //
     //  write_Psuedo_Uncorrectable_Error()
@@ -364,12 +354,11 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* device, uint64_t corruptLBA);
+    OPENSEA_TRANSPORT_API eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* M_NONNULL device,
+                                                                         uint64_t                 corruptLBA);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Write_Flagged_Uncorrectable_Supported(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool is_Write_Flagged_Uncorrectable_Supported(const tDevice* M_NONNULL device);
     //-----------------------------------------------------------------------------
     //
     //  write_Flagged_Uncorrectable_Error()
@@ -384,9 +373,9 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues write_Flagged_Uncorrectable_Error(const tDevice* device, uint64_t corruptLBA);
+    OPENSEA_TRANSPORT_API eReturnValues write_Flagged_Uncorrectable_Error(const tDevice* M_NONNULL device,
+                                                                          uint64_t                 corruptLBA);
 
     //-----------------------------------------------------------------------------
     //
@@ -406,11 +395,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RW_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues
-    read_LBA(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues read_LBA(const tDevice* M_NONNULL device,
+                                                 uint64_t                 lba,
+                                                 bool                     forceUnitAccess,
+                                                 uint8_t* M_NONNULL       ptrData,
+                                                 uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -430,11 +421,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues
-    write_LBA(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues write_LBA(const tDevice* M_NONNULL device,
+                                                  uint64_t                 lba,
+                                                  bool                     forceUnitAccess,
+                                                  uint8_t* M_NONNULL       ptrData,
+                                                  uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -450,13 +443,15 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues verify_LBA(const tDevice* device, uint64_t lba, uint32_t range);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues verify_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range);
 
-    M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(3, 4)
-    OPENSEA_TRANSPORT_API eReturnValues compare_LBA(const tDevice* device, uint64_t lba, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues compare_LBA(const tDevice* M_NONNULL device,
+                                                    uint64_t                 lba,
+                                                    uint8_t* M_NONNULL       ptrData,
+                                                    uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -471,7 +466,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues flush_Cache(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues flush_Cache(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -491,11 +486,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RW_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues
-    os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues os_Read(const tDevice* M_NONNULL device,
+                                                uint64_t                 lba,
+                                                bool                     forceUnitAccess,
+                                                uint8_t* M_NONNULL       ptrData,
+                                                uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -515,17 +512,18 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues
-    os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues os_Write(const tDevice* M_NONNULL device,
+                                                 uint64_t                 lba,
+                                                 bool                     forceUnitAccess,
+                                                 uint8_t* M_NONNULL       ptrData,
+                                                 uint32_t                 dataSize);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues os_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range);
 
-    M_NONNULL_PARAM_LIST(1) M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(const tDevice* device);
-
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(const tDevice* M_NONNULL device);
     //-----------------------------------------------------------------------------
     //
     //  io_Read()
@@ -544,11 +542,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RW_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues
-    io_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues io_Read(const tDevice* M_NONNULL device,
+                                                uint64_t                 lba,
+                                                bool                     forceUnitAccess,
+                                                uint8_t* M_NONNULL       ptrData,
+                                                uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -568,11 +568,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues
-    io_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues io_Write(const tDevice* M_NONNULL device,
+                                                 uint64_t                 lba,
+                                                 bool                     forceUnitAccess,
+                                                 uint8_t* M_NONNULL       ptrData,
+                                                 uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -592,11 +594,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues
-    scsi_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Write(const tDevice* M_NONNULL device,
+                                                   uint64_t                 lba,
+                                                   bool                     forceUnitAccess,
+                                                   uint8_t* M_NONNULL       ptrData,
+                                                   uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -616,11 +620,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RW_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues
-    scsi_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Read(const tDevice* M_NONNULL device,
+                                                  uint64_t                 lba,
+                                                  bool                     forceUnitAccess,
+                                                  uint8_t* M_NONNULL       ptrData,
+                                                  uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -640,11 +646,13 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues
-    ata_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Write(const tDevice* M_NONNULL device,
+                                                  uint64_t                 lba,
+                                                  bool                     forceUnitAccess,
+                                                  uint8_t* M_NONNULL       ptrData,
+                                                  uint32_t                 dataSize);
 
     //-----------------------------------------------------------------------------
     //
@@ -664,66 +672,59 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 4)
     M_PARAM_RO(1)
     M_PARAM_RW_SIZE(4, 5)
-    OPENSEA_TRANSPORT_API eReturnValues
-    ata_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read(const tDevice* M_NONNULL device,
+                                                 uint64_t                 lba,
+                                                 bool                     forceUnitAccess,
+                                                 uint8_t* M_NONNULL       ptrData,
+                                                 uint32_t                 dataSize);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Verify(const tDevice* device, uint64_t lba, uint32_t range);
-
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues nvme_Verify_LBA(const tDevice* device, uint64_t lba, uint32_t range);
+    OPENSEA_TRANSPORT_API eReturnValues scsi_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Verify(const tDevice* device, uint64_t lba, uint32_t range);
+    OPENSEA_TRANSPORT_API eReturnValues nvme_Verify_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range);
 
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_Flush_Cache_Command(const tDevice* device);
-
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_Command(const tDevice* device);
-
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues close_Zone(const tDevice* device,
-                                                   bool           closeAll,
-                                                   uint64_t       zoneID,
-                                                   uint16_t       zoneCount);
+    OPENSEA_TRANSPORT_API eReturnValues ata_Read_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range);
 
-    M_NONNULL_PARAM_LIST(1)
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_Flush_Cache_Command(const tDevice* M_NONNULL device);
+
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_Command(const tDevice* M_NONNULL device);
+
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues finish_Zone(const tDevice* device,
-                                                    bool           finishAll,
-                                                    uint64_t       zoneID,
-                                                    uint16_t       zoneCount);
+    OPENSEA_TRANSPORT_API eReturnValues close_Zone(const tDevice* M_NONNULL device,
+                                                   bool                     closeAll,
+                                                   uint64_t                 zoneID,
+                                                   uint16_t                 zoneCount);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues open_Zone(const tDevice* device,
-                                                  bool           openAll,
-                                                  uint64_t       zoneID,
-                                                  uint16_t       zoneCount);
+    OPENSEA_TRANSPORT_API eReturnValues finish_Zone(const tDevice* M_NONNULL device,
+                                                    bool                     finishAll,
+                                                    uint64_t                 zoneID,
+                                                    uint16_t                 zoneCount);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues reset_Write_Pointer(const tDevice* device,
-                                                            bool           resetAll,
-                                                            uint64_t       zoneID,
-                                                            uint16_t       zoneCount);
+    OPENSEA_TRANSPORT_API eReturnValues open_Zone(const tDevice* M_NONNULL device,
+                                                  bool                     openAll,
+                                                  uint64_t                 zoneID,
+                                                  uint16_t                 zoneCount);
 
-    M_NONNULL_PARAM_LIST(1, 5)
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues reset_Write_Pointer(const tDevice* M_NONNULL device,
+                                                            bool                     resetAll,
+                                                            uint64_t                 zoneID,
+                                                            uint16_t                 zoneCount);
+
     M_PARAM_RO(1)
     M_PARAM_RW_SIZE(5, 6)
-    OPENSEA_TRANSPORT_API eReturnValues report_Zones(const tDevice*        device,
-                                                     eZoneReportingOptions reportingOptions,
-                                                     bool                  partial,
-                                                     uint64_t              zoneLocator,
-                                                     uint8_t*              ptrData,
-                                                     uint32_t              dataSize);
+    OPENSEA_TRANSPORT_API eReturnValues report_Zones(const tDevice* M_NONNULL device,
+                                                     eZoneReportingOptions    reportingOptions,
+                                                     bool                     partial,
+                                                     uint64_t                 zoneLocator,
+                                                     uint8_t* M_NONNULL       ptrData,
+                                                     uint32_t                 dataSize);
 
 #if defined(__cplusplus)
 }

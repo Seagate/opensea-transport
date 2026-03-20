@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2017-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2017-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -1892,7 +1892,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
             {
 #    if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                 set_Console_Colors(true, CONSOLE_COLOR_RED);
-                printf(
+                print_str(
                     "Failed to allocate memory for an aligned data pointer - missing buffer on data xfer command!\n");
                 set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #    endif
@@ -2273,10 +2273,7 @@ uint32_t get_ATA_Device_Count()
     return deviceCount;
 }
 
-eReturnValues get_ATA_Devices(tDevice* const ptrToDeviceList,
-                              uint32_t             sizeInBytes,
-                              versionBlock         ver,
-                              uint32_t*            index)
+eReturnValues get_ATA_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t* index)
 {
     eReturnValues               ret         = NOT_SUPPORTED;
     uint32_t                    deviceCount = UINT32_C(0);
@@ -2415,10 +2412,7 @@ uint32_t get_SCSI_Device_Count()
     return deviceCount;
 }
 
-eReturnValues get_SCSI_Devices(tDevice* const ptrToDeviceList,
-                               uint32_t             sizeInBytes,
-                               versionBlock         ver,
-                               uint32_t*            index)
+eReturnValues get_SCSI_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t* index)
 {
     eReturnValues                ret         = NOT_SUPPORTED;
     uint32_t                     deviceCount = UINT32_C(0);
@@ -2553,9 +2547,9 @@ uint32_t get_SCSIEx_Device_Count()
 }
 
 eReturnValues get_SCSIEx_Devices(tDevice* const ptrToDeviceList,
-                                 uint32_t             sizeInBytes,
-                                 versionBlock         ver,
-                                 uint32_t*            index)
+                                 uint32_t       sizeInBytes,
+                                 versionBlock   ver,
+                                 uint32_t*      index)
 {
     eReturnValues                    ret         = NOT_SUPPORTED;
     uint32_t                         deviceCount = UINT32_C(0);
@@ -2697,10 +2691,7 @@ uint32_t get_NVMe_Device_Count()
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues get_NVMe_Devices(tDevice* const ptrToDeviceList,
-                               uint32_t             sizeInBytes,
-                               versionBlock         ver,
-                               uint32_t*            index)
+eReturnValues get_NVMe_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint32_t* index)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues                       ret         = NOT_SUPPORTED;
@@ -2825,7 +2816,7 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_List(tDevice* const   ptrToDeviceList,
+eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
                               uint32_t               sizeInBytes,
                               versionBlock           ver,
                               M_ATTR_UNUSED uint64_t flags)

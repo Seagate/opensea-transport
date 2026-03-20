@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2021-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2021-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -25,6 +25,7 @@
 #    include "precision_timer.h"
 #    include "string_utils.h"
 #    include "type_conversion.h"
+#    include "warning_ctl.h"
 
 #    if defined(__unix__) // this is only done in case someone sets weird defines for Windows even though this isn't
                           // supported
@@ -382,12 +383,14 @@ static eReturnValues ciss_Scsi_Report_Physical_LUNs(const tDevice* device,
     if (ptrData && dataLength > 0)
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, ptrData, dataLength, XFER_DATA_IN,
-                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
+                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
+                            DEFAULT_COMMAND_TIMEOUT);
     }
     else
     {
         ret = scsi_Send_Cdb(device, cdb, CDB_LEN_12, M_NULLPTR, 0, XFER_NO_DATA,
-                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
+                            M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
+                            DEFAULT_COMMAND_TIMEOUT);
     }
     return ret;
 }
@@ -1529,7 +1532,7 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
 
 eReturnValues close_CISS_RAID_Device(tDevice* device)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (device != M_NULLPTR && device->os_info.cissDeviceData)
     {
         if (close(device->os_info.cissDeviceData->cissHandle))
@@ -1549,7 +1552,6 @@ eReturnValues close_CISS_RAID_Device(tDevice* device)
     {
         return MEMORY_FAILURE;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t* count)
@@ -1741,12 +1743,12 @@ eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
             raidList = raidList->next;
         }
     }
-    DISABLE_NONNULL_COMPARE
+
     if (numberOfDevices != M_NULLPTR)
     {
         *numberOfDevices = found;
     }
-    RESTORE_NONNULL_COMPARE
+
     return SUCCESS;
 }
 
@@ -1789,7 +1791,6 @@ eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
         return SUCCESS;
     }
 
-    DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         return BAD_PARAMETER;
@@ -1895,7 +1896,7 @@ eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     return returnValue;
 }
 #endif // ENABLE_CISS

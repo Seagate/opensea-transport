@@ -6,7 +6,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2025-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2025-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -57,32 +57,28 @@ extern 'C'
         JM_PROLIFIC_CDB_LEN = 14
     } eJMicronCDBLen;
 
-    M_NONNULL_PARAM_LIST(1, 3)
     M_PARAM_RO(1)
     M_PARAM_RW(3)
-    eReturnValues read_Adapter_Register(const tDevice * device, eJMicronAdapterRegisters jmregister, uint8_t * ptrData,
-                                        uint32_t dataSize);
+    eReturnValues read_Adapter_Register(const tDevice* M_NONNULL device, eJMicronAdapterRegisters jmregister,
+                                        uint8_t* M_NONNULL ptrData, uint32_t dataSize);
 
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    eReturnValues set_JM_Dev(tDevice * device);
+    eReturnValues set_JM_Dev(tDevice * M_NONNULL device);
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_WO(1)
     M_PARAM_RO(2)
-    eReturnValues build_JMicron_Legacy_PT_CDB(uint8_t cdb[JM_PROLIFIC_CDB_LEN],
-                                              ataPassthroughCommand * ataCommandOptions);
+    eReturnValues build_JMicron_Legacy_PT_CDB(uint8_t                          cdb[M_NONNULL_ARRAY JM_PROLIFIC_CDB_LEN],
+                                              ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues get_RTFRs_From_JMicron_Legacy(const tDevice * device, ataPassthroughCommand * ataCommandOptions,
-                                                eReturnValues commandRet);
+    eReturnValues get_RTFRs_From_JMicron_Legacy(
+        const tDevice* M_NONNULL device, ataPassthroughCommand* M_NONNULL ataCommandOptions, eReturnValues commandRet);
 
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice * device, ataPassthroughCommand * ataCommandOptions);
+    eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                          ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
 #if defined(__cplusplus)
 }

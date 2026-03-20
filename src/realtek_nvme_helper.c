@@ -18,18 +18,21 @@
 #include "realtek_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
-eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
-                                                 eDataTransferDirection* cdbDataDirection,
-                                                 uint8_t*                dataPtr,
-                                                 uint32_t                dataSize,
-                                                 eRealtekNVMCMDPhase     phase,
-                                                 nvmeCmdCtx*             nvmCmd)
+eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t cdb[M_NONNULL_ARRAY REALTEK_NVME_CDB_SIZE],
+                                                 eDataTransferDirection* M_NONNULL cdbDataDirection,
+                                                 uint8_t* M_NULLABLE               dataPtr,
+                                                 uint32_t                          dataSize,
+                                                 eRealtekNVMCMDPhase               phase,
+                                                 nvmeCmdCtx* M_NONNULL             nvmCmd)
 {
+    // static array should force passing a non-null pointer, but checking anyways since MSVC doesn't support marking
+    // static arrays
     DISABLE_NONNULL_COMPARE
     if (cdb == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+    RESTORE_NONNULL_COMPARE
 
     safe_memset(cdb, REALTEK_NVME_CDB_SIZE, 0, REALTEK_NVME_CDB_SIZE);
 
@@ -188,7 +191,7 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t*                cdb,
     default:
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     return SUCCESS;
 }
 
@@ -198,12 +201,12 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekCDB, REALTEK_NVME_CDB_SIZE);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekPayload, REALTEK_NVME_CMD_PAYLOAD_LEN);
     eDataTransferDirection realtekCDBDir = 0;
-    DISABLE_NONNULL_COMPARE
+
     if (nvmCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     if (nvmCmd->dataSize > REALTEK_NVME_MAX_TRANSFER_SIZE_BYTES || nvmCmd->commandDirection == XFER_DATA_IN_OUT ||
         nvmCmd->commandDirection == XFER_DATA_OUT_IN)
     {
@@ -285,7 +288,8 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
 //  sanitize
 //  set features
 
-eReturnValues build_Realtek_Basic_NVMe_CDB_And_Payload(uint8_t* cdb, nvmeCmdCtx* nvmCmd)
+eReturnValues build_Realtek_Basic_NVMe_CDB_And_Payload(uint8_t     cdb[M_NONNULL_ARRAY REALTEK_NVME_CDB_SIZE],
+                                                       nvmeCmdCtx* nvmCmd)
 {
     eReturnValues ret = SUCCESS;
     if (nvmCmd->commandType != NVM_ADMIN_CMD || nvmCmd->dataSize > REALTEK_BASIC_MAX_TRANSFER_SIZE_BYTES)
@@ -320,12 +324,12 @@ eReturnValues send_Realtek_Basic_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekCDB, REALTEK_NVME_CDB_SIZE);
-    DISABLE_NONNULL_COMPARE
+
     if (nvmCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     ret = build_Realtek_Basic_NVMe_CDB_And_Payload(realtekCDB, nvmCmd);
     if (SUCCESS != ret)
     {

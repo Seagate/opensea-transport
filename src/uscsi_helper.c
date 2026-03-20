@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -61,7 +61,7 @@ e.g. return c?t?d? from /dev/rdsk/c?t?d?
 */
 static void set_Device_Name(const char* filename, char* name, size_t sizeOfName)
 {
-    char* s = strrchr(filename, '/') + 1;
+    const char* s = strrchr(filename, '/') + 1;
     snprintf_err_handle(name, sizeOfName, "%s", s);
 }
 
@@ -357,7 +357,7 @@ static int uscsi_filter(const struct dirent* entry)
         return !uscsiHandle;
     }
     // now, we need to filter out the device names that have "p"s for the partitions and "s"s for the slices
-    char* partitionOrSlice = strpbrk(entry->d_name, "pPsS");
+    const char* partitionOrSlice = strpbrk(entry->d_name, "pPsS");
     if (partitionOrSlice != M_NULLPTR)
     {
         return 0;
@@ -506,7 +506,6 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
 
     totalDevs = num_rdsk;
 
-    DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
@@ -552,7 +551,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
-                    printf("Failed open, reason: ");
+                    print_str("Failed open, reason: ");
                     print_Errno_To_Screen(errno);
                 }
                 ++failedGetDeviceCount;
@@ -588,7 +587,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
     {
@@ -724,5 +723,5 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
 {
     return unmount_Partitions_From_Device(device->os_info.secondHandleValid ? device->os_info.secondName
-                                                                 : device->os_info.name);
+                                                                            : device->os_info.name);
 }

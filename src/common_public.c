@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -30,7 +30,7 @@
 
 void print_Low_Level_Info(const tDevice* device)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (device != M_NULLPTR)
     {
         int adapterIDWidthSpec;
@@ -282,13 +282,13 @@ void print_Low_Level_Info(const tDevice* device)
             print_str("ATA CSMI CDBs (legacy, should be using SAT)\n");
             break;
         case ATA_PASSTHROUGH_JMICRON:
-            printf("ATA JMicron\n");
+            print_str("ATA JMicron\n");
             break;
         case ATA_PASSTHROUGH_JMICRON_PROLIFIC:
-            printf("ATA JMicron-Prolific\n");
+            print_str("ATA JMicron-Prolific\n");
             break;
         case ATA_PASSTHROUGH_SUNPLUS:
-            printf("ATA Sunplus\n");
+            print_str("ATA Sunplus\n");
             break;
         case ATA_PASSTHROUGH_UNKNOWN:
             print_str("ATA unknown\n");
@@ -309,7 +309,7 @@ void print_Low_Level_Info(const tDevice* device)
             print_str("NVMe Realtek\n");
             break;
         case NVME_PASSTHROUGH_REALTEK_BASIC:
-            printf("NVMe Realtek Basic\n");
+            print_str("NVMe Realtek Basic\n");
             break;
         case PASSTHROUGH_NONE:
             print_str("None\n");
@@ -522,27 +522,28 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.a1ExtCommandWhenPossible)
         {
-            printf("\t\t\t\t\tA1EXT (Some 48 bit commands must be issued with A1h opcode. Many limitations to this "
-                   "device)\n");
+            print_str("\t\t\t\t\tA1EXT (Some 48 bit commands must be issued with A1h opcode. Many limitations to this "
+                      "device)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported)
         {
-            printf(
+            print_str(
                 "\t\t\t\t\tRS (SAT return response info protocol is supported for determining command completion)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR)
         {
-            printf("\t\t\t\t\tRSTD (SAT return response info TDIR bit can be set to ensure proper interpretation of "
-                   "data direction)\n");
+            print_str("\t\t\t\t\tRSTD (SAT return response info TDIR bit can be set to ensure proper interpretation of "
+                      "data direction)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit)
         {
-            printf("\t\t\t\t\tRSIE (SAT return response info data requires ignoring the extend bit as it isn't handled "
-                   "properly)\n");
+            print_str(
+                "\t\t\t\t\tRSIE (SAT return response info data requires ignoring the extend bit as it isn't handled "
+                "properly)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough)
         {
-            printf(
+            print_str(
                 "\t\t\t\t\tTSPIU (SAT commands must use the TSPIU transfer type for all commands to work properly)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
@@ -563,18 +564,19 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible)
         {
-            printf("\t\t\t\t\tNORTFR (It is impossible to get the drive's response. Can only rely on SAT translation "
-                   "of errors if that is even available)\n");
+            print_str(
+                "\t\t\t\t\tNORTFR (It is impossible to get the drive's response. Can only rely on SAT translation "
+                "of errors if that is even available)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.multiSectorPIOWithMultipleMode)
         {
-            printf("\t\t\t\t\tMMPIO (Multi-sector PIO commands are only possible if multiple mode configuration is "
-                   "done first)\n");
+            print_str("\t\t\t\t\tMMPIO (Multi-sector PIO commands are only possible if multiple mode configuration is "
+                      "done first)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.singleSectorPIOOnly)
         {
-            printf("\t\t\t\t\tSPIO (Only single sector PIO commands are possible. Any attempts at multiple-sectors "
-                   "will cause massive problems)\n");
+            print_str("\t\t\t\t\tSPIO (Only single sector PIO commands are possible. Any attempts at multiple-sectors "
+                      "will cause massive problems)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly)
         {
@@ -582,8 +584,8 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands)
         {
-            printf("\t\t\t\t\tNOMMPIO (Do not use multiple mode read/write commands on this device. They are not "
-                   "handled correctly)\n");
+            print_str("\t\t\t\t\tNOMMPIO (Do not use multiple mode read/write commands on this device. They are not "
+                      "handled correctly)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength > 0)
         {
@@ -592,8 +594,9 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.limitedUseTPSIU)
         {
-            printf("\t\t\t\t\tTPID (TSPIU can be used on identify commands and possibly a few others, but it cannot be "
-                   "used on every command)\n");
+            print_str(
+                "\t\t\t\t\tTPID (TSPIU can be used on identify commands and possibly a few others, but it cannot be "
+                "used on every command)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition)
         {
@@ -601,13 +604,14 @@ void print_Low_Level_Info(const tDevice* device)
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty)
         {
-            printf(
+            print_str(
                 "\t\t\t\t\tCHKE (Check condition bit is accepted but sense data is empty, so this bit is unusable)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
         {
-            printf("\t\t\t\t\tPEMUNV (Adapter is possibly a USB to NVMe adapter that responds to SAT ATA identify CDBs "
-                   "with only MN, SN, FW)\n");
+            print_str(
+                "\t\t\t\t\tPEMUNV (Adapter is possibly a USB to NVMe adapter that responds to SAT ATA identify CDBs "
+                "with only MN, SN, FW)\n");
         }
         // print out the os_info unique things. This has a lot of ifdefs for the different OSs/configurations so need to
         // watch out for the differences in here
@@ -1087,7 +1091,6 @@ void print_Low_Level_Info(const tDevice* device)
 #endif // ENABLE_CSMI
         print_str("\n");
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 size_t load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize)
@@ -1263,20 +1266,20 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
         }
         else
         {
-            printf("No devices found\n");
+            print_str("No devices found\n");
         }
     }
     else if (ret == PERMISSION_DENIED)
     {
-        printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
+        print_str("Permission to access all devices was denied. Please check your permissions and try again.\n");
     }
     else if (ret == DEVICE_BUSY)
     {
-        printf("All devices reported as busy at this time.\n");
+        print_str("All devices reported as busy at this time.\n");
     }
     else
     {
-        printf("Unable to get number of devices from OS\n");
+        print_str("Unable to get number of devices from OS\n");
     }
     safe_free(C_CAST(void**, &scanDeviceList));
 }
@@ -1475,11 +1478,11 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
     }
     else if (ret == PERMISSION_DENIED)
     {
-        printf("Permission to access all devices was denied. Please check your permissions and try again.\n");
+        print_str("Permission to access all devices was denied. Please check your permissions and try again.\n");
     }
     else if (ret == DEVICE_BUSY)
     {
-        printf("All devices reported as busy at this time.\n");
+        print_str("All devices reported as busy at this time.\n");
     }
     else
     {
@@ -1505,7 +1508,7 @@ bool validate_Device_Struct(versionBlock sanity)
 
 eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ver != M_NULLPTR)
     {
         ver->majorVersion = OPENSEA_TRANSPORT_MAJOR_VERSION;
@@ -1517,12 +1520,11 @@ eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver)
     {
         return MEMORY_FAILURE;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 eReturnValues get_Version_Block(versionBlock* ver)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ver != M_NULLPTR)
     {
         ver->size    = sizeof(tDevice);
@@ -1533,7 +1535,21 @@ eReturnValues get_Version_Block(versionBlock* ver)
     {
         return MEMORY_FAILURE;
     }
-    RESTORE_NONNULL_COMPARE
+}
+
+char* get_Opensea_Transport_Version_str(char* dest_Version_str, size_t dest_len)
+{
+    if (dest_Version_str == M_NULLPTR)
+    {
+        return M_NULLPTR;
+    }
+    safe_strcpy(dest_Version_str, dest_len, OPENSEA_TRANSPORT_VERSION);
+    return dest_Version_str;
+}
+
+size_t get_Opensea_Transport_Version_str_len(void)
+{
+    return safe_strlen(OPENSEA_TRANSPORT_VERSION) + 1;
 }
 
 static void set_IEEE_OUI(uint32_t* ieeeOUI, const tDevice* device, bool USBchildDrive)
@@ -2040,7 +2056,7 @@ bool is_LaCie(const tDevice* device)
 // USB, firewire, thunderbolt, etc
 void seagate_External_SN_Cleanup(char** sn, size_t snlen)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (sn != M_NULLPTR && *sn != M_NULLPTR)
     {
         // sometimes these report with padded zeroes at beginning or end. Detect this and remove the extra zeroes
@@ -2113,7 +2129,6 @@ void seagate_External_SN_Cleanup(char** sn, size_t snlen)
         // NOTE: For LaCie, it is unknown what format their SNs were before Seagate acquired them, so may need to
         // add different cases for these older LaCie products.
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 bool is_Samsung_String(const char* string)
@@ -2402,7 +2417,7 @@ bool is_Exos_Drive(const tDevice* device, bool USBchildDrive)
 
     if (safe_strlen(modelNumber))
     {
-        if (wildcard_Match("ST*NM*", modelNumber) ||  // Exos X-series
+        if (wildcard_Match("ST*NM*", modelNumber) || // Exos X-series
             wildcard_Match("ST*MP*", modelNumber) || // Exos E-series
             wildcard_Match("ST*MM*", modelNumber) || // Exos E-series
             wildcard_Match("ST*NX*", modelNumber))   // Exos E-series
@@ -3110,12 +3125,10 @@ eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize)
     uint8_t  checksum = UINT8_C(0);
     uint32_t counter  = UINT32_C(0);
 
-    DISABLE_NONNULL_COMPARE
     if ((blockSize > LEGACY_DRIVE_SEC_SIZE) || (blockSize == UINT32_C(0)) || (pBuf == M_NULLPTR))
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     // printf("%s: blksize %d, pBuf %p\n", __FUNCTION__, blockSize, C_CAST(void*, pBuf));
 
@@ -3345,12 +3358,11 @@ eReturnValues remove_Duplicate_Devices(tDevice*                 deviceList,
     bool              sameSlNo = false;
     eReturnValues     ret      = UNKNOWN;
 
-    DISABLE_NONNULL_COMPARE
     if (deviceList == M_NULLPTR || numberOfDevices == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     /*
     Go through all the devices in the list.
     */
@@ -5096,9 +5108,8 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
 
 // This function exists to make it easy to set the same settings for other USB vendor ID's that
 // used this chip (Example: LaCie)
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static bool set_Sunplus_Hacks(tDevice* device)
+static bool set_Sunplus_Hacks(tDevice* M_NULLABLE device)
 {
     bool passthroughHacksSet = false;
     if (device != M_NULLPTR)
@@ -5487,12 +5498,11 @@ static bool set_Maxtor_USB_Hacks_By_PID(tDevice* device)
     return passthroughHacksSet;
 }
 
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-bool set_JMicron_Legacy_PT_Hacks(tDevice* device)
+bool set_JMicron_Legacy_PT_Hacks(tDevice* M_NONNULL device)
 {
     bool passthroughHacksSet = false;
-    DISABLE_NONNULL_COMPARE
+
     if (device != M_NULLPTR)
     {
         device->drive_info.passThroughHacks.passthroughType         = ATA_PASSTHROUGH_JMICRON;
@@ -5518,7 +5528,7 @@ bool set_JMicron_Legacy_PT_Hacks(tDevice* device)
         device->drive_info.passThroughHacks.turfValue                             = 13;
         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
     }
-    RESTORE_NONNULL_COMPARE
+
     return passthroughHacksSet;
 }
 
@@ -6774,4 +6784,263 @@ bool setup_Passthrough_Hacks_By_ID(tDevice* device)
         // done based on known Product matches or trial and error
     }
     return success;
+}
+
+// helper functions to make tDevice structure opaque
+size_t get_Device_Struct_size(void)
+{
+    return sizeof(tDevice);
+}
+
+uint32_t get_Device_Block_Version(void)
+{
+    return DEVICE_BLOCK_VERSION;
+}
+
+int32_t initialize_Device_struct(tDevice* device, uint32_t deviceSize, uint32_t blockVersion)
+{
+    if (deviceSize != sizeof(tDevice) || blockVersion != DEVICE_BLOCK_VERSION)
+    {
+        return -1;
+    }
+    device->sanity.size    = deviceSize;
+    device->sanity.version = blockVersion;
+
+    return 0;
+}
+
+eDriveType get_Device_DriveType(const tDevice* device)
+{
+    return device->drive_info.drive_type;
+}
+
+uint32_t get_Device_BlockSize(const tDevice* device)
+{
+    return device->drive_info.deviceBlockSize;
+}
+
+uint32_t get_Device_PhyBlockSize(const tDevice* device)
+{
+    return device->drive_info.devicePhyBlockSize;
+}
+
+int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)
+{
+    if (maxLba == M_NULLPTR)
+    {
+        return -1;
+    }
+    *maxLba = device->drive_info.deviceMaxLba;
+    return 0;
+}
+
+uint32_t get_Device_LUN(const tDevice* device)
+{
+    return device->drive_info.lun;
+}
+
+// returns pointer to location of serialNumber in tDevice
+// lenght defined as [SERIAL_NUM_LEN + 1]
+int32_t get_Device_serialNumber(char* dest_serialNumber, size_t dest_len, const tDevice* device)
+{
+    if (dest_serialNumber == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (dest_serialNumber == device->drive_info.serialNumber)
+    {
+        return SERIAL_NUM_LEN + 1; // already pointing to the right place, so no need to copy
+    }
+    safe_strnmove(dest_serialNumber, dest_len, device->drive_info.serialNumber, SERIAL_NUM_LEN + 1);
+    return SERIAL_NUM_LEN + 1;
+}
+
+size_t get_Device_serialNumber_length(void)
+{
+    return SERIAL_NUM_LEN + 1;
+}
+
+// returns pointer to location of vender_ident in tDevice
+// lenght defined as [T10_VENDOR_ID_LEN + 1]
+int32_t get_Device_T10_vendor_ident(char* dest_T10_vendor_ident, size_t dest_len, const tDevice* device)
+{
+    if (dest_T10_vendor_ident == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (dest_T10_vendor_ident == device->drive_info.T10_vendor_ident)
+    {
+        return T10_VENDOR_ID_LEN + 1; // already pointing to the right place, so no need to copy
+    }
+    safe_strnmove(dest_T10_vendor_ident, dest_len, device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1);
+    return T10_VENDOR_ID_LEN + 1;
+}
+
+size_t get_Device_T10_vendor_ident_length(void)
+{
+    return T10_VENDOR_ID_LEN + 1;
+}
+
+// returns pointer to location of product_identification in tDevice
+// lenght defined as [MODEL_NUM_LEN + 1]
+int32_t get_Device_product_identification(char* dest_product_identification, size_t dest_len, const tDevice* device)
+{
+    if (dest_product_identification == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (dest_product_identification == device->drive_info.product_identification)
+    {
+        return MODEL_NUM_LEN + 1; // already pointing to the right place, so no need to copy
+    }
+    safe_strnmove(dest_product_identification, dest_len, device->drive_info.product_identification, MODEL_NUM_LEN + 1);
+    return MODEL_NUM_LEN + 1;
+}
+
+size_t get_Device_product_identification_length(void)
+{
+    return MODEL_NUM_LEN + 1;
+}
+
+// returns pointer to location of product_revision in tDevice
+// lenght defined as [FW_REV_LEN + 1]
+int32_t get_Device_product_revision(char* dest_product_revision, size_t dest_len, const tDevice* device)
+{
+    if (dest_product_revision == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (dest_product_revision == device->drive_info.product_revision)
+    {
+        return FW_REV_LEN + 1; // already pointing to the right place, so no need to copy
+    }
+    safe_strnmove(dest_product_revision, dest_len, device->drive_info.product_revision, FW_REV_LEN + 1);
+    return FW_REV_LEN + 1;
+}
+
+size_t get_Device_product_revision_length(void)
+{
+    return FW_REV_LEN + 1;
+}
+
+int32_t get_Device_worldWideName(uint64_t* worldWideName, const tDevice* device)
+{
+    if (worldWideName == M_NULLPTR)
+    {
+        return -1;
+    }
+    *worldWideName = device->drive_info.worldWideName;
+    return 0;
+}
+
+// returns pointer to location of product_revision in tDevice
+// lenght defined as [SPC3_SENSE_LEN]
+int32_t get_Device_lastCommandSenseData(uint8_t* dest_lastCommandSenseData, size_t dest_len, const tDevice* device)
+{
+    if (dest_lastCommandSenseData == M_NULLPTR)
+    {
+        return 0;
+    }
+    if (dest_lastCommandSenseData == device->drive_info.lastCommandSenseData)
+    {
+        return SPC3_SENSE_LEN; // already pointing to the right place, so no need to copy
+    }
+    safe_memmove(dest_lastCommandSenseData, dest_len, device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN);
+    return SPC3_SENSE_LEN;
+}
+
+size_t get_Device_lastCommandSenseData_length(void)
+{
+    return SPC3_SENSE_LEN;
+}
+
+uint32_t get_Device_OS_Info_Last_Error(const tDevice* device)
+{
+    return C_CAST(uint32_t, device->os_info.last_error);
+}
+
+int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* device)
+{
+    if (verbosity < VERBOSITY_QUIET || verbosity > VERBOSITY_BUFFERS)
+    {
+        return -1;
+    }
+    device->deviceVerbosity = verbosity;
+    return 0;
+}
+
+uint8_t get_Device_os_info_scsiAddress_host(const tDevice* device)
+{
+#if defined(_WIN32)
+    return device->os_info.scsi_addr.PortNumber;
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
+    if (device->os_info.scsiAddressValid)
+    {
+        return device->os_info.scsiAddress.host;
+    }
+    else
+    {
+        return 0;
+    }
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
+}
+
+uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* device)
+{
+#if defined(_WIN32)
+    return device->os_info.scsi_addr.PathId;
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
+    if (device->os_info.scsiAddressValid)
+    {
+        return device->os_info.scsiAddress.channel;
+    }
+    else
+    {
+        return 0;
+    }
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
+}
+
+uint8_t get_Device_os_info_scsiAddress_target(const tDevice* device)
+{
+#if defined(_WIN32)
+    return device->os_info.scsi_addr.TargetId;
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
+    if (device->os_info.scsiAddressValid)
+    {
+        return device->os_info.scsiAddress.target;
+    }
+    else
+    {
+        return 0;
+    }
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
+}
+
+uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* device)
+{
+#if defined(_WIN32)
+    return device->os_info.scsi_addr.Lun;
+#elif defined(__linux__) && !defined(VMK_CROSS_COMP)
+    if (device->os_info.scsiAddressValid)
+    {
+        return device->os_info.scsiAddress.lun;
+    }
+    else
+    {
+        return 0;
+    }
+#else
+    M_USE_UNUSED(device);
+    return 0;
+#endif
 }

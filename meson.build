@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
-project('opensea-transport', 'c', license: 'MPL-2.0', version: '10.2.0', default_options: ['warning_level=2'])
+# Copyright (c) 2021-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+project('opensea-transport', 'c', license: 'MPL-2.0', version: '10.3.0', default_options: ['warning_level=2', 'default_library=static'])
 
 c = meson.get_compiler('c')
 
@@ -74,10 +75,36 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         '-Wsequence-point',
         '-Wreturn-type',
         '-Wpointer-bool-conversion',
-        '-fvisibility=hidden',  #to work similarly to Window's DLL import/export
         '-Wmismatched-dealloc',
         '-Wfree-nonheap-object',
+        '-fnullability',
+        '-Wnullability',  # Warnings for nullability annotations
+        '-Wnullability-completeness',  # Warn if nullability annotations are incomplete
+        '-Wnullability-completeness-on-arrays',  # Warn if nullability annotations are incomplete
+        # '-Wnullable-to-nonnull-conversion', # Basically warns so you have to cast to the correct nullability type. Not needed today -TJE
+        #'-Wswitch-enum', # too noisy for now - TJE
+        '-Walloc-zero',
+        '-Walloc-size',
+        '-Wcalloc-transposed-args',
+        '-Werror=alloca',  # Do not allow use of the alloca function
+        '-Wstring-compare',  # Helps detect when strcmp is used when the programmer likely meant to use strncmp
+        '-Wfortify-source' # Clang specific (at least for now) but enables additional diagnostics.
     ]
+
+    if get_option('cc-suggest-attribute')
+        warning_flags += [
+            '-Wsuggest-attribute=pure',
+            '-Wsuggest-attribute=const',
+            '-Wsuggest-attribute=noreturn',
+            '-Wsuggest-attribute=returns_nonnull',
+            '-Wmissing-noreturn',
+            '-Wsuggest-attribute=malloc',
+            '-Wsuggest-attribute=format',
+            '-Wmissing-format-attribute',
+            '-Wsuggest-attribute=cold',
+            '-fipa-pure-const',
+        ]
+    endif
 
     if c.get_id().contains('gcc') and c.version().version_compare('>=10.0')
         #only enable the sign conversion warning on versions 10 and up because it is way too noisy on earlier GCC versions than it is useful-TJE
@@ -117,7 +144,7 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         warning_flags += ['-mbranch-protection=standard']
     endif
 
-    linker_flags += ['-Wl,-z,nodlopen', '-Wl,-z,noexecstack', '-Wl,-z,relro', '-Wl,-z,now']
+    linker_flags += ['-Wl,-z,noexecstack', '-Wl,-z,relro', '-Wl,-z,now']
 
     fortifytest = ''' #include <stdio.h>
                       int main() {
@@ -287,7 +314,7 @@ src_files = [
     'src/sntl_helper.c',
     'src/sunplus_legacy_helper.c',
     'src/ti_legacy_helper.c',
-    'src/usb_hacks.c'
+    'src/usb_hacks.c',
 ]
 
 # Handle various options related to NVMe passthrough support, CISS support, CSMI support, etc. All of these SHOULD be on by default but can be disabled.
@@ -339,7 +366,8 @@ elif target_machine.system() == 'openbsd' or target_machine.system() == 'netbsd'
         'src/bsd_ata_passthrough.c',
         'src/bsd_scsi_passthrough.c',
         'src/netbsd_openbsd_helper.c',
-        'src/posix_common_lowlevel.c', 'src/nix_mounts.c'
+        'src/posix_common_lowlevel.c',
+        'src/nix_mounts.c',
     ]
     add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language: 'c')
     message('Auto-disabling NVMe support as no ioctl header can be found')
@@ -379,25 +407,36 @@ elif target_machine.system() == 'windows'
     if ofnvmesupport.enabled()
         add_project_arguments('-DENABLE_OFNVME', language: 'c')
     endif
-    global_cpp_args += ['-D_CRT_NONSTDC_NO_DEPRECATE', '-D_CRT_SECURE_NO_WARNINGS']
-    global_cpp_args += ['-DSTATIC_OPENSEA_TRANSPORT', '-D_UNICODE', '-DUNICODE']
+    global_cpp_args += ['-D_CRT_NONSTDC_NO_DEPRECATE', '-D_CRT_SECURE_NO_WARNINGS', '-D_UNICODE', '-DUNICODE']
 endif  # TODO UEFI and vmware
+
+defaultlib = get_option('default_library')
+
+build_c_args = []
+dep_c_args = []
+
+if defaultlib == 'static'
+    # no additional args required
+elif defaultlib == 'shared'
+    build_c_args += ['-DEXPORT_OPENSEA_TRANSPORT']
+    dep_c_args += ['-DIMPORT_OPENSEA_TRANSPORT']
+else
+    error('Invalid default_library option value for this project. Please set shared or static, but not both: ' + defaultlib)
+endif
 
 opensea_common = subproject('opensea-common')
 opensea_common_dep = opensea_common.get_variable('opensea_common_dep')
 
 incdir = include_directories('include', 'include/vendor')
 
-opensea_transport_lib = static_library(
-    'opensea-transport',
+opensea_transport_lib = library('opensea-transport',
     src_files,
-    c_args: global_cpp_args,
-    dependencies: [opensea_common_dep, os_deps],
-    include_directories: incdir,
-)
-opensea_transport_dep = declare_dependency(
-    link_with: opensea_transport_lib,
-    compile_args: global_cpp_args,
-    dependencies: os_deps,
-    include_directories: incdir,
-)
+    c_args : global_cpp_args + build_c_args,
+    dependencies : [opensea_common_dep, os_deps],
+    include_directories : incdir,
+    gnu_symbol_visibility : 'hidden')
+
+opensea_transport_dep = declare_dependency(link_with : opensea_transport_lib,
+    compile_args : global_cpp_args + dep_c_args,
+    dependencies : os_deps,
+    include_directories : incdir)

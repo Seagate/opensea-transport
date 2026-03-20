@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -117,7 +117,7 @@ static int drive_filter(const struct dirent* entry)
         return driveHandle;
     }
 
-    char* partition = strpbrk(entry->d_name, ":");
+    const char* partition = strpbrk(entry->d_name, ":");
     if (partition != M_NULLPTR)
     {
         return !driveHandle;
@@ -167,13 +167,13 @@ static void get_VMV_SYS_FS_Info(const char* handle, sysVMLowLevelDeviceInfo* sys
     // check if it's a block handle, bsg, or scsi_generic handle, then setup the path we need to read.
     if (handle && sysVmInfo)
     {
-        if (strstr(handle, "t10.ATA") != NULL)
+        if (strstr(handle, "t10.ATA") != M_NULLPTR)
         {
             // set scsi interface and scsi drive until we know otherwise
             sysVmInfo->drive_type     = ATA_DRIVE;
             sysVmInfo->interface_type = IDE_INTERFACE;
         }
-        if (strstr(handle, "naa.") != NULL)
+        if (strstr(handle, "naa.") != M_NULLPTR)
         {
             sysVmInfo->drive_type     = SCSI_DRIVE;
             sysVmInfo->interface_type = SCSI_INTERFACE;
@@ -181,11 +181,10 @@ static void get_VMV_SYS_FS_Info(const char* handle, sysVMLowLevelDeviceInfo* sys
     }
 }
 
-M_NONNULL_PARAM_LIST(1, 2)
 M_NULL_TERM_STRING(1)
 M_PARAM_RO(1)
 M_PARAM_RW(2)
-static void set_Device_Fields_From_Handle(const char* handle, tDevice* device)
+static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice* M_NONNULL device)
 {
     sysVMLowLevelDeviceInfo sysVmInfo;
     /**
@@ -231,7 +230,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     int                      rc           = 0;
     struct nvme_adapter_list nvmeAdptList;
     bool                     isScsi      = false;
-    char*                    nvmeDevName = M_NULLPTR;
+    const char*              nvmeDevName = M_NULLPTR;
 
     /**
      * In VMWare NVMe device the drivename (for NDDK)
@@ -1080,7 +1079,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     }
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
 
-    DISABLE_NONNULL_COMPARE
+
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
@@ -1181,7 +1180,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     return returnValue;
 }

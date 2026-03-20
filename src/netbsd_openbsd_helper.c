@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2025-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2025-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -46,7 +46,7 @@ static int rsd_filter(const struct dirent* entry)
     {
         return !daHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -64,7 +64,7 @@ static int rwd_filter(const struct dirent* entry)
     {
         return !adaHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -307,7 +307,6 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &wdnamelist));
     // safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &nvmenamelist));
 
-    DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
@@ -352,7 +351,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
-                    printf("Failed open, reason: ");
+                    print_str("Failed open, reason: ");
                     print_Errno_To_Screen(errno);
                 }
                 ++failedGetDeviceCount;
@@ -388,7 +387,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
     {

@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2020-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2020-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -30,12 +30,11 @@
 eReturnValues build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBlock* ataPTCmd, uint8_t pmPort)
 {
     eReturnValues ret = SUCCESS;
-    DISABLE_NONNULL_COMPARE
+
     if (h2dFis == M_NULLPTR || ataPTCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
 
     h2dFis->fisType = FIS_TYPE_REG_H2D;
     h2dFis->byte1   = H2D_COMMAND_BIT_MASK |
@@ -68,7 +67,7 @@ eReturnValues build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBloc
 // TJE
 void print_FIS(void* fis, uint32_t fisLengthBytes)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (fis != M_NULLPTR)
     {
         uint8_t* fisPtr =
@@ -320,5 +319,4 @@ void print_FIS(void* fis, uint32_t fisLengthBytes)
             break;
         }
     }
-    RESTORE_NONNULL_COMPARE
 }

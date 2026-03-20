@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -278,7 +278,6 @@ eReturnValues nvme_Asynchronous_Event_Request(const tDevice* device,
     // Command specific return codes:
     //  5h = The number of concurrently outstanding Asynchronous Event Request commands has been exceeded.
 
-    DISABLE_NONNULL_COMPARE
     if (logPageIdentifier != M_NULLPTR)
     {
         *logPageIdentifier = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 23, 16);
@@ -293,7 +292,6 @@ eReturnValues nvme_Asynchronous_Event_Request(const tDevice* device,
     {
         *asynchronousEventType = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 2, 0);
     }
-    RESTORE_NONNULL_COMPARE
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -390,6 +388,12 @@ eReturnValues nvme_Security_Receive(const tDevice* device,
                                                            M_Byte0(securityProtocolSpecific), nvmeSecuritySpecificField);
     adminCommand.cmd.adminCmd.cdw11  = dataLength;
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
+
+    if (ptrData != M_NULLPTR && dataLength > 0)
+    {
+        explicit_zeroes(ptrData, dataLength);
+    }
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_str("Sending NVMe Security Receive Command\n");
@@ -631,6 +635,12 @@ eReturnValues nvme_Read(const tDevice* device,
         nvmCommand.cmd.nvmCmd.cdw12 |= BIT30;
     }
     nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, protectionInformationField & 0x0F) << 26;
+
+    if (ptrData != M_NULLPTR && dataLength > 0)
+    {
+        explicit_zeroes(ptrData, dataLength);
+    }
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_str("Sending NVMe Read Command\n");
@@ -788,6 +798,11 @@ eReturnValues nvme_Identify(const tDevice* device, uint8_t* ptrData, uint32_t nv
     identify.ptrData             = ptrData;
     identify.dataSize            = NVME_IDENTIFY_DATA_LEN;
 
+    if (ptrData != M_NULLPTR)
+    {
+        explicit_zeroes(ptrData, NVME_IDENTIFY_DATA_LEN);
+    }
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_str("Sending NVMe Identify Command\n");
@@ -820,6 +835,11 @@ eReturnValues nvme_Get_Features(const tDevice* device, nvmeFeaturesCmdOpt* featC
     getFeatures.cmd.adminCmd.cdw10 = dWord10;
     getFeatures.cmd.adminCmd.cdw11 = featCmdOpts->featSetGetValue;
     getFeatures.timeout            = DEFAULT_COMMAND_TIMEOUT;
+
+    if (featCmdOpts->dataPtr != M_NULLPTR && featCmdOpts->dataLength > 0)
+    {
+        explicit_zeroes(featCmdOpts->dataPtr, featCmdOpts->dataLength);
+    }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -949,7 +969,7 @@ eReturnValues nvme_Get_Log_Page(const tDevice* device, nvmeGetLogPageCmdOpts* ge
     dWord10 |= getLogPageCmdOpts->lid;
     dWord10 |= (getLogPageCmdOpts->lsp & 0x0F) << 8;
     dWord10 |= (getLogPageCmdOpts->rae & 0x01) << 15;
-    dWord10 |= M_Word0(numDwords) << 16;
+    dWord10 |= M_STATIC_CAST(uint32_t, M_Word0(numDwords)) << 16;
 
     getLogPage.cmd.adminCmd.cdw10 = dWord10;
     getLogPage.cmd.adminCmd.cdw11 = M_Word1(numDwords);
@@ -961,6 +981,11 @@ eReturnValues nvme_Get_Log_Page(const tDevice* device, nvmeGetLogPageCmdOpts* ge
 
     getLogPage.ptrData  = getLogPageCmdOpts->addr;
     getLogPage.dataSize = getLogPageCmdOpts->dataLen;
+
+    if (getLogPageCmdOpts->addr != M_NULLPTR && getLogPageCmdOpts->dataLen > 0)
+    {
+        explicit_zeroes(getLogPageCmdOpts->addr, getLogPageCmdOpts->dataLen);
+    }
 
     getLogPage.timeout = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1050,6 +1075,11 @@ eReturnValues nvme_Reservation_Report(const tDevice* device,
     if (extendedDataStructure)
     {
         nvmCmd.cmd.nvmCmd.cdw11 |= BIT0;
+    }
+
+    if (ptrData != M_NULLPTR && dataSize > 0)
+    {
+        explicit_zeroes(ptrData, dataSize);
     }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1190,6 +1220,52 @@ eReturnValues nvme_Reservation_Release(const tDevice* device,
     return ret;
 }
 
+eReturnValues nvme_Write_Zeroes(const tDevice* device,
+                                uint64_t       startingLBA,
+                                uint16_t       numberOfLogicalBlocks,
+                                bool           limitedRetry,
+                                bool           forceUnitAccess,
+                                bool           deallocate)
+{
+    eReturnValues ret = SUCCESS;
+    nvmeCmdCtx    nvmCommand;
+    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    nvmCommand.commandType       = NVM_CMD;
+    nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_WRITE_ZEROS;
+    nvmCommand.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
+    nvmCommand.commandDirection  = XFER_NO_DATA;
+    nvmCommand.ptrData           = M_NULLPTR;
+    nvmCommand.dataSize          = 0;
+    nvmCommand.cmd.nvmCmd.cdw10  = M_DoubleWord0(startingLBA); // lba
+    nvmCommand.cmd.nvmCmd.cdw11  = M_DoubleWord1(startingLBA); // lba
+    nvmCommand.cmd.nvmCmd.cdw12  = numberOfLogicalBlocks;
+    if (limitedRetry)
+    {
+        nvmCommand.cmd.nvmCmd.cdw12 |= BIT31;
+    }
+    if (forceUnitAccess)
+    {
+        nvmCommand.cmd.nvmCmd.cdw12 |= BIT30;
+    }
+    // NOTE: PRInfo here, but not currently supported
+    if (deallocate)
+    {
+        nvmCommand.cmd.nvmCmd.cdw12 |= BIT25;
+    }
+    nvmCommand.timeout = DEFAULT_COMMAND_TIMEOUT;
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_str("Sending NVMe Write Zeroes Command\n");
+    }
+    ret = nvme_Cmd(device, &nvmCommand);
+    // Command specific return codes:
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("Write Zeroes", ret);
+    }
+    return ret;
+}
+
 eReturnValues nvme_Read_Ctrl_Reg(const tDevice* device, nvmeBarCtrlRegisters* ctrlRegs)
 {
     eReturnValues ret = UNKNOWN;
@@ -1211,7 +1287,6 @@ eReturnValues nvme_Read_Ctrl_Reg(const tDevice* device, nvmeBarCtrlRegisters* ct
         {
             safe_memcpy(ctrlRegs, sizeof(nvmeBarCtrlRegisters), barRegs, sizeof(nvmeBarCtrlRegisters));
         }
-
         safe_free_aligned(&barRegs);
     }
     else

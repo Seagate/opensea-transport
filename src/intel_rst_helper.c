@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -211,23 +211,22 @@ static M_INLINE void safe_free_irst_raid_fw_buffer(IOCTL_RAID_FIRMWARE_BUFFER** 
 }
 
 // generic function to handle taking in the various RAID FW Requests to keep code from being duplicated
-M_NONNULL_PARAM_LIST(1, 8)
 M_PARAM_RO(1)
 M_NONNULL_IF_NONZERO_SIZE(2, 3)
 M_PARAM_RO_SIZE(2, 3)
-static eReturnValues intel_RAID_FW_Request(const tDevice* device,
-                                           void*          ptrDataRequest,
-                                           uint32_t       dataRequestLength,
-                                           uint32_t       timeoutSeconds,
-                                           uint32_t       intelFirmwareFunction,
-                                           uint32_t       intelFirmwareFlags,
-                                           bool           readFirmwareInfo,
-                                           uint32_t*      returnCode)
+static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
+                                           void*                    ptrDataRequest,
+                                           uint32_t                 dataRequestLength,
+                                           uint32_t                 timeoutSeconds,
+                                           uint32_t                 intelFirmwareFunction,
+                                           uint32_t                 intelFirmwareFlags,
+                                           bool                     readFirmwareInfo,
+                                           uint32_t* M_NONNULL      returnCode)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
-    DISABLE_NONNULL_COMPARE
+
     if (device != M_NULLPTR)
-    RESTORE_NONNULL_COMPARE
+
     {
         size_t                      allocationSize = sizeof(IOCTL_RAID_FIRMWARE_BUFFER) + dataRequestLength;
         IOCTL_RAID_FIRMWARE_BUFFER* raidFirmwareRequest =
@@ -282,7 +281,8 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* device,
                 handleToUse = device->os_info.scsiSRBHandle;
                 // use Windows pathId
                 raidFirmwareRequest->Request.PathId = device->os_info.scsi_addr.PathId;
-                // may need to add in remaining scsi address in the future, but for now these other fields are reserved
+                // may need to add in remaining scsi address in the future, but for now these other fields are
+                // reserved
             }
             // setup the firmware request
             raidFirmwareRequest->Request.FwRequestBlock.Version  = INTEL_FIRMWARE_REQUEST_BLOCK_STRUCTURE_VERSION;
@@ -291,9 +291,9 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* device,
             raidFirmwareRequest->Request.FwRequestBlock.Flags    = intelFirmwareFlags;
             if (ptrDataRequest)
             {
-                // NOTE: The offset should be a multiple of sizeof(void), which reading the structure types indicated
-                // that this should be the case for 64bit and 32bit builds. Anything else will need additional byte
-                // padding.
+                // NOTE: The offset should be a multiple of sizeof(void), which reading the structure types
+                // indicated that this should be the case for 64bit and 32bit builds. Anything else will need
+                // additional byte padding.
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferOffset =
                     sizeof(SRB_IO_CONTROL) + sizeof(RAID_FIRMWARE_REQUEST_BLOCK);
                 raidFirmwareRequest->Request.FwRequestBlock.DataBufferLength = dataRequestLength;
@@ -324,8 +324,8 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* device,
             set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
             if (ERROR_IO_PENDING ==
                 device->os_info
-                    .last_error) // This will only happen for overlapped commands. If the drive is opened without the
-                                 // overlapped flag, everything will work like old synchronous code.-TJE
+                    .last_error) // This will only happen for overlapped commands. If the drive is opened without
+                                 // the overlapped flag, everything will work like old synchronous code.-TJE
             {
                 success = GetOverlappedResult(handleToUse, &overlappedStruct, &bytesReturned, TRUE);
             }
@@ -349,12 +349,12 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* device,
             }
             else
             {
-                DISABLE_NONNULL_COMPARE
+
                 if (returnCode != M_NULLPTR)
                 {
                     *returnCode = raidFirmwareRequest->Header.ReturnCode;
                 }
-                RESTORE_NONNULL_COMPARE
+
                 ret = SUCCESS; // IO sent successfully in the system...BUT we need to check the SRB return code to
                                // determine if the command went through to the device
                 switch (raidFirmwareRequest->Header.ReturnCode)
@@ -993,7 +993,7 @@ static void dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, uint32_t returnCode)
 eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
-    DISABLE_NONNULL_COMPARE
+
     if (nvmeIoCtx != M_NULLPTR)
     {
         if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
@@ -1062,7 +1062,7 @@ eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx)
     {
         ret = BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     return ret;
 }
 
@@ -1072,7 +1072,7 @@ eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx)
 #    if defined(INTRST_DEBUG)
     print_str("Intel: NVM passthrough request\n");
 #    endif // INTRST_DEBUG
-    DISABLE_NONNULL_COMPARE
+
     if (nvmeIoCtx != M_NULLPTR)
     {
         if (nvmeIoCtx->commandType == NVM_ADMIN_CMD)
@@ -1106,7 +1106,7 @@ eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx)
 #    if defined(INTRST_DEBUG)
     printf("Intel: NVM result: %d\n", ret);
 #    endif // INTRST_DEBUG
-    RESTORE_NONNULL_COMPARE
+
     return ret;
 }
 
@@ -1116,7 +1116,7 @@ eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx)
 #    if defined(INTRST_DEBUG)
     print_str("Intel: Received SCSI command for translation\n");
 #    endif // INTRST_DEBUG
-    DISABLE_NONNULL_COMPARE
+
     if (scsiIoCtx != M_NULLPTR)
     {
         ret = sntl_Translate_SCSI_Command(scsiIoCtx->device, scsiIoCtx);
@@ -1125,7 +1125,7 @@ eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx)
     {
         ret = BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
 #    if defined(INTRST_DEBUG)
     printf("Intel: Translated command result: %d\n", ret);
 #    endif // INTRST_DEBUG

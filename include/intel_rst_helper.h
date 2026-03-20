@@ -6,7 +6,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -43,8 +43,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* M_NONNULL nvmeIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -62,8 +61,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* M_NONNULL nvmeIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -81,8 +79,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* M_NONNULL scsiIoCtx);
 
     //-----------------------------------------------------------------------------
     //
@@ -99,8 +96,7 @@ extern "C"
     //!   \return true = supports Intel RST firmware update IOCTLs, false = not supported.
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(const tDevice* device);
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -118,8 +114,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = Command not allowed, all others = other failures.
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
-    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* scsiIoCtx);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* M_NONNULL scsiIoCtx);
 
 #    if defined(__cplusplus)
 }

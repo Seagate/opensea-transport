@@ -8,7 +8,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -47,13 +47,13 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2, 3, 4)
     M_PARAM_WO(1)
     M_PARAM_WO(2)
     M_PARAM_WO(3)
     M_PARAM_RO(4)
-    eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t lowCDB[16], uint8_t hiCDB[16], bool* highCDBValid,
-                                                         ataPassthroughCommand* ataCommandOptions);
+    eReturnValues build_Prolific_Legacy_Passthrough_CDBs(
+        uint8_t lowCDB[M_NONNULL_ARRAY 16], uint8_t hiCDB[M_NONNULL_ARRAY 16], bool* M_NONNULL highCDBValid,
+        ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
@@ -71,11 +71,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues get_RTFRs_From_Prolific_Legacy(const tDevice* device, ataPassthroughCommand* ataCommandOptions,
-                                                 eReturnValues commandRet);
+    eReturnValues get_RTFRs_From_Prolific_Legacy(
+        const tDevice* M_NONNULL device, ataPassthroughCommand* M_NONNULL ataCommandOptions, eReturnValues commandRet);
 
     //-----------------------------------------------------------------------------
     //
@@ -92,11 +91,10 @@ extern 'C'
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1, 2)
     M_PARAM_RO(1)
     M_PARAM_RW(2)
-    eReturnValues send_Prolific_Legacy_Passthrough_Command(const tDevice*         device,
-                                                           ataPassthroughCommand* ataCommandOptions);
+    eReturnValues send_Prolific_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                           ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
 #if defined(__cplusplus)
 }

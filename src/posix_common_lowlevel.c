@@ -9,7 +9,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2025-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2025-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -45,7 +45,7 @@ eReturnValues posix_Resolve_Filename_Link(const char* filename, char** resolvedF
     {
         errno_t err = errno;
         print_str("lstat failure\n");
-        printf("Error: ");
+        print_str("Error: ");
         print_Errno_To_Screen(err);
         if (err == EACCES)
         {

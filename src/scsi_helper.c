@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -931,12 +931,12 @@ uint16_t calculate_Logical_Block_Guard(const uint8_t* buffer, uint32_t userDataL
     // Can also be all F's to invert it. TODO: should invert be a boolean option to this function? - TJE
     uint16_t       crc        = UINT16_C(0);
     uint16_t const polynomial = UINT16_C(0x8BB7);
-    DISABLE_NONNULL_COMPARE
+
     if (buffer == M_NULLPTR)
     {
         return 0;
     }
-    RESTORE_NONNULL_COMPARE
+
     for (uint32_t iter = UINT32_C(0); iter < userDataLength && iter < totalDataLength; iter += 2)
     {
         uint16_t x = M_BytesTo2ByteValue(buffer[iter], buffer[iter + 1]);
@@ -971,7 +971,7 @@ void print_acs_ascq(const char* acsAndascqStringToPrint, uint8_t ascValue, uint8
 void print_Field_Replacable_Unit_Code(const tDevice* device, const char* fruMessage, uint8_t fruCode)
 {
     // we'll only print out a translatable string for seagate drives since fru is vendor specific
-    DISABLE_NONNULL_COMPARE
+
     if (is_Seagate(device, false) == true && fruMessage != M_NULLPTR && strlen(fruMessage) > 0 &&
         device->drive_info.interface_type == SCSI_INTERFACE)
     {
@@ -989,7 +989,6 @@ void print_Field_Replacable_Unit_Code(const tDevice* device, const char* fruMess
         }
     }
     flush_stdout();
-    RESTORE_NONNULL_COMPARE
 }
 
 // Used with bsearch
@@ -1171,7 +1170,6 @@ void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
-    DISABLE_NONNULL_COMPARE
     if (valid != M_NULLPTR)
     {
         *valid = senseFields.valid;
@@ -1180,7 +1178,6 @@ void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
     {
         *information = senseFields.descriptorInformation;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
@@ -1192,12 +1189,10 @@ void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
-    DISABLE_NONNULL_COMPARE
     if (illegalLengthIndicator != M_NULLPTR)
     {
         *illegalLengthIndicator = senseFields.illegalLengthIndication;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
@@ -1211,7 +1206,6 @@ void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
-    DISABLE_NONNULL_COMPARE
     if (filemark != M_NULLPTR)
     {
         *filemark = senseFields.filemark;
@@ -1224,7 +1218,6 @@ void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
     {
         *illegalLengthIndicator = senseFields.illegalLengthIndication;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseData,
@@ -1236,12 +1229,10 @@ void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseDat
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
-    DISABLE_NONNULL_COMPARE
     if (commandSpecificInformation != M_NULLPTR)
     {
         *commandSpecificInformation = senseFields.descriptorCommandSpecificInformation;
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
@@ -1251,17 +1242,15 @@ void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t se
 
     get_Sense_Data_Fields(ptrSenseData, senseDataLength, &senseFields);
 
-    DISABLE_NONNULL_COMPARE
     if (sksp != M_NULLPTR)
     {
         safe_memcpy(sksp, sizeof(senseKeySpecific), &senseFields.senseKeySpecificInformation, sizeof(senseKeySpecific));
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ptrSenseData != M_NULLPTR && senseDataLength > 0 && senseFields != M_NULLPTR)
     {
         uint8_t  format = ptrSenseData[0] & 0x7F; // Stripping the last bit so we just get the format
@@ -1615,12 +1604,11 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
             break;
         }
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void print_Sense_Fields(constPtrSenseDataFields senseFields)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (senseFields != M_NULLPTR && senseFields->validStructure)
     {
         // This function assumes that the "check_Sense_Key_ASC_ASCQ_FRU" function was called before hand to print out
@@ -1813,7 +1801,6 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
             }
         }
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf)
@@ -1821,12 +1808,11 @@ uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf)
     uint16_t length = UINT16_C(8);
     uint8_t  format;
 
-    DISABLE_NONNULL_COMPARE
     if (pbuf == M_NULLPTR)
     {
         return 0;
     }
-    RESTORE_NONNULL_COMPARE
+
     format = pbuf[0] & 0x7F; // Stripping the last bit so we just get the format
 
     switch (format)
@@ -1889,7 +1875,7 @@ void copy_Inquiry_Data(uint8_t* pbuf, driveInfo* info)
 // \brief copy the serial number off of 0x80 VPD page data.
 void copy_Serial_Number(uint8_t* pbuf, size_t bufferlen, char* serialNumber, size_t serialNumberMemLen)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (pbuf != M_NULLPTR && serialNumber != M_NULLPTR && bufferlen >= 4 && serialNumberMemLen > 0)
     {
         uint16_t snLen = M_BytesTo2ByteValue(pbuf[2], pbuf[3]);
@@ -1904,7 +1890,6 @@ void copy_Serial_Number(uint8_t* pbuf, size_t bufferlen, char* serialNumber, siz
         }
         remove_Leading_And_Trailing_Whitespace(serialNumber);
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
@@ -1924,7 +1909,7 @@ void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
         *logicalBlockSize = M_BytesTo4ByteValue(ptrBuf[8], ptrBuf[9], ptrBuf[10], ptrBuf[11]);
         // get the physical sector size
         sectorSizeExponent = ptrBuf[13] & 0x0F;
-        *physicalBlockSize = C_CAST(uint32_t, *logicalBlockSize * power_Of_Two(sectorSizeExponent));
+        *physicalBlockSize = C_CAST(uint32_t, *logicalBlockSize* power_Of_Two(sectorSizeExponent));
         // set the sector alignment info
         *sectorAlignment = get_bit_range_uint16(M_BytesTo2ByteValue(ptrBuf[14], ptrBuf[15]), 13, 0);
     }
@@ -2013,12 +1998,12 @@ static eReturnValues private_Scsi_Read_Cap_10(const tDevice* device, readCapacit
 eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* device, readCapacityData* outputData)
 {
     safe_memset(outputData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
-    DISABLE_NONNULL_COMPARE
+
     if (device == M_NULLPTR || outputData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     if (device->drive_info.scsiVersion >= SCSI_VERSION_SPC_3)
     {
         // 16B command added in SBC2. Not a better way to check, so using SPC3 version to decide at the moment since
@@ -2042,14 +2027,13 @@ eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* device, readCapacityD
     return private_Scsi_Read_Cap_10(device, outputData);
 }
 
-M_NONNULL_PARAM_LIST(1, 2, 3)
 M_PARAM_RW(1)
 M_PARAM_RW(2)
 M_PARAM_RO_SIZE(3, 4)
-static void set_SAT_Flags_From_ATA_Info(tDevice*             device,
-                                        bool*                issueSATIdentify,
-                                        const uint8_t*       ataInformation,
-                                        M_ATTR_UNUSED size_t ataInfoLen)
+static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
+                                        bool* M_NONNULL          issueSATIdentify,
+                                        const uint8_t* M_NONNULL ataInformation,
+                                        M_ATTR_UNUSED size_t     ataInfoLen)
 {
     // set some of the bridge info in the device structure
     safe_memcpy(&device->drive_info.bridge_info.t10SATvendorID[0], 9, &ataInformation[SAT_ATA_VPD_T10_VENDOR_OFFSET],
@@ -2062,7 +2046,7 @@ static void set_SAT_Flags_From_ATA_Info(tDevice*             device,
     // Setup flags for ATA passthrough if we know the SAT vendor/product/rev info
     if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "PMCS    ") == 0)
     {
-        // printf("Found PMCS SATL\n");
+        // print_str("Found PMCS SATL\n");
         // PMCS is a PMC translator. Sometimes these also show up on HPE controllers.
         // Tested:
         // SAT Vendor ID: PMCS
@@ -2099,7 +2083,7 @@ static void set_SAT_Flags_From_ATA_Info(tDevice*             device,
     }
     else if (strcmp(device->drive_info.bridge_info.t10SATvendorID, "LSI     ") == 0)
     {
-        // printf("Found LSI SATL\n");
+        // print_str("Found LSI SATL\n");
         // LSI/Avago/Broadcom HBAs
         //  Got SAT Vendor ID as LSI
         //  Got SAT Product ID as LSI SATL
@@ -2134,7 +2118,7 @@ static void set_SAT_Flags_From_ATA_Info(tDevice*             device,
         //  SAT Vendor ID: linux
         //  SAT Product ID: libata
         //  SAT Product Rev: 3.00
-        // printf("Found linux SATL\n");
+        // print_str("Found linux SATL\n");
         device->drive_info.passThroughHacks.passthroughType            = ATA_PASSTHROUGH_SAT;
         device->drive_info.passThroughHacks.hacksSetByReportedID       = true;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6    = true;
@@ -2262,9 +2246,8 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device)
     return ret;
 }
 
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* device)
+static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
 {
     bool passthroughTypeSet = false;
     DECLARE_ZERO_INIT_ARRAY(char, vendorID, INQ_DATA_T10_VENDOR_ID_LEN + 1);
@@ -5085,7 +5068,7 @@ void get_mode_param_header_6_fields(uint8_t* ptrMP,
                                     uint8_t* devSpecific,
                                     uint8_t* blockDescriptorLenth)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_6_LEN)
     {
         if (modeDataLength != M_NULLPTR)
@@ -5105,7 +5088,6 @@ void get_mode_param_header_6_fields(uint8_t* ptrMP,
             *blockDescriptorLenth = ptrMP[MODE_HEADER_6_BLK_DESC_OFFSET];
         }
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void get_mode_param_header_10_fields(uint8_t*  ptrMP,
@@ -5116,7 +5098,7 @@ void get_mode_param_header_10_fields(uint8_t*  ptrMP,
                                      bool*     longLBA,
                                      uint16_t* blockDescriptorLenth)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_10_LEN)
     {
         if (modeDataLength != M_NULLPTR)
@@ -5142,7 +5124,6 @@ void get_mode_param_header_10_fields(uint8_t*  ptrMP,
             *longLBA = M_ToBool(ptrMP[MODE_HEADER_10_DEV_SPECIFIC + 1] & BIT0);
         }
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
@@ -5151,7 +5132,7 @@ void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
                                               uint32_t* numberOfBlocks,
                                               uint32_t* blockLength)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= GENERAL_BLOCK_DESCRIPTOR_LEN)
     {
         if (densityCode != M_NULLPTR)
@@ -5175,7 +5156,6 @@ void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
             }
         }
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
@@ -5183,7 +5163,7 @@ void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
                                             uint32_t* numberOfBlocks,
                                             uint32_t* blockLength)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= SHORT_LBA_BLOCK_DESCRIPTOR_LEN)
     {
         if (numberOfBlocks != M_NULLPTR)
@@ -5203,7 +5183,6 @@ void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
             }
         }
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
@@ -5211,7 +5190,7 @@ void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
                                            uint64_t* numberOfBlocks,
                                            uint64_t* blockLength)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= LONG_LBA_BLOCK_DESCRIPTOR_LEN)
     {
         if (numberOfBlocks != M_NULLPTR)
@@ -5231,7 +5210,6 @@ void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
             }
         }
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
@@ -5245,7 +5223,7 @@ void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
                                          uint64_t* numberOfBlocks,
                                          uint64_t* blockLength)
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ptr != M_NULLPTR)
     {
         if (sixByteCmd)
@@ -5317,7 +5295,6 @@ void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
             }
         }
     }
-    RESTORE_NONNULL_COMPARE
 }
 
 bool check_Sense_For_Specific_Info(const uint8_t* senseData, uint32_t senseLen, senseToCheck check)

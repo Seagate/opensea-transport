@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -67,7 +67,7 @@ eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCD
     case XFER_DATA_OUT_IN:
         return BAD_PARAMETER;
     }
-    lowCDB[4]  = ataCommandOptions->dataSize >> 9; // converting to number of 512B blocks
+    lowCDB[4]  = M_STATIC_CAST(uint8_t, ataCommandOptions->dataSize >> 9); // converting to number of 512B blocks
     lowCDB[5]  = ataCommandOptions->tfr.ErrorFeature;
     lowCDB[6]  = ataCommandOptions->tfr.SectorCount;
     lowCDB[7]  = ataCommandOptions->tfr.LbaLow;
@@ -79,7 +79,7 @@ eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCD
 }
 
 #define SUBPLUS_READ_REG_LEN 16
-eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice*               device,
+eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice*         device,
                                             ataPassthroughCommand* ataCommandOptions,
                                             eReturnValues          commandRet)
 {

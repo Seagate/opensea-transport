@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2019-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2019-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -486,12 +486,12 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     uint8_t* dataPhasePtr  = M_NULLPTR;
     uint32_t dataPhaseSize = UINT32_C(0);
     bool     localMemory   = false;
-    DISABLE_NONNULL_COMPARE
+
     if (nvmCmd == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     dataPhasePtr  = nvmCmd->ptrData;
     dataPhaseSize = nvmCmd->dataSize;
     if (nvmCmd->ptrData && nvmCmd->dataSize > 0 && nvmCmd->dataSize % UINT32_C(512))

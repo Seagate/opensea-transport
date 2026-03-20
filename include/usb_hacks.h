@@ -6,7 +6,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -22,7 +22,7 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  set_ATA_Passthrough_Type_By_Trial_And_Error(const tDevice * device)
+    //  set_ATA_Passthrough_Type_By_Trial_And_Error(const tDevice* M_NONNULL device)
     //
     //! \brief   Description:  Attempts to figure out the ATA passthrough method of external (USB and IEEE1394) products
     //! by issueing identify commands with different passthrough types until success is found
@@ -34,9 +34,8 @@ extern "C"
     //!   \return VOID
     //
     //-----------------------------------------------------------------------------
-    M_NONNULL_PARAM_LIST(1)
     M_PARAM_RW(1)
-    OPENSEA_TRANSPORT_API bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device);
+    OPENSEA_TRANSPORT_API bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* M_NONNULL device);
 
 #if defined(__cplusplus)
 }

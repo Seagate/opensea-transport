@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2025-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2025-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,7 +17,16 @@
 
 #pragma once
 
-M_FILE_DESCRIPTOR(1)
-eReturnValues send_BSD_ATA_Reset(int fd);
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
 
-M_NONNULL_PARAM_LIST(1) M_PARAM_RW(1) eReturnValues send_BSD_ATA_IO(ScsiIoCtx* scsiIoCtx);
+    M_FILE_DESCRIPTOR(1)
+    eReturnValues send_BSD_ATA_Reset(int fd);
+
+    M_PARAM_RW(1) eReturnValues send_BSD_ATA_IO(ScsiIoCtx* M_NONNULL scsiIoCtx);
+
+#if defined(__cplusplus)
+}
+#endif

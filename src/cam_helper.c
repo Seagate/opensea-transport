@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -77,10 +77,10 @@ static bool is_NVMe_Handle(const char* handle)
         }
     }
     return isNVMeDevice;
-    #else
+#else
     M_USE_UNUSED(handle);
     return false;
-    #endif // !DISABLE_NVME_PASSTHROUGH
+#endif // !DISABLE_NVME_PASSTHROUGH
 }
 
 #if defined(IOCATAREQUEST)
@@ -196,7 +196,7 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
         return ret;
     }
 
-    device->os_info.cam_dev = M_NULLPTR;
+    device->os_info.cam_dev       = M_NULLPTR;
     ePosixHandleFlags handleFlags = POSIX_HANDLE_FLAGS_DEFAULT;
     if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
     {
@@ -234,11 +234,11 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
     // }
     ioctl(device->os_info.fd, NVME_GET_NSID, &gnsid);
     device->drive_info.namespaceID = gnsid.nsid;
-#if defined(__DragonFly__)
+#    if defined(__DragonFly__)
     device->os_info.osType = OS_DRAGONFLYBSD;
-#else
+#    else
     device->os_info.osType = OS_FREEBSD;
-#endif
+#    endif
 
     char* baseLink = basename(deviceHandle);
     // Now we will set up the device name, etc fields in the os_info structure
@@ -1039,8 +1039,8 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
         {
             if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
             {
-                printf("WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT "
-                       "Specification]\n");
+                print_str("WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT "
+                          "Specification]\n");
             }
             ret = BAD_PARAMETER;
         }
@@ -1345,7 +1345,7 @@ static int nvme_filter(const struct dirent* entry)
     {
         return !nvmeHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -1363,7 +1363,7 @@ static int nda_filter(const struct dirent* entry)
     {
         return !nvmeHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -1383,7 +1383,7 @@ static int da_filter(const struct dirent* entry)
     {
         return !daHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -1401,7 +1401,7 @@ static int ada_filter(const struct dirent* entry)
     {
         return !adaHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -1426,7 +1426,7 @@ static int ad_filter(const struct dirent* entry)
     {
         return !adaHandle;
     }
-    char* partition = strpbrk(entry->d_name, "pPsS");
+    const char* partition = strpbrk(entry->d_name, "pPsS");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -1668,7 +1668,6 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &adanamelist));
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &nvmenamelist));
 
-    DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
@@ -1737,7 +1736,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
-                    printf("Failed open, reason: ");
+                    print_str("Failed open, reason: ");
                     print_Errno_To_Screen(errno);
                 }
                 ++failedGetDeviceCount;
@@ -1773,7 +1772,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
     {

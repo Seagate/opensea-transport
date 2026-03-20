@@ -1,7 +1,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -20,6 +20,7 @@
 #include "precision_timer.h"
 #include "string_utils.h"
 #include "type_conversion.h"
+#include "warning_ctl.h"
 
 #include "ata_helper.h"
 #include "ata_helper_func.h"
@@ -127,15 +128,14 @@ static bool is_Buffer_Non_Zero(const uint8_t* ptrData, uint32_t dataLen)
     return isNonZero;
 }
 
-M_NONNULL_PARAM_LIST(1, 4)
 M_PARAM_RW(1)
 M_PARAM_RW_SIZE(4, 5)
-static M_INLINE eReturnValues send_ATA_Read_Log_Ext_Cmd_impl(tDevice* device,
-                                                             uint8_t  logAddress,
-                                                             uint16_t pageNumber,
-                                                             uint8_t* ptrData,
-                                                             uint32_t dataSize,
-                                                             uint16_t featureRegister)
+static M_INLINE eReturnValues send_ATA_Read_Log_Ext_Cmd_impl(tDevice* M_NONNULL device,
+                                                             uint8_t            logAddress,
+                                                             uint16_t           pageNumber,
+                                                             uint8_t* M_NONNULL ptrData,
+                                                             uint32_t           dataSize,
+                                                             uint16_t           featureRegister)
 {
     eReturnValues ret = NOT_SUPPORTED;
     if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
@@ -200,15 +200,14 @@ eReturnValues send_ATA_Read_Log_Ext_Cmd(const tDevice* device,
                                           featureRegister);
 }
 
-M_NONNULL_PARAM_LIST(1, 4)
 M_PARAM_RW(1)
 M_PARAM_RO_SIZE(4, 5)
-static M_INLINE eReturnValues send_ATA_Write_Log_Ext_Cmd_impl(tDevice* device,
-                                                              uint8_t  logAddress,
-                                                              uint16_t pageNumber,
-                                                              uint8_t* ptrData,
-                                                              uint32_t dataSize,
-                                                              bool     forceRTFRs)
+static M_INLINE eReturnValues send_ATA_Write_Log_Ext_Cmd_impl(tDevice* M_NONNULL device,
+                                                              uint8_t            logAddress,
+                                                              uint16_t           pageNumber,
+                                                              uint8_t* M_NONNULL ptrData,
+                                                              uint32_t           dataSize,
+                                                              bool               forceRTFRs)
 {
     eReturnValues ret = NOT_SUPPORTED;
     if (device->drive_info.ata_Options.generalPurposeLoggingSupported)
@@ -663,15 +662,14 @@ eReturnValues send_ATA_SCT_Data_Table(const tDevice* device,
     return ret;
 }
 
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
 M_NONNULL_IF_NONZERO_PARAM(5, 6)
 M_PARAM_RO_SIZE(5, 6)
-static M_INLINE eReturnValues send_ATA_Download_Microcode_Cmd_impl(tDevice*                   device,
+static M_INLINE eReturnValues send_ATA_Download_Microcode_Cmd_impl(tDevice* M_NONNULL         device,
                                                                    eDownloadMicrocodeFeatures subCommand,
                                                                    uint16_t                   blockCount,
                                                                    uint16_t                   bufferOffset,
-                                                                   uint8_t*                   pData,
+                                                                   uint8_t* M_NULLABLE        pData,
                                                                    uint32_t                   dataLen,
                                                                    bool                       firstSegment,
                                                                    bool                       lastSegment,
@@ -729,14 +727,13 @@ eReturnValues send_ATA_Download_Microcode_Cmd(const tDevice*             device,
                                                 pData, dataLen, firstSegment, lastSegment, timeoutSeconds);
 }
 
-M_NONNULL_PARAM_LIST(1, 4)
 M_PARAM_RW(1)
 M_PARAM_RO_SIZE(4, 5)
-static M_INLINE eReturnValues send_ATA_Trusted_Send_Cmd_impl(tDevice* device,
-                                                             uint8_t  securityProtocol,
-                                                             uint16_t securityProtocolSpecific,
-                                                             uint8_t* ptrData,
-                                                             uint32_t dataSize)
+static M_INLINE eReturnValues send_ATA_Trusted_Send_Cmd_impl(tDevice* M_NONNULL device,
+                                                             uint8_t            securityProtocol,
+                                                             uint16_t           securityProtocolSpecific,
+                                                             uint8_t* M_NONNULL ptrData,
+                                                             uint32_t           dataSize)
 {
     eReturnValues ret           = NOT_SUPPORTED;
     bool          dmaRetry      = false;
@@ -785,14 +782,13 @@ eReturnValues send_ATA_Trusted_Send_Cmd(const tDevice* device,
                                           ptrData, dataSize);
 }
 
-M_NONNULL_PARAM_LIST(1, 4)
 M_PARAM_RW(1)
 M_PARAM_RW_SIZE(4, 5)
-static M_INLINE eReturnValues send_ATA_Trusted_Receive_Cmd_impl(tDevice* device,
-                                                                uint8_t  securityProtocol,
-                                                                uint16_t securityProtocolSpecific,
-                                                                uint8_t* ptrData,
-                                                                uint32_t dataSize)
+static M_INLINE eReturnValues send_ATA_Trusted_Receive_Cmd_impl(tDevice* M_NONNULL device,
+                                                                uint8_t            securityProtocol,
+                                                                uint16_t           securityProtocolSpecific,
+                                                                uint8_t* M_NONNULL ptrData,
+                                                                uint32_t           dataSize)
 {
     eReturnValues ret           = NOT_SUPPORTED;
     bool          dmaRetry      = false;
@@ -841,10 +837,9 @@ eReturnValues send_ATA_Trusted_Receive_Cmd(const tDevice* device,
                                              ptrData, dataSize);
 }
 
-M_NONNULL_PARAM_LIST(1, 2)
 M_PARAM_RW(1)
 M_PARAM_RW(2)
-static M_INLINE eReturnValues send_ATA_Read_Buffer_Cmd_impl(tDevice* device, uint8_t* ptrData)
+static M_INLINE eReturnValues send_ATA_Read_Buffer_Cmd_impl(tDevice* M_NONNULL device, uint8_t* M_NONNULL ptrData)
 {
     eReturnValues ret      = NOT_SUPPORTED;
     bool          dmaRetry = false;
@@ -887,10 +882,9 @@ eReturnValues send_ATA_Read_Buffer_Cmd(const tDevice* device, uint8_t* ptrData)
     return send_ATA_Read_Buffer_Cmd_impl(M_CONST_CAST(tDevice*, device), ptrData);
 }
 
-M_NONNULL_PARAM_LIST(1, 2)
 M_PARAM_RW(1)
 M_PARAM_RO(2)
-static M_INLINE eReturnValues send_ATA_Write_Buffer_Cmd_impl(tDevice* device, uint8_t* ptrData)
+static M_INLINE eReturnValues send_ATA_Write_Buffer_Cmd_impl(tDevice* M_NONNULL device, uint8_t* M_NONNULL ptrData)
 {
     eReturnValues ret      = NOT_SUPPORTED;
     bool          dmaRetry = false;
@@ -933,17 +927,16 @@ eReturnValues send_ATA_Write_Buffer_Cmd(const tDevice* device, uint8_t* ptrData)
     return send_ATA_Write_Buffer_Cmd_impl(M_CONST_CAST(tDevice*, device), ptrData);
 }
 
-M_NONNULL_PARAM_LIST(1, 7)
 M_PARAM_RW(1)
 M_PARAM_RW_SIZE(7, 8)
-static M_INLINE eReturnValues send_ATA_Read_Stream_Cmd_impl(tDevice* device,
-                                                            uint8_t  streamID,
-                                                            bool     notSequential,
-                                                            bool     readContinuous,
-                                                            uint8_t  commandCCTL,
-                                                            uint64_t LBA,
-                                                            uint8_t* ptrData,
-                                                            uint32_t dataSize)
+static M_INLINE eReturnValues send_ATA_Read_Stream_Cmd_impl(tDevice* M_NONNULL device,
+                                                            uint8_t            streamID,
+                                                            bool               notSequential,
+                                                            bool               readContinuous,
+                                                            uint8_t            commandCCTL,
+                                                            uint64_t           LBA,
+                                                            uint8_t* M_NONNULL ptrData,
+                                                            uint32_t           dataSize)
 {
     eReturnValues ret       = NOT_SUPPORTED;
     bool          dmaRetry  = false;
@@ -997,17 +990,16 @@ eReturnValues send_ATA_Read_Stream_Cmd(const tDevice* device,
                                          commandCCTL, LBA, ptrData, dataSize);
 }
 
-M_NONNULL_PARAM_LIST(1, 7)
 M_PARAM_RW(1)
 M_PARAM_RO_SIZE(7, 8)
-static M_INLINE eReturnValues send_ATA_Write_Stream_Cmd_impl(tDevice* device,
-                                                             uint8_t  streamID,
-                                                             bool     flush,
-                                                             bool     writeContinuous,
-                                                             uint8_t  commandCCTL,
-                                                             uint64_t LBA,
-                                                             uint8_t* ptrData,
-                                                             uint32_t dataSize)
+static M_INLINE eReturnValues send_ATA_Write_Stream_Cmd_impl(tDevice* M_NONNULL device,
+                                                             uint8_t            streamID,
+                                                             bool               flush,
+                                                             bool               writeContinuous,
+                                                             uint8_t            commandCCTL,
+                                                             uint64_t           LBA,
+                                                             uint8_t* M_NONNULL ptrData,
+                                                             uint32_t           dataSize)
 {
     eReturnValues ret       = NOT_SUPPORTED;
     bool          dmaRetry  = false;
@@ -1715,7 +1707,7 @@ eReturnValues ata_SF_Power_Consumption(const tDevice* device,
 bool read_ATA_String(uint8_t* ptrRawATAStr, uint8_t ataStringLength, char* outstr, size_t outstrLen)
 {
     bool success = false;
-    DISABLE_NONNULL_COMPARE
+
     if (ptrRawATAStr != M_NULLPTR && outstr != M_NULLPTR &&
         outstrLen >= (uint8_to_sizet(ataStringLength) + SIZE_T_C(1)))
     {
@@ -1743,16 +1735,16 @@ bool read_ATA_String(uint8_t* ptrRawATAStr, uint8_t ataStringLength, char* outst
         outstr[outstrLen - SIZE_T_C(1)] = '\0';
         success                         = true;
     }
-    RESTORE_NONNULL_COMPARE
+
     return success;
 }
 
 void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
-                                         char     ataMN[ATA_IDENTIFY_MN_LENGTH + 1],
-                                         char     ataSN[ATA_IDENTIFY_SN_LENGTH + 1],
-                                         char     ataFW[ATA_IDENTIFY_FW_LENGTH + 1])
+                                         char     ataMN[M_NONNULL_ARRAY ATA_IDENTIFY_MN_LENGTH + 1],
+                                         char     ataSN[M_NONNULL_ARRAY ATA_IDENTIFY_SN_LENGTH + 1],
+                                         char     ataFW[M_NONNULL_ARRAY ATA_IDENTIFY_FW_LENGTH + 1])
 {
-    DISABLE_NONNULL_COMPARE
+
     if (ptrIdentifyData != M_NULLPTR)
     {
         ptAtaIdentifyData idData  = C_CAST(ptAtaIdentifyData, ptrIdentifyData);
@@ -1773,6 +1765,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             validFW = false;
         }
         // fill each buffer with data from ATA ID data
+        DISABLE_NONNULL_COMPARE
         if (validSN && ataSN != M_NULLPTR)
         {
 #if defined(SERIAL_NUM_LEN) && defined(ATA_IDENTIFY_SN_LENGTH) && ATA_IDENTIFY_SN_LENGTH == SERIAL_NUM_LEN
@@ -1781,7 +1774,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t snLimit = M_Min(SERIAL_NUM_LEN, ATA_IDENTIFY_SN_LENGTH);
 #endif
             safe_memset(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, 0, snLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->SerNum[0]), ATA_IDENTIFY_SN_LENGTH, ataSN,
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, idData->SerNum), ATA_IDENTIFY_SN_LENGTH, ataSN,
                                 ATA_IDENTIFY_SN_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
@@ -1795,7 +1788,7 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t fwLimit = M_Min(FW_REV_LEN, ATA_IDENTIFY_FW_LENGTH);
 #endif
             safe_memset(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, 0, fwLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->FirmVer[0]), ATA_IDENTIFY_FW_LENGTH, ataFW,
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, idData->FirmVer), ATA_IDENTIFY_FW_LENGTH, ataFW,
                                 ATA_IDENTIFY_FW_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
@@ -1809,20 +1802,21 @@ void fill_ATA_Strings_From_Identify_Data(uint8_t* ptrIdentifyData,
             uint16_t mnLimit = M_Min(MODEL_NUM_LEN, ATA_IDENTIFY_MN_LENGTH);
 #endif
             safe_memset(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, 0, mnLimit + UINT16_C(1));
-            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->ModelNum[0]), ATA_IDENTIFY_MN_LENGTH, ataMN,
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, idData->ModelNum), ATA_IDENTIFY_MN_LENGTH, ataMN,
                                 ATA_IDENTIFY_MN_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
             }
         }
+        RESTORE_NONNULL_COMPARE
     }
-    RESTORE_NONNULL_COMPARE
 }
 
-M_NONNULL_PARAM_LIST(1, 2)
 M_PARAM_RW(1)
 M_PARAM_RW_SIZE(2, 3)
-static M_INLINE eReturnValues get_Identify_Data_impl(tDevice* device, uint8_t* ptrData, uint32_t dataSize)
+static M_INLINE eReturnValues get_Identify_Data_impl(tDevice* M_NONNULL device,
+                                                     uint8_t* M_NONNULL ptrData,
+                                                     uint32_t           dataSize)
 {
     eReturnValues ret = FAILURE;
 
@@ -1858,9 +1852,8 @@ eReturnValues get_Identify_Data(const tDevice* device, uint8_t* ptrData, uint32_
 }
 
 // This function attempts numerous workarounds to get working identify data (to work around SAT issues)
-M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static eReturnValues initial_Identify_Device(tDevice* device)
+static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
 {
     eReturnValues ret           = NOT_SUPPORTED;
     bool          noMoreRetries = false;
@@ -2352,7 +2345,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
                 uint8_t sectorSizeExponent = UINT8_C(0);
                 // get the number of logical blocks per physical blocks
                 sectorSizeExponent      = le16_to_host(ident_word[106]) & 0x000F;
-                *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize * power_Of_Two(sectorSizeExponent));
+                *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize* power_Of_Two(sectorSizeExponent));
             }
         }
 
@@ -2569,21 +2562,19 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             bool readDeviceStatisticsLog = false;
             // check for support of ID Data Log, Current Device Internal Status, Saved Device Internal Status, Device
             // Statistics Log
-            if (get_ATA_Log_Size_From_Directory(logBuffer, ATA_LOG_PAGE_LEN_BYTES, ATA_LOG_DEVICE_STATISTICS) > 0)
+            if (get_ATA_Log_Size_From_Directory(logBuffer, ATA_LOG_DEVICE_STATISTICS) > 0)
             {
                 readDeviceStatisticsLog = true;
             }
-            if (get_ATA_Log_Size_From_Directory(logBuffer, ATA_LOG_PAGE_LEN_BYTES,
-                                                ATA_LOG_CURRENT_DEVICE_INTERNAL_STATUS_DATA_LOG) > 0)
+            if (get_ATA_Log_Size_From_Directory(logBuffer, ATA_LOG_CURRENT_DEVICE_INTERNAL_STATUS_DATA_LOG) > 0)
             {
                 device->drive_info.softSATFlags.currentInternalStatusLogSupported = true;
             }
-            if (get_ATA_Log_Size_From_Directory(logBuffer, ATA_LOG_PAGE_LEN_BYTES,
-                                                ATA_LOG_SAVED_DEVICE_INTERNAL_STATUS_DATA_LOG) > 0)
+            if (get_ATA_Log_Size_From_Directory(logBuffer, ATA_LOG_SAVED_DEVICE_INTERNAL_STATUS_DATA_LOG) > 0)
             {
                 device->drive_info.softSATFlags.savedInternalStatusLogSupported = true;
             }
-            if (get_ATA_Log_Size_From_Directory(logBuffer, ATA_LOG_PAGE_LEN_BYTES, ATA_LOG_IDENTIFY_DEVICE_DATA) > 0)
+            if (get_ATA_Log_Size_From_Directory(logBuffer, ATA_LOG_IDENTIFY_DEVICE_DATA) > 0)
             {
                 readIDDataLog = true;
             }
@@ -2591,7 +2582,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
             // client log page translation) Using 90h since that is the first page the application client translation
             // uses.
 
-            if (get_ATA_Log_Size_From_Directory(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0x90) > 0)
+            if (get_ATA_Log_Size_From_Directory(logBuffer, 0x90) > 0)
             {
                 device->drive_info.softSATFlags.hostLogsSupported = true;
             }
@@ -3373,12 +3364,11 @@ uint8_t calculate_ATA_Checksum(const uint8_t* ptrData)
     uint32_t checksum = UINT32_C(0);
     uint32_t counter  = UINT32_C(0);
 
-    DISABLE_NONNULL_COMPARE
     if (ptrData == M_NULLPTR)
     {
         return UINT8_C(0);
     }
-    RESTORE_NONNULL_COMPARE
+
     for (counter = 0; counter < 511; ++counter)
     {
         checksum = checksum + ptrData[counter];
@@ -3390,12 +3380,12 @@ bool is_Checksum_Valid(const uint8_t* ptrData, uint32_t dataSize, uint32_t* firs
 {
     bool     isValid      = false;
     uint32_t checksumCalc = UINT32_C(0);
-    DISABLE_NONNULL_COMPARE
+
     if (ptrData == M_NULLPTR || firstInvalidSector == M_NULLPTR)
     {
         return false;
     }
-    RESTORE_NONNULL_COMPARE
+
     for (uint32_t blockIter = UINT32_C(0); blockIter < (dataSize / LEGACY_DRIVE_SEC_SIZE); ++blockIter)
     {
         for (uint32_t counter = UINT32_C(0); counter <= 511; ++counter)
@@ -3420,12 +3410,12 @@ eReturnValues set_ATA_Checksum_Into_Data_Buffer(uint8_t* ptrData, uint32_t dataS
 {
     eReturnValues ret      = SUCCESS;
     uint32_t      checksum = UINT32_C(0);
-    DISABLE_NONNULL_COMPARE
+
     if (ptrData == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     for (uint32_t blockIter = UINT32_C(0); blockIter < (dataSize / LEGACY_DRIVE_SEC_SIZE); ++blockIter)
     {
         checksum                 = calculate_ATA_Checksum(&ptrData[blockIter]);
@@ -3525,7 +3515,7 @@ static bool is_Current_CHS_Info_Valid(const tDevice* device)
 eReturnValues convert_CHS_To_LBA(const tDevice* device, uint16_t cylinder, uint8_t head, uint16_t sector, uint32_t* lba)
 {
     eReturnValues ret = SUCCESS;
-    DISABLE_NONNULL_COMPARE
+
     if (lba != M_NULLPTR)
     {
         if (is_CHS_Mode_Supported(device))
@@ -3548,7 +3538,7 @@ eReturnValues convert_CHS_To_LBA(const tDevice* device, uint16_t cylinder, uint8
     {
         ret = BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     return ret;
 }
 
@@ -3561,7 +3551,7 @@ eReturnValues convert_LBA_To_CHS(const tDevice* device,
 {
     eReturnValues ret = SUCCESS;
     lba &= MAX_28_BIT_LBA;
-    DISABLE_NONNULL_COMPARE
+
     if (cylinder != M_NULLPTR && head != M_NULLPTR && sector != M_NULLPTR)
     {
         const uint8_t* identifyPtr = M_REINTERPRET_CAST(const uint8_t*, &device->drive_info.IdentifyData.ata.Word000);
@@ -3573,9 +3563,9 @@ eReturnValues convert_LBA_To_CHS(const tDevice* device,
             {
                 uint32_t headsPerCylinder = le16_to_host(device->drive_info.IdentifyData.ata.Word055);
                 uint32_t sectorsPerTrack  = le16_to_host(device->drive_info.IdentifyData.ata.Word056);
-                *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
-                *head     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
-                *sector   = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
+                *cylinder                 = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder* sectorsPerTrack));
+                *head                     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
+                *sector                   = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
                 // check that this isn't above the value of words 58:57
                 uint32_t currentSector =
                     C_CAST(uint32_t, (*cylinder)) * C_CAST(uint32_t, (*head)) * C_CAST(uint32_t, (*sector));
@@ -3589,9 +3579,9 @@ eReturnValues convert_LBA_To_CHS(const tDevice* device,
             {
                 uint32_t headsPerCylinder = le16_to_host(device->drive_info.IdentifyData.ata.Word003);
                 uint32_t sectorsPerTrack  = le16_to_host(device->drive_info.IdentifyData.ata.Word006);
-                *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
-                *head     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
-                *sector   = C_CAST(uint8_t, (lba % sectorsPerTrack) + ATA_CHS_SECTOR_NUM_ADJUSTMENT);
+                *cylinder                 = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder* sectorsPerTrack));
+                *head                     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
+                *sector                   = C_CAST(uint8_t, (lba % sectorsPerTrack) + ATA_CHS_SECTOR_NUM_ADJUSTMENT);
                 userAddressableCapacityCHS =
                     C_CAST(uint32_t, le16_to_host(device->drive_info.IdentifyData.ata.Word001)) *
                     C_CAST(uint32_t, le16_to_host(device->drive_info.IdentifyData.ata.Word003)) *
@@ -3615,6 +3605,6 @@ eReturnValues convert_LBA_To_CHS(const tDevice* device,
     {
         ret = BAD_PARAMETER;
     }
-    RESTORE_NONNULL_COMPARE
+
     return ret;
 }

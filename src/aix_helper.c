@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -1038,11 +1038,10 @@ static void print_CuDv_Struct(struct CuDv* cudv)
     printf("\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
 }
 
-M_NONNULL_PARAM_LIST(1, 2)
 M_PARAM_RW(1)
 M_NULL_TERM_STRING(2)
 M_PARAM_RO(2)
-static int get_Adapter_IDs(const tDevice* device, const char* name)
+static int get_Adapter_IDs(const tDevice* M_NONNULL device, const char* M_NONNULL name)
 {
     int          ret = 0;
     struct CuDv  cudv;
@@ -1051,7 +1050,7 @@ static int get_Adapter_IDs(const tDevice* device, const char* name)
 
     // odm_initialize();
     DECLARE_ZERO_INIT_ARRAY(char, odmCriteria, MAX_ODMI_CRIT); // 256
-    DISABLE_NONNULL_COMPARE
+
     if (name && safe_strlen(name) > 0)
     {
         snprintf_err_handle(odmCriteria, MAX_ODMI_CRIT, "name='%s'", name);
@@ -1115,7 +1114,7 @@ static int get_Adapter_IDs(const tDevice* device, const char* name)
     {
         ret = -1;
     }
-    RESTORE_NONNULL_COMPARE
+
     return ret;
 }
 
@@ -2888,7 +2887,6 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
     devs[i] = M_NULLPTR; // Added this so the for loop down doesn't cause a segmentation fault.
     safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &namelist));
 
-    DISABLE_NONNULL_COMPARE
     if (ptrToDeviceList == M_NULLPTR || sizeInBytes == UINT32_C(0))
     {
         returnValue = BAD_PARAMETER;
@@ -2955,7 +2953,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             {
                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
-                    printf("Failed open, reason: ");
+                    print_str("Failed open, reason: ");
                     print_Errno_To_Screen(errno);
                 }
                 ++failedGetDeviceCount;
@@ -2991,7 +2989,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
             returnValue = WARN_NOT_ALL_DEVICES_ENUMERATED;
         }
     }
-    RESTORE_NONNULL_COMPARE
+
     safe_free(M_REINTERPRET_CAST(void**, &devs));
     if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
     {

@@ -7,7 +7,7 @@
 //! \copyright
 //! Do NOT modify or remove this copyright and license
 //!
-//! Copyright (c) 2025-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+//! Copyright (c) 2025-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //!
 //! This software is subject to the terms of the Mozilla Public License, v. 2.0.
 //! If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -117,10 +117,9 @@ void mount_iter_close(MountIter* it)
 
 struct MountIter
 {
-    FILE*          fp;
-    char           lineBuf[MNT_LINE_BUF_SIZE];
-#    if defined(_BSD_SOURCE) || defined(_SVID_SOURCE) ||                                                               \
-        !defined(NO_GETMNTENT_R)
+    FILE* fp;
+    char  lineBuf[MNT_LINE_BUF_SIZE];
+#    if defined(_BSD_SOURCE) || defined(_SVID_SOURCE) || !defined(NO_GETMNTENT_R)
     struct mntent entBuf;
 #    endif
     struct mntent* ent;

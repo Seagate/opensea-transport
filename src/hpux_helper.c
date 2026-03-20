@@ -2,7 +2,7 @@
 //
 // Do NOT modify or remove this copyright and license
 //
-// Copyright (c) 2012-2025 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
+// Copyright (c) 2012-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
 //
 // This software is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -449,14 +449,14 @@ static bool is_Persistent_Disk_Handle(const char* filename)
 
 static void set_Device_Name(const char* filename, char* name, size_t sizeOfName)
 {
-    char* s = strrchr(filename, '/') + 1;
+    const char* s = strrchr(filename, '/') + 1;
     snprintf_err_handle(name, sizeOfName, "%s", s);
 }
 
 eReturnValues get_Device(const char* filename, tDevice* device)
 {
-    eReturnValues ret         = SUCCESS;
-    char *deviceHandle = M_NULLPTR;
+    eReturnValues ret          = SUCCESS;
+    char*         deviceHandle = M_NULLPTR;
 
     ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
     if (ret != SUCCESS)
@@ -513,7 +513,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
         set_Device_Name(deviceHandle, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
         // must call this after friendly name has been set!
-        //TODO: legacy devices need to have /dev/dsk instead of /dev/rdsk passed in here. For now this assumes no legacy handles
+        // TODO: legacy devices need to have /dev/dsk instead of /dev/rdsk passed in here. For now this assumes no
+        // legacy handles
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.name);
 
         device->drive_info.interface_type = SCSI_INTERFACE;
@@ -544,7 +545,7 @@ static int persistentDisk_filter(const struct dirent* entry)
         return !valid;
     }
     // all persistent disks with partitions use an underscore, so easy to filter out.
-    char* partition = strpbrk(entry->d_name, "_");
+    const char* partition = strpbrk(entry->d_name, "_");
     if (partition != M_NULLPTR)
     {
         return 0;
@@ -565,7 +566,7 @@ static int legacyDisk_filter(const struct dirent* entry)
     }
     // filter out the "sections" designated with optional s.
     // If this doesn't find ANY disks, then we should catch only section 0 for whole disks.
-    char* partitionOrSlice = strpbrk(entry->d_name, "s");
+    const char* partitionOrSlice = strpbrk(entry->d_name, "s");
     if (partitionOrSlice != M_NULLPTR)
     {
         return 0;
@@ -704,7 +705,7 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
             {
                 if (VERBOSITY_COMMAND_NAMES <= listVerbosity)
                 {
-                    printf("Failed open, reason: ");
+                    print_str("Failed open, reason: ");
                     print_Errno_To_Screen(errno);
                 }
                 ++failedGetDeviceCount;
