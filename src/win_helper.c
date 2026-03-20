@@ -11409,8 +11409,7 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
                                                             initializationPatternPtr, initializationPatternLength);
                                             }
                                         }
-                                        uint64_t devMaxLBA = UINT64_C(0);
-                                        get_Device_MaxLba(scsiIoCtx->device, &devMaxLBA);
+                                        uint64_t devMaxLBA = return_Device_MaxLba(scsiIoCtx->device);
                                         for (uint64_t lba = UINT64_C(0);
                                              lba < devMaxLBA; lba += numberOfLBAs)
                                         {
