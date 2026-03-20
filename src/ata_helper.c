@@ -2345,7 +2345,7 @@ eReturnValues fill_In_ATA_Drive_Info(tDevice* device)
                 uint8_t sectorSizeExponent = UINT8_C(0);
                 // get the number of logical blocks per physical blocks
                 sectorSizeExponent      = le16_to_host(ident_word[106]) & 0x000F;
-                *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize* power_Of_Two(sectorSizeExponent));
+                *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize * power_Of_Two(sectorSizeExponent));
             }
         }
 
@@ -3563,9 +3563,9 @@ eReturnValues convert_LBA_To_CHS(const tDevice* device,
             {
                 uint32_t headsPerCylinder = le16_to_host(device->drive_info.IdentifyData.ata.Word055);
                 uint32_t sectorsPerTrack  = le16_to_host(device->drive_info.IdentifyData.ata.Word056);
-                *cylinder                 = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder* sectorsPerTrack));
-                *head                     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
-                *sector                   = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
+                *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
+                *head     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
+                *sector   = C_CAST(uint8_t, (lba % sectorsPerTrack) + UINT8_C(1));
                 // check that this isn't above the value of words 58:57
                 uint32_t currentSector =
                     C_CAST(uint32_t, (*cylinder)) * C_CAST(uint32_t, (*head)) * C_CAST(uint32_t, (*sector));
@@ -3579,9 +3579,9 @@ eReturnValues convert_LBA_To_CHS(const tDevice* device,
             {
                 uint32_t headsPerCylinder = le16_to_host(device->drive_info.IdentifyData.ata.Word003);
                 uint32_t sectorsPerTrack  = le16_to_host(device->drive_info.IdentifyData.ata.Word006);
-                *cylinder                 = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder* sectorsPerTrack));
-                *head                     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
-                *sector                   = C_CAST(uint8_t, (lba % sectorsPerTrack) + ATA_CHS_SECTOR_NUM_ADJUSTMENT);
+                *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
+                *head     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
+                *sector   = C_CAST(uint8_t, (lba % sectorsPerTrack) + ATA_CHS_SECTOR_NUM_ADJUSTMENT);
                 userAddressableCapacityCHS =
                     C_CAST(uint32_t, le16_to_host(device->drive_info.IdentifyData.ata.Word001)) *
                     C_CAST(uint32_t, le16_to_host(device->drive_info.IdentifyData.ata.Word003)) *
