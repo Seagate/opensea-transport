@@ -244,7 +244,7 @@ static uint8_t parse_CISS_Handle(const char* devName, char* osHandle, uint16_t* 
     return parseCount;
 }
 
-bool is_Supported_ciss_Dev(const char* devName)
+bool is_Supported_ciss_Dev(const char* M_NONNULL devName)
 {
     bool     supported   = false;
     uint16_t driveNumber = UINT16_C(0);
@@ -264,37 +264,37 @@ bool is_Supported_ciss_Dev(const char* devName)
 //      return !strncmp("sg", entry->d_name, 2);
 //  }
 // linux /dev/cciss/c?d?
-int ciss_filter(const struct dirent* entry)
+int ciss_filter(const struct dirent* M_NONNULL entry)
 {
     return !strncmp("cciss/c", entry->d_name, 7);
 }
 
-int smartpqi_filter(const struct dirent* entry)
+int smartpqi_filter(const struct dirent* M_NONNULL entry)
 {
     M_USE_UNUSED(entry);
     return 0;
 }
 #    elif defined(__FreeBSD__)
 // freeBSD /dev/ciss?
-int ciss_filter(const struct dirent* entry)
+int ciss_filter(const struct dirent* M_NONNULL entry)
 {
     return !strncmp("ciss", entry->d_name, 4);
 }
 
 // freeBSD /dev/smartpqi?
-int smartpqi_filter(const struct dirent* entry)
+int smartpqi_filter(const struct dirent* M_NONNULL entry)
 {
     return !strncmp("smartpqi", entry->d_name, 8);
 }
 
 #    elif defined(__sun)
-int ciss_filter(const struct dirent* entry)
+int ciss_filter(const struct dirent* M_NONNULL entry)
 {
     // TODO: Figure out exactly what this handle would look like in solaris
     return !strncmp("ciss", entry->d_name, 4);
 }
 
-int smartpqi_filter(const struct dirent* entry)
+int smartpqi_filter(const struct dirent* M_NONNULL entry)
 {
     M_USE_UNUSED(entry);
     return 0;
@@ -359,10 +359,10 @@ M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
 // NOTE: "Other physical device info" does not indicate a length that I can see different from the 16B node data, but
 // may be different. -TJE
 
-static eReturnValues ciss_Scsi_Report_Physical_LUNs(const tDevice* device,
-                                                    uint8_t        extendedDataType,
-                                                    uint8_t*       ptrData,
-                                                    uint32_t       dataLength)
+static eReturnValues ciss_Scsi_Report_Physical_LUNs(const tDevice* M_NONNULL device,
+                                                    uint8_t                  extendedDataType,
+                                                    uint8_t*                 ptrData,
+                                                    uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -396,9 +396,9 @@ static eReturnValues ciss_Scsi_Report_Physical_LUNs(const tDevice* device,
 }
 
 // This is a reworked old function from first internal code to support CISS...is this still needed like this?-TJE
-static eReturnValues get_Physical_Device_Location_Data(const tDevice* device,
-                                                       uint8_t*       physicalLocationData,
-                                                       uint32_t       physicalLocationDataLength)
+static eReturnValues get_Physical_Device_Location_Data(const tDevice* M_NONNULL device,
+                                                       uint8_t*                 physicalLocationData,
+                                                       uint32_t                 physicalLocationDataLength)
 {
     eReturnValues ret            = UNKNOWN;
     uint32_t      dataLength     = UINT32_C(8) + (PHYSICAL_LUN_DESCRIPTOR_LENGTH * CISS_MAX_PHYSICAL_DRIVES);
@@ -1420,7 +1420,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType c
 }
 #    endif // CCISS_BIG_PASSTHRU
 
-eReturnValues issue_io_ciss_Dev(ScsiIoCtx* scsiIoCtx)
+eReturnValues issue_io_ciss_Dev(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     if (scsiIoCtx->device->os_info.cissDeviceData)
     {
@@ -1442,7 +1442,7 @@ eReturnValues issue_io_ciss_Dev(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
+eReturnValues get_CISS_RAID_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     eReturnValues ret         = FAILURE;
     uint16_t      driveNumber = UINT16_C(0);
@@ -1486,7 +1486,7 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
                     set_Device_InterfaceType(device, RAID_INTERFACE);
                     set_Device_Handle_Name(device, filename);
                     set_Device_Handle_Friendly_Name(device, filename);
-                    set_Device_IO_Minimum_Alignment( device, sizeof(void*));
+                    set_Device_IO_Minimum_Alignment(device, sizeof(void*));
                     device->os_info.cissDeviceData->smartpqi =
                         is_SmartPQI_Unique_IOCTLs_Supported(device->os_info.cissDeviceData->cissHandle);
                     device->os_info.fd =
@@ -1529,7 +1529,7 @@ eReturnValues get_CISS_RAID_Device(const char* filename, tDevice* device)
     return ret;
 }
 
-eReturnValues close_CISS_RAID_Device(tDevice* device)
+eReturnValues close_CISS_RAID_Device(tDevice* M_NONNULL device)
 {
 
     if (device != M_NULLPTR && device->os_info.cissDeviceData)
@@ -1662,9 +1662,9 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t* count)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
-                                         M_ATTR_UNUSED uint64_t flags,
-                                         ptrRaidHandleToScan*   beginningOfList)
+eReturnValues get_CISS_RAID_Device_Count(uint32_t* M_NONNULL            numberOfDevices,
+                                         M_ATTR_UNUSED uint64_t         flags,
+                                         ptrRaidHandleToScan* M_NONNULL beginningOfList)
 {
     int                 fd                    = -1;
     ptrRaidHandleToScan raidList              = M_NULLPTR;
@@ -1776,11 +1776,11 @@ eReturnValues get_CISS_RAID_Device_Count(uint32_t*              numberOfDevices,
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_CISS_RAID_Device_List(tDevice* const       ptrToDeviceList,
-                                        uint32_t             sizeInBytes,
-                                        versionBlock         ver,
-                                        uint64_t             flags,
-                                        ptrRaidHandleToScan* beginningOfList)
+eReturnValues get_CISS_RAID_Device_List(tDevice* M_NONNULL const       ptrToDeviceList,
+                                        uint32_t                       sizeInBytes,
+                                        versionBlock                   ver,
+                                        uint64_t                       flags,
+                                        ptrRaidHandleToScan* M_NONNULL beginningOfList)
 {
     eReturnValues returnValue = SUCCESS;
     if (beginningOfList == M_NULLPTR || *beginningOfList == M_NULLPTR)

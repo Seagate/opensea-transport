@@ -51,7 +51,7 @@ static M_INLINE uint8_t set_Control_Field(bool naca, bool flag, bool link)
 // This is the private function so that it can be called by the ATA layer as well and make everything follow one single
 // code path instead of multiple. This will enhance debug output since it will consistently be in one place for SCSI
 // passthrough commands.
-eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* scsiIoCtx, ptrSenseDataFields pSenseFields)
+eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* M_NONNULL scsiIoCtx, ptrSenseDataFields pSenseFields)
 {
     eReturnValues      ret                       = UNKNOWN;
     bool               localSenseFieldsAllocated = false;
@@ -267,26 +267,26 @@ static eReturnValues scsi_Send_Cdb_Int(const tDevice*         device,
     return ret;
 }
 
-eReturnValues scsi_Send_Cdb(const tDevice*         device,
-                            uint8_t*               cdb,
-                            eCDBLen                cdbLen,
-                            uint8_t*               pdata,
-                            uint32_t               dataLen,
-                            eDataTransferDirection dataDirection,
-                            uint8_t*               senseData,
-                            uint32_t               senseDataLen,
-                            uint32_t               timeoutSeconds)
+eReturnValues scsi_Send_Cdb(const tDevice* M_NONNULL device,
+                            uint8_t* M_NONNULL       cdb,
+                            eCDBLen                  cdbLen,
+                            uint8_t* M_NULLABLE      pdata,
+                            uint32_t                 dataLen,
+                            eDataTransferDirection   dataDirection,
+                            uint8_t* M_NULLABLE      senseData,
+                            uint32_t                 senseDataLen,
+                            uint32_t                 timeoutSeconds)
 {
     return scsi_Send_Cdb_Int(device, cdb, cdbLen, pdata, dataLen, dataDirection, senseData, senseDataLen,
                              timeoutSeconds, false, false);
 }
 
-eReturnValues scsi_SecurityProtocol_In(const tDevice* device,
-                                       uint8_t        securityProtocol,
-                                       uint16_t       securityProtocolSpecific,
-                                       bool           inc512,
-                                       uint32_t       allocationLength,
-                                       uint8_t*       ptrData)
+eReturnValues scsi_SecurityProtocol_In(const tDevice* M_NONNULL device,
+                                       uint8_t                  securityProtocol,
+                                       uint16_t                 securityProtocolSpecific,
+                                       bool                     inc512,
+                                       uint32_t                 allocationLength,
+                                       uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -396,13 +396,13 @@ static void set_report_supported_op_codes_hacks(tDevice* M_NONNULL device, bool 
     }
 }
 
-eReturnValues scsi_Report_Supported_Operation_Codes(const tDevice* device,
-                                                    bool           rctd,
-                                                    uint8_t        reportingOptions,
-                                                    uint8_t        requestedOperationCode,
-                                                    uint16_t       reequestedServiceAction,
-                                                    uint32_t       allocationLength,
-                                                    uint8_t*       ptrData)
+eReturnValues scsi_Report_Supported_Operation_Codes(const tDevice* M_NONNULL device,
+                                                    bool                     rctd,
+                                                    uint8_t                  reportingOptions,
+                                                    uint8_t                  requestedOperationCode,
+                                                    uint16_t                 reequestedServiceAction,
+                                                    uint32_t                 allocationLength,
+                                                    uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -605,7 +605,8 @@ static bool check_inq_cmddt(tDevice* M_NONNULL device)
     return cmddtSupported = true;
 }
 
-eSCSICmdSupport is_SCSI_Operation_Code_Supported(const tDevice* device, ptrScsiOperationCodeInfoRequest request)
+eSCSICmdSupport is_SCSI_Operation_Code_Supported(const tDevice* M_NONNULL        device,
+                                                 ptrScsiOperationCodeInfoRequest request)
 {
     eSCSICmdSupport cmdsupport = SCSI_CMD_SUPPORT_UNKNOWN;
     // Special cases to handle:
@@ -653,13 +654,13 @@ eSCSICmdSupport is_SCSI_Operation_Code_Supported(const tDevice* device, ptrScsiO
     return cmdsupport;
 }
 
-eReturnValues scsi_Sanitize_Cmd(const tDevice*       device,
-                                eScsiSanitizeFeature sanitizeFeature,
-                                bool                 immediate,
-                                bool                 znr,
-                                bool                 ause,
-                                uint16_t             parameterListLength,
-                                uint8_t*             ptrData)
+eReturnValues scsi_Sanitize_Cmd(const tDevice* M_NONNULL device,
+                                eScsiSanitizeFeature     sanitizeFeature,
+                                bool                     immediate,
+                                bool                     znr,
+                                bool                     ause,
+                                uint16_t                 parameterListLength,
+                                uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -716,37 +717,37 @@ eReturnValues scsi_Sanitize_Cmd(const tDevice*       device,
     return ret;
 }
 
-eReturnValues scsi_Sanitize_Block_Erase(const tDevice* device,
-                                        bool           allowUnrestrictedSanitizeExit,
-                                        bool           immediate,
-                                        bool           znr)
+eReturnValues scsi_Sanitize_Block_Erase(const tDevice* M_NONNULL device,
+                                        bool                     allowUnrestrictedSanitizeExit,
+                                        bool                     immediate,
+                                        bool                     znr)
 {
     return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_BLOCK_ERASE, immediate, znr, allowUnrestrictedSanitizeExit, 0,
                              M_NULLPTR);
 }
 
-eReturnValues scsi_Sanitize_Cryptographic_Erase(const tDevice* device,
-                                                bool           allowUnrestrictedSanitizeExit,
-                                                bool           immediate,
-                                                bool           znr)
+eReturnValues scsi_Sanitize_Cryptographic_Erase(const tDevice* M_NONNULL device,
+                                                bool                     allowUnrestrictedSanitizeExit,
+                                                bool                     immediate,
+                                                bool                     znr)
 {
     return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE, immediate, znr, allowUnrestrictedSanitizeExit,
                              0, M_NULLPTR);
 }
 
-eReturnValues scsi_Sanitize_Exit_Failure_Mode(const tDevice* device)
+eReturnValues scsi_Sanitize_Exit_Failure_Mode(const tDevice* M_NONNULL device)
 {
     return scsi_Sanitize_Cmd(device, SCSI_SANITIZE_EXIT_FAILURE_MODE, false, false, false, 0, M_NULLPTR);
 }
 
-eReturnValues scsi_Sanitize_Overwrite(const tDevice*             device,
+eReturnValues scsi_Sanitize_Overwrite(const tDevice* M_NONNULL   device,
                                       bool                       allowUnrestrictedSanitizeExit,
                                       bool                       znr,
                                       bool                       immediate,
                                       bool                       invertBetweenPasses,
                                       eScsiSanitizeOverwriteTest test,
                                       uint8_t                    overwritePasses,
-                                      uint8_t*                   pattern,
+                                      uint8_t* M_NULLABLE        pattern,
                                       uint16_t                   patternLengthBytes)
 {
     eReturnValues ret = UNKNOWN;
@@ -779,7 +780,10 @@ eReturnValues scsi_Sanitize_Overwrite(const tDevice*             device,
     return ret;
 }
 
-eReturnValues scsi_Request_Sense_Cmd(const tDevice* device, bool descriptorBit, uint8_t* pdata, uint16_t dataSize)
+eReturnValues scsi_Request_Sense_Cmd(const tDevice* M_NONNULL device,
+                                     bool                     descriptorBit,
+                                     uint8_t* M_NONNULL       pdata,
+                                     uint16_t                 dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -885,14 +889,14 @@ static void set_log_sense_hacks(tDevice* M_NONNULL device, uint8_t pageCode, uin
     }
 }
 
-eReturnValues scsi_Log_Sense_Cmd(const tDevice* device,
-                                 bool           saveParameters,
-                                 uint8_t        pageControl,
-                                 uint8_t        pageCode,
-                                 uint8_t        subpageCode,
-                                 uint16_t       paramPointer,
-                                 uint8_t*       ptrData,
-                                 uint16_t       dataSize)
+eReturnValues scsi_Log_Sense_Cmd(const tDevice* M_NONNULL device,
+                                 bool                     saveParameters,
+                                 uint8_t                  pageControl,
+                                 uint8_t                  pageCode,
+                                 uint8_t                  subpageCode,
+                                 uint16_t                 paramPointer,
+                                 uint8_t* M_NULLABLE      ptrData,
+                                 uint16_t                 dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -948,15 +952,15 @@ eReturnValues scsi_Log_Sense_Cmd(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Log_Select_Cmd(const tDevice* device,
-                                  bool           pcr,
-                                  bool           sp,
-                                  uint8_t        pageControl,
-                                  uint8_t        pageCode,
-                                  uint8_t        subpageCode,
-                                  uint16_t       parameterListLength,
-                                  uint8_t*       ptrData,
-                                  uint32_t       dataSize)
+eReturnValues scsi_Log_Select_Cmd(const tDevice* M_NONNULL device,
+                                  bool                     pcr,
+                                  bool                     sp,
+                                  uint8_t                  pageControl,
+                                  uint8_t                  pageCode,
+                                  uint8_t                  subpageCode,
+                                  uint16_t                 parameterListLength,
+                                  uint8_t* M_NULLABLE      ptrData,
+                                  uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -1005,16 +1009,16 @@ eReturnValues scsi_Log_Select_Cmd(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Send_Diagnostic(const tDevice* device,
-                                   uint8_t        selfTestCode,
-                                   uint8_t        pageFormat,
-                                   uint8_t        selfTestBit,
-                                   uint8_t        deviceOffLIne,
-                                   uint8_t        unitOffLine,
-                                   uint16_t       parameterListLength,
-                                   uint8_t*       pdata,
-                                   uint16_t       dataSize,
-                                   uint32_t       timeoutSeconds)
+eReturnValues scsi_Send_Diagnostic(const tDevice* M_NONNULL device,
+                                   uint8_t                  selfTestCode,
+                                   uint8_t                  pageFormat,
+                                   uint8_t                  selfTestBit,
+                                   uint8_t                  deviceOffLIne,
+                                   uint8_t                  unitOffLine,
+                                   uint16_t                 parameterListLength,
+                                   uint8_t* M_NULLABLE      pdata,
+                                   uint16_t                 dataSize,
+                                   uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -1052,7 +1056,7 @@ eReturnValues scsi_Send_Diagnostic(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_Capacity_10(const tDevice* device, uint8_t* pdata, uint16_t dataSize)
+eReturnValues scsi_Read_Capacity_10(const tDevice* M_NONNULL device, uint8_t* M_NULLABLE pdata, uint16_t dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -1087,7 +1091,7 @@ eReturnValues scsi_Read_Capacity_10(const tDevice* device, uint8_t* pdata, uint1
     return ret;
 }
 
-eReturnValues scsi_Read_Capacity_16(const tDevice* device, uint8_t* pdata, uint32_t dataSize)
+eReturnValues scsi_Read_Capacity_16(const tDevice* M_NONNULL device, uint8_t* M_NULLABLE pdata, uint32_t dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -1240,13 +1244,13 @@ static void set_mode_sense_hacks(tDevice* M_NONNULL    device,
     }
 }
 
-eReturnValues scsi_Mode_Sense_6(const tDevice*       device,
-                                uint8_t              pageCode,
-                                uint8_t              allocationLength,
-                                uint8_t              subPageCode,
-                                bool                 DBD,
-                                eScsiModePageControl pageControl,
-                                uint8_t*             ptrData)
+eReturnValues scsi_Mode_Sense_6(const tDevice* M_NONNULL device,
+                                uint8_t                  pageCode,
+                                uint8_t                  allocationLength,
+                                uint8_t                  subPageCode,
+                                bool                     DBD,
+                                eScsiModePageControl     pageControl,
+                                uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -1302,14 +1306,14 @@ eReturnValues scsi_Mode_Sense_6(const tDevice*       device,
     return ret;
 }
 
-eReturnValues scsi_Mode_Sense_10(const tDevice*       device,
-                                 uint8_t              pageCode,
-                                 uint32_t             allocationLength,
-                                 uint8_t              subPageCode,
-                                 bool                 DBD,
-                                 bool                 LLBAA,
-                                 eScsiModePageControl pageControl,
-                                 uint8_t*             ptrData)
+eReturnValues scsi_Mode_Sense_10(const tDevice* M_NONNULL device,
+                                 uint8_t                  pageCode,
+                                 uint32_t                 allocationLength,
+                                 uint8_t                  subPageCode,
+                                 bool                     DBD,
+                                 bool                     LLBAA,
+                                 eScsiModePageControl     pageControl,
+                                 uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -1369,13 +1373,13 @@ eReturnValues scsi_Mode_Sense_10(const tDevice*       device,
     return ret;
 }
 
-eReturnValues scsi_Mode_Select_6(const tDevice* device,
-                                 uint8_t        parameterListLength,
-                                 bool           pageFormat,
-                                 bool           savePages,
-                                 bool           resetToDefaults,
-                                 uint8_t*       ptrData,
-                                 uint32_t       dataSize)
+eReturnValues scsi_Mode_Select_6(const tDevice* M_NONNULL device,
+                                 uint8_t                  parameterListLength,
+                                 bool                     pageFormat,
+                                 bool                     savePages,
+                                 bool                     resetToDefaults,
+                                 uint8_t* M_NULLABLE      ptrData,
+                                 uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -1423,13 +1427,13 @@ eReturnValues scsi_Mode_Select_6(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Mode_Select_10(const tDevice* device,
-                                  uint16_t       parameterListLength,
-                                  bool           pageFormat,
-                                  bool           savePages,
-                                  bool           resetToDefaults,
-                                  uint8_t*       ptrData,
-                                  uint32_t       dataSize)
+eReturnValues scsi_Mode_Select_10(const tDevice* M_NONNULL device,
+                                  uint16_t                 parameterListLength,
+                                  bool                     pageFormat,
+                                  bool                     savePages,
+                                  bool                     resetToDefaults,
+                                  uint8_t* M_NULLABLE      ptrData,
+                                  uint32_t                 dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -1482,16 +1486,16 @@ eReturnValues scsi_Mode_Select_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_Buffer(const tDevice*   device,
-                                eWriteBufferMode mode,
-                                uint8_t          modeSpecific,
-                                uint8_t          bufferID,
-                                uint32_t         bufferOffset,
-                                uint32_t         parameterListLength,
-                                uint8_t*         ptrData,
-                                bool             firstSegment,
-                                bool             lastSegment,
-                                uint32_t         timeoutSeconds)
+eReturnValues scsi_Write_Buffer(const tDevice* M_NONNULL device,
+                                eWriteBufferMode         mode,
+                                uint8_t                  modeSpecific,
+                                uint8_t                  bufferID,
+                                uint32_t                 bufferOffset,
+                                uint32_t                 parameterListLength,
+                                uint8_t*                 ptrData,
+                                bool                     firstSegment,
+                                bool                     lastSegment,
+                                uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -1645,12 +1649,12 @@ static void set_inq_version(tDevice* M_NONNULL device, const uint8_t* M_NONNULL 
     M_CONST_CAST(tDevice*, device)->drive_info.scsiVersion = version;
 }
 
-eReturnValues scsi_Inquiry(const tDevice* device,
-                           uint8_t*       pdata,
-                           uint32_t       dataLength,
-                           uint8_t        pageCode,
-                           bool           evpd,
-                           bool           cmdDt)
+eReturnValues scsi_Inquiry(const tDevice* M_NONNULL device,
+                           uint8_t* M_NONNULL       pdata,
+                           uint32_t                 dataLength,
+                           uint8_t                  pageCode,
+                           bool                     evpd,
+                           bool                     cmdDt)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -1724,7 +1728,9 @@ eReturnValues scsi_Inquiry(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_Media_Serial_Number(const tDevice* device, uint32_t allocationLength, uint8_t* ptrData)
+eReturnValues scsi_Read_Media_Serial_Number(const tDevice* M_NONNULL device,
+                                            uint32_t                 allocationLength,
+                                            uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -1769,15 +1775,15 @@ eReturnValues scsi_Read_Media_Serial_Number(const tDevice* device, uint32_t allo
     return ret;
 }
 
-eReturnValues scsi_Read_Attribute(const tDevice* device,
-                                  uint8_t        serviceAction,
-                                  uint32_t       restricted,
-                                  uint8_t        logicalVolumeNumber,
-                                  uint8_t        partitionNumber,
-                                  uint16_t       firstAttributeIdentifier,
-                                  uint32_t       allocationLength,
-                                  bool           cacheBit,
-                                  uint8_t*       ptrData)
+eReturnValues scsi_Read_Attribute(const tDevice* M_NONNULL device,
+                                  uint8_t                  serviceAction,
+                                  uint32_t                 restricted,
+                                  uint8_t                  logicalVolumeNumber,
+                                  uint8_t                  partitionNumber,
+                                  uint16_t                 firstAttributeIdentifier,
+                                  uint32_t                 allocationLength,
+                                  bool                     cacheBit,
+                                  uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -1830,12 +1836,12 @@ eReturnValues scsi_Read_Attribute(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_Buffer(const tDevice* device,
-                               uint8_t        mode,
-                               uint8_t        bufferID,
-                               uint32_t       bufferOffset,
-                               uint32_t       allocationLength,
-                               uint8_t*       ptrData)
+eReturnValues scsi_Read_Buffer(const tDevice* M_NONNULL device,
+                               uint8_t                  mode,
+                               uint8_t                  bufferID,
+                               uint32_t                 bufferOffset,
+                               uint32_t                 allocationLength,
+                               uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -1881,13 +1887,13 @@ eReturnValues scsi_Read_Buffer(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_Buffer_16(const tDevice* device,
-                                  uint8_t        mode,
-                                  uint8_t        modeSpecific,
-                                  uint8_t        bufferID,
-                                  uint64_t       bufferOffset,
-                                  uint32_t       allocationLength,
-                                  uint8_t*       ptrData)
+eReturnValues scsi_Read_Buffer_16(const tDevice* M_NONNULL device,
+                                  uint8_t                  mode,
+                                  uint8_t                  modeSpecific,
+                                  uint8_t                  bufferID,
+                                  uint64_t                 bufferOffset,
+                                  uint32_t                 allocationLength,
+                                  uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -1939,12 +1945,12 @@ eReturnValues scsi_Read_Buffer_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Receive_Diagnostic_Results(const tDevice* device,
-                                              bool           pcv,
-                                              uint8_t        pageCode,
-                                              uint16_t       allocationLength,
-                                              uint8_t*       ptrData,
-                                              uint32_t       timeoutSeconds)
+eReturnValues scsi_Receive_Diagnostic_Results(const tDevice* M_NONNULL device,
+                                              bool                     pcv,
+                                              uint8_t                  pageCode,
+                                              uint16_t                 allocationLength,
+                                              uint8_t* M_NULLABLE      ptrData,
+                                              uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -1986,10 +1992,10 @@ eReturnValues scsi_Receive_Diagnostic_Results(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Remove_I_T_Nexus(const tDevice* device,
-                                    uint32_t       parameterListLength,
-                                    uint8_t*       ptrData,
-                                    uint32_t       dataSize)
+eReturnValues scsi_Remove_I_T_Nexus(const tDevice* M_NONNULL device,
+                                    uint32_t                 parameterListLength,
+                                    uint8_t* M_NULLABLE      ptrData,
+                                    uint32_t                 dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2033,7 +2039,9 @@ eReturnValues scsi_Remove_I_T_Nexus(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Report_Aliases(const tDevice* device, uint32_t allocationLength, uint8_t* ptrData)
+eReturnValues scsi_Report_Aliases(const tDevice* M_NONNULL device,
+                                  uint32_t                 allocationLength,
+                                  uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2078,11 +2086,11 @@ eReturnValues scsi_Report_Aliases(const tDevice* device, uint32_t allocationLeng
     return ret;
 }
 
-eReturnValues scsi_Report_Identifying_Information(const tDevice* device,
-                                                  uint16_t       restricted,
-                                                  uint32_t       allocationLength,
-                                                  uint8_t        identifyingInformationType,
-                                                  uint8_t*       ptrData)
+eReturnValues scsi_Report_Identifying_Information(const tDevice* M_NONNULL device,
+                                                  uint16_t                 restricted,
+                                                  uint32_t                 allocationLength,
+                                                  uint8_t                  identifyingInformationType,
+                                                  uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2127,7 +2135,10 @@ eReturnValues scsi_Report_Identifying_Information(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Report_Luns(const tDevice* device, uint8_t selectReport, uint32_t allocationLength, uint8_t* ptrData)
+eReturnValues scsi_Report_Luns(const tDevice* M_NONNULL device,
+                               uint8_t                  selectReport,
+                               uint32_t                 allocationLength,
+                               uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2172,10 +2183,10 @@ eReturnValues scsi_Report_Luns(const tDevice* device, uint8_t selectReport, uint
     return ret;
 }
 
-eReturnValues scsi_Report_Priority(const tDevice* device,
-                                   uint8_t        priorityReported,
-                                   uint32_t       allocationLength,
-                                   uint8_t*       ptrData)
+eReturnValues scsi_Report_Priority(const tDevice* M_NONNULL device,
+                                   uint8_t                  priorityReported,
+                                   uint32_t                 allocationLength,
+                                   uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2220,10 +2231,10 @@ eReturnValues scsi_Report_Priority(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Report_Supported_Task_Management_Functions(const tDevice* device,
-                                                              bool           repd,
-                                                              uint32_t       allocationLength,
-                                                              uint8_t*       ptrData)
+eReturnValues scsi_Report_Supported_Task_Management_Functions(const tDevice* M_NONNULL device,
+                                                              bool                     repd,
+                                                              uint32_t                 allocationLength,
+                                                              uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2271,7 +2282,9 @@ eReturnValues scsi_Report_Supported_Task_Management_Functions(const tDevice* dev
     return ret;
 }
 
-eReturnValues scsi_Report_Timestamp(const tDevice* device, uint32_t allocationLength, uint8_t* ptrData)
+eReturnValues scsi_Report_Timestamp(const tDevice* M_NONNULL device,
+                                    uint32_t                 allocationLength,
+                                    uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2318,13 +2331,13 @@ eReturnValues scsi_Report_Timestamp(const tDevice* device, uint32_t allocationLe
     return ret;
 }
 
-eReturnValues scsi_SecurityProtocol_Out(const tDevice* device,
-                                        uint8_t        securityProtocol,
-                                        uint16_t       securityProtocolSpecific,
-                                        bool           inc512,
-                                        uint32_t       transferLength,
-                                        uint8_t*       ptrData,
-                                        uint32_t       timeout)
+eReturnValues scsi_SecurityProtocol_Out(const tDevice* M_NONNULL device,
+                                        uint8_t                  securityProtocol,
+                                        uint16_t                 securityProtocolSpecific,
+                                        bool                     inc512,
+                                        uint32_t                 transferLength,
+                                        uint8_t* M_NULLABLE      ptrData,
+                                        uint32_t                 timeout)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2372,12 +2385,12 @@ eReturnValues scsi_SecurityProtocol_Out(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Set_Identifying_Information(const tDevice* device,
-                                               uint16_t       restricted,
-                                               uint32_t       parameterListLength,
-                                               uint8_t        identifyingInformationType,
-                                               uint8_t*       ptrData,
-                                               uint32_t       dataSize)
+eReturnValues scsi_Set_Identifying_Information(const tDevice* M_NONNULL device,
+                                               uint16_t                 restricted,
+                                               uint32_t                 parameterListLength,
+                                               uint8_t                  identifyingInformationType,
+                                               uint8_t* M_NULLABLE      ptrData,
+                                               uint32_t                 dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2420,11 +2433,11 @@ eReturnValues scsi_Set_Identifying_Information(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Set_Priority(const tDevice* device,
-                                uint8_t        I_T_L_NexusToSet,
-                                uint32_t       parameterListLength,
-                                uint8_t*       ptrData,
-                                uint32_t       dataSize)
+eReturnValues scsi_Set_Priority(const tDevice* M_NONNULL device,
+                                uint8_t                  I_T_L_NexusToSet,
+                                uint32_t                 parameterListLength,
+                                uint8_t* M_NULLABLE      ptrData,
+                                uint32_t                 dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2467,10 +2480,10 @@ eReturnValues scsi_Set_Priority(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Set_Target_Port_Groups(const tDevice* device,
-                                          uint32_t       parameterListLength,
-                                          uint8_t*       ptrData,
-                                          uint32_t       dataSize)
+eReturnValues scsi_Set_Target_Port_Groups(const tDevice* M_NONNULL device,
+                                          uint32_t                 parameterListLength,
+                                          uint8_t* M_NULLABLE      ptrData,
+                                          uint32_t                 dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2513,7 +2526,9 @@ eReturnValues scsi_Set_Target_Port_Groups(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Set_Timestamp(const tDevice* device, uint32_t parameterListLength, uint8_t* ptrData)
+eReturnValues scsi_Set_Timestamp(const tDevice* M_NONNULL device,
+                                 uint32_t                 parameterListLength,
+                                 uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -2556,7 +2571,7 @@ eReturnValues scsi_Set_Timestamp(const tDevice* device, uint32_t parameterListLe
     return ret;
 }
 
-eReturnValues scsi_Test_Unit_Ready(const tDevice* device, scsiStatus* pReturnStatus)
+eReturnValues scsi_Test_Unit_Ready(const tDevice* M_NONNULL device, scsiStatus* pReturnStatus)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -2592,13 +2607,13 @@ eReturnValues scsi_Test_Unit_Ready(const tDevice* device, scsiStatus* pReturnSta
     return ret;
 }
 
-eReturnValues scsi_Write_Attribute(const tDevice* device,
-                                   bool           wtc,
-                                   uint32_t       restricted,
-                                   uint8_t        logicalVolumeNumber,
-                                   uint8_t        partitionNumber,
-                                   uint32_t       parameterListLength,
-                                   uint8_t*       ptrData)
+eReturnValues scsi_Write_Attribute(const tDevice* M_NONNULL device,
+                                   bool                     wtc,
+                                   uint32_t                 restricted,
+                                   uint8_t                  logicalVolumeNumber,
+                                   uint8_t                  partitionNumber,
+                                   uint32_t                 parameterListLength,
+                                   uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -2648,15 +2663,15 @@ eReturnValues scsi_Write_Attribute(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Compare_And_Write(const tDevice* device,
-                                     uint8_t        wrprotect,
-                                     bool           dpo,
-                                     bool           fua,
-                                     uint64_t       logicalBlockAddress,
-                                     uint8_t        numberOfLogicalBlocks,
-                                     uint8_t        groupNumber,
-                                     uint8_t*       ptrData,
-                                     uint32_t       transferLengthBytes)
+eReturnValues scsi_Compare_And_Write(const tDevice* M_NONNULL device,
+                                     uint8_t                  wrprotect,
+                                     bool                     dpo,
+                                     bool                     fua,
+                                     uint64_t                 logicalBlockAddress,
+                                     uint8_t                  numberOfLogicalBlocks,
+                                     uint8_t                  groupNumber,
+                                     uint8_t* M_NULLABLE      ptrData,
+                                     uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -2711,17 +2726,17 @@ eReturnValues scsi_Compare_And_Write(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Format_Unit(const tDevice* device,
-                               uint8_t        fmtpInfo,
-                               bool           longList,
-                               bool           fmtData,
-                               bool           cmplst,
-                               uint8_t        defectListFormat,
-                               uint8_t        vendorSpecific,
-                               uint8_t*       ptrData,
-                               uint32_t       dataSize,
-                               uint8_t        ffmt,
-                               uint32_t       timeoutSeconds)
+eReturnValues scsi_Format_Unit(const tDevice* M_NONNULL device,
+                               uint8_t                  fmtpInfo,
+                               bool                     longList,
+                               bool                     fmtData,
+                               bool                     cmplst,
+                               uint8_t                  defectListFormat,
+                               uint8_t                  vendorSpecific,
+                               uint8_t* M_NULLABLE      ptrData,
+                               uint32_t                 dataSize,
+                               uint8_t                  ffmt,
+                               uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -2776,11 +2791,11 @@ eReturnValues scsi_Format_Unit(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Format_With_Preset(const tDevice* device,
-                                      bool           immed,
-                                      bool           fmtmaxlba,
-                                      uint32_t       presetID,
-                                      uint32_t       timeoutSeconds)
+eReturnValues scsi_Format_With_Preset(const tDevice* M_NONNULL device,
+                                      bool                     immed,
+                                      bool                     fmtmaxlba,
+                                      uint32_t                 presetID,
+                                      uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -2818,10 +2833,10 @@ eReturnValues scsi_Format_With_Preset(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Get_Lba_Status(const tDevice* device,
-                                  uint64_t       logicalBlockAddress,
-                                  uint32_t       allocationLength,
-                                  uint8_t*       ptrData)
+eReturnValues scsi_Get_Lba_Status(const tDevice* M_NONNULL device,
+                                  uint64_t                 logicalBlockAddress,
+                                  uint32_t                 allocationLength,
+                                  uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -2869,15 +2884,15 @@ eReturnValues scsi_Get_Lba_Status(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Orwrite_16(const tDevice* device,
-                              uint8_t        orProtect,
-                              bool           dpo,
-                              bool           fua,
-                              uint64_t       logicalBlockAddress,
-                              uint32_t       transferLengthBlocks,
-                              uint8_t        groupNumber,
-                              uint8_t*       ptrData,
-                              uint32_t       transferLengthBytes)
+eReturnValues scsi_Orwrite_16(const tDevice* M_NONNULL device,
+                              uint8_t                  orProtect,
+                              bool                     dpo,
+                              bool                     fua,
+                              uint64_t                 logicalBlockAddress,
+                              uint32_t                 transferLengthBlocks,
+                              uint8_t                  groupNumber,
+                              uint8_t* M_NULLABLE      ptrData,
+                              uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -2932,19 +2947,19 @@ eReturnValues scsi_Orwrite_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Orwrite_32(const tDevice* device,
-                              uint8_t        bmop,
-                              uint8_t        previousGenProcessing,
-                              uint8_t        groupNumber,
-                              uint8_t        orProtect,
-                              bool           dpo,
-                              bool           fua,
-                              uint64_t       logicalBlockAddress,
-                              uint32_t       expectedORWgen,
-                              uint32_t       newORWgen,
-                              uint32_t       transferLengthBlocks,
-                              uint8_t*       ptrData,
-                              uint32_t       transferLengthBytes)
+eReturnValues scsi_Orwrite_32(const tDevice* M_NONNULL device,
+                              uint8_t                  bmop,
+                              uint8_t                  previousGenProcessing,
+                              uint8_t                  groupNumber,
+                              uint8_t                  orProtect,
+                              bool                     dpo,
+                              bool                     fua,
+                              uint64_t                 logicalBlockAddress,
+                              uint32_t                 expectedORWgen,
+                              uint32_t                 newORWgen,
+                              uint32_t                 transferLengthBlocks,
+                              uint8_t* M_NULLABLE      ptrData,
+                              uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
@@ -2998,11 +3013,11 @@ eReturnValues scsi_Orwrite_32(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Prefetch_10(const tDevice* device,
-                               bool           immediate,
-                               uint32_t       logicalBlockAddress,
-                               uint8_t        groupNumber,
-                               uint16_t       prefetchLength)
+eReturnValues scsi_Prefetch_10(const tDevice* M_NONNULL device,
+                               bool                     immediate,
+                               uint32_t                 logicalBlockAddress,
+                               uint8_t                  groupNumber,
+                               uint16_t                 prefetchLength)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -3037,11 +3052,11 @@ eReturnValues scsi_Prefetch_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Prefetch_16(const tDevice* device,
-                               bool           immediate,
-                               uint64_t       logicalBlockAddress,
-                               uint8_t        groupNumber,
-                               uint32_t       prefetchLength)
+eReturnValues scsi_Prefetch_16(const tDevice* M_NONNULL device,
+                               bool                     immediate,
+                               uint64_t                 logicalBlockAddress,
+                               uint8_t                  groupNumber,
+                               uint32_t                 prefetchLength)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -3082,7 +3097,7 @@ eReturnValues scsi_Prefetch_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Prevent_Allow_Medium_Removal(const tDevice* device, uint8_t prevent)
+eReturnValues scsi_Prevent_Allow_Medium_Removal(const tDevice* M_NONNULL device, uint8_t prevent)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -3110,11 +3125,11 @@ eReturnValues scsi_Prevent_Allow_Medium_Removal(const tDevice* device, uint8_t p
     return ret;
 }
 
-eReturnValues scsi_Read_6(const tDevice* device,
-                          uint32_t       logicalBlockAddress,
-                          uint8_t        transferLengthBlocks,
-                          uint8_t*       ptrData,
-                          uint32_t       transferLengthBytes)
+eReturnValues scsi_Read_6(const tDevice* M_NONNULL device,
+                          uint32_t                 logicalBlockAddress,
+                          uint8_t                  transferLengthBlocks,
+                          uint8_t* M_NONNULL       ptrData,
+                          uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -3146,16 +3161,16 @@ eReturnValues scsi_Read_6(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_10(const tDevice* device,
-                           uint8_t        rdProtect,
-                           bool           dpo,
-                           bool           fua,
-                           bool           rarc,
-                           uint32_t       logicalBlockAddress,
-                           uint8_t        groupNumber,
-                           uint16_t       transferLengthBlocks,
-                           uint8_t*       ptrData,
-                           uint32_t       transferLengthBytes)
+eReturnValues scsi_Read_10(const tDevice* M_NONNULL device,
+                           uint8_t                  rdProtect,
+                           bool                     dpo,
+                           bool                     fua,
+                           bool                     rarc,
+                           uint32_t                 logicalBlockAddress,
+                           uint8_t                  groupNumber,
+                           uint16_t                 transferLengthBlocks,
+                           uint8_t*                 ptrData,
+                           uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -3209,16 +3224,16 @@ eReturnValues scsi_Read_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_12(const tDevice* device,
-                           uint8_t        rdProtect,
-                           bool           dpo,
-                           bool           fua,
-                           bool           rarc,
-                           uint32_t       logicalBlockAddress,
-                           uint8_t        groupNumber,
-                           uint32_t       transferLengthBlocks,
-                           uint8_t*       ptrData,
-                           uint32_t       transferLengthBytes)
+eReturnValues scsi_Read_12(const tDevice* M_NONNULL device,
+                           uint8_t                  rdProtect,
+                           bool                     dpo,
+                           bool                     fua,
+                           bool                     rarc,
+                           uint32_t                 logicalBlockAddress,
+                           uint8_t                  groupNumber,
+                           uint32_t                 transferLengthBlocks,
+                           uint8_t*                 ptrData,
+                           uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -3274,16 +3289,16 @@ eReturnValues scsi_Read_12(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_16(const tDevice* device,
-                           uint8_t        rdProtect,
-                           bool           dpo,
-                           bool           fua,
-                           bool           rarc,
-                           uint64_t       logicalBlockAddress,
-                           uint8_t        groupNumber,
-                           uint32_t       transferLengthBlocks,
-                           uint8_t*       ptrData,
-                           uint32_t       transferLengthBytes)
+eReturnValues scsi_Read_16(const tDevice* M_NONNULL device,
+                           uint8_t                  rdProtect,
+                           bool                     dpo,
+                           bool                     fua,
+                           bool                     rarc,
+                           uint64_t                 logicalBlockAddress,
+                           uint8_t                  groupNumber,
+                           uint32_t                 transferLengthBlocks,
+                           uint8_t*                 ptrData,
+                           uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -3343,19 +3358,19 @@ eReturnValues scsi_Read_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_32(const tDevice* device,
-                           uint8_t        rdProtect,
-                           bool           dpo,
-                           bool           fua,
-                           bool           rarc,
-                           uint64_t       logicalBlockAddress,
-                           uint8_t        groupNumber,
-                           uint32_t       transferLengthBlocks,
-                           uint8_t*       ptrData,
-                           uint32_t       expectedInitialLogicalBlockRefTag,
-                           uint16_t       expectedLogicalBlockAppTag,
-                           uint16_t       logicalBlockAppTagMask,
-                           uint32_t       transferLengthBytes)
+eReturnValues scsi_Read_32(const tDevice* M_NONNULL device,
+                           uint8_t                  rdProtect,
+                           bool                     dpo,
+                           bool                     fua,
+                           bool                     rarc,
+                           uint64_t                 logicalBlockAddress,
+                           uint8_t                  groupNumber,
+                           uint32_t                 transferLengthBlocks,
+                           uint8_t*                 ptrData,
+                           uint32_t                 expectedInitialLogicalBlockRefTag,
+                           uint16_t                 expectedLogicalBlockAppTag,
+                           uint16_t                 logicalBlockAppTagMask,
+                           uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
@@ -3404,12 +3419,12 @@ eReturnValues scsi_Read_32(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_Defect_Data_10(const tDevice* device,
-                                       bool           requestPList,
-                                       bool           requestGList,
-                                       uint8_t        defectListFormat,
-                                       uint16_t       allocationLength,
-                                       uint8_t*       ptrData)
+eReturnValues scsi_Read_Defect_Data_10(const tDevice* M_NONNULL device,
+                                       bool                     requestPList,
+                                       bool                     requestGList,
+                                       uint8_t                  defectListFormat,
+                                       uint16_t                 allocationLength,
+                                       uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -3459,13 +3474,13 @@ eReturnValues scsi_Read_Defect_Data_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_Defect_Data_12(const tDevice* device,
-                                       bool           requestPList,
-                                       bool           requestGList,
-                                       uint8_t        defectListFormat,
-                                       uint32_t       addressDescriptorIndex,
-                                       uint32_t       allocationLength,
-                                       uint8_t*       ptrData)
+eReturnValues scsi_Read_Defect_Data_12(const tDevice* M_NONNULL device,
+                                       bool                     requestPList,
+                                       bool                     requestGList,
+                                       uint8_t                  defectListFormat,
+                                       uint32_t                 addressDescriptorIndex,
+                                       uint32_t                 allocationLength,
+                                       uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -3517,12 +3532,12 @@ eReturnValues scsi_Read_Defect_Data_12(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_Long_10(const tDevice* device,
-                                bool           physicalBlock,
-                                bool           correctBit,
-                                uint32_t       logicalBlockAddress,
-                                uint16_t       byteTransferLength,
-                                uint8_t*       ptrData)
+eReturnValues scsi_Read_Long_10(const tDevice* M_NONNULL device,
+                                bool                     physicalBlock,
+                                bool                     correctBit,
+                                uint32_t                 logicalBlockAddress,
+                                uint16_t                 byteTransferLength,
+                                uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -3571,12 +3586,12 @@ eReturnValues scsi_Read_Long_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Read_Long_16(const tDevice* device,
-                                bool           physicalBlock,
-                                bool           correctBit,
-                                uint64_t       logicalBlockAddress,
-                                uint16_t       byteTransferLength,
-                                uint8_t*       ptrData)
+eReturnValues scsi_Read_Long_16(const tDevice* M_NONNULL device,
+                                bool                     physicalBlock,
+                                bool                     correctBit,
+                                uint64_t                 logicalBlockAddress,
+                                uint16_t                 byteTransferLength,
+                                uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -3631,11 +3646,11 @@ eReturnValues scsi_Read_Long_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Reassign_Blocks(const tDevice* device,
-                                   bool           longLBA,
-                                   bool           longList,
-                                   uint32_t       dataSize,
-                                   uint8_t*       ptrData)
+eReturnValues scsi_Reassign_Blocks(const tDevice* M_NONNULL device,
+                                   bool                     longLBA,
+                                   bool                     longList,
+                                   uint32_t                 dataSize,
+                                   uint8_t* M_NONNULL       ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -3675,11 +3690,11 @@ eReturnValues scsi_Reassign_Blocks(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Report_Referrals(const tDevice* device,
-                                    uint64_t       logicalBlockAddress,
-                                    uint32_t       allocationLength,
-                                    bool           one_seg,
-                                    uint8_t*       ptrData)
+eReturnValues scsi_Report_Referrals(const tDevice* M_NONNULL device,
+                                    uint64_t                 logicalBlockAddress,
+                                    uint32_t                 allocationLength,
+                                    bool                     one_seg,
+                                    uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -3730,13 +3745,13 @@ eReturnValues scsi_Report_Referrals(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Start_Stop_Unit(const tDevice* device,
-                                   bool           immediate,
-                                   uint8_t        powerConditionModifier,
-                                   uint8_t        powerCondition,
-                                   bool           noFlush,
-                                   bool           loej,
-                                   bool           start)
+eReturnValues scsi_Start_Stop_Unit(const tDevice* M_NONNULL device,
+                                   bool                     immediate,
+                                   uint8_t                  powerConditionModifier,
+                                   uint8_t                  powerCondition,
+                                   bool                     noFlush,
+                                   bool                     loej,
+                                   bool                     start)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -3778,11 +3793,11 @@ eReturnValues scsi_Start_Stop_Unit(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Synchronize_Cache_10(const tDevice* device,
-                                        bool           immediate,
-                                        uint32_t       logicalBlockAddress,
-                                        uint8_t        groupNumber,
-                                        uint16_t       numberOfLogicalBlocks)
+eReturnValues scsi_Synchronize_Cache_10(const tDevice* M_NONNULL device,
+                                        bool                     immediate,
+                                        uint32_t                 logicalBlockAddress,
+                                        uint8_t                  groupNumber,
+                                        uint16_t                 numberOfLogicalBlocks)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -3817,11 +3832,11 @@ eReturnValues scsi_Synchronize_Cache_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Synchronize_Cache_16(const tDevice* device,
-                                        bool           immediate,
-                                        uint64_t       logicalBlockAddress,
-                                        uint8_t        groupNumber,
-                                        uint32_t       numberOfLogicalBlocks)
+eReturnValues scsi_Synchronize_Cache_16(const tDevice* M_NONNULL device,
+                                        bool                     immediate,
+                                        uint64_t                 logicalBlockAddress,
+                                        uint8_t                  groupNumber,
+                                        uint32_t                 numberOfLogicalBlocks)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -3862,11 +3877,11 @@ eReturnValues scsi_Synchronize_Cache_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Unmap(const tDevice* device,
-                         bool           anchor,
-                         uint8_t        groupNumber,
-                         uint16_t       parameterListLength,
-                         uint8_t*       ptrData)
+eReturnValues scsi_Unmap(const tDevice* M_NONNULL device,
+                         bool                     anchor,
+                         uint8_t                  groupNumber,
+                         uint16_t                 parameterListLength,
+                         uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -3910,15 +3925,15 @@ eReturnValues scsi_Unmap(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Verify_10(const tDevice* device,
-                             uint8_t        vrprotect,
-                             bool           dpo,
-                             uint8_t        byteCheck,
-                             uint32_t       logicalBlockAddress,
-                             uint8_t        groupNumber,
-                             uint16_t       verificationLength,
-                             uint8_t*       ptrData,
-                             uint32_t       dataSize)
+eReturnValues scsi_Verify_10(const tDevice* M_NONNULL device,
+                             uint8_t                  vrprotect,
+                             bool                     dpo,
+                             uint8_t                  byteCheck,
+                             uint32_t                 logicalBlockAddress,
+                             uint8_t                  groupNumber,
+                             uint16_t                 verificationLength,
+                             uint8_t* M_NULLABLE      ptrData,
+                             uint32_t                 dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -3967,15 +3982,15 @@ eReturnValues scsi_Verify_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Verify_12(const tDevice* device,
-                             uint8_t        vrprotect,
-                             bool           dpo,
-                             uint8_t        byteCheck,
-                             uint32_t       logicalBlockAddress,
-                             uint8_t        groupNumber,
-                             uint32_t       verificationLength,
-                             uint8_t*       ptrData,
-                             uint32_t       dataSize)
+eReturnValues scsi_Verify_12(const tDevice* M_NONNULL device,
+                             uint8_t                  vrprotect,
+                             bool                     dpo,
+                             uint8_t                  byteCheck,
+                             uint32_t                 logicalBlockAddress,
+                             uint8_t                  groupNumber,
+                             uint32_t                 verificationLength,
+                             uint8_t* M_NULLABLE      ptrData,
+                             uint32_t                 dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -4026,15 +4041,15 @@ eReturnValues scsi_Verify_12(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Verify_16(const tDevice* device,
-                             uint8_t        vrprotect,
-                             bool           dpo,
-                             uint8_t        byteCheck,
-                             uint64_t       logicalBlockAddress,
-                             uint8_t        groupNumber,
-                             uint32_t       verificationLength,
-                             uint8_t*       ptrData,
-                             uint32_t       dataSize)
+eReturnValues scsi_Verify_16(const tDevice* M_NONNULL device,
+                             uint8_t                  vrprotect,
+                             bool                     dpo,
+                             uint8_t                  byteCheck,
+                             uint64_t                 logicalBlockAddress,
+                             uint8_t                  groupNumber,
+                             uint32_t                 verificationLength,
+                             uint8_t* M_NULLABLE      ptrData,
+                             uint32_t                 dataSize)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -4089,18 +4104,18 @@ eReturnValues scsi_Verify_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Verify_32(const tDevice* device,
-                             uint8_t        vrprotect,
-                             bool           dpo,
-                             uint8_t        byteCheck,
-                             uint64_t       logicalBlockAddress,
-                             uint8_t        groupNumber,
-                             uint32_t       verificationLength,
-                             uint8_t*       ptrData,
-                             uint32_t       dataSize,
-                             uint32_t       expectedInitialLogicalBlockRefTag,
-                             uint16_t       expectedLogicalBlockAppTag,
-                             uint16_t       logicalBlockAppTagMask)
+eReturnValues scsi_Verify_32(const tDevice* M_NONNULL device,
+                             uint8_t                  vrprotect,
+                             bool                     dpo,
+                             uint8_t                  byteCheck,
+                             uint64_t                 logicalBlockAddress,
+                             uint8_t                  groupNumber,
+                             uint32_t                 verificationLength,
+                             uint8_t* M_NULLABLE      ptrData,
+                             uint32_t                 dataSize,
+                             uint32_t                 expectedInitialLogicalBlockRefTag,
+                             uint16_t                 expectedLogicalBlockAppTag,
+                             uint16_t                 logicalBlockAppTagMask)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
@@ -4145,11 +4160,11 @@ eReturnValues scsi_Verify_32(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_6(const tDevice* device,
-                           uint32_t       logicalBlockAddress,
-                           uint8_t        transferLengthBlocks,
-                           uint8_t*       ptrData,
-                           uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_6(const tDevice* M_NONNULL device,
+                           uint32_t                 logicalBlockAddress,
+                           uint8_t                  transferLengthBlocks,
+                           uint8_t* M_NONNULL       ptrData,
+                           uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
@@ -4180,15 +4195,15 @@ eReturnValues scsi_Write_6(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_10(const tDevice* device,
-                            uint8_t        wrprotect,
-                            bool           dpo,
-                            bool           fua,
-                            uint32_t       logicalBlockAddress,
-                            uint8_t        groupNumber,
-                            uint16_t       transferLengthBlocks,
-                            uint8_t*       ptrData,
-                            uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_10(const tDevice* M_NONNULL device,
+                            uint8_t                  wrprotect,
+                            bool                     dpo,
+                            bool                     fua,
+                            uint32_t                 logicalBlockAddress,
+                            uint8_t                  groupNumber,
+                            uint16_t                 transferLengthBlocks,
+                            uint8_t* M_NULLABLE      ptrData,
+                            uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -4232,15 +4247,15 @@ eReturnValues scsi_Write_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_12(const tDevice* device,
-                            uint8_t        wrprotect,
-                            bool           dpo,
-                            bool           fua,
-                            uint32_t       logicalBlockAddress,
-                            uint8_t        groupNumber,
-                            uint32_t       transferLengthBlocks,
-                            uint8_t*       ptrData,
-                            uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_12(const tDevice* M_NONNULL device,
+                            uint8_t                  wrprotect,
+                            bool                     dpo,
+                            bool                     fua,
+                            uint32_t                 logicalBlockAddress,
+                            uint8_t                  groupNumber,
+                            uint32_t                 transferLengthBlocks,
+                            uint8_t* M_NULLABLE      ptrData,
+                            uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -4284,15 +4299,15 @@ eReturnValues scsi_Write_12(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_16(const tDevice* device,
-                            uint8_t        wrprotect,
-                            bool           dpo,
-                            bool           fua,
-                            uint64_t       logicalBlockAddress,
-                            uint8_t        groupNumber,
-                            uint32_t       transferLengthBlocks,
-                            uint8_t*       ptrData,
-                            uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_16(const tDevice* M_NONNULL device,
+                            uint8_t                  wrprotect,
+                            bool                     dpo,
+                            bool                     fua,
+                            uint64_t                 logicalBlockAddress,
+                            uint8_t                  groupNumber,
+                            uint32_t                 transferLengthBlocks,
+                            uint8_t* M_NULLABLE      ptrData,
+                            uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -4336,18 +4351,18 @@ eReturnValues scsi_Write_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_32(const tDevice* device,
-                            uint8_t        wrprotect,
-                            bool           dpo,
-                            bool           fua,
-                            uint64_t       logicalBlockAddress,
-                            uint8_t        groupNumber,
-                            uint32_t       transferLengthBlocks,
-                            uint8_t*       ptrData,
-                            uint32_t       expectedInitialLogicalBlockRefTag,
-                            uint16_t       expectedLogicalBlockAppTag,
-                            uint16_t       logicalBlockAppTagMask,
-                            uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_32(const tDevice* M_NONNULL device,
+                            uint8_t                  wrprotect,
+                            bool                     dpo,
+                            bool                     fua,
+                            uint64_t                 logicalBlockAddress,
+                            uint8_t                  groupNumber,
+                            uint32_t                 transferLengthBlocks,
+                            uint8_t* M_NULLABLE      ptrData,
+                            uint32_t                 expectedInitialLogicalBlockRefTag,
+                            uint16_t                 expectedLogicalBlockAppTag,
+                            uint16_t                 logicalBlockAppTagMask,
+                            uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
@@ -4392,15 +4407,15 @@ eReturnValues scsi_Write_32(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_And_Verify_10(const tDevice* device,
-                                       uint8_t        wrprotect,
-                                       bool           dpo,
-                                       uint8_t        byteCheck,
-                                       uint32_t       logicalBlockAddress,
-                                       uint8_t        groupNumber,
-                                       uint16_t       transferLengthBlocks,
-                                       uint8_t*       ptrData,
-                                       uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_And_Verify_10(const tDevice* M_NONNULL device,
+                                       uint8_t                  wrprotect,
+                                       bool                     dpo,
+                                       uint8_t                  byteCheck,
+                                       uint32_t                 logicalBlockAddress,
+                                       uint8_t                  groupNumber,
+                                       uint16_t                 transferLengthBlocks,
+                                       uint8_t* M_NULLABLE      ptrData,
+                                       uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -4441,15 +4456,15 @@ eReturnValues scsi_Write_And_Verify_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_And_Verify_12(const tDevice* device,
-                                       uint8_t        wrprotect,
-                                       bool           dpo,
-                                       uint8_t        byteCheck,
-                                       uint32_t       logicalBlockAddress,
-                                       uint8_t        groupNumber,
-                                       uint32_t       transferLengthBlocks,
-                                       uint8_t*       ptrData,
-                                       uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_And_Verify_12(const tDevice* M_NONNULL device,
+                                       uint8_t                  wrprotect,
+                                       bool                     dpo,
+                                       uint8_t                  byteCheck,
+                                       uint32_t                 logicalBlockAddress,
+                                       uint8_t                  groupNumber,
+                                       uint32_t                 transferLengthBlocks,
+                                       uint8_t* M_NULLABLE      ptrData,
+                                       uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -4490,15 +4505,15 @@ eReturnValues scsi_Write_And_Verify_12(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_And_Verify_16(const tDevice* device,
-                                       uint8_t        wrprotect,
-                                       bool           dpo,
-                                       uint8_t        byteCheck,
-                                       uint64_t       logicalBlockAddress,
-                                       uint8_t        groupNumber,
-                                       uint32_t       transferLengthBlocks,
-                                       uint8_t*       ptrData,
-                                       uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_And_Verify_16(const tDevice* M_NONNULL device,
+                                       uint8_t                  wrprotect,
+                                       bool                     dpo,
+                                       uint8_t                  byteCheck,
+                                       uint64_t                 logicalBlockAddress,
+                                       uint8_t                  groupNumber,
+                                       uint32_t                 transferLengthBlocks,
+                                       uint8_t* M_NULLABLE      ptrData,
+                                       uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -4539,18 +4554,18 @@ eReturnValues scsi_Write_And_Verify_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_And_Verify_32(const tDevice* device,
-                                       uint8_t        wrprotect,
-                                       bool           dpo,
-                                       uint8_t        byteCheck,
-                                       uint64_t       logicalBlockAddress,
-                                       uint8_t        groupNumber,
-                                       uint32_t       transferLengthBlocks,
-                                       uint8_t*       ptrData,
-                                       uint32_t       expectedInitialLogicalBlockRefTag,
-                                       uint16_t       expectedLogicalBlockAppTag,
-                                       uint16_t       logicalBlockAppTagMask,
-                                       uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_And_Verify_32(const tDevice* M_NONNULL device,
+                                       uint8_t                  wrprotect,
+                                       bool                     dpo,
+                                       uint8_t                  byteCheck,
+                                       uint64_t                 logicalBlockAddress,
+                                       uint8_t                  groupNumber,
+                                       uint32_t                 transferLengthBlocks,
+                                       uint8_t* M_NULLABLE      ptrData,
+                                       uint32_t                 expectedInitialLogicalBlockRefTag,
+                                       uint16_t                 expectedLogicalBlockAppTag,
+                                       uint16_t                 logicalBlockAppTagMask,
+                                       uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
@@ -4592,13 +4607,13 @@ eReturnValues scsi_Write_And_Verify_32(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_Long_10(const tDevice* device,
-                                 bool           correctionDisabled,
-                                 bool           writeUncorrectable,
-                                 bool           physicalBlock,
-                                 uint32_t       logicalBlockAddress,
-                                 uint16_t       byteTransferLength,
-                                 uint8_t*       ptrData)
+eReturnValues scsi_Write_Long_10(const tDevice* M_NONNULL device,
+                                 bool                     correctionDisabled,
+                                 bool                     writeUncorrectable,
+                                 bool                     physicalBlock,
+                                 uint32_t                 logicalBlockAddress,
+                                 uint16_t                 byteTransferLength,
+                                 uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -4645,13 +4660,13 @@ eReturnValues scsi_Write_Long_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_Long_16(const tDevice* device,
-                                 bool           correctionDisabled,
-                                 bool           writeUncorrectable,
-                                 bool           physicalBlock,
-                                 uint64_t       logicalBlockAddress,
-                                 uint16_t       byteTransferLength,
-                                 uint8_t*       ptrData)
+eReturnValues scsi_Write_Long_16(const tDevice* M_NONNULL device,
+                                 bool                     correctionDisabled,
+                                 bool                     writeUncorrectable,
+                                 bool                     physicalBlock,
+                                 uint64_t                 logicalBlockAddress,
+                                 uint16_t                 byteTransferLength,
+                                 uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -4698,15 +4713,15 @@ eReturnValues scsi_Write_Long_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_Same_10(const tDevice* device,
-                                 uint8_t        wrprotect,
-                                 bool           anchor,
-                                 bool           unmap,
-                                 uint32_t       logicalBlockAddress,
-                                 uint8_t        groupNumber,
-                                 uint16_t       numberOfLogicalBlocks,
-                                 uint8_t*       ptrData,
-                                 uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_Same_10(const tDevice* M_NONNULL device,
+                                 uint8_t                  wrprotect,
+                                 bool                     anchor,
+                                 bool                     unmap,
+                                 uint32_t                 logicalBlockAddress,
+                                 uint8_t                  groupNumber,
+                                 uint16_t                 numberOfLogicalBlocks,
+                                 uint8_t* M_NULLABLE      ptrData,
+                                 uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -4755,16 +4770,16 @@ eReturnValues scsi_Write_Same_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_Same_16(const tDevice* device,
-                                 uint8_t        wrprotect,
-                                 bool           anchor,
-                                 bool           unmap,
-                                 bool           noDataOut,
-                                 uint64_t       logicalBlockAddress,
-                                 uint8_t        groupNumber,
-                                 uint32_t       numberOfLogicalBlocks,
-                                 uint8_t*       ptrData,
-                                 uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_Same_16(const tDevice* M_NONNULL device,
+                                 uint8_t                  wrprotect,
+                                 bool                     anchor,
+                                 bool                     unmap,
+                                 bool                     noDataOut,
+                                 uint64_t                 logicalBlockAddress,
+                                 uint8_t                  groupNumber,
+                                 uint32_t                 numberOfLogicalBlocks,
+                                 uint8_t* M_NULLABLE      ptrData,
+                                 uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -4827,19 +4842,19 @@ eReturnValues scsi_Write_Same_16(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Write_Same_32(const tDevice* device,
-                                 uint8_t        wrprotect,
-                                 bool           anchor,
-                                 bool           unmap,
-                                 bool           noDataOut,
-                                 uint64_t       logicalBlockAddress,
-                                 uint8_t        groupNumber,
-                                 uint32_t       numberOfLogicalBlocks,
-                                 uint8_t*       ptrData,
-                                 uint32_t       expectedInitialLogicalBlockRefTag,
-                                 uint16_t       expectedLogicalBlockAppTag,
-                                 uint16_t       logicalBlockAppTagMask,
-                                 uint32_t       transferLengthBytes)
+eReturnValues scsi_Write_Same_32(const tDevice* M_NONNULL device,
+                                 uint8_t                  wrprotect,
+                                 bool                     anchor,
+                                 bool                     unmap,
+                                 bool                     noDataOut,
+                                 uint64_t                 logicalBlockAddress,
+                                 uint8_t                  groupNumber,
+                                 uint32_t                 numberOfLogicalBlocks,
+                                 uint8_t* M_NULLABLE      ptrData,
+                                 uint32_t                 expectedInitialLogicalBlockRefTag,
+                                 uint16_t                 expectedLogicalBlockAppTag,
+                                 uint16_t                 logicalBlockAppTagMask,
+                                 uint32_t                 transferLengthBytes)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
@@ -5113,14 +5128,14 @@ eReturnValues scsi_Write_Same_32(const tDevice* device,
 //    return ret;
 //}
 
-eReturnValues scsi_xp_Write_10(const tDevice* device,
-                               bool           dpo,
-                               bool           fua,
-                               bool           xoprinfo,
-                               uint32_t       logicalBlockAddress,
-                               uint8_t        groupNumber,
-                               uint16_t       transferLength,
-                               uint8_t*       ptrData)
+eReturnValues scsi_xp_Write_10(const tDevice* M_NONNULL device,
+                               bool                     dpo,
+                               bool                     fua,
+                               bool                     xoprinfo,
+                               uint32_t                 logicalBlockAddress,
+                               uint8_t                  groupNumber,
+                               uint16_t                 transferLength,
+                               uint8_t* M_NONNULL       ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -5164,14 +5179,14 @@ eReturnValues scsi_xp_Write_10(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_xp_Write_32(const tDevice* device,
-                               bool           dpo,
-                               bool           fua,
-                               bool           xoprinfo,
-                               uint64_t       logicalBlockAddress,
-                               uint8_t        groupNumber,
-                               uint32_t       transferLength,
-                               uint8_t*       ptrData)
+eReturnValues scsi_xp_Write_32(const tDevice* M_NONNULL device,
+                               bool                     dpo,
+                               bool                     fua,
+                               bool                     xoprinfo,
+                               uint64_t                 logicalBlockAddress,
+                               uint8_t                  groupNumber,
+                               uint32_t                 transferLength,
+                               uint8_t* M_NONNULL       ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
@@ -5283,7 +5298,7 @@ eReturnValues scsi_Zone_Management_Out_Std_Format_CDB(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Close_Zone(const tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues scsi_Close_Zone(const tDevice* M_NONNULL device, bool all, uint64_t zoneID, uint16_t zoneCount)
 {
     if (all)
     {
@@ -5295,7 +5310,7 @@ eReturnValues scsi_Close_Zone(const tDevice* device, bool all, uint64_t zoneID, 
     }
 }
 
-eReturnValues scsi_Finish_Zone(const tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues scsi_Finish_Zone(const tDevice* M_NONNULL device, bool all, uint64_t zoneID, uint16_t zoneCount)
 {
     if (all)
     {
@@ -5308,7 +5323,7 @@ eReturnValues scsi_Finish_Zone(const tDevice* device, bool all, uint64_t zoneID,
     }
 }
 
-eReturnValues scsi_Open_Zone(const tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues scsi_Open_Zone(const tDevice* M_NONNULL device, bool all, uint64_t zoneID, uint16_t zoneCount)
 {
     if (all)
     {
@@ -5320,7 +5335,7 @@ eReturnValues scsi_Open_Zone(const tDevice* device, bool all, uint64_t zoneID, u
     }
 }
 
-eReturnValues scsi_Reset_Write_Pointers(const tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues scsi_Reset_Write_Pointers(const tDevice* M_NONNULL device, bool all, uint64_t zoneID, uint16_t zoneCount)
 {
     if (all)
     {
@@ -5332,7 +5347,7 @@ eReturnValues scsi_Reset_Write_Pointers(const tDevice* device, bool all, uint64_
     }
 }
 
-eReturnValues scsi_Sequentialize_Zone(const tDevice* device, bool all, uint64_t zoneID, uint16_t zoneCount)
+eReturnValues scsi_Sequentialize_Zone(const tDevice* M_NONNULL device, bool all, uint64_t zoneID, uint16_t zoneCount)
 {
     if (all)
     {
@@ -5345,14 +5360,14 @@ eReturnValues scsi_Sequentialize_Zone(const tDevice* device, bool all, uint64_t 
     }
 }
 
-eReturnValues scsi_Zone_Management_In_Report(const tDevice* device,
-                                             eZMAction      action,
-                                             uint8_t        actionSpecific1,
-                                             uint64_t       location,
-                                             bool           partial,
-                                             uint8_t        reportingOptions,
-                                             uint32_t       allocationLength,
-                                             uint8_t*       ptrData) // 95h
+eReturnValues scsi_Zone_Management_In_Report(const tDevice* M_NONNULL device,
+                                             eZMAction                action,
+                                             uint8_t                  actionSpecific1,
+                                             uint64_t                 location,
+                                             bool                     partial,
+                                             uint8_t                  reportingOptions,
+                                             uint32_t                 allocationLength,
+                                             uint8_t* M_NULLABLE      ptrData) // 95h
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -5423,14 +5438,14 @@ eReturnValues scsi_Zone_Management_In_Report(const tDevice* device,
 }
 
 // for zone activate and zone query commands
-eReturnValues scsi_Zone_Management_In_ZD(const tDevice* device,
-                                         eZMAction      action,
-                                         bool           all,
-                                         uint64_t       zoneID,
-                                         uint16_t       numberOfZones,
-                                         uint8_t        otherZoneDomainID,
-                                         uint16_t       allocationLength,
-                                         uint8_t*       ptrData) // 95h
+eReturnValues scsi_Zone_Management_In_ZD(const tDevice*     device,
+                                         eZMAction          action,
+                                         bool               all,
+                                         uint64_t           zoneID,
+                                         uint16_t           numberOfZones,
+                                         uint8_t            otherZoneDomainID,
+                                         uint16_t           allocationLength,
+                                         uint8_t* M_NONNULL ptrData) // 95h
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -5496,67 +5511,67 @@ eReturnValues scsi_Zone_Management_In_ZD(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Zone_Activate(const tDevice* device,
-                                 bool           all,
-                                 uint64_t       zoneID,
-                                 uint16_t       numberOfZones,
-                                 uint8_t        otherZoneDomainID,
-                                 uint16_t       allocationLength,
-                                 uint8_t*       ptrData)
+eReturnValues scsi_Zone_Activate(const tDevice* M_NONNULL device,
+                                 bool                     all,
+                                 uint64_t                 zoneID,
+                                 uint16_t                 numberOfZones,
+                                 uint8_t                  otherZoneDomainID,
+                                 uint16_t                 allocationLength,
+                                 uint8_t* M_NONNULL       ptrData)
 {
     return scsi_Zone_Management_In_ZD(device, ZM_ACTION_ZONE_ACTIVATE, all, zoneID, numberOfZones, otherZoneDomainID,
                                       allocationLength, ptrData);
 }
 
-eReturnValues scsi_Zone_Query(const tDevice* device,
-                              bool           all,
-                              uint64_t       zoneID,
-                              uint16_t       numberOfZones,
-                              uint8_t        otherZoneDomainID,
-                              uint16_t       allocationLength,
-                              uint8_t*       ptrData)
+eReturnValues scsi_Zone_Query(const tDevice* M_NONNULL device,
+                              bool                     all,
+                              uint64_t                 zoneID,
+                              uint16_t                 numberOfZones,
+                              uint8_t                  otherZoneDomainID,
+                              uint16_t                 allocationLength,
+                              uint8_t* M_NONNULL       ptrData)
 {
     return scsi_Zone_Management_In_ZD(device, ZM_ACTION_ZONE_QUERY, all, zoneID, numberOfZones, otherZoneDomainID,
                                       allocationLength, ptrData);
 }
 
-eReturnValues scsi_Report_Zones(const tDevice*        device,
-                                eZoneReportingOptions reportingOptions,
-                                bool                  partial,
-                                uint32_t              allocationLength,
-                                uint64_t              zoneStartLBA,
-                                uint8_t*              ptrData)
+eReturnValues scsi_Report_Zones(const tDevice* M_NONNULL device,
+                                eZoneReportingOptions    reportingOptions,
+                                bool                     partial,
+                                uint32_t                 allocationLength,
+                                uint64_t                 zoneStartLBA,
+                                uint8_t* M_NONNULL       ptrData)
 {
     return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_ZONES, 0, zoneStartLBA, partial,
                                           C_CAST(uint8_t, reportingOptions), allocationLength, ptrData);
 }
 
-eReturnValues scsi_Report_Realms(const tDevice*          device,
-                                 eRealmsReportingOptions reportingOptions,
-                                 uint32_t                allocationLength,
-                                 uint64_t                realmLocator,
-                                 uint8_t*                ptrData)
+eReturnValues scsi_Report_Realms(const tDevice* M_NONNULL device,
+                                 eRealmsReportingOptions  reportingOptions,
+                                 uint32_t                 allocationLength,
+                                 uint64_t                 realmLocator,
+                                 uint8_t* M_NONNULL       ptrData)
 {
     return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_REALMS, 0, realmLocator, false,
                                           C_CAST(uint8_t, reportingOptions), allocationLength, ptrData);
 }
 
-eReturnValues scsi_Report_Zone_Domains(const tDevice*              device,
+eReturnValues scsi_Report_Zone_Domains(const tDevice* M_NONNULL    device,
                                        eZoneDomainReportingOptions reportingOptions,
                                        uint32_t                    allocationLength,
                                        uint64_t                    zoneDomainLocator,
-                                       uint8_t*                    ptrData)
+                                       uint8_t* M_NONNULL          ptrData)
 {
     return scsi_Zone_Management_In_Report(device, ZM_ACTION_REPORT_ZONE_DOMAINS, 0, zoneDomainLocator, false,
                                           C_CAST(uint8_t, reportingOptions), allocationLength, ptrData);
 }
 
-eReturnValues scsi_Get_Physical_Element_Status(const tDevice* device,
-                                               uint32_t       startingElement,
-                                               uint32_t       allocationLength,
-                                               uint8_t        filter,
-                                               uint8_t        reportType,
-                                               uint8_t*       ptrData)
+eReturnValues scsi_Get_Physical_Element_Status(const tDevice* M_NONNULL device,
+                                               uint32_t                 startingElement,
+                                               uint32_t                 allocationLength,
+                                               uint8_t                  filter,
+                                               uint8_t                  reportType,
+                                               uint8_t* M_NONNULL       ptrData)
 {
     eReturnValues          ret     = FAILURE;
     eDataTransferDirection dataDir = XFER_DATA_IN;
@@ -5608,7 +5623,9 @@ eReturnValues scsi_Get_Physical_Element_Status(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Remove_And_Truncate(const tDevice* device, uint64_t requestedCapacity, uint32_t elementIdentifier)
+eReturnValues scsi_Remove_And_Truncate(const tDevice* M_NONNULL device,
+                                       uint64_t                 requestedCapacity,
+                                       uint32_t                 elementIdentifier)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -5640,7 +5657,7 @@ eReturnValues scsi_Remove_And_Truncate(const tDevice* device, uint64_t requested
     return ret;
 }
 
-eReturnValues scsi_Remove_Element_And_Modify_Zones(const tDevice* device, uint32_t elementIdentifier)
+eReturnValues scsi_Remove_Element_And_Modify_Zones(const tDevice* M_NONNULL device, uint32_t elementIdentifier)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -5672,7 +5689,7 @@ eReturnValues scsi_Remove_Element_And_Modify_Zones(const tDevice* device, uint32
     return ret;
 }
 
-eReturnValues scsi_Restore_Elements_And_Rebuild(const tDevice* device)
+eReturnValues scsi_Restore_Elements_And_Rebuild(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
@@ -5704,10 +5721,10 @@ eReturnValues scsi_Restore_Elements_And_Rebuild(const tDevice* device)
     return ret;
 }
 
-eReturnValues scsi_Persistent_Reserve_In(const tDevice* device,
-                                         uint8_t        serviceAction,
-                                         uint16_t       allocationLength,
-                                         uint8_t*       ptrData)
+eReturnValues scsi_Persistent_Reserve_In(const tDevice* M_NONNULL device,
+                                         uint8_t                  serviceAction,
+                                         uint16_t                 allocationLength,
+                                         uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -5751,12 +5768,12 @@ eReturnValues scsi_Persistent_Reserve_In(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Persistent_Reserve_Out(const tDevice* device,
-                                          uint8_t        serviceAction,
-                                          uint8_t        scope,
-                                          uint8_t        type,
-                                          uint32_t       parameterListLength,
-                                          uint8_t*       ptrData)
+eReturnValues scsi_Persistent_Reserve_Out(const tDevice* M_NONNULL device,
+                                          uint8_t                  serviceAction,
+                                          uint8_t                  scope,
+                                          uint8_t                  type,
+                                          uint32_t                 parameterListLength,
+                                          uint8_t* M_NULLABLE      ptrData)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
@@ -5800,7 +5817,7 @@ eReturnValues scsi_Persistent_Reserve_Out(const tDevice* device,
     return ret;
 }
 
-eReturnValues scsi_Rezero_Unit(const tDevice* device)
+eReturnValues scsi_Rezero_Unit(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);

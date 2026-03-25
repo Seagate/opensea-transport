@@ -33,7 +33,7 @@
 #include "nvme_helper_func.h"
 #include "realtek_nvme_helper.h"
 
-eReturnValues nvme_Reset(const tDevice* device)
+eReturnValues nvme_Reset(const tDevice* M_NONNULL device)
 {
     switch (device->drive_info.passThroughHacks.passthroughType)
     {
@@ -52,7 +52,7 @@ eReturnValues nvme_Reset(const tDevice* device)
     }
 }
 
-eReturnValues nvme_Subsystem_Reset(const tDevice* device)
+eReturnValues nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     switch (device->drive_info.passThroughHacks.passthroughType)
     {
@@ -71,7 +71,7 @@ eReturnValues nvme_Subsystem_Reset(const tDevice* device)
     }
 }
 
-static eReturnValues set_NVMe_Last_Completion(tDevice* device, const nvmeCmdCtx* cmdCtx, eReturnValues ret)
+static eReturnValues set_NVMe_Last_Completion(tDevice* M_NONNULL device, const nvmeCmdCtx* cmdCtx, eReturnValues ret)
 {
     if (cmdCtx->commandCompletionData.dw3Valid)
     {
@@ -108,7 +108,7 @@ static eReturnValues set_NVMe_Last_Completion(tDevice* device, const nvmeCmdCtx*
     return ret;
 }
 
-eReturnValues nvme_Cmd(const tDevice* device, nvmeCmdCtx* cmdCtx)
+eReturnValues nvme_Cmd(const tDevice* M_NONNULL device, nvmeCmdCtx* M_NONNULL cmdCtx)
 {
     eReturnValues ret = UNKNOWN;
     cmdCtx->device    = M_CONST_CAST(tDevice*, device);
@@ -233,7 +233,9 @@ eReturnValues nvme_Cmd(const tDevice* device, nvmeCmdCtx* cmdCtx)
     return ret;
 }
 
-eReturnValues nvme_Abort_Command(const tDevice* device, uint16_t commandIdentifier, uint16_t submissionQueueIdentifier)
+eReturnValues nvme_Abort_Command(const tDevice* M_NONNULL device,
+                                 uint16_t                 commandIdentifier,
+                                 uint16_t                 submissionQueueIdentifier)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
@@ -258,10 +260,10 @@ eReturnValues nvme_Abort_Command(const tDevice* device, uint16_t commandIdentifi
     return ret;
 }
 
-eReturnValues nvme_Asynchronous_Event_Request(const tDevice* device,
-                                              uint8_t*       logPageIdentifier,
-                                              uint8_t*       asynchronousEventInformation,
-                                              uint8_t*       asynchronousEventType)
+eReturnValues nvme_Asynchronous_Event_Request(const tDevice* M_NONNULL device,
+                                              uint8_t* M_NONNULL       logPageIdentifier,
+                                              uint8_t* M_NONNULL       asynchronousEventInformation,
+                                              uint8_t* M_NONNULL       asynchronousEventType)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
@@ -300,7 +302,7 @@ eReturnValues nvme_Asynchronous_Event_Request(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Device_Self_Test(const tDevice* device, uint32_t nsid, uint8_t selfTestCode)
+eReturnValues nvme_Device_Self_Test(const tDevice* M_NONNULL device, uint32_t nsid, uint8_t selfTestCode)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
@@ -334,12 +336,12 @@ eReturnValues nvme_Device_Self_Test(const tDevice* device, uint32_t nsid, uint8_
     return ret;
 }
 
-eReturnValues nvme_Security_Send(const tDevice* device,
-                                 uint8_t        securityProtocol,
-                                 uint16_t       securityProtocolSpecific,
-                                 uint8_t        nvmeSecuritySpecificField,
-                                 uint8_t*       ptrData,
-                                 uint32_t       dataLength)
+eReturnValues nvme_Security_Send(const tDevice* M_NONNULL device,
+                                 uint8_t                  securityProtocol,
+                                 uint16_t                 securityProtocolSpecific,
+                                 uint8_t                  nvmeSecuritySpecificField,
+                                 uint8_t* M_NULLABLE      ptrData,
+                                 uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
@@ -368,12 +370,12 @@ eReturnValues nvme_Security_Send(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Security_Receive(const tDevice* device,
-                                    uint8_t        securityProtocol,
-                                    uint16_t       securityProtocolSpecific,
-                                    uint8_t        nvmeSecuritySpecificField,
-                                    uint8_t*       ptrData,
-                                    uint32_t       dataLength)
+eReturnValues nvme_Security_Receive(const tDevice* M_NONNULL device,
+                                    uint8_t                  securityProtocol,
+                                    uint16_t                 securityProtocolSpecific,
+                                    uint8_t                  nvmeSecuritySpecificField,
+                                    uint8_t* M_NULLABLE      ptrData,
+                                    uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
@@ -408,12 +410,12 @@ eReturnValues nvme_Security_Receive(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Verify(const tDevice* device,
-                          uint64_t       startingLBA,
-                          bool           limitedRetry,
-                          bool           fua,
-                          uint8_t        protectionInformationField,
-                          uint16_t       numberOfLogicalBlocks)
+eReturnValues nvme_Verify(const tDevice* M_NONNULL device,
+                          uint64_t                 startingLBA,
+                          bool                     limitedRetry,
+                          bool                     fua,
+                          uint8_t                  protectionInformationField,
+                          uint16_t                 numberOfLogicalBlocks)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -449,7 +451,9 @@ eReturnValues nvme_Verify(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Write_Uncorrectable(const tDevice* device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks)
+eReturnValues nvme_Write_Uncorrectable(const tDevice* M_NONNULL device,
+                                       uint64_t                 startingLBA,
+                                       uint16_t                 numberOfLogicalBlocks)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -479,13 +483,13 @@ eReturnValues nvme_Write_Uncorrectable(const tDevice* device, uint64_t startingL
     return ret;
 }
 
-eReturnValues nvme_Dataset_Management(const tDevice* device,
-                                      uint8_t        numberOfRanges,
-                                      bool           deallocate,
-                                      bool           integralDatasetForWrite,
-                                      bool           integralDatasetForRead,
-                                      uint8_t*       ptrData,
-                                      uint32_t       dataLength)
+eReturnValues nvme_Dataset_Management(const tDevice* M_NONNULL device,
+                                      uint8_t                  numberOfRanges,
+                                      bool                     deallocate,
+                                      bool                     integralDatasetForWrite,
+                                      bool                     integralDatasetForRead,
+                                      uint8_t* M_NONNULL       ptrData,
+                                      uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -525,7 +529,7 @@ eReturnValues nvme_Dataset_Management(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Flush(const tDevice* device)
+eReturnValues nvme_Flush(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -551,15 +555,15 @@ eReturnValues nvme_Flush(const tDevice* device)
     return ret;
 }
 
-eReturnValues nvme_Write(const tDevice* device,
-                         uint64_t       startingLBA,
-                         uint16_t       numberOfLogicalBlocks,
-                         bool           limitedRetry,
-                         bool           fua,
-                         uint8_t        protectionInformationField,
-                         uint8_t        directiveType,
-                         uint8_t*       ptrData,
-                         uint32_t       dataLength)
+eReturnValues nvme_Write(const tDevice* M_NONNULL device,
+                         uint64_t                 startingLBA,
+                         uint16_t                 numberOfLogicalBlocks,
+                         bool                     limitedRetry,
+                         bool                     fua,
+                         uint8_t                  protectionInformationField,
+                         uint8_t                  directiveType,
+                         uint8_t* M_NONNULL       ptrData,
+                         uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -601,14 +605,14 @@ eReturnValues nvme_Write(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Read(const tDevice* device,
-                        uint64_t       startingLBA,
-                        uint16_t       numberOfLogicalBlocks,
-                        bool           limitedRetry,
-                        bool           fua,
-                        uint8_t        protectionInformationField,
-                        uint8_t*       ptrData,
-                        uint32_t       dataLength)
+eReturnValues nvme_Read(const tDevice* M_NONNULL device,
+                        uint64_t                 startingLBA,
+                        uint16_t                 numberOfLogicalBlocks,
+                        bool                     limitedRetry,
+                        bool                     fua,
+                        uint8_t                  protectionInformationField,
+                        uint8_t* M_NONNULL       ptrData,
+                        uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -655,14 +659,14 @@ eReturnValues nvme_Read(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Compare(const tDevice* device,
-                           uint64_t       startingLBA,
-                           uint16_t       numberOfLogicalBlocks,
-                           bool           limitedRetry,
-                           bool           fua,
-                           uint8_t        protectionInformationField,
-                           uint8_t*       ptrData,
-                           uint32_t       dataLength)
+eReturnValues nvme_Compare(const tDevice* M_NONNULL device,
+                           uint64_t                 startingLBA,
+                           uint16_t                 numberOfLogicalBlocks,
+                           bool                     limitedRetry,
+                           bool                     fua,
+                           uint8_t                  protectionInformationField,
+                           uint8_t* M_NONNULL       ptrData,
+                           uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -703,13 +707,13 @@ eReturnValues nvme_Compare(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Firmware_Image_Dl(const tDevice* device,
-                                     uint32_t       bufferOffset,
-                                     uint32_t       numberOfBytes,
-                                     uint8_t*       ptrData,
-                                     bool           firstSegment,
-                                     bool           lastSegment,
-                                     uint32_t       timeoutSeconds)
+eReturnValues nvme_Firmware_Image_Dl(const tDevice* M_NONNULL device,
+                                     uint32_t                 bufferOffset,
+                                     uint32_t                 numberOfBytes,
+                                     uint8_t* M_NONNULL       ptrData,
+                                     bool                     firstSegment,
+                                     bool                     lastSegment,
+                                     uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    ImageDl;
@@ -744,10 +748,10 @@ eReturnValues nvme_Firmware_Image_Dl(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Firmware_Commit(const tDevice*     device,
-                                   nvmeFWCommitAction commitAction,
-                                   uint8_t            firmwareSlot,
-                                   uint32_t           timeoutSeconds)
+eReturnValues nvme_Firmware_Commit(const tDevice* M_NONNULL device,
+                                   nvmeFWCommitAction       commitAction,
+                                   uint8_t                  firmwareSlot,
+                                   uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = BAD_PARAMETER;
     nvmeCmdCtx    FirmwareCommit;
@@ -783,7 +787,10 @@ eReturnValues nvme_Firmware_Commit(const tDevice*     device,
     return ret;
 }
 
-eReturnValues nvme_Identify(const tDevice* device, uint8_t* ptrData, uint32_t nvmeNamespace, uint32_t cns)
+eReturnValues nvme_Identify(const tDevice* M_NONNULL device,
+                            uint8_t* M_NONNULL       ptrData,
+                            uint32_t                 nvmeNamespace,
+                            uint32_t                 cns)
 {
     nvmeCmdCtx    identify;
     eReturnValues ret = SUCCESS;
@@ -815,7 +822,7 @@ eReturnValues nvme_Identify(const tDevice* device, uint8_t* ptrData, uint32_t nv
     return ret;
 }
 
-eReturnValues nvme_Get_Features(const tDevice* device, nvmeFeaturesCmdOpt* featCmdOpts)
+eReturnValues nvme_Get_Features(const tDevice* M_NONNULL device, nvmeFeaturesCmdOpt* M_NONNULL featCmdOpts)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    getFeatures;
@@ -865,7 +872,7 @@ eReturnValues nvme_Get_Features(const tDevice* device, nvmeFeaturesCmdOpt* featC
     return ret;
 }
 
-eReturnValues nvme_Set_Features(const tDevice* device, nvmeFeaturesCmdOpt* featCmdOpts)
+eReturnValues nvme_Set_Features(const tDevice* M_NONNULL device, nvmeFeaturesCmdOpt* M_NONNULL featCmdOpts)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    setFeatures;
@@ -900,13 +907,13 @@ eReturnValues nvme_Set_Features(const tDevice* device, nvmeFeaturesCmdOpt* featC
     return ret;
 }
 
-eReturnValues nvme_Sanitize(const tDevice* device,
-                            bool           noDeallocateAfterSanitize,
-                            bool           invertBetweenOverwritePasses,
-                            uint8_t        overWritePassCount,
-                            bool           allowUnrestrictedSanitizeExit,
-                            uint8_t        sanitizeAction,
-                            uint32_t       overwritePattern)
+eReturnValues nvme_Sanitize(const tDevice* M_NONNULL device,
+                            bool                     noDeallocateAfterSanitize,
+                            bool                     invertBetweenOverwritePasses,
+                            uint8_t                  overWritePassCount,
+                            bool                     allowUnrestrictedSanitizeExit,
+                            uint8_t                  sanitizeAction,
+                            uint32_t                 overwritePattern)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCommand;
@@ -949,7 +956,7 @@ eReturnValues nvme_Sanitize(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Get_Log_Page(const tDevice* device, nvmeGetLogPageCmdOpts* getLogPageCmdOpts)
+eReturnValues nvme_Get_Log_Page(const tDevice* M_NONNULL device, nvmeGetLogPageCmdOpts* M_NONNULL getLogPageCmdOpts)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    getLogPage;
@@ -1003,7 +1010,7 @@ eReturnValues nvme_Get_Log_Page(const tDevice* device, nvmeGetLogPageCmdOpts* ge
     return ret;
 }
 
-eReturnValues nvme_Format(const tDevice* device, nvmeFormatCmdOpts* formatCmdOpts)
+eReturnValues nvme_Format(const tDevice* M_NONNULL device, nvmeFormatCmdOpts* M_NONNULL formatCmdOpts)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    formatCmd;
@@ -1053,10 +1060,10 @@ eReturnValues nvme_Format(const tDevice* device, nvmeFormatCmdOpts* formatCmdOpt
     return ret;
 }
 
-eReturnValues nvme_Reservation_Report(const tDevice* device,
-                                      bool           extendedDataStructure,
-                                      uint8_t*       ptrData,
-                                      uint32_t       dataSize)
+eReturnValues nvme_Reservation_Report(const tDevice* M_NONNULL device,
+                                      bool                     extendedDataStructure,
+                                      uint8_t* M_NONNULL       ptrData,
+                                      uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
@@ -1097,12 +1104,12 @@ eReturnValues nvme_Reservation_Report(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Reservation_Register(const tDevice* device,
-                                        uint8_t        changePersistThroughPowerLossState,
-                                        bool           ignoreExistingKey,
-                                        uint8_t        reservationRegisterAction,
-                                        uint8_t*       ptrData,
-                                        uint32_t       dataSize)
+eReturnValues nvme_Reservation_Register(const tDevice* M_NONNULL device,
+                                        uint8_t                  changePersistThroughPowerLossState,
+                                        bool                     ignoreExistingKey,
+                                        uint8_t                  reservationRegisterAction,
+                                        uint8_t* M_NONNULL       ptrData,
+                                        uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
@@ -1138,12 +1145,12 @@ eReturnValues nvme_Reservation_Register(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Reservation_Acquire(const tDevice* device,
-                                       uint8_t        reservationType,
-                                       bool           ignoreExistingKey,
-                                       uint8_t        reservtionAcquireAction,
-                                       uint8_t*       ptrData,
-                                       uint32_t       dataSize)
+eReturnValues nvme_Reservation_Acquire(const tDevice* M_NONNULL device,
+                                       uint8_t                  reservationType,
+                                       bool                     ignoreExistingKey,
+                                       uint8_t                  reservtionAcquireAction,
+                                       uint8_t* M_NONNULL       ptrData,
+                                       uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
@@ -1179,12 +1186,12 @@ eReturnValues nvme_Reservation_Acquire(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Reservation_Release(const tDevice* device,
-                                       uint8_t        reservationType,
-                                       bool           ignoreExistingKey,
-                                       uint8_t        reservtionReleaseAction,
-                                       uint8_t*       ptrData,
-                                       uint32_t       dataSize)
+eReturnValues nvme_Reservation_Release(const tDevice* M_NONNULL device,
+                                       uint8_t                  reservationType,
+                                       bool                     ignoreExistingKey,
+                                       uint8_t                  reservtionReleaseAction,
+                                       uint8_t* M_NONNULL       ptrData,
+                                       uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
@@ -1220,12 +1227,12 @@ eReturnValues nvme_Reservation_Release(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Write_Zeroes(const tDevice* device,
-                                uint64_t       startingLBA,
-                                uint16_t       numberOfLogicalBlocks,
-                                bool           limitedRetry,
-                                bool           forceUnitAccess,
-                                bool           deallocate)
+eReturnValues nvme_Write_Zeroes(const tDevice* M_NONNULL device,
+                                uint64_t                 startingLBA,
+                                uint16_t                 numberOfLogicalBlocks,
+                                bool                     limitedRetry,
+                                bool                     forceUnitAccess,
+                                bool                     deallocate)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -1266,7 +1273,7 @@ eReturnValues nvme_Write_Zeroes(const tDevice* device,
     return ret;
 }
 
-eReturnValues nvme_Read_Ctrl_Reg(const tDevice* device, nvmeBarCtrlRegisters* ctrlRegs)
+eReturnValues nvme_Read_Ctrl_Reg(const tDevice* M_NONNULL device, nvmeBarCtrlRegisters* M_NONNULL ctrlRegs)
 {
     eReturnValues ret = UNKNOWN;
     // For now lets first get the page aligned one & then copy the

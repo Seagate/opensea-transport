@@ -4093,7 +4093,7 @@ static eReturnValues dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG retur
 
 // nvmeIoCtx to get the cmd dwords to evaluate
 // current flags to preserve existing flags....new ones are or'd to this value
-eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* nvmeIoCtx, uint32_t* currentFlags)
+eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* M_NONNULL nvmeIoCtx, uint32_t* M_NONNULL currentFlags)
 {
     eReturnValues      ret = SUCCESS;
     nvmeFWCommitAction activateAction =
@@ -4331,7 +4331,7 @@ static eReturnValues close_SCSI_SRB_Handle(tDevice* M_NONNULL device)
 //
 //  close_Device()
 //
-//! \brief   Description:  Given a device, close it's handle.
+//! \brief   Description:  Given a M_NONNULL device, close it's handle.
 //
 //  Entry:
 //!   \param[in] device = device stuct that holds device information.
@@ -4764,7 +4764,7 @@ static eReturnValues win_Update_Disk_Properties(HANDLE* deviceHandle)
 
 #endif // for IOCTL_DISK_UPDATE_PROPERTIES
 
-eReturnValues os_Update_File_System_Cache(const tDevice* device)
+eReturnValues os_Update_File_System_Cache(const tDevice* M_NONNULL device)
 {
 #if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP && defined(IOCTL_DISK_UPDATE_PROPERTIES)
     // TODO: Need to find a way to support other things like RAID or CSMI, etc in the future - TJE
@@ -4793,7 +4793,7 @@ static eReturnValues win_Delete_Drive_Layout(HANDLE* deviceHandle)
 
 #endif // for IOCTL_DISK_UPDATE_PROPERTIES
 
-eReturnValues os_Erase_Boot_Sectors(const tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device)
 {
 #if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP && defined(IOCTL_DISK_UPDATE_PROPERTIES)
     if (device->raid_device || device->issue_io || device->issue_nvme_io)
@@ -5228,8 +5228,9 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
         DECLARE_ZERO_INIT_ARRAY(char, friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
         if (strstr(get_Device_Handle_Name(device), WIN_PHYSICAL_DRIVE))
         {
-            unsigned long drive    = 0UL;
-            char*         drivenum = strstr(get_Device_Handle_Name(device), WIN_PHYSICAL_DRIVE) + safe_strlen(WIN_PHYSICAL_DRIVE);
+            unsigned long drive = 0UL;
+            char*         drivenum =
+                strstr(get_Device_Handle_Name(device), WIN_PHYSICAL_DRIVE) + safe_strlen(WIN_PHYSICAL_DRIVE);
             if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
@@ -5239,8 +5240,8 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
         }
         else if (strstr(get_Device_Handle_Name(device), WIN_CDROM_DRIVE))
         {
-            unsigned long drive    = 0UL;
-            char*         drivenum = strstr(get_Device_Handle_Name(device), WIN_CDROM_DRIVE) + safe_strlen(WIN_CDROM_DRIVE);
+            unsigned long drive = 0UL;
+            char* drivenum = strstr(get_Device_Handle_Name(device), WIN_CDROM_DRIVE) + safe_strlen(WIN_CDROM_DRIVE);
             if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
@@ -5250,8 +5251,8 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
         }
         else if (strstr(get_Device_Handle_Name(device), WIN_TAPE_DRIVE))
         {
-            unsigned long drive    = 0UL;
-            char*         drivenum = strstr(get_Device_Handle_Name(device), WIN_TAPE_DRIVE) + safe_strlen(WIN_TAPE_DRIVE);
+            unsigned long drive = 0UL;
+            char* drivenum      = strstr(get_Device_Handle_Name(device), WIN_TAPE_DRIVE) + safe_strlen(WIN_TAPE_DRIVE);
             if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
@@ -5261,8 +5262,9 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
         }
         else if (strstr(get_Device_Handle_Name(device), WIN_CHANGER_DEVICE))
         {
-            unsigned long drive    = 0UL;
-            char*         drivenum = strstr(get_Device_Handle_Name(device), WIN_CHANGER_DEVICE) + safe_strlen(WIN_CHANGER_DEVICE);
+            unsigned long drive = 0UL;
+            char*         drivenum =
+                strstr(get_Device_Handle_Name(device), WIN_CHANGER_DEVICE) + safe_strlen(WIN_CHANGER_DEVICE);
             if (0 != safe_strtoul(&drive, drivenum, M_NULLPTR, BASE_10_DECIMAL))
             {
                 return FAILURE;
@@ -5402,7 +5404,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                 device->os_info.srbtype = SRB_TYPE_SCSI_REQUEST_BLOCK;
             }
             set_Device_IO_Minimum_Alignment(device, adapter_desc->AlignmentMask + 1);
-            device->os_info.alignmentMask    = adapter_desc->AlignmentMask; // may be needed later....currently unused
+            device->os_info.alignmentMask = adapter_desc->AlignmentMask; // may be needed later....currently unused
 #if defined(WIN_DEBUG)
             print_str("WIN: get device descriptor\n");
 #endif // WIN_DEBUG
@@ -5458,7 +5460,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                     // special case to handle unknown device types!
                     set_Device_DriveType(device, SCSI_DRIVE);
                     set_Device_InterfaceType(device, SCSI_INTERFACE);
-                    device->os_info.ioType            = WIN_IOCTL_BASIC;
+                    device->os_info.ioType = WIN_IOCTL_BASIC;
 #if defined(WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK)
                     checkForCSMI = false;
 #endif // WIN_CSMI_PASSTHROUGH_SUPPORT_CHECK
@@ -5475,7 +5477,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                 {
                     set_Device_DriveType(device, ATA_DRIVE);
                     set_Device_InterfaceType(device, IDE_INTERFACE);
-                    device->os_info.ioType            = WIN_IOCTL_ATA_PASSTHROUGH;
+                    device->os_info.ioType = WIN_IOCTL_ATA_PASSTHROUGH;
 #if defined(WIN_DEBUG)
                     print_str("WIN: get SMART IO support ATA\n");
 #endif                                                    // WIN_DEBUG
@@ -5530,14 +5532,14 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                     // set this to SCSI_DRIVE. The fill_Drive_Info_Data call will change this if it supports SAT
                     set_Device_DriveType(device, SCSI_DRIVE);
                     set_Device_InterfaceType(device, USB_INTERFACE);
-                    device->os_info.ioType            = WIN_IOCTL_SCSI_PASSTHROUGH;
+                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                 }
                 else if (device_desc->BusType == BusType1394)
                 {
                     // set this to SCSI_DRIVE. The fill_Drive_Info_Data call will change this if it supports SAT
                     set_Device_DriveType(device, SCSI_DRIVE);
                     set_Device_InterfaceType(device, IEEE_1394_INTERFACE);
-                    device->os_info.ioType            = WIN_IOCTL_SCSI_PASSTHROUGH;
+                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                 }
                 // NVMe bustype can be defined for Win7 with openfabrics nvme driver, so make sure we can handle it...it
                 // shows as a SCSI device on this interface unless you use a SCSI?: handle with the IOCTL directly to
@@ -5605,9 +5607,9 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                             {
                                 set_Device_DriveType(device, NVME_DRIVE);
                                 set_Device_InterfaceType(device, NVME_INTERFACE);
-                                device->os_info.intelNVMePassthroughSupported                 = true;
-                                foundNVMePassthrough                                          = true;
-                                device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+                                device->os_info.intelNVMePassthroughSupported                                  = true;
+                                foundNVMePassthrough                                                           = true;
+                                device->drive_info.passThroughHacks.someHacksSetByOSDiscovery                  = true;
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
                                 device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
                                     .identifyGeneric = true;
@@ -5653,7 +5655,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                                 device->os_info.openFabricsNVMePassthroughSupported = false;
                                 set_Device_DriveType(device, SCSI_DRIVE);
                                 set_Device_InterfaceType(device, SCSI_INTERFACE);
-                                device->os_info.ioType                              = WIN_IOCTL_SCSI_PASSTHROUGH;
+                                device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                             }
                         }
                         else
@@ -5668,7 +5670,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                             // treat as SCSI
                             set_Device_DriveType(device, SCSI_DRIVE);
                             set_Device_InterfaceType(device, SCSI_INTERFACE);
-                            device->os_info.ioType            = WIN_IOCTL_SCSI_PASSTHROUGH;
+                            device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                         }
                     }
                     else
@@ -5811,7 +5813,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
 #endif // WIN_DEBUG
                             set_Device_DriveType(device, SCSI_DRIVE);
                             set_Device_InterfaceType(device, SCSI_INTERFACE);
-                            device->os_info.ioType            = WIN_IOCTL_SCSI_PASSTHROUGH;
+                            device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                         }
                     }
                 }
@@ -5820,7 +5822,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                     set_Device_InterfaceType(device, SCSI_INTERFACE);
                     // This does NOT mean that drive_type is SCSI, but set SCSI drive for now
                     set_Device_DriveType(device, SCSI_DRIVE);
-                    device->os_info.ioType        = WIN_IOCTL_SCSI_PASSTHROUGH;
+                    device->os_info.ioType = WIN_IOCTL_SCSI_PASSTHROUGH;
                     if (device_desc->BusType == BusTypeSas)
                     {
 // CSMI checks are needed for controllers showing as SAS or RAID.
@@ -6085,7 +6087,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
     return ret; // if we didn't get to fill_In_Device_Info FAILURE
 }
 
-eReturnValues get_Device(const char* filename, tDevice* device)
+eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
 #if defined(ENABLE_CSMI)
     // check is the handle is in the format of a CSMI device handle so we can open the csmi device properly.
@@ -6117,7 +6119,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
+eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags)
 {
     HANDLE fd = M_NULLPTR;
     DECLARE_ZERO_INIT_ARRAY(TCHAR, deviceName, WIN_MAX_DEVICE_NAME_LENGTH);
@@ -6267,7 +6269,10 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                              uint32_t                 sizeInBytes,
+                              versionBlock             ver,
+                              uint64_t                 flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -6506,9 +6511,9 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks(ScsiIoCtx* scsiIoCtx)
         // first get number of entries in the list.
         DWORD            bytesReturned     = DWORD_C(0);
         DWORD            reassignStructLen = sizeof(REASSIGN_BLOCKS) + (lbaEntries * sizeof(DWORD));
-        PREASSIGN_BLOCKS winReassignBlocks =
-            M_REINTERPRET_CAST(PREASSIGN_BLOCKS, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t),
-                                                                     get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
+        PREASSIGN_BLOCKS winReassignBlocks = M_REINTERPRET_CAST(
+            PREASSIGN_BLOCKS, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t),
+                                                  get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
         if (winReassignBlocks == M_NULLPTR)
         {
             return MEMORY_FAILURE;
@@ -6562,9 +6567,9 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks_Ex(ScsiIoCtx* scsiIoCtx
         // first get number of entries in the list.
         DWORD               bytesReturned     = DWORD_C(0);
         DWORD               reassignStructLen = sizeof(REASSIGN_BLOCKS_EX) + (lbaEntries * sizeof(LARGE_INTEGER));
-        PREASSIGN_BLOCKS_EX winReassignBlocks =
-            M_REINTERPRET_CAST(PREASSIGN_BLOCKS_EX, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t),
-                                                                        get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
+        PREASSIGN_BLOCKS_EX winReassignBlocks = M_REINTERPRET_CAST(
+            PREASSIGN_BLOCKS_EX, safe_calloc_aligned(reassignStructLen, sizeof(uint8_t),
+                                                     get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
         if (winReassignBlocks == M_NULLPTR)
         {
             return MEMORY_FAILURE;
@@ -6675,8 +6680,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoC
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (deviceTimeout > 0 &&
-        deviceTimeout > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
         psptd->scsiPassThroughEX.TimeOutValue = deviceTimeout;
     }
@@ -6891,13 +6895,11 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* 
         break;
     }
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (deviceTimeout > 0 &&
-        deviceTimeout > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
         psptd->scsiPassThroughEXDirect.TimeOutValue = deviceTimeout;
     }
@@ -7129,13 +7131,11 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx*    
         break;
     }
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (deviceTimeout > 0 &&
-        deviceTimeout > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
         psptd->scsiPassthroughDirect.TimeOutValue = deviceTimeout;
     }
@@ -7197,13 +7197,11 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiI
         break;
     }
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    if (scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (deviceTimeout > 0 &&
-        deviceTimeout > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
         psptd->scsiPassthrough.TimeOutValue = deviceTimeout;
     }
@@ -7644,8 +7642,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
         return OS_TIMEOUT_TOO_LARGE;
     }
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(p_scsiIoCtx->device);
-    if (deviceTimeout > UINT32_C(0) &&
-        deviceTimeout > p_scsiIoCtx->timeout)
+    if (deviceTimeout > UINT32_C(0) && deviceTimeout > p_scsiIoCtx->timeout)
     {
         ptrATAPassThroughDirect->TimeOutValue = deviceTimeout;
     }
@@ -7972,13 +7969,11 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
         break;
     }
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(p_scsiIoCtx->device);
-    if (p_scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    if (p_scsiIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
-    if (deviceTimeout > 0 &&
-        deviceTimeout > p_scsiIoCtx->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > p_scsiIoCtx->timeout)
     {
         p_t_ata_pt->ataPTCommand.TimeOutValue = deviceTimeout;
     }
@@ -9499,7 +9494,7 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-eReturnValues os_Device_Reset(const tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = FAILURE;
     // this IOCTL is only supported for non-scsi devices, which includes anything (ata or scsi) attached to a USB or
@@ -9524,7 +9519,7 @@ eReturnValues os_Device_Reset(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Bus_Reset(const tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = FAILURE;
     // This does not seem to work since it is obsolete and likely not implemented in modern drivers
@@ -9550,15 +9545,16 @@ eReturnValues os_Bus_Reset(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Get_Exclusive(tDevice* device)
+eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
-    if (get_Device_Handle_Open_Flags(device) == HANDLE_FLAGS_DEFAULT && strstr(get_Device_Handle_Name(device), "PHYSICAL") != M_NULLPTR)
+    if (get_Device_Handle_Open_Flags(device) == HANDLE_FLAGS_DEFAULT &&
+        strstr(get_Device_Handle_Name(device), "PHYSICAL") != M_NULLPTR)
     {
         // attempt to reopen with exclusive access. If it fails, that is ok, we still have this other lock
         // This is the same way the linux code is working. -TJE
@@ -9571,7 +9567,7 @@ eReturnValues os_Get_Exclusive(tDevice* device)
 
 // TODO: We may need to switch between locking fd and scsiSrbHandle in some way...for now just locking fd value.
 // https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume
-eReturnValues os_Lock_Device(const tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
@@ -9592,7 +9588,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Unlock_Device(const tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -9611,7 +9607,7 @@ eReturnValues os_Unlock_Device(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     // If the volume bitfield is blank, then there is nothing to unmount - TJE
@@ -11392,9 +11388,10 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
                                     // Write commands
                                     uint32_t writeDataLength =
                                         writeSectors64K * get_Device_BlockSize(scsiIoCtx->device);
-                                    uint8_t* writePattern = C_CAST(
-                                        uint8_t*, safe_calloc_aligned(writeDataLength, sizeof(uint8_t),
-                                                                      get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
+                                    uint8_t* writePattern =
+                                        C_CAST(uint8_t*,
+                                               safe_calloc_aligned(writeDataLength, sizeof(uint8_t),
+                                                                   get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
                                     if (writePattern)
                                     {
                                         uint32_t numberOfLBAs =
@@ -11410,14 +11407,12 @@ static eReturnValues wbst_Format_Unit(ScsiIoCtx* scsiIoCtx)
                                             }
                                         }
                                         uint64_t devMaxLBA = return_Device_MaxLba(scsiIoCtx->device);
-                                        for (uint64_t lba = UINT64_C(0);
-                                             lba < devMaxLBA; lba += numberOfLBAs)
+                                        for (uint64_t lba = UINT64_C(0); lba < devMaxLBA; lba += numberOfLBAs)
                                         {
                                             if ((lba + numberOfLBAs) > devMaxLBA)
                                             {
                                                 // end of range...don't over do it!
-                                                numberOfLBAs =
-                                                    C_CAST(uint32_t, devMaxLBA - lba);
+                                                numberOfLBAs = C_CAST(uint32_t, devMaxLBA - lba);
                                                 writeDataLength =
                                                     numberOfLBAs * get_Device_BlockSize(scsiIoCtx->device);
                                             }
@@ -11568,7 +11563,7 @@ static eReturnValues win_Basic_SCSI_Translation(ScsiIoCtx* scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
@@ -11828,15 +11823,13 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
     }
 
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
-    if (nvmeIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS ||
-        deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
+    if (nvmeIoCtx->timeout > WIN_MAX_CMD_TIMEOUT_SECONDS || deviceTimeout > WIN_MAX_CMD_TIMEOUT_SECONDS)
     {
         safe_free_aligned(&commandBuffer);
         return OS_TIMEOUT_TOO_LARGE;
     }
 
-    if (deviceTimeout > 0 &&
-        deviceTimeout > nvmeIoCtx->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > nvmeIoCtx->timeout)
     {
         protocolCommand->TimeOutValue = deviceTimeout;
     }
@@ -13904,9 +13897,9 @@ static eReturnValues win10_Translate_Data_Set_Management(nvmeCmdCtx* nvmeIoCtx)
            // first, allocate enough memory for the Unmap command
         uint16_t unmapParameterDataLength = UINT16_C(8) + (UINT16_C(16) * numberOfRanges);
         uint8_t* unmapParameterData       = C_CAST(
-            uint8_t*, safe_calloc_aligned(
-                          unmapParameterDataLength, sizeof(uint8_t),
-                          get_Device_IO_Minimum_Alignment(nvmeIoCtx->device))); // each range is 16 bytes plus an 8 byte header
+            uint8_t*, safe_calloc_aligned(unmapParameterDataLength, sizeof(uint8_t),
+                                                get_Device_IO_Minimum_Alignment(
+                                              nvmeIoCtx->device))); // each range is 16 bytes plus an 8 byte header
         if (unmapParameterData)
         {
             // in a loop, set the unmap descriptors
@@ -14031,7 +14024,8 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
             bool             ause           = M_ToBool(nvmeIoCtx->cmd.adminCmd.cdw10 & BIT3);
             eVerbosityLevels temp           = nvmeIoCtx->device->deviceVerbosity;
             uint32_t         currentTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
-            set_tDevice_Default_Command_Timeout(nvmeIoCtx->device,
+            set_tDevice_Default_Command_Timeout(
+                nvmeIoCtx->device,
                 600); // change to 10 minutes since this does not return immediately in Windows-TJE
             nvmeIoCtx->device->deviceVerbosity = VERBOSITY_QUIET;
             if (action == 4) // crypto
@@ -14717,7 +14711,7 @@ static eReturnValues send_Win_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif // DISBALE_NVME_PASSTHROUGH
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     switch (get_Device_InterfaceType(nvmeIoCtx->device))
@@ -14776,7 +14770,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
-eReturnValues os_nvme_Reset(const tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     // This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code
@@ -14798,7 +14792,7 @@ eReturnValues os_nvme_Reset(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     // This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code
@@ -14820,15 +14814,15 @@ eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
     return ret;
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
-                               M_ATTR_UNUSED uint8_t*       pData,
-                               M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                               M_ATTR_UNUSED uint8_t* M_NONNULL       pData,
+                               M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
 M_PARAM_RW(1)
-static eReturnValues open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice* device)
+static eReturnValues open_Force_Unit_Access_Handle_For_OS_Read_OS_Write(tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.forceUnitAccessRWfd == M_NULLPTR || device->os_info.forceUnitAccessRWfd == INVALID_HANDLE_VALUE)
@@ -15085,7 +15079,11 @@ M_PARAM_RW(1) static eReturnValues set_Command_Completion_For_OS_Read_Write(tDev
 // The overlapped structure used here changes it to asynchronous IO, but the synchronous portions of code are left here
 // in case the device responds as a synchronous device and ignores the overlapped strucutre...it SHOULD work on any
 // device like this. See here: https://msdn.microsoft.com/en-us/library/windows/desktop/aa365683(v=vs.85).aspx
-eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+eReturnValues os_Read(const tDevice* M_NONNULL device,
+                      uint64_t                 lba,
+                      bool                     forceUnitAccess,
+                      uint8_t* M_NONNULL       ptrData,
+                      uint32_t                 dataSize)
 {
     eReturnValues ret         = UNKNOWN;
     eReturnValues openFUA     = SUCCESS;
@@ -15107,8 +15105,8 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     safe_memset(&comTimeout, sizeof(COMMTIMEOUTS), 0, sizeof(COMMTIMEOUTS));
     /*BOOL timeoutGot = */
     GetCommTimeouts(handleToUse, &comTimeout); // get timeouts if possible before trying to change them...
-    uint64_t timeoutInSeconds = UINT64_C(0);
-    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
+    uint64_t       timeoutInSeconds = UINT64_C(0);
+    const uint32_t deviceTimeout    = get_tDevice_Default_Command_Timeout(device);
     if (deviceTimeout == 0)
     {
         comTimeout.ReadTotalTimeoutConstant = DEFAULT_COMMAND_TIMEOUT * 1000; // 15 seconds
@@ -15116,9 +15114,8 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     }
     else
     {
-        comTimeout.ReadTotalTimeoutConstant =
-            deviceTimeout * 1000; // convert time in seconds to milliseconds
-        timeoutInSeconds = deviceTimeout;
+        comTimeout.ReadTotalTimeoutConstant = deviceTimeout * 1000; // convert time in seconds to milliseconds
+        timeoutInSeconds                    = deviceTimeout;
     }
     /*BOOL timeoutSet = */
     SetCommTimeouts(handleToUse, &comTimeout);
@@ -15220,7 +15217,11 @@ eReturnValues os_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     return ret;
 }
 
-eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+eReturnValues os_Write(const tDevice* M_NONNULL device,
+                       uint64_t                 lba,
+                       bool                     forceUnitAccess,
+                       uint8_t* M_NONNULL       ptrData,
+                       uint32_t                 dataSize)
 {
     eReturnValues ret         = UNKNOWN;
     eReturnValues openFUA     = SUCCESS;
@@ -15242,8 +15243,8 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     safe_memset(&comTimeout, sizeof(COMMTIMEOUTS), 0, sizeof(COMMTIMEOUTS));
     /*BOOL timeoutGot = */
     GetCommTimeouts(handleToUse, &comTimeout); // get timeouts if possible before trying to change them...
-    uint64_t timeoutInSeconds = UINT64_C(0);
-    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
+    uint64_t       timeoutInSeconds = UINT64_C(0);
+    const uint32_t deviceTimeout    = get_tDevice_Default_Command_Timeout(device);
     if (deviceTimeout == 0)
     {
         comTimeout.WriteTotalTimeoutConstant = DEFAULT_COMMAND_TIMEOUT * 1000; // 15 seconds
@@ -15251,9 +15252,8 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     }
     else
     {
-        comTimeout.WriteTotalTimeoutConstant =
-            deviceTimeout * 1000; // convert time in seconds to milliseconds
-        timeoutInSeconds = deviceTimeout;
+        comTimeout.WriteTotalTimeoutConstant = deviceTimeout * 1000; // convert time in seconds to milliseconds
+        timeoutInSeconds                     = deviceTimeout;
     }
     /*BOOL timeoutSet = */
     SetCommTimeouts(handleToUse, &comTimeout);
@@ -15358,7 +15358,7 @@ eReturnValues os_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
 // IOCTL is for Win XP and higher
 // Seems to work. Needs some enhancements with timers and checking return codes more closely to dummy up better sense
 // data.
-eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
+eReturnValues os_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = NOT_SUPPORTED;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
@@ -15370,9 +15370,9 @@ eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
     DECLARE_SEATIMER(verifyTimer);
     verifyCmd.StartingOffset.QuadPart =
         C_CAST(LONGLONG, lba * get_Device_BlockSize(device)); // LBA needs to be converted to a byte offset
-    verifyCmd.Length          = range * get_Device_BlockSize(device); // needs to be a range in bytes!
-    uint64_t timeoutInSeconds = UINT64_C(0);
-    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
+    verifyCmd.Length                = range * get_Device_BlockSize(device); // needs to be a range in bytes!
+    uint64_t       timeoutInSeconds = UINT64_C(0);
+    const uint32_t deviceTimeout    = get_tDevice_Default_Command_Timeout(device);
     if (deviceTimeout == 0)
     {
         timeoutInSeconds = DEFAULT_COMMAND_TIMEOUT;
@@ -15438,15 +15438,14 @@ eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
 }
 #else
 // verify IOTCL is not available so we need to just do a flush and a read.
-eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
+eReturnValues os_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     // flush the cache first to make sure we aren't reading something that is in cache than disk (as close as we can get
     // right here)
     os_Flush(device);
     // now do a read and throw away the data
     uint8_t* readData = M_REINTERPRET_CAST(
-        uint8_t*,
-        safe_calloc(uint32_to_sizet(get_Device_BlockSize(device)) * uint32_to_sizet(range), sizeof(uint8_t)));
+        uint8_t*, safe_calloc(uint32_to_sizet(get_Device_BlockSize(device)) * uint32_to_sizet(range), sizeof(uint8_t)));
     if (readData)
     {
         ret = os_Read(device, lba, false, readData, get_Device_BlockSize(device) * range);
@@ -15461,7 +15460,7 @@ eReturnValues os_Verify(const tDevice* device, uint64_t lba, uint32_t range)
 #endif
 
 // This is for Windows XP and higher. This should issue a flush cache or synchronize cache command for us
-eReturnValues os_Flush(const tDevice* device)
+eReturnValues os_Flush(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = UNKNOWN;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
@@ -15473,8 +15472,8 @@ eReturnValues os_Flush(const tDevice* device)
     safe_memset(&comTimeout, sizeof(COMMTIMEOUTS), 0, sizeof(COMMTIMEOUTS));
     /*BOOL timeoutGot = */
     GetCommTimeouts(device->os_info.fd, &comTimeout); // get timeouts if possible before trying to change them...
-    uint64_t timeoutInSeconds = UINT64_C(0);
-    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
+    uint64_t       timeoutInSeconds = UINT64_C(0);
+    const uint32_t deviceTimeout    = get_tDevice_Default_Command_Timeout(device);
     if (deviceTimeout == 0)
     {
         comTimeout.ReadTotalTimeoutConstant = DEFAULT_COMMAND_TIMEOUT * 1000; // 15 seconds
@@ -15482,9 +15481,8 @@ eReturnValues os_Flush(const tDevice* device)
     }
     else
     {
-        comTimeout.ReadTotalTimeoutConstant =
-            deviceTimeout * 1000; // convert time in seconds to milliseconds
-        timeoutInSeconds = deviceTimeout;
+        comTimeout.ReadTotalTimeoutConstant = deviceTimeout * 1000; // convert time in seconds to milliseconds
+        timeoutInSeconds                    = deviceTimeout;
     }
     /*BOOL timeoutSet = */
     SetCommTimeouts(device->os_info.fd, &comTimeout);

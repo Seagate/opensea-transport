@@ -27,7 +27,7 @@
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 
-eReturnValues enable_Disable_ATA_Passthrough(const tDevice* device, bool enable)
+eReturnValues enable_Disable_ATA_Passthrough(const tDevice* M_NONNULL device, bool enable)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -57,7 +57,9 @@ eReturnValues enable_Disable_ATA_Passthrough(const tDevice* device, bool enable)
     return ret;
 }
 
-eReturnValues build_PSP_Legacy_CDB(uint8_t* cdb, uint8_t* cdbLen, ataPassthroughCommand* ataCommandOptions)
+eReturnValues build_PSP_Legacy_CDB(uint8_t* M_NONNULL               cdb,
+                                   uint8_t* M_NONNULL               cdbLen,
+                                   ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
@@ -130,9 +132,9 @@ eReturnValues build_PSP_Legacy_CDB(uint8_t* cdb, uint8_t* cdbLen, ataPassthrough
     return ret;
 }
 
-eReturnValues get_RTFRs_From_PSP_Legacy(const tDevice*         device,
-                                        ataPassthroughCommand* ataCommandOptions,
-                                        eReturnValues          commandRet)
+eReturnValues get_RTFRs_From_PSP_Legacy(const tDevice* M_NONNULL         device,
+                                        ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                        eReturnValues                    commandRet)
 {
     eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
@@ -168,7 +170,8 @@ eReturnValues get_RTFRs_From_PSP_Legacy(const tDevice*         device,
     return ret;
 }
 
-eReturnValues send_PSP_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_PSP_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                  ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret    = UNKNOWN;
     uint8_t       cdbLen = PSP_EXT_COMMAND_CDB_LEN;

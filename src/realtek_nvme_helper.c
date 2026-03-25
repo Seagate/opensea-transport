@@ -195,7 +195,7 @@ eReturnValues build_Realtek_NVMe_CDB_And_Payload(uint8_t cdb[M_NONNULL_ARRAY REA
     return SUCCESS;
 }
 
-eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
+eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekCDB, REALTEK_NVME_CDB_SIZE);
@@ -288,8 +288,8 @@ eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
 //  sanitize
 //  set features
 
-eReturnValues build_Realtek_Basic_NVMe_CDB_And_Payload(uint8_t     cdb[M_NONNULL_ARRAY REALTEK_NVME_CDB_SIZE],
-                                                       nvmeCmdCtx* nvmCmd)
+eReturnValues build_Realtek_Basic_NVMe_CDB_And_Payload(uint8_t               cdb[M_NONNULL_ARRAY REALTEK_NVME_CDB_SIZE],
+                                                       nvmeCmdCtx* M_NONNULL nvmCmd)
 {
     eReturnValues ret = SUCCESS;
     if (nvmCmd->commandType != NVM_ADMIN_CMD || nvmCmd->dataSize > REALTEK_BASIC_MAX_TRANSFER_SIZE_BYTES)
@@ -320,7 +320,7 @@ eReturnValues build_Realtek_Basic_NVMe_CDB_And_Payload(uint8_t     cdb[M_NONNULL
     return ret;
 }
 
-eReturnValues send_Realtek_Basic_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
+eReturnValues send_Realtek_Basic_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, realtekCDB, REALTEK_NVME_CDB_SIZE);

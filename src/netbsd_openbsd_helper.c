@@ -75,7 +75,7 @@ static int rwd_filter(const struct dirent* entry)
     }
 }
 
-eReturnValues get_Device(const char* filename, tDevice* device)
+eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     eReturnValues     ret          = SUCCESS;
     char*             deviceHandle = M_NULLPTR;
@@ -165,7 +165,7 @@ eReturnValues close_Device(tDevice* dev)
     return SUCCESS;
 }
 
-eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
     int num_wd_devs = 0;
     int num_sd_devs = 0;
@@ -218,10 +218,10 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 }
 
 #define BSD_DEV_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
-                              uint32_t               sizeInBytes,
-                              versionBlock           ver,
-                              M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                              uint32_t                 sizeInBytes,
+                              versionBlock             ver,
+                              M_ATTR_UNUSED uint64_t   flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -396,35 +396,37 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
-                      M_ATTR_UNUSED uint64_t       lba,
-                      M_ATTR_UNUSED bool           forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t*       ptrData,
-                      M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                      M_ATTR_UNUSED uint64_t                 lba,
+                      M_ATTR_UNUSED bool                     forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                      M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
-                       M_ATTR_UNUSED uint64_t       lba,
-                       M_ATTR_UNUSED bool           forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t*       ptrData,
-                       M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                       M_ATTR_UNUSED uint64_t                 lba,
+                       M_ATTR_UNUSED bool                     forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                       M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                        M_ATTR_UNUSED uint64_t                 lba,
+                        M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     switch (scsiIoCtx->device->os_info.passthroughType)
     {
@@ -437,7 +439,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-eReturnValues os_Device_Reset(const tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
     switch (device->os_info.passthroughType)
     {
@@ -450,7 +452,7 @@ eReturnValues os_Device_Reset(const tDevice* device)
     }
 }
 
-eReturnValues os_Bus_Reset(const tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
     switch (device->os_info.passthroughType)
     {
@@ -463,13 +465,13 @@ eReturnValues os_Bus_Reset(const tDevice* device)
     }
 }
 
-eReturnValues os_Controller_Reset(const tDevice* device)
+eReturnValues os_Controller_Reset(const tDevice* M_NONNULL device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataSize)
 {
     M_USE_UNUSED(device);
     M_USE_UNUSED(pData);
@@ -477,30 +479,30 @@ eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t d
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     M_USE_UNUSED(nvmeIoCtx);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Reset(const tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Lock_Device(const tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     // flock?
     M_USE_UNUSED(device);
@@ -512,7 +514,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Unlock_Device(const tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     // flock?
     M_USE_UNUSED(device);
@@ -523,18 +525,18 @@ eReturnValues os_Unlock_Device(const tDevice* device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Update_File_System_Cache(const tDevice* device)
+eReturnValues os_Update_File_System_Cache(const tDevice* M_NONNULL device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device)
 {
     return unmount_Partitions_From_Device(get_Device_Handle_Name(device));
 }
 
-eReturnValues os_Erase_Boot_Sectors(const tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device)
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;

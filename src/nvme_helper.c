@@ -56,7 +56,7 @@ static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData,
 // \file nvme_cmds.c   Implementation for NVM Express helper functions
 //                     The intention of the file is to be generic & not OS specific
 
-// \fn fill_In_NVMe_Device_Info(device device)
+// \fn fill_In_NVMe_Device_Info(device M_NONNULL device)
 // \brief Sends a set Identify etc commands & fills in the device information
 // \param device device struture
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -115,7 +115,8 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
         }
         // set the t10 vendor id to NVMe
         snprintf_err_handle(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
-        set_Device_MediaType(device, MEDIA_NVM); // This will bite us someday when someone decided to put non-ssds on NVMe interface.
+        set_Device_MediaType(
+            device, MEDIA_NVM); // This will bite us someday when someone decided to put non-ssds on NVMe interface.
         // set scsi version to 6 if it is not already set
         if (device->drive_info.scsiVersion == 0)
         {
@@ -199,7 +200,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
     return ret;
 }
 
-void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* cmdCtx)
+void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* M_NONNULL cmdCtx)
 {
     print_str("Sending NVM Command:\n");
     print_str("\tType: ");
@@ -296,11 +297,11 @@ void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* cmdCtx)
     print_str("\n");
 }
 
-void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
-                                       bool*    doNotRetry,
-                                       bool*    more,
-                                       uint8_t* statusCodeType,
-                                       uint8_t* statusCode)
+void get_NVMe_Status_Fields_From_DWord(uint32_t           nvmeStatusDWord,
+                                       bool* M_NONNULL    doNotRetry,
+                                       bool* M_NONNULL    more,
+                                       uint8_t* M_NONNULL statusCodeType,
+                                       uint8_t*           statusCode)
 {
 
     if (doNotRetry != M_NULLPTR && more != M_NULLPTR && statusCodeType != M_NULLPTR && statusCode != M_NULLPTR)
@@ -533,7 +534,7 @@ eReturnValues check_NVMe_Status(uint32_t nvmeStatusDWord)
     return ret;
 }
 
-void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* cmdCtx)
+void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* M_NONNULL cmdCtx)
 {
     print_str("NVM Command Completion:\n");
     print_str("\tCommand Specific (DW0): ");
@@ -741,7 +742,10 @@ M_RETURNS_NONNULL const char* nvme_cmd_to_string(int admin, uint8_t opcode)
     return "Unknown";
 }
 
-eReturnValues nvme_Get_SMART_Log_Page(const tDevice* device, uint32_t nsid, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_SMART_Log_Page(const tDevice* M_NONNULL device,
+                                      uint32_t                 nsid,
+                                      uint8_t* M_NONNULL       pData,
+                                      uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -771,7 +775,7 @@ eReturnValues nvme_Get_SMART_Log_Page(const tDevice* device, uint32_t nsid, uint
     return ret;
 }
 
-eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -797,7 +801,7 @@ eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* device, uint8_t* pData, uin
     return ret;
 }
 
-eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -823,7 +827,7 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* device, uint8_t* pData, u
     return ret;
 }
 
-eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -849,7 +853,7 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* device, uint8_t* pData
     return ret;
 }
 
-eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
+eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -876,7 +880,7 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* device, uint8_t* pDat
 }
 
 // Seagate unique?
-eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* device, EXTENDED_SMART_INFO_T* ExtdSMARTInfo)
+eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* M_NONNULL device, EXTENDED_SMART_INFO_T* M_NONNULL ExtdSMARTInfo)
 {
     eReturnValues         ret = SUCCESS;
     nvmeGetLogPageCmdOpts getExtSMARTLog;

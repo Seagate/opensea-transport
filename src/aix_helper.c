@@ -1121,7 +1121,7 @@ static int get_Adapter_IDs(const tDevice* M_NONNULL device, const char* M_NONNUL
 // While we are unlikely to see many, if any, USB devices in AIX,
 // it is possible to read the vendor/product IDs somewhere in the attributes:
 // https://www.ibm.com/docs/en/aix/7.3?topic=subsystem-usblibdd-passthru-driver
-eReturnValues get_Device(const char* filename, tDevice* device)
+eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     // use openx. Do not set the SC_DIAGNOSTIC. That can be redone in the lock/unlock routines.
     // open can be used but always performed a SCSI2 reserve. Not necessary for this software
@@ -1281,58 +1281,58 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                     }
                     else if (strstr(ptrcudv->parent, "fscsi")) // fibre channel
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_FC;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
+                        device->os_info.adapterType = AIX_ADAPTER_FC;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
                         set_Device_DriveType(device, SCSI_DRIVE);
                         set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "vscsi")) // virtual scsi?
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_VSCSI;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
+                        device->os_info.adapterType = AIX_ADAPTER_VSCSI;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
                         set_Device_DriveType(device, SCSI_DRIVE);
                         set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "iscsi")) // iSCSI
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_ISCSI;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
+                        device->os_info.adapterType = AIX_ADAPTER_ISCSI;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
                         set_Device_DriveType(device, SCSI_DRIVE);
                         set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "scsi")) // note this is parallel scsi
                     {
                         // SCSI passthrough.
-                        device->os_info.adapterType       = AIX_ADAPTER_SCSI;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
+                        device->os_info.adapterType = AIX_ADAPTER_SCSI;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
                         set_Device_DriveType(device, SCSI_DRIVE);
                         set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "sas"))
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_SAS;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
+                        device->os_info.adapterType = AIX_ADAPTER_SAS;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
                         set_Device_DriveType(device, SCSI_DRIVE);
                         set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "nvme"))
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_NVME;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_NVME;
+                        device->os_info.adapterType = AIX_ADAPTER_NVME;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_NVME;
                         set_Device_DriveType(device, NVME_DRIVE);
                         set_Device_InterfaceType(device, NVME_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "serdasd"))
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_DASD;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
+                        device->os_info.adapterType = AIX_ADAPTER_DASD;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
                         set_Device_DriveType(device, SCSI_DRIVE);
                         set_Device_InterfaceType(device, USB_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "usb"))
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_USB;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
+                        device->os_info.adapterType = AIX_ADAPTER_USB;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
                         set_Device_DriveType(device, SCSI_DRIVE);
                         set_Device_InterfaceType(device, USB_INTERFACE);
                     }
@@ -1407,18 +1407,18 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     return ret;
 }
 
-eReturnValues os_Device_Reset(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Device_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Bus_Reset(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Bus_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // if unable to find another way to do this, can close and reopen with SC_FORCED_OPEN
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
@@ -2087,8 +2087,7 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
     aixPassthrough.node_name       = 0; // TODO: Discover and save this to pass it here???
 
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-    if (deviceTimeout > 0 &&
-        deviceTimeout > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
         aixPassthrough.timeout_value = deviceTimeout;
         if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
@@ -2265,8 +2264,7 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     idePassthrough.data_ptr = scsiIoCtx->pAtaCmdOpts->ptrData;
 
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-    if (deviceTimeout > 0 &&
-        deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
     {
         idePassthrough.timeout_value = deviceTimeout;
         if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
@@ -2363,8 +2361,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
     idePassthrough.data_ptr = scsiIoCtx->pdata;
 
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-    if (deviceTimeout > 0 &&
-        deviceTimeout > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
         idePassthrough.timeout_value = deviceTimeout;
         if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
@@ -2553,8 +2550,7 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     sataPassthrough.data_ptr = scsiIoCtx->pAtaCmdOpts->ptrData;
 
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-    if (deviceTimeout > 0 &&
-        deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
     {
         sataPassthrough.timeout_value = deviceTimeout;
         if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
@@ -2714,7 +2710,7 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     // switch based on value stored in os_info to define which passthrough interface to use to issue commands -TJE
     eReturnValues ret = SUCCESS;
@@ -2804,7 +2800,7 @@ static int rhdisk_filter(const struct dirent* entry)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
+eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags)
 {
     int             num_devs = 0;
     struct dirent** namelist;
@@ -2846,7 +2842,10 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //
 //-----------------------------------------------------------------------------
 #define AIX_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                              uint32_t                 sizeInBytes,
+                              versionBlock             ver,
+                              uint64_t                 flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -3006,7 +3005,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 //
 //  close_Device()
 //
-//! \brief   Description:  Given a device, close it's handle.
+//! \brief   Description:  Given a M_NONNULL device, close it's handle.
 //
 //  Entry:
 //!   \param[in] device = device stuct that holds device information.
@@ -3047,7 +3046,7 @@ eReturnValues close_Device(tDevice* dev)
     }
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     // In AIX, you must issue Admin commands on the controller handle
@@ -3112,8 +3111,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     nvmePassthrough.cmd.data        = nvmeIoCtx->ptrData;
     // set the timeout
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
-    if (deviceTimeout > 0 &&
-        deviceTimeout > nvmeIoCtx->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > nvmeIoCtx->timeout)
     {
         nvmePassthrough.cmd.timeout = deviceTimeout;
         if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
@@ -3219,7 +3217,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif
 }
 
-eReturnValues os_nvme_Reset(const tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues    ret = SUCCESS;
@@ -3255,7 +3253,7 @@ eReturnValues os_nvme_Reset(const tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
@@ -3265,9 +3263,9 @@ eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
-                               M_ATTR_UNUSED uint8_t*       pData,
-                               M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                               M_ATTR_UNUSED uint8_t* M_NONNULL       pData,
+                               M_ATTR_UNUSED uint32_t                 dataSize)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
@@ -3279,35 +3277,37 @@ eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
 // supposedly, when not in diagnostic mode, the read(), write(), lseek() can all be used.
 // This is currently not needed though.
 // Another thing we may want to implement here is the read/write ioctl codes that are available.
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
-                      M_ATTR_UNUSED uint64_t       lba,
-                      M_ATTR_UNUSED bool           forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t*       ptrData,
-                      M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                      M_ATTR_UNUSED uint64_t                 lba,
+                      M_ATTR_UNUSED bool                     forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                      M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
-                       M_ATTR_UNUSED uint64_t       lba,
-                       M_ATTR_UNUSED bool           forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t*       ptrData,
-                       M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                       M_ATTR_UNUSED uint64_t                 lba,
+                       M_ATTR_UNUSED bool                     forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                       M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                        M_ATTR_UNUSED uint64_t                 lba,
+                        M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // TODO: Not sure if this is correct or not. If you look at locking below it opens with a diagnostic flag which is
     // extremely similar in behavior which is why this function is empty. -TJE
@@ -3315,7 +3315,7 @@ eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
 }
 
 // add SC_DIAGNOSTIC flag
-eReturnValues os_Lock_Device(const tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
@@ -3348,7 +3348,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
 }
 
 // remove SC_DIAGNOSTIC flag
-eReturnValues os_Unlock_Device(const tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -3380,12 +3380,12 @@ eReturnValues os_Unlock_Device(const tDevice* device)
 }
 
 // use mount/vmount with the remount option??? (see links below)
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
@@ -3395,7 +3395,7 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 // https://www.ibm.com/docs/en/aix/7.3?topic=files-fullstath-file
 // https://www.ibm.com/docs/en/aix/7.3?topic=u-umount-uvmount-subroutine#umount
 // https://www.ibm.com/docs/en/aix/7.3?topic=m-mntctl-subroutine
-eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }

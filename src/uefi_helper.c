@@ -530,7 +530,7 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
     return success;
 }
 
-eReturnValues get_Device(const char* filename, tDevice* device)
+eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     set_Device_Handle_Name(device, filename);
     set_Device_Handle_Friendly_Name(device, filename);
@@ -562,7 +562,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         // issuing commands!
                         device->drive_info.ata_Options.isDevice1 = true;
                     }
-                    set_Device_IO_Minimum_Alignment(device,  pPassthru->Mode->IoAlign);
+                    set_Device_IO_Minimum_Alignment(device, pPassthru->Mode->IoAlign);
 #if defined(UEFI_PASSTHRU_DEBUG_MESSAGES)
                     set_Console_Colors(true, CONSOLE_COLOR_GREEN);
                     printf("Protocol Mode = %d\n",
@@ -597,7 +597,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         {
             set_Device_InterfaceType(device, SCSI_INTERFACE);
             set_Device_DriveType(device, SCSI_DRIVE);
-            device->os_info.passthroughType   = UEFI_PASSTHROUGH_SCSI_EXT;
+            device->os_info.passthroughType = UEFI_PASSTHROUGH_SCSI_EXT;
             EFI_EXT_SCSI_PASS_THRU_PROTOCOL* pPassthru;
             if (SUCCESS == get_Ext_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
             {
@@ -632,7 +632,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         {
             set_Device_InterfaceType(device, SCSI_INTERFACE);
             set_Device_DriveType(device, SCSI_DRIVE);
-            device->os_info.passthroughType   = UEFI_PASSTHROUGH_SCSI;
+            device->os_info.passthroughType = UEFI_PASSTHROUGH_SCSI;
             EFI_SCSI_PASS_THRU_PROTOCOL* pPassthru;
             if (SUCCESS == get_SCSI_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
             {
@@ -670,7 +670,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         {
             set_Device_InterfaceType(device, NVME_INTERFACE);
             set_Device_DriveType(device, NVME_DRIVE);
-            device->os_info.passthroughType   = UEFI_PASSTHROUGH_NVME;
+            device->os_info.passthroughType = UEFI_PASSTHROUGH_NVME;
             EFI_NVM_EXPRESS_PASS_THRU_PROTOCOL* pPassthru;
             if (SUCCESS == get_NVMe_Passthru_Protocol_Ptr(&pPassthru, device->os_info.controllerNum))
             {
@@ -1746,7 +1746,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
@@ -1794,7 +1794,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues                       ret    = OS_PASSTHROUGH_FAILURE;
@@ -2163,12 +2163,12 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataSize)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Reset(const tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 {
     // This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code
     // otherwise compile without ifdefs
@@ -2184,7 +2184,7 @@ eReturnValues os_nvme_Reset(const tDevice* device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     // This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code
     // otherwise compile without ifdefs
@@ -2200,7 +2200,7 @@ eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues close_Device(tDevice* device)
+eReturnValues close_Device(tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
@@ -2783,7 +2783,7 @@ eReturnValues get_NVMe_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInBy
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
     *numberOfDevices += get_ATA_Device_Count();
     *numberOfDevices += get_SCSI_Device_Count();
@@ -2816,10 +2816,10 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
-                              uint32_t               sizeInBytes,
-                              versionBlock           ver,
-                              M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                              uint32_t                 sizeInBytes,
+                              versionBlock             ver,
+                              M_ATTR_UNUSED uint64_t   flags)
 {
     uint32_t index = UINT32_C(0);
     get_ATA_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
@@ -2829,56 +2829,58 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     return SUCCESS;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
-                      M_ATTR_UNUSED uint64_t       lba,
-                      M_ATTR_UNUSED bool           forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t*       ptrData,
-                      M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                      M_ATTR_UNUSED uint64_t                 lba,
+                      M_ATTR_UNUSED bool                     forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                      M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
-                       M_ATTR_UNUSED uint64_t       lba,
-                       M_ATTR_UNUSED bool           forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t*       ptrData,
-                       M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                       M_ATTR_UNUSED uint64_t                 lba,
+                       M_ATTR_UNUSED bool                     forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                       M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                        M_ATTR_UNUSED uint64_t                 lba,
+                        M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Lock_Device(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Lock_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return SUCCESS;
 }
 
-eReturnValues os_Unlock_Device(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Unlock_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return SUCCESS;
 }
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // edk2 might have some kind of partition function we can call for the device to erase it
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }

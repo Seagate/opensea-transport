@@ -91,9 +91,9 @@ eReturnValues build_JMicron_Legacy_PT_CDB(uint8_t                          cdb[M
     return ret;
 }
 
-eReturnValues read_Adapter_Register(const tDevice*           device,
+eReturnValues read_Adapter_Register(const tDevice* M_NONNULL device,
                                     eJMicronAdapterRegisters jmregister,
-                                    uint8_t*                 ptrData,
+                                    uint8_t* M_NONNULL       ptrData,
                                     uint32_t                 dataSize)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JM_PROLIFIC_CDB_LEN);
@@ -121,7 +121,7 @@ eReturnValues read_Adapter_Register(const tDevice*           device,
                          M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0);
 }
 
-eReturnValues set_JM_Dev(tDevice* device)
+eReturnValues set_JM_Dev(tDevice* M_NONNULL device)
 {
     eReturnValues ret    = SUCCESS;
     uint8_t       jmport = UINT8_C(0);
@@ -148,9 +148,9 @@ eReturnValues set_JM_Dev(tDevice* device)
 }
 
 #define JM_REGISTER_BUF_LEN (16)
-eReturnValues get_RTFRs_From_JMicron_Legacy(const tDevice*         device,
-                                            ataPassthroughCommand* ataCommandOptions,
-                                            eReturnValues          commandRet)
+eReturnValues get_RTFRs_From_JMicron_Legacy(const tDevice* M_NONNULL         device,
+                                            ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                            eReturnValues                    commandRet)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, registers, JM_REGISTER_BUF_LEN);
@@ -194,7 +194,8 @@ static M_INLINE bool is_Valid_Smart_Return_Status_For_JMicron_USB(uint8_t status
     return valid;
 }
 
-eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                      ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmCDB, JM_PROLIFIC_CDB_LEN);

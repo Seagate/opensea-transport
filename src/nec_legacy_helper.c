@@ -27,7 +27,7 @@
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 
-eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand* ataCommandOptions)
+eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
     safe_memset(cdb, 16, 0, CDB_LEN_16);
@@ -99,9 +99,9 @@ eReturnValues build_NEC_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand* a
     return ret;
 }
 
-eReturnValues get_RTFRs_From_NEC_Legacy(const tDevice*         device,
-                                        ataPassthroughCommand* ataCommandOptions,
-                                        eReturnValues          commandRet)
+eReturnValues get_RTFRs_From_NEC_Legacy(const tDevice* M_NONNULL         device,
+                                        ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                        eReturnValues                    commandRet)
 {
     eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
@@ -133,7 +133,8 @@ eReturnValues get_RTFRs_From_NEC_Legacy(const tDevice*         device,
     return ret;
 }
 
-eReturnValues send_NEC_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_NEC_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                  ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, necCDB, CDB_LEN_16);

@@ -757,17 +757,17 @@ extern "C"
     static M_INLINE ataReturnTFRs initialize_ATA_RTFRs(void)
     {
         ataReturnTFRs init;
-        init.error = UINT8_C(0);
+        init.error     = UINT8_C(0);
         init.secCntExt = UINT8_C(0);
-        init.secCnt = UINT8_C(0);
+        init.secCnt    = UINT8_C(0);
         init.lbaLowExt = UINT8_C(0);
-        init.lbaLow = UINT8_C(0);
+        init.lbaLow    = UINT8_C(0);
         init.lbaMidExt = UINT8_C(0);
-        init.lbaMid = UINT8_C(0);
-        init.lbaHiExt = UINT8_C(0);
-        init.lbaHi = UINT8_C(0);
-        init.device = UINT8_C(0);
-        init.status = UINT8_C(0);
+        init.lbaMid    = UINT8_C(0);
+        init.lbaHiExt  = UINT8_C(0);
+        init.lbaHi     = UINT8_C(0);
+        init.device    = UINT8_C(0);
+        init.status    = UINT8_C(0);
         M_STATIC_CAST(void, safe_memset(init.padding, sizeof(init.padding), 0, sizeof(init.padding)));
         return init;
     }
@@ -983,10 +983,12 @@ extern "C"
     OPENSEA_TRANSPORT_API void set_tDevice_ATA_DMA_Mode(tDevice* M_NONNULL device, eATASynchronousDMAMode mode);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_PURE_FUNC eATASynchronousDMAMode get_tDevice_ATA_DMA_Mode(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_PURE_FUNC eATASynchronousDMAMode get_tDevice_ATA_DMA_Mode(const tDevice* M_NONNULL device)
+        M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
-    OPENSEA_TRANSPORT_API void disable_tDevice_ATA_DMA(tDevice* M_NONNULL device); // restore is only possible with fill_drive_info call
+    OPENSEA_TRANSPORT_API void disable_tDevice_ATA_DMA(
+        tDevice* M_NONNULL device); // restore is only possible with fill_drive_info call
 
     typedef enum eZonedDeviceTypeEnum
     {
@@ -1388,14 +1390,16 @@ extern "C"
     // Sets the default command timeout value in tDevice
     // If timeoutSeconds is set to zero, a default value of 15 seconds will be used.
     M_PARAM_RW(1)
-    OPENSEA_TRANSPORT_API eReturnValues set_tDevice_Default_Command_Timeout(tDevice* M_NONNULL device, const uint32_t timeoutSeconds);
+    OPENSEA_TRANSPORT_API eReturnValues set_tDevice_Default_Command_Timeout(tDevice* M_NONNULL device,
+                                                                            const uint32_t     timeoutSeconds);
 
     // Gets the default command timeout value in tDevice. If this is zero, a default value of 15 seconds will be used.
     M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API uint32_t get_tDevice_Default_Command_Timeout(const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_CONST_FUNC uint32_t get_Maximum_Command_Timeout_Seconds(M_ATTR_UNUSED const tDevice* M_NONNULL device) M_UNSEQUENCED;
+    OPENSEA_TRANSPORT_API M_CONST_FUNC uint32_t
+    get_Maximum_Command_Timeout_Seconds(M_ATTR_UNUSED const tDevice* M_NONNULL device) M_UNSEQUENCED;
 
 #if defined(UEFI_C_SOURCE)
     typedef enum eUEFIPassthroughTypeEnum
@@ -1534,11 +1538,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         char name[OS_HANDLE_NAME_MAX_LENGTH];                  // handle name (string)
         char friendlyName[OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH]; // Handle name in a shorter/more friendly format.
                                                                // Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
-        eOSType osType;                                        // useful for lower layers to do OS specific things
+        eOSType  osType;                                       // useful for lower layers to do OS specific things
         uint16_t minimumAlignment; // This is a power of 2 value representing the byte alignment required. 0 - no
-                                  // requirement, 1 - single byte alignment, 2 - word, 4 - dword, 8 - qword, 16 - 128bit
-                                  // aligned
-        uint16_t lockCount;       // Tracks lock/unlock requests.
+                                   // requirement, 1 - single byte alignment, 2 - word, 4 - dword, 8 - qword, 16 -
+                                   // 128bit aligned
+        uint16_t lockCount;        // Tracks lock/unlock requests.
 #if defined(UEFI_C_SOURCE)
         EFI_HANDLE   fd;
         EFI_DEV_PATH devicePath; // This type being used is a union of all the different possible device paths. - This
@@ -1759,19 +1763,22 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //! \return the minimum alignment value in bytes. This will be a power of 2 value. Returns 0 only when device
     //! is a null pointer, otherwise it will return at least sizeof(void*).
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC size_t get_Device_IO_Minimum_Alignment(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC size_t
+    get_Device_IO_Minimum_Alignment(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_IO_Minimum_Alignment(tDevice* M_NONNULL device, size_t alignment);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC eHandleOpenFlags get_Device_Handle_Open_Flags(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC eHandleOpenFlags
+    get_Device_Handle_Open_Flags(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_Handle_Open_Flags(tDevice* M_NONNULL device, eHandleOpenFlags flags);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC const char* M_NULLABLE get_Device_Handle_Name(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC const char* M_NULLABLE
+    get_Device_Handle_Name(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     M_PARAM_RO(2)
@@ -1779,7 +1786,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API bool set_Device_Handle_Name(tDevice* M_NONNULL device, const char* M_NULLABLE name);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD const char* M_NULLABLE get_Device_Handle_Friendly_Name(const tDevice* M_NONNULL device);
+    OPENSEA_TRANSPORT_API M_NODISCARD const char* M_NULLABLE
+    get_Device_Handle_Friendly_Name(const tDevice* M_NONNULL device);
 
     M_PARAM_RW(1)
     M_PARAM_RO(2)
@@ -2997,8 +3005,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //-----------------------------------------------------------------------------
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API M_NODISCARD int32_t initialize_Device_struct(tDevice* M_NONNULL device,
-                                                           uint32_t           deviceSize,
-                                                           uint32_t           blockVersion);
+                                                                       uint32_t           deviceSize,
+                                                                       uint32_t           blockVersion);
 
     //-----------------------------------------------------------------------------
     //
@@ -3020,13 +3028,15 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API void set_Device_DriveType(tDevice* M_NONNULL device, eDriveType driveType);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC eInterfaceType get_Device_InterfaceType(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC eInterfaceType
+    get_Device_InterfaceType(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_InterfaceType(tDevice* M_NONNULL device, eInterfaceType interfaceType);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC eMediaType get_Device_MediaType(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC eMediaType get_Device_MediaType(const tDevice* M_NONNULL device)
+        M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_MediaType(tDevice* M_NONNULL device, eMediaType mediaType);
@@ -3070,31 +3080,37 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API void set_Device_PhyBlockSize(tDevice* M_NONNULL device, uint32_t phyBlockSize);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint16_t get_Logical_Sectors_Per_Physical_Sector(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint16_t
+    get_Logical_Sectors_Per_Physical_Sector(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint32_t get_Device_Child_BlockSize(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint32_t get_Device_Child_BlockSize(const tDevice* M_NONNULL device)
+        M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_Child_BlockSize(tDevice* M_NONNULL device, uint32_t blockSize);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint32_t get_Device_Child_PhyBlockSize(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint32_t
+    get_Device_Child_PhyBlockSize(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_Child_PhyBlockSize(tDevice* M_NONNULL device, uint32_t phyBlockSize);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint16_t get_Child_Logical_Sectors_Per_Physical_Sector(const tDevice* M_NONNULL  device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint16_t
+    get_Child_Logical_Sectors_Per_Physical_Sector(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint16_t get_Device_Sector_Alignment(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint16_t get_Device_Sector_Alignment(const tDevice* M_NONNULL device)
+        M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_Sector_Alignment(tDevice* M_NONNULL device, uint16_t sectorAlignment);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint16_t get_Device_Child_Sector_Alignment(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint16_t
+    get_Device_Child_Sector_Alignment(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_Child_Sector_Alignment(tDevice* M_NONNULL device, uint16_t sectorAlignment);
@@ -3115,20 +3131,24 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //-----------------------------------------------------------------------------
     M_PARAM_RW(1)
     M_PARAM_RO(2)
-    OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_MaxLba(uint64_t* M_NONNULL maxLba, const tDevice* M_NONNULL device);
+    OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_MaxLba(uint64_t* M_NONNULL      maxLba,
+                                                                const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_MaxLba(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_MaxLba(const tDevice* M_NONNULL device)
+        M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_MaxLba(tDevice* M_NONNULL device, uint64_t maxLba);
 
     M_PARAM_RW(1)
     M_PARAM_RO(2)
-    OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_Child_MaxLba(uint64_t* M_NONNULL maxLba, const tDevice* M_NONNULL device);
+    OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_Child_MaxLba(uint64_t* M_NONNULL      maxLba,
+                                                                      const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_Child_MaxLba(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_Child_MaxLba(const tDevice* M_NONNULL device)
+        M_REPRODUCIBLE;
 
     M_PARAM_RW(1)
     OPENSEA_TRANSPORT_API void set_Device_Child_MaxLba(tDevice* M_NONNULL device, uint64_t maxLba);
@@ -3147,7 +3167,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint32_t get_Device_LUN(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint32_t get_Device_LUN(const tDevice* M_NONNULL device)
+        M_REPRODUCIBLE;
 
     //-----------------------------------------------------------------------------
     //
@@ -3166,8 +3187,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     M_PARAM_RW_SIZE(1, 2)
     M_PARAM_RO(3)
     OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_serialNumber(char* M_NONNULL          dest_serialNumber,
-                                                          size_t                   dest_len,
-                                                          const tDevice* M_NONNULL device);
+                                                                      size_t                   dest_len,
+                                                                      const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3200,9 +3221,9 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //-----------------------------------------------------------------------------
     M_PARAM_RW_SIZE(1, 2)
     M_PARAM_RO(3)
-    OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_T10_vendor_ident(char* M_NONNULL          dest_T10_vendor_ident,
-                                                              size_t                   dest_len,
-                                                              const tDevice* M_NONNULL device);
+    OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_T10_vendor_ident(char* M_NONNULL dest_T10_vendor_ident,
+                                                                          size_t          dest_len,
+                                                                          const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3235,9 +3256,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //-----------------------------------------------------------------------------
     M_PARAM_RW_SIZE(1, 2)
     M_PARAM_RO(3)
-    OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_product_identification(char* M_NONNULL dest_product_identification,
-                                                                    size_t          dest_len,
-                                                                    const tDevice* M_NONNULL device);
+    OPENSEA_TRANSPORT_API M_NODISCARD int32_t
+    get_Device_product_identification(char* M_NONNULL          dest_product_identification,
+                                      size_t                   dest_len,
+                                      const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3270,9 +3292,9 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //-----------------------------------------------------------------------------
     M_PARAM_RW_SIZE(1, 2)
     M_PARAM_RO(3)
-    OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_product_revision(char* M_NONNULL          dest_product_revision,
-                                                              size_t                   dest_len,
-                                                              const tDevice* M_NONNULL device);
+    OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_product_revision(char* M_NONNULL dest_product_revision,
+                                                                          size_t          dest_len,
+                                                                          const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3306,7 +3328,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     M_PARAM_RW(1)
     M_PARAM_RO(2)
     OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_worldWideName(uint64_t* M_NONNULL      worldWideName,
-                                                           const tDevice* M_NONNULL device);
+                                                                       const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3324,9 +3346,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //-----------------------------------------------------------------------------
     M_PARAM_WO_SIZE(1, 2)
     M_PARAM_RO(3)
-    OPENSEA_TRANSPORT_API M_NODISCARD int32_t get_Device_lastCommandSenseData(uint8_t* M_NONNULL       dest_lastCommandSenseData,
-                                                                  size_t                   dest_len,
-                                                                  const tDevice* M_NONNULL device);
+    OPENSEA_TRANSPORT_API M_NODISCARD int32_t
+    get_Device_lastCommandSenseData(uint8_t* M_NONNULL       dest_lastCommandSenseData,
+                                    size_t                   dest_len,
+                                    const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -3357,7 +3380,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint32_t get_Device_OS_Info_Last_Error(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint32_t
+    get_Device_OS_Info_Last_Error(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     //-----------------------------------------------------------------------------
     //
@@ -3395,7 +3419,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint8_t get_Device_os_info_scsiAddress_host(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint8_t
+    get_Device_os_info_scsiAddress_host(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     //-----------------------------------------------------------------------------
     //
@@ -3411,7 +3436,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint8_t
+    get_Device_os_info_scsiAddress_channel(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     //-----------------------------------------------------------------------------
     //
@@ -3427,7 +3453,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint8_t get_Device_os_info_scsiAddress_target(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint8_t
+    get_Device_os_info_scsiAddress_target(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
     //-----------------------------------------------------------------------------
     //
@@ -3443,7 +3470,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
+    OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint8_t
+    get_Device_os_info_scsiAddress_lun(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
 #if defined(_DEBUG)
     // This function is more for debugging than anything else!

@@ -27,10 +27,10 @@
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 
-eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t                lowCDB[16],
-                                                     uint8_t                hiCDB[16],
-                                                     bool*                  highCDBValid,
-                                                     ataPassthroughCommand* ataCommandOptions)
+eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t                          lowCDB[16],
+                                                     uint8_t                          hiCDB[16],
+                                                     bool* M_NONNULL                  highCDBValid,
+                                                     ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
@@ -89,9 +89,9 @@ eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t                lowC
     return ret;
 }
 
-eReturnValues get_RTFRs_From_Prolific_Legacy(const tDevice*         device,
-                                             ataPassthroughCommand* ataCommandOptions,
-                                             eReturnValues          commandRet)
+eReturnValues get_RTFRs_From_Prolific_Legacy(const tDevice* M_NONNULL         device,
+                                             ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                             eReturnValues                    commandRet)
 {
     eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
@@ -125,7 +125,8 @@ eReturnValues get_RTFRs_From_Prolific_Legacy(const tDevice*         device,
     return ret;
 }
 
-eReturnValues send_Prolific_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_Prolific_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                       ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, prolificLowCDB, CDB_LEN_16);

@@ -60,16 +60,16 @@
 #    pragma warning(disable : 4706)
 #endif
 
-eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(const tDevice* device,
-                                                           ataReturnTFRs* ataRTFRs,
-                                                           uint16_t       parameterCode)
+eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(const tDevice* M_NONNULL device,
+                                                           ataReturnTFRs* M_NONNULL ataRTFRs,
+                                                           uint16_t                 parameterCode)
 {
-    eReturnValues ret              = NOT_SUPPORTED; // Many devices don't support this log page.
-    uint8_t*      sense70logBuffer = C_CAST(
-        uint8_t*,
-        safe_calloc_aligned(14 + LOG_PAGE_HEADER_LENGTH, sizeof(uint8_t),
-                                 get_Device_IO_Minimum_Alignment(device))); // allocate a buffer to get the rtfrs in. the size of 12
-                                                                // is ATA Passthrough Descriptor + 4byte log page header
+    eReturnValues ret = NOT_SUPPORTED; // Many devices don't support this log page.
+    uint8_t*      sense70logBuffer =
+        C_CAST(uint8_t*, safe_calloc_aligned(14 + LOG_PAGE_HEADER_LENGTH, sizeof(uint8_t),
+                                             get_Device_IO_Minimum_Alignment(
+                                                 device))); // allocate a buffer to get the rtfrs in. the size of 12
+                                                            // is ATA Passthrough Descriptor + 4byte log page header
     if (!sense70logBuffer)
     {
         perror("Calloc Failure!\n");
@@ -121,9 +121,9 @@ eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(const tDevice* device
     return ret;
 }
 
-eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* ptrSenseData,
-                                                          uint32_t       senseDataSize,
-                                                          ataReturnTFRs* rtfr)
+eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                          uint32_t                 senseDataSize,
+                                                          ataReturnTFRs* M_NONNULL rtfr)
 {
     eReturnValues ret             = FAILURE;
     uint8_t       senseDataFormat = ptrSenseData[0] & 0x7F;
@@ -184,10 +184,10 @@ eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* ptrSens
     return ret;
 }
 
-eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(const tDevice*         device,
-                                                     const uint8_t*         ptrSenseData,
-                                                     uint32_t               senseDataSize,
-                                                     ataPassthroughCommand* ataCmd)
+eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(const tDevice* M_NONNULL         device,
+                                                     const uint8_t* M_NONNULL         ptrSenseData,
+                                                     uint32_t                         senseDataSize,
+                                                     ataPassthroughCommand* M_NONNULL ataCmd)
 {
     eReturnValues ret             = FAILURE;
     uint8_t       senseDataFormat = ptrSenseData[0] & 0x7F;
@@ -368,8 +368,9 @@ eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(const tDevice*         devi
                      .returnResponseInfoSupported) // rerequest only if the return response info is not supported
             {
                 // request descriptor format data
-                uint8_t* descriptorFormatSenseData = C_CAST(
-                    uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
+                uint8_t* descriptorFormatSenseData =
+                    C_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t),
+                                                         get_Device_IO_Minimum_Alignment(device)));
                 if (!descriptorFormatSenseData)
                 {
                     return MEMORY_FAILURE;
@@ -419,10 +420,10 @@ eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(const tDevice*         devi
     return ret;
 }
 
-bool get_Return_TFRs_From_Sense_Data(const tDevice*         device,
-                                     ataPassthroughCommand* ataCommandOptions,
-                                     eReturnValues          ioRet,
-                                     eReturnValues          senseRet)
+bool get_Return_TFRs_From_Sense_Data(const tDevice* M_NONNULL         device,
+                                     ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                     eReturnValues                    ioRet,
+                                     eReturnValues                    senseRet)
 {
     bool gotRTFRsFromSenseData = false;
     M_USE_UNUSED(senseRet);
@@ -486,7 +487,7 @@ bool get_Return_TFRs_From_Sense_Data(const tDevice*         device,
     return gotRTFRsFromSenseData;
 }
 
-eReturnValues set_Protocol_Field(uint8_t*               satCDB,
+eReturnValues set_Protocol_Field(uint8_t* M_NONNULL     satCDB,
                                  eAtaProtocol           commadProtocol,
                                  eDataTransferDirection dataDirection,
                                  uint8_t                protocolOffset)
@@ -558,7 +559,7 @@ eReturnValues set_Protocol_Field(uint8_t*               satCDB,
     return ret;
 }
 
-eReturnValues set_Transfer_Bits(uint8_t*                      satCDB,
+eReturnValues set_Transfer_Bits(uint8_t* M_NONNULL            satCDB,
                                 eATAPassthroughLength         tLength,
                                 eATAPassthroughTransferBlocks ttype,
                                 eDataTransferDirection        dataDirection,
@@ -609,7 +610,7 @@ eReturnValues set_Transfer_Bits(uint8_t*                      satCDB,
     return ret;
 }
 
-eReturnValues set_Multiple_Count(uint8_t* satCDB, uint8_t multipleCount, uint8_t protocolOffset)
+eReturnValues set_Multiple_Count(uint8_t* M_NONNULL satCDB, uint8_t multipleCount, uint8_t protocolOffset)
 {
     satCDB[protocolOffset] |= (multipleCount & (BIT0 | BIT1 | BIT2)) << 5;
     return SUCCESS;
@@ -625,7 +626,7 @@ eReturnValues set_Multiple_Count(uint8_t* satCDB, uint8_t multipleCount, uint8_t
  */
 // Timeout should be set to 0, 2, 6, or 14 seconds when setting these bits.
 // This is different from the command's timeout to set for the OS.
-eReturnValues set_Offline_Bits(uint8_t* satCDB, uint32_t timeout, uint8_t transferBitsOffset)
+eReturnValues set_Offline_Bits(uint8_t* M_NONNULL satCDB, uint32_t timeout, uint8_t transferBitsOffset)
 {
     uint8_t satTimeout = UINT8_C(0);
     switch (timeout)
@@ -648,13 +649,13 @@ eReturnValues set_Offline_Bits(uint8_t* satCDB, uint32_t timeout, uint8_t transf
     return SUCCESS;
 }
 
-eReturnValues set_Check_Condition_Bit(uint8_t* satCDB, uint8_t transferBitsOffset)
+eReturnValues set_Check_Condition_Bit(uint8_t* M_NONNULL satCDB, uint8_t transferBitsOffset)
 {
     satCDB[transferBitsOffset] |= BIT5;
     return SUCCESS;
 }
 
-eReturnValues set_Registers(uint8_t* satCDB, ataPassthroughCommand* ataCommandOptions)
+eReturnValues set_Registers(uint8_t* M_NONNULL satCDB, ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandDirection != XFER_NO_DATA && ataCommandOptions->tfr.SectorCount == 0 &&
@@ -772,16 +773,15 @@ eReturnValues set_Registers(uint8_t* satCDB, ataPassthroughCommand* ataCommandOp
     return ret;
 }
 
-eReturnValues request_Return_TFRs_From_Device(const tDevice* device, ataReturnTFRs* rtfr)
+eReturnValues request_Return_TFRs_From_Device(const tDevice* M_NONNULL device, ataReturnTFRs* M_NONNULL rtfr)
 {
     // try and issue a request for the RTFRs...we'll see if this actually works
-    eReturnValues rtfrRet = NOT_SUPPORTED; // by default, most devices don't actually support this SAT command
-    uint8_t*      rtfrBuffer =
-        C_CAST(uint8_t*,
-               safe_calloc_aligned(
-                   14, sizeof(uint8_t),
-                   get_Device_IO_Minimum_Alignment(device))); // this size is the size of the ATA pass through descriptor which
-                                                       // is all that should be returned from the SATL with this command
+    eReturnValues rtfrRet    = NOT_SUPPORTED; // by default, most devices don't actually support this SAT command
+    uint8_t*      rtfrBuffer = C_CAST(
+        uint8_t*, safe_calloc_aligned(14, sizeof(uint8_t),
+                                           get_Device_IO_Minimum_Alignment(
+                                          device))); // this size is the size of the ATA pass through descriptor which
+                                                     // is all that should be returned from the SATL with this command
     uint8_t* rtfr_senseData = M_REINTERPRET_CAST(
         uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     uint8_t* requestRTFRs       = M_NULLPTR;
@@ -792,8 +792,8 @@ eReturnValues request_Return_TFRs_From_Device(const tDevice* device, ataReturnTF
     {
         cdbLen = CDB_LEN_16;
     }
-    requestRTFRs =
-        M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(cdbLen, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
+    requestRTFRs = M_REINTERPRET_CAST(
+        uint8_t*, safe_calloc_aligned(cdbLen, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (!rtfrBuffer || !rtfr_senseData || !requestRTFRs)
     {
         perror("Calloc aligned Failure!\n");
@@ -894,10 +894,10 @@ eReturnValues request_Return_TFRs_From_Device(const tDevice* device, ataReturnTF
     return rtfrRet;
 }
 
-eReturnValues build_SAT_CDB(const tDevice*         device,
-                            uint8_t**              satCDB,
-                            eCDBLen*               cdbLen,
-                            ataPassthroughCommand* ataCommandOptions)
+eReturnValues build_SAT_CDB(const tDevice* M_NONNULL         device,
+                            uint8_t**                        satCDB,
+                            eCDBLen* M_NONNULL               cdbLen,
+                            ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret                = SUCCESS;
     uint8_t       protocolOffset     = SAT_PROTOCOL_OFFSET;
@@ -998,8 +998,8 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
             if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
             {
                 // 12B CDB
-                *satCDB = C_CAST(uint8_t*,
-                                 safe_calloc_aligned(CDB_LEN_12, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
+                *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(CDB_LEN_12, sizeof(uint8_t),
+                                                               get_Device_IO_Minimum_Alignment(device)));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -1011,8 +1011,8 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
             else
             {
                 // 16B CDB
-                *satCDB = C_CAST(uint8_t*,
-                                 safe_calloc_aligned(CDB_LEN_16, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
+                *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(CDB_LEN_16, sizeof(uint8_t),
+                                                               get_Device_IO_Minimum_Alignment(device)));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -1033,8 +1033,8 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
                 {
                     // No ext registers are set, so we will issue the command with a 12B CDB. This is a major hack, but
                     // might help some devices get some more support. 12B CDB
-                    *satCDB = C_CAST(
-                        uint8_t*, safe_calloc_aligned(CDB_LEN_12, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
+                    *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(CDB_LEN_12, sizeof(uint8_t),
+                                                                   get_Device_IO_Minimum_Alignment(device)));
                     if (!*satCDB)
                     {
                         return MEMORY_FAILURE;
@@ -1047,8 +1047,8 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
             if (!*satCDB) // should fall into here if the above check did not work and allocate the satCDB memory.
             {
                 // 16B CDB
-                *satCDB = C_CAST(uint8_t*,
-                                 safe_calloc_aligned(CDB_LEN_16, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
+                *satCDB = C_CAST(uint8_t*, safe_calloc_aligned(CDB_LEN_16, sizeof(uint8_t),
+                                                               get_Device_IO_Minimum_Alignment(device)));
                 if (!*satCDB)
                 {
                     return MEMORY_FAILURE;
@@ -1142,7 +1142,8 @@ eReturnValues build_SAT_CDB(const tDevice*         device,
     return ret;
 }
 
-eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                           ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret            = UNKNOWN;
     uint8_t*      satCDB         = M_NULLPTR;
@@ -1163,7 +1164,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
         ataCommandOptions->senseDataSize = SPC3_SENSE_LEN;
     }
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
-    ataCommandOptions->timeout = M_Max(ataCommandOptions->timeout, deviceTimeout);
+    ataCommandOptions->timeout   = M_Max(ataCommandOptions->timeout, deviceTimeout);
     if (ataCommandOptions->timeout == 0)
     {
         ataCommandOptions->timeout = M_Max(DEFAULT_COMMAND_TIMEOUT, deviceTimeout);
@@ -1273,8 +1274,8 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* device, ataPassthrough
                         {
                             // scsi log sense to passthrough results log page with the value in the log index
                             ataReturnTFRs tempRtfrs = initialize_ATA_RTFRs();
-                            ret = get_Return_TFRs_From_Passthrough_Results_Log(device, &tempRtfrs,
-                                                                               resultsLogIndex - UINT8_C(1));
+                            ret                     = get_Return_TFRs_From_Passthrough_Results_Log(device, &tempRtfrs,
+                                                                                                   resultsLogIndex - UINT8_C(1));
                             if (ret == SUCCESS)
                             {
                                 ataCommandOptions->rtfr = tempRtfrs;
@@ -2138,11 +2139,11 @@ static eReturnValues satl_Read_Command(ScsiIoCtx* scsiIoCtx,
     return ret;
 }
 // To be used by the SATL when issuing a single write command
-static eReturnValues satl_Write_Command(ScsiIoCtx* scsiIoCtx,
-                                        uint64_t   lba,
-                                        uint8_t*   ptrData,
-                                        uint32_t   dataSize,
-                                        bool       fua)
+static eReturnValues satl_Write_Command(ScsiIoCtx*         scsiIoCtx,
+                                        uint64_t           lba,
+                                        uint8_t* M_NONNULL ptrData,
+                                        uint32_t           dataSize,
+                                        bool               fua)
 {
     eReturnValues ret          = SUCCESS;
     bool          dmaSupported = false;
@@ -2262,8 +2263,9 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx* scsiIoCtx, uint64_t lba
                     scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
                 return SUCCESS;
             }
-            compareBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
-                                                                          get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
+            compareBuf =
+                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
+                                                                 get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
             if (!compareBuf)
             {
                 set_Sense_Data_For_Translation(
@@ -2357,8 +2359,9 @@ static eReturnValues satl_Read_Verify_Command(ScsiIoCtx* scsiIoCtx, uint64_t lba
                     scsiIoCtx->device->drive_info.softSATFlags.senseDataDescriptorFormat, M_NULLPTR, 0);
                 return SUCCESS;
             }
-            compareBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
-                                                                          get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
+            compareBuf =
+                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(scsiIoCtx->dataLength, sizeof(uint8_t),
+                                                                 get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
             if (!compareBuf)
             {
                 set_Sense_Data_For_Translation(
@@ -3121,8 +3124,8 @@ static eReturnValues translate_Block_Limits_VPD_Page_B0h(const tDevice* device, 
     if (get_Device_PhyBlockSize(device) > 0)
     {
         uint16_t logicalPerPhysical = get_Logical_Sectors_Per_Physical_Sector(device);
-        blockLimits[6] = M_Byte1(logicalPerPhysical);
-        blockLimits[7] = M_Byte0(logicalPerPhysical);
+        blockLimits[6]              = M_Byte1(logicalPerPhysical);
+        blockLimits[7]              = M_Byte0(logicalPerPhysical);
     }
 
     if (device->drive_info.ata_Options.fourtyEightBitAddressFeatureSetSupported)
@@ -4572,7 +4575,7 @@ static eReturnValues translate_SCSI_ATA_Passthrough_Command(const tDevice* devic
     return ret;
 }
 
-static eReturnValues translate_SCSI_Read_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues translate_SCSI_Read_Command(const tDevice* M_NONNULL device, ScsiIoCtx* scsiIoCtx)
 {
     uint64_t lba            = UINT64_C(0);
     uint32_t transferLength = UINT32_C(0);
@@ -4726,11 +4729,10 @@ static eReturnValues translate_SCSI_Read_Command(const tDevice* device, ScsiIoCt
                                        senseKeySpecificDescriptor, 1);
         return SUCCESS;
     }
-    return satl_Read_Command(scsiIoCtx, lba, scsiIoCtx->pdata, transferLength * get_Device_BlockSize(device),
-                             fua);
+    return satl_Read_Command(scsiIoCtx, lba, scsiIoCtx->pdata, transferLength * get_Device_BlockSize(device), fua);
 }
 
-static eReturnValues translate_SCSI_Write_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues translate_SCSI_Write_Command(const tDevice* M_NONNULL device, ScsiIoCtx* scsiIoCtx)
 {
     bool     fua            = false;
     uint64_t lba            = UINT64_C(0);
@@ -4883,7 +4885,7 @@ static eReturnValues translate_SCSI_Write_Command(const tDevice* device, ScsiIoC
                               transferLength * get_Device_BlockSize(scsiIoCtx->device), fua);
 }
 
-static eReturnValues translate_SCSI_Write_Same_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues translate_SCSI_Write_Same_Command(const tDevice* M_NONNULL device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                   = SUCCESS;
     uint8_t       wrprotect             = get_bit_range_uint8(scsiIoCtx->cdb[CDB_1], 7, 5);
@@ -5157,7 +5159,7 @@ static eReturnValues translate_SCSI_Synchronize_Cache_Command(const tDevice* dev
     return ret;
 }
 
-static eReturnValues translate_SCSI_Verify_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues translate_SCSI_Verify_Command(const tDevice* M_NONNULL device, ScsiIoCtx* scsiIoCtx)
 {
     uint8_t  byteCheck          = UINT8_C(0);
     uint64_t lba                = UINT64_C(0);
@@ -5282,7 +5284,7 @@ static eReturnValues translate_SCSI_Verify_Command(const tDevice* device, ScsiIo
     return satl_Read_Verify_Command(scsiIoCtx, lba, verificationLength * get_Device_BlockSize(device), byteCheck);
 }
 
-static eReturnValues translate_SCSI_Write_And_Verify_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues translate_SCSI_Write_And_Verify_Command(const tDevice* M_NONNULL device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                = SUCCESS;
     uint8_t       byteCheck          = UINT8_C(0);
@@ -5937,8 +5939,7 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                                             }
                                         }
 
-                                        ret = satl_Sequential_Write_Commands(scsiIoCtx, 0,
-                                                                             return_Device_MaxLba(device),
+                                        ret = satl_Sequential_Write_Commands(scsiIoCtx, 0, return_Device_MaxLba(device),
                                                                              ataWritePattern, ataWriteDataLength);
                                         if (ret != SUCCESS)
                                         {
@@ -6002,8 +6003,7 @@ static eReturnValues translate_SCSI_Format_Unit_Command(const tDevice* device, S
                                             // during the verify so that we only touch it... Problem with this TODO is
                                             // if we are talking to something that doesn't give back all RTFRs (SAT to
                                             // OS) or is a broken driver, this won't work
-                                            uint32_t writeSectors64K =
-                                                UINT32_C(65536) / get_Device_BlockSize(device);
+                                            uint32_t writeSectors64K = UINT32_C(65536) / get_Device_BlockSize(device);
                                             // ATA Write commands
                                             uint32_t ataWriteDataLength =
                                                 writeSectors64K * get_Device_BlockSize(device);
@@ -6630,8 +6630,9 @@ static eReturnValues translate_SCSI_Security_Protocol_In_Command(const tDevice* 
             {
                 uint32_t paddedLength = ((allocationLength + 511) / 512) * LEGACY_DRIVE_SEC_SIZE;
                 // allocate memory and pad data....then copy back the amount that was requested
-                uint8_t* tempSecurityMemory = C_CAST(
-                    uint8_t*, safe_calloc_aligned(paddedLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
+                uint8_t* tempSecurityMemory =
+                    C_CAST(uint8_t*,
+                           safe_calloc_aligned(paddedLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                 if (!tempSecurityMemory)
                 {
                     return MEMORY_FAILURE;
@@ -7036,8 +7037,9 @@ static eReturnValues translate_SCSI_Security_Protocol_Out_Command(const tDevice*
             {
                 uint32_t paddedLength = ((transferLength + 511) / 512);
                 // allocate memory and pad data....then copy back the amount that was requested
-                uint8_t* tempSecurityMemory = C_CAST(
-                    uint8_t*, safe_calloc_aligned(paddedLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
+                uint8_t* tempSecurityMemory =
+                    C_CAST(uint8_t*,
+                           safe_calloc_aligned(paddedLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                 if (!tempSecurityMemory)
                 {
                     return MEMORY_FAILURE;
@@ -11575,9 +11577,9 @@ static eReturnValues translate_Application_Client_Log_Select_0x0F(const tDevice*
                 uint8_t  ataLogPageToRead = UINT8_C(0);
 
                 parameterLength = ptrData[parameterDataOffset + 3];
-                hostLogData     = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(SIZE_T_C(16) * LEGACY_DRIVE_SEC_SIZE,
-                                                                                   sizeof(uint8_t),
-                                                                                   get_Device_IO_Minimum_Alignment(device)));
+                hostLogData     = M_REINTERPRET_CAST(
+                    uint8_t*, safe_calloc_aligned(SIZE_T_C(16) * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t),
+                                                      get_Device_IO_Minimum_Alignment(device)));
                 if (hostLogData == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
@@ -11968,11 +11970,12 @@ static eReturnValues translate_SCSI_Unmap_Command(const tDevice* device, ScsiIoC
             {
                 trimBufferSize = le16_to_host(device->drive_info.IdentifyData.ata.Word105);
             }
-            uint8_t* trimBuffer = C_CAST(
-                uint8_t*, safe_calloc_aligned(
-                              uint16_to_sizet(trimBufferSize) * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t),
-                              get_Device_IO_Minimum_Alignment(device))); // allocate the max size the device supports...we'll
-                                                                  // fill in as much as we need to
+            uint8_t* trimBuffer =
+                C_CAST(uint8_t*,
+                       safe_calloc_aligned(
+                           uint16_to_sizet(trimBufferSize) * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t),
+                           get_Device_IO_Minimum_Alignment(device))); // allocate the max size the device
+                                                                      // supports...we'll fill in as much as we need to
 #if defined(SAT_SPEC_SUPPORTED) && SAT_SPEC_SUPPORTED > 3
             bool     useXL                  = device->drive_info.softSATFlags.dataSetManagementXLSupported;
             uint8_t  maxDescriptorsPerBlock = device->drive_info.softSATFlags.dataSetManagementXLSupported ? 32 : 64;
@@ -11998,11 +12001,11 @@ static eReturnValues translate_SCSI_Unmap_Command(const tDevice* device, ScsiIoC
             {
                 trimBufferSize = le16_to_host(device->drive_info.IdentifyData.ata.Word105);
             }
-            trimBuffer = C_CAST(
-                uint8_t*,
-                calloc_aligned(uint16_to_sizet(trimBufferSize) * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t),
-                               get_Device_IO_Minimum_Alignment(device))); // allocate the max size the device supports...we'll
-                                                                   // fill in as much as we need to
+            trimBuffer = C_CAST(uint8_t*,
+                                calloc_aligned(uint16_to_sizet(trimBufferSize) * LEGACY_DRIVE_SEC_SIZE, sizeof(uint8_t),
+                                               get_Device_IO_Minimum_Alignment(
+                                                   device))); // allocate the max size the device supports...we'll
+                                                              // fill in as much as we need to
 
             if (!trimBuffer)
             {
@@ -18523,7 +18526,7 @@ static eReturnValues translate_SCSI_Report_Supported_Operation_Codes_Command(con
 }
 
 // always sets Descriptor type sense data
-eReturnValues translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+eReturnValues translate_SCSI_Command(const tDevice* M_NONNULL device, ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     static bool   deviceInfoAvailable  = false;
     eReturnValues ret                  = UNKNOWN;

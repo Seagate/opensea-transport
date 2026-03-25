@@ -183,7 +183,7 @@ static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device
 #endif // IOCATAREQUEST
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
+static eReturnValues get_NVMe_Device(const char* filename, tDevice* M_NONNULL device)
 {
     struct nvme_get_nsid gnsid;
     eReturnValues        ret          = SUCCESS;
@@ -253,7 +253,7 @@ static eReturnValues get_NVMe_Device(const char* filename, tDevice* device)
 }
 #endif // DISABLE_NVME_PASSTHROUGH
 
-static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
+static eReturnValues get_CAM_Device(const char* filename, tDevice* M_NONNULL device)
 {
     struct ccb_getdev  cgd;
     struct ccb_pathinq cpi;
@@ -398,9 +398,10 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                                 case XPORT_SATA:
                                 case XPORT_ATA:
                                     set_Device_DriveType(device, ATA_DRIVE);
-                                    set_Device_InterfaceType(device, IDE_INTERFACE); // Seeing IDE may look strange, but that is how old code was
-                                                       // written to identify an ATA interface regardless of
-                                                       // parallel or serial.
+                                    set_Device_InterfaceType(
+                                        device, IDE_INTERFACE); // Seeing IDE may look strange, but that is how old code
+                                                                // was written to identify an ATA interface regardless
+                                                                // of parallel or serial.
                                     break;
                                 case XPORT_USB:
                                     set_Device_InterfaceType(device, USB_INTERFACE);
@@ -424,13 +425,13 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
                                 case XPORT_NVME:
                                     set_Device_DriveType(device, NVME_DRIVE);
                                     set_Device_InterfaceType(device, NVME_INTERFACE);
-                                    device->drive_info.namespaceID    = cpi.xport_specific.nvme.nsid;
+                                    device->drive_info.namespaceID = cpi.xport_specific.nvme.nsid;
                                     break;
 #    if IS_FREEBSD_VERSION(15, 0, 0)
                                 case XPORT_NVMF:
                                     set_Device_DriveType(device, NVME_DRIVE);
                                     set_Device_InterfaceType(device, NVME_INTERFACE);
-                                    device->drive_info.namespaceID    = cpi.xport_specific.nvmf.nsid;
+                                    device->drive_info.namespaceID = cpi.xport_specific.nvmf.nsid;
                                     break;
 #    endif // IS_FREEBSD_VERSION(15,0,0)
 #endif     // XPORT_IS_NVME
@@ -522,7 +523,7 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* device)
     return ret;
 }
 
-eReturnValues get_Device(const char* filename, tDevice* device)
+eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     if (is_NVMe_Handle(filename))
@@ -645,11 +646,10 @@ static eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
         atareq.u.ata.count = scsiIoCtx->pAtaCmdOpts->tfr.SectorCount;
     }
 
-    atareq.flags        = ATA_CMD_CONTROL;
-    uint32_t ataTimeout = scsiIoCtx->pAtaCmdOpts->timeout;
+    atareq.flags                 = ATA_CMD_CONTROL;
+    uint32_t       ataTimeout    = scsiIoCtx->pAtaCmdOpts->timeout;
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-    if (deviceTimeout > 0 &&
-        deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
     {
         ataTimeout = deviceTimeout;
         // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
@@ -705,7 +705,7 @@ static eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
     if (iocres < 0)
     {
         perror("error sending legacy ATA I/O");
-        ret                                   = OS_PASSTHROUGH_FAILURE;
+        ret = OS_PASSTHROUGH_FAILURE;
         set_Device_Last_Error(scsiIoCtx->device, errno);
     }
     else
@@ -742,7 +742,7 @@ static eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
 #endif // IOCATAREQUEST
 
 #if !defined(__DragonFly__)
-eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_Ata_Cam_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues     ret       = SUCCESS;
     union ccb*        ccb       = M_NULLPTR;
@@ -775,10 +775,9 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
             // NOLINTEND(bugprone-branch-clone)
         }
 
-        uint32_t camTimeout = scsiIoCtx->timeout;
+        uint32_t       camTimeout    = scsiIoCtx->timeout;
         const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-        if (deviceTimeout > 0 &&
-            deviceTimeout > scsiIoCtx->timeout)
+        if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
         {
             camTimeout = deviceTimeout;
             // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
@@ -1060,7 +1059,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* scsiIoCtx)
 }
 #endif //__DragonFly__
 
-eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
 #if defined(_DEBUG)
     printf("--> %s\n", __FUNCTION__);
@@ -1089,13 +1088,12 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
 
         csio = &ccb->csio;
 
-        csio->ccb_h.func_code   = XPT_SCSI_IO;
-        csio->ccb_h.retry_count = UINT32_C(0); // should we change it to 1?
-        csio->ccb_h.cbfcnp      = M_NULLPTR;
-        uint32_t camTimeout     = scsiIoCtx->timeout;
+        csio->ccb_h.func_code        = XPT_SCSI_IO;
+        csio->ccb_h.retry_count      = UINT32_C(0); // should we change it to 1?
+        csio->ccb_h.cbfcnp           = M_NULLPTR;
+        uint32_t       camTimeout    = scsiIoCtx->timeout;
         const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-        if (deviceTimeout > UINT32_C(0) &&
-            deviceTimeout > scsiIoCtx->timeout)
+        if (deviceTimeout > UINT32_C(0) && deviceTimeout > scsiIoCtx->timeout)
         {
             camTimeout = deviceTimeout;
             // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
@@ -1261,7 +1259,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
     // printf("%s -->\n",__FUNCTION__);
@@ -1474,7 +1472,7 @@ eReturnValues close_Device(tDevice* dev)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
     int num_da_devs   = 0;
     int num_ada_devs  = 0;
@@ -1566,10 +1564,10 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, M_ATTR_UNUSED uint64_t
 //
 //-----------------------------------------------------------------------------
 #define CAM_DEV_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
-                              uint32_t               sizeInBytes,
-                              versionBlock           ver,
-                              M_ATTR_UNUSED uint64_t flags)
+eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                              uint32_t                 sizeInBytes,
+                              versionBlock             ver,
+                              M_ATTR_UNUSED uint64_t   flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -1784,35 +1782,37 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
-                      M_ATTR_UNUSED uint64_t       lba,
-                      M_ATTR_UNUSED bool           forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t*       ptrData,
-                      M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                      M_ATTR_UNUSED uint64_t                 lba,
+                      M_ATTR_UNUSED bool                     forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                      M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
-                       M_ATTR_UNUSED uint64_t       lba,
-                       M_ATTR_UNUSED bool           forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t*       ptrData,
-                       M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                       M_ATTR_UNUSED uint64_t                 lba,
+                       M_ATTR_UNUSED bool                     forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                       M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                        M_ATTR_UNUSED uint64_t                 lba,
+                        M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Device_Reset(const tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
@@ -1836,7 +1836,7 @@ eReturnValues os_Device_Reset(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Bus_Reset(const tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
@@ -1860,7 +1860,7 @@ eReturnValues os_Bus_Reset(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
@@ -1885,11 +1885,10 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     {
         nvmeio = &ccb->nvmeio;
         CCB_CLEAR_ALL_EXCEPT_HDR(ccb);
-        uint32_t camFlags   = CAM_DEV_QFRZDIS;
-        uint32_t camTimeout = nvmeIoCtx->timeout;
+        uint32_t       camFlags      = CAM_DEV_QFRZDIS;
+        uint32_t       camTimeout    = nvmeIoCtx->timeout;
         const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
-        if (deviceTimeout > 0 &&
-            deviceTimeout > nvmeIoCtx->timeout)
+        if (deviceTimeout > 0 && deviceTimeout > nvmeIoCtx->timeout)
         {
             camTimeout = deviceTimeout;
             // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
@@ -2181,7 +2180,7 @@ static eReturnValues send_IOCTL_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 }
 #endif // DISABLE_NVME_PASSTHROUGH
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
 #if defined(DISABLE_NVME_PASSTHROUGH)
     M_USE_UNUSED(nvmeIoCtx);
@@ -2200,7 +2199,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif     // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Reset(const tDevice* device)
+eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret           = OS_PASSTHROUGH_FAILURE;
@@ -2243,24 +2242,24 @@ eReturnValues os_nvme_Reset(const tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
-                               M_ATTR_UNUSED uint8_t*       pData,
-                               M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                               M_ATTR_UNUSED uint8_t* M_NONNULL       pData,
+                               M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return SUCCESS;
 }
 
-eReturnValues os_Lock_Device(const tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     // There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
     if (device->os_info.lockCount < UINT16_MAX)
@@ -2271,7 +2270,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
     return SUCCESS;
 }
 
-eReturnValues os_Unlock_Device(const tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     // There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
     if (device->os_info.lockCount > 0)
@@ -2289,7 +2288,7 @@ eReturnValues os_Unlock_Device(const tDevice* device)
 // looks very similar to the Linux getmntent: getfsent
 // ???https://www.freebsd.org/cgi/man.cgi?query=getfsent&sektion=3&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // TODO: I have not found an analog to Linux which is usually the most helpful for figuring out what to do.
     //       I haven't found any other API or IOCTL that reloads the partition table on the disk (which is pretty close)
@@ -2301,12 +2300,12 @@ eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device)
 {
     return unmount_Partitions_From_Device(get_Device_Handle_Name(device));
 }

@@ -28,7 +28,9 @@
 // Function to make it easy to add another entry to the list
 // Returns pointer to the added entry.
 // Entry is always added in currentPtr->next
-ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr, const char* handleToScan, raidTypeHint raidHint)
+ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan M_NULLABLE currentPtr,
+                                    const char* M_NONNULL          handleToScan,
+                                    raidTypeHint                   raidHint)
 {
     // first make sure the current pointer is valid, if not it is most likely the beginning of the list, so it needs to
     // be allocated
@@ -61,10 +63,10 @@ ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan currentPtr, const char* 
     return currentPtr;
 }
 
-ptrRaidHandleToScan add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan listBegin,
-                                                   ptrRaidHandleToScan currentPtr,
-                                                   const char*         handleToScan,
-                                                   raidTypeHint        raidHint)
+ptrRaidHandleToScan add_RAID_Handle_If_Not_In_List(ptrRaidHandleToScan M_NULLABLE listBegin,
+                                                   ptrRaidHandleToScan M_NULLABLE currentPtr,
+                                                   const char* M_NONNULL          handleToScan,
+                                                   raidTypeHint                   raidHint)
 {
     if (listBegin != M_NULLPTR)
     {
@@ -96,7 +98,7 @@ static M_INLINE void free_RaidHandleToScan(ptrRaidHandleToScan* handle)
 // handles that did in fact work so that they are not scanned again by another RAID library. returns a pointer to the
 // entry after "toRemove", which can be M_NULLPTR If previous is M_NULLPTR, then this is the beginning of the list. This
 // is allowed. Previous is used to update the previous entry's next pointer to make sure the list is still functional
-ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan toRemove, ptrRaidHandleToScan previous)
+ptrRaidHandleToScan remove_RAID_Handle(ptrRaidHandleToScan M_NULLABLE toRemove, ptrRaidHandleToScan previous)
 {
 
     if (toRemove != M_NULLPTR)

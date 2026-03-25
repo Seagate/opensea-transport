@@ -42,8 +42,8 @@
 #define CSMI_PROTOCOL_DMA_QUEUED_IN  7
 #define CSMI_PROTOCOL_DMA_QUEUED_OUT 8
 
-eReturnValues build_CSMI_Passthrough_CDB(uint8_t                cdb[M_NONNULL_ARRAY CSMI_PASSTHROUGH_CDB_LENGTH],
-                                         ataPassthroughCommand* ataPtCmd)
+eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[M_NONNULL_ARRAY CSMI_PASSTHROUGH_CDB_LENGTH],
+                                         ataPassthroughCommand* M_NONNULL ataPtCmd)
 {
     eReturnValues ret = BAD_PARAMETER;
 
@@ -166,9 +166,9 @@ eReturnValues build_CSMI_Passthrough_CDB(uint8_t                cdb[M_NONNULL_AR
     return ret;
 }
 
-eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice*         device,
-                                         ataPassthroughCommand* ataCommandOptions,
-                                         int                    commandRet)
+eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice* M_NONNULL         device,
+                                         ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                         int                              commandRet)
 {
     // TODO: Whenever a driver is found using this legacy CDB, we need to figure out how RTFRs are returned, IF there is
     // a way that they are returned.
@@ -178,7 +178,8 @@ eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice*         device,
     return NOT_SUPPORTED;
 }
 
-eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* M_NONNULL         device,
+                                               ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, csmiCDB, CSMI_PASSTHROUGH_CDB_LENGTH);

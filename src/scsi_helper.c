@@ -926,7 +926,9 @@ static ascAscqRetDesc ascAscqLookUp[] = {
     {0x74, 0x71, C_CAST(int, FAILURE), "Logical Unit Access Not Authorized"},
     {0x74, 0x79, C_CAST(int, FAILURE), "Security Conflict In Translated Device"}};
 
-uint16_t calculate_Logical_Block_Guard(const uint8_t* buffer, uint32_t userDataLength, uint32_t totalDataLength)
+uint16_t calculate_Logical_Block_Guard(const uint8_t* M_NONNULL buffer,
+                                       uint32_t                 userDataLength,
+                                       uint32_t                 totalDataLength)
 {
     // Can also be all F's to invert it. TODO: should invert be a boolean option to this function? - TJE
     uint16_t       crc        = UINT16_C(0);
@@ -955,20 +957,22 @@ uint16_t calculate_Logical_Block_Guard(const uint8_t* buffer, uint32_t userDataL
 }
 
 // this is mean to only be called by check_Sense_Key_asc_And_ascq()
-void print_sense_key(const char* senseKeyToPrint, uint8_t senseKeyValue)
+void print_sense_key(const char* M_NONNULL senseKeyToPrint, uint8_t senseKeyValue)
 {
     printf("Sense Key: %" PRIX8 "h = %s\n", senseKeyValue, senseKeyToPrint);
     flush_stdout();
 }
 // this is meant to only be called by check_Sense_Key_asc_And_ascq()
-void print_acs_ascq(const char* acsAndascqStringToPrint, uint8_t ascValue, uint8_t ascqValue)
+void print_acs_ascq(const char* M_NONNULL acsAndascqStringToPrint, uint8_t ascValue, uint8_t ascqValue)
 {
     printf("ASC & ASCQ: %" PRIX8 "h - %" PRIX8 "h = %s\n", ascValue, ascqValue, acsAndascqStringToPrint);
     flush_stdout();
 }
 
 // this is meant to only be called by check_Sense_Key_asc_And_ascq()
-void print_Field_Replacable_Unit_Code(const tDevice* device, const char* fruMessage, uint8_t fruCode)
+void print_Field_Replacable_Unit_Code(const tDevice* M_NONNULL device,
+                                      const char* M_NONNULL    fruMessage,
+                                      uint8_t                  fruCode)
 {
     // we'll only print out a translatable string for seagate drives since fru is vendor specific
 
@@ -1006,11 +1010,11 @@ static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
     }
 }
 
-eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* device,
-                                               uint8_t        senseKey,
-                                               uint8_t        asc,
-                                               uint8_t        ascq,
-                                               uint8_t        fru)
+eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* M_NONNULL device,
+                                               uint8_t                  senseKey,
+                                               uint8_t                  asc,
+                                               uint8_t                  ascq,
+                                               uint8_t                  fru)
 {
     eReturnValues   ret = UNKNOWN; // if this gets returned from this function, then something is not right...
     ascAscqRetDesc* asc_ascq_result = M_NULLPTR;
@@ -1142,12 +1146,12 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* device,
     return ret;
 }
 
-void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* pbuf,
-                                uint32_t       pbufSize,
-                                uint8_t*       senseKey,
-                                uint8_t*       asc,
-                                uint8_t*       ascq,
-                                uint8_t*       fru)
+void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* M_NONNULL pbuf,
+                                uint32_t                 pbufSize,
+                                uint8_t* M_NONNULL       senseKey,
+                                uint8_t* M_NONNULL       asc,
+                                uint8_t* M_NONNULL       ascq,
+                                uint8_t* M_NONNULL       fru)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1160,10 +1164,10 @@ void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* pbuf,
     *fru      = senseFields.scsiStatusCodes.fru;
 }
 
-void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
-                                     uint32_t       senseDataLength,
-                                     bool*          valid,
-                                     uint64_t*      information)
+void get_Information_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                     uint32_t                 senseDataLength,
+                                     bool* M_NONNULL          valid,
+                                     uint64_t* M_NONNULL      information)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1180,9 +1184,9 @@ void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
     }
 }
 
-void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
-                                                  uint32_t       senseDataLength,
-                                                  bool*          illegalLengthIndicator)
+void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                  uint32_t                 senseDataLength,
+                                                  bool* M_NONNULL          illegalLengthIndicator)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1195,11 +1199,11 @@ void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
     }
 }
 
-void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
-                                             uint32_t       senseDataLength,
-                                             bool*          filemark,
-                                             bool*          endOfMedia,
-                                             bool*          illegalLengthIndicator)
+void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                             uint32_t                 senseDataLength,
+                                             bool* M_NONNULL          filemark,
+                                             bool* M_NONNULL          endOfMedia,
+                                             bool* M_NONNULL          illegalLengthIndicator)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1220,9 +1224,9 @@ void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
     }
 }
 
-void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseData,
-                                                      uint32_t       senseDataLength,
-                                                      uint64_t*      commandSpecificInformation)
+void get_Command_Specific_Information_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                      uint32_t                 senseDataLength,
+                                                      uint64_t* M_NONNULL      commandSpecificInformation)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1235,7 +1239,9 @@ void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseDat
     }
 }
 
-void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
+void get_Sense_Key_Specific_Information(const uint8_t* M_NONNULL ptrSenseData,
+                                        uint32_t                 senseDataLength,
+                                        ptrSenseKeySpecific      sksp)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1248,7 +1254,9 @@ void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t se
     }
 }
 
-void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields)
+void get_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSenseData,
+                           uint32_t                 senseDataLength,
+                           ptrSenseDataFields       senseFields)
 {
 
     if (ptrSenseData != M_NULLPTR && senseDataLength > 0 && senseFields != M_NULLPTR)
@@ -1803,7 +1811,7 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
     }
 }
 
-uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf)
+uint16_t get_Returned_Sense_Data_Length(const uint8_t* M_NONNULL pbuf)
 {
     uint16_t length = UINT16_C(8);
     uint8_t  format;
@@ -1832,7 +1840,7 @@ uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf)
     return length;
 }
 
-// \fn copy_Inquiry_Data(unsigned char * pbuf, driveInfo * info)
+// \fn copy_Inquiry_Data(unsigned char * M_NONNULL pbuf, driveInfo * M_NONNULL info)
 // \brief copy in the necessary data to our struct from INQ data.
 void copy_Inquiry_Data(uint8_t* pbuf, driveInfo* info)
 {
@@ -1873,7 +1881,10 @@ void copy_Inquiry_Data(uint8_t* pbuf, driveInfo* info)
 }
 
 // \brief copy the serial number off of 0x80 VPD page data.
-void copy_Serial_Number(uint8_t* pbuf, size_t bufferlen, char* serialNumber, size_t serialNumberMemLen)
+void copy_Serial_Number(uint8_t* M_NONNULL pbuf,
+                        size_t             bufferlen,
+                        char* M_NONNULL    serialNumber,
+                        size_t             serialNumberMemLen)
 {
 
     if (pbuf != M_NULLPTR && serialNumber != M_NULLPTR && bufferlen >= 4 && serialNumberMemLen > 0)
@@ -1892,12 +1903,12 @@ void copy_Serial_Number(uint8_t* pbuf, size_t bufferlen, char* serialNumber, siz
     }
 }
 
-void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
-                             uint32_t* physicalBlockSize,
-                             uint64_t* maxLBA,
-                             uint16_t* sectorAlignment,
-                             uint8_t*  ptrBuf,
-                             bool      readCap16)
+void copy_Read_Capacity_Info(uint32_t* M_NONNULL logicalBlockSize,
+                             uint32_t* M_NONNULL physicalBlockSize,
+                             uint64_t* M_NONNULL maxLBA,
+                             uint16_t* M_NONNULL sectorAlignment,
+                             uint8_t* M_NONNULL  ptrBuf,
+                             bool                readCap16)
 {
     if (readCap16)
     {
@@ -1995,7 +2006,7 @@ static eReturnValues private_Scsi_Read_Cap_10(const tDevice* device, readCapacit
 // There is a lot going on in this function. That is because old drives need the 10B command, new need 16B....but right
 // in between the two there were some drives produced with SBC2+ support, but still only supported the 10B command. Due
 // to this there are a few retries/fallbacks in here, but it will figure this out for the caller to make life easier
-eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* device, readCapacityData* outputData)
+eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* M_NONNULL device, readCapacityData* M_NONNULL outputData)
 {
     safe_memset(outputData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
 
@@ -2153,7 +2164,7 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
             ATA_READ_LOG_EXT_DMA) // Added read log commands here since they are in SAT4. Only HDD/SSD
                                   // should use these.
     {
-        *issueSATIdentify             = true;
+        *issueSATIdentify = true;
         set_Device_MediaType(device, MEDIA_HDD);
         set_Device_DriveType(device, ATA_DRIVE);
     }
@@ -2175,11 +2186,11 @@ static M_INLINE void set_No_SAT_VPD(tDevice* device)
     device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
 }
 
-eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device)
+eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* M_NONNULL device)
 {
     eReturnValues ret              = FAILURE;
     bool          issueSATIdentify = true; // default to ALWAYS reading this unless something else says not to. - TJE
-    if (get_Device_InterfaceType(device) == IDE_INTERFACE || get_Device_InterfaceType(device)== USB_INTERFACE ||
+    if (get_Device_InterfaceType(device) == IDE_INTERFACE || get_Device_InterfaceType(device) == USB_INTERFACE ||
         get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
     {
         // always do this on IDE_INTERFACE since we know it will work here. Doesn't matter if the VPD page read fails or
@@ -2219,8 +2230,7 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device)
             }
         }
         else if (get_Device_InterfaceType(device) == MMC_INTERFACE ||
-                 get_Device_InterfaceType(device) == NVME_INTERFACE ||
-                 get_Device_InterfaceType(device) == SD_INTERFACE)
+                 get_Device_InterfaceType(device) == NVME_INTERFACE || get_Device_InterfaceType(device) == SD_INTERFACE)
         {
             return NOT_SUPPORTED;
         }
@@ -2591,7 +2601,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
     return passthroughTypeSet;
 }
 
-bool is_LaCie_USB_Vendor_ID(const char* t10VendorIdent)
+bool is_LaCie_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
     {
@@ -2610,7 +2620,7 @@ bool is_LaCie_USB_Vendor_ID(const char* t10VendorIdent)
     }
 }
 
-bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent)
+bool is_Seagate_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
     {
@@ -2629,7 +2639,7 @@ bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent)
     }
 }
 
-bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent)
+bool is_Seagate_SAS_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
     {
@@ -2652,7 +2662,9 @@ bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent)
 // This function can still exist and just call that for the vendor IDs
 // Then in ATA layer and NVMe layer they can do their own evaluation and
 // call into the same main cleanup function since the same 0-padding exists in those interfaces.
-void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerialNumber, size_t unitSNSize)
+void seagate_Serial_Number_Cleanup(const char* M_NONNULL t10VendorIdent,
+                                   char** M_NONNULL      unitSerialNumber,
+                                   size_t                unitSNSize)
 {
     if (t10VendorIdent && unitSerialNumber && *unitSerialNumber)
     {
@@ -2670,7 +2682,7 @@ void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerial
     }
 }
 
-// \fn fill_In_Device_Info(device device)
+// \fn fill_In_Device_Info(device M_NONNULL device)
 // \brief Sends a set of INQUIRY commands & fills in the device information
 // \param device device struture
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
@@ -2698,8 +2710,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         }
     }
 
-    inq_buf =
-        C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
+    inq_buf = C_CAST(uint8_t*,
+                     calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (!inq_buf)
     {
         perror("Error allocating memory for standard inquiry data (scsi)");
@@ -2793,28 +2805,28 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         switch (peripheralDeviceType)
         {
         case PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE:
-             // this may not be correct because it may be SSD or USB Flash drive which use this same code
+            // this may not be correct because it may be SSD or USB Flash drive which use this same code
             set_Device_MediaType(device, MEDIA_HDD);
             break;
         case PERIPHERAL_HOST_MANAGED_ZONED_BLOCK_DEVICE:
-             // this may not be correct because it may be SSD or USB Flash drive which use this same code
+            // this may not be correct because it may be SSD or USB Flash drive which use this same code
             set_Device_MediaType(device, MEDIA_HDD);
             device->drive_info.zonedType = ZONED_TYPE_HOST_MANAGED;
             break;
         case PERIPHERAL_SEQUENTIAL_ACCESS_BLOCK_DEVICE:
             set_Device_MediaType(device, MEDIA_TAPE);
-            checkForSAT                   = false;
+            checkForSAT = false;
             break;
         case PERIPHERAL_WRITE_ONCE_DEVICE:
         case PERIPHERAL_CD_DVD_DEVICE:
         case PERIPHERAL_OPTICAL_MEMORY_DEVICE:
         case PERIPHERAL_OPTICAL_CARD_READER_WRITER_DEVICE:
             set_Device_MediaType(device, MEDIA_OPTICAL);
-            checkForSAT                   = false;
+            checkForSAT = false;
             break;
         case PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE:
             set_Device_MediaType(device, MEDIA_HDD);
-            checkForSAT                   = false;
+            checkForSAT = false;
             break;
         case PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE: // some USB flash drives show up as this according to the USB
                                                          // mass storage specification...but unfortunately all the ones
@@ -2850,8 +2862,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         case PERIPHERAL_WELL_KNOWN_LOGICAL_UNIT:
         case PERIPHERAL_UNKNOWN_OR_NO_DEVICE_TYPE:
         default:
-            readCapacity                  = false;
-            checkForSAT                   = false;
+            readCapacity = false;
+            checkForSAT  = false;
             set_Device_MediaType(device, MEDIA_UNKNOWN);
             break;
         }
@@ -3000,7 +3012,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             // DO NOT set the drive type to NVMe here. We need to treat it as a SCSI device since we can only issue SCSI
             // translatable commands!!! set_Device_DriveType(device, NVME_DRIVE);
             set_Device_MediaType(device, MEDIA_NVM);
-            checkForSAT                   = false;
+            checkForSAT = false;
         }
         else if (device->drive_info.passThroughHacks.hacksSetByReportedID &&
                  device->drive_info.passThroughHacks.passthroughType == PASSTHROUGH_NONE)
@@ -3224,7 +3236,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             if (checkForSAT && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON &&
                 (satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 ||
                  get_Device_InterfaceType(device) == USB_INTERFACE ||
-                 get_Device_InterfaceType(device)== IEEE_1394_INTERFACE ||
+                 get_Device_InterfaceType(device) == IEEE_1394_INTERFACE ||
                  get_Device_InterfaceType(device) == IDE_INTERFACE) &&
                 (get_Device_DriveType(device) != ATAPI_DRIVE && get_Device_DriveType(device) != LEGACY_TAPE_DRIVE))
             {
@@ -3779,8 +3791,10 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 set_Device_MaxLba(device, readCapData.returnedLBA);
                 if (readCapData.readCap16)
                 {
-                    set_Device_PhyBlockSize(device, readCapData.logicalBlockLength *
-                        M_STATIC_CAST(uint32_t, power_Of_Two(readCapData.logicalBlocksPerPhysicalBlockExponent)));
+                    set_Device_PhyBlockSize(
+                        device,
+                        readCapData.logicalBlockLength *
+                            M_STATIC_CAST(uint32_t, power_Of_Two(readCapData.logicalBlocksPerPhysicalBlockExponent)));
                     set_Device_Sector_Alignment(device, readCapData.lowestAlignedLogicalBlock);
                     device->drive_info.currentProtectionType = readCapData.ptype;
                     device->drive_info.piExponent            = readCapData.piexponent;
@@ -3843,9 +3857,9 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 ret = fill_In_NVMe_Device_Info(device);
                 if (ret == SUCCESS && checkJMicronNVMe)
                 {
-                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
-                    device->drive_info.passThroughHacks.turfValue                             = 13;
-                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported           = true; // set this so in
+                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                    device->drive_info.passThroughHacks.turfValue                           = 13;
+                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported         = true; // set this so in
                     set_Device_DriveType(device, NVME_DRIVE);
                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
@@ -4578,7 +4592,7 @@ static int cmp_Version_Descriptor(scsiVersionDescriptor* a, scsiVersionDescripto
     return (a->versionCode - b->versionCode);
 }
 
-void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* versionString)
+void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* M_NONNULL versionString)
 {
     // use binary search to find it from the massive list above
     // If that fails, fall into the switch below as a fall-back
@@ -5052,12 +5066,12 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
     }
 }
 
-void get_mode_param_header_6_fields(uint8_t* ptrMP,
-                                    uint32_t mpHeaderLen,
-                                    uint8_t* modeDataLength,
-                                    uint8_t* mediumType,
-                                    uint8_t* devSpecific,
-                                    uint8_t* blockDescriptorLenth)
+void get_mode_param_header_6_fields(uint8_t* M_NONNULL  ptrMP,
+                                    uint32_t            mpHeaderLen,
+                                    uint8_t* M_NULLABLE modeDataLength,
+                                    uint8_t* M_NULLABLE mediumType,
+                                    uint8_t* M_NULLABLE devSpecific,
+                                    uint8_t*            blockDescriptorLenth)
 {
 
     if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_6_LEN)
@@ -5081,13 +5095,13 @@ void get_mode_param_header_6_fields(uint8_t* ptrMP,
     }
 }
 
-void get_mode_param_header_10_fields(uint8_t*  ptrMP,
-                                     uint32_t  mpHeaderLen,
-                                     uint16_t* modeDataLength,
-                                     uint8_t*  mediumType,
-                                     uint8_t*  devSpecific,
-                                     bool*     longLBA,
-                                     uint16_t* blockDescriptorLenth)
+void get_mode_param_header_10_fields(uint8_t* M_NONNULL   ptrMP,
+                                     uint32_t             mpHeaderLen,
+                                     uint16_t* M_NULLABLE modeDataLength,
+                                     uint8_t* M_NULLABLE  mediumType,
+                                     uint8_t* M_NULLABLE  devSpecific,
+                                     bool* M_NULLABLE     longLBA,
+                                     uint16_t*            blockDescriptorLenth)
 {
 
     if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_10_LEN)
@@ -5117,11 +5131,11 @@ void get_mode_param_header_10_fields(uint8_t*  ptrMP,
     }
 }
 
-void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
-                                              uint32_t  mpBlkDescLen,
-                                              uint8_t*  densityCode,
-                                              uint32_t* numberOfBlocks,
-                                              uint32_t* blockLength)
+void get_mode_general_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
+                                              uint32_t             mpBlkDescLen,
+                                              uint8_t* M_NULLABLE  densityCode,
+                                              uint32_t* M_NULLABLE numberOfBlocks,
+                                              uint32_t*            blockLength)
 {
 
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= GENERAL_BLOCK_DESCRIPTOR_LEN)
@@ -5149,10 +5163,10 @@ void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
     }
 }
 
-void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
-                                            uint32_t  mpBlkDescLen,
-                                            uint32_t* numberOfBlocks,
-                                            uint32_t* blockLength)
+void get_mode_short_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
+                                            uint32_t             mpBlkDescLen,
+                                            uint32_t* M_NULLABLE numberOfBlocks,
+                                            uint32_t*            blockLength)
 {
 
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= SHORT_LBA_BLOCK_DESCRIPTOR_LEN)
@@ -5176,10 +5190,10 @@ void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
     }
 }
 
-void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
-                                           uint32_t  mpBlkDescLen,
-                                           uint64_t* numberOfBlocks,
-                                           uint64_t* blockLength)
+void get_mode_long_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
+                                           uint32_t             mpBlkDescLen,
+                                           uint64_t* M_NULLABLE numberOfBlocks,
+                                           uint64_t*            blockLength)
 {
 
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= LONG_LBA_BLOCK_DESCRIPTOR_LEN)
@@ -5203,16 +5217,16 @@ void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
     }
 }
 
-void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
-                                         uint8_t*  ptr,
-                                         uint32_t  totalDataLen,
-                                         uint16_t* modeDataLength,
-                                         uint8_t*  mediumType,
-                                         uint8_t*  devSpecific,
-                                         bool*     longLBA,
-                                         uint16_t* blockDescriptorLenth,
-                                         uint64_t* numberOfBlocks,
-                                         uint64_t* blockLength)
+void get_SBC_Mode_Header_Blk_Desc_Fields(bool                 sixByteCmd,
+                                         uint8_t* M_NONNULL   ptr,
+                                         uint32_t             totalDataLen,
+                                         uint16_t* M_NULLABLE modeDataLength,
+                                         uint8_t* M_NULLABLE  mediumType,
+                                         uint8_t* M_NULLABLE  devSpecific,
+                                         bool* M_NULLABLE     longLBA,
+                                         uint16_t* M_NULLABLE blockDescriptorLenth,
+                                         uint64_t* M_NULLABLE numberOfBlocks,
+                                         uint64_t*            blockLength)
 {
 
     if (ptr != M_NULLPTR)
@@ -5288,7 +5302,7 @@ void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
     }
 }
 
-bool check_Sense_For_Specific_Info(const uint8_t* senseData, uint32_t senseLen, senseToCheck check)
+bool check_Sense_For_Specific_Info(const uint8_t* M_NONNULL senseData, uint32_t senseLen, senseToCheck check)
 {
     bool             match = true;
     eSenseMatchDepth depth = SENSE_MATCH_SENSE_KEY;
@@ -5329,67 +5343,67 @@ bool check_Sense_For_Specific_Info(const uint8_t* senseData, uint32_t senseLen, 
     return match;
 }
 
-bool is_Invalid_Opcode(const uint8_t* senseData, uint32_t senseLen)
+bool is_Invalid_Opcode(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Invalid_Field_In_CDB(const uint8_t* senseData, uint32_t senseLen)
+bool is_Invalid_Field_In_CDB(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Invalid_Field_In_Parameter(const uint8_t* senseData, uint32_t senseLen)
+bool is_Invalid_Field_In_Parameter(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x25, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Format_Corrupt(const uint8_t* senseData, uint32_t senseLen)
+bool is_Format_Corrupt(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Media_Present(const uint8_t* senseData, uint32_t senseLen)
+bool is_Media_Present(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASC, SENSE_KEY_MEDIUM_ERROR, 0x3A, 0x00, 0x00};
     return !check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool did_Reset_Occur(const uint8_t* senseData, uint32_t senseLen)
+bool did_Reset_Occur(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASC, SENSE_KEY_UNIT_ATTENTION, 0x29, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Microcode_Activation_Required(const uint8_t* senseData, uint32_t senseLen)
+bool is_Microcode_Activation_Required(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_NOT_READY, 0x04, 0x1E, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Command_Sequence_Error(const uint8_t* senseData, uint32_t senseLen)
+bool is_Command_Sequence_Error(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x2C, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Unaligned_Write(const uint8_t* senseData, uint32_t senseLen)
+bool is_Unaligned_Write(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0x04, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_LBA_Out_Of_Range(const uint8_t* senseData, uint32_t senseLen)
+bool is_LBA_Out_Of_Range(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_HW_Error_No_Defect_Spare_Available(const uint8_t* senseData, uint32_t senseLen)
+bool is_HW_Error_No_Defect_Spare_Available(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_HARDWARE_ERROR, 0x32, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);

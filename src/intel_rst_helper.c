@@ -240,9 +240,8 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
             raidFirmwareRequest->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
             safe_memcpy(raidFirmwareRequest->Header.Signature, 8, INTEL_RAID_FW_SIGNATURE, 8);
             raidFirmwareRequest->Header.Timeout = timeoutSeconds;
-            const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(device);
-            if (deviceTimeout > 0 &&
-                deviceTimeout > timeoutSeconds)
+            const uint32_t deviceTimeout        = get_tDevice_Default_Command_Timeout(device);
+            if (deviceTimeout > 0 && deviceTimeout > timeoutSeconds)
             {
                 raidFirmwareRequest->Header.Timeout = deviceTimeout;
             }
@@ -414,7 +413,7 @@ static M_INLINE void safe_free_irst_fw_info(INTEL_STORAGE_FIRMWARE_INFO_V2** inf
     safe_free_core(M_REINTERPRET_CAST(void**, info));
 }
 
-bool supports_Intel_Firmware_Download(const tDevice* device)
+bool supports_Intel_Firmware_Download(const tDevice* M_NONNULL device)
 {
     bool supported = false;
 #    if defined(INTRST_DEBUG)
@@ -484,14 +483,14 @@ static M_INLINE void safe_free_irst_fwdl(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2** fw
 }
 
 // The idea with this function is that it can handle NVMe or SCSI with generic inputs that will work to reduce code
-static eReturnValues internal_Intel_FWDL_Function_Download(const tDevice* device,
-                                                           uint32_t       flags,
-                                                           uint32_t*      returnCode,
-                                                           uint8_t*       imagePtr,
-                                                           uint32_t       imageDataLength,
-                                                           uint32_t       imageOffset,
-                                                           uint8_t        firmwareSlot,
-                                                           uint32_t       timeoutSeconds)
+static eReturnValues internal_Intel_FWDL_Function_Download(const tDevice* M_NONNULL device,
+                                                           uint32_t                 flags,
+                                                           uint32_t*                returnCode,
+                                                           uint8_t*                 imagePtr,
+                                                           uint32_t                 imageDataLength,
+                                                           uint32_t                 imageOffset,
+                                                           uint8_t                  firmwareSlot,
+                                                           uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device && imagePtr)
@@ -533,11 +532,11 @@ static M_INLINE void safe_free_irst_fw_activate(INTEL_STORAGE_FIRMWARE_ACTIVATE*
     safe_free_core(M_REINTERPRET_CAST(void**, activate));
 }
 
-static eReturnValues internal_Intel_FWDL_Function_Activate(const tDevice* device,
-                                                           uint32_t       flags,
-                                                           uint32_t*      returnCode,
-                                                           uint8_t        firmwareSlot,
-                                                           uint32_t       timeoutSeconds)
+static eReturnValues internal_Intel_FWDL_Function_Activate(const tDevice* M_NONNULL device,
+                                                           uint32_t                 flags,
+                                                           uint32_t*                returnCode,
+                                                           uint8_t                  firmwareSlot,
+                                                           uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device)
@@ -628,7 +627,7 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx* scsiIoCtx, bool* isActivate)
     return compatible;
 }
 
-eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret        = OS_COMMAND_NOT_AVAILABLE;
     bool          isActivate = false;
@@ -721,8 +720,8 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
         HANDLE                   handleToUse           = nvmeIoCtx->device->os_info.fd;
         size_t                   allocationSize        = sizeof(NVME_IOCTL_PASS_THROUGH) + nvmeIoCtx->dataSize;
         nvmPassthroughCommand =
-            C_CAST(NVME_IOCTL_PASS_THROUGH*,
-                   safe_calloc_aligned(allocationSize, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(nvmeIoCtx->device)));
+            C_CAST(NVME_IOCTL_PASS_THROUGH*, safe_calloc_aligned(allocationSize, sizeof(uint8_t),
+                                                                 get_Device_IO_Minimum_Alignment(nvmeIoCtx->device)));
         if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
         {
             print_str("\n====Sending Intel RST NVMe Command====\n");
@@ -733,9 +732,8 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
             nvmPassthroughCommand->Header.HeaderLength = sizeof(SRB_IO_CONTROL);
             safe_memcpy(nvmPassthroughCommand->Header.Signature, 8, INTELNVM_SIGNATURE, 8);
             nvmPassthroughCommand->Header.Timeout = nvmeIoCtx->timeout;
-            const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
-            if (deviceTimeout > 0 &&
-                deviceTimeout > nvmeIoCtx->timeout)
+            const uint32_t deviceTimeout          = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
+            if (deviceTimeout > 0 && deviceTimeout > nvmeIoCtx->timeout)
             {
                 nvmPassthroughCommand->Header.Timeout = deviceTimeout;
             }
@@ -992,7 +990,7 @@ static void dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, uint32_t returnCode)
     }
 }
 
-eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx)
+eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 
@@ -1068,7 +1066,7 @@ eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
-eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx)
+eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #    if defined(INTRST_DEBUG)
@@ -1112,7 +1110,7 @@ eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* nvmeIoCtx)
     return ret;
 }
 
-eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #    if defined(INTRST_DEBUG)

@@ -27,10 +27,10 @@
 #include "scsi_helper_func.h"
 #include "sunplus_legacy_helper.h"
 
-eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCDB[SUNPLUS_PT_CDB_LEN],
-                                                    uint8_t                hiCDB[SUNPLUS_PT_CDB_LEN],
-                                                    bool*                  highCDBValid,
-                                                    ataPassthroughCommand* ataCommandOptions)
+eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                          lowCDB[SUNPLUS_PT_CDB_LEN],
+                                                    uint8_t                          hiCDB[SUNPLUS_PT_CDB_LEN],
+                                                    bool* M_NONNULL                  highCDBValid,
+                                                    ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
@@ -79,9 +79,9 @@ eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCD
 }
 
 #define SUBPLUS_READ_REG_LEN 16
-eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice*         device,
-                                            ataPassthroughCommand* ataCommandOptions,
-                                            eReturnValues          commandRet)
+eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice* M_NONNULL         device,
+                                            ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                            eReturnValues                    commandRet)
 {
     eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
@@ -122,7 +122,8 @@ eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice*         device,
     return ret;
 }
 
-eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                      ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, sunplusLowCDB, SUNPLUS_PT_CDB_LEN);

@@ -27,7 +27,7 @@
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 
-eReturnValues build_Cypress_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand* ataCommandOptions)
+eReturnValues build_Cypress_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
@@ -66,9 +66,9 @@ eReturnValues build_Cypress_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughComman
     return SUCCESS;
 }
 
-eReturnValues get_RTFRs_From_Cypress_Legacy(const tDevice*         device,
-                                            ataPassthroughCommand* ataCommandOptions,
-                                            eReturnValues          commandRet)
+eReturnValues get_RTFRs_From_Cypress_Legacy(const tDevice* M_NONNULL         device,
+                                            ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                            eReturnValues                    commandRet)
 {
     eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
@@ -96,7 +96,8 @@ eReturnValues get_RTFRs_From_Cypress_Legacy(const tDevice*         device,
     return ret;
 }
 
-eReturnValues send_Cypress_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_Cypress_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                      ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cypressCDB, CDB_LEN_16);

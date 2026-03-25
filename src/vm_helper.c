@@ -222,7 +222,7 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
 }
 
 #define LIN_MAX_HANDLE_LENGTH 16
-eReturnValues get_Device(const char* filename, tDevice* device)
+eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     char*                    deviceHandle = M_NULLPTR;
     eReturnValues            ret          = SUCCESS;
@@ -346,7 +346,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 
 #if defined(_DEBUG)
             printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", get_Device_Handle_Name(device),
-                   get_Device_Handle_Friendly_Name(device), device->os_info.secondName, device->os_info.secondFriendlyName);
+                   get_Device_Handle_Friendly_Name(device), device->os_info.secondName,
+                   device->os_info.secondFriendlyName);
             printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel,
                    device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
 
@@ -513,22 +514,22 @@ static eReturnValues sg_reset(int fd, int resetType)
     return ret;
 }
 
-eReturnValues os_Device_Reset(const tDevice* device)
+eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_DEVICE);
 }
 
-eReturnValues os_Bus_Reset(const tDevice* device)
+eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_BUS);
 }
 
-eReturnValues os_Controller_Reset(const tDevice* device)
+eReturnValues os_Controller_Reset(const tDevice* M_NONNULL device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
 }
 
-eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
 #ifdef _DEBUG
@@ -581,7 +582,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_sg_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     sg_io_hdr_t   io_hdr;
     uint8_t*      localSenseBuffer = M_NULLPTR;
@@ -646,12 +647,11 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         return BAD_PARAMETER;
     }
 
-    io_hdr.dxfer_len = scsiIoCtx->dataLength;
-    io_hdr.dxferp    = scsiIoCtx->pdata;
-    io_hdr.cmdp      = scsiIoCtx->cdb;
+    io_hdr.dxfer_len             = scsiIoCtx->dataLength;
+    io_hdr.dxferp                = scsiIoCtx->pdata;
+    io_hdr.cmdp                  = scsiIoCtx->cdb;
     const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-    if (deviceTimeout > 0 &&
-        deviceTimeout > scsiIoCtx->timeout)
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
         io_hdr.timeout = deviceTimeout;
         // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that
@@ -954,7 +954,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
+eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags)
 {
     int                      num_devs      = 0;
     int                      num_nvme_devs = 0;
@@ -1018,7 +1018,10 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //
 //-----------------------------------------------------------------------------
 #define VM_NAME_LEN 128
-eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                              uint32_t                 sizeInBytes,
+                              versionBlock             ver,
+                              uint64_t                 flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -1189,7 +1192,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 //
 //  close_Device()
 //
-//! \brief   Description:  Given a device, close it's handle.
+//! \brief   Description:  Given a M_NONNULL device, close it's handle.
 //
 //  Entry:
 //!   \param[in] device = device stuct that holds device information.
@@ -1286,7 +1289,7 @@ void print_usr_io_struct(struct usr_io uio)
     printf("\tMeta Address: %" PRIu64 "\n", uio.meta_addr);
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = SUCCESS; // NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is
@@ -1473,13 +1476,13 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // This is a stub. If this is possible, this should perform an nvme reset;
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // This is a stub. If this is possible, this should perform an nvme subsystem reset;
     return OS_COMMAND_NOT_AVAILABLE;
@@ -1487,7 +1490,7 @@ eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
 
 // Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c
 
-eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize)
+eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataSize)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret     = UNKNOWN;
@@ -1528,40 +1531,42 @@ eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t d
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
-                      M_ATTR_UNUSED uint64_t       lba,
-                      M_ATTR_UNUSED bool           forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t*       ptrData,
-                      M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                      M_ATTR_UNUSED uint64_t                 lba,
+                      M_ATTR_UNUSED bool                     forceUnitAccess,
+                      M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                      M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
-                       M_ATTR_UNUSED uint64_t       lba,
-                       M_ATTR_UNUSED bool           forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t*       ptrData,
-                       M_ATTR_UNUSED uint32_t       dataSize)
+eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                       M_ATTR_UNUSED uint64_t                 lba,
+                       M_ATTR_UNUSED bool                     forceUnitAccess,
+                       M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                       M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                        M_ATTR_UNUSED uint64_t                 lba,
+                        M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Lock_Device(const tDevice* device)
+eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
@@ -1597,7 +1602,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Unlock_Device(const tDevice* device)
+eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -1632,18 +1637,18 @@ eReturnValues os_Unlock_Device(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // note: linux code for blkrrprt might work
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* device)
+eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }

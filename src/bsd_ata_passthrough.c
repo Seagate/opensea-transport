@@ -86,10 +86,9 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
 #else
 // TODO: Error if attempting LBA mode???
 #endif // ATACMD_LBA
-        uint32_t timeoutmilliseconds = UINT32_C(0);
-        const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-        if (deviceTimeout > 0 &&
-            deviceTimeout > scsiIoCtx->timeout)
+        uint32_t       timeoutmilliseconds = UINT32_C(0);
+        const uint32_t deviceTimeout       = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+        if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
         {
             timeoutmilliseconds = deviceTimeout;
             // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
@@ -230,7 +229,7 @@ eReturnValues send_BSD_ATA_Reset(int fd)
 #endif
 }
 
-eReturnValues send_BSD_ATA_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_BSD_ATA_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx != M_NULLPTR)

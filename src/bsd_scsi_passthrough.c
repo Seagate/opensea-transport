@@ -35,7 +35,11 @@
 
 #define BSD_SCSI_PT_MAX_CMD_TIMEOUT_SECONDS M_STATIC_CAST(uint32_t, (ULONG_MAX / 1000UL))
 
-eReturnValues get_BSD_SCSI_Address(int fd, int* type, int* bus, int* target, int* lun)
+eReturnValues get_BSD_SCSI_Address(int            fd,
+                                   int* M_NONNULL type,
+                                   int* M_NONNULL bus,
+                                   int* M_NONNULL target,
+                                   int* M_NONNULL lun)
 {
     eReturnValues    ret = SUCCESS;
     struct scsi_addr address;
@@ -114,7 +118,7 @@ eReturnValues send_BSD_SCSI_Bus_Reset(int fd)
 #endif
 }
 
-eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx != M_NULLPTR && scsiIoCtx->device != M_NULLPTR)
@@ -153,8 +157,7 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
                 break;
             }
             const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
-            if (deviceTimeout > 0 &&
-                deviceTimeout > scsiIoCtx->timeout)
+            if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
             {
                 scsicmd.timeout = deviceTimeout;
                 // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata

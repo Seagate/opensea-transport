@@ -27,11 +27,11 @@
 #include "scsi_helper_func.h"
 #include "ti_legacy_helper.h"
 
-eReturnValues build_TI_Legacy_CDB(uint8_t                cdb[CDB_16],
-                                  ataPassthroughCommand* ataCommandOptions,
-                                  bool                   olderOpCode,
-                                  bool                   forceMode,
-                                  uint8_t                modeValue)
+eReturnValues build_TI_Legacy_CDB(uint8_t                          cdb[CDB_16],
+                                  ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                  bool                             olderOpCode,
+                                  bool                             forceMode,
+                                  uint8_t                          modeValue)
 {
     eReturnValues ret = SUCCESS;
     if (olderOpCode)
@@ -76,7 +76,8 @@ eReturnValues build_TI_Legacy_CDB(uint8_t                cdb[CDB_16],
     return ret;
 }
 
-eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                 ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret            = UNKNOWN;
     uint8_t*      senseData      = M_NULLPTR; // only allocate if the pointer in the ataCommandOptions is M_NULLPTR

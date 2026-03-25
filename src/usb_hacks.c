@@ -33,7 +33,7 @@
 #include "usb_hacks.h"
 #include <ctype.h> //for checking for printable characters
 
-bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device)
+bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* M_NONNULL device)
 {
     bool passthroughTypeSet = false;
     if ((get_Device_InterfaceType(device) == USB_INTERFACE ||
@@ -51,7 +51,7 @@ bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device)
                 // command succeeded so this is most likely the correct pass-through type to use for this device
                 // setting drive type while we're in here since it could help with a faster scan
                 set_Device_DriveType(device, ATA_DRIVE);
-                passthroughTypeSet            = true;
+                passthroughTypeSet = true;
                 break;
             }
             else if (SUCCESS == ata_Identify_Packet_Device(device, identifyData, LEGACY_DRIVE_SEC_SIZE))
@@ -59,7 +59,7 @@ bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device)
                 // command succeeded so this is most likely the correct pass-through type to use for this device
                 // setting drive type while we're in here since it could help with a faster scan
                 set_Device_DriveType(device, ATAPI_DRIVE);
-                passthroughTypeSet            = true;
+                passthroughTypeSet = true;
                 break;
             }
             ++device->drive_info.passThroughHacks.passthroughType;

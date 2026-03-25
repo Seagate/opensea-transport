@@ -27,7 +27,9 @@
 #include "sata_helper_func.h"
 #include "sata_types.h"
 
-eReturnValues build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBlock* ataPTCmd, uint8_t pmPort)
+eReturnValues build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis M_NONNULL h2dFis,
+                                                ataTFRBlock* M_NONNULL  ataPTCmd,
+                                                uint8_t                 pmPort)
 {
     eReturnValues ret = SUCCESS;
 
@@ -65,7 +67,7 @@ eReturnValues build_H2D_FIS_From_ATA_PT_Command(ptrSataH2DFis h2dFis, ataTFRBloc
 // NOTE: This prints some bit fields, so some architectures or compilers may not pack those in the same order. Check the
 // actual byte data for real interpretation, then ifdef the structure definitions to correct it as errors are found -
 // TJE
-void print_FIS(void* fis, uint32_t fisLengthBytes)
+void print_FIS(void* M_NONNULL fis, uint32_t fisLengthBytes)
 {
 
     if (fis != M_NULLPTR)

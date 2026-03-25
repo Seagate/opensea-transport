@@ -29,13 +29,13 @@
 #include "jmicron_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
-eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t                 cdb[M_NONNULL_ARRAY JMICRON_NVME_CDB_SIZE],
-                                            eDataTransferDirection* cdbDataDirection,
-                                            uint8_t*                dataPtr,
-                                            uint32_t                dataSize,
-                                            eJMNvmeProtocol         jmProtocol,
-                                            eJMNvmeVendorControl    jmCtrl,
-                                            nvmeCmdCtx*             nvmCmd)
+eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t cdb[M_NONNULL_ARRAY JMICRON_NVME_CDB_SIZE],
+                                            eDataTransferDirection* M_NONNULL cdbDataDirection,
+                                            uint8_t* M_NULLABLE               dataPtr,
+                                            uint32_t                          dataSize,
+                                            eJMNvmeProtocol                   jmProtocol,
+                                            eJMNvmeVendorControl              jmCtrl,
+                                            nvmeCmdCtx*                       nvmCmd)
 {
 
     DISABLE_NONNULL_COMPARE
@@ -254,7 +254,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t                 cdb[M_NONNUL
     return SUCCESS;
 }
 
-eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
+eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmCDB, JMICRON_NVME_CDB_SIZE);
@@ -363,7 +363,7 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     return ret;
 }
 
-static eReturnValues jm_NVMe_Normal_Shutdown(const tDevice* device)
+static eReturnValues jm_NVMe_Normal_Shutdown(const tDevice* M_NONNULL device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JMICRON_NVME_CDB_SIZE);
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -383,7 +383,7 @@ static eReturnValues jm_NVMe_Normal_Shutdown(const tDevice* device)
     return ret;
 }
 
-static eReturnValues jm_NVMe_MCU_Reset(const tDevice* device)
+static eReturnValues jm_NVMe_MCU_Reset(const tDevice* M_NONNULL device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JMICRON_NVME_CDB_SIZE);
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -402,7 +402,7 @@ static eReturnValues jm_NVMe_MCU_Reset(const tDevice* device)
     return ret;
 }
 
-eReturnValues jm_nvme_Reset(const tDevice* device)
+eReturnValues jm_nvme_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -427,7 +427,7 @@ eReturnValues jm_nvme_Reset(const tDevice* device)
     return ret;
 }
 
-eReturnValues jm_nvme_Subsystem_Reset(const tDevice* device)
+eReturnValues jm_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)

@@ -2707,8 +2707,7 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
             double nvmeWritesInLBAs = 0.0;
             if (get_Device_BlockSize(device) != 0)
             {
-                nvmeWritesInLBAs =
-                    (convert_128bit_to_double(&logPage[48]) * 1000 * 512) / get_Device_BlockSize(device);
+                nvmeWritesInLBAs = (convert_128bit_to_double(&logPage[48]) * 1000 * 512) / get_Device_BlockSize(device);
             }
             uint64_t numLogBlocksWritten = UINT64_C(0);
             if (nvmeWritesInLBAs >= C_CAST(double, UINT64_MAX))
@@ -2734,8 +2733,7 @@ static eReturnValues sntl_Translate_General_Statistics_And_Performance_Log_0x19(
 
             if (get_Device_BlockSize(device) != 0)
             {
-                nvmeReadsInLBAs =
-                    (convert_128bit_to_double(&logPage[32]) * 1000 * 512) / get_Device_BlockSize(device);
+                nvmeReadsInLBAs = (convert_128bit_to_double(&logPage[32]) * 1000 * 512) / get_Device_BlockSize(device);
             }
             uint64_t numLogBlocksRead = UINT64_C(0);
             if (nvmeReadsInLBAs >= C_CAST(double, UINT64_MAX))
@@ -5061,7 +5059,7 @@ static eReturnValues sntl_Translate_SCSI_Synchronize_Cache_Command(const tDevice
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Read_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Read_Command(const tDevice* M_NONNULL device, ScsiIoCtx* scsiIoCtx)
 {
     uint64_t lba            = UINT64_C(0);
     uint32_t transferLength = UINT32_C(0);
@@ -5302,7 +5300,7 @@ static eReturnValues sntl_Translate_SCSI_Read_Command(const tDevice* device, Scs
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Write_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Write_Command(const tDevice* M_NONNULL device, ScsiIoCtx* scsiIoCtx)
 {
     bool     fua            = false;
     uint64_t lba            = UINT64_C(0);
@@ -5538,7 +5536,7 @@ static eReturnValues sntl_Translate_SCSI_Write_Command(const tDevice* device, Sc
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Verify_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Verify_Command(const tDevice* M_NONNULL device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                = SUCCESS;
     uint8_t       byteCheck          = UINT8_C(0);
@@ -5775,7 +5773,8 @@ static eReturnValues sntl_Translate_SCSI_Verify_Command(const tDevice* device, S
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Security_Protocol_In_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Security_Protocol_In_Command(const tDevice* M_NONNULL device,
+                                                                      ScsiIoCtx*               scsiIoCtx)
 {
     eReturnValues ret                      = SUCCESS;
     uint8_t       securityProtocol         = scsiIoCtx->cdb[CDB_1];
@@ -5853,7 +5852,8 @@ static eReturnValues sntl_Translate_SCSI_Security_Protocol_In_Command(const tDev
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Security_Protocol_Out_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Security_Protocol_Out_Command(const tDevice* M_NONNULL device,
+                                                                       ScsiIoCtx*               scsiIoCtx)
 {
     eReturnValues ret                      = SUCCESS;
     uint8_t       securityProtocol         = scsiIoCtx->cdb[CDB_1];
@@ -5926,7 +5926,7 @@ static eReturnValues sntl_Translate_SCSI_Security_Protocol_Out_Command(const tDe
     return ret;
 }
 
-static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+static eReturnValues sntl_Translate_SCSI_Report_Luns_Command(const tDevice* M_NONNULL device, ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret                  = SUCCESS;
     uint8_t*      reportLunsData       = M_NULLPTR;
@@ -7090,11 +7090,11 @@ static eReturnValues sntl_Translate_SCSI_Unmap_Command(const tDevice* device, Sc
                           // 16 to avoid partial block descriptors-TJE
         if (unmapBlockDescriptorLength > UINT16_C(0))
         {
-            uint8_t* dsmBuffer = C_CAST(
-                uint8_t*, safe_calloc_aligned(
-                              4096, sizeof(uint8_t),
-                              get_Device_IO_Minimum_Alignment(device))); // allocate the max size the device supports...we'll
-                                                                  // fill in as much as we need to
+            uint8_t* dsmBuffer =
+                C_CAST(uint8_t*, safe_calloc_aligned(4096, sizeof(uint8_t),
+                                                     get_Device_IO_Minimum_Alignment(
+                                                         device))); // allocate the max size the device supports...we'll
+                                                                    // fill in as much as we need to
             // need to check to make sure there weren't any truncated block descriptors before we begin
             uint16_t minBlockDescriptorLength =
                 C_CAST(uint16_t, M_Min(unmapBlockDescriptorLength + 8, parameterListLength));
@@ -10806,7 +10806,7 @@ static eReturnValues sntl_Translate_SCSI_Report_Supported_Operation_Codes_Comman
 }
 
 // always sets Descriptor type sense data
-eReturnValues sntl_Translate_SCSI_Command(const tDevice* device, ScsiIoCtx* scsiIoCtx)
+eReturnValues sntl_Translate_SCSI_Command(const tDevice* M_NONNULL device, ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     static bool   deviceInfoAvailable  = false;
     eReturnValues ret                  = UNKNOWN;

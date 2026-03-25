@@ -612,10 +612,10 @@ static void print_CSMI_Controller_Configuration(PCSMI_SAS_CNTLR_CONFIG config)
     }
 }
 
-eReturnValues csmi_Get_Controller_Configuration(CSMI_HANDLE                   deviceHandle,
-                                                uint32_t                      controllerNumber,
-                                                PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer,
-                                                eVerbosityLevels              verbosity)
+eReturnValues csmi_Get_Controller_Configuration(CSMI_HANDLE                             deviceHandle,
+                                                uint32_t                                controllerNumber,
+                                                PCSMI_SAS_CNTLR_CONFIG_BUFFER M_NONNULL ctrlConfigBuffer,
+                                                eVerbosityLevels                        verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -713,10 +713,10 @@ static void print_CSMI_Controller_Status(PCSMI_SAS_CNTLR_STATUS status)
     }
 }
 
-eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE                   deviceHandle,
-                                         uint32_t                      controllerNumber,
-                                         PCSMI_SAS_CNTLR_STATUS_BUFFER ctrlStatusBuffer,
-                                         eVerbosityLevels              verbosity)
+eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE                             deviceHandle,
+                                         uint32_t                                controllerNumber,
+                                         PCSMI_SAS_CNTLR_STATUS_BUFFER M_NONNULL ctrlStatusBuffer,
+                                         eVerbosityLevels                        verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -768,13 +768,13 @@ eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE                   deviceHan
 // NOTE: This function needs the firmwareBuffer to be allocated with additional length for the firmware to send to the
 // controller. In order to make this simple, we will assume the caller has already copied the controller firmware to the
 // buffer, but we still need the total length
-eReturnValues csmi_Controller_Firmware_Download(CSMI_HANDLE                        deviceHandle,
-                                                uint32_t                           controllerNumber,
-                                                PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER firmwareBuffer,
-                                                uint32_t                           firmwareBufferTotalLength,
-                                                uint32_t                           downloadFlags,
-                                                eVerbosityLevels                   verbosity,
-                                                uint32_t                           timeoutSeconds)
+eReturnValues csmi_Controller_Firmware_Download(CSMI_HANDLE                                  deviceHandle,
+                                                uint32_t                                     controllerNumber,
+                                                PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER M_NONNULL firmwareBuffer,
+                                                uint32_t                                     firmwareBufferTotalLength,
+                                                uint32_t                                     downloadFlags,
+                                                eVerbosityLevels                             verbosity,
+                                                uint32_t                                     timeoutSeconds)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -1697,10 +1697,10 @@ static void print_CSMI_RAID_Features(PCSMI_SAS_RAID_FEATURES features)
     }
 }
 
-eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE                    deviceHandle,
-                                     uint32_t                       controllerNumber,
-                                     PCSMI_SAS_RAID_FEATURES_BUFFER raidFeaturesBuffer,
-                                     eVerbosityLevels               verbosity)
+eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE                              deviceHandle,
+                                     uint32_t                                 controllerNumber,
+                                     PCSMI_SAS_RAID_FEATURES_BUFFER M_NONNULL raidFeaturesBuffer,
+                                     eVerbosityLevels                         verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -2987,11 +2987,11 @@ static void print_CSMI_SATA_Signature(PCSMI_SAS_SATA_SIGNATURE signature)
 }
 
 // TODO: consider using a pointer to a FIS to fill in on completion instead...
-eReturnValues csmi_Get_SATA_Signature(CSMI_HANDLE                     deviceHandle,
-                                      uint32_t                        controllerNumber,
-                                      PCSMI_SAS_SATA_SIGNATURE_BUFFER sataSignatureBuffer,
-                                      uint8_t                         phyIdentifier,
-                                      eVerbosityLevels                verbosity)
+eReturnValues csmi_Get_SATA_Signature(CSMI_HANDLE                               deviceHandle,
+                                      uint32_t                                  controllerNumber,
+                                      PCSMI_SAS_SATA_SIGNATURE_BUFFER M_NONNULL sataSignatureBuffer,
+                                      uint8_t                                   phyIdentifier,
+                                      eVerbosityLevels                          verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3063,12 +3063,12 @@ static void print_CSMI_Get_SCSI_Address(PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAd
     }
 }
 
-eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE                       deviceHandle,
-                                    uint32_t                          controllerNumber,
-                                    PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddressBuffer,
-                                    uint8_t                           sasAddress[8],
-                                    uint8_t                           lun[8],
-                                    eVerbosityLevels                  verbosity)
+eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE                                 deviceHandle,
+                                    uint32_t                                    controllerNumber,
+                                    PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER M_NONNULL scsiAddressBuffer,
+                                    uint8_t                                     sasAddress[8],
+                                    uint8_t                                     lun[8],
+                                    eVerbosityLevels                            verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3141,14 +3141,14 @@ static void print_CSMI_Device_Address(PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER addres
     }
 }
 
-eReturnValues csmi_Get_Device_Address(CSMI_HANDLE                         deviceHandle,
-                                      uint32_t                            controllerNumber,
-                                      PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER deviceAddressBuffer,
-                                      uint8_t                             hostIndex,
-                                      uint8_t                             path,
-                                      uint8_t                             target,
-                                      uint8_t                             lun,
-                                      eVerbosityLevels                    verbosity)
+eReturnValues csmi_Get_Device_Address(CSMI_HANDLE                                   deviceHandle,
+                                      uint32_t                                      controllerNumber,
+                                      PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER M_NONNULL deviceAddressBuffer,
+                                      uint8_t                                       hostIndex,
+                                      uint8_t                                       path,
+                                      uint8_t                                       target,
+                                      uint8_t                                       lun,
+                                      eVerbosityLevels                              verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3329,10 +3329,10 @@ static void print_CSMI_Connector_Info(PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorI
     }
 }
 
-eReturnValues csmi_Get_Connector_Info(CSMI_HANDLE                     deviceHandle,
-                                      uint32_t                        controllerNumber,
-                                      PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfoBuffer,
-                                      eVerbosityLevels                verbosity)
+eReturnValues csmi_Get_Connector_Info(CSMI_HANDLE                               deviceHandle,
+                                      uint32_t                                  controllerNumber,
+                                      PCSMI_SAS_CONNECTOR_INFO_BUFFER M_NONNULL connectorInfoBuffer,
+                                      eVerbosityLevels                          verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3423,7 +3423,7 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosit
         // meaning it is not configured as a member of a RAID. eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE
         // deviceHandle, uint32_t controllerNumber, PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer, eVerbosityLevels
         // verbosity) eReturnValues csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t
-        // controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity)
+        // controllerNumber, PCSMI_SAS_CNTLR_CONFIG_BUFFER M_NONNULL ctrlConfigBuffer, eVerbosityLevels verbosity)
         CSMI_SAS_DRIVER_INFO_BUFFER  driverInfo;
         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
         CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
@@ -3440,7 +3440,7 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosit
 }
 
 #    if defined(_WIN32)
-bool device_Supports_CSMI_With_RST(const tDevice* device)
+bool device_Supports_CSMI_With_RST(const tDevice* M_NONNULL device)
 {
     bool csmiWithRSTSupported = false;
     if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
@@ -3462,7 +3462,7 @@ bool device_Supports_CSMI_With_RST(const tDevice* device)
 // remove the duplicate parameters. If not, delete part of this comment. NOTE: this does not handle Intel NVMe devices
 // in JBOD mode right now. These devices will be handled separately from this function which focuses on SATA/SAS
 eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
-                                   tDevice*                  device,
+                                   tDevice* M_NONNULL        device,
                                    uint8_t                   controllerNumber,
                                    uint8_t                   hostController,
                                    uint8_t                   pathidBus,
@@ -3922,7 +3922,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
 //
 //  close_CSMI_RAID_Device()
 //
-//! \brief   Description:  Given a device, close it's handle.
+//! \brief   Description:  Given a M_NONNULL device, close it's handle.
 //
 //  Entry:
 //!   \param[in] device = device stuct that holds device information.
@@ -4069,7 +4069,7 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename,
 }
 
 // TODO: Accept SASAddress and SASLun inputs
-eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
+eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     eReturnValues ret           = FAILURE;
     uint32_t      controllerNum = UINT32_C(0);
@@ -4184,7 +4184,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
         print_str("GRD: Successfully opened handle. Setting up default CSMI info.\n");
 #    endif // CSMI_DEBUG
         set_Device_IO_Minimum_Alignment(device, sizeof(void*));
-        device->issue_io                  = C_CAST(issue_io_func, send_CSMI_IO);
+        device->issue_io = C_CAST(issue_io_func, send_CSMI_IO);
         set_Device_DriveType(device, SCSI_DRIVE); // assume SCSI for now. Can be changed later
         set_Device_InterfaceType(device, RAID_INTERFACE);
         device->os_info.csmiDeviceData = M_REINTERPRET_CAST(ptrCsmiDeviceInfo, safe_calloc(1, sizeof(csmiDeviceInfo)));
@@ -4251,8 +4251,8 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
             print_str("GRD: Setting Intel NVMe function pointers\n");
 #        endif // CSMI_DEBUG
             set_Device_DriveType(device, NVME_DRIVE);
-            device->issue_io              = C_CAST(issue_io_func, send_Intel_NVM_SCSI_Command);
-            device->issue_nvme_io         = C_CAST(issue_io_func, send_Intel_NVM_Command);
+            device->issue_io      = C_CAST(issue_io_func, send_Intel_NVM_SCSI_Command);
+            device->issue_nvme_io = C_CAST(issue_io_func, send_Intel_NVM_Command);
             device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported = true;
             device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough   = true;
             device->os_info.csmiDeviceData->scsiAddressValid                  = true;
@@ -4522,7 +4522,7 @@ eReturnValues get_CSMI_RAID_Device(const char* filename, tDevice* device)
     return ret;
 }
 
-bool is_CSMI_Handle(const char* filename)
+bool is_CSMI_Handle(const char* M_NONNULL filename)
 {
     bool isCSMI = false;
     // TODO: Expand this check to make sure all necessary parts of handle are present???
@@ -4542,7 +4542,7 @@ bool is_CSMI_Handle(const char* filename)
 // Adapter scope:  HKLM\System\CurrentControlSet\Services<miniport name>\Parameters\Device<adapter#>
 // Storport key location
 // HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\<PortDriverName>\Parameters\CSMI = dword value
-eCSMISecurityAccess get_CSMI_Security_Access(const char* driverName)
+eCSMISecurityAccess get_CSMI_Security_Access(const char* M_NONNULL driverName)
 {
     eCSMISecurityAccess access = CSMI_SECURITY_ACCESS_NONE;
 #    if defined(_WIN32)
@@ -4731,9 +4731,9 @@ eCSMISecurityAccess get_CSMI_Security_Access(const char* driverName)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
-                                         uint64_t             flags,
-                                         ptrRaidHandleToScan* beginningOfList)
+eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNULL            numberOfDevices,
+                                         uint64_t                       flags,
+                                         ptrRaidHandleToScan* M_NONNULL beginningOfList)
 {
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #    if defined(_WIN32)
@@ -5226,11 +5226,11 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t*            numberOfDevices,
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_CSMI_RAID_Device_List(tDevice* const       ptrToDeviceList,
-                                        uint32_t             sizeInBytes,
-                                        versionBlock         ver,
-                                        uint64_t             flags,
-                                        ptrRaidHandleToScan* beginningOfList)
+eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL const       ptrToDeviceList,
+                                        uint32_t                       sizeInBytes,
+                                        versionBlock                   ver,
+                                        uint64_t                       flags,
+                                        ptrRaidHandleToScan* M_NONNULL beginningOfList)
 {
     eReturnValues returnValue     = SUCCESS;
     uint32_t      numberOfDevices = UINT32_C(0);
@@ -6651,7 +6651,7 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_CSMI_IO(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_CSMI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA ||
@@ -6676,7 +6676,7 @@ eReturnValues send_CSMI_IO(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-void print_CSMI_Device_Info(const tDevice* device)
+void print_CSMI_Device_Info(const tDevice* M_NONNULL device)
 {
     if (device->os_info.csmiDeviceData && device->os_info.csmiDeviceData->csmiDeviceInfoValid)
     {

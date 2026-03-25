@@ -190,7 +190,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
     return supported;
 }
 
-eReturnValues send_OFNVME_Reset(const tDevice* device)
+eReturnValues send_OFNVME_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
@@ -250,7 +250,7 @@ eReturnValues send_OFNVME_Reset(const tDevice* device)
     return ret;
 }
 
-eReturnValues send_OFNVME_Add_Namespace(const tDevice* device)
+eReturnValues send_OFNVME_Add_Namespace(const tDevice* M_NONNULL device)
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
@@ -310,7 +310,7 @@ eReturnValues send_OFNVME_Add_Namespace(const tDevice* device)
     return ret;
 }
 
-eReturnValues send_OFNVME_Remove_Namespace(const tDevice* device)
+eReturnValues send_OFNVME_Remove_Namespace(const tDevice* M_NONNULL device)
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
@@ -370,7 +370,7 @@ eReturnValues send_OFNVME_Remove_Namespace(const tDevice* device)
     return ret;
 }
 
-eReturnValues send_OFNVME_IO(nvmeCmdCtx* nvmeIoCtx)
+eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #    if defined(OFNVME_DEBUG)
