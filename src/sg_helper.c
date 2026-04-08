@@ -1569,13 +1569,12 @@ static eReturnValues open_fd2(tDevice* M_NONNULL device)
 #define LIN_MAX_HANDLE_LENGTH 16
 static eReturnValues resolve_Block_Handle_To_Generic_Handle(const char* filename, char** genericHandle)
 {
-    eReturnValues mapResult = SUCCESS;
     if (is_Block_Device_Handle(filename))
     {
         // print_str("\tBlock handle found, mapping...\n");
-        char* genHandle   = M_NULLPTR;
-        char* blockHandle = M_NULLPTR;
-        mapResult         = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle);
+        char*         genHandle   = M_NULLPTR;
+        char*         blockHandle = M_NULLPTR;
+        eReturnValues mapResult   = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle);
 #if defined(_DEBUG)
         printf("sg = %s\tsd = %s\n", genHandle, blockHandle);
 #endif
@@ -1597,6 +1596,8 @@ static eReturnValues resolve_Block_Handle_To_Generic_Handle(const char* filename
         }
         else // If we can't map, let still try anyway.
         {
+            // We couldn't map the sg and sd handles, but still moving forward assuming the user will provide correct
+            // device handle
             if (0 != safe_strdup(genericHandle, filename))
             {
                 safe_free(&genHandle);
@@ -1614,7 +1615,7 @@ static eReturnValues resolve_Block_Handle_To_Generic_Handle(const char* filename
             return MEMORY_FAILURE;
         }
     }
-    return mapResult;
+    return SUCCESS;
 }
 
 static eReturnValues linux_Get_NVMe_Device(tDevice* device, const char* deviceHandle)
