@@ -413,7 +413,7 @@ static M_INLINE void safe_free_irst_fw_info(INTEL_STORAGE_FIRMWARE_INFO_V2** inf
     safe_free_core(M_REINTERPRET_CAST(void**, info));
 }
 
-bool supports_Intel_Firmware_Download(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(const tDevice* M_NONNULL device)
 {
     bool supported = false;
 #    if defined(INTRST_DEBUG)
@@ -627,7 +627,7 @@ static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx* scsiIoCtx, bool* isActivate)
     return compatible;
 }
 
-eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_Firmware_Download(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret        = OS_COMMAND_NOT_AVAILABLE;
     bool          isActivate = false;
@@ -898,7 +898,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
             }
 
             // set command time
-            nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
             safe_free_irst_nvme_passthrough(&nvmPassthroughCommand);
         }
         else
@@ -990,7 +990,7 @@ static void dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, uint32_t returnCode)
     }
 }
 
-eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 
@@ -1066,7 +1066,7 @@ eReturnValues send_Intel_NVM_Firmware_Download(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
     return ret;
 }
 
-eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #    if defined(INTRST_DEBUG)
@@ -1110,7 +1110,7 @@ eReturnValues send_Intel_NVM_Command(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
     return ret;
 }
 
-eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_Intel_NVM_SCSI_Command(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #    if defined(INTRST_DEBUG)

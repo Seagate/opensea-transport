@@ -59,7 +59,7 @@ typedef struct s_ascAscqRetDesc
 
 // DO NOT break the order of ASC and ASCQ below
 // for 3rd column (ret), -1 means to keep existing ret value, don't change it
-static ascAscqRetDesc ascAscqLookUp[] = {
+static const ascAscqRetDesc ascAscqLookUp[] = {
     {0x00, 0x00, KEEP_SENSE_KEY_ERROR, "No Additional Sense Information"},
     {0x00, 0x01, KEEP_SENSE_KEY_ERROR, "Filemark Detected"},
     {0x00, 0x02, KEEP_SENSE_KEY_ERROR, "End-Of_Partition/Medium Detected"},
@@ -926,9 +926,9 @@ static ascAscqRetDesc ascAscqLookUp[] = {
     {0x74, 0x71, C_CAST(int, FAILURE), "Logical Unit Access Not Authorized"},
     {0x74, 0x79, C_CAST(int, FAILURE), "Security Conflict In Translated Device"}};
 
-uint16_t calculate_Logical_Block_Guard(const uint8_t* M_NONNULL buffer,
-                                       uint32_t                 userDataLength,
-                                       uint32_t                 totalDataLength)
+OPENSEA_TRANSPORT_API uint16_t calculate_Logical_Block_Guard(const uint8_t* M_NONNULL buffer,
+                                                             uint32_t                 userDataLength,
+                                                             uint32_t                 totalDataLength)
 {
     // Can also be all F's to invert it. TODO: should invert be a boolean option to this function? - TJE
     uint16_t       crc        = UINT16_C(0);
@@ -957,22 +957,24 @@ uint16_t calculate_Logical_Block_Guard(const uint8_t* M_NONNULL buffer,
 }
 
 // this is mean to only be called by check_Sense_Key_asc_And_ascq()
-void print_sense_key(const char* M_NONNULL senseKeyToPrint, uint8_t senseKeyValue)
+OPENSEA_TRANSPORT_API void print_sense_key(const char* M_NONNULL senseKeyToPrint, uint8_t senseKeyValue)
 {
     printf("Sense Key: %" PRIX8 "h = %s\n", senseKeyValue, senseKeyToPrint);
     flush_stdout();
 }
 // this is meant to only be called by check_Sense_Key_asc_And_ascq()
-void print_acs_ascq(const char* M_NONNULL acsAndascqStringToPrint, uint8_t ascValue, uint8_t ascqValue)
+OPENSEA_TRANSPORT_API void print_acs_ascq(const char* M_NONNULL acsAndascqStringToPrint,
+                                          uint8_t               ascValue,
+                                          uint8_t               ascqValue)
 {
     printf("ASC & ASCQ: %" PRIX8 "h - %" PRIX8 "h = %s\n", ascValue, ascqValue, acsAndascqStringToPrint);
     flush_stdout();
 }
 
 // this is meant to only be called by check_Sense_Key_asc_And_ascq()
-void print_Field_Replacable_Unit_Code(const tDevice* M_NONNULL device,
-                                      const char* M_NONNULL    fruMessage,
-                                      uint8_t                  fruCode)
+OPENSEA_TRANSPORT_API void print_Field_Replacable_Unit_Code(const tDevice* M_NONNULL device,
+                                                            const char* M_NONNULL    fruMessage,
+                                                            uint8_t                  fruCode)
 {
     // we'll only print out a translatable string for seagate drives since fru is vendor specific
 
@@ -996,29 +998,32 @@ void print_Field_Replacable_Unit_Code(const tDevice* M_NONNULL device,
 }
 
 // Used with bsearch
-static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
+static int cmp_Asc_Ascq(const void* a, const void* b)
 {
+    const ascAscqRetDesc* ascA = M_REINTERPRET_CAST(const ascAscqRetDesc*, a);
+    const ascAscqRetDesc* ascB = M_REINTERPRET_CAST(const ascAscqRetDesc*, b);
     // compare ASC, if they are same, compare ASCQ
-    int ret = a->asc - b->asc;
+    int ret = ascA->asc - ascB->asc;
     if (ret != 0)
     {
         return ret;
     }
     else
     {
-        return (a->ascq - b->ascq);
+        return (ascA->ascq - ascB->ascq);
     }
 }
 
-eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* M_NONNULL device,
-                                               uint8_t                  senseKey,
-                                               uint8_t                  asc,
-                                               uint8_t                  ascq,
-                                               uint8_t                  fru)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* M_NONNULL device,
+                                                                     uint8_t                  senseKey,
+                                                                     uint8_t                  asc,
+                                                                     uint8_t                  ascq,
+                                                                     uint8_t                  fru)
 {
-    eReturnValues   ret = UNKNOWN; // if this gets returned from this function, then something is not right...
-    ascAscqRetDesc* asc_ascq_result = M_NULLPTR;
-    ascAscqRetDesc  asc_ascq_key    = {asc, ascq, 0, 0};
+    eReturnValues         ret = UNKNOWN; // if this gets returned from this function, then something is not right...
+    const ascAscqRetDesc* asc_ascq_result = M_NULLPTR;
+    ascAscqRetDesc        asc_ascq_key    = {asc, ascq, 0, 0};
     // first check the senseKey
     senseKey = senseKey & 0x0F; // strip off bits that are not part of the sense key
     if (senseKey < sizeof(senseKeyRetDesc) / sizeof(senseKeyRetDesc[0]))
@@ -1088,9 +1093,10 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* M_NONNULL device,
         }
         break;
     default:
-        asc_ascq_result = C_CAST(
-            ascAscqRetDesc*, safe_bsearch(&asc_ascq_key, ascAscqLookUp, SIZE_OF_STACK_ARRAY(ascAscqLookUp),
-                                          sizeof(ascAscqLookUp[0]), (int (*)(const void*, const void*))cmp_Asc_Ascq));
+        asc_ascq_result = M_REINTERPRET_CAST(const ascAscqRetDesc*,
+                                             safe_bsearch(&asc_ascq_key, M_REINTERPRET_CAST(const void*, ascAscqLookUp),
+                                                          SIZE_OF_STACK_ARRAY(ascAscqLookUp), sizeof(ascAscqLookUp[0]),
+                                                          cmp_Asc_Ascq));
 
         if (asc_ascq_result)
         {
@@ -1146,12 +1152,12 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* M_NONNULL device,
     return ret;
 }
 
-void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* M_NONNULL pbuf,
-                                uint32_t                 pbufSize,
-                                uint8_t* M_NONNULL       senseKey,
-                                uint8_t* M_NONNULL       asc,
-                                uint8_t* M_NONNULL       ascq,
-                                uint8_t* M_NONNULL       fru)
+OPENSEA_TRANSPORT_API void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* M_NONNULL pbuf,
+                                                      uint32_t                 pbufSize,
+                                                      uint8_t* M_NONNULL       senseKey,
+                                                      uint8_t* M_NONNULL       asc,
+                                                      uint8_t* M_NONNULL       ascq,
+                                                      uint8_t* M_NONNULL       fru)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1164,10 +1170,10 @@ void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* M_NONNULL pbuf,
     *fru      = senseFields.scsiStatusCodes.fru;
 }
 
-void get_Information_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
-                                     uint32_t                 senseDataLength,
-                                     bool* M_NONNULL          valid,
-                                     uint64_t* M_NONNULL      information)
+OPENSEA_TRANSPORT_API void get_Information_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                           uint32_t                 senseDataLength,
+                                                           bool* M_NONNULL          valid,
+                                                           uint64_t* M_NONNULL      information)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1184,9 +1190,9 @@ void get_Information_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
     }
 }
 
-void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
-                                                  uint32_t                 senseDataLength,
-                                                  bool* M_NONNULL          illegalLengthIndicator)
+OPENSEA_TRANSPORT_API void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                                        uint32_t                 senseDataLength,
+                                                                        bool* M_NONNULL          illegalLengthIndicator)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1199,11 +1205,11 @@ void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* M_NONNULL ptrSe
     }
 }
 
-void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
-                                             uint32_t                 senseDataLength,
-                                             bool* M_NONNULL          filemark,
-                                             bool* M_NONNULL          endOfMedia,
-                                             bool* M_NONNULL          illegalLengthIndicator)
+OPENSEA_TRANSPORT_API void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                                   uint32_t                 senseDataLength,
+                                                                   bool* M_NONNULL          filemark,
+                                                                   bool* M_NONNULL          endOfMedia,
+                                                                   bool* M_NONNULL          illegalLengthIndicator)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1224,9 +1230,10 @@ void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseDa
     }
 }
 
-void get_Command_Specific_Information_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
-                                                      uint32_t                 senseDataLength,
-                                                      uint64_t* M_NONNULL      commandSpecificInformation)
+OPENSEA_TRANSPORT_API void get_Command_Specific_Information_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                                            uint32_t                 senseDataLength,
+                                                                            uint64_t* M_NONNULL
+                                                                                commandSpecificInformation)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1239,9 +1246,9 @@ void get_Command_Specific_Information_From_Sense_Data(const uint8_t* M_NONNULL p
     }
 }
 
-void get_Sense_Key_Specific_Information(const uint8_t* M_NONNULL ptrSenseData,
-                                        uint32_t                 senseDataLength,
-                                        ptrSenseKeySpecific      sksp)
+OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(const uint8_t* M_NONNULL ptrSenseData,
+                                                              uint32_t                 senseDataLength,
+                                                              ptrSenseKeySpecific      sksp)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1254,9 +1261,9 @@ void get_Sense_Key_Specific_Information(const uint8_t* M_NONNULL ptrSenseData,
     }
 }
 
-void get_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSenseData,
-                           uint32_t                 senseDataLength,
-                           ptrSenseDataFields       senseFields)
+OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSenseData,
+                                                 uint32_t                 senseDataLength,
+                                                 ptrSenseDataFields       senseFields)
 {
 
     if (ptrSenseData != M_NULLPTR && senseDataLength > 0 && senseFields != M_NULLPTR)
@@ -1614,7 +1621,7 @@ void get_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSenseData,
     }
 }
 
-void print_Sense_Fields(constPtrSenseDataFields senseFields)
+OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields senseFields)
 {
 
     if (senseFields != M_NULLPTR && senseFields->validStructure)
@@ -1811,7 +1818,7 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
     }
 }
 
-uint16_t get_Returned_Sense_Data_Length(const uint8_t* M_NONNULL pbuf)
+OPENSEA_TRANSPORT_API uint16_t get_Returned_Sense_Data_Length(const uint8_t* M_NONNULL pbuf)
 {
     uint16_t length = UINT16_C(8);
     uint8_t  format;
@@ -1903,12 +1910,12 @@ void copy_Serial_Number(uint8_t* M_NONNULL pbuf,
     }
 }
 
-void copy_Read_Capacity_Info(uint32_t* M_NONNULL logicalBlockSize,
-                             uint32_t* M_NONNULL physicalBlockSize,
-                             uint64_t* M_NONNULL maxLBA,
-                             uint16_t* M_NONNULL sectorAlignment,
-                             uint8_t* M_NONNULL  ptrBuf,
-                             bool                readCap16)
+OPENSEA_TRANSPORT_API void copy_Read_Capacity_Info(uint32_t* M_NONNULL logicalBlockSize,
+                                                   uint32_t* M_NONNULL physicalBlockSize,
+                                                   uint64_t* M_NONNULL maxLBA,
+                                                   uint16_t* M_NONNULL sectorAlignment,
+                                                   uint8_t* M_NONNULL  ptrBuf,
+                                                   bool                readCap16)
 {
     if (readCap16)
     {
@@ -2006,7 +2013,10 @@ static eReturnValues private_Scsi_Read_Cap_10(const tDevice* device, readCapacit
 // There is a lot going on in this function. That is because old drives need the 10B command, new need 16B....but right
 // in between the two there were some drives produced with SBC2+ support, but still only supported the 10B command. Due
 // to this there are a few retries/fallbacks in here, but it will figure this out for the caller to make life easier
-eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* M_NONNULL device, readCapacityData* M_NONNULL outputData)
+M_PARAM_RO(1)
+M_PARAM_WO(2)
+OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* M_NONNULL    device,
+                                                                  readCapacityData* M_NONNULL outputData)
 {
     safe_memset(outputData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
 
@@ -2186,7 +2196,7 @@ static M_INLINE void set_No_SAT_VPD(tDevice* device)
     device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
 }
 
-eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* M_NONNULL device)
 {
     eReturnValues ret              = FAILURE;
     bool          issueSATIdentify = true; // default to ALWAYS reading this unless something else says not to. - TJE
@@ -2601,7 +2611,8 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
     return passthroughTypeSet;
 }
 
-bool is_LaCie_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
+OPENSEA_TRANSPORT_API
+OPENSEA_TRANSPORT_API bool is_LaCie_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
     {
@@ -2620,7 +2631,8 @@ bool is_LaCie_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
     }
 }
 
-bool is_Seagate_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
+OPENSEA_TRANSPORT_API
+OPENSEA_TRANSPORT_API bool is_Seagate_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
     {
@@ -2639,7 +2651,8 @@ bool is_Seagate_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
     }
 }
 
-bool is_Seagate_SAS_Vendor_ID(const char* M_NONNULL t10VendorIdent)
+OPENSEA_TRANSPORT_API
+OPENSEA_TRANSPORT_API bool is_Seagate_SAS_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
     {
@@ -2662,9 +2675,9 @@ bool is_Seagate_SAS_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 // This function can still exist and just call that for the vendor IDs
 // Then in ATA layer and NVMe layer they can do their own evaluation and
 // call into the same main cleanup function since the same 0-padding exists in those interfaces.
-void seagate_Serial_Number_Cleanup(const char* M_NONNULL t10VendorIdent,
-                                   char** M_NONNULL      unitSerialNumber,
-                                   size_t                unitSNSize)
+OPENSEA_TRANSPORT_API void seagate_Serial_Number_Cleanup(const char* M_NONNULL t10VendorIdent,
+                                                         char** M_NONNULL      unitSerialNumber,
+                                                         size_t                unitSNSize)
 {
     if (t10VendorIdent && unitSerialNumber && *unitSerialNumber)
     {
@@ -2686,7 +2699,7 @@ void seagate_Serial_Number_Cleanup(const char* M_NONNULL t10VendorIdent,
 // \brief Sends a set of INQUIRY commands & fills in the device information
 // \param device device struture
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-eReturnValues fill_In_Device_Info(tDevice* device)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* device)
 {
     int        ret              = FAILURE;
     bool       mediumNotPresent = false; // assume medium is available until we find out otherwise.
@@ -3962,7 +3975,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
 // this is a look up that makes use of the formula in SPC spec for how versions are set. Formula is ((standard x 32) +
 // revision) The simplest thing to do is take the version descriptor and divide it by 32. Using iteger division we can
 // check if that matches the standard we're looking for. - TJE
-bool is_Standard_Supported(uint16_t versionDescriptor, eStandardCode standardCode)
+OPENSEA_TRANSPORT_API bool is_Standard_Supported(uint16_t versionDescriptor, eStandardCode standardCode)
 {
     // SPC defines the version descriptor codes.
     // To convert it to a standard, divide it by 32 as indicated in the formula in the annex-TJE
@@ -3984,7 +3997,7 @@ typedef struct s_scsiVersionDescriptor
 
 // This must be kept in order.
 // This list was created using https://www.t10.org/lists/stds-num.txt
-static scsiVersionDescriptor scsiVersionDescriptorTable[] = {
+static const scsiVersionDescriptor scsiVersionDescriptorTable[] = {
     {0x0000, "Version Descriptor Not Supported or No Standard Identified     "},
     {0x0020, "SAM (no version claimed)                                       "},
     {0x003B, "SAM T10/0994-D revision 18                                     "},
@@ -4587,23 +4600,25 @@ static scsiVersionDescriptor scsiVersionDescriptorTable[] = {
 };
 
 // Used with bsearch to get the string
-static int cmp_Version_Descriptor(scsiVersionDescriptor* a, scsiVersionDescriptor* b)
+static int cmp_Version_Descriptor(const void* a, const void* b)
 {
-    return (a->versionCode - b->versionCode);
+    const scsiVersionDescriptor* verA = M_REINTERPRET_CAST(const scsiVersionDescriptor*, a);
+    const scsiVersionDescriptor* verB = M_REINTERPRET_CAST(const scsiVersionDescriptor*, b);
+    return (verA->versionCode - verB->versionCode);
 }
 
-void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* M_NONNULL versionString)
+OPENSEA_TRANSPORT_API void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* M_NONNULL versionString)
 {
     // use binary search to find it from the massive list above
     // If that fails, fall into the switch below as a fall-back
-    scsiVersionDescriptor* versionDescriptorResult = M_NULLPTR;
-    scsiVersionDescriptor  versionDescriptorKey    = {versionDescriptor, M_NULLPTR};
+    const scsiVersionDescriptor* versionDescriptorResult = M_NULLPTR;
+    scsiVersionDescriptor        versionDescriptorKey    = {versionDescriptor, M_NULLPTR};
 
-    versionDescriptorResult = C_CAST(
-        scsiVersionDescriptor*,
-        safe_bsearch(&versionDescriptorKey, scsiVersionDescriptorTable,
-                     sizeof(scsiVersionDescriptorTable) / sizeof(scsiVersionDescriptorTable[0]),
-                     sizeof(scsiVersionDescriptorTable[0]), (int (*)(const void*, const void*))cmp_Version_Descriptor));
+    versionDescriptorResult = M_REINTERPRET_CAST(
+        const scsiVersionDescriptor*,
+        safe_bsearch(&versionDescriptorKey, M_REINTERPRET_CAST(const void*, scsiVersionDescriptorTable),
+                     SIZE_OF_STACK_ARRAY(scsiVersionDescriptorTable), sizeof(scsiVersionDescriptorTable[0]),
+                     cmp_Version_Descriptor));
     if (versionDescriptorResult)
     {
         snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "%s",
@@ -5066,12 +5081,12 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* M_NONNU
     }
 }
 
-void get_mode_param_header_6_fields(uint8_t* M_NONNULL  ptrMP,
-                                    uint32_t            mpHeaderLen,
-                                    uint8_t* M_NULLABLE modeDataLength,
-                                    uint8_t* M_NULLABLE mediumType,
-                                    uint8_t* M_NULLABLE devSpecific,
-                                    uint8_t*            blockDescriptorLenth)
+OPENSEA_TRANSPORT_API void get_mode_param_header_6_fields(uint8_t* M_NONNULL  ptrMP,
+                                                          uint32_t            mpHeaderLen,
+                                                          uint8_t* M_NULLABLE modeDataLength,
+                                                          uint8_t* M_NULLABLE mediumType,
+                                                          uint8_t* M_NULLABLE devSpecific,
+                                                          uint8_t*            blockDescriptorLenth)
 {
 
     if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_6_LEN)
@@ -5095,13 +5110,13 @@ void get_mode_param_header_6_fields(uint8_t* M_NONNULL  ptrMP,
     }
 }
 
-void get_mode_param_header_10_fields(uint8_t* M_NONNULL   ptrMP,
-                                     uint32_t             mpHeaderLen,
-                                     uint16_t* M_NULLABLE modeDataLength,
-                                     uint8_t* M_NULLABLE  mediumType,
-                                     uint8_t* M_NULLABLE  devSpecific,
-                                     bool* M_NULLABLE     longLBA,
-                                     uint16_t*            blockDescriptorLenth)
+OPENSEA_TRANSPORT_API void get_mode_param_header_10_fields(uint8_t* M_NONNULL   ptrMP,
+                                                           uint32_t             mpHeaderLen,
+                                                           uint16_t* M_NULLABLE modeDataLength,
+                                                           uint8_t* M_NULLABLE  mediumType,
+                                                           uint8_t* M_NULLABLE  devSpecific,
+                                                           bool* M_NULLABLE     longLBA,
+                                                           uint16_t*            blockDescriptorLenth)
 {
 
     if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_10_LEN)
@@ -5131,11 +5146,11 @@ void get_mode_param_header_10_fields(uint8_t* M_NONNULL   ptrMP,
     }
 }
 
-void get_mode_general_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
-                                              uint32_t             mpBlkDescLen,
-                                              uint8_t* M_NULLABLE  densityCode,
-                                              uint32_t* M_NULLABLE numberOfBlocks,
-                                              uint32_t*            blockLength)
+OPENSEA_TRANSPORT_API void get_mode_general_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
+                                                                    uint32_t             mpBlkDescLen,
+                                                                    uint8_t* M_NULLABLE  densityCode,
+                                                                    uint32_t* M_NULLABLE numberOfBlocks,
+                                                                    uint32_t*            blockLength)
 {
 
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= GENERAL_BLOCK_DESCRIPTOR_LEN)
@@ -5163,10 +5178,10 @@ void get_mode_general_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
     }
 }
 
-void get_mode_short_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
-                                            uint32_t             mpBlkDescLen,
-                                            uint32_t* M_NULLABLE numberOfBlocks,
-                                            uint32_t*            blockLength)
+OPENSEA_TRANSPORT_API void get_mode_short_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
+                                                                  uint32_t             mpBlkDescLen,
+                                                                  uint32_t* M_NULLABLE numberOfBlocks,
+                                                                  uint32_t*            blockLength)
 {
 
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= SHORT_LBA_BLOCK_DESCRIPTOR_LEN)
@@ -5190,10 +5205,10 @@ void get_mode_short_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
     }
 }
 
-void get_mode_long_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
-                                           uint32_t             mpBlkDescLen,
-                                           uint64_t* M_NULLABLE numberOfBlocks,
-                                           uint64_t*            blockLength)
+OPENSEA_TRANSPORT_API void get_mode_long_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
+                                                                 uint32_t             mpBlkDescLen,
+                                                                 uint64_t* M_NULLABLE numberOfBlocks,
+                                                                 uint64_t*            blockLength)
 {
 
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= LONG_LBA_BLOCK_DESCRIPTOR_LEN)
@@ -5217,16 +5232,16 @@ void get_mode_long_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
     }
 }
 
-void get_SBC_Mode_Header_Blk_Desc_Fields(bool                 sixByteCmd,
-                                         uint8_t* M_NONNULL   ptr,
-                                         uint32_t             totalDataLen,
-                                         uint16_t* M_NULLABLE modeDataLength,
-                                         uint8_t* M_NULLABLE  mediumType,
-                                         uint8_t* M_NULLABLE  devSpecific,
-                                         bool* M_NULLABLE     longLBA,
-                                         uint16_t* M_NULLABLE blockDescriptorLenth,
-                                         uint64_t* M_NULLABLE numberOfBlocks,
-                                         uint64_t*            blockLength)
+OPENSEA_TRANSPORT_API void get_SBC_Mode_Header_Blk_Desc_Fields(bool                 sixByteCmd,
+                                                               uint8_t* M_NONNULL   ptr,
+                                                               uint32_t             totalDataLen,
+                                                               uint16_t* M_NULLABLE modeDataLength,
+                                                               uint8_t* M_NULLABLE  mediumType,
+                                                               uint8_t* M_NULLABLE  devSpecific,
+                                                               bool* M_NULLABLE     longLBA,
+                                                               uint16_t* M_NULLABLE blockDescriptorLenth,
+                                                               uint64_t* M_NULLABLE numberOfBlocks,
+                                                               uint64_t*            blockLength)
 {
 
     if (ptr != M_NULLPTR)
@@ -5302,7 +5317,9 @@ void get_SBC_Mode_Header_Blk_Desc_Fields(bool                 sixByteCmd,
     }
 }
 
-bool check_Sense_For_Specific_Info(const uint8_t* M_NONNULL senseData, uint32_t senseLen, senseToCheck check)
+OPENSEA_TRANSPORT_API bool check_Sense_For_Specific_Info(const uint8_t* M_NONNULL senseData,
+                                                         uint32_t                 senseLen,
+                                                         senseToCheck             check)
 {
     bool             match = true;
     eSenseMatchDepth depth = SENSE_MATCH_SENSE_KEY;
@@ -5343,67 +5360,67 @@ bool check_Sense_For_Specific_Info(const uint8_t* M_NONNULL senseData, uint32_t 
     return match;
 }
 
-bool is_Invalid_Opcode(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Invalid_Opcode(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Invalid_Field_In_CDB(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Invalid_Field_In_CDB(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Invalid_Field_In_Parameter(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Invalid_Field_In_Parameter(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x25, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Format_Corrupt(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Format_Corrupt(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Media_Present(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Media_Present(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASC, SENSE_KEY_MEDIUM_ERROR, 0x3A, 0x00, 0x00};
     return !check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool did_Reset_Occur(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool did_Reset_Occur(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASC, SENSE_KEY_UNIT_ATTENTION, 0x29, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Microcode_Activation_Required(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Microcode_Activation_Required(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_NOT_READY, 0x04, 0x1E, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Command_Sequence_Error(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Command_Sequence_Error(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x2C, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Unaligned_Write(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Unaligned_Write(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0x04, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_LBA_Out_Of_Range(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_LBA_Out_Of_Range(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_HW_Error_No_Defect_Spare_Available(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_HW_Error_No_Defect_Spare_Available(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_HARDWARE_ERROR, 0x32, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);

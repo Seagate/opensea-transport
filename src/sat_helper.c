@@ -60,6 +60,8 @@
 #    pragma warning(disable : 4706)
 #endif
 
+M_PARAM_RO(1)
+M_PARAM_WO(2)
 eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(const tDevice* M_NONNULL device,
                                                            ataReturnTFRs* M_NONNULL ataRTFRs,
                                                            uint16_t                 parameterCode)
@@ -121,6 +123,7 @@ eReturnValues get_Return_TFRs_From_Passthrough_Results_Log(const tDevice* M_NONN
     return ret;
 }
 
+M_PARAM_WO(3)
 eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
                                                           uint32_t                 senseDataSize,
                                                           ataReturnTFRs* M_NONNULL rtfr)
@@ -184,6 +187,7 @@ eReturnValues get_RTFRs_From_Descriptor_Format_Sense_Data(const uint8_t* M_NONNU
     return ret;
 }
 
+M_PARAM_RW(4)
 eReturnValues get_RTFRs_From_Fixed_Format_Sense_Data(const tDevice* M_NONNULL         device,
                                                      const uint8_t* M_NONNULL         ptrSenseData,
                                                      uint32_t                         senseDataSize,
@@ -487,6 +491,7 @@ bool get_Return_TFRs_From_Sense_Data(const tDevice* M_NONNULL         device,
     return gotRTFRsFromSenseData;
 }
 
+M_PARAM_RW(1)
 eReturnValues set_Protocol_Field(uint8_t* M_NONNULL     satCDB,
                                  eAtaProtocol           commadProtocol,
                                  eDataTransferDirection dataDirection,
@@ -559,6 +564,7 @@ eReturnValues set_Protocol_Field(uint8_t* M_NONNULL     satCDB,
     return ret;
 }
 
+M_PARAM_RW(1)
 eReturnValues set_Transfer_Bits(uint8_t* M_NONNULL            satCDB,
                                 eATAPassthroughLength         tLength,
                                 eATAPassthroughTransferBlocks ttype,
@@ -610,6 +616,7 @@ eReturnValues set_Transfer_Bits(uint8_t* M_NONNULL            satCDB,
     return ret;
 }
 
+M_PARAM_RW(1)
 eReturnValues set_Multiple_Count(uint8_t* M_NONNULL satCDB, uint8_t multipleCount, uint8_t protocolOffset)
 {
     satCDB[protocolOffset] |= (multipleCount & (BIT0 | BIT1 | BIT2)) << 5;
@@ -626,6 +633,7 @@ eReturnValues set_Multiple_Count(uint8_t* M_NONNULL satCDB, uint8_t multipleCoun
  */
 // Timeout should be set to 0, 2, 6, or 14 seconds when setting these bits.
 // This is different from the command's timeout to set for the OS.
+M_PARAM_RW(1)
 eReturnValues set_Offline_Bits(uint8_t* M_NONNULL satCDB, uint32_t timeout, uint8_t transferBitsOffset)
 {
     uint8_t satTimeout = UINT8_C(0);
@@ -649,12 +657,14 @@ eReturnValues set_Offline_Bits(uint8_t* M_NONNULL satCDB, uint32_t timeout, uint
     return SUCCESS;
 }
 
-eReturnValues set_Check_Condition_Bit(uint8_t* M_NONNULL satCDB, uint8_t transferBitsOffset)
+M_PARAM_RW(1) eReturnValues set_Check_Condition_Bit(uint8_t* M_NONNULL satCDB, uint8_t transferBitsOffset)
 {
     satCDB[transferBitsOffset] |= BIT5;
     return SUCCESS;
 }
 
+M_PARAM_RW(1)
+M_PARAM_RO(2)
 eReturnValues set_Registers(uint8_t* M_NONNULL satCDB, ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
@@ -773,6 +783,8 @@ eReturnValues set_Registers(uint8_t* M_NONNULL satCDB, ataPassthroughCommand* M_
     return ret;
 }
 
+M_PARAM_RO(1)
+M_PARAM_WO(2)
 eReturnValues request_Return_TFRs_From_Device(const tDevice* M_NONNULL device, ataReturnTFRs* M_NONNULL rtfr)
 {
     // try and issue a request for the RTFRs...we'll see if this actually works
@@ -894,6 +906,10 @@ eReturnValues request_Return_TFRs_From_Device(const tDevice* M_NONNULL device, a
     return rtfrRet;
 }
 
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+M_PARAM_RW(3)
+M_PARAM_RW(4)
 eReturnValues build_SAT_CDB(const tDevice* M_NONNULL         device,
                             uint8_t**                        satCDB,
                             eCDBLen* M_NONNULL               cdbLen,
@@ -1142,6 +1158,8 @@ eReturnValues build_SAT_CDB(const tDevice* M_NONNULL         device,
     return ret;
 }
 
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         device,
                                            ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
@@ -1201,7 +1219,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
         scsiIoCtx.fwdlLastSegment  = ataCommandOptions->fwdlLastSegment;
         // clear the last command sense data every single time before we issue any commands
         safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
-        M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = UINT64_C(0);
+        set_tDevice_Last_Command_Completion_Time_NS(M_CONST_CAST(tDevice*, device), 0);
 
         ret = private_SCSI_Send_CDB(&scsiIoCtx, &senseFields);
 
@@ -1502,7 +1520,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
         if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
         {
             // print command timing information
-            print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+            print_Command_Time(get_tDevice_Last_Command_Completion_Time_NS(device));
         }
 
         M_CONST_CAST(tDevice*, device)->drive_info.ataSenseData.validData =
@@ -1606,19 +1624,16 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                 // bad status and will return it on the very next command we issue
                 //...SO send a "check Power Mode" command to force it to refresh and prevent this issue from happening
                 // again..basically a test unit ready command - TJE
-                uint64_t commandTimeNanoseconds =
-                    device->drive_info
-                        .lastCommandTimeNanoSeconds; // back this up first since they'll want the time from the command
-                                                     // they issued, not the check power mode.
-                uint8_t powerMode = UINT8_C(0);      // we don't actually care about this...just holding it for now
+                uint64_t commandTimeNanoseconds = get_tDevice_Last_Command_Completion_Time_NS(device);
+                uint8_t  powerMode = UINT8_C(0); // we don't actually care about this...just holding it for now
                 ata_Check_Power_Mode(device, &powerMode);
                 // The rtfrs from this command will get overwritten below so this will appear transparent.
-                M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = commandTimeNanoseconds;
+                set_tDevice_Last_Command_Completion_Time_NS(M_CONST_CAST(tDevice*, device), commandTimeNanoseconds);
             }
         }
     }
     safe_free_aligned(&satCDB);
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }
@@ -18526,7 +18541,7 @@ static eReturnValues translate_SCSI_Report_Supported_Operation_Codes_Command(con
 }
 
 // always sets Descriptor type sense data
-eReturnValues translate_SCSI_Command(const tDevice* M_NONNULL device, ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(2) eReturnValues translate_SCSI_Command(const tDevice* M_NONNULL device, ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     static bool   deviceInfoAvailable  = false;
     eReturnValues ret                  = UNKNOWN;

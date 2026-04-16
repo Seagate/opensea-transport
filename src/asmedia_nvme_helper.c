@@ -131,6 +131,7 @@ static eReturnValues build_Basic_Passthrough_CDB(nvmeCmdCtx* nvmCmd, uint8_t* cd
     return ret;
 }
 
+M_PARAM_RW(1)
 eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
 {
     eReturnValues ret = SUCCESS;
@@ -478,6 +479,7 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t* M_NONNULL       c
 
 // NOTE: There is currently a bug in this code on the data phase command being rejected for invalid field in CDB.
 //       This will debugged once I get a device in hand to figure out what is going wrong.
+M_PARAM_RW(1)
 eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
 {
     eReturnValues ret = SUCCESS;
@@ -611,7 +613,8 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
     return ret;
 }
 
-static eReturnValues asm_nvme_Shutdown(const tDevice* device, bool withShutdownProcessing)
+M_PARAM_RO(1)
+static eReturnValues asm_nvme_Shutdown(const tDevice* M_NONNULL device, bool withShutdownProcessing)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -631,6 +634,7 @@ static eReturnValues asm_nvme_Shutdown(const tDevice* device, bool withShutdownP
     return ret;
 }
 
+M_PARAM_RO(1)
 static eReturnValues asm_nvme_Reset_Bridge(const tDevice* M_NONNULL device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
@@ -650,7 +654,8 @@ static eReturnValues asm_nvme_Reset_Bridge(const tDevice* M_NONNULL device)
     return ret;
 }
 
-static eReturnValues asm_nvme_Relink_Bridge(const tDevice* device, bool normalShutdownBeforeDisconnect)
+M_PARAM_RO(1)
+static eReturnValues asm_nvme_Relink_Bridge(const tDevice* M_NONNULL device, bool normalShutdownBeforeDisconnect)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -670,6 +675,7 @@ static eReturnValues asm_nvme_Relink_Bridge(const tDevice* device, bool normalSh
     return ret;
 }
 
+M_PARAM_RO(1)
 eReturnValues asm_nvme_Reset(const tDevice* M_NONNULL device)
 {
     // shutdown, then reset bridge
@@ -698,7 +704,7 @@ eReturnValues asm_nvme_Reset(const tDevice* M_NONNULL device)
     }
 }
 
-eReturnValues asm_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues asm_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     // relink USB command
     return asm_nvme_Relink_Bridge(device, true);

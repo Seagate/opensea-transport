@@ -33,7 +33,7 @@
 #include "usb_hacks.h"
 #include <ctype.h> //for checking for printable characters
 
-bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* M_NONNULL device)
 {
     bool passthroughTypeSet = false;
     if ((get_Device_InterfaceType(device) == USB_INTERFACE ||

@@ -127,7 +127,7 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
         start_Timer(&commandTimer);
         iocret = ioctl(scsiIoCtx->device->os_info.fd, ATAIOCCOMMAND, &atacmd);
         stop_Timer(&commandTimer);
-        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
         if (iocret < 0)
         {
             // something went wrong with the ioctl.
@@ -229,7 +229,7 @@ eReturnValues send_BSD_ATA_Reset(int fd)
 #endif
 }
 
-eReturnValues send_BSD_ATA_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_BSD_ATA_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx != M_NULLPTR)

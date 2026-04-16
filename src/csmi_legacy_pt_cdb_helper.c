@@ -42,6 +42,8 @@
 #define CSMI_PROTOCOL_DMA_QUEUED_IN  7
 #define CSMI_PROTOCOL_DMA_QUEUED_OUT 8
 
+M_PARAM_RW(1)
+M_PARAM_RO(2)
 eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[M_NONNULL_ARRAY CSMI_PASSTHROUGH_CDB_LENGTH],
                                          ataPassthroughCommand* M_NONNULL ataPtCmd)
 {
@@ -166,6 +168,8 @@ eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[M_NONNULL_ARRAY CSMI_PASSTH
     return ret;
 }
 
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice* M_NONNULL         device,
                                          ataPassthroughCommand* M_NONNULL ataCommandOptions,
                                          int                              commandRet)
@@ -178,6 +182,8 @@ eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice* M_NONNULL         device
     return NOT_SUPPORTED;
 }
 
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* M_NONNULL         device,
                                                ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
@@ -254,7 +260,7 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* M_NONNULL         
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

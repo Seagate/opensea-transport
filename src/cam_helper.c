@@ -60,7 +60,7 @@ extern bool validate_Device_Struct(versionBlock);
 
 // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise
 // you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported(void)
+OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void)
 {
     return true;
 }
@@ -523,7 +523,8 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* M_NONNULL dev
     return ret;
 }
 
-eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     if (is_NVMe_Handle(filename))
@@ -736,13 +737,13 @@ static eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
         scsiIoCtx->pAtaCmdOpts->rtfr.secCnt = M_Byte0(atareq.u.ata.count);
         set_ATA_PT_Sense_Data(scsiIoCtx);
     }
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
 }
 #endif // IOCATAREQUEST
 
 #if !defined(__DragonFly__)
-eReturnValues send_Ata_Cam_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Ata_Cam_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues     ret       = SUCCESS;
     union ccb*        ccb       = M_NULLPTR;
@@ -1033,7 +1034,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
                     scsiIoCtx->pAtaCmdOpts->rtfr.status = ataio->res.status;       // Status
                     set_ATA_PT_Sense_Data(scsiIoCtx);
                 }
-                scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+                set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
             }
         }
         else
@@ -1059,7 +1060,7 @@ eReturnValues send_Ata_Cam_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 }
 #endif //__DragonFly__
 
-eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
 #if defined(_DEBUG)
     printf("--> %s\n", __FUNCTION__);
@@ -1242,7 +1243,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
                 safe_memcpy(scsiIoCtx->psense, scsiIoCtx->senseDataSize, &csio->sense_data, SSD_FULL_SIZE);
             }
         }
-        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     }
     else
     {
@@ -1259,7 +1260,7 @@ eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
     // printf("%s -->\n",__FUNCTION__);
@@ -1439,7 +1440,7 @@ static int ad_filter(const struct dirent* entry)
 }
 #endif // IOCATAREQUEST
 
-eReturnValues close_Device(tDevice* dev)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
 {
     if (dev->os_info.cam_dev)
     {
@@ -1472,7 +1473,8 @@ eReturnValues close_Device(tDevice* dev)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSED uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
     int num_da_devs   = 0;
     int num_ada_devs  = 0;
@@ -1564,10 +1566,11 @@ eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSE
 //
 //-----------------------------------------------------------------------------
 #define CAM_DEV_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
-                              uint32_t                 sizeInBytes,
-                              versionBlock             ver,
-                              M_ATTR_UNUSED uint64_t   flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                                                    uint32_t                 sizeInBytes,
+                                                    versionBlock             ver,
+                                                    M_ATTR_UNUSED uint64_t   flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -1782,37 +1785,38 @@ eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                      M_ATTR_UNUSED uint64_t                 lba,
-                      M_ATTR_UNUSED bool                     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
-                      M_ATTR_UNUSED uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                            M_ATTR_UNUSED uint64_t                 lba,
+                                            M_ATTR_UNUSED bool                     forceUnitAccess,
+                                            M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                            M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                       M_ATTR_UNUSED uint64_t                 lba,
-                       M_ATTR_UNUSED bool                     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
-                       M_ATTR_UNUSED uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                             M_ATTR_UNUSED uint64_t                 lba,
+                                             M_ATTR_UNUSED bool                     forceUnitAccess,
+                                             M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                             M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                        M_ATTR_UNUSED uint64_t                 lba,
-                        M_ATTR_UNUSED uint32_t                 range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                              M_ATTR_UNUSED uint64_t                 lba,
+                                              M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
@@ -1836,7 +1840,7 @@ eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     union ccb*    ccb = cam_getccb(device->os_info.cam_dev);
@@ -1860,7 +1864,7 @@ eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
@@ -2023,8 +2027,8 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
                 printf("I/O went through status %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
 #        endif
             }
-            ret                                                      = SUCCESS;
-            nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            ret = SUCCESS;
+            set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
             // Fill the nvme CommandCompletionData
             nvmeIoCtx->commandCompletionData.dw0      = nvmeio->cpl.cdw0;
             nvmeIoCtx->commandCompletionData.dw1      = nvmeio->cpl.rsvd1;
@@ -2180,7 +2184,7 @@ static eReturnValues send_IOCTL_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 }
 #endif // DISABLE_NVME_PASSTHROUGH
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
+M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
 #if defined(DISABLE_NVME_PASSTHROUGH)
     M_USE_UNUSED(nvmeIoCtx);
@@ -2199,7 +2203,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 #endif     // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret           = OS_PASSTHROUGH_FAILURE;
@@ -2217,7 +2221,7 @@ eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
-        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+        print_Command_Time(get_tDevice_Last_Command_Completion_Time_NS(device));
     }
 
     if (ioRes < 0)
@@ -2242,11 +2246,12 @@ eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
+M_PARAM_WO_SIZE(2, 3)
 eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
                                M_ATTR_UNUSED uint8_t* M_NONNULL       pData,
                                M_ATTR_UNUSED uint32_t                 dataSize)
@@ -2254,12 +2259,12 @@ eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return SUCCESS;
 }
 
-eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     // There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
     if (device->os_info.lockCount < UINT16_MAX)
@@ -2270,7 +2275,7 @@ eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
     return SUCCESS;
 }
 
-eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     // There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
     if (device->os_info.lockCount > 0)
@@ -2288,7 +2293,8 @@ eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 // looks very similar to the Linux getmntent: getfsent
 // ???https://www.freebsd.org/cgi/man.cgi?query=getfsent&sektion=3&apropos=0&manpath=FreeBSD+13.0-RELEASE+and+Ports
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
+    os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // TODO: I have not found an analog to Linux which is usually the most helpful for figuring out what to do.
     //       I haven't found any other API or IOCTL that reloads the partition table on the disk (which is pretty close)
@@ -2300,12 +2306,13 @@ eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device)
 {
     return unmount_Partitions_From_Device(get_Device_Handle_Name(device));
 }

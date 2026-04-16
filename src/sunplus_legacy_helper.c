@@ -27,6 +27,10 @@
 #include "scsi_helper_func.h"
 #include "sunplus_legacy_helper.h"
 
+M_PARAM_WO(1)
+M_PARAM_WO(2)
+M_PARAM_WO(3)
+M_PARAM_RO(4)
 eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                          lowCDB[SUNPLUS_PT_CDB_LEN],
                                                     uint8_t                          hiCDB[SUNPLUS_PT_CDB_LEN],
                                                     bool* M_NONNULL                  highCDBValid,
@@ -79,6 +83,8 @@ eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                     
 }
 
 #define SUBPLUS_READ_REG_LEN 16
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice* M_NONNULL         device,
                                             ataPassthroughCommand* M_NONNULL ataCommandOptions,
                                             eReturnValues                    commandRet)
@@ -122,6 +128,8 @@ eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice* M_NONNULL         dev
     return ret;
 }
 
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
                                                       ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
@@ -207,7 +215,7 @@ eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* M_NONNULL  
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

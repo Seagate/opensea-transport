@@ -60,7 +60,7 @@ static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData,
 // \brief Sends a set Identify etc commands & fills in the device information
 // \param device device struture
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
+M_PARAM_RW(1) eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
 {
     eReturnValues ret = UNKNOWN;
 
@@ -315,7 +315,7 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t           nvmeStatusDWord,
 
 // Status codes must be in numeric order!
 // These will be binary searched so out of order will break binary search!
-static nvmeStatus nvmeStatusLookup[] = {
+static const nvmeStatus nvmeStatusLookup[] = {
     // Generic status codes first
     {NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_SUCCESS_, SUCCESS, "Success"},
     {NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INVALID_OPCODE_, NOT_SUPPORTED, "Invalid Command Opcode"},
@@ -491,8 +491,10 @@ static nvmeStatus nvmeStatusLookup[] = {
     {NVME_SCT_PATH_RELATED_STATUS, NVME_PATH_SC_COMMAND_ABORTED_BY_HOST, ABORTED, "Command Aborted By Host"},
 };
 
-static int cmp_NVMe_Status(nvmeStatus* a, nvmeStatus* b)
+static int cmp_NVMe_Status(const void* stata, const void* statb)
 {
+    const nvmeStatus* a = M_REINTERPRET_CAST(const nvmeStatus*, stata);
+    const nvmeStatus* b = M_REINTERPRET_CAST(const nvmeStatus*, statb);
     // compare status code type, if they are same, compare status code
     int ret = a->statusCodeType - b->statusCodeType;
     if (ret)
@@ -507,15 +509,15 @@ static int cmp_NVMe_Status(nvmeStatus* a, nvmeStatus* b)
 
 const nvmeStatus* get_NVMe_Status(uint32_t nvmeStatusDWord)
 {
-    nvmeStatus  key;
-    nvmeStatus* result = M_NULLPTR;
+    nvmeStatus        key;
+    const nvmeStatus* result = M_NULLPTR;
     safe_memset(&key, sizeof(nvmeStatus), 0, sizeof(nvmeStatus));
     key.statusCodeType = get_8bit_range_uint32(nvmeStatusDWord, 27, 25);
     key.statusCode     = get_8bit_range_uint32(nvmeStatusDWord, 24, 17);
 
-    result = M_REINTERPRET_CAST(nvmeStatus*, safe_bsearch(&key, nvmeStatusLookup, SIZE_OF_STACK_ARRAY(nvmeStatusLookup),
-                                                          sizeof(nvmeStatusLookup[0]),
-                                                          (int (*)(const void*, const void*))cmp_NVMe_Status));
+    result = M_REINTERPRET_CAST(const nvmeStatus*, safe_bsearch(&key, M_REINTERPRET_CAST(const void*, nvmeStatusLookup),
+                                                                SIZE_OF_STACK_ARRAY(nvmeStatusLookup),
+                                                                sizeof(nvmeStatusLookup[0]), cmp_NVMe_Status));
 
     return result;
 }
@@ -646,7 +648,7 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* M_NONNULL cmdCtx)
     print_str("\n");
 }
 
-M_RETURNS_NONNULL const char* nvme_cmd_to_string(int admin, uint8_t opcode)
+OPENSEA_TRANSPORT_API M_RETURNS_NONNULL const char* nvme_cmd_to_string(int admin, uint8_t opcode)
 {
     if (admin)
     {
@@ -742,10 +744,10 @@ M_RETURNS_NONNULL const char* nvme_cmd_to_string(int admin, uint8_t opcode)
     return "Unknown";
 }
 
-eReturnValues nvme_Get_SMART_Log_Page(const tDevice* M_NONNULL device,
-                                      uint32_t                 nsid,
-                                      uint8_t* M_NONNULL       pData,
-                                      uint32_t                 dataLen)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_SMART_Log_Page(const tDevice* M_NONNULL device,
+                                                            uint32_t                 nsid,
+                                                            uint8_t* M_NONNULL       pData,
+                                                            uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -775,7 +777,9 @@ eReturnValues nvme_Get_SMART_Log_Page(const tDevice* M_NONNULL device,
     return ret;
 }
 
-eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataLen)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* M_NONNULL device,
+                                                            uint8_t* M_NONNULL       pData,
+                                                            uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -801,7 +805,9 @@ eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* M_NONNULL device, uint8_t* 
     return ret;
 }
 
-eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataLen)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* M_NONNULL device,
+                                                              uint8_t* M_NONNULL       pData,
+                                                              uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -827,7 +833,9 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* M_NONNULL device, uint8_t
     return ret;
 }
 
-eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataLen)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* M_NONNULL device,
+                                                                 uint8_t* M_NONNULL       pData,
+                                                                 uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -853,7 +861,9 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* M_NONNULL device, uint
     return ret;
 }
 
-eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataLen)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* M_NONNULL device,
+                                                                  uint8_t* M_NONNULL       pData,
+                                                                  uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -880,7 +890,10 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* M_NONNULL device, uin
 }
 
 // Seagate unique?
-eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* M_NONNULL device, EXTENDED_SMART_INFO_T* M_NONNULL ExtdSMARTInfo)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* M_NONNULL         device,
+                                                          EXTENDED_SMART_INFO_T* M_NONNULL ExtdSMARTInfo)
 {
     eReturnValues         ret = SUCCESS;
     nvmeGetLogPageCmdOpts getExtSMARTLog;

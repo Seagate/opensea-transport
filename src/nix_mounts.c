@@ -734,6 +734,7 @@ static int os_unmount_force_then_retry_normal(const char* mntPath)
     return -1;
 }
 
+M_PARAM_RO(1)
 eReturnValues unmount_Partitions_From_Device(const char* blockDevice)
 {
     if (!blockDevice || !*blockDevice)

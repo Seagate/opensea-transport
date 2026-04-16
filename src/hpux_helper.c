@@ -88,7 +88,7 @@
 
 extern bool validate_Device_Struct(versionBlock);
 
-bool os_Is_Infinite_Timeout_Supported(void)
+OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void)
 {
     return true;
 }
@@ -255,7 +255,7 @@ eReturnValues send_SIOC_IO(ScsiIoCtx* scsiIoCtx)
         ret = handle_SCSI_IO_Completion(scsiIoCtx, scsicmd.cdb_status, scsicmd.sense_status, scsicmd.sense,
                                         scsi_cmd.sense_xfer);
     }
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
 }
 
@@ -324,12 +324,12 @@ eReturnValues send_SIOC_IO_EXT(ScsiIoCtx* scsiIoCtx)
         ret = handle_SCSI_IO_Completion(scsiIoCtx, scsicmd.cdb_status, scsicmd.sense_status,
                                         M_REINTERPRET_CAST(uint8_t*, &scsicmd.sense), scsi_cmd.sense_xfer);
     }
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
 }
 #endif // SIOC_IO_EXT
 
-eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
 #if defined(SIOC_IO_EXT)
@@ -346,21 +346,22 @@ eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx* M_NONNULL nvmeIoCtx)
+M_PARAM_RW(1) eReturnValues send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
+M_PARAM_WO_SIZE(2, 3)
 eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
                                M_ATTR_UNUSED uint8_t* M_NONNULL       pData,
                                M_ATTR_UNUSED uint32_t                 dataSize)
@@ -369,7 +370,7 @@ eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
 }
 
 // Might need PSIOC_RESET_DEV instead
-eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (ioctl(device->os_info.fd, SIOC_RESET_DEV) < 0)
@@ -383,7 +384,7 @@ eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (ioctl(device->os_info.fd, SIOC_RESET_BUS) < 0)
@@ -397,44 +398,45 @@ eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // DIOC_RST_CLR?
     // or PDIOC_RSTCLR?
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                      M_ATTR_UNUSED uint64_t                 lba,
-                      M_ATTR_UNUSED bool                     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
-                      M_ATTR_UNUSED uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                            M_ATTR_UNUSED uint64_t                 lba,
+                                            M_ATTR_UNUSED bool                     forceUnitAccess,
+                                            M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                            M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                       M_ATTR_UNUSED uint64_t                 lba,
-                       M_ATTR_UNUSED bool                     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
-                       M_ATTR_UNUSED uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                             M_ATTR_UNUSED uint64_t                 lba,
+                                             M_ATTR_UNUSED bool                     forceUnitAccess,
+                                             M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                             M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                        M_ATTR_UNUSED uint64_t                 lba,
-                        M_ATTR_UNUSED uint32_t                 range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                              M_ATTR_UNUSED uint64_t                 lba,
+                                              M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
@@ -455,7 +457,8 @@ static void set_Device_Name(const char* filename, char* name, size_t sizeOfName)
     snprintf_err_handle(name, sizeOfName, "%s", s);
 }
 
-eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     eReturnValues ret          = SUCCESS;
     char*         deviceHandle = M_NULLPTR;
@@ -578,7 +581,8 @@ static int legacyDisk_filter(const struct dirent* entry)
     }
 }
 
-eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSED uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
     int num_devs = 0;
 
@@ -606,10 +610,11 @@ eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSE
 }
 
 #define HPUX_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
-                              uint32_t                 sizeInBytes,
-                              versionBlock             ver,
-                              M_ATTR_UNUSED uint64_t   flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                                                    uint32_t                 sizeInBytes,
+                                                    versionBlock             ver,
+                                                    M_ATTR_UNUSED uint64_t   flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -751,7 +756,7 @@ eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
     return returnValue;
 }
 
-eReturnValues close_Device(tDevice* dev)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
 {
     int retValue = 0;
     DISABLE_NONNULL_COMPARE
@@ -785,7 +790,7 @@ eReturnValues close_Device(tDevice* dev)
     RESTORE_NONNULL_COMPARE
 }
 
-eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
@@ -803,7 +808,7 @@ eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -821,18 +826,20 @@ eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // TODO: Unimplemented because not sure if O_EXCL is allowed or not. -TJE
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
+    os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }

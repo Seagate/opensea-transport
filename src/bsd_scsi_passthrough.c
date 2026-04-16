@@ -35,6 +35,10 @@
 
 #define BSD_SCSI_PT_MAX_CMD_TIMEOUT_SECONDS M_STATIC_CAST(uint32_t, (ULONG_MAX / 1000UL))
 
+M_PARAM_WO(2)
+M_PARAM_WO(3)
+M_PARAM_WO(4)
+M_PARAM_WO(5)
 eReturnValues get_BSD_SCSI_Address(int            fd,
                                    int* M_NONNULL type,
                                    int* M_NONNULL bus,
@@ -118,7 +122,7 @@ eReturnValues send_BSD_SCSI_Bus_Reset(int fd)
 #endif
 }
 
-eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx != M_NULLPTR && scsiIoCtx->device != M_NULLPTR)
@@ -199,7 +203,7 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
             start_Timer(&commandTimer);
             iocret = ioctl(scsiIoCtx->device->os_info.fd, SCIOCCOMMAND, &scsicmd);
             stop_Timer(&commandTimer);
-            scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
             if (iocret < 0)
             {
                 // something went wrong with the ioctl.

@@ -27,7 +27,9 @@
 #include "scsi_helper_func.h"
 #include "ti_legacy_helper.h"
 
-eReturnValues build_TI_Legacy_CDB(uint8_t                          cdb[CDB_16],
+M_PARAM_RW(1)
+M_PARAM_RO(2)
+eReturnValues build_TI_Legacy_CDB(uint8_t                          cdb[M_NONNULL_ARRAY CDB_16],
                                   ataPassthroughCommand* M_NONNULL ataCommandOptions,
                                   bool                             olderOpCode,
                                   bool                             forceMode,
@@ -76,6 +78,8 @@ eReturnValues build_TI_Legacy_CDB(uint8_t                          cdb[CDB_16],
     return ret;
 }
 
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
                                                  ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
@@ -153,7 +157,7 @@ eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* M_NONNULL       
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

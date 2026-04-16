@@ -50,7 +50,7 @@
 
 // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise
 // you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported(void)
+OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void)
 {
     return true;
 }
@@ -222,7 +222,8 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
 }
 
 #define LIN_MAX_HANDLE_LENGTH 16
-eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     char*                    deviceHandle = M_NULLPTR;
     eReturnValues            ret          = SUCCESS;
@@ -514,22 +515,22 @@ static eReturnValues sg_reset(int fd, int resetType)
     return ret;
 }
 
-eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_DEVICE);
 }
 
-eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_BUS);
 }
 
-eReturnValues os_Controller_Reset(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(const tDevice* M_NONNULL device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
 }
 
-eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
 #ifdef _DEBUG
@@ -582,7 +583,7 @@ eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_sg_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_sg_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     sg_io_hdr_t   io_hdr;
     uint8_t*      localSenseBuffer = M_NULLPTR;
@@ -929,7 +930,7 @@ eReturnValues send_sg_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
         }
     }
 
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
 #ifdef _DEBUG
     printf("<--%s (%d)\n", __FUNCTION__, ret);
 #endif
@@ -954,7 +955,8 @@ eReturnValues send_sg_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags)
 {
     int                      num_devs      = 0;
     int                      num_nvme_devs = 0;
@@ -1018,10 +1020,11 @@ eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t fla
 //
 //-----------------------------------------------------------------------------
 #define VM_NAME_LEN 128
-eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
-                              uint32_t                 sizeInBytes,
-                              versionBlock             ver,
-                              uint64_t                 flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                                                    uint32_t                 sizeInBytes,
+                                                    versionBlock             ver,
+                                                    uint64_t                 flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -1201,7 +1204,7 @@ eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues close_Device(tDevice* dev)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
 {
     int   retValue = 0;
     bool  isNVMe   = false;
@@ -1289,7 +1292,7 @@ void print_usr_io_struct(struct usr_io uio)
     printf("\tMeta Address: %" PRIu64 "\n", uio.meta_addr);
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
+M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = SUCCESS; // NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is
@@ -1459,7 +1462,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
     printf("<--%s (%d)\n", __FUNCTION__, ret);
 #    endif
 
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(cmdtimer);
+    set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(cmdtimer));
 
     if (nvmeIoCtx->device->delay_io)
     {
@@ -1476,13 +1479,13 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // This is a stub. If this is possible, this should perform an nvme reset;
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // This is a stub. If this is possible, this should perform an nvme subsystem reset;
     return OS_COMMAND_NOT_AVAILABLE;
@@ -1490,6 +1493,7 @@ eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL dev
 
 // Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c
 
+M_PARAM_WO_SIZE(2, 3)
 eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataSize)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -1531,42 +1535,43 @@ eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* M_NONNU
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                      M_ATTR_UNUSED uint64_t                 lba,
-                      M_ATTR_UNUSED bool                     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
-                      M_ATTR_UNUSED uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                            M_ATTR_UNUSED uint64_t                 lba,
+                                            M_ATTR_UNUSED bool                     forceUnitAccess,
+                                            M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                            M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                       M_ATTR_UNUSED uint64_t                 lba,
-                       M_ATTR_UNUSED bool                     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
-                       M_ATTR_UNUSED uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                             M_ATTR_UNUSED uint64_t                 lba,
+                                             M_ATTR_UNUSED bool                     forceUnitAccess,
+                                             M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                             M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                        M_ATTR_UNUSED uint64_t                 lba,
-                        M_ATTR_UNUSED uint32_t                 range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                              M_ATTR_UNUSED uint64_t                 lba,
+                                              M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
@@ -1602,7 +1607,7 @@ eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -1637,18 +1642,20 @@ eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
+    os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // note: linux code for blkrrprt might work
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }

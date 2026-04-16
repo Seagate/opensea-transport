@@ -121,7 +121,7 @@ static void print_Ofnvme_SRB_Status(uint32_t srbStatus)
 // Need to setup an admin identify and try sending it. If this device doesn't support this IOCTL, it should fail,
 // otherwise it will work. This is the same way the sample app works. Would be better if there was some other buffer to
 // just return and validate that reported the driver name, version, etc
-bool supports_OFNVME_IO(HANDLE deviceHandle)
+OPENSEA_TRANSPORT_API bool supports_OFNVME_IO(HANDLE deviceHandle)
 {
     bool     supported  = false;
     uint32_t bufferSize = sizeof(NVME_PASS_THROUGH_IOCTL) + UINT32_C(4096);
@@ -190,7 +190,7 @@ bool supports_OFNVME_IO(HANDLE deviceHandle)
     return supported;
 }
 
-eReturnValues send_OFNVME_Reset(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
@@ -250,7 +250,7 @@ eReturnValues send_OFNVME_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues send_OFNVME_Add_Namespace(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(const tDevice* M_NONNULL device)
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
@@ -310,7 +310,7 @@ eReturnValues send_OFNVME_Add_Namespace(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues send_OFNVME_Remove_Namespace(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(const tDevice* M_NONNULL device)
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
@@ -370,7 +370,7 @@ eReturnValues send_OFNVME_Remove_Namespace(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 #    if defined(OFNVME_DEBUG)
@@ -568,7 +568,7 @@ eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
             }
         }
 
-        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
 
         safe_free_aligned(&passthroughBuffer);
     }

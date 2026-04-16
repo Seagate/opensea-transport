@@ -27,8 +27,12 @@
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 
-eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t                          lowCDB[16],
-                                                     uint8_t                          hiCDB[16],
+M_PARAM_WO(1)
+M_PARAM_WO(2)
+M_PARAM_WO(3)
+M_PARAM_RO(4)
+eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t                          lowCDB[M_NONNULL_ARRAY 16],
+                                                     uint8_t                          hiCDB[M_NONNULL_ARRAY 16],
                                                      bool* M_NONNULL                  highCDBValid,
                                                      ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
@@ -89,6 +93,8 @@ eReturnValues build_Prolific_Legacy_Passthrough_CDBs(uint8_t                    
     return ret;
 }
 
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues get_RTFRs_From_Prolific_Legacy(const tDevice* M_NONNULL         device,
                                              ataPassthroughCommand* M_NONNULL ataCommandOptions,
                                              eReturnValues                    commandRet)
@@ -125,6 +131,8 @@ eReturnValues get_RTFRs_From_Prolific_Legacy(const tDevice* M_NONNULL         de
     return ret;
 }
 
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues send_Prolific_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
                                                        ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
@@ -210,7 +218,7 @@ eReturnValues send_Prolific_Legacy_Passthrough_Command(const tDevice* M_NONNULL 
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

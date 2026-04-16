@@ -1401,6 +1401,14 @@ extern "C"
     OPENSEA_TRANSPORT_API M_CONST_FUNC uint32_t
     get_Maximum_Command_Timeout_Seconds(M_ATTR_UNUSED const tDevice* M_NONNULL device) M_UNSEQUENCED;
 
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API void set_tDevice_Last_Command_Completion_Time_NS(tDevice* M_NONNULL device,
+                                                                           const uint64_t     timeNanoSeconds);
+
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API uint64_t get_tDevice_Last_Command_Completion_Time_NS(const tDevice* M_NONNULL device)
+        M_REPRODUCIBLE;
+
 #if defined(UEFI_C_SOURCE)
     typedef enum eUEFIPassthroughTypeEnum
     {

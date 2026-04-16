@@ -46,6 +46,8 @@ static M_INLINE bool is_Smart_Return_Status_Command(ataPassthroughCommand* M_NON
     return isSmartReturnStatus;
 }
 
+M_PARAM_WO(1)
+M_PARAM_RO(2)
 eReturnValues build_JMicron_Legacy_PT_CDB(uint8_t                          cdb[M_NONNULL_ARRAY JM_PROLIFIC_CDB_LEN],
                                           ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
@@ -91,6 +93,8 @@ eReturnValues build_JMicron_Legacy_PT_CDB(uint8_t                          cdb[M
     return ret;
 }
 
+M_PARAM_RO(1)
+M_PARAM_RW(3)
 eReturnValues read_Adapter_Register(const tDevice* M_NONNULL device,
                                     eJMicronAdapterRegisters jmregister,
                                     uint8_t* M_NONNULL       ptrData,
@@ -121,6 +125,7 @@ eReturnValues read_Adapter_Register(const tDevice* M_NONNULL device,
                          M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0);
 }
 
+M_PARAM_RW(1)
 eReturnValues set_JM_Dev(tDevice* M_NONNULL device)
 {
     eReturnValues ret    = SUCCESS;
@@ -148,6 +153,8 @@ eReturnValues set_JM_Dev(tDevice* M_NONNULL device)
 }
 
 #define JM_REGISTER_BUF_LEN (16)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues get_RTFRs_From_JMicron_Legacy(const tDevice* M_NONNULL         device,
                                             ataPassthroughCommand* M_NONNULL ataCommandOptions,
                                             eReturnValues                    commandRet)
@@ -194,6 +201,8 @@ static M_INLINE bool is_Valid_Smart_Return_Status_For_JMicron_USB(uint8_t status
     return valid;
 }
 
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
                                                       ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
@@ -311,7 +320,7 @@ eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* M_NONNULL  
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

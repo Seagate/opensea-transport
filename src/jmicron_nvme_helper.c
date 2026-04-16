@@ -29,6 +29,7 @@
 #include "jmicron_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
+M_PARAM_RO(7)
 eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t cdb[M_NONNULL_ARRAY JMICRON_NVME_CDB_SIZE],
                                             eDataTransferDirection* M_NONNULL cdbDataDirection,
                                             uint8_t* M_NULLABLE               dataPtr,
@@ -254,6 +255,7 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t cdb[M_NONNULL_ARRAY JMICRON_
     return SUCCESS;
 }
 
+M_PARAM_RW(1)
 eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
 {
     eReturnValues ret = SUCCESS;
@@ -402,7 +404,7 @@ static eReturnValues jm_NVMe_MCU_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues jm_nvme_Reset(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues jm_nvme_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
@@ -427,7 +429,7 @@ eReturnValues jm_nvme_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues jm_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues jm_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)

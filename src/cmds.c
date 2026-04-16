@@ -40,7 +40,10 @@ typedef enum
     SCSI_CMD_SIZE_16
 } eSCSICmdSize;
 
-eReturnValues send_Sanitize_Block_Erase(const tDevice* M_NONNULL device, bool exitFailureMode, bool znr)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Block_Erase(const tDevice* M_NONNULL device,
+                                                              bool                     exitFailureMode,
+                                                              bool                     znr)
 {
     eReturnValues ret = NOT_SUPPORTED;
     switch (get_Device_DriveType(device))
@@ -60,7 +63,10 @@ eReturnValues send_Sanitize_Block_Erase(const tDevice* M_NONNULL device, bool ex
     return ret;
 }
 
-eReturnValues send_Sanitize_Crypto_Erase(const tDevice* M_NONNULL device, bool exitFailureMode, bool znr)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Crypto_Erase(const tDevice* M_NONNULL device,
+                                                               bool                     exitFailureMode,
+                                                               bool                     znr)
 {
     eReturnValues ret = NOT_SUPPORTED;
     switch (get_Device_DriveType(device))
@@ -80,13 +86,13 @@ eReturnValues send_Sanitize_Crypto_Erase(const tDevice* M_NONNULL device, bool e
     return ret;
 }
 
-eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* M_NONNULL device,
-                                            bool                     exitFailureMode,
-                                            bool                     invertBetweenPasses,
-                                            uint8_t                  overwritePasses,
-                                            uint8_t*                 pattern,
-                                            uint16_t                 patternLength,
-                                            bool                     znr)
+OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* M_NONNULL device,
+                                                                  bool                     exitFailureMode,
+                                                                  bool                     invertBetweenPasses,
+                                                                  uint8_t                  overwritePasses,
+                                                                  uint8_t*                 pattern,
+                                                                  uint16_t                 patternLength,
+                                                                  bool                     znr)
 {
     eReturnValues ret          = NOT_SUPPORTED;
     uint8_t*      patternPtr   = pattern;
@@ -138,7 +144,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* M_NONNULL device,
     return ret;
 }
 
-eReturnValues send_Sanitize_Exit_Failure_Mode(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Exit_Failure_Mode(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = NOT_SUPPORTED;
     switch (get_Device_DriveType(device))
@@ -158,7 +164,7 @@ eReturnValues send_Sanitize_Exit_Failure_Mode(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues spin_down_drive(const tDevice* M_NONNULL device, bool sleepState)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues spin_down_drive(const tDevice* M_NONNULL device, bool sleepState)
 {
     eReturnValues ret = NOT_SUPPORTED;
     switch (get_Device_DriveType(device))
@@ -232,7 +238,7 @@ eReturnValues spin_down_drive(const tDevice* M_NONNULL device, bool sleepState)
 //!   \return SUCCESS = pass, !SUCCESS = something when wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues fill_Drive_Info_Data(tDevice* M_NONNULL device)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_Drive_Info_Data(tDevice* M_NONNULL device)
 {
     eReturnValues status = SUCCESS;
 #ifdef _DEBUG
@@ -589,19 +595,19 @@ static eReturnValues scsi_Firmware_Download_Command(const tDevice* M_NONNULL dev
     return ret;
 }
 
-eReturnValues firmware_Download_Command(const tDevice* M_NONNULL device,
-                                        eDownloadMode            dlMode,
-                                        uint32_t                 offset,
-                                        uint32_t                 xferLen,
-                                        uint8_t*                 ptrData,
-                                        uint8_t                  slotNumber,
-                                        bool                     existingImage,
-                                        bool                     firstSegment,
-                                        bool                     lastSegment,
-                                        uint32_t                 timeoutSeconds,
-                                        bool                     nvmeForceCA,
-                                        uint8_t                  commitAction,
-                                        bool                     forceDisableReset)
+OPENSEA_TRANSPORT_API eReturnValues firmware_Download_Command(const tDevice* M_NONNULL device,
+                                                              eDownloadMode            dlMode,
+                                                              uint32_t                 offset,
+                                                              uint32_t                 xferLen,
+                                                              uint8_t*                 ptrData,
+                                                              uint8_t                  slotNumber,
+                                                              bool                     existingImage,
+                                                              bool                     firstSegment,
+                                                              bool                     lastSegment,
+                                                              uint32_t                 timeoutSeconds,
+                                                              bool                     nvmeForceCA,
+                                                              uint8_t                  commitAction,
+                                                              bool                     forceDisableReset)
 {
     eReturnValues ret = UNKNOWN;
 #ifdef _DEBUG
@@ -632,23 +638,24 @@ eReturnValues firmware_Download_Command(const tDevice* M_NONNULL device,
     return ret;
 }
 
-eReturnValues firmware_Download_Activate(const tDevice* M_NONNULL device,
-                                         uint8_t                  slotNumber,
-                                         bool                     existingImage,
-                                         uint32_t                 timeoutSeconds,
-                                         bool                     nvmeForceCA,
-                                         uint8_t                  commitAction,
-                                         bool                     forceDisableReset)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues firmware_Download_Activate(const tDevice* M_NONNULL device,
+                                                               uint8_t                  slotNumber,
+                                                               bool                     existingImage,
+                                                               uint32_t                 timeoutSeconds,
+                                                               bool                     nvmeForceCA,
+                                                               uint8_t                  commitAction,
+                                                               bool                     forceDisableReset)
 {
     return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, M_NULLPTR, slotNumber, existingImage, false, false,
                                      timeoutSeconds, nvmeForceCA, commitAction, forceDisableReset);
 }
 
-eReturnValues security_Send(const tDevice* M_NONNULL device,
-                            uint8_t                  securityProtocol,
-                            uint16_t                 securityProtocolSpecific,
-                            uint8_t* M_NULLABLE      ptrData,
-                            uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues security_Send(const tDevice* M_NONNULL device,
+                                                  uint8_t                  securityProtocol,
+                                                  uint16_t                 securityProtocolSpecific,
+                                                  uint8_t* M_NULLABLE      ptrData,
+                                                  uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     switch (get_Device_DriveType(device))
@@ -718,11 +725,11 @@ eReturnValues security_Send(const tDevice* M_NONNULL device,
     return ret;
 }
 
-eReturnValues security_Receive(const tDevice* M_NONNULL device,
-                               uint8_t                  securityProtocol,
-                               uint16_t                 securityProtocolSpecific,
-                               uint8_t* M_NULLABLE      ptrData,
-                               uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues security_Receive(const tDevice* M_NONNULL device,
+                                                     uint8_t                  securityProtocol,
+                                                     uint16_t                 securityProtocolSpecific,
+                                                     uint8_t* M_NULLABLE      ptrData,
+                                                     uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     switch (get_Device_DriveType(device))
@@ -940,13 +947,16 @@ static eReturnValues determine_scsi_write_same_cmd(
 }
 
 // TODO: Handle write same number of logical blocks > uint32_max
-static eReturnValues scsi_Write_Same_Cmd(const tDevice* device,
-                                         uint64_t       startingLba,
-                                         uint64_t       numberOfLogicalBlocks,
-                                         uint8_t*       pattern,
-                                         uint32_t       patternSize,
-                                         bool           anchor,
-                                         bool           unmap,
+M_PARAM_RO(1)
+M_PARAM_RO(4)
+M_NONNULL_IF_NONZERO_SIZE(4, 5)
+static eReturnValues scsi_Write_Same_Cmd(const tDevice* M_NONNULL device,
+                                         uint64_t                 startingLba,
+                                         uint64_t                 numberOfLogicalBlocks,
+                                         uint8_t* M_NULLABLE      pattern,
+                                         uint32_t                 patternSize,
+                                         bool                     anchor,
+                                         bool                     unmap,
                                          bool noDataOut) // equivalent to ata/nvme write zeroes command. Added in SBC3
 {
     eReturnValues ret = SUCCESS;
@@ -1010,12 +1020,15 @@ static eReturnValues scsi_Write_Same_Cmd(const tDevice* device,
     return ret;
 }
 
-static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
-                                        uint64_t       startingLba,
-                                        uint64_t       numberOfLogicalBlocks,
-                                        uint8_t*       pattern,
-                                        uint32_t       patternSize,
-                                        bool           noDataOut)
+M_PARAM_RO(1)
+M_PARAM_RO(4)
+M_NONNULL_IF_NONZERO_SIZE(4, 5)
+static eReturnValues ata_Write_Same_Cmd(const tDevice* M_NONNULL device,
+                                        uint64_t                 startingLba,
+                                        uint64_t                 numberOfLogicalBlocks,
+                                        uint8_t* M_NULLABLE      pattern,
+                                        uint32_t                 patternSize,
+                                        bool                     noDataOut)
 {
     eReturnValues ret = NOT_SUPPORTED;
     ;
@@ -1104,10 +1117,12 @@ static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
     return ret;
 }
 
-eReturnValues write_Same(const tDevice* M_NONNULL device,
-                         uint64_t                 startingLba,
-                         uint64_t                 numberOfLogicalBlocks,
-                         uint8_t*                 pattern)
+M_PARAM_RO(1)
+M_PARAM_RO(4)
+OPENSEA_TRANSPORT_API eReturnValues write_Same(const tDevice* M_NONNULL device,
+                                               uint64_t                 startingLba,
+                                               uint64_t                 numberOfLogicalBlocks,
+                                               uint8_t*                 pattern)
 {
     eReturnValues ret            = UNKNOWN;
     bool          noDataTransfer = false;
@@ -1132,7 +1147,7 @@ eReturnValues write_Same(const tDevice* M_NONNULL device,
     return ret;
 }
 
-bool is_Write_Psuedo_Uncorrectable_Supported(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API bool is_Write_Psuedo_Uncorrectable_Supported(const tDevice* M_NONNULL device)
 {
     bool supported = false;
     switch (get_Device_DriveType(device))
@@ -1166,7 +1181,9 @@ bool is_Write_Psuedo_Uncorrectable_Supported(const tDevice* M_NONNULL device)
     return supported;
 }
 
-eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* M_NONNULL device, uint64_t corruptLBA)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* M_NONNULL device,
+                                                                     uint64_t                 corruptLBA)
 {
     eReturnValues ret                        = UNKNOWN;
     bool          multipleLogicalPerPhysical = false; // used to set the physical block bit when applicable
@@ -1218,7 +1235,7 @@ eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* M_NONNULL device, 
     return ret;
 }
 
-bool is_Write_Flagged_Uncorrectable_Supported(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API bool is_Write_Flagged_Uncorrectable_Supported(const tDevice* M_NONNULL device)
 {
     bool supported = false;
     switch (get_Device_DriveType(device))
@@ -1255,7 +1272,9 @@ bool is_Write_Flagged_Uncorrectable_Supported(const tDevice* M_NONNULL device)
     return supported;
 }
 
-eReturnValues write_Flagged_Uncorrectable_Error(const tDevice* M_NONNULL device, uint64_t corruptLBA)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues write_Flagged_Uncorrectable_Error(const tDevice* M_NONNULL device,
+                                                                      uint64_t                 corruptLBA)
 {
     eReturnValues ret = UNKNOWN;
     // This will only flag individual logical blocks
@@ -1433,11 +1452,11 @@ static eReturnValues ata_DMA_Read(const tDevice* M_NONNULL device,
     return ret;
 }
 
-eReturnValues ata_Read(const tDevice* M_NONNULL device,
-                       uint64_t                 lba,
-                       bool                     forceUnitAccess,
-                       uint8_t* M_NONNULL       ptrData,
-                       uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Read(const tDevice* M_NONNULL device,
+                                             uint64_t                 lba,
+                                             bool                     forceUnitAccess,
+                                             uint8_t* M_NONNULL       ptrData,
+                                             uint32_t                 dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
     uint32_t      sectors = UINT32_C(0);
@@ -1612,11 +1631,11 @@ static eReturnValues ata_DMA_Write(const tDevice* M_NONNULL device,
     return ret;
 }
 
-eReturnValues ata_Write(const tDevice* M_NONNULL device,
-                        uint64_t                 lba,
-                        bool                     forceUnitAccess,
-                        uint8_t* M_NONNULL       ptrData,
-                        uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Write(const tDevice* M_NONNULL device,
+                                              uint64_t                 lba,
+                                              bool                     forceUnitAccess,
+                                              uint8_t* M_NONNULL       ptrData,
+                                              uint32_t                 dataSize)
 {
     eReturnValues ret         = SUCCESS; // assume success
     uint32_t      sectors     = UINT32_C(0);
@@ -1922,11 +1941,11 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
     return ret;
 }
 
-eReturnValues scsi_Read(const tDevice* M_NONNULL device,
-                        uint64_t                 lba,
-                        bool                     forceUnitAccess,
-                        uint8_t* M_NONNULL       ptrData,
-                        uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues scsi_Read(const tDevice* M_NONNULL device,
+                                              uint64_t                 lba,
+                                              bool                     forceUnitAccess,
+                                              uint8_t* M_NONNULL       ptrData,
+                                              uint32_t                 dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
     uint32_t      sectors = UINT32_C(0);
@@ -1990,11 +2009,11 @@ eReturnValues scsi_Read(const tDevice* M_NONNULL device,
 // already - TJE
 // Other option is if neither write and verify or verify are supported (since both are optional) to use synchronize
 // cache with lba and range values that match the write command.
-eReturnValues scsi_Write(const tDevice* M_NONNULL device,
-                         uint64_t                 lba,
-                         bool                     forceUnitAccess,
-                         uint8_t* M_NONNULL       ptrData,
-                         uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues scsi_Write(const tDevice* M_NONNULL device,
+                                               uint64_t                 lba,
+                                               bool                     forceUnitAccess,
+                                               uint8_t* M_NONNULL       ptrData,
+                                               uint32_t                 dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
     uint32_t      sectors = UINT32_C(0);
@@ -2051,11 +2070,11 @@ eReturnValues scsi_Write(const tDevice* M_NONNULL device,
     return ret;
 }
 
-eReturnValues io_Read(const tDevice* M_NONNULL device,
-                      uint64_t                 lba,
-                      bool                     forceUnitAccess,
-                      uint8_t* M_NONNULL       ptrData,
-                      uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues io_Read(const tDevice* M_NONNULL device,
+                                            uint64_t                 lba,
+                                            bool                     forceUnitAccess,
+                                            uint8_t* M_NONNULL       ptrData,
+                                            uint32_t                 dataSize)
 {
     // make sure that the data size is at least logical sector in size
     if (dataSize < get_Device_BlockSize(device))
@@ -2086,11 +2105,11 @@ eReturnValues io_Read(const tDevice* M_NONNULL device,
     }
 }
 
-eReturnValues io_Write(const tDevice* M_NONNULL device,
-                       uint64_t                 lba,
-                       bool                     forceUnitAccess,
-                       uint8_t* M_NONNULL       ptrData,
-                       uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues io_Write(const tDevice* M_NONNULL device,
+                                             uint64_t                 lba,
+                                             bool                     forceUnitAccess,
+                                             uint8_t* M_NONNULL       ptrData,
+                                             uint32_t                 dataSize)
 {
     // make sure that the data size is at least logical sector in size
     if (dataSize < get_Device_BlockSize(device))
@@ -2121,11 +2140,11 @@ eReturnValues io_Write(const tDevice* M_NONNULL device,
     }
 }
 
-eReturnValues read_LBA(const tDevice* M_NONNULL device,
-                       uint64_t                 lba,
-                       bool                     forceUnitAccess,
-                       uint8_t* M_NONNULL       ptrData,
-                       uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues read_LBA(const tDevice* M_NONNULL device,
+                                             uint64_t                 lba,
+                                             bool                     forceUnitAccess,
+                                             uint8_t* M_NONNULL       ptrData,
+                                             uint32_t                 dataSize)
 {
     if (device->os_info.osReadWriteRecommended && is_Blocksize_And_Capacity_In_Sync(device))
     {
@@ -2139,11 +2158,11 @@ eReturnValues read_LBA(const tDevice* M_NONNULL device,
     }
 }
 
-eReturnValues write_LBA(const tDevice* M_NONNULL device,
-                        uint64_t                 lba,
-                        bool                     forceUnitAccess,
-                        uint8_t* M_NONNULL       ptrData,
-                        uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues write_LBA(const tDevice* M_NONNULL device,
+                                              uint64_t                 lba,
+                                              bool                     forceUnitAccess,
+                                              uint8_t* M_NONNULL       ptrData,
+                                              uint32_t                 dataSize)
 {
     if (device->os_info.osReadWriteRecommended && is_Blocksize_And_Capacity_In_Sync(device))
     {
@@ -2157,7 +2176,8 @@ eReturnValues write_LBA(const tDevice* M_NONNULL device,
     }
 }
 
-eReturnValues ata_Read_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues ata_Read_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = SUCCESS; // assume success
     if (!verify_ATA_Xfer_Len(device, lba, &range))
@@ -2193,7 +2213,8 @@ eReturnValues ata_Read_Verify(const tDevice* M_NONNULL device, uint64_t lba, uin
     return ret;
 }
 
-eReturnValues scsi_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues scsi_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = SUCCESS; // assume success
     if (device->drive_info.passThroughHacks.scsiHacks.readWrite.available)
@@ -2295,7 +2316,10 @@ static eReturnValues scsi_Compare(const tDevice* device, uint64_t lba, uint8_t* 
 
 // Need a function to check when compare is supported on a device.
 // When it is not, need to emulate with read and memcmp(like ATA does)
-eReturnValues compare_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint8_t* M_NONNULL ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues compare_LBA(const tDevice* M_NONNULL device,
+                                                uint64_t                 lba,
+                                                uint8_t* M_NONNULL       ptrData,
+                                                uint32_t                 dataSize)
 {
     switch (get_Device_InterfaceType(device))
     {
@@ -2337,7 +2361,8 @@ eReturnValues compare_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint8_t
     M_UNREACHABLE();
 }
 
-eReturnValues nvme_Verify_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Verify_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = SUCCESS;
     if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT7 && range < NVME_0_BASED_ADJUST(UINT16_MAX))
@@ -2366,7 +2391,8 @@ eReturnValues nvme_Verify_LBA(const tDevice* M_NONNULL device, uint64_t lba, uin
     return ret;
 }
 
-eReturnValues verify_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues verify_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     if (device->os_info.osReadWriteRecommended && is_Blocksize_And_Capacity_In_Sync(device))
     {
@@ -2397,7 +2423,7 @@ eReturnValues verify_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint32_t
     }
 }
 
-eReturnValues ata_Flush_Cache_Command(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_Flush_Cache_Command(const tDevice* M_NONNULL device)
 {
     bool ext = false;
     if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
@@ -2408,7 +2434,7 @@ eReturnValues ata_Flush_Cache_Command(const tDevice* M_NONNULL device)
     return ata_Flush_Cache(device, ext);
 }
 
-eReturnValues scsi_Synchronize_Cache_Command(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_Command(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     switch (device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize)
@@ -2429,7 +2455,7 @@ eReturnValues scsi_Synchronize_Cache_Command(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues flush_Cache(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues flush_Cache(const tDevice* M_NONNULL device)
 {
     if (device->os_info.osReadWriteRecommended)
     {
@@ -2460,7 +2486,11 @@ eReturnValues flush_Cache(const tDevice* M_NONNULL device)
     }
 }
 
-eReturnValues close_Zone(const tDevice* M_NONNULL device, bool closeAll, uint64_t zoneID, uint16_t zoneCount)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues close_Zone(const tDevice* M_NONNULL device,
+                                               bool                     closeAll,
+                                               uint64_t                 zoneID,
+                                               uint16_t                 zoneCount)
 {
     eReturnValues ret = UNKNOWN;
     switch (get_Device_DriveType(device))
@@ -2478,7 +2508,11 @@ eReturnValues close_Zone(const tDevice* M_NONNULL device, bool closeAll, uint64_
     return ret;
 }
 
-eReturnValues finish_Zone(const tDevice* M_NONNULL device, bool finishAll, uint64_t zoneID, uint16_t zoneCount)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues finish_Zone(const tDevice* M_NONNULL device,
+                                                bool                     finishAll,
+                                                uint64_t                 zoneID,
+                                                uint16_t                 zoneCount)
 {
     eReturnValues ret = UNKNOWN;
     switch (get_Device_DriveType(device))
@@ -2496,7 +2530,11 @@ eReturnValues finish_Zone(const tDevice* M_NONNULL device, bool finishAll, uint6
     return ret;
 }
 
-eReturnValues open_Zone(const tDevice* M_NONNULL device, bool openAll, uint64_t zoneID, uint16_t zoneCount)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues open_Zone(const tDevice* M_NONNULL device,
+                                              bool                     openAll,
+                                              uint64_t                 zoneID,
+                                              uint16_t                 zoneCount)
 {
     eReturnValues ret = UNKNOWN;
     switch (get_Device_DriveType(device))
@@ -2514,7 +2552,11 @@ eReturnValues open_Zone(const tDevice* M_NONNULL device, bool openAll, uint64_t 
     return ret;
 }
 
-eReturnValues reset_Write_Pointer(const tDevice* M_NONNULL device, bool resetAll, uint64_t zoneID, uint16_t zoneCount)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues reset_Write_Pointer(const tDevice* M_NONNULL device,
+                                                        bool                     resetAll,
+                                                        uint64_t                 zoneID,
+                                                        uint16_t                 zoneCount)
 {
     eReturnValues ret = UNKNOWN;
     switch (get_Device_DriveType(device))
@@ -2532,12 +2574,12 @@ eReturnValues reset_Write_Pointer(const tDevice* M_NONNULL device, bool resetAll
     return ret;
 }
 
-eReturnValues report_Zones(const tDevice* M_NONNULL device,
-                           eZoneReportingOptions    reportingOptions,
-                           bool                     partial,
-                           uint64_t                 zoneLocator,
-                           uint8_t* M_NONNULL       ptrData,
-                           uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues report_Zones(const tDevice* M_NONNULL device,
+                                                 eZoneReportingOptions    reportingOptions,
+                                                 bool                     partial,
+                                                 uint64_t                 zoneLocator,
+                                                 uint8_t* M_NONNULL       ptrData,
+                                                 uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     switch (get_Device_DriveType(device))

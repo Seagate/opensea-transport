@@ -10806,6 +10806,8 @@ static eReturnValues sntl_Translate_SCSI_Report_Supported_Operation_Codes_Comman
 }
 
 // always sets Descriptor type sense data
+M_PARAM_RO(1)
+M_PARAM_RW(2)
 eReturnValues sntl_Translate_SCSI_Command(const tDevice* M_NONNULL device, ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     static bool   deviceInfoAvailable  = false;

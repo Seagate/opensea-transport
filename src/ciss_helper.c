@@ -559,7 +559,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                     }
                 }
                 // set command time:
-                scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+                set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
 
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
@@ -793,7 +793,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                     }
                 }
                 // set command time:
-                scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+                set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
 
                 if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
                 {
@@ -1016,7 +1016,7 @@ static eReturnValues ciss_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType cmdTy
                 }
             }
             // set command time:
-            scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
 
             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
@@ -1266,7 +1266,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType c
                 }
             }
             // set command time:
-            scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
 
             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
             {
@@ -1420,7 +1420,7 @@ static eReturnValues ciss_Big_Passthrough(ScsiIoCtx* scsiIoCtx, eCISSptCmdType c
 }
 #    endif // CCISS_BIG_PASSTHRU
 
-eReturnValues issue_io_ciss_Dev(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues issue_io_ciss_Dev(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     if (scsiIoCtx->device->os_info.cissDeviceData)
     {
@@ -1442,7 +1442,7 @@ eReturnValues issue_io_ciss_Dev(ScsiIoCtx* M_NONNULL scsiIoCtx)
     }
 }
 
-eReturnValues get_CISS_RAID_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
+M_PARAM_RW(2) eReturnValues get_CISS_RAID_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     eReturnValues ret         = FAILURE;
     uint16_t      driveNumber = UINT16_C(0);
@@ -1529,7 +1529,7 @@ eReturnValues get_CISS_RAID_Device(const char* M_NONNULL filename, tDevice* M_NO
     return ret;
 }
 
-eReturnValues close_CISS_RAID_Device(tDevice* M_NONNULL device)
+M_PARAM_RW(1) eReturnValues close_CISS_RAID_Device(tDevice* M_NONNULL device)
 {
 
     if (device != M_NULLPTR && device->os_info.cissDeviceData)
@@ -1662,6 +1662,8 @@ static eReturnValues get_CISS_Physical_LUN_Count(int fd, uint32_t* count)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
+M_PARAM_RW(1)
+M_PARAM_RW(3)
 eReturnValues get_CISS_RAID_Device_Count(uint32_t* M_NONNULL            numberOfDevices,
                                          M_ATTR_UNUSED uint64_t         flags,
                                          ptrRaidHandleToScan* M_NONNULL beginningOfList)
@@ -1776,6 +1778,8 @@ eReturnValues get_CISS_RAID_Device_Count(uint32_t* M_NONNULL            numberOf
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
+M_PARAM_RW(1)
+M_PARAM_RW(5)
 eReturnValues get_CISS_RAID_Device_List(tDevice* M_NONNULL const       ptrToDeviceList,
                                         uint32_t                       sizeInBytes,
                                         versionBlock                   ver,

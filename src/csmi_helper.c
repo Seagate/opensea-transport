@@ -478,10 +478,11 @@ static void print_CSMI_Driver_Info(PCSMI_SAS_DRIVER_INFO driverInfo)
     }
 }
 
-eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE                  deviceHandle,
-                                   uint32_t                     controllerNumber,
-                                   PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer,
-                                   eVerbosityLevels             verbosity)
+M_PARAM_RW(3)
+OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE                  deviceHandle,
+                                                         uint32_t                     controllerNumber,
+                                                         PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer,
+                                                         eVerbosityLevels             verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -612,10 +613,11 @@ static void print_CSMI_Controller_Configuration(PCSMI_SAS_CNTLR_CONFIG config)
     }
 }
 
-eReturnValues csmi_Get_Controller_Configuration(CSMI_HANDLE                             deviceHandle,
-                                                uint32_t                                controllerNumber,
-                                                PCSMI_SAS_CNTLR_CONFIG_BUFFER M_NONNULL ctrlConfigBuffer,
-                                                eVerbosityLevels                        verbosity)
+OPENSEA_TRANSPORT_API eReturnValues
+csmi_Get_Controller_Configuration(CSMI_HANDLE                             deviceHandle,
+                                  uint32_t                                controllerNumber,
+                                  PCSMI_SAS_CNTLR_CONFIG_BUFFER M_NONNULL ctrlConfigBuffer,
+                                  eVerbosityLevels                        verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -713,10 +715,10 @@ static void print_CSMI_Controller_Status(PCSMI_SAS_CNTLR_STATUS status)
     }
 }
 
-eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE                             deviceHandle,
-                                         uint32_t                                controllerNumber,
-                                         PCSMI_SAS_CNTLR_STATUS_BUFFER M_NONNULL ctrlStatusBuffer,
-                                         eVerbosityLevels                        verbosity)
+OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE                             deviceHandle,
+                                                               uint32_t                                controllerNumber,
+                                                               PCSMI_SAS_CNTLR_STATUS_BUFFER M_NONNULL ctrlStatusBuffer,
+                                                               eVerbosityLevels                        verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -768,13 +770,14 @@ eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE                            
 // NOTE: This function needs the firmwareBuffer to be allocated with additional length for the firmware to send to the
 // controller. In order to make this simple, we will assume the caller has already copied the controller firmware to the
 // buffer, but we still need the total length
-eReturnValues csmi_Controller_Firmware_Download(CSMI_HANDLE                                  deviceHandle,
-                                                uint32_t                                     controllerNumber,
-                                                PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER M_NONNULL firmwareBuffer,
-                                                uint32_t                                     firmwareBufferTotalLength,
-                                                uint32_t                                     downloadFlags,
-                                                eVerbosityLevels                             verbosity,
-                                                uint32_t                                     timeoutSeconds)
+OPENSEA_TRANSPORT_API eReturnValues
+csmi_Controller_Firmware_Download(CSMI_HANDLE                                  deviceHandle,
+                                  uint32_t                                     controllerNumber,
+                                  PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER M_NONNULL firmwareBuffer,
+                                  uint32_t                                     firmwareBufferTotalLength,
+                                  uint32_t                                     downloadFlags,
+                                  eVerbosityLevels                             verbosity,
+                                  uint32_t                                     timeoutSeconds)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -880,10 +883,11 @@ static void print_CSMI_RAID_Info(PCSMI_SAS_RAID_INFO raidInfo)
 //	Number of RAID Sets: 23
 //	Maximum # of drives per set: 128
 
-eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE                deviceHandle,
-                                 uint32_t                   controllerNumber,
-                                 PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer,
-                                 eVerbosityLevels           verbosity)
+M_PARAM_RW(3)
+OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE                deviceHandle,
+                                                       uint32_t                   controllerNumber,
+                                                       PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer,
+                                                       eVerbosityLevels           verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -1419,13 +1423,13 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
 //       RAID set index must be lower than the number of raid sets listed as supported by RAID INFO
 // NOTE: Dataype field may not be supported depending on which version of CSMI is supported. Intel RST will not support
 // this.
-eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE                  deviceHandle,
-                                   uint32_t                     controllerNumber,
-                                   PCSMI_SAS_RAID_CONFIG_BUFFER raidConfigBuffer,
-                                   uint32_t                     raidConfigBufferTotalSize,
-                                   uint32_t                     raidSetIndex,
-                                   uint8_t                      dataType,
-                                   eVerbosityLevels             verbosity)
+OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE                  deviceHandle,
+                                                         uint32_t                     controllerNumber,
+                                                         PCSMI_SAS_RAID_CONFIG_BUFFER raidConfigBuffer,
+                                                         uint32_t                     raidConfigBufferTotalSize,
+                                                         uint32_t                     raidSetIndex,
+                                                         uint8_t                      dataType,
+                                                         eVerbosityLevels             verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -1697,10 +1701,10 @@ static void print_CSMI_RAID_Features(PCSMI_SAS_RAID_FEATURES features)
     }
 }
 
-eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE                              deviceHandle,
-                                     uint32_t                                 controllerNumber,
-                                     PCSMI_SAS_RAID_FEATURES_BUFFER M_NONNULL raidFeaturesBuffer,
-                                     eVerbosityLevels                         verbosity)
+OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE                              deviceHandle,
+                                                           uint32_t                                 controllerNumber,
+                                                           PCSMI_SAS_RAID_FEATURES_BUFFER M_NONNULL raidFeaturesBuffer,
+                                                           eVerbosityLevels                         verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -2470,10 +2474,11 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
 
 // Caller allocated full buffer, then we fill in the rest and send it. Data length not needed since this one is a fixed
 // size
-eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               deviceHandle,
-                                uint32_t                  controllerNumber,
-                                PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer,
-                                eVerbosityLevels          verbosity)
+M_PARAM_RW(3)
+OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               deviceHandle,
+                                                      uint32_t                  controllerNumber,
+                                                      PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer,
+                                                      eVerbosityLevels          verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -2533,10 +2538,11 @@ eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               deviceHandle,
     return ret;
 }
 
-eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE                   deviceHandle,
-                                uint32_t                      controllerNumber,
-                                PCSMI_SAS_SET_PHY_INFO_BUFFER phyInfoBuffer,
-                                eVerbosityLevels              verbosity)
+M_PARAM_RW(3)
+OPENSEA_TRANSPORT_API eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE                   deviceHandle,
+                                                      uint32_t                      controllerNumber,
+                                                      PCSMI_SAS_SET_PHY_INFO_BUFFER phyInfoBuffer,
+                                                      eVerbosityLevels              verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -2582,12 +2588,13 @@ eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE                   deviceHandle,
     return ret;
 }
 
-eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE                  deviceHandle,
-                                   uint32_t                     controllerNumber,
-                                   PCSMI_SAS_LINK_ERRORS_BUFFER linkErrorsBuffer,
-                                   uint8_t                      phyIdentifier,
-                                   bool                         resetCounts,
-                                   eVerbosityLevels             verbosity)
+M_PARAM_RW(3)
+OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE                  deviceHandle,
+                                                         uint32_t                     controllerNumber,
+                                                         PCSMI_SAS_LINK_ERRORS_BUFFER linkErrorsBuffer,
+                                                         uint8_t                      phyIdentifier,
+                                                         bool                         resetCounts,
+                                                         eVerbosityLevels             verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -2987,11 +2994,12 @@ static void print_CSMI_SATA_Signature(PCSMI_SAS_SATA_SIGNATURE signature)
 }
 
 // TODO: consider using a pointer to a FIS to fill in on completion instead...
-eReturnValues csmi_Get_SATA_Signature(CSMI_HANDLE                               deviceHandle,
-                                      uint32_t                                  controllerNumber,
-                                      PCSMI_SAS_SATA_SIGNATURE_BUFFER M_NONNULL sataSignatureBuffer,
-                                      uint8_t                                   phyIdentifier,
-                                      eVerbosityLevels                          verbosity)
+OPENSEA_TRANSPORT_API eReturnValues
+csmi_Get_SATA_Signature(CSMI_HANDLE                               deviceHandle,
+                        uint32_t                                  controllerNumber,
+                        PCSMI_SAS_SATA_SIGNATURE_BUFFER M_NONNULL sataSignatureBuffer,
+                        uint8_t                                   phyIdentifier,
+                        eVerbosityLevels                          verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3063,12 +3071,12 @@ static void print_CSMI_Get_SCSI_Address(PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAd
     }
 }
 
-eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE                                 deviceHandle,
-                                    uint32_t                                    controllerNumber,
-                                    PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER M_NONNULL scsiAddressBuffer,
-                                    uint8_t                                     sasAddress[8],
-                                    uint8_t                                     lun[8],
-                                    eVerbosityLevels                            verbosity)
+OPENSEA_TRANSPORT_API eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE                                 deviceHandle,
+                                                          uint32_t                                    controllerNumber,
+                                                          PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER M_NONNULL scsiAddressBuffer,
+                                                          uint8_t                                     sasAddress[8],
+                                                          uint8_t                                     lun[8],
+                                                          eVerbosityLevels                            verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3141,14 +3149,15 @@ static void print_CSMI_Device_Address(PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER addres
     }
 }
 
-eReturnValues csmi_Get_Device_Address(CSMI_HANDLE                                   deviceHandle,
-                                      uint32_t                                      controllerNumber,
-                                      PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER M_NONNULL deviceAddressBuffer,
-                                      uint8_t                                       hostIndex,
-                                      uint8_t                                       path,
-                                      uint8_t                                       target,
-                                      uint8_t                                       lun,
-                                      eVerbosityLevels                              verbosity)
+OPENSEA_TRANSPORT_API eReturnValues
+csmi_Get_Device_Address(CSMI_HANDLE                                   deviceHandle,
+                        uint32_t                                      controllerNumber,
+                        PCSMI_SAS_GET_DEVICE_ADDRESS_BUFFER M_NONNULL deviceAddressBuffer,
+                        uint8_t                                       hostIndex,
+                        uint8_t                                       path,
+                        uint8_t                                       target,
+                        uint8_t                                       lun,
+                        eVerbosityLevels                              verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3329,10 +3338,11 @@ static void print_CSMI_Connector_Info(PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorI
     }
 }
 
-eReturnValues csmi_Get_Connector_Info(CSMI_HANDLE                               deviceHandle,
-                                      uint32_t                                  controllerNumber,
-                                      PCSMI_SAS_CONNECTOR_INFO_BUFFER M_NONNULL connectorInfoBuffer,
-                                      eVerbosityLevels                          verbosity)
+OPENSEA_TRANSPORT_API eReturnValues
+csmi_Get_Connector_Info(CSMI_HANDLE                               deviceHandle,
+                        uint32_t                                  controllerNumber,
+                        PCSMI_SAS_CONNECTOR_INFO_BUFFER M_NONNULL connectorInfoBuffer,
+                        eVerbosityLevels                          verbosity)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3440,7 +3450,7 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosit
 }
 
 #    if defined(_WIN32)
-bool device_Supports_CSMI_With_RST(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API bool device_Supports_CSMI_With_RST(const tDevice* M_NONNULL device)
 {
     bool csmiWithRSTSupported = false;
     if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
@@ -3461,13 +3471,14 @@ bool device_Supports_CSMI_With_RST(const tDevice* M_NONNULL device)
 // SCSI address number, which may or may not be different...If these end up the same on Linux, this should be update to
 // remove the duplicate parameters. If not, delete part of this comment. NOTE: this does not handle Intel NVMe devices
 // in JBOD mode right now. These devices will be handled separately from this function which focuses on SATA/SAS
-eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
-                                   tDevice* M_NONNULL        device,
-                                   uint8_t                   controllerNumber,
-                                   uint8_t                   hostController,
-                                   uint8_t                   pathidBus,
-                                   uint8_t                   targetID,
-                                   uint8_t                   lun)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
+                                                         tDevice* M_NONNULL        device,
+                                                         uint8_t                   controllerNumber,
+                                                         uint8_t                   hostController,
+                                                         uint8_t                   pathidBus,
+                                                         uint8_t                   targetID,
+                                                         uint8_t                   lun)
 {
     eReturnValues ret = SUCCESS;
     M_USE_UNUSED(deviceHandle);
@@ -3931,7 +3942,7 @@ eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HANDLE deviceHandle,
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues close_CSMI_RAID_Device(tDevice* device)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_CSMI_RAID_Device(tDevice* device)
 {
 
     if (device != M_NULLPTR)
@@ -4069,7 +4080,9 @@ static bool get_CSMI_Handle_Fields_From_Input(const char* filename,
 }
 
 // TODO: Accept SASAddress and SASLun inputs
-eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     eReturnValues ret           = FAILURE;
     uint32_t      controllerNum = UINT32_C(0);
@@ -4522,7 +4535,7 @@ eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL filename, tDevice* M_NO
     return ret;
 }
 
-bool is_CSMI_Handle(const char* M_NONNULL filename)
+OPENSEA_TRANSPORT_API bool is_CSMI_Handle(const char* M_NONNULL filename)
 {
     bool isCSMI = false;
     // TODO: Expand this check to make sure all necessary parts of handle are present???
@@ -4542,7 +4555,7 @@ bool is_CSMI_Handle(const char* M_NONNULL filename)
 // Adapter scope:  HKLM\System\CurrentControlSet\Services<miniport name>\Parameters\Device<adapter#>
 // Storport key location
 // HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\<PortDriverName>\Parameters\CSMI = dword value
-eCSMISecurityAccess get_CSMI_Security_Access(const char* M_NONNULL driverName)
+OPENSEA_TRANSPORT_API eCSMISecurityAccess get_CSMI_Security_Access(const char* M_NONNULL driverName)
 {
     eCSMISecurityAccess access = CSMI_SECURITY_ACCESS_NONE;
 #    if defined(_WIN32)
@@ -4731,9 +4744,9 @@ eCSMISecurityAccess get_CSMI_Security_Access(const char* M_NONNULL driverName)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNULL            numberOfDevices,
-                                         uint64_t                       flags,
-                                         ptrRaidHandleToScan* M_NONNULL beginningOfList)
+OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNULL            numberOfDevices,
+                                                               uint64_t                       flags,
+                                                               ptrRaidHandleToScan* M_NONNULL beginningOfList)
 {
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #    if defined(_WIN32)
@@ -5226,11 +5239,11 @@ eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNULL            numberOf
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL const       ptrToDeviceList,
-                                        uint32_t                       sizeInBytes,
-                                        versionBlock                   ver,
-                                        uint64_t                       flags,
-                                        ptrRaidHandleToScan* M_NONNULL beginningOfList)
+OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL const       ptrToDeviceList,
+                                                              uint32_t                       sizeInBytes,
+                                                              versionBlock                   ver,
+                                                              uint64_t                       flags,
+                                                              ptrRaidHandleToScan* M_NONNULL beginningOfList)
 {
     eReturnValues returnValue     = SUCCESS;
     uint32_t      numberOfDevices = UINT32_C(0);
@@ -6447,7 +6460,7 @@ static eReturnValues send_SSP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
                                scsiIoCtx->device->os_info.csmiDeviceData->controllerNumber, &sspInputs, &sspOutputs,
                                scsiIoCtx->device->deviceVerbosity);
 
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(sspTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(sspTimer));
 
     return ret;
 }
@@ -6533,7 +6546,7 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
                                scsiIoCtx->device->os_info.csmiDeviceData->controllerNumber, &stpInputs, &stpOutputs,
                                scsiIoCtx->device->deviceVerbosity);
 
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(stpTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(stpTimer));
 
     // Check result and copy back additional info.
     if (stpOutputs.retryAsSSPPassthrough)
@@ -6651,7 +6664,7 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_CSMI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_CSMI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA ||
@@ -6676,7 +6689,7 @@ eReturnValues send_CSMI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
     return ret;
 }
 
-void print_CSMI_Device_Info(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(const tDevice* M_NONNULL device)
 {
     if (device->os_info.csmiDeviceData && device->os_info.csmiDeviceData->csmiDeviceInfoValid)
     {

@@ -79,7 +79,7 @@ RESTORE_WARNING_4255
 
 // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise
 // you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported(void)
+OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void)
 {
     return false;
 }
@@ -164,10 +164,13 @@ DEFINE_GUID(GUID_DEVINTERFACE_DISK, 0x53f56307L, 0xb6bf, 0x11d0, 0x94, 0xf2, 0x0
 
 extern bool validate_Device_Struct(versionBlock);
 
+M_PARAM_RO(1)
 M_PARAM_RW(1) eReturnValues get_Windows_SMART_IO_Support(tDevice* M_NONNULL device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
+M_PARAM_RO(1)
 M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* M_NONNULL device, STORAGE_BUS_TYPE busType);
 bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* M_NONNULL scsiIoCtx);
+M_PARAM_RO(1)
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 #endif
@@ -4093,6 +4096,8 @@ static eReturnValues dummy_Up_NVM_Status_FWDL(nvmeCmdCtx* nvmeIoCtx, ULONG retur
 
 // nvmeIoCtx to get the cmd dwords to evaluate
 // current flags to preserve existing flags....new ones are or'd to this value
+M_PARAM_RW(1)
+M_PARAM_RW(2)
 eReturnValues set_NVMe_Firmware_Activate_Flags(nvmeCmdCtx* M_NONNULL nvmeIoCtx, uint32_t* M_NONNULL currentFlags)
 {
     eReturnValues      ret = SUCCESS;
@@ -4340,7 +4345,7 @@ static eReturnValues close_SCSI_SRB_Handle(tDevice* M_NONNULL device)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues close_Device(tDevice* dev)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
 {
     int retValue = 0;
 
@@ -4764,7 +4769,7 @@ static eReturnValues win_Update_Disk_Properties(HANDLE* deviceHandle)
 
 #endif // for IOCTL_DISK_UPDATE_PROPERTIES
 
-eReturnValues os_Update_File_System_Cache(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Update_File_System_Cache(const tDevice* M_NONNULL device)
 {
 #if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP && defined(IOCTL_DISK_UPDATE_PROPERTIES)
     // TODO: Need to find a way to support other things like RAID or CSMI, etc in the future - TJE
@@ -4793,7 +4798,7 @@ static eReturnValues win_Delete_Drive_Layout(HANDLE* deviceHandle)
 
 #endif // for IOCTL_DISK_UPDATE_PROPERTIES
 
-eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device)
 {
 #if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WINXP && defined(IOCTL_DISK_UPDATE_PROPERTIES)
     if (device->raid_device || device->issue_io || device->issue_nvme_io)
@@ -6087,7 +6092,8 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
     return ret; // if we didn't get to fill_In_Device_Info FAILURE
 }
 
-eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
 #if defined(ENABLE_CSMI)
     // check is the handle is in the format of a CSMI device handle so we can open the csmi device properly.
@@ -6119,7 +6125,8 @@ eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL devi
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags)
 {
     HANDLE fd = M_NULLPTR;
     DECLARE_ZERO_INIT_ARRAY(TCHAR, deviceName, WIN_MAX_DEVICE_NAME_LENGTH);
@@ -6269,10 +6276,11 @@ eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t fla
 //!                     Validate that it's drive_type is not UNKNOWN_DRIVE, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
-                              uint32_t                 sizeInBytes,
-                              versionBlock             ver,
-                              uint64_t                 flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                                                    uint32_t                 sizeInBytes,
+                                                    versionBlock             ver,
+                                                    uint64_t                 flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -6828,7 +6836,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
             }
         }
     }
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     safe_free_SCSIPassthroughEx(&sptdioEx);
     return ret;
 }
@@ -7066,7 +7074,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
         }
     }
     safe_free_SCSIPassthroughEx(&sptdio);
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     safe_free(&localBuffer);
     return ret;
 }
@@ -7354,7 +7362,7 @@ static eReturnValues send_SCSI_Pass_Through(ScsiIoCtx* scsiIoCtx)
         }
     }
     safe_free_scsi_pt_io(&sptdioDB);
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
 }
 
@@ -7496,7 +7504,7 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
             }
         }
     }
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     if (localAlignedBuffer)
     {
         safe_free(&localBuffer);
@@ -7879,7 +7887,7 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
             print_str("Couldn't convert SCSI-To-IDE interface (direct)\n");
         }
     }
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     safe_free(&localBuffer); // This will check if M_NULLPTR before freeing it, so we shouldn't have any issues.
     return ret;
 }
@@ -8201,7 +8209,7 @@ static eReturnValues send_ATA_Passthrough_Ex(ScsiIoCtx* scsiIoCtx)
             print_str("Couldn't convert SCSI-To-IDE interface (douuble buffered)\n");
         }
     }
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     safe_free_ata_db_io(&doubleBufferedIO);
     return ret;
 }
@@ -8471,7 +8479,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
             print_str("Couldn't convert SCSI-To-IDE interface (legacy IDE double buffered)\n");
         }
     }
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     safe_free_ide_db_io(&doubleBufferedIO);
     return ret;
 }
@@ -9488,13 +9496,13 @@ static eReturnValues send_ATA_SMART_Cmd_IO(ScsiIoCtx* scsiIoCtx)
             print_str("Couldn't convert SCSI-To-IDE interface (SMART IO)\n");
         }
     }
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     safe_free_smart_send_cmd_in(&smartIOin);
     safe_free_smart_send_cmd_out(&smartIOout);
     return ret;
 }
 
-eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = FAILURE;
     // this IOCTL is only supported for non-scsi devices, which includes anything (ata or scsi) attached to a USB or
@@ -9519,7 +9527,7 @@ eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = FAILURE;
     // This does not seem to work since it is obsolete and likely not implemented in modern drivers
@@ -9545,12 +9553,12 @@ eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (get_Device_Handle_Open_Flags(device) == HANDLE_FLAGS_DEFAULT &&
@@ -9567,7 +9575,7 @@ eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device)
 
 // TODO: We may need to switch between locking fd and scsiSrbHandle in some way...for now just locking fd value.
 // https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume
-eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
@@ -9588,7 +9596,7 @@ eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -9607,7 +9615,8 @@ eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     // If the volume bitfield is blank, then there is nothing to unmount - TJE
@@ -11563,7 +11572,7 @@ static eReturnValues win_Basic_SCSI_Translation(ScsiIoCtx* scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
@@ -11966,7 +11975,7 @@ static eReturnValues send_NVMe_Vendor_Unique_IO(nvmeCmdCtx* nvmeIoCtx)
     nvmeIoCtx->commandCompletionData.statusAndCID    = protocolCommand->ErrorCode;
     nvmeIoCtx->commandCompletionData.dw3Valid        = true;
     // set last command time
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
     // check how long it took to set timeout error if necessary
     if (get_Seconds(commandTimer) > protocolCommand->TimeOutValue)
     {
@@ -11987,7 +11996,7 @@ static eReturnValues win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCt
         // dummy up invalid field in CMD status
         nvmeIoCtx->commandCompletionData.dw3Valid = true;
         nvmeIoCtx->commandCompletionData.dw3      = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 0x0B);
-        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = 0;
+        set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, UINT64_C(0));
     }
     else if (get_bit_range_uint32(nvmeIoCtx->cmd.adminCmd.cdw10, 31, 8) > 0 || nvmeIoCtx->cmd.adminCmd.cdw11 ||
              nvmeIoCtx->cmd.adminCmd.cdw12 || nvmeIoCtx->cmd.adminCmd.cdw13 || nvmeIoCtx->cmd.adminCmd.cdw14 ||
@@ -11996,7 +12005,7 @@ static eReturnValues win10_Translate_Identify_Active_Namespace_ID_List(nvmeCmdCt
         // invalid field in cmd...assuming that this should be filtered since it is not translatable!
         nvmeIoCtx->commandCompletionData.dw3Valid = true;
         nvmeIoCtx->commandCompletionData.dw3      = WIN_DUMMY_NVME_STATUS(NVME_SCT_GENERIC_COMMAND_STATUS, 2);
-        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = UINT64_C(0);
+        set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, UINT64_C(0));
     }
     else
     {
@@ -12177,8 +12186,8 @@ static eReturnValues send_Win_NVMe_Identify_Cmd(nvmeCmdCtx* nvmeIoCtx)
         result = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_QUERY_PROPERTY, buffer, bufferLength,
                                  buffer, bufferLength, &returnedLength, M_NULLPTR);
         stop_Timer(&commandTimer);
-        nvmeIoCtx->device->os_info.last_error                    = GetLastError();
-        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        nvmeIoCtx->device->os_info.last_error = GetLastError();
+        set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
 
         if (MSFT_BOOL_FALSE(result))
         {
@@ -12357,8 +12366,8 @@ static eReturnValues send_Win_NVMe_Get_Log_Page_Cmd(nvmeCmdCtx* nvmeIoCtx)
     result = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_QUERY_PROPERTY, buffer, bufferLength, buffer,
                              bufferLength, &returnedLength, M_NULLPTR);
     stop_Timer(&commandTimer);
-    nvmeIoCtx->device->os_info.last_error                    = GetLastError();
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    nvmeIoCtx->device->os_info.last_error = GetLastError();
+    set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
     if (MSFT_BOOL_FALSE(result) || (returnedLength == 0))
     {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -12470,8 +12479,8 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
     result = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_QUERY_PROPERTY, buffer, bufferLength, buffer,
                              bufferLength, &returnedLength, M_NULLPTR);
     stop_Timer(&commandTimer);
-    nvmeIoCtx->device->os_info.last_error                    = GetLastError();
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    nvmeIoCtx->device->os_info.last_error = GetLastError();
+    set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
     if (MSFT_BOOL_FALSE(result) || (returnedLength == 0))
     {
         if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -12573,7 +12582,7 @@ static eReturnValues send_Win_NVMe_Firmware_Activate_Command(nvmeCmdCtx* nvmeIoC
     printf("%s: nvmeIoCtx->device->os_info.last_error=%lu(0x%lx)\n", __FUNCTION__,
            nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
 #    endif
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
@@ -12711,7 +12720,7 @@ static eReturnValues send_Win_NVMe_Firmware_Image_Download_Command(nvmeCmdCtx* n
     printf("%s: nvmeIoCtx->device->os_info.last_error=%lu(0x%lx)\n", __FUNCTION__,
            nvmeIoCtx->device->os_info.last_error, nvmeIoCtx->device->os_info.last_error);
 #    endif
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
     if (overlappedStruct.hEvent)
     {
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
@@ -12918,8 +12927,8 @@ static eReturnValues win10_Translate_Set_Power_Management(nvmeCmdCtx* nvmeIoCtx)
                                            M_NULLPTR // Overlapped support???
             );
             stop_Timer(&commandTimer);
-            nvmeIoCtx->device->os_info.last_error                    = GetLastError();
-            nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            nvmeIoCtx->device->os_info.last_error = GetLastError();
+            set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
 
             if (MSFT_BOOL_TRUE(success))
             {
@@ -12987,7 +12996,7 @@ static eReturnValues send_NVMe_Set_Temperature_Threshold(nvmeCmdCtx* nvmeIoCtx)
     BOOL success = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_SET_TEMPERATURE_THRESHOLD, &tempThresh,
                                    sizeof(STORAGE_TEMPERATURE_THRESHOLD), M_NULLPTR, 0, &bytesReturned, 0);
     stop_Timer(&commandTimer);
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
 
     if (MSFT_BOOL_TRUE(success))
     {
@@ -13082,8 +13091,8 @@ static eReturnValues send_NVMe_Set_Features_Win10_Storage_Protocol(nvmeCmdCtx* n
         BOOL  result         = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_SET_PROPERTY, bufferData,
                                                bufferLength, bufferData, bufferLength, &returnedLength, M_NULLPTR);
         start_Timer(&commandTimer);
-        nvmeIoCtx->device->os_info.last_error                    = GetLastError();
-        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        nvmeIoCtx->device->os_info.last_error = GetLastError();
+        set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
         if (MSFT_BOOL_FALSE(result))
         {
             if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -13407,8 +13416,8 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
             BOOL result = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_REINITIALIZE_MEDIA, &reinitMedia,
                                           sizeof(STORAGE_REINITIALIZE_MEDIA), M_NULLPTR, 0, &returnedLength, M_NULLPTR);
             stop_Timer(&commandTimer);
-            nvmeIoCtx->device->os_info.last_error                    = GetLastError();
-            nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            nvmeIoCtx->device->os_info.last_error = GetLastError();
+            set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
             if (MSFT_BOOL_FALSE(result))
             {
                 if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -13443,8 +13452,8 @@ static eReturnValues nvme_Ioctl_Storage_Reinitialize_Media(nvmeCmdCtx* nvmeIoCtx
                 BOOL result = DeviceIoControl(nvmeIoCtx->device->os_info.fd, IOCTL_STORAGE_REINITIALIZE_MEDIA,
                                               M_NULLPTR, 0, M_NULLPTR, 0, &returnedLength, M_NULLPTR);
                 stop_Timer(&commandTimer);
-                nvmeIoCtx->device->os_info.last_error                    = GetLastError();
-                nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+                nvmeIoCtx->device->os_info.last_error = GetLastError();
+                set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
                 if (MSFT_BOOL_FALSE(result))
                 {
                     if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -13625,10 +13634,10 @@ static eReturnValues win10_Translate_Write_Uncorrectable(nvmeCmdCtx* nvmeIoCtx)
             // code
             ret = individualCommandRet;
         }
-        totalCommandTime += nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds;
+        totalCommandTime += get_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device);
     }
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = totalCommandTime;
-    nvmeIoCtx->device->deviceVerbosity                       = inVerbosity;
+    set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, totalCommandTime);
+    nvmeIoCtx->device->deviceVerbosity = inVerbosity;
     return ret;
 }
 
@@ -13806,6 +13815,7 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx* nvmeIoCtx)
 }
 
 // MSFT documentation does not show this translation as available. Code left here in case someone wants to test it in
+M_PARAM_RO(1)
 // the future. M_PARAM_RW(1) static eReturnValues win10_Translate_Compare(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -14044,6 +14054,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 }
 
 // These commands are not supported VIA SCSI translation. There are however other Windows IOCTLs that may work
+M_PARAM_RO(1)
 // M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Register(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -14128,6 +14139,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     return ret;
 // }
 //
+M_PARAM_RO(1)
 // M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -14146,6 +14158,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     return ret;
 // }
 //
+M_PARAM_RO(1)
 // M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Acquire(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -14235,6 +14248,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 //     return ret;
 // }
 //
+M_PARAM_RO(1)
 // M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -14373,7 +14387,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
                              bufferLength, &returnedLength, M_NULLPTR);
     stop_Timer(&commandTimer);
     set_Device_Last_Error(scsiIoCtx->device, GetLastError());
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     if (MSFT_BOOL_FALSE(result) || (returnedLength == 0))
     {
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -14478,7 +14492,7 @@ eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx)
                              bufferLength, &returnedLength, M_NULLPTR);
     stop_Timer(&commandTimer);
     set_Device_Last_Error(scsiIoCtx->device, GetLastError());
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     if (MSFT_BOOL_FALSE(result) || (returnedLength == 0))
     {
         if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
@@ -14711,7 +14725,7 @@ static eReturnValues send_Win_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif // DISBALE_NVME_PASSTHROUGH
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
+M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     switch (get_Device_InterfaceType(nvmeIoCtx->device))
@@ -14770,7 +14784,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
     return ret;
 }
 
-eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     // This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code
@@ -14792,7 +14806,7 @@ eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
     // This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code
@@ -14814,6 +14828,7 @@ eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
     return ret;
 }
 
+M_PARAM_WO_SIZE(2, 3)
 eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
                                M_ATTR_UNUSED uint8_t* M_NONNULL       pData,
                                M_ATTR_UNUSED uint32_t                 dataSize)
@@ -14968,6 +14983,7 @@ static void set_Command_Completion_For_OS_Read_Write_ATA(tDevice* device, DWORD 
     }
 }
 
+M_PARAM_RO(1)
 M_PARAM_RW(1) static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* M_NONNULL device, DWORD lastError)
 {
     eReturnValues ret = SUCCESS;
@@ -15079,11 +15095,11 @@ M_PARAM_RW(1) static eReturnValues set_Command_Completion_For_OS_Read_Write(tDev
 // The overlapped structure used here changes it to asynchronous IO, but the synchronous portions of code are left here
 // in case the device responds as a synchronous device and ignores the overlapped strucutre...it SHOULD work on any
 // device like this. See here: https://msdn.microsoft.com/en-us/library/windows/desktop/aa365683(v=vs.85).aspx
-eReturnValues os_Read(const tDevice* M_NONNULL device,
-                      uint64_t                 lba,
-                      bool                     forceUnitAccess,
-                      uint8_t* M_NONNULL       ptrData,
-                      uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Read(const tDevice* M_NONNULL device,
+                                            uint64_t                 lba,
+                                            bool                     forceUnitAccess,
+                                            uint8_t* M_NONNULL       ptrData,
+                                            uint32_t                 dataSize)
 {
     eReturnValues ret         = UNKNOWN;
     eReturnValues openFUA     = SUCCESS;
@@ -15175,7 +15191,7 @@ eReturnValues os_Read(const tDevice* M_NONNULL device,
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
         overlappedStruct.hEvent = M_NULLPTR;
     }
-    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(M_CONST_CAST(tDevice*, device), get_Nano_Seconds(commandTimer));
 
     if (MSFT_BOOL_FALSE(retStatus)) // not successful
     {
@@ -15187,7 +15203,7 @@ eReturnValues os_Read(const tDevice* M_NONNULL device,
     }
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
-        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+        print_Command_Time(get_tDevice_Last_Command_Completion_Time_NS(device));
     }
 
     if (VERBOSITY_BUFFERS <= device->deviceVerbosity && ptrData != M_NULLPTR)
@@ -15206,7 +15222,7 @@ eReturnValues os_Read(const tDevice* M_NONNULL device,
     ret = set_Command_Completion_For_OS_Read_Write(M_CONST_CAST(tDevice*, device), device->os_info.last_error);
 
     // check for command timeout
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) >= timeoutInSeconds)
+    if ((get_tDevice_Last_Command_Completion_Time_NS(device) / UINT64_C(1000000000)) >= timeoutInSeconds)
     {
         ret = OS_COMMAND_TIMEOUT;
     }
@@ -15217,11 +15233,11 @@ eReturnValues os_Read(const tDevice* M_NONNULL device,
     return ret;
 }
 
-eReturnValues os_Write(const tDevice* M_NONNULL device,
-                       uint64_t                 lba,
-                       bool                     forceUnitAccess,
-                       uint8_t* M_NONNULL       ptrData,
-                       uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Write(const tDevice* M_NONNULL device,
+                                             uint64_t                 lba,
+                                             bool                     forceUnitAccess,
+                                             uint8_t* M_NONNULL       ptrData,
+                                             uint32_t                 dataSize)
 {
     eReturnValues ret         = UNKNOWN;
     eReturnValues openFUA     = SUCCESS;
@@ -15320,8 +15336,8 @@ eReturnValues os_Write(const tDevice* M_NONNULL device,
     {
         CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
     }
-    overlappedStruct.hEvent                                               = M_NULLPTR;
-    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    overlappedStruct.hEvent = M_NULLPTR;
+    set_tDevice_Last_Command_Completion_Time_NS(M_CONST_CAST(tDevice*, device), get_Nano_Seconds(commandTimer));
 
     if (MSFT_BOOL_FALSE(retStatus)) // not successful
     {
@@ -15333,7 +15349,7 @@ eReturnValues os_Write(const tDevice* M_NONNULL device,
     }
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
-        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+        print_Command_Time(get_tDevice_Last_Command_Completion_Time_NS(device));
     }
     if (bytesReturned != C_CAST(DWORD, dataSize))
     {
@@ -15344,7 +15360,7 @@ eReturnValues os_Write(const tDevice* M_NONNULL device,
     ret = set_Command_Completion_For_OS_Read_Write(M_CONST_CAST(tDevice*, device), device->os_info.last_error);
 
     // check for command timeout
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) >= timeoutInSeconds)
+    if ((get_tDevice_Last_Command_Completion_Time_NS(device) / UINT64_C(1000000000)) >= timeoutInSeconds)
     {
         ret = OS_COMMAND_TIMEOUT;
     }
@@ -15358,7 +15374,8 @@ eReturnValues os_Write(const tDevice* M_NONNULL device,
 // IOCTL is for Win XP and higher
 // Seems to work. Needs some enhancements with timers and checking return codes more closely to dummy up better sense
 // data.
-eReturnValues os_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = NOT_SUPPORTED;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
@@ -15420,13 +15437,13 @@ eReturnValues os_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t 
         overlappedStruct.hEvent = M_NULLPTR;
     }
     ret = set_Command_Completion_For_OS_Read_Write(M_CONST_CAST(tDevice*, device), device->os_info.last_error);
-    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(verifyTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(M_CONST_CAST(tDevice*, device), get_Nano_Seconds(verifyTimer));
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
-        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+        print_Command_Time(get_tDevice_Last_Command_Completion_Time_NS(device));
     }
     // check for command timeout
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) >= timeoutInSeconds)
+    if ((get_tDevice_Last_Command_Completion_Time_NS(device) / UINT64_C(1000000000)) >= timeoutInSeconds)
     {
         ret = OS_COMMAND_TIMEOUT;
     }
@@ -15438,7 +15455,8 @@ eReturnValues os_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t 
 }
 #else
 // verify IOTCL is not available so we need to just do a flush and a read.
-eReturnValues os_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     // flush the cache first to make sure we aren't reading something that is in cache than disk (as close as we can get
     // right here)
@@ -15460,7 +15478,7 @@ eReturnValues os_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t 
 #endif
 
 // This is for Windows XP and higher. This should issue a flush cache or synchronize cache command for us
-eReturnValues os_Flush(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = UNKNOWN;
     if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
@@ -15516,15 +15534,16 @@ eReturnValues os_Flush(const tDevice* M_NONNULL device)
         ret = SUCCESS;
     }
 
-    M_CONST_CAST(tDevice*, device)->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(M_CONST_CAST(tDevice*, device), get_Nano_Seconds(commandTimer));
+
     if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
     {
-        print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
+        print_Command_Time(get_tDevice_Last_Command_Completion_Time_NS(device));
     }
     ret = set_Command_Completion_For_OS_Read_Write(M_CONST_CAST(tDevice*, device), device->os_info.last_error);
 
     // check for command timeout
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) >= timeoutInSeconds)
+    if ((get_tDevice_Last_Command_Completion_Time_NS(device) / UINT64_C(1000000000)) >= timeoutInSeconds)
     {
         ret = OS_COMMAND_TIMEOUT;
     }

@@ -3356,6 +3356,11 @@ extern "C"
                                                              uint32_t                 dataSize,
                                                              uint8_t                  tag);
 
+    M_PARAM_RO(1)
+    M_PARAM_RO(2)
+    bool did_ATA_Command_Timeout(const tDevice* M_NONNULL               device,
+                                 const ataPassthroughCommand* M_NONNULL ataCommandOptions);
+
 #if defined(__cplusplus)
 }
 #endif

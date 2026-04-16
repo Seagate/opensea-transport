@@ -53,7 +53,7 @@ eConsoleColors uefiDebugMessageColor = CONSOLE_COLOR_BLUE;
 
 // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise
 // you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported(void)
+OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void)
 {
     return true;
 }
@@ -530,7 +530,8 @@ static bool get_SCSIEX_Device_Handle(const char* filename,
     return success;
 }
 
-eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     set_Device_Handle_Name(device, filename);
     set_Device_Handle_Friendly_Name(device, filename);
@@ -979,7 +980,7 @@ eReturnValues send_UEFI_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
         print_UEFI_SCSI_Target_Status(srp->TargetStatus);
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
-        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
         set_Device_Last_Error(scsiIoCtx->device, Status);
 
         if (Status == EFI_SUCCESS)
@@ -1340,7 +1341,7 @@ eReturnValues send_UEFI_SCSI_Passthrough_Ext(ScsiIoCtx* scsiIoCtx)
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
 
-        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
         set_Device_Last_Error(scsiIoCtx->device, Status);
 
         if (Status == EFI_SUCCESS)
@@ -1646,7 +1647,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #endif
 
-        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
         set_Device_Last_Error(scsiIoCtx->device, Status);
 
         if (Status == EFI_SUCCESS)
@@ -1746,7 +1747,7 @@ eReturnValues send_UEFI_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
@@ -1794,7 +1795,7 @@ eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
     return ret;
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
+M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues                       ret    = OS_PASSTHROUGH_FAILURE;
@@ -2092,7 +2093,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
         printf("\t<-TransferLength = %" PRIu32 "\n", nrp->TransferLength);
         set_Console_Colors(true, CONSOLE_COLOR_DEFAULT);
 #    endif
-        nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
 
         if (Status == EFI_SUCCESS)
         {
@@ -2163,12 +2164,13 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
+M_PARAM_WO_SIZE(2, 3)
 eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataSize)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 {
     // This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code
     // otherwise compile without ifdefs
@@ -2184,7 +2186,7 @@ eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     // This is a stub. We may not be able to do this in Windows, but want this here in case we can and to make code
     // otherwise compile without ifdefs
@@ -2200,7 +2202,7 @@ eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues close_Device(tDevice* M_NONNULL device)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
@@ -2323,13 +2325,13 @@ eReturnValues get_ATA_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInByt
                             DECLARE_ZERO_INIT_ARRAY(char, ataHandle, UEFI_HANDLE_STRING_LENGTH);
                             snprintf_err_handle(ataHandle, UEFI_HANDLE_STRING_LENGTH,
                                                 "ata:%" PRIx16 ":%" PRIx16 ":%" PRIx16, counter, port, pmport);
-                            eReturnValues result = get_Device(ataHandle, &ptrToDeviceList[*index]);
-                            if (result != SUCCESS)
-                            {
-                                ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
-                            }
-                            ++(*index);
-                            ++deviceCount;
+    eReturnValues result = get_Device(ataHandle), &ptrToDeviceList[*index]);
+    if (result != SUCCESS)
+    {
+        ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
+    }
+    ++(*index);
+    ++deviceCount;
                         }
                         // EFI_NOT_FOUND means no device at this place.
                         // EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us
@@ -2454,13 +2456,13 @@ eReturnValues get_SCSI_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInBy
                     DECLARE_ZERO_INIT_ARRAY(char, scsiHandle, UEFI_HANDLE_STRING_LENGTH);
                     snprintf_err_handle(scsiHandle, UEFI_HANDLE_STRING_LENGTH, "scsi:%" PRIx16 ":%" PRIx32 ":%" PRIx64,
                                         counter, target, lun);
-                    eReturnValues result = get_Device(scsiHandle, &ptrToDeviceList[*index]);
-                    if (result != SUCCESS)
-                    {
-                        ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
-                    }
-                    ++(*index);
-                    ++deviceCount;
+    eReturnValues result = get_Device(scsiHandle), &ptrToDeviceList[*index]);
+    if (result != SUCCESS)
+    {
+        ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
+    }
+    ++(*index);
+    ++deviceCount;
                 }
                 // EFI_NOT_FOUND means no device at this place.
                 // EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us
@@ -2600,13 +2602,13 @@ eReturnValues get_SCSIEx_Devices(tDevice* const ptrToDeviceList,
                                         counter, target[0], target[1], target[2], target[3], target[4], target[5],
                                         target[6], target[7], target[8], target[9], target[10], target[11], target[12],
                                         target[13], target[14], target[15], lun);
-                    eReturnValues result = get_Device(scsiExHandle, &ptrToDeviceList[*index]);
-                    if (result != SUCCESS)
-                    {
-                        ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
-                    }
-                    ++(*index);
-                    ++deviceCount;
+    eReturnValues result = get_Device(scsiExHandle), &ptrToDeviceList[*index]);
+    if (result != SUCCESS)
+    {
+        ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
+    }
+    ++(*index);
+    ++deviceCount;
                 }
                 // EFI_NOT_FOUND means no device at this place.
                 // EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us
@@ -2733,13 +2735,13 @@ eReturnValues get_NVMe_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInBy
                     DECLARE_ZERO_INIT_ARRAY(char, nvmeHandle, UEFI_HANDLE_STRING_LENGTH);
                     snprintf_err_handle(nvmeHandle, UEFI_HANDLE_STRING_LENGTH, "nvme:%" PRIx16 ":%" PRIx32, counter,
                                         namespaceID);
-                    eReturnValues result = get_Device(nvmeHandle, &ptrToDeviceList[*index]);
-                    if (result != SUCCESS)
-                    {
-                        ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
-                    }
-                    ++(*index);
-                    ++deviceCount;
+    eReturnValues result = get_Device(nvmeHandle), &ptrToDeviceList[*index]);
+    if (result != SUCCESS)
+    {
+        ret = WARN_NOT_ALL_DEVICES_ENUMERATED;
+    }
+    ++(*index);
+    ++deviceCount;
                 }
                 // EFI_NOT_FOUND means no device at this place.
                 // EFI_INVALID_PARAMETER means DevicePath is null (this function should allocate the path for us
@@ -2783,7 +2785,8 @@ eReturnValues get_NVMe_Devices(tDevice* const ptrToDeviceList, uint32_t sizeInBy
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSED uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSED uint64_t flags)
 {
     *numberOfDevices += get_ATA_Device_Count();
     *numberOfDevices += get_SCSI_Device_Count();
@@ -2816,10 +2819,11 @@ eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, M_ATTR_UNUSE
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
-                              uint32_t                 sizeInBytes,
-                              versionBlock             ver,
-                              M_ATTR_UNUSED uint64_t   flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                                                    uint32_t                 sizeInBytes,
+                                                    versionBlock             ver,
+                                                    M_ATTR_UNUSED uint64_t   flags)
 {
     uint32_t index = UINT32_C(0);
     get_ATA_Devices(ptrToDeviceList, sizeInBytes, ver, &index);
@@ -2829,58 +2833,61 @@ eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
     return SUCCESS;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                      M_ATTR_UNUSED uint64_t                 lba,
-                      M_ATTR_UNUSED bool                     forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
-                      M_ATTR_UNUSED uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                            M_ATTR_UNUSED uint64_t                 lba,
+                                            M_ATTR_UNUSED bool                     forceUnitAccess,
+                                            M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                            M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                       M_ATTR_UNUSED uint64_t                 lba,
-                       M_ATTR_UNUSED bool                     forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
-                       M_ATTR_UNUSED uint32_t                 dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                             M_ATTR_UNUSED uint64_t                 lba,
+                                             M_ATTR_UNUSED bool                     forceUnitAccess,
+                                             M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                             M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
-                        M_ATTR_UNUSED uint64_t                 lba,
-                        M_ATTR_UNUSED uint32_t                 range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                              M_ATTR_UNUSED uint64_t                 lba,
+                                              M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Lock_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return SUCCESS;
 }
 
-eReturnValues os_Unlock_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return SUCCESS;
 }
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
+    os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // edk2 might have some kind of partition function we can call for the device to erase it
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
