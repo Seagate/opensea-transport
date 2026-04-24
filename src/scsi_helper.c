@@ -1293,11 +1293,14 @@ OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSen
             senseFields->senseDataOverflow        = ptrSenseData[2] & BIT4;
             senseFields->scsiStatusCodes.format   = format;
             senseFields->scsiStatusCodes.senseKey = M_Nibble0(ptrSenseData[2]);
-            if (senseFields->valid)
-            {
-                senseFields->fixedInformation =
-                    M_BytesTo4ByteValue(ptrSenseData[3], ptrSenseData[4], ptrSenseData[5], ptrSenseData[6]);
-            }
+
+            // IMPORTANT: Always extract Information field bytes [3-6] regardless of valid bit
+            // Some SATLs (e.g., PMCS HPE controllers) populate this field with ATA register data
+            // (COUNT, STATUS, ERROR, DEVICE) but don't set the valid bit (bit 7 of byte 0).
+            // sat_helper.c will use fixedSenseHack flags to decide whether to trust this field.
+            senseFields->fixedInformation =
+                M_BytesTo4ByteValue(ptrSenseData[3], ptrSenseData[4], ptrSenseData[5], ptrSenseData[6]);
+
             if (returnedLength > 8)
             {
                 if (returnedLength >= 11)
@@ -2099,6 +2102,12 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
         device->drive_info.passThroughHacks.scsiHacks.maxTransferLength              = 65024;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA     = true;
+        // device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack                = SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER;
+        // if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        // {
+        //     printf(
+        //         "PMCS SATL detected: Setting fixedSenseHack=FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER\n");
+        // }
         // debugging in a RAID environment is giving a few odd results with max transfer length, so not
         // setting that for now-TJE
     }

@@ -976,7 +976,8 @@ extern "C"
         bool    dcoDMASupported;               // DCO identify and DCO set DMA commands are supported.
         bool    hpaSecurityExtDMASupported;    // HPA security extension DMA commands are supported.
         bool    sanitizeOverwriteDefinitiveEndingPattern;
-        uint8_t reserved[4]; // reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
+        bool    nopSupported; // NOP supported bit in identify is set.
+        uint8_t reserved[3]; // reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
     } ataOptions;
 
     M_PARAM_RW(1)
@@ -1044,6 +1045,28 @@ extern "C"
         // download microcode support (dma, modes, etc)
         // Sanitize modes supported
     } softwareSATFlags;
+
+    typedef enum eSATFixedFormatSenseHack
+    {
+        SAT_FIXED_SENSE_HACK_NONE = 0, // no hack, use sense data as is as this response is compliant
+        SAT_FIXED_SENSE_HACK_ONLY_ASC_ASCQ_ATA_INFO_ALLOWED, //only trust sense when ASC and ASCQ is set to ATA response information
+        SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED, // Trust that translation of error fields is valid for any sense codes as SAT allows since
+                                                // testing shows that even other sense codes still put the registers where SAT specifies
+        SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, // Sometimes with a response of unaligned write we can get partial data, but in the wrong locations
+        SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER, // Some SATLs (e.g., PMCS) return LBA bytes in Command Specific Information with swapped byte order
+    } eSATFixedFormatSenseHack;
+
+    typedef enum eNonDataTest
+    {
+        // add possible cases here for other issues we detect.
+        ATA_NON_DATA_TEST_LBA_ZERO_AND_COUNT_ZERO = -3,
+        ATA_NON_DATA_TEST_LBA_ZERO_ONLY = -2,
+        ATA_NON_DATA_TEST_COUNT_ZERO_ONLY = -1,
+        ATA_NON_DATA_TEST_NONE = 0, // not tested yet
+        ATA_NON_DATA_TEST_INDETERMINATE, //Tested, but received inconclusive results, so allow things as "normal"
+        // Add possible cases here
+        ATA_NON_DATA_TEST_ALLOW_ALL = 0xFF //Setting a max here.
+    }eNonDataTest;
 
 // This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error
 // processing (USB mostly)
@@ -1239,6 +1262,16 @@ extern "C"
             bool retryWithJMicronPT;   // Needed for some JMicron adapters. Newer may support SAT, older support their
                                        // lagacy passthrough, so this is to retry on these devices.
             bool jmPTDevSet; // for JMicron's passthrough we need to set dev 0 or 1. This gets turned to true once set
+            bool nonDataCountBroken; // Implemented due to Broadcom HBA firmware bug. When issuing a non-data command with
+                                     // non-zero count, it zeroes it to the drive. So this creates unexpected behavior for
+                                     // numerous commands.
+            bool nonDataLBABroken; // Similar to above, but not observed. Just here in case we detect it as an issue.
+            eNonDataTest nonDataTest; // 0 = not yet tested so before discovery has happened. -1 (default) is to be safe and only
+                                // allow zero values through when things work as we expect them to when above hacks are set.
+                                // 1 is to allow overriding and accept that things may not work quite as expected on this device/adapter for any
+                                // pass-through non-data command. when above hacks are set or everything is working properly
+            eSATFixedFormatSenseHack fixedSenseHack; // Various methods to handle fixed format sense data responses from SATLs
+                                                     // which may or may not implement the standard correctly.
         } ataPTHacks;
         // NVMe Hacks
         struct

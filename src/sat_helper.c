@@ -1221,13 +1221,174 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
         safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
         set_tDevice_Last_Command_Completion_Time_NS(M_CONST_CAST(tDevice*, device), 0);
 
+        // Pre-execution check: Validate non-data commands against known HBA/SATL bugs
+        // Only apply this check for actual SAT non-data protocol, not other commands that happen to have zero data size
+        if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_NO_DATA &&
+            device->drive_info.passThroughHacks.ataPTHacks.nonDataTest != ATA_NON_DATA_TEST_NONE)
+        {
+            // Device has been tested for passthrough hacks. Check if this command can succeed.
+            bool commandCanProceed = true;
+            const char* blockReason = M_NULLPTR;
+
+            // If we have ALLOW_ALL mode, skip pre-execution blocking - we have a post-execution workaround
+            if (device->drive_info.passThroughHacks.ataPTHacks.nonDataTest == ATA_NON_DATA_TEST_ALLOW_ALL)
+            {
+                // We have a workaround (like fixedSenseHack=UNALIGNED_WRITE_BUG) that will extract values
+                // from the correct location during post-execution. Allow the command.
+                commandCanProceed = true;
+                if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                {
+                    printf("Pre-execution: Allowing command with workaround (ALLOW_ALL mode, will extract from alternate location post-execution)\n");
+                }
+            }
+            // Otherwise, check if specific registers are broken and would prevent command execution
+            else if (device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken)
+            {
+                // COUNT register is zeroed by HBA/SATL. Check if command requires a non-zero COUNT.
+                uint8_t commandCount = ataCommandOptions->tfr.SectorCount;
+                if (commandCount != 0)
+                {
+                    commandCanProceed = false;
+                    blockReason = "COUNT register would be zeroed by HBA firmware (Broadcom 9300 bug)";
+                }
+            }
+            else if (device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken)
+            {
+                // LBA register(s) are zeroed by HBA/SATL. Check if command requires a non-zero LBA.
+                // This is only checked if nonDataTest is LBA_ZERO_ONLY (COUNT_ZERO_ONLY handles COUNT separately)
+                uint64_t commandLBA = 0;
+                if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
+                {
+                    commandLBA = M_BytesTo8ByteValue(0,0,
+                                                     ataCommandOptions->tfr.lbaHiExt, ataCommandOptions->tfr.lbaMidExt,
+                                                     ataCommandOptions->tfr.lbaLowExt, ataCommandOptions->tfr.lbaHi,
+                                                     ataCommandOptions->tfr.lbaMid, ataCommandOptions->tfr.lbaLow);
+                }
+                else
+                {
+                    commandLBA = M_BytesTo4ByteValue(0, ataCommandOptions->tfr.lbaHi,
+                                                     ataCommandOptions->tfr.lbaMid, ataCommandOptions->tfr.lbaLow);
+                }
+                if (commandLBA != 0)
+                {
+                    commandCanProceed = false;
+                    blockReason = "LBA register would be zeroed by HBA firmware";
+                }
+            }
+
+            if (!commandCanProceed)
+            {
+                // Command cannot execute safely due to known HBA/SATL bug
+                if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+                {
+                    printf("Blocking ATA command: %s\n", blockReason);
+                }
+                ret = COMMAND_FAILURE;
+                if (localSenseData)
+                {
+                    safe_free_aligned(&senseData);
+                }
+                return ret;
+            }
+        }
+
         ret = private_SCSI_Send_CDB(&scsiIoCtx, &senseFields);
+
+        // Post-execution workaround: Handle libata fixed format sense data misalignment bug
+        // ONLY for the specific "Unaligned Write Command" sense code (ASC=21h, ASCQ=04h)
+        // NOP testing discovered that registers are at non-standard offsets in fixed format sense data
+        // Strategy: Scan sense buffer for the expected command COUNT value like we did during NOP discovery
+        if (device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack == SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG &&
+            senseFields.validStructure && senseFields.fixedFormat &&
+            senseFields.scsiStatusCodes.asc == 0x21 && senseFields.scsiStatusCodes.ascq == 0x04)  // Unaligned Write Command
+        {
+            // Get the requested COUNT value to search for in the sense data
+            uint8_t requestedCount = ataCommandOptions->tfr.SectorCount;
+
+            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("Post-execution workaround: UNALIGNED_WRITE_BUG (ASC=21h, ASCQ=04h) detected, searching for requested COUNT=0x%02X in sense buffer\n", requestedCount);
+            }
+
+            if (requestedCount != 0)  // Only search if a non-zero COUNT was requested
+            {
+                const uint8_t* senseBuffer = device->drive_info.lastCommandSenseData;
+                uint8_t extractedCount = 0;
+
+                // Scan sense buffer for the requested COUNT value (similar to NOP test discovery)
+                // Start search from offset 8 (first possible location) to end of sense buffer
+                if (senseBuffer != M_NULLPTR)
+                {
+                    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                    {
+                        printf("Post-execution: Scanning sense buffer (length=%d) for COUNT 0x%02X...\n", SPC3_SENSE_LEN, requestedCount);
+                    }
+
+                    for (int byteIdx = 8; byteIdx < SPC3_SENSE_LEN; ++byteIdx)
+                    {
+                        if (senseBuffer[byteIdx] == requestedCount)
+                        {
+                            extractedCount = senseBuffer[byteIdx];
+                            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                            {
+                                printf("Post-execution: Found COUNT 0x%02X at sense buffer offset %d\n", extractedCount, byteIdx);
+                            }
+
+                            // Set the extracted count in return task file registers
+                            ataCommandOptions->rtfr.secCnt = extractedCount;
+                            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                            {
+                                printf("Post-execution: Setting rtfr.secCnt = 0x%02X, returning WARN_INCOMPLETE_RFTRS\n", ataCommandOptions->rtfr.secCnt);
+                            }
+                            ret = WARN_INCOMPLETE_RFTRS;
+                            break;
+                        }
+                    }
+
+                    if (extractedCount == 0)
+                    {
+                        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                        {
+                            printf("Post-execution: Failed to find COUNT 0x%02X in sense buffer, using standard extraction (current rtfr.secCnt=0x%02X)\n",
+                                   requestedCount, ataCommandOptions->rtfr.secCnt);
+                        }
+                    }
+                }
+                else if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                {
+                    printf("Post-execution: ERROR - senseBuffer is NULL\n");
+                }
+            }
+            else if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("Post-execution: Requested COUNT is zero, skipping workaround scan\n");
+            }
+        }
+        else if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE && device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack == SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG)
+        {
+            printf("Post-execution: UNALIGNED_WRITE_BUG flag set but conditions not met (validStructure=%d, fixedFormat=%d, ASC=0x%02X, ASCQ=0x%02X) - using standard extraction\n",
+                   senseFields.validStructure, senseFields.fixedFormat,
+                   senseFields.scsiStatusCodes.asc, senseFields.scsiStatusCodes.ascq);
+        }
 
         // Before attempting anything else to read RTFRs, send a follow up command, etc, check if the sense fields is
         // already parsed with what we need. -TJE
         bool gotRTFRs = false;
-        if (senseFields.validStructure && senseFields.ataStatusReturnDescriptor.valid)
+        bool workaroundApplied = (device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack == SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG && ret == WARN_INCOMPLETE_RFTRS);
+
+        if (workaroundApplied)
         {
+            // Workaround already extracted and set RTFRs, don't overwrite with standard extraction
+            gotRTFRs = true;
+            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+            {
+                printf("Post-execution: Skipping standard RTFR extraction - workaround already applied (rtfr.secCnt=0x%02X)\n",
+                       ataCommandOptions->rtfr.secCnt);
+            }
+        }
+        else if (senseFields.validStructure && senseFields.ataStatusReturnDescriptor.valid)
+        {
+            // Standard ATA Return Descriptor extraction path
             gotRTFRs                       = true;
             ataCommandOptions->rtfr.status = senseFields.ataStatusReturnDescriptor.status;
             ataCommandOptions->rtfr.error  = senseFields.ataStatusReturnDescriptor.error;
@@ -1261,8 +1422,34 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
             {
                 // NOTE: Spec does not require this sense code to be reported, however it is the most reliable to use
                 // and most SATLs support it properly - TJE
-                if (senseFields.scsiStatusCodes.asc == 0x00 && senseFields.scsiStatusCodes.ascq == 0x1D)
+                //if (senseFields.scsiStatusCodes.asc == 0x00 && senseFields.scsiStatusCodes.ascq == 0x1D)
                 {
+                    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                    {
+                        printf("Post-execution: Fixed format sense data detected\n");
+                        printf("  fixedSenseHack=%d (SWAPPED_LBA_BYTE_ORDER=%d)\n",
+                               device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack,
+                               SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER);
+                        printf("  valid=%d, fixedInformation=0x%08X\n",
+                               senseFields.valid, senseFields.fixedInformation);
+                        printf("  fixedCommandSpecificInformation=0x%08X\n",
+                               senseFields.fixedCommandSpecificInformation);
+
+                        // Debug M_Byte extraction from CSI
+                        if (device->drive_info.lastCommandSenseData != M_NULLPTR)
+                        {
+                            const uint8_t* buf = device->drive_info.lastCommandSenseData;
+                            printf("  DEBUG CSI byte extraction:\n");
+                            printf("    Raw sense buffer [8-11]: [8]=0x%02X, [9]=0x%02X, [10]=0x%02X, [11]=0x%02X\n",
+                                   buf[8], buf[9], buf[10], buf[11]);
+                            printf("    M_Byte0(CSI)=0x%02X, M_Byte1(CSI)=0x%02X, M_Byte2(CSI)=0x%02X, M_Byte3(CSI)=0x%02X\n",
+                                   M_Byte0(senseFields.fixedCommandSpecificInformation),
+                                   M_Byte1(senseFields.fixedCommandSpecificInformation),
+                                   M_Byte2(senseFields.fixedCommandSpecificInformation),
+                                   M_Byte3(senseFields.fixedCommandSpecificInformation));
+                        }
+                    }
+
                     gotRTFRs = true;
                     // this is set to "ATA Passthrough information available" so we can expect result registers in the
                     // correct place. NOTE: The spec does not specify this must be set for ATA passthrough so other
@@ -1271,6 +1458,13 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                     ataCommandOptions->rtfr.status = M_Byte2(senseFields.fixedInformation);
                     ataCommandOptions->rtfr.device = M_Byte1(senseFields.fixedInformation);
                     ataCommandOptions->rtfr.secCnt = M_Byte0(senseFields.fixedInformation);
+
+                    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                    {
+                        printf("  Standard extraction: COUNT=0x%02X, STATUS=0x%02X, ERROR=0x%02X, DEVICE=0x%02X\n",
+                               ataCommandOptions->rtfr.secCnt, ataCommandOptions->rtfr.status,
+                               ataCommandOptions->rtfr.error, ataCommandOptions->rtfr.device);
+                    }
                     // now command specific information field
                     if (M_Byte3(senseFields.fixedCommandSpecificInformation) & BIT7)
                     {
@@ -1354,9 +1548,34 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                         ataCommandOptions->rtfr.lbaMidExt = UINT8_C(0);
                         ataCommandOptions->rtfr.lbaHiExt  = UINT8_C(0);
                     }
-                    ataCommandOptions->rtfr.lbaLow = M_Byte2(senseFields.fixedCommandSpecificInformation);
-                    ataCommandOptions->rtfr.lbaMid = M_Byte1(senseFields.fixedCommandSpecificInformation);
-                    ataCommandOptions->rtfr.lbaHi  = M_Byte0(senseFields.fixedCommandSpecificInformation);
+
+                    // LBA extraction from Command Specific Information field
+                    // Some SATLs report LBA bytes in a different byte order than standard SAT
+                    if (device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack == SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER)
+                    {
+                        // PMCS SATL: LBA byte order is different - M_Byte0=Lo, M_Byte1=Mid, M_Byte2=Hi (standard order)
+                        // Standard SAT extraction assigns them reversed, causing incorrect LBA reconstruction
+                        ataCommandOptions->rtfr.lbaLow = M_Byte0(senseFields.fixedCommandSpecificInformation);
+                        ataCommandOptions->rtfr.lbaMid = M_Byte1(senseFields.fixedCommandSpecificInformation);
+                        ataCommandOptions->rtfr.lbaHi  = M_Byte2(senseFields.fixedCommandSpecificInformation);
+                        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                        {
+                            printf("Post-execution: SWAPPED_LBA extraction - LBA=0x%02X%02X%02X (M_Byte2/1/0 instead of 0/1/2)\n",
+                                   ataCommandOptions->rtfr.lbaHi, ataCommandOptions->rtfr.lbaMid, ataCommandOptions->rtfr.lbaLow);
+                        }
+                    }
+                    else
+                    {
+                        // Standard SAT byte order for LBA extraction
+                        ataCommandOptions->rtfr.lbaLow = M_Byte2(senseFields.fixedCommandSpecificInformation);
+                        ataCommandOptions->rtfr.lbaMid = M_Byte1(senseFields.fixedCommandSpecificInformation);
+                        ataCommandOptions->rtfr.lbaHi  = M_Byte0(senseFields.fixedCommandSpecificInformation);
+                        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                        {
+                            printf("Post-execution: Standard LBA extraction - LBA=0x%02X%02X%02X (M_Byte0/1/2 standard assignment)\n",
+                                   ataCommandOptions->rtfr.lbaHi, ataCommandOptions->rtfr.lbaMid, ataCommandOptions->rtfr.lbaLow);
+                        }
+                    }
                 }
             }
             else // translate the result to common rtfr responses
