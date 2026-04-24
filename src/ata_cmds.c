@@ -2997,11 +2997,11 @@ eReturnValues ata_Sequentialize_Zone_Ext(const tDevice* device, bool all, uint64
 {
     if (all)
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, BIT0, zoneCount, 0, 0, M_NULLPTR, 0);
+        return ata_ZAC_Management_Out(device, ZM_ACTION_SEQUENTIALIZE_ZONE, BIT0, zoneCount, 0, 0, M_NULLPTR, 0);
     }
     else
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, RESERVED, zoneCount, zoneID, 0, M_NULLPTR,
+        return ata_ZAC_Management_Out(device, ZM_ACTION_SEQUENTIALIZE_ZONE, RESERVED, zoneCount, zoneID, 0, M_NULLPTR,
                                       0);
     }
 }
