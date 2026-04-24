@@ -128,6 +128,7 @@ eReturnValues ata_Identify(const tDevice* device, uint8_t* ptrData, uint32_t dat
     {
         print_str("Sending ATA Identify command\n");
     }
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &identify);
 
     if (ret == SUCCESS)
@@ -378,6 +379,7 @@ eReturnValues ata_Read_Log_Ext(const tDevice* device,
     ataCommandOptions.tfr.ErrorFeature = M_Byte0(featureRegister);
     ataCommandOptions.tfr.Feature48    = M_Byte1(featureRegister);
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (ret == SUCCESS)
@@ -620,7 +622,7 @@ eReturnValues ata_SMART_Command(const tDevice* device,
     if (ataCommandOptions.commandDirection == XFER_DATA_IN)
     {
         // make sure the buffer is cleared to zero
-        safe_memset(ptrData, dataSize, 0, dataSize);
+        explicit_zeroes(ptrData, dataSize);
     }
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
@@ -668,6 +670,7 @@ eReturnValues ata_SMART_Command(const tDevice* device,
 
 eReturnValues ata_SMART_Read_Log(const tDevice* device, uint8_t logAddress, uint8_t* ptrData, uint32_t dataSize)
 {
+    explicit_zeroes(ptrData, dataSize);
     eReturnValues ret = ata_SMART_Command(device, ATA_SMART_READ_LOG, logAddress, ptrData, dataSize, 15, false, 0);
     if (ret == SUCCESS)
     {
@@ -711,6 +714,7 @@ eReturnValues ata_SMART_Offline(const tDevice* device, uint8_t subcommand, uint3
 
 eReturnValues ata_SMART_Read_Data(const tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 {
+    explicit_zeroes(ptrData, dataSize);
     eReturnValues ret = ata_SMART_Command(device, ATA_SMART_READ_DATA, 0, ptrData, dataSize, 15, false, 0);
     if (ret == SUCCESS)
     {
@@ -745,6 +749,7 @@ eReturnValues ata_SMART_Disable_Operations(const tDevice* device)
 
 eReturnValues ata_SMART_Read_Thresholds(const tDevice* device, uint8_t* ptrData, uint32_t dataSize)
 {
+    explicit_zeroes(ptrData, dataSize);
     eReturnValues ret = ata_SMART_Command(device, ATA_SMART_RDATTR_THRESH, 0, ptrData, dataSize, 15, false, 0);
     if (ret == SUCCESS)
     {
@@ -1054,7 +1059,7 @@ eReturnValues ata_Set_Max(const tDevice* device,
         break;
     case HPA_SET_MAX_UNLOCK:
     case HPA_SET_MAX_PASSWORD:
-        ataCommandOptions = create_ata_pio_in_cmd(device, ATA_SET_MAX, ATA_CMD_TYPE_TASKFILE, 1, ptrData, dataLength);
+        ataCommandOptions = create_ata_pio_out_cmd(device, ATA_SET_MAX, ATA_CMD_TYPE_TASKFILE, 1, ptrData, dataLength);
         break;
     default:
         return BAD_PARAMETER;
@@ -1466,6 +1471,7 @@ eReturnValues ata_Read_Buffer(const tDevice* device, uint8_t* ptrData, bool useD
         }
     }
 
+    explicit_zeroes(ptrData, LEGACY_DRIVE_SEC_SIZE);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1516,6 +1522,7 @@ eReturnValues ata_Read_DMA(const tDevice*         device,
         }
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1567,6 +1574,7 @@ eReturnValues ata_Read_Multiple(const tDevice*         device,
         }
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1617,6 +1625,7 @@ eReturnValues ata_Read_Sectors(const tDevice*         device,
         }
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1654,6 +1663,7 @@ eReturnValues ata_Read_Sectors_No_Retry(const tDevice* device,
         print_str("Sending ATA Read Sectors(No Retry)\n");
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1724,6 +1734,7 @@ eReturnValues ata_Read_Stream_Ext(const tDevice* device,
         }
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2011,6 +2022,7 @@ eReturnValues ata_Trusted_Receive(const tDevice* device,
                securityProtocolSpecific);
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2577,6 +2589,7 @@ eReturnValues ata_NV_Cache_Enable(const tDevice* device)
 
 eReturnValues ata_NV_Query_Misses(const tDevice* device, uint8_t* ptrData)
 {
+    explicit_zeroes(ptrData, 512);
     return ata_NV_Cache_Feature(device, NV_QUERY_NV_CACHE_MISSES, 0x0001, 0, ptrData, 512);
 }
 
@@ -2585,6 +2598,7 @@ eReturnValues ata_NV_Query_Pinned_Set(const tDevice* device,
                                       uint8_t*       ptrData,
                                       uint32_t       dataSize)
 {
+    explicit_zeroes(ptrData, dataSize);
     return ata_NV_Cache_Feature(device, NV_QUERY_NV_CACHE_PINNED_SET,
                                 C_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), dataBlockNumber, ptrData, dataSize);
 }
@@ -2652,6 +2666,7 @@ eReturnValues ata_Identify_Packet_Device(const tDevice* device, uint8_t* ptrData
         print_str("Sending ATA Identify Packet Device\n");
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (ret == SUCCESS)
@@ -2774,6 +2789,7 @@ eReturnValues ata_DCO_Freeze_Lock(const tDevice* device)
 
 eReturnValues ata_DCO_Identify(const tDevice* device, bool useDMA, uint8_t* ptrData, uint32_t dataSize)
 {
+    explicit_zeroes(ptrData, dataSize);
     eReturnValues ret =
         ata_Device_Configuration_Overlay_Feature(device, useDMA ? DCO_IDENTIFY_DMA : DCO_IDENTIFY, ptrData, dataSize);
     if (ret == SUCCESS)
@@ -2858,6 +2874,7 @@ eReturnValues ata_ZAC_Management_In(const tDevice* device,
         print_str("Sending ATA Zone Management In\n");
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -2892,7 +2909,7 @@ eReturnValues ata_ZAC_Management_Out(const tDevice* device,
     default: // Need to add new zm actions as they are defined in the spec
         if (ptrData && dataSize > 0)
         {
-            ataCommandOptions = create_ata_dma_in_cmd(device, ATA_ZONE_MANAGEMENT_OUT, ATA_CMD_TYPE_EXTENDED_TASKFILE,
+            ataCommandOptions = create_ata_dma_out_cmd(device, ATA_ZONE_MANAGEMENT_OUT, ATA_CMD_TYPE_EXTENDED_TASKFILE,
                                                       pagesToSend_ActionSpecific, ptrData, dataSize);
         }
         else
@@ -2980,11 +2997,11 @@ eReturnValues ata_Sequentialize_Zone_Ext(const tDevice* device, bool all, uint64
 {
     if (all)
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, BIT0, zoneCount, 0, 0, M_NULLPTR, 0);
+        return ata_ZAC_Management_Out(device, ZM_ACTION_SEQUENTIALIZE_ZONE, BIT0, zoneCount, 0, 0, M_NULLPTR, 0);
     }
     else
     {
-        return ata_ZAC_Management_Out(device, ZM_ACTION_RESET_WRITE_POINTERS, RESERVED, zoneCount, zoneID, 0, M_NULLPTR,
+        return ata_ZAC_Management_Out(device, ZM_ACTION_SEQUENTIALIZE_ZONE, RESERVED, zoneCount, zoneID, 0, M_NULLPTR,
                                       0);
     }
 }
@@ -3256,6 +3273,7 @@ eReturnValues ata_Get_Physical_Element_Status(const tDevice* device,
         print_str("Sending ATA Get Physical Element Status\n");
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3520,6 +3538,7 @@ eReturnValues ata_NCQ_Receive_FPDMA_Queued(const tDevice* device,
         printf("Sending ATA Receive FPDMA Queued, Subcommand %u\n", subCommand);
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3646,6 +3665,7 @@ eReturnValues ata_NCQ_Read_FPDMA_Queued(const tDevice* device,
         print_str("Sending ATA Read FPDMA Queued\n");
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -3717,6 +3737,7 @@ eReturnValues ata_Read_DMA_Queued(const tDevice* device,
         printf("Sending ATA Read DMA Queued %s\n", ext ? "Ext" : "");
     }
 
+    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)

@@ -388,6 +388,12 @@ eReturnValues nvme_Security_Receive(const tDevice* device,
                                                            M_Byte0(securityProtocolSpecific), nvmeSecuritySpecificField);
     adminCommand.cmd.adminCmd.cdw11  = dataLength;
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
+
+    if (ptrData != M_NULLPTR && dataLength > 0)
+    {
+        explicit_zeroes(ptrData, dataLength);
+    }
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_str("Sending NVMe Security Receive Command\n");
@@ -629,6 +635,12 @@ eReturnValues nvme_Read(const tDevice* device,
         nvmCommand.cmd.nvmCmd.cdw12 |= BIT30;
     }
     nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, protectionInformationField & 0x0F) << 26;
+
+    if (ptrData != M_NULLPTR && dataLength > 0)
+    {
+        explicit_zeroes(ptrData, dataLength);
+    }
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_str("Sending NVMe Read Command\n");
@@ -786,6 +798,11 @@ eReturnValues nvme_Identify(const tDevice* device, uint8_t* ptrData, uint32_t nv
     identify.ptrData             = ptrData;
     identify.dataSize            = NVME_IDENTIFY_DATA_LEN;
 
+    if (ptrData != M_NULLPTR)
+    {
+        explicit_zeroes(ptrData, NVME_IDENTIFY_DATA_LEN);
+    }
+
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
         print_str("Sending NVMe Identify Command\n");
@@ -818,6 +835,11 @@ eReturnValues nvme_Get_Features(const tDevice* device, nvmeFeaturesCmdOpt* featC
     getFeatures.cmd.adminCmd.cdw10 = dWord10;
     getFeatures.cmd.adminCmd.cdw11 = featCmdOpts->featSetGetValue;
     getFeatures.timeout            = DEFAULT_COMMAND_TIMEOUT;
+
+    if (featCmdOpts->dataPtr != M_NULLPTR && featCmdOpts->dataLength > 0)
+    {
+        explicit_zeroes(featCmdOpts->dataPtr, featCmdOpts->dataLength);
+    }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
     {
@@ -947,7 +969,7 @@ eReturnValues nvme_Get_Log_Page(const tDevice* device, nvmeGetLogPageCmdOpts* ge
     dWord10 |= getLogPageCmdOpts->lid;
     dWord10 |= (getLogPageCmdOpts->lsp & 0x0F) << 8;
     dWord10 |= (getLogPageCmdOpts->rae & 0x01) << 15;
-    dWord10 |= M_Word0(numDwords) << 16;
+    dWord10 |= M_STATIC_CAST(uint32_t, M_Word0(numDwords)) << 16;
 
     getLogPage.cmd.adminCmd.cdw10 = dWord10;
     getLogPage.cmd.adminCmd.cdw11 = M_Word1(numDwords);
@@ -959,6 +981,11 @@ eReturnValues nvme_Get_Log_Page(const tDevice* device, nvmeGetLogPageCmdOpts* ge
 
     getLogPage.ptrData  = getLogPageCmdOpts->addr;
     getLogPage.dataSize = getLogPageCmdOpts->dataLen;
+
+    if (getLogPageCmdOpts->addr != M_NULLPTR && getLogPageCmdOpts->dataLen > 0)
+    {
+        explicit_zeroes(getLogPageCmdOpts->addr, getLogPageCmdOpts->dataLen);
+    }
 
     getLogPage.timeout = DEFAULT_COMMAND_TIMEOUT;
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
@@ -1048,6 +1075,11 @@ eReturnValues nvme_Reservation_Report(const tDevice* device,
     if (extendedDataStructure)
     {
         nvmCmd.cmd.nvmCmd.cdw11 |= BIT0;
+    }
+
+    if (ptrData != M_NULLPTR && dataSize > 0)
+    {
+        explicit_zeroes(ptrData, dataSize);
     }
 
     if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
