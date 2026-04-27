@@ -3408,6 +3408,34 @@ extern "C"
     bool did_ATA_Command_Timeout(const tDevice* M_NONNULL               device,
                                  const ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
+    typedef enum eATANOPFeature
+    {
+        ATA_NOP_RETURN_ABORTED = 0, // Only value still defined for this.
+        ATA_NOP_TCQ_AUTO_POLL  = 1, // For TCQ. Return command aborted and do not abort any outstanding queued commands.
+        // 02h-FFh are all labeled as the same behavior as value 1
+    } eATANOPFeature;
+
+    //! \fn eReturnValues ata_NOP(const tDevice* M_NONNULL device, eATANOPFeature nopMode, uint8_t countToReturn,
+    //! uint32_t lbaToReturn, ataReturnTFRs* M_NONNULL returnTFRs)
+    //! \brief Issues the ATA NOP command (no operation, aka do nothing but respond)
+    //! \details The NOP command always aborts with the specified pattern in the registers that are provided.
+    //! \param device The device to issue the command to
+    //! \param nopMode The mode for the NOP command. Should be set to 0 in most cases as others are either reserved,
+    //! obsolete, or only for TCQ devices.
+    //! \param countToReturn Any value you want this command to respond with in the sector count register.
+    //! \param lbaToReturn Any value you want this command to respond with in the LBA registers (LBA mid, low, and
+    //! high). This 32bit value is truncated to 28 bits.
+    //! \param returnTFRs The registers that the command will respond with. This is useful for testing passthrough
+    //! command construction and response parsing, as well as testing timeouts and error handling.
+    //! \return Returns ABORTED which is the correct, expected result when this command is supported by the device.
+    M_PARAM_RO(1)
+    M_PARAM_WO(5)
+    OPENSEA_TRANSPORT_API eReturnValues ata_NOP(const tDevice* M_NONNULL device,
+                                                eATANOPFeature           nopMode,
+                                                uint8_t                  countToReturn,
+                                                uint32_t                 lbaToReturn,
+                                                ataReturnTFRs* M_NONNULL returnTFRs);
+
 #if defined(__cplusplus)
 }
 #endif

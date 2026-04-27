@@ -3179,3 +3179,50 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Write_DMA_Queued(const tDevice* M_NONNUL
 
     return ret;
 }
+
+// ATA NOP
+M_PARAM_RO(1)
+M_PARAM_WO(5)
+OPENSEA_TRANSPORT_API eReturnValues ata_NOP(const tDevice* M_NONNULL device,
+                                            eATANOPFeature           nopMode,
+                                            uint8_t                  countToReturn,
+                                            uint32_t                 lbaToReturn,
+                                            ataReturnTFRs* M_NONNULL returnTFRs)
+{
+    eReturnValues         ret               = SUCCESS;
+    ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_NOP_CMD, ATA_CMD_TYPE_TASKFILE, false);
+
+    ataCommandOptions.tfr.ErrorFeature = M_STATIC_CAST(uint8_t, nopMode);
+    ataCommandOptions.tfr.SectorCount  = countToReturn;
+    set_ata_pt_LBA_28_sig(&ataCommandOptions, lbaToReturn);
+    ataCommandOptions.needRTFRs = true; // This shouldn't be needed since this always triggers an abort, but setting
+                                        // just to be sure we try to get them.
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        printf("Sending ATA NOP with Count %02" PRIX8 " and LBA %07" PRIX32 "\n", countToReturn, lbaToReturn);
+    }
+
+    ret = ata_Passthrough_Command(device, &ataCommandOptions);
+
+    if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+    {
+        printf("ata_NOP: After ata_Passthrough_Command, ataCommandOptions.rtfr.secCnt = 0x%02X\n", ataCommandOptions.rtfr.secCnt);
+    }
+
+    if (returnTFRs)
+    {
+        safe_memcpy(returnTFRs, sizeof(ataReturnTFRs), &ataCommandOptions.rtfr, sizeof(ataReturnTFRs));
+        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
+        {
+            printf("ata_NOP: After memcpy, returnTFRs->secCnt = 0x%02X\n", returnTFRs->secCnt);
+        }
+    }
+
+    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        print_Return_Enum("NOP", ret);
+    }
+
+    return ret;
+}

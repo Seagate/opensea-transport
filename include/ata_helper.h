@@ -883,46 +883,91 @@ extern "C"
 
     typedef struct s_ataTFRBlock
     {
-        uint8_t CommandStatus;
-        uint8_t ErrorFeature;
+        union {
+            uint8_t CommandStatus;
+            uint8_t command;
+            uint8_t Command;
+        };
+        union {
+            uint8_t ErrorFeature;
+            uint8_t Feature;
+            uint8_t feature;
+            uint8_t writePrecomp; // Only used in pre-ATA standard days
+        };
         union
         {
+            uint8_t lbaLow;
             uint8_t LbaLow;
             uint8_t SectorNumber;
         };
         union
         {
+            uint8_t lbaMid;
             uint8_t LbaMid;
             uint8_t CylinderLow;
         };
         union
         {
+            uint8_t lbaHi;
+            uint8_t lbaHigh;
             uint8_t LbaHi;
+            uint8_t LbaHigh;
             uint8_t CylinderHigh;
         };
-        uint8_t DeviceHead;
-
         union
         {
+            uint8_t deviceHead;
+            uint8_t DeviceHead;
+            uint8_t device;
+            uint8_t Device;
+            uint8_t head;
+            uint8_t Head;
+            uint8_t deviceLba28; // 28Bit commands use the lower nibble for highest 4 bits of LBA address.
+            uint8_t DeviceLba28; // 28Bit commands use the lower nibble for highest 4 bits of LBA address.
+        };
+        union
+        {
+            uint8_t lbaLow48;
+            uint8_t lbaLowExt;
             uint8_t LbaLow48;
+            uint8_t LbaLowExt;
             uint8_t SectorNumberExt;
         };
         union
         {
+            uint8_t lbaMid48;
+            uint8_t lbaMidExt;
             uint8_t LbaMid48;
+            uint8_t LbaMidExt;
             uint8_t CylinderLowExt;
         };
         union
         {
+            uint8_t lbaHi48;
+            uint8_t lbaHiExt;
             uint8_t LbaHi48;
+            uint8_t LbaHiExt;
+            uint8_t LbaHighExt;
             uint8_t CylinderHighExt;
         };
-        uint8_t Feature48;
-
-        uint8_t SectorCount;
-        uint8_t SectorCount48;
+        union {
+            uint8_t Feature48;
+            uint8_t featureExt;
+            uint8_t FeatureExt;
+            uint8_t feature48;
+        };
+        union {
+            uint8_t SectorCount;
+            uint8_t sectorCount;
+            uint8_t secCnt;
+        };
+        union {
+            uint8_t SectorCount48;
+            uint8_t sectorCountExt;
+            uint8_t SectorCountExt;
+        };
         uint8_t icc;
-        uint8_t DeviceControl;
+        uint8_t DeviceControl; // Not typically part of passthrough options. Can sometimes be set in FIS/drivers for things like soft reset, but generally this is unused.
         // Pad it out to 16 bytes
         uint8_t aux1; // bits 7:0
         uint8_t aux2; // bits 15:8
