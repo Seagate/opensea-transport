@@ -66,86 +66,125 @@ static M_INLINE void safe_free_csmi_raid_config(CSMI_SAS_RAID_CONFIG_BUFFER** ra
 
 void print_Last_Error(lasterror_t lastError);
 
-static void print_IOCTL_Return_Code(uint32_t returnCode)
+M_FUNC_ATTR_MALLOC static char* M_NULLABLE get_CSMI_IOCTL_Return_Code_String(uint32_t returnCode)
 {
-    print_str("IOCTL Status: ");
+    char * returnStr = M_NULLPTR;
+    errno_t error = 0;
     switch (returnCode)
     {
     case CSMI_SAS_STATUS_SUCCESS:
-        print_str("CSMI SAS STATUS SUCCESS\n");
+        error = safe_strdup(&returnStr, "CSMI SAS STATUS SUCCESS");
         break;
     case CSMI_SAS_STATUS_FAILED:
-        print_str("CSMI SAS STATUS FAILED\n");
+        error = safe_strdup(&returnStr, "CSMI SAS STATUS FAILED");
         break;
     case CSMI_SAS_STATUS_BAD_CNTL_CODE:
-        print_str("CSMI SAS BAD CNTL CODE\n");
+        error = safe_strdup(&returnStr, "CSMI SAS BAD CNTL CODE");
         break;
     case CSMI_SAS_STATUS_INVALID_PARAMETER:
-        print_str("CSMI SAS INVALID PARAMETER\n");
+        error = safe_strdup(&returnStr, "CSMI SAS INVALID PARAMETER");
         break;
     case CSMI_SAS_STATUS_WRITE_ATTEMPTED:
-        print_str("CSMI SAS WRITE ATTEMPTED\n");
+        error = safe_strdup(&returnStr, "CSMI SAS WRITE ATTEMPTED");
         break;
     case CSMI_SAS_RAID_SET_OUT_OF_RANGE:
-        print_str("CSMI SAS RAID SET OUT OF RANGE\n");
+        error = safe_strdup(&returnStr, "CSMI SAS RAID SET OUT OF RANGE");
         break;
     case CSMI_SAS_RAID_SET_BUFFER_TOO_SMALL:
-        print_str("CSMI SAS RAID SET BUFFER TOO SMALL\n");
+        error = safe_strdup(&returnStr, "CSMI SAS RAID SET BUFFER TOO SMALL");
         break;
     case CSMI_SAS_RAID_SET_DATA_CHANGED:
-        print_str("CSMI SAS RAID SET DATA CHANGED\n");
+        error = safe_strdup(&returnStr, "CSMI SAS RAID SET DATA CHANGED");
         break;
     case CSMI_SAS_PHY_INFO_NOT_CHANGEABLE:
-        print_str("CSMI SAS PHY INFO NOT CHANGEABLE\n");
+        error = safe_strdup(&returnStr, "CSMI SAS PHY INFO NOT CHANGEABLE");
         break;
     case CSMI_SAS_LINK_RATE_OUT_OF_RANGE:
-        print_str("CSMI SAS LINK RATE OUT OF RANGE\n");
+        error = safe_strdup(&returnStr, "CSMI SAS LINK RATE OUT OF RANGE");
         break;
     case CSMI_SAS_PHY_DOES_NOT_EXIST:
-        print_str("CSMI SAS PHY DOES NOT EXIST\n");
+        error = safe_strdup(&returnStr, "CSMI SAS PHY DOES NOT EXIST");
         break;
     case CSMI_SAS_PHY_DOES_NOT_MATCH_PORT:
-        print_str("CSMI SAS PHY DOES NOT MATCH PORT\n");
+        error = safe_strdup(&returnStr, "CSMI SAS PHY DOES NOT MATCH PORT");
         break;
     case CSMI_SAS_PHY_CANNOT_BE_SELECTED:
-        print_str("CSMI SAS PHY CANNOT BE SELECTED\n");
+        error = safe_strdup(&returnStr, "CSMI SAS PHY CANNOT BE SELECTED");
         break;
     case CSMI_SAS_SELECT_PHY_OR_PORT:
-        print_str("CSMI SAS SELECT PHY OR PORT\n");
+        error = safe_strdup(&returnStr, "CSMI SAS SELECT PHY OR PORT");
         break;
     case CSMI_SAS_PORT_DOES_NOT_EXIST:
-        print_str("CSMI SAS PORT DOES NOT EXIST\n");
+        error = safe_strdup(&returnStr, "CSMI SAS PORT DOES NOT EXIST");
         break;
     case CSMI_SAS_PORT_CANNOT_BE_SELECTED:
-        print_str("CSMI SAS PORT CANNOT BE SELECTED\n");
+        error = safe_strdup(&returnStr, "CSMI SAS PORT CANNOT BE SELECTED");
         break;
     case CSMI_SAS_CONNECTION_FAILED:
-        print_str("CSMI SAS CONNECTION FAILED\n");
+        error = safe_strdup(&returnStr, "CSMI SAS CONNECTION FAILED");
         break;
     case CSMI_SAS_NO_SATA_DEVICE:
-        print_str("CSMI SAS NO SATA DEVICE\n");
+        error = safe_strdup(&returnStr, "CSMI SAS NO SATA DEVICE");
         break;
     case CSMI_SAS_NO_SATA_SIGNATURE:
-        print_str("CSMI SAS NO SATA SIGNATURE\n");
+        error = safe_strdup(&returnStr, "CSMI SAS NO SATA SIGNATURE");
         break;
     case CSMI_SAS_SCSI_EMULATION:
-        print_str("CSMI SAS SCSI EMULATION\n");
+        error = safe_strdup(&returnStr, "CSMI SAS SCSI EMULATION");
         break;
     case CSMI_SAS_NOT_AN_END_DEVICE:
-        print_str("CSMI SAS NOT AN END DEVICE\n");
+        error = safe_strdup(&returnStr, "CSMI SAS NOT AN END DEVICE");
         break;
     case CSMI_SAS_NO_SCSI_ADDRESS:
-        print_str("CSMI SAS NO SCSI ADDRESS\n");
+        error = safe_strdup(&returnStr, "CSMI SAS NO SCSI ADDRESS");
         break;
     case CSMI_SAS_NO_DEVICE_ADDRESS:
-        print_str("CSMI SAS NO DEVICE ADDRESS\n");
+        error = safe_strdup(&returnStr, "CSMI SAS NO DEVICE ADDRESS");
         break;
     default:
-        printf("Unknown error code %" PRIu32 "\n", returnCode);
+        if (asprintf(&returnStr, "Unknown CSMI IOCTL Return Code - 0x%" PRIX32, returnCode) < 0)
+        {
+            error = 1;//just needs to be non-zero
+        }
         break;
     }
+    if (error != 0)
+    {
+        safe_free(&returnStr);
+        return M_NULLPTR;
+    }
+    return returnStr;
 }
 
+M_DEPRECATED_REASON("Use get_CSMI_IOCTL_Return_Code_String to get the string and output it yourself instead.")
+static void print_IOCTL_Return_Code(uint32_t returnCode)
+{
+    print_str("IOCTL Status: ");
+    char* returnStr = get_CSMI_IOCTL_Return_Code_String(returnCode);
+    if (returnStr != M_NULLPTR)
+    {
+        print_str(returnStr);
+        safe_free(&returnStr);
+    }
+    else
+    {
+        printf("Unknown CSMI IOCTL Return Code - 0x%" PRIX32, returnCode);
+    }
+        print_str("\n");
+}
+
+M_FUNC_ATTR_MALLOC static char* M_NULLABLE get_CSMI_Last_Error_String(lasterror_t lastError)
+{
+    #if defined (_WIN32)
+        // Windows-specific implementation
+        return get_windows_error_str(lastError);
+    #else
+        // Non-Windows implementation
+        return get_Errno_String(lastError);
+    #endif
+}
+
+M_DEPRECATED_REASON("Use get_CSMI_Last_Error_String to get the string and output it yourself instead.")
 void print_Last_Error(lasterror_t lastError)
 {
 #    if defined(_WIN32)
@@ -198,19 +237,20 @@ static eReturnValues csmi_Return_To_OpenSea_Result(uint32_t returnCode)
 
 typedef struct s_csmiIOin
 {
-    CSMI_HANDLE deviceHandle;
-    void*       ioctlBuffer;
-    uint32_t    ioctlCode; // CSMI IOCTL code. Linux needs this, Windows doesn't since it's in the header for Windows.
-    uint32_t    ioctlBufferSize;
-    char        ioctlSignature[8]; // Signature of the IOCTL to send
-    uint32_t    timeoutInSeconds;
-    uint32_t    dataLength; // The length of all the data AFTER the ioctl header. This helps track how much to
-                         // send/receive. The structure trying to read or write sizeof(CSMI struct) or possibly larger
-                         // for those that have variable length data
-    uint32_t controllerNumber; // For Linux drivers, we need to specify the controller number since the drivers may
-                               // manage more than a single controller at a time. This will be ignored in Linux
-    eVerbosityLevels csmiVerbosity;
-    uint16_t         ioctlDirection; // Is this sending data (set) or receiving data (get). Needed for Linux
+    CSMI_HANDLE                   deviceHandle;
+    uint32_t                      ioctlBufferSize;
+    M_SIZED_BY(ioctlBufferSize) void*  M_NONNULL                       ioctlBuffer;
+    uint32_t                      ioctlCode; // CSMI IOCTL code. Linux needs this, Windows doesn't since it's in the header for Windows.
+    char                          ioctlSignature[8]; // Signature of the IOCTL to send
+    uint32_t                      timeoutInSeconds;
+    uint32_t                      dataLength; // The length of all the data AFTER the ioctl header. This helps track how much to
+                             // send/receive. The structure trying to read or write sizeof(CSMI struct) or possibly larger
+                             // for those that have variable length data
+    uint32_t                      controllerNumber; // For Linux drivers, we need to specify the controller number since the drivers may
+                                   // manage more than a single controller at a time. This will be ignored in Linux
+    const tDevice* M_NULLABLE     device;     // Device pointer for device-aware printing. Can be NULL in device discovery functions.
+    eVerbosityLevels              csmiVerbosity;
+    uint16_t                      ioctlDirection; // Is this sending data (set) or receiving data (get). Needed for Linux
 } csmiIOin, *ptrCsmiIOin;
 
 typedef struct s_csmiIOout
@@ -218,8 +258,8 @@ typedef struct s_csmiIOout
     unsigned long bytesReturned; // Windows only and returned because it may be needed to fully process the result. Will
                                  // be 0 for other OSs
     int         sysIoctlReturn;  // to save return from calling DeviceIoControl or Ioctl functions.
-    uint32_t*   lastError;       // pointer to store last error in. Optional
-    seatimer_t* ioctlTimer;      // pointer to a timer to start and stop if the IOCTL needs timing.
+    uint32_t* M_NULLABLE  lastError;       // pointer to store last error in. Optional
+    seatimer_t *M_NULLABLE ioctlTimer;      // pointer to a timer to start and stop if the IOCTL needs timing.
 } csmiIOout, *ptrCsmiIOout;
 
 // static because this should be an internal function to be reused below for getting the other data
@@ -255,10 +295,8 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
     ioctlHeader->Timeout    = csmiIoInParams->timeoutInSeconds;
     ioctlHeader->ReturnCode = CSMI_SAS_STATUS_SUCCESS;
     ioctlHeader->Length     = csmiIoInParams->dataLength;
-    if (VERBOSITY_COMMAND_NAMES <= csmiIoInParams->csmiVerbosity)
-    {
-        print_str("\n---Sending CSMI IO---\n");
-    }
+
+    print_tDevice_Verbose_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\n---Sending CSMI IO---\n");
 #    if defined(_WIN32)
     // finish OS specific IOHEADER setup
     ioctlHeader->ControlCode  = csmiIoInParams->ioctlCode;
@@ -317,25 +355,32 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
         *csmiIoOutParams->lastError = C_CAST(unsigned int, lastError);
     }
 #    endif //_WIN32
-    if (VERBOSITY_COMMAND_NAMES <= csmiIoInParams->csmiVerbosity)
+    print_tDevice_Verbose_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\tCSMI IO results:\n");
+    print_tDevice_Verbose_Formatted_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\t\tIO returned: %d\n", localIoctlReturn);
+    print_tDevice_Verbose_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\t\tLast error meaning: ");
+    char* lastErrorStr = get_CSMI_Last_Error_String(lastError);
+    if (lastErrorStr)
     {
-        print_str("\tCSMI IO results:\n");
-        printf("\t\tIO returned: %d\n", localIoctlReturn);
-        print_str("\t\tLast error meaning: ");
-        print_Last_Error(lastError);
-        print_str("\t\tCSMI Error Code: ");
-        print_IOCTL_Return_Code(ioctlHeader->ReturnCode);
-        print_str("\t\tCompletion time: ");
-        if (timer)
-        {
-            print_Command_Time(get_Nano_Seconds(*timer));
-        }
-        else
-        {
-            print_str("Error getting command time\n");
-        }
-        print_str("\n");
+        print_tDevice_Verbose_Formatted_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "%s", lastErrorStr);
+        safe_free(&lastErrorStr);
     }
+    print_tDevice_Verbose_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\t\tCSMI Error Code: ");
+    char* returnCodeStr = get_CSMI_IOCTL_Return_Code_String(ioctlHeader->ReturnCode);
+    if (returnCodeStr)
+    {
+        print_tDevice_Verbose_Formatted_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "%s\n", returnCodeStr);
+        safe_free(&returnCodeStr);
+    }
+    print_tDevice_Verbose_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\t\tCompletion time: ");
+    if (timer)
+    {
+        print_Command_Time_Verbose(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, get_Nano_Seconds(*timer));
+    }
+    else
+    {
+        print_tDevice_Verbose_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "Error getting command time\n");
+    }
+    print_tDevice_Verbose_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\n");
     csmiIoOutParams->sysIoctlReturn = localIoctlReturn;
     if (localTimer)
     {
@@ -463,18 +508,18 @@ static bool is_Intel_Driver(eKnownCSMIDriver knownDriver)
 }
 
 // More for debugging than anything else
-static void print_CSMI_Driver_Info(PCSMI_SAS_DRIVER_INFO driverInfo)
+static void print_CSMI_Driver_Info(const tDevice* M_NULLABLE device, PCSMI_SAS_DRIVER_INFO driverInfo)
 {
     if (driverInfo)
     {
-        print_str("\n====CSMI Driver Info====\n");
-        printf("\tDriver Name: %s\n", driverInfo->szName);
-        printf("\tDescription: %s\n", driverInfo->szDescription);
-        printf("\tDriver Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", driverInfo->usMajorRevision,
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI Driver Info====\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tDriver Name: %s\n", driverInfo->szName);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tDescription: %s\n", driverInfo->szDescription);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tDriver Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", driverInfo->usMajorRevision,
                driverInfo->usMinorRevision, driverInfo->usBuildRevision, driverInfo->usReleaseRevision);
-        printf("\tCSMI Version: %" CPRIu16 ".%" CPRIu16 "\n", driverInfo->usCSMIMajorRevision,
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tCSMI Version: %" CPRIu16 ".%" CPRIu16 "\n", driverInfo->usCSMIMajorRevision,
                driverInfo->usCSMIMinorRevision);
-        print_str("\n");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n");
     }
 }
 
@@ -482,7 +527,7 @@ M_PARAM_RW(3)
 OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE                  deviceHandle,
                                                          uint32_t                     controllerNumber,
                                                          PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer,
-                                                         eVerbosityLevels             verbosity)
+                                                         const tDevice* M_NULLABLE   device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -501,115 +546,106 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE            
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_ALL_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get Driver Info\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Driver Info\n");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
     if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(driverInfoBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_Driver_Info(&driverInfoBuffer->Information);
-        }
+        print_CSMI_Driver_Info(device, &driverInfoBuffer->Information);
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get Driver Info\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get Driver Info\n", ret);
 
     return ret;
 }
 
-static void print_CSMI_Controller_Configuration(PCSMI_SAS_CNTLR_CONFIG config)
+static void print_CSMI_Controller_Configuration(const tDevice* M_NULLABLE device, PCSMI_SAS_CNTLR_CONFIG config)
 {
     if (config)
     {
-        print_str("\n====CSMI Controller Configuration====\n");
-        printf("\tBase IO Address: %08" CPRIX32 "h\n", config->uBaseIoAddress);
-        printf("\tBase Memory Address: %08" CPRIX32 "%08" CPRIX32 "h\n", config->BaseMemoryAddress.uHighPart,
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI Controller Configuration====\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBase IO Address: %08" CPRIX32 "h\n", config->uBaseIoAddress);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBase Memory Address: %08" CPRIX32 "%08" CPRIX32 "h\n", config->BaseMemoryAddress.uHighPart,
                config->BaseMemoryAddress.uLowPart);
-        printf("\tBoard ID: %08" CPRIX32 "h\n", config->uBoardID);
-        printf("\t\tVendor ID: %04" CPRIX16 "h\n", M_Word0(M_STATIC_CAST(uint32_t, config->uBoardID)));
-        printf("\t\tSubsystem ID: %04" CPRIX16 "h\n", M_Word1(M_STATIC_CAST(uint32_t, config->uBoardID)));
-        print_str("\tSlot Number: ");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBoard ID: %08" CPRIX32 "h\n", config->uBoardID);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tVendor ID: %04" CPRIX16 "h\n", M_Word0(M_STATIC_CAST(uint32_t, config->uBoardID)));
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSubsystem ID: %04" CPRIX16 "h\n", M_Word1(M_STATIC_CAST(uint32_t, config->uBoardID)));
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSlot Number: ");
         if (SLOT_NUMBER_UNKNOWN == config->usSlotNumber)
         {
-            print_str("Unknown\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown\n");
         }
         else
         {
-            printf("%" CPRIu16 "\n", config->usSlotNumber);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "%" CPRIu16 "\n", config->usSlotNumber);
         }
-        print_str("\tController Class: ");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tController Class: ");
         if (CSMI_SAS_CNTLR_CLASS_HBA == config->bControllerClass)
         {
-            print_str("HBA\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "HBA\n");
         }
         else
         {
-            printf("Unknown - %" CPRIu8 "\n", config->bControllerClass);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIu8 "\n", config->bControllerClass);
         }
-        print_str("\tIO Bus Type: ");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tIO Bus Type: ");
         switch (config->bIoBusType)
         {
         case CSMI_SAS_BUS_TYPE_PCI:
-            print_str("PCI\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "PCI\n");
             break;
         case CSMI_SAS_BUS_TYPE_PCMCIA:
-            print_str("PCMCIA\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "PCMCIA\n");
             break;
         default:
-            printf("Unknown - %" CPRIu8 "\n", config->bIoBusType);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIu8 "\n", config->bIoBusType);
             break;
         }
-        print_str("\tBus Address\n");
-        printf("\t\tBus Number: %" CPRIu8 "\n", config->BusAddress.PciAddress.bBusNumber);
-        printf("\t\tDevice Number: %" CPRIu8 "\n", config->BusAddress.PciAddress.bDeviceNumber);
-        printf("\t\tFunction Number: %" CPRIu8 "\n", config->BusAddress.PciAddress.bFunctionNumber);
-        printf("\tSerial Number: %s\n", config->szSerialNumber);
-        printf("\tController Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", config->usMajorRevision,
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBus Address\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tBus Number: %" CPRIu8 "\n", config->BusAddress.PciAddress.bBusNumber);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDevice Number: %" CPRIu8 "\n", config->BusAddress.PciAddress.bDeviceNumber);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tFunction Number: %" CPRIu8 "\n", config->BusAddress.PciAddress.bFunctionNumber);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSerial Number: %s\n", config->szSerialNumber);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tController Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", config->usMajorRevision,
                config->usMinorRevision, config->usBuildRevision, config->usReleaseRevision);
-        printf("\tBIOS Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", config->usBIOSMajorRevision,
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBIOS Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", config->usBIOSMajorRevision,
                config->usBIOSMinorRevision, config->usBIOSBuildRevision, config->usBIOSReleaseRevision);
-        printf("\tController Flags (%08" CPRIX32 "h):\n", config->uControllerFlags);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tController Flags (%08" CPRIX32 "h):\n", config->uControllerFlags);
         if (config->uControllerFlags & CSMI_SAS_CNTLR_SAS_HBA)
         {
-            print_str("\t\tSAS HBA\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSAS HBA\n");
         }
         if (config->uControllerFlags & CSMI_SAS_CNTLR_SAS_RAID)
         {
-            print_str("\t\tSAS RAID\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSAS RAID\n");
         }
         if (config->uControllerFlags & CSMI_SAS_CNTLR_SATA_HBA)
         {
-            print_str("\t\tSATA HBA\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSATA HBA\n");
         }
         if (config->uControllerFlags & CSMI_SAS_CNTLR_SATA_RAID)
         {
-            print_str("\t\tSATA RAID\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSATA RAID\n");
         }
         if (config->uControllerFlags & CSMI_SAS_CNTLR_SMART_ARRAY)
         {
-            print_str("\t\tSmart Array\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSmart Array\n");
         }
-        printf("\tRedundant Controller Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n",
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tRedundant Controller Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n",
                config->usRromMajorRevision, config->usRromMinorRevision, config->usRromBuildRevision,
                config->usRromReleaseRevision);
-        printf("\tRedundant BIOS Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n",
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tRedundant BIOS Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n",
                config->usRromBIOSMajorRevision, config->usRromBIOSMinorRevision, config->usRromBIOSBuildRevision,
                config->usRromBIOSReleaseRevision);
-        print_str("\n");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n");
     }
 }
 
@@ -617,7 +653,7 @@ OPENSEA_TRANSPORT_API eReturnValues
 csmi_Get_Controller_Configuration(CSMI_HANDLE                             deviceHandle,
                                   uint32_t                                controllerNumber,
                                   PCSMI_SAS_CNTLR_CONFIG_BUFFER M_NONNULL ctrlConfigBuffer,
-                                  eVerbosityLevels                        verbosity)
+                                  const tDevice* M_NULLABLE              device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -636,79 +672,70 @@ csmi_Get_Controller_Configuration(CSMI_HANDLE                             device
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_ALL_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get Controller Configuration\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Controller Configuration\n");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
     if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(ctrlConfigBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_Controller_Configuration(&ctrlConfigBuffer->Configuration);
-        }
+        print_CSMI_Controller_Configuration(device, &ctrlConfigBuffer->Configuration);
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get Controller Configuration\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get Controller Configuration\n", ret);
 
     return ret;
 }
 
-static void print_CSMI_Controller_Status(PCSMI_SAS_CNTLR_STATUS status)
+static void print_CSMI_Controller_Status(const tDevice* M_NULLABLE device, PCSMI_SAS_CNTLR_STATUS status)
 {
     if (status)
     {
-        print_str("\n====CSMI Controller Status====\n");
-        print_str("\tStatus: ");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI Controller Status====\n");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tStatus: ");
         switch (status->uStatus)
         {
         case CSMI_SAS_CNTLR_STATUS_GOOD:
-            print_str("Good\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Good\n");
             break;
         case CSMI_SAS_CNTLR_STATUS_FAILED:
-            print_str("Failed\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Failed\n");
             break;
         case CSMI_SAS_CNTLR_STATUS_OFFLINE:
-            print_str("Offline\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Offline\n");
             break;
         case CSMI_SAS_CNTLR_STATUS_POWEROFF:
-            print_str("Powered Off\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Powered Off\n");
             break;
         default:
-            print_str("Unknown\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown\n");
             break;
         }
         if (status->uStatus == CSMI_SAS_CNTLR_STATUS_OFFLINE)
         {
-            print_str("\tOffline Reason: ");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tOffline Reason: ");
             switch (status->uOfflineReason)
             {
             case CSMI_SAS_OFFLINE_REASON_NO_REASON:
-                print_str("No Reason\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "No Reason\n");
                 break;
             case CSMI_SAS_OFFLINE_REASON_INITIALIZING:
-                print_str("Initializing\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Initializing\n");
                 break;
             case CSMI_SAS_OFFLINE_REASON_BACKSIDE_BUS_DEGRADED:
-                print_str("Backside Bus Degraded\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Backside Bus Degraded\n");
                 break;
             case CSMI_SAS_OFFLINE_REASON_BACKSIDE_BUS_FAILURE:
-                print_str("Backside Bus Failure\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Backside Bus Failure\n");
                 break;
             default:
-                print_str("Unknown\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown\n");
                 break;
             }
         }
@@ -718,7 +745,7 @@ static void print_CSMI_Controller_Status(PCSMI_SAS_CNTLR_STATUS status)
 OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE                             deviceHandle,
                                                                uint32_t                                controllerNumber,
                                                                PCSMI_SAS_CNTLR_STATUS_BUFFER M_NONNULL ctrlStatusBuffer,
-                                                               eVerbosityLevels                        verbosity)
+                                                               const tDevice* M_NULLABLE              device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -737,32 +764,23 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE      
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_ALL_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get Controller Status\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Controller Status\n");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
     if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(ctrlStatusBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_Controller_Status(&ctrlStatusBuffer->Status);
-        }
+        print_CSMI_Controller_Status(device, &ctrlStatusBuffer->Status);
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get Controller Status\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get Controller Status\n", ret);
 
     return ret;
 }
@@ -776,7 +794,7 @@ csmi_Controller_Firmware_Download(CSMI_HANDLE                                  d
                                   PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER M_NONNULL firmwareBuffer,
                                   uint32_t                                     firmwareBufferTotalLength,
                                   uint32_t                                     downloadFlags,
-                                  eVerbosityLevels                             verbosity,
+                                  const tDevice* M_NULLABLE                   device,
                                   uint32_t                                     timeoutSeconds)
 {
     eReturnValues ret = SUCCESS;
@@ -799,16 +817,13 @@ csmi_Controller_Firmware_Download(CSMI_HANDLE                                  d
     ioIn.ioctlDirection   = CSMI_SAS_DATA_WRITE;
     ioIn.timeoutInSeconds = timeoutSeconds;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
     firmwareBuffer->Information.uDownloadFlags = downloadFlags;
     firmwareBuffer->Information.uBufferLength =
         C_CAST(uint32_t, firmwareBufferTotalLength - sizeof(CSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER)); //-1???
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Controller Firmware Download\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Controller Firmware Download\n");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
@@ -821,38 +836,35 @@ csmi_Controller_Firmware_Download(CSMI_HANDLE                                  d
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Controller Firmware Download\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Controller Firmware Download\n", ret);
 
     return ret;
 }
 
-static void print_CSMI_RAID_Info(PCSMI_SAS_RAID_INFO raidInfo)
+static void print_CSMI_RAID_Info(const tDevice* M_NULLABLE device, PCSMI_SAS_RAID_INFO raidInfo)
 {
     if (raidInfo)
     {
-        print_str("\n====CSMI RAID Info====\n");
-        printf("\tNumber of RAID Sets: %" CPRIu32 "\n", raidInfo->uNumRaidSets);
-        printf("\tMaximum # of drives per set: %" CPRIu32 "\n", raidInfo->uMaxDrivesPerSet);
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI RAID Info====\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tNumber of RAID Sets: %" CPRIu32 "\n", raidInfo->uNumRaidSets);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum # of drives per set: %" CPRIu32 "\n", raidInfo->uMaxDrivesPerSet);
         // Check if remaining bytes are zeros. This helps track differences between original CSMI spec and some drivers
         // that added onto it.
         if (!is_Empty(M_REINTERPRET_CAST(void*, raidInfo),
                       92)) // 92 is original reserved length from original documentation...can
                            // change to something else based on actual structure size if needed
         {
-            printf("\tMaximum # of RAID Sets: %" CPRIu32 "\n", raidInfo->uMaxRaidSets);
-            printf("\tMaximum # of RAID Types: %" CPRIu8 "\n", raidInfo->bMaxRaidTypes);
-            printf("\tMinimum RAID Set Blocks: %" PRIu64 "\n",
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum # of RAID Sets: %" CPRIu32 "\n", raidInfo->uMaxRaidSets);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum # of RAID Types: %" CPRIu8 "\n", raidInfo->bMaxRaidTypes);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMinimum RAID Set Blocks: %" PRIu64 "\n",
                    M_DWordsTo8ByteValue(raidInfo->ulMinRaidSetBlocks.uHighPart, raidInfo->ulMinRaidSetBlocks.uLowPart));
-            printf("\tMaximum RAID Set Blocks: %" PRIu64 "\n",
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum RAID Set Blocks: %" PRIu64 "\n",
                    M_DWordsTo8ByteValue(raidInfo->ulMaxRaidSetBlocks.uHighPart, raidInfo->ulMaxRaidSetBlocks.uLowPart));
-            printf("\tMaximum Physical Drives: %" CPRIu32 "\n", raidInfo->uMaxPhysicalDrives);
-            printf("\tMaximum Extents: %" CPRIu32 "\n", raidInfo->uMaxExtents);
-            printf("\tMaximum Modules: %" CPRIu32 "\n", raidInfo->uMaxModules);
-            printf("\tMaximum Transformational Memory: %" CPRIu32 "\n", raidInfo->uMaxTransformationMemory);
-            printf("\tChange Count: %" CPRIu32 "\n", raidInfo->uChangeCount);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum Physical Drives: %" CPRIu32 "\n", raidInfo->uMaxPhysicalDrives);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum Extents: %" CPRIu32 "\n", raidInfo->uMaxExtents);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum Modules: %" CPRIu32 "\n", raidInfo->uMaxModules);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum Transformational Memory: %" CPRIu32 "\n", raidInfo->uMaxTransformationMemory);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tChange Count: %" CPRIu32 "\n", raidInfo->uChangeCount);
             // Add another is_Empty here for 44 bytes if other things get added here.
         }
     }
@@ -887,7 +899,7 @@ M_PARAM_RW(3)
 OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE                deviceHandle,
                                                        uint32_t                   controllerNumber,
                                                        PCSMI_SAS_RAID_INFO_BUFFER raidInfoBuffer,
-                                                       eVerbosityLevels           verbosity)
+                                                       const tDevice* M_NULLABLE  device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -906,32 +918,23 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE              
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get RAID Info\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get RAID Info\n");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
     if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(raidInfoBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_RAID_Info(&raidInfoBuffer->Information);
-        }
+        print_CSMI_RAID_Info(device, &raidInfoBuffer->Information);
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get RAID Info\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get RAID Info\n", ret);
 
     return ret;
 }
@@ -1085,75 +1088,75 @@ static M_INLINE bool is_Config_Last_20B_Empty(PCSMI_SAS_RAID_CONFIG config)
 }
 
 // TODO: Need to pass in CSMI version information
-static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t configLength)
+static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device, PCSMI_SAS_RAID_CONFIG config, uint32_t configLength)
 {
     if (config)
     {
-        print_str("\n====CSMI RAID Configuration====\n");
-        printf("\tRAID Set Index: %" CPRIu32 "\n", config->uRaidSetIndex);
-        printf("\tCapacity (MB): %" CPRIu32 "\n", config->uCapacity);
-        printf("\tStripe Size (KB): %" CPRIu32 "\n", config->uStripeSize);
-        print_str("\tRAID Type: ");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI RAID Configuration====\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tRAID Set Index: %" CPRIu32 "\n", config->uRaidSetIndex);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tCapacity (MB): %" CPRIu32 "\n", config->uCapacity);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tStripe Size (KB): %" CPRIu32 "\n", config->uStripeSize);
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tRAID Type: ");
         print_CSMI_RaidType(config->bRaidType);
-        print_str("\tStatus: ");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tStatus: ");
         switch (config->bStatus)
         {
         case CSMI_SAS_RAID_SET_STATUS_OK:
-            print_str("OK\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "OK\n");
             break;
         case CSMI_SAS_RAID_SET_STATUS_DEGRADED:
-            print_str("Degraded\n");
-            printf("\tFailed Drive Index: %" CPRIu8 "\n", config->bInformation);
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Degraded\n");
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tFailed Drive Index: %" CPRIu8 "\n", config->bInformation);
             break;
         case CSMI_SAS_RAID_SET_STATUS_REBUILDING:
-            printf("Rebuilding - %" CPRIu8 "%%\n", config->bInformation);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Rebuilding - %" CPRIu8 "%%\n", config->bInformation);
             break;
         case CSMI_SAS_RAID_SET_STATUS_FAILED:
-            printf("Failed - %" CPRIu8 "\n", config->bInformation);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Failed - %" CPRIu8 "\n", config->bInformation);
             break;
         case CSMI_SAS_RAID_SET_STATUS_OFFLINE:
-            print_str("Offline\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Offline\n");
             break;
         case CSMI_SAS_RAID_SET_STATUS_TRANSFORMING:
-            printf("Transforming - %" CPRIu8 "%%\n", config->bInformation);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Transforming - %" CPRIu8 "%%\n", config->bInformation);
             break;
         case CSMI_SAS_RAID_SET_STATUS_QUEUED_FOR_REBUILD:
-            print_str("Queued for Rebuild\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Queued for Rebuild\n");
             break;
         case CSMI_SAS_RAID_SET_STATUS_QUEUED_FOR_TRANSFORMATION:
-            print_str("Queued for Transformation\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Queued for Transformation\n");
             break;
         default:
-            print_str("Unknown\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown\n");
             break;
         }
-        print_str("\tDrive Count: ");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tDrive Count: ");
         if (config->bDriveCount > 0xF0)
         {
             switch (config->bDriveCount)
             {
             case CSMI_SAS_RAID_DRIVE_COUNT_TOO_BIG:
-                print_str("Too Big\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Too Big\n");
                 break;
             case CSMI_SAS_RAID_DRIVE_COUNT_SUPRESSED:
-                print_str("Supressed\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Supressed\n");
                 break;
             default:
-                printf("Unknown reserved value - %" CPRIX8 "h\n", config->bDriveCount);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown reserved value - %" CPRIX8 "h\n", config->bDriveCount);
                 break;
             }
         }
         else
         {
-            printf("%" CPRIu8 "\n", config->bDriveCount);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "%" CPRIu8 "\n", config->bDriveCount);
         }
         // Use DataType to switch between what was reported back
         // this is being checked since failure code and change count were added later
         if (!is_Config_Last_20B_Empty(config))
         {
-            print_str("\tFailure Code: ");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tFailure Code: ");
             print_CSMI_RAID_Failure_Code(config->uFailureCode);
-            printf("\tChange Count: %" CPRIu32 "\n", config->uChangeCount);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tChange Count: %" CPRIu32 "\n", config->uChangeCount);
         }
         bool driveDataValid = true;
         // If an ASCII character is in the bDataType offset, this is Intel's driver
@@ -1164,20 +1167,20 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
             switch (config->bDataType)
             {
             case CSMI_SAS_RAID_DATA_DRIVES:
-                print_str("RAID Drive Data\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "RAID Drive Data\n");
                 break;
             case CSMI_SAS_RAID_DATA_DEVICE_ID:
                 // TODO: Print this out...device identification VPD page
-                print_str("Device ID (Debug info not supported at this time)\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Device ID (Debug info not supported at this time)\n");
                 driveDataValid = false;
                 break;
             case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
                 // TODO: Print this out
-                print_str("Additional Data (Debug info not supported at this time)\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Additional Data (Debug info not supported at this time)\n");
                 driveDataValid = false;
                 break;
             default:
-                print_str("Unknown data type.\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown data type.\n");
                 driveDataValid = false;
                 break;
             }
@@ -1197,70 +1200,70 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
                     safe_memcpy(model, 41, config->Drives[iter].bModel, 40);
                     safe_memcpy(firmware, 9, config->Drives[iter].bFirmware, 8);
                     safe_memcpy(serialNumber, 41, config->Drives[iter].bSerialNumber, 40);
-                    printf("\t----RAID Drive %" PRIu32 "----\n", iter);
-                    printf("\t\tModel #: %s\n", model);
-                    printf("\t\tFirmware: %s\n", firmware);
-                    printf("\t\tSerial #: %s\n", serialNumber);
-                    printf("\t\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t----RAID Drive %" PRIu32 "----\n", iter);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tModel #: %s\n", model);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tFirmware: %s\n", firmware);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSerial #: %s\n", serialNumber);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
                            "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "h\n",
                            config->Drives[iter].bSASAddress[0], config->Drives[iter].bSASAddress[1],
                            config->Drives[iter].bSASAddress[2], config->Drives[iter].bSASAddress[3],
                            config->Drives[iter].bSASAddress[4], config->Drives[iter].bSASAddress[5],
                            config->Drives[iter].bSASAddress[6], config->Drives[iter].bSASAddress[7]);
-                    printf("\t\tSAS LUN: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSAS LUN: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
                            "%02" CPRIX8 "%02" CPRIX8 "h\n",
                            config->Drives[iter].bSASLun[0], config->Drives[iter].bSASLun[1],
                            config->Drives[iter].bSASLun[2], config->Drives[iter].bSASLun[3],
                            config->Drives[iter].bSASLun[4], config->Drives[iter].bSASLun[5],
                            config->Drives[iter].bSASLun[6], config->Drives[iter].bSASLun[7]);
-                    print_str("\t\tDrive Status: ");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDrive Status: ");
                     switch (config->Drives[iter].bDriveStatus)
                     {
                     case CSMI_SAS_DRIVE_STATUS_OK:
-                        print_str("OK\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "OK\n");
                         break;
                     case CSMI_SAS_DRIVE_STATUS_REBUILDING:
-                        print_str("Rebuilding\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Rebuilding\n");
                         break;
                     case CSMI_SAS_DRIVE_STATUS_FAILED:
-                        print_str("Failed\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Failed\n");
                         break;
                     case CSMI_SAS_DRIVE_STATUS_DEGRADED:
-                        print_str("Degraded\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Degraded\n");
                         break;
                     case CSMI_SAS_DRIVE_STATUS_OFFLINE:
-                        print_str("Offline\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Offline\n");
                         break;
                     case CSMI_SAS_DRIVE_STATUS_QUEUED_FOR_REBUILD:
-                        print_str("Queued for Rebuild\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Queued for Rebuild\n");
                         break;
                     default:
-                        print_str("Unknown\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown\n");
                         break;
                     }
-                    print_str("\t\tDrive Usage: ");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDrive Usage: ");
                     switch (config->Drives[iter].bDriveUsage)
                     {
                     case CSMI_SAS_DRIVE_CONFIG_NOT_USED:
-                        print_str("Not Used\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Not Used\n");
                         break;
                     case CSMI_SAS_DRIVE_CONFIG_MEMBER:
-                        print_str("Member\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Member\n");
                         break;
                     case CSMI_SAS_DRIVE_CONFIG_SPARE:
-                        print_str("Spare\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Spare\n");
                         break;
                     case CSMI_SAS_DRIVE_CONFIG_SPARE_ACTIVE:
-                        print_str("Spare - Active\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Spare - Active\n");
                         break;
                     case CSMI_SAS_DRIVE_CONFIG_SRT_CACHE: // Unique to Intel!
-                        print_str("SRT Cache\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SRT Cache\n");
                         break;
                     case CSMI_SAS_DRIVE_CONFIG_SRT_DATA: // Unique to Intel!
-                        print_str("SRT Data\n");
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SRT Data\n");
                         break;
                     default:
-                        printf("Unknown - %" CPRIu8 "\n", config->Drives[iter].bDriveUsage);
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIu8 "\n", config->Drives[iter].bDriveUsage);
                         break;
                     }
                     // end of original RAID drive data in spec. Check if empty
@@ -1269,34 +1272,34 @@ static void print_CSMI_RAID_Config(PCSMI_SAS_RAID_CONFIG config, uint32_t config
                     // original spec says 22 reserved bytes, however I count 30 more bytes to check...-TJE
                     if (!is_Empty(&config->Drives[iter], previouslyReservedBytes))
                     {
-                        printf("\t\tBlock Size: %" CPRIu16 "\n", config->Drives[iter].usBlockSize);
-                        print_str("\t\tDrive Type: ");
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tBlock Size: %" CPRIu16 "\n", config->Drives[iter].usBlockSize);
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDrive Type: ");
                         switch (config->Drives[iter].bDriveType)
                         {
                         case CSMI_SAS_DRIVE_TYPE_UNKNOWN:
-                            print_str("Unknown\n");
+                            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown\n");
                             break;
                         case CSMI_SAS_DRIVE_TYPE_SINGLE_PORT_SAS:
-                            print_str("Single Port SAS\n");
+                            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Single Port SAS\n");
                             break;
                         case CSMI_SAS_DRIVE_TYPE_DUAL_PORT_SAS:
-                            print_str("Dual Port SAS\n");
+                            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Dual Port SAS\n");
                             break;
                         case CSMI_SAS_DRIVE_TYPE_SATA:
-                            print_str("SATA\n");
+                            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SATA\n");
                             break;
                         case CSMI_SAS_DRIVE_TYPE_SATA_PS:
-                            print_str("SATA Port Selector\n");
+                            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SATA Port Selector\n");
                             break;
                         case CSMI_SAS_DRIVE_TYPE_OTHER:
-                            print_str("Other\n");
+                            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Other\n");
                             break;
                         default:
-                            printf("Unknown - %" CPRIu8 "\n", config->Drives[iter].bDriveType);
+                            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIu8 "\n", config->Drives[iter].bDriveType);
                             break;
                         }
-                        printf("\t\tDrive Index: %" CPRIu32 "\n", config->Drives[iter].uDriveIndex);
-                        printf("\t\tTotal User Blocks: %" PRIu64 "\n",
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDrive Index: %" CPRIu32 "\n", config->Drives[iter].uDriveIndex);
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tTotal User Blocks: %" PRIu64 "\n",
                                M_DWordsTo8ByteValue(config->Drives[iter].ulTotalUserBlocks.uHighPart,
                                                     config->Drives[iter].ulTotalUserBlocks.uLowPart));
                     }
@@ -1429,7 +1432,7 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE            
                                                          uint32_t                     raidConfigBufferTotalSize,
                                                          uint32_t                     raidSetIndex,
                                                          uint8_t                      dataType,
-                                                         eVerbosityLevels             verbosity)
+                                                         const tDevice* M_NULLABLE   device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -1448,255 +1451,246 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE            
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
     raidConfigBuffer->Configuration.uRaidSetIndex = raidSetIndex;
     raidConfigBuffer->Configuration.bDataType =
         dataType; // NOTE: This may only be implemented on SOME CSMI implementations. Not supported by Intel RST as they
                   // only support up to .77 changes, but this is a newer field.
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get RAID Config\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get RAID Config\n");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
     if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(raidConfigBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_RAID_Config(&raidConfigBuffer->Configuration,
-                                   C_CAST(uint32_t, raidConfigBufferTotalSize - sizeof(IOCTL_HEADER)));
-        }
+        print_CSMI_RAID_Config(device, &raidConfigBuffer->Configuration,
+                               C_CAST(uint32_t, raidConfigBufferTotalSize - sizeof(IOCTL_HEADER)));
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get RAID Config\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get RAID Config\n", ret);
 
     return ret;
 }
 
 // Get RAID Features
 
-static void print_CSMI_RAID_Features(PCSMI_SAS_RAID_FEATURES features)
+static void print_CSMI_RAID_Features(const tDevice* M_NULLABLE device, PCSMI_SAS_RAID_FEATURES features)
 {
     if (features)
     {
-        print_str("\n====CSMI RAID Features====\n");
-        print_str("\tFeatures:\n");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI RAID Features====\n");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tFeatures:\n");
         if (features->uFeatures & CSMI_SAS_RAID_FEATURE_TRANSFORMATION)
         {
-            print_str("\t\tTransformational\n");
-            print_str("\t\tDefault Transform Priority:\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tTransformational\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDefault Transform Priority:\n");
             if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_UNCHANGED)
             {
-                print_str("\t\t\tUnchanged\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tUnchanged\n");
             }
             if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_AUTO)
             {
-                print_str("\t\t\tAuto\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tAuto\n");
             }
             if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_OFF)
             {
-                print_str("\t\t\tOff\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tOff\n");
             }
             if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_LOW)
             {
-                print_str("\t\t\tLow\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tLow\n");
             }
             if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_MEDIUM)
             {
-                print_str("\t\t\tMedium\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tMedium\n");
             }
             if (features->bDefaultTransformPriority == CSMI_SAS_PRIORITY_HIGH)
             {
-                print_str("\t\t\tHigh\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tHigh\n");
             }
-            print_str("\t\tTransform Priority:\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tTransform Priority:\n");
             if (features->bTransformPriority == CSMI_SAS_PRIORITY_UNCHANGED)
             {
-                print_str("\t\t\tUnchanged\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tUnchanged\n");
             }
             if (features->bTransformPriority == CSMI_SAS_PRIORITY_AUTO)
             {
-                print_str("\t\t\tAuto\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tAuto\n");
             }
             if (features->bTransformPriority == CSMI_SAS_PRIORITY_OFF)
             {
-                print_str("\t\t\tOff\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tOff\n");
             }
             if (features->bTransformPriority == CSMI_SAS_PRIORITY_LOW)
             {
-                print_str("\t\t\tLow\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tLow\n");
             }
             if (features->bTransformPriority == CSMI_SAS_PRIORITY_MEDIUM)
             {
-                print_str("\t\t\tMedium\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tMedium\n");
             }
             if (features->bTransformPriority == CSMI_SAS_PRIORITY_HIGH)
             {
-                print_str("\t\t\tHigh\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tHigh\n");
             }
-            print_str("\t\tRAID Set Transformational Rules:\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tRAID Set Transformational Rules:\n");
             if (features->uRaidSetTransformationRules & CSMI_SAS_RAID_RULE_AVAILABLE_MEMORY)
             {
-                print_str("\t\t\tAvailable Memory\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tAvailable Memory\n");
             }
             if (features->uRaidSetTransformationRules & CSMI_SAS_RAID_RULE_OVERLAPPED_EXTENTS)
             {
-                print_str("\t\t\tOverlapped Extents\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tOverlapped Extents\n");
             }
         }
         if (features->uFeatures & CSMI_SAS_RAID_FEATURE_REBUILD)
         {
-            print_str("\t\tRebuild\n");
-            print_str("\t\tDefault Rebuild Priority:\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tRebuild\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDefault Rebuild Priority:\n");
             if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_UNCHANGED)
             {
-                print_str("\t\t\tUnchanged\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tUnchanged\n");
             }
             if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_AUTO)
             {
-                print_str("\t\t\tAuto\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tAuto\n");
             }
             if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_OFF)
             {
-                print_str("\t\t\tOff\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tOff\n");
             }
             if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_LOW)
             {
-                print_str("\t\t\tLow\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tLow\n");
             }
             if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_MEDIUM)
             {
-                print_str("\t\t\tMedium\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tMedium\n");
             }
             if (features->bDefaultRebuildPriority == CSMI_SAS_PRIORITY_HIGH)
             {
-                print_str("\t\t\tHigh\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tHigh\n");
             }
-            print_str("\t\tRebuild Priority:\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tRebuild Priority:\n");
             if (features->bRebuildPriority == CSMI_SAS_PRIORITY_UNCHANGED)
             {
-                print_str("\t\t\tUnchanged\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tUnchanged\n");
             }
             if (features->bRebuildPriority == CSMI_SAS_PRIORITY_AUTO)
             {
-                print_str("\t\t\tAuto\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tAuto\n");
             }
             if (features->bRebuildPriority == CSMI_SAS_PRIORITY_OFF)
             {
-                print_str("\t\t\tOff\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tOff\n");
             }
             if (features->bRebuildPriority == CSMI_SAS_PRIORITY_LOW)
             {
-                print_str("\t\t\tLow\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tLow\n");
             }
             if (features->bRebuildPriority == CSMI_SAS_PRIORITY_MEDIUM)
             {
-                print_str("\t\t\tMedium\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tMedium\n");
             }
             if (features->bRebuildPriority == CSMI_SAS_PRIORITY_HIGH)
             {
-                print_str("\t\t\tHigh\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tHigh\n");
             }
         }
         if (features->uFeatures & CSMI_SAS_RAID_FEATURE_SPLIT_MIRROR)
         {
-            print_str("\t\tSplit Mirror\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSplit Mirror\n");
         }
         if (features->uFeatures & CSMI_SAS_RAID_FEATURE_MERGE_MIRROR)
         {
-            print_str("\t\tMerge Mirror\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tMerge Mirror\n");
         }
         if (features->uFeatures & CSMI_SAS_RAID_FEATURE_LUN_RENUMBER)
         {
-            print_str("\t\tLUN Renumber\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tLUN Renumber\n");
         }
         if (features->uFeatures & CSMI_SAS_RAID_FEATURE_SURFACE_SCAN)
         {
-            print_str("\t\tSurface Scan\n");
-            print_str("\t\tDefault Surface Scan Priority:\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSurface Scan\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDefault Surface Scan Priority:\n");
             if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_UNCHANGED)
             {
-                print_str("\t\t\tUnchanged\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tUnchanged\n");
             }
             if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_AUTO)
             {
-                print_str("\t\t\tAuto\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tAuto\n");
             }
             if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_OFF)
             {
-                print_str("\t\t\tOff\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tOff\n");
             }
             if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_LOW)
             {
-                print_str("\t\t\tLow\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tLow\n");
             }
             if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_MEDIUM)
             {
-                print_str("\t\t\tMedium\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tMedium\n");
             }
             if (features->bDefaultSurfaceScanPriority == CSMI_SAS_PRIORITY_HIGH)
             {
-                print_str("\t\t\tHigh\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tHigh\n");
             }
-            print_str("\t\tSurface Scan Priority:\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSurface Scan Priority:\n");
             if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_UNCHANGED)
             {
-                print_str("\t\t\tUnchanged\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tUnchanged\n");
             }
             if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_AUTO)
             {
-                print_str("\t\t\tAuto\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tAuto\n");
             }
             if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_OFF)
             {
-                print_str("\t\t\tOff\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tOff\n");
             }
             if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_LOW)
             {
-                print_str("\t\t\tLow\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tLow\n");
             }
             if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_MEDIUM)
             {
-                print_str("\t\t\tMedium\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tMedium\n");
             }
             if (features->bSurfaceScanPriority == CSMI_SAS_PRIORITY_HIGH)
             {
-                print_str("\t\t\tHigh\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tHigh\n");
             }
         }
         if (features->uFeatures & CSMI_SAS_RAID_FEATURE_SPARES_SHARED)
         {
-            print_str("\t\tSpares Shared\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSpares Shared\n");
         }
         // TODO: Check reserved features 32bytes
-        print_str("\tRAID Type Description(s):\n");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tRAID Type Description(s):\n");
         for (uint8_t raidTypeIter = UINT8_C(0); raidTypeIter < 24; ++raidTypeIter)
         {
             if (!is_Empty(&features->RaidType[raidTypeIter], sizeof(CSMI_SAS_RAID_TYPE_DESCRIPTION)))
             {
-                print_str("\t\tRAID Type: ");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tRAID Type: ");
                 // bRaidType
                 print_CSMI_RaidType(features->RaidType[raidTypeIter].bRaidType);
                 // uSupportedStripeSizeMap
-                printf("Supported Stripe Size Map: %" CPRIu32 "\n",
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Supported Stripe Size Map: %" CPRIu32 "\n",
                        features->RaidType[raidTypeIter].uSupportedStripeSizeMap);
             }
         }
         // Cache ratios supported. 104 possible, some special values
 
-        printf("\tChange Count: %" CPRIu32 "\n", features->uChangeCount);
-        print_str("\tFailure Code: ");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tChange Count: %" CPRIu32 "\n", features->uChangeCount);
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tFailure Code: ");
         print_CSMI_RAID_Failure_Code(features->uFailureCode);
     }
 }
@@ -1704,7 +1698,7 @@ static void print_CSMI_RAID_Features(PCSMI_SAS_RAID_FEATURES features)
 OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE                              deviceHandle,
                                                            uint32_t                                 controllerNumber,
                                                            PCSMI_SAS_RAID_FEATURES_BUFFER M_NONNULL raidFeaturesBuffer,
-                                                           eVerbosityLevels                         verbosity)
+                                                           const tDevice* M_NULLABLE               device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -1723,32 +1717,23 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE          
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get RAID Features\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get RAID Features\n");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
     if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(raidFeaturesBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_RAID_Features(&raidFeaturesBuffer->Information);
-        }
+        print_CSMI_RAID_Features(device, &raidFeaturesBuffer->Information);
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get RAID Features\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get RAID Features\n", ret);
 
     return ret;
 }
@@ -1758,50 +1743,50 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE          
 //       Get RAID Element
 //       Set RAID Operation
 
-static void print_CSMI_Port_Protocol(uint8_t portProtocol)
+static void print_CSMI_Port_Protocol(const tDevice* M_NULLABLE device, uint8_t portProtocol)
 {
     bool needComma = false;
     if (portProtocol & CSMI_SAS_PROTOCOL_SATA)
     {
-        print_str("SATA");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SATA");
         needComma = true;
     }
     if (portProtocol & CSMI_SAS_PROTOCOL_SMP)
     {
         if (needComma)
         {
-            print_str(", ");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, ", ");
         }
-        print_str("SMP");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SMP");
         needComma = true;
     }
     if (portProtocol & CSMI_SAS_PROTOCOL_STP)
     {
         if (needComma)
         {
-            print_str(", ");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, ", ");
         }
-        print_str("STP");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "STP");
         needComma = true;
     }
     if (portProtocol & CSMI_SAS_PROTOCOL_SSP)
     {
         if (needComma)
         {
-            print_str(", ");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, ", ");
         }
-        print_str("SSP");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SSP");
         needComma = true;
     }
-    print_str("\n");
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n");
 }
 
-static void print_CSMI_SAS_Identify(PCSMI_SAS_IDENTIFY identify)
+static void print_CSMI_SAS_Identify(const tDevice* M_NULLABLE device, PCSMI_SAS_IDENTIFY identify)
 {
     if (identify)
     {
         // everything printed with 3 tabs to fit with print function below since this is only used by Phy info data
-        print_str("\t\t\tDevice Type: ");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tDevice Type: ");
         switch (identify->bDeviceType)
         {
         case CSMI_SAS_PHY_UNUSED:
@@ -1820,21 +1805,21 @@ static void print_CSMI_SAS_Identify(PCSMI_SAS_IDENTIFY identify)
             print_str("Unknown\n");
             break;
         }
-        printf("\t\t\tRestricted: %02" CPRIX8 "h\n", identify->bRestricted);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tRestricted: %02" CPRIX8 "h\n", identify->bRestricted);
         print_str("\t\t\tInitiator Port Protocol: ");
-        print_CSMI_Port_Protocol(identify->bInitiatorPortProtocol);
+        print_CSMI_Port_Protocol(device, identify->bInitiatorPortProtocol);
         print_str("\t\t\tTarget Port Protocol: ");
-        print_CSMI_Port_Protocol(identify->bTargetPortProtocol);
-        printf("\t\t\tRestricted 2: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+        print_CSMI_Port_Protocol(device, identify->bTargetPortProtocol);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tRestricted 2: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
                "%02" CPRIX8 "%02" CPRIX8 "h\n",
                identify->bRestricted2[0], identify->bRestricted2[1], identify->bRestricted2[2],
                identify->bRestricted2[3], identify->bRestricted2[4], identify->bRestricted2[5],
                identify->bRestricted2[6], identify->bRestricted2[7]);
-        printf("\t\t\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
                "%02" CPRIX8 "%02" CPRIX8 "h\n",
                identify->bSASAddress[0], identify->bSASAddress[1], identify->bSASAddress[2], identify->bSASAddress[3],
                identify->bSASAddress[4], identify->bSASAddress[5], identify->bSASAddress[6], identify->bSASAddress[7]);
-        printf("\t\t\tPhy Identifier: %" CPRIu8 "\n", identify->bPhyIdentifier);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tPhy Identifier: %" CPRIu8 "\n", identify->bPhyIdentifier);
         print_str("\t\t\tSignal Class: ");
         switch (identify->bSignalClass)
         {
@@ -1851,13 +1836,13 @@ static void print_CSMI_SAS_Identify(PCSMI_SAS_IDENTIFY identify)
             print_str("Enclosure\n");
             break;
         default:
-            printf("Unknown - %" CPRIX8 "h\n", identify->bSignalClass);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIX8 "h\n", identify->bSignalClass);
             break;
         }
     }
 }
 
-static void print_CSMI_Link_Rate(uint8_t linkRate)
+static void print_CSMI_Link_Rate(const tDevice* M_NULLABLE device, uint8_t linkRate)
 {
     // low nibble is rate. High nibble is flags
     switch (M_Nibble0(linkRate))
@@ -1890,7 +1875,7 @@ static void print_CSMI_Link_Rate(uint8_t linkRate)
         print_str("12.0 Gb/s\n");
         break;
     default:
-        printf("Unknown - %02" CPRIX8 "h\n", linkRate);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %02" CPRIX8 "h\n", linkRate);
         break;
     }
     // now review known flags
@@ -1900,25 +1885,25 @@ static void print_CSMI_Link_Rate(uint8_t linkRate)
     }
 }
 
-static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
+static void print_CSMI_Phy_Info(const tDevice* M_NULLABLE device, PCSMI_SAS_PHY_INFO phyInfo)
 {
     if (phyInfo)
     {
         print_str("\n====CSMI Phy Info====\n");
-        printf("\tNumber Of Phys: %" CPRIu8 "\n", phyInfo->bNumberOfPhys);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tNumber Of Phys: %" CPRIu8 "\n", phyInfo->bNumberOfPhys);
         for (uint8_t phyIter = UINT8_C(0); phyIter < phyInfo->bNumberOfPhys && phyIter < 32; ++phyIter)
         {
-            printf("\t----Phy %" CPRIu8 "----\n", phyIter);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t----Phy %" CPRIu8 "----\n", phyIter);
             print_str("\t\tIdentify:\n");
-            print_CSMI_SAS_Identify(&phyInfo->Phy[phyIter].Identify);
-            printf("\t\tPort Identifier: %" CPRIu8 "\n", phyInfo->Phy[phyIter].bPortIdentifier);
+            print_CSMI_SAS_Identify(device, &phyInfo->Phy[phyIter].Identify);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPort Identifier: %" CPRIu8 "\n", phyInfo->Phy[phyIter].bPortIdentifier);
             print_str("\t\tNegotiated Link Rate: ");
-            print_CSMI_Link_Rate(phyInfo->Phy[phyIter].bNegotiatedLinkRate);
+            print_CSMI_Link_Rate(device, phyInfo->Phy[phyIter].bNegotiatedLinkRate);
             print_str("\t\tMinimum Link Rate: ");
-            print_CSMI_Link_Rate(phyInfo->Phy[phyIter].bMinimumLinkRate);
+            print_CSMI_Link_Rate(device, phyInfo->Phy[phyIter].bMinimumLinkRate);
             print_str("\t\tMaximum Link Rate: ");
-            print_CSMI_Link_Rate(phyInfo->Phy[phyIter].bMaximumLinkRate);
-            printf("\t\tPhy Change Count: %" CPRIu8 "\n", phyInfo->Phy[phyIter].bPhyChangeCount);
+            print_CSMI_Link_Rate(device, phyInfo->Phy[phyIter].bMaximumLinkRate);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPhy Change Count: %" CPRIu8 "\n", phyInfo->Phy[phyIter].bPhyChangeCount);
             print_str("\t\tAuto Discover: ");
             switch (phyInfo->Phy[phyIter].bAutoDiscover)
             {
@@ -1955,7 +1940,7 @@ static void print_CSMI_Phy_Info(PCSMI_SAS_PHY_INFO phyInfo)
             }
             print_str("\n");
             print_str("\t\tAttached:\n");
-            print_CSMI_SAS_Identify(&phyInfo->Phy[phyIter].Attached);
+            print_CSMI_SAS_Identify(device, &phyInfo->Phy[phyIter].Attached);
             print_str("\n");
         }
     }
@@ -2478,7 +2463,7 @@ M_PARAM_RW(3)
 OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               deviceHandle,
                                                       uint32_t                  controllerNumber,
                                                       PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer,
-                                                      eVerbosityLevels          verbosity)
+                                                      const tDevice* M_NULLABLE device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -2505,12 +2490,9 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get Phy Info\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Phy Info");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
@@ -2518,20 +2500,14 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               
     {
         safe_memcpy(phyInfoBuffer, sizeof(CSMI_SAS_PHY_INFO_BUFFER), temp, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
         ret = csmi_Return_To_OpenSea_Result(phyInfoBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_Phy_Info(&phyInfoBuffer->Information);
-        }
+        print_CSMI_Phy_Info(device, &phyInfoBuffer->Information);
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get Phy Info\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get Phy Info\n", ret);
     safe_free_core(M_REINTERPRET_CAST(
         void**, &temp)); // temp holds the passed in phyInfoBuffer and that has already been updated when this succeeds
 
@@ -2542,7 +2518,7 @@ M_PARAM_RW(3)
 OPENSEA_TRANSPORT_API eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE                   deviceHandle,
                                                       uint32_t                      controllerNumber,
                                                       PCSMI_SAS_SET_PHY_INFO_BUFFER phyInfoBuffer,
-                                                      eVerbosityLevels              verbosity)
+                                                      const tDevice* M_NULLABLE    device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -2562,12 +2538,9 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE               
     ioIn.ioctlDirection   = CSMI_SAS_DATA_WRITE;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Set Phy Info\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Set Phy Info");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
@@ -2580,10 +2553,7 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE               
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Set Phy Info\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Set Phy Info\n", ret);
 
     return ret;
 }
@@ -2594,7 +2564,7 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE            
                                                          PCSMI_SAS_LINK_ERRORS_BUFFER linkErrorsBuffer,
                                                          uint8_t                      phyIdentifier,
                                                          bool                         resetCounts,
-                                                         eVerbosityLevels             verbosity)
+                                                         const tDevice* M_NULLABLE   device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -2613,7 +2583,7 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE            
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
     linkErrorsBuffer->Information.bPhyIdentifier = phyIdentifier;
     linkErrorsBuffer->Information.bResetCounts   = CSMI_SAS_LINK_ERROR_DONT_RESET_COUNTS;
@@ -2622,10 +2592,7 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE            
         linkErrorsBuffer->Information.bResetCounts = CSMI_SAS_LINK_ERROR_RESET_COUNTS;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get Link Errors\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Link Errors");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
@@ -2638,10 +2605,7 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE            
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get Link Errors\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get Link Errors\n", ret);
 
     return ret;
 }
@@ -2673,11 +2637,11 @@ typedef struct s_csmiSSPOut
     uint8_t     connectionStatus;
 } csmiSSPOut, *ptrCsmiSSPOut;
 
-static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE      deviceHandle,
-                                          uint32_t         controllerNumber,
-                                          ptrCsmiSSPIn     sspInputs,
-                                          ptrCsmiSSPOut    sspOutputs,
-                                          eVerbosityLevels verbosity)
+static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE          deviceHandle,
+                                          uint32_t             controllerNumber,
+                                          ptrCsmiSSPIn         sspInputs,
+                                          ptrCsmiSSPOut        sspOutputs,
+                                          const tDevice* M_NULLABLE device)
 {
     eReturnValues                 ret = SUCCESS;
     csmiIOin                      ioIn;
@@ -2710,7 +2674,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE      deviceHandle,
     // only knwo when testing on linux since this is used there.
     ioIn.timeoutInSeconds = sspInputs->timeoutSeconds;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
     ioOut.ioctlTimer   = sspOutputs->sspTimer;
 
     // setup ssp specific parameters
@@ -2760,10 +2724,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE      deviceHandle,
         ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI SSP Passthrough\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI SSP Passthrough");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
@@ -2816,10 +2777,7 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE      deviceHandle,
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI SSP Passthrough\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI SSP Passthrough\n", ret);
 
     safe_free_aligned_core(C_CAST(void**, &sspPassthrough));
 
@@ -2834,22 +2792,24 @@ typedef struct s_csmiSTPIn
     uint8_t  destinationSASAddress[8];
     uint32_t flags; // read, write, unspecified, must also specify pio, dma, etc for the protocol of the command being
                     // issued.
-    void*    commandFIS; // pointer to a 20 byte array for a H2D fis.
     uint32_t commandFISLen;
-    uint8_t* ptrData;    // pointer to buffer to use as source for writes. This will be used for reads as well.
+    M_SIZED_BY(commandFISLen) void*    commandFIS; // pointer to a 20 byte array for a H2D fis.
+
     uint32_t dataLength; // length of data to read or write
+    M_SIZED_BY_OR_NULL(dataLength) uint8_t* ptrData;    // pointer to buffer to use as source for writes. This will be used for reads as well.
+
     uint32_t timeoutSeconds;
 } csmiSTPIn, *ptrCsmiSTPIn;
 
 typedef struct s_csmiSTPOut
 {
     seatimer_t* stpTimer; // may be null, but incredibly useful for knowing how long a command took
-    uint8_t* statusFIS; // Should not be null. In case of a drive error, this gives you what happened. This should point
-                        // to a 20 byte array to store the result. May be D2H or PIO Setup depend on the command issued.
     uint32_t  statusFISLen;
-    uint32_t* scrPtr; // Optional. This is the current status and control registers value. See SATA spec for more
-                      // details on the registers that these map to. These are not writable through this interface.
+    M_SIZED_BY(statusFISLen) uint8_t* statusFIS; // Should not be null. In case of a drive error, this gives you what happened. This should point
+                        // to a 20 byte array to store the result. May be D2H or PIO Setup depend on the command issued.
     uint32_t scrLen;  // uint32's not bytes.
+    M_COUNTED_BY_OR_NULL(scrLen) uint32_t* scrPtr; // Optional. This is the current status and control registers value. See SATA spec for more
+                      // details on the registers that these map to. These are not writable through this interface.
     uint8_t  connectionStatus;
     bool     retryAsSSPPassthrough; // This may be set, but will only be set, if the driver does not support STP
                                     // passthrough, but DOES support taking a SCSI translatable CDB. This cannot tell
@@ -2857,11 +2817,11 @@ typedef struct s_csmiSTPOut
     // unless we figure out which drivers and versions require that. -TJE
 } csmiSTPOut, *ptrCsmiSTPOut;
 
-static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE      deviceHandle,
-                                          uint32_t         controllerNumber,
-                                          ptrCsmiSTPIn     stpInputs,
-                                          ptrCsmiSTPOut    stpOutputs,
-                                          eVerbosityLevels verbosity)
+static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE          deviceHandle,
+                                          uint32_t             controllerNumber,
+                                          ptrCsmiSTPIn         stpInputs,
+                                          ptrCsmiSTPOut        stpOutputs,
+                                          const tDevice* M_NULLABLE device)
 {
     eReturnValues                 ret = SUCCESS;
     csmiIOin                      ioIn;
@@ -2895,7 +2855,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE      deviceHandle,
     // only knwo when testing on linux since this is used there.
     ioIn.timeoutInSeconds = stpInputs->timeoutSeconds;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
     ioOut.ioctlTimer   = stpOutputs->stpTimer;
 
     // setup stp specific parameters
@@ -2927,10 +2887,7 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE      deviceHandle,
         ioIn.ioctlDirection = CSMI_SAS_DATA_READ;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI STP Passthrough\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI STP Passthrough");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
@@ -2971,24 +2928,21 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE      deviceHandle,
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI STP Passthrough\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI STP Passthrough\n", ret);
 
     safe_free_aligned_core(C_CAST(void**, &stpPassthrough));
 
     return ret;
 }
 
-static void print_CSMI_SATA_Signature(PCSMI_SAS_SATA_SIGNATURE signature)
+static void print_CSMI_SATA_Signature(const tDevice* M_NULLABLE                device,PCSMI_SAS_SATA_SIGNATURE signature)
 {
     if (signature)
     {
         print_str("\n====CSMI SATA Signature====\n");
-        printf("\tPhy Identifier: %" CPRIu8 "\n", signature->bPhyIdentifier);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPhy Identifier: %" CPRIu8 "\n", signature->bPhyIdentifier);
         print_str("\tSignature FIS:\n");
-        print_FIS(signature->bSignatureFIS, 20);
+        print_tDevice_Verbose_FIS(device, VERBOSITY_COMMAND_VERBOSE, signature->bSignatureFIS, 20);
         print_str("\n");
     }
 }
@@ -2999,7 +2953,7 @@ csmi_Get_SATA_Signature(CSMI_HANDLE                               deviceHandle,
                         uint32_t                                  controllerNumber,
                         PCSMI_SAS_SATA_SIGNATURE_BUFFER M_NONNULL sataSignatureBuffer,
                         uint8_t                                   phyIdentifier,
-                        eVerbosityLevels                          verbosity)
+                        const tDevice* M_NULLABLE                device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3018,56 +2972,47 @@ csmi_Get_SATA_Signature(CSMI_HANDLE                               deviceHandle,
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
     sataSignatureBuffer->Signature.bPhyIdentifier = phyIdentifier;
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get SATA Signature\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get SATA Signature");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
     if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(sataSignatureBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_SATA_Signature(&sataSignatureBuffer->Signature);
-        }
+        print_CSMI_SATA_Signature(device, &sataSignatureBuffer->Signature);
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get SATA Signature\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get SATA Signature\n", ret);
 
     return ret;
 }
 
-static void print_CSMI_Get_SCSI_Address(PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress)
+static void print_CSMI_Get_SCSI_Address(const tDevice* M_NULLABLE device, PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER scsiAddress)
 {
     if (scsiAddress)
     {
-        print_str("\n====CSMI Get SCSI Address====\n");
-        printf("\tProvided SAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI Get SCSI Address====\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tProvided SAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
                "%02" CPRIX8 "%02" CPRIX8 "h\n",
                scsiAddress->bSASAddress[0], scsiAddress->bSASAddress[1], scsiAddress->bSASAddress[2],
                scsiAddress->bSASAddress[3], scsiAddress->bSASAddress[4], scsiAddress->bSASAddress[5],
                scsiAddress->bSASAddress[6], scsiAddress->bSASAddress[7]);
-        printf("\tProvided SAS Lun: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tProvided SAS Lun: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
                "%02" CPRIX8 "%02" CPRIX8 "h\n",
                scsiAddress->bSASLun[0], scsiAddress->bSASLun[1], scsiAddress->bSASLun[2], scsiAddress->bSASLun[3],
                scsiAddress->bSASLun[4], scsiAddress->bSASLun[5], scsiAddress->bSASLun[6], scsiAddress->bSASLun[7]);
-        printf("\tHost Index: %" CPRIu8 "\n", scsiAddress->bHostIndex);
-        printf("\tPath ID: %" CPRIu8 "\n", scsiAddress->bPathId);
-        printf("\tTarget ID: %" CPRIu8 "\n", scsiAddress->bTargetId);
-        printf("\tLUN: %" CPRIu8 "\n", scsiAddress->bLun);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tHost Index: %" CPRIu8 "\n", scsiAddress->bHostIndex);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPath ID: %" CPRIu8 "\n", scsiAddress->bPathId);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tTarget ID: %" CPRIu8 "\n", scsiAddress->bTargetId);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tLUN: %" CPRIu8 "\n", scsiAddress->bLun);
     }
 }
 
@@ -3076,7 +3021,7 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE           
                                                           PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER M_NONNULL scsiAddressBuffer,
                                                           uint8_t                                     sasAddress[8],
                                                           uint8_t                                     lun[8],
-                                                          eVerbosityLevels                            verbosity)
+                                                          const tDevice* M_NULLABLE                 device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3096,35 +3041,26 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE           
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
     safe_memcpy(scsiAddressBuffer->bSASAddress, 8, sasAddress, 8);
     safe_memcpy(scsiAddressBuffer->bSASLun, 8, lun, 8);
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get SCSI Address\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get SCSI Address");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
     if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(scsiAddressBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_Get_SCSI_Address(scsiAddressBuffer);
-        }
+        print_CSMI_Get_SCSI_Address(device, scsiAddressBuffer);
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get SCSI Address\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get SCSI Address\n", ret);
 
     return ret;
 }
@@ -3157,7 +3093,7 @@ csmi_Get_Device_Address(CSMI_HANDLE                                   deviceHand
                         uint8_t                                       path,
                         uint8_t                                       target,
                         uint8_t                                       lun,
-                        eVerbosityLevels                              verbosity)
+                        const tDevice* M_NULLABLE                     device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3177,37 +3113,28 @@ csmi_Get_Device_Address(CSMI_HANDLE                                   deviceHand
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
     deviceAddressBuffer->bHostIndex = hostIndex;
     deviceAddressBuffer->bPathId    = path;
     deviceAddressBuffer->bTargetId  = target;
     deviceAddressBuffer->bLun       = lun;
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get Device Address\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Device Address\n");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
     if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(deviceAddressBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_Device_Address(deviceAddressBuffer);
-        }
+        print_CSMI_Device_Address(deviceAddressBuffer);
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get Device Address\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get Device Address\n", ret);
 
     return ret;
 }
@@ -3215,68 +3142,68 @@ csmi_Get_Device_Address(CSMI_HANDLE                                   deviceHand
 // TODO: SAS Task management function (can be used for a few things, but hard reset is most interesting
 // CC_CSMI_SAS_TASK_MANAGEMENT
 
-static void print_CSMI_Connector_Info(PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfo)
+static void print_CSMI_Connector_Info(const tDevice* M_NULLABLE device, PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorInfo)
 {
     if (connectorInfo)
     {
         // need to loop through, but only print out non-zero structures since this data doesn't give us a count.
         // It is intended to be used alongside the phy info data which does provide a count, but we don't want to be
         // passing that count in for this right now.
-        print_str("\n====CSMI Connector Info====\n");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI Connector Info====\n");
         for (uint8_t iter = UINT8_C(0); iter < 32; ++iter)
         {
             if (is_Empty(&connectorInfo->Reference[iter], 36))
             {
                 break;
             }
-            printf("\t----Connector %" CPRIu8 "----\n", iter);
-            printf("\t\tConnector: %s\n", connectorInfo->Reference[iter].bConnector);
-            print_str("\t\tPinout: \n");
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t----Connector %" CPRIu8 "----\n", iter);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tConnector: %s\n", connectorInfo->Reference[iter].bConnector);
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPinout: \n");
             if (connectorInfo->Reference[iter].uPinout == 0)
             {
-                print_str("\t\t\tNot Reported\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tNot Reported\n");
             }
             else
             {
                 if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_UNKNOWN)
                 {
-                    print_str("\t\t\tUnknown\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tUnknown\n");
                 }
                 if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8482)
                 {
-                    print_str("\t\t\tSFF-8482\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSFF-8482\n");
                 }
                 if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8470_LANE_1)
                 {
-                    print_str("\t\t\tSFF-8470 - Lane 1\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSFF-8470 - Lane 1\n");
                 }
                 if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8470_LANE_2)
                 {
-                    print_str("\t\t\tSFF-8470 - Lane 2\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSFF-8470 - Lane 2\n");
                 }
                 if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8470_LANE_3)
                 {
-                    print_str("\t\t\tSFF-8470 - Lane 3\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSFF-8470 - Lane 3\n");
                 }
                 if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8470_LANE_4)
                 {
-                    print_str("\t\t\tSFF-8470 - Lane 4\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSFF-8470 - Lane 4\n");
                 }
                 if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8484_LANE_1)
                 {
-                    print_str("\t\t\tSFF-8484 - Lane 1\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSFF-8484 - Lane 1\n");
                 }
                 if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8484_LANE_2)
                 {
-                    print_str("\t\t\tSFF-8484 - Lane 2\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSFF-8484 - Lane 2\n");
                 }
                 if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8484_LANE_3)
                 {
-                    print_str("\t\t\tSFF-8484 - Lane 3\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSFF-8484 - Lane 3\n");
                 }
                 if (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_SFF_8484_LANE_4)
                 {
-                    print_str("\t\t\tSFF-8484 - Lane 4\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSFF-8484 - Lane 4\n");
                 }
                 if ((connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_1) ||
                     (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_2) ||
@@ -3291,10 +3218,10 @@ static void print_CSMI_Connector_Info(PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorI
                     (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_B) ||
                     (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_C))
                 {
-                    printf("\t\t\tReserved - %08" CPRIX32 "\n", connectorInfo->Reference[iter].uPinout);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tReserved - %08" CPRIX32 "\n", connectorInfo->Reference[iter].uPinout);
                 }
             }
-            print_str("\t\tLocation: \n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tLocation: \n");
             if (connectorInfo->Reference[iter].bLocation == 0)
             {
             }
@@ -3302,39 +3229,39 @@ static void print_CSMI_Connector_Info(PCSMI_SAS_CONNECTOR_INFO_BUFFER connectorI
             {
                 if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_UNKNOWN)
                 {
-                    print_str("\t\t\tUnknown\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tUnknown\n");
                 }
                 if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_INTERNAL)
                 {
-                    print_str("\t\t\tInternal\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tInternal\n");
                 }
                 if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_EXTERNAL)
                 {
-                    print_str("\t\t\tExternal\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tExternal\n");
                 }
                 if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_SWITCHABLE)
                 {
-                    print_str("\t\t\tSwitchable\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSwitchable\n");
                 }
                 if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_AUTO)
                 {
-                    print_str("\t\t\tAuto\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tAuto\n");
                 }
                 if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_NOT_PRESENT)
                 {
-                    print_str("\t\t\tNot Present\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tNot Present\n");
                 }
                 if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_RESERVED)
                 {
-                    print_str("\t\t\tReserved\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tReserved\n");
                 }
                 if (connectorInfo->Reference[iter].bLocation & CSMI_SAS_CON_NOT_CONNECTED)
                 {
-                    print_str("\t\t\tNot Connected\n");
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tNot Connected\n");
                 }
             }
         }
-        print_str("\n");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n");
     }
 }
 
@@ -3342,7 +3269,7 @@ OPENSEA_TRANSPORT_API eReturnValues
 csmi_Get_Connector_Info(CSMI_HANDLE                               deviceHandle,
                         uint32_t                                  controllerNumber,
                         PCSMI_SAS_CONNECTOR_INFO_BUFFER M_NONNULL connectorInfoBuffer,
-                        eVerbosityLevels                          verbosity)
+                        const tDevice* M_NULLABLE                device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
@@ -3361,32 +3288,23 @@ csmi_Get_Connector_Info(CSMI_HANDLE                               deviceHandle,
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
     safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.csmiVerbosity = verbosity;
+    ioIn.device = device;
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_str("Sending CSMI Get Connector Info\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Connector Info");
     // issue command
     ret = issue_CSMI_IO(&ioIn, &ioOut);
     // validate result
     if (ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
         ret = csmi_Return_To_OpenSea_Result(connectorInfoBuffer->IoctlHeader.ReturnCode);
-        if (VERBOSITY_COMMAND_VERBOSE <= verbosity)
-        {
-            print_CSMI_Connector_Info(connectorInfoBuffer);
-        }
+        print_CSMI_Connector_Info(device, connectorInfoBuffer);
     }
     else
     {
         ret = OS_PASSTHROUGH_FAILURE;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= verbosity)
-    {
-        print_Return_Enum("CSMI Get Connector Info\n", ret);
-    }
+    print_tDevice_Return_Enum(device, "CSMI Get Connector Info\n", ret);
 
     return ret;
 }
@@ -3396,20 +3314,20 @@ static eReturnValues csmi_Get_Basic_Info(CSMI_HANDLE                   deviceHan
                                          PCSMI_SAS_DRIVER_INFO_BUFFER  driverInfo,
                                          PCSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig,
                                          PCSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus,
-                                         eVerbosityLevels              verbosity)
+                                         const tDevice* M_NULLABLE     device)
 {
     eReturnValues ret = SUCCESS;
     if (deviceHandle != CSMI_INVALID_HANDLE && driverInfo && controllerConfig)
     {
-        if (SUCCESS != csmi_Get_Driver_Info(deviceHandle, controllerNumber, driverInfo, verbosity))
+        if (SUCCESS != csmi_Get_Driver_Info(deviceHandle, controllerNumber, driverInfo, device))
         {
             ret = FAILURE;
         }
-        if (SUCCESS != csmi_Get_Controller_Configuration(deviceHandle, controllerNumber, controllerConfig, verbosity))
+        if (SUCCESS != csmi_Get_Controller_Configuration(deviceHandle, controllerNumber, controllerConfig, device))
         {
             ret = FAILURE;
         }
-        if (SUCCESS != csmi_Get_Controller_Status(deviceHandle, controllerNumber, controllerStatus, verbosity))
+        if (SUCCESS != csmi_Get_Controller_Status(deviceHandle, controllerNumber, controllerStatus, device))
         {
             ret = FAILURE;
         }
@@ -3424,7 +3342,7 @@ static eReturnValues csmi_Get_Basic_Info(CSMI_HANDLE                   deviceHan
 // Function to check for CSMI IO support on non-RAID devices (from Windows mostly since this can get around Win
 // passthrough restrictions in some cases)
 // TODO: need a way to make sure we are only checking this on drives not configured as a raid member.
-bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosity)
+bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, const tDevice* M_NULLABLE device)
 {
     bool csmiSupported = false;
     if (deviceHandle != CSMI_INVALID_HANDLE)
@@ -3441,7 +3359,7 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosit
         safe_memset(&controllerConfig, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER), 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
         safe_memset(&controllerStatus, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER), 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
         if (SUCCESS ==
-            csmi_Get_Basic_Info(deviceHandle, 0, &driverInfo, &controllerConfig, &controllerStatus, verbosity))
+            csmi_Get_Basic_Info(deviceHandle, 0, &driverInfo, &controllerConfig, &controllerStatus, device))
         {
             csmiSupported = true;
         }
@@ -3453,7 +3371,7 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosit
 OPENSEA_TRANSPORT_API bool device_Supports_CSMI_With_RST(const tDevice* M_NONNULL device)
 {
     bool csmiWithRSTSupported = false;
-    if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device->deviceVerbosity))
+    if (handle_Supports_CSMI_IO(device->os_info.scsiSRBHandle, device))
     {
         // check for FWDL IOCTL support. If this works, then the Intel Additions are supported.
 #        if defined(ENABLE_INTEL_RST)
@@ -3504,7 +3422,7 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
         print_str("JSCI: Getting driver Info, controller config, and controller status\n");
 #    endif // CSMI_DEBUG
         if (SUCCESS == csmi_Get_Basic_Info(device->os_info.csmiDeviceData->csmiDevHandle, 0, &driverInfo,
-                                           &controllerConfig, &controllerStatus, device->deviceVerbosity))
+                                           &controllerConfig, &controllerStatus, device))
         {
             bool gotSASAddress                               = false;
             device->os_info.csmiDeviceData->csmiMajorVersion = driverInfo.Information.usCSMIMajorRevision;
@@ -3530,7 +3448,7 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
             if (device->os_info.csmiDeviceData->csmiKnownDriverType != CSMI_DRIVER_HPCISS &&
                 SUCCESS == csmi_Get_Device_Address(device->os_info.csmiDeviceData->csmiDevHandle,
                                                    device->os_info.csmiDeviceData->controllerNumber, &addressBuffer,
-                                                   hostController, pathidBus, targetID, lun, device->deviceVerbosity))
+                                                   hostController, pathidBus, targetID, lun, device))
             {
                 safe_memcpy(device->os_info.csmiDeviceData->sasAddress, 8, addressBuffer.bSASAddress, 8);
                 safe_memcpy(device->os_info.csmiDeviceData->sasLUN, 8, addressBuffer.bSASLun, 8);
@@ -3560,7 +3478,7 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
                     print_str("JSCI: Getting RAID info\n");
 #    endif // CSMI_DEBUG
                     if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle, 0, &raidInfo,
-                                                      device->deviceVerbosity))
+                                                      device))
                     {
 #    if defined(CSMI_DEBUG)
                         printf("JSCI: Checking RAID sets. Number of RAID sets: %" CPRIu32 "\n",
@@ -3582,7 +3500,7 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
 #    endif // CSMI_DEBUG
                                 if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle, 0,
                                                                     raidConfig, raidConfigLength, raidSet,
-                                                                    CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
+                                                                    CSMI_SAS_RAID_DATA_DRIVES, device))
                                 {
 #    if defined(CSMI_DEBUG)
                                     printf("JSCI: Checking drive count (%" CPRIu8 ")\n",
@@ -3686,7 +3604,7 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
 #    endif // CSMI_DEBUG
             if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle,
                                              device->os_info.csmiDeviceData->controllerNumber, &phyInfo,
-                                             device->deviceVerbosity))
+                                             device))
             {
                 // TODO: Is there a better way to match against the port identifier with the address information
                 // provided? match to attached port or phy identifier???
@@ -4220,7 +4138,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
 #    endif // CSMI_DEBUG
         if (SUCCESS == csmi_Get_Driver_Info(device->os_info.csmiDeviceData->csmiDevHandle,
                                             device->os_info.csmiDeviceData->controllerNumber, &driverInfo,
-                                            device->deviceVerbosity))
+                                            device))
         {
             device->os_info.csmiDeviceData->csmiMajorVersion = driverInfo.Information.usCSMIMajorRevision;
             device->os_info.csmiDeviceData->csmiMinorVersion = driverInfo.Information.usCSMIMinorRevision;
@@ -4245,7 +4163,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
 #    endif // CSMI_DEBUG
         if (SUCCESS == csmi_Get_Controller_Configuration(device->os_info.csmiDeviceData->csmiDevHandle,
                                                          device->os_info.csmiDeviceData->controllerNumber, &ctrlConfig,
-                                                         device->deviceVerbosity))
+                                                         device))
         {
             device->os_info.csmiDeviceData->controllerFlags = ctrlConfig.Configuration.uControllerFlags;
         }
@@ -4298,7 +4216,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
            //       ok. We can optimize this more later. -TJE
             if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle,
                                              device->os_info.csmiDeviceData->controllerNumber, &phyInfo,
-                                             device->deviceVerbosity))
+                                             device))
             {
                 // Using the data we've already gotten, we need to save phy identifier, port identifier, port protocol,
                 // and SAS address.
@@ -4357,7 +4275,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
 #    endif // CSMI_DEBUG
                 if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle,
                                                   device->os_info.csmiDeviceData->controllerNumber, &raidInfo,
-                                                  device->deviceVerbosity))
+                                                  device))
                 {
                     bool foundDrive = false;
 #    if defined(CSMI_DEBUG)
@@ -4383,7 +4301,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
                         if (SUCCESS == csmi_Get_RAID_Config(device->os_info.csmiDeviceData->csmiDevHandle,
                                                             device->os_info.csmiDeviceData->controllerNumber,
                                                             raidConfig, raidConfigLength, raidSet,
-                                                            CSMI_SAS_RAID_DATA_DRIVES, device->deviceVerbosity))
+                                                            CSMI_SAS_RAID_DATA_DRIVES, device))
                         {
                             // iterate through the drives and find a matching SAS address.
                             // If we find a matching SAS address, we need to check the LUN....since we are only doing
@@ -4417,7 +4335,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
                                                        device->os_info.csmiDeviceData->controllerNumber, &scsiAddress,
                                                        raidConfig->Configuration.Drives[driveIter].bSASAddress,
                                                        raidConfig->Configuration.Drives[driveIter].bSASLun,
-                                                       device->deviceVerbosity))
+                                                       device))
                                     {
 #    if defined(CSMI_DEBUG)
                                         print_str("GRD: Got SCSI address\n");
@@ -4458,7 +4376,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
                 if (SUCCESS == csmi_Get_SCSI_Address(device->os_info.csmiDeviceData->csmiDevHandle,
                                                      device->os_info.csmiDeviceData->controllerNumber, &scsiAddress,
                                                      device->os_info.csmiDeviceData->sasAddress,
-                                                     device->os_info.csmiDeviceData->sasLUN, device->deviceVerbosity))
+                                                     device->os_info.csmiDeviceData->sasLUN, device))
                 {
 #    if defined(CSMI_DEBUG)
                     print_str("GRD: Got valid SCSI address\n");
@@ -4483,7 +4401,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
                 if (SUCCESS == csmi_Get_SATA_Signature(device->os_info.csmiDeviceData->csmiDevHandle,
                                                        device->os_info.csmiDeviceData->controllerNumber, &signature,
                                                        device->os_info.csmiDeviceData->phyIdentifier,
-                                                       device->deviceVerbosity))
+                                                       device))
                 {
 #    if defined(CSMI_DEBUG)
                     print_str("GRD: Got SATA signature\n");
@@ -4754,7 +4672,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
 #    else                                                          //_WIN32
     DECLARE_ZERO_INIT_ARRAY(char, deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH);
 #    endif                                                         //_WIN32
-    eVerbosityLevels    csmiCountVerbosity    = VERBOSITY_DEFAULT; // change this if debugging
+    tDevice             dummyDevice           = {0};               // dummy device for function calls
     ptrRaidHandleToScan raidList              = M_NULLPTR;
     ptrRaidHandleToScan previousRaidListEntry = M_NULLPTR;
     uint32_t            controllerNumber      = UINT32_C(0);
@@ -4762,18 +4680,20 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
     uint32_t            raidConfigDrivesFound = UINT32_C(0);
     uint32_t            phyInfoDrivesFound    = UINT32_C(0);
 
+    dummyDevice.deviceVerbosity = VERBOSITY_DEFAULT;  // set default
     if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
     {
-        csmiCountVerbosity = VERBOSITY_COMMAND_NAMES;
+        dummyDevice.deviceVerbosity = VERBOSITY_COMMAND_NAMES;
     }
     if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
     {
-        csmiCountVerbosity = VERBOSITY_COMMAND_VERBOSE;
+        dummyDevice.deviceVerbosity = VERBOSITY_COMMAND_VERBOSE;
     }
     if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
     {
-        csmiCountVerbosity = VERBOSITY_BUFFERS;
+        dummyDevice.deviceVerbosity = VERBOSITY_BUFFERS;
     }
+    dummyDevice.verboseOutputStream = stdout;  // set output stream for verbose output
 
 #    if defined(CSMI_DEBUG)
     print_str("GDC: Begin\n");
@@ -4839,7 +4759,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
                     print_str("GDC: Getting controller config, controller status, and driver info\n");
 #    endif // CSMI_DEBUG
                     if (SUCCESS == csmi_Get_Basic_Info(fd, controllerNumber, &driverInfo, &controllerConfig,
-                                                       &controllerStatus, csmiCountVerbosity))
+                                                       &controllerStatus, &dummyDevice))
                     {
 #    if defined(CSMI_DEBUG)
                         printf("GDC: Checking controller flags: %" CPRIX32 "h\n",
@@ -4860,7 +4780,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
            // Get RAID info
            // NOTE Adaptec's API doesn't seem to like this. May need to pull phy info instead if this fails. -TJE
                             CSMI_SAS_RAID_INFO_BUFFER csmiRAIDInfo;
-                            csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, csmiCountVerbosity);
+                            csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, &dummyDevice);
                             // Get RAID config
 #    if defined(CSMI_DEBUG)
                             printf("GDC: Number of RAID sets: %" CPRIu32 "\n", csmiRAIDInfo.Information.uNumRaidSets);
@@ -4900,7 +4820,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
 #    endif // CSMI_DEBUG
                                     if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig,
                                                                         raidConfigLength, raidSet,
-                                                                        CSMI_SAS_RAID_DATA_DRIVES, csmiCountVerbosity))
+                                                                        CSMI_SAS_RAID_DATA_DRIVES, &dummyDevice))
                                     {
                                         // make sure we got all the drive information...if now, we need to reallocate
                                         // with some more memory
@@ -5018,7 +4938,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
            //       do. Intel's drivers show every drive attached, RAID or non-RAID in the phy info. This may be
            //       something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works
            //       ok. We can optimize this more later. -TJE
-                                if (SUCCESS == csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, csmiCountVerbosity))
+                                if (SUCCESS == csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, &dummyDevice))
                                 {
                                     for (uint8_t phyIter = UINT8_C(0);
                                          phyIter < 32 && phyInfoDrivesFound < phyInfo.Information.bNumberOfPhys;
@@ -5253,21 +5173,6 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
 #    else
     DECLARE_ZERO_INIT_ARRAY(char, deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH);
 #    endif
-    eVerbosityLevels csmiListVerbosity = VERBOSITY_DEFAULT; // If debugging, change this and down below where this is
-                                                            // set per device will also need changing
-
-    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
-    {
-        csmiListVerbosity = VERBOSITY_COMMAND_NAMES;
-    }
-    if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_VERBOSE)
-    {
-        csmiListVerbosity = VERBOSITY_COMMAND_VERBOSE;
-    }
-    if (flags & GET_DEVICE_FUNCS_VERBOSE_BUFFERS)
-    {
-        csmiListVerbosity = VERBOSITY_BUFFERS;
-    }
 
 #    if defined(CSMI_DEBUG)
     print_str("GDL: Begin\n");
@@ -5380,13 +5285,11 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                     sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
                         safe_memset(&controllerStatus, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER), 0,
                                     sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
-                        csmiListVerbosity =
-                            d->deviceVerbosity; // this is to preserve any verbosity set when coming into this function
 #    if defined(CSMI_DEBUG)
                         print_str("GDL: Getting controller config, controller status, and driver info\n");
 #    endif // CSMI_DEBUG
                         if (SUCCESS == csmi_Get_Basic_Info(fd, controllerNumber, &driverInfo, &controllerConfig,
-                                                           &controllerStatus, csmiListVerbosity))
+                                                           &controllerStatus, d))
                         {
                             eKnownCSMIDriver knownCSMIDriver = get_Known_CSMI_Driver_Type(&driverInfo.Information);
 #    if defined(CSMI_DEBUG)
@@ -5435,7 +5338,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
 #    if defined(CSMI_DEBUG)
                                 print_str("GDL: getting RAID info\n");
 #    endif // CSMI_DEBUG
-                                csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, csmiListVerbosity);
+                                csmi_Get_RAID_Info(fd, controllerNumber, &csmiRAIDInfo, d);
 #    if defined(CSMI_DEBUG)
                                 print_str("GDL: Getting phy info\n");
 #    endif // CSMI_DEBUG
@@ -5447,7 +5350,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
            //       do. Intel's drivers show every drive attached, RAID or non-RAID in the phy info. This may be
            //       something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works
            //       ok. We can optimize this more later. -TJE
-                                csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, csmiListVerbosity);
+                                csmi_Get_Phy_Info(fd, controllerNumber, &phyInfo, d);
 #    if defined(_WIN32)
                                 if (knownCSMIDriver == CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY ||
                                     knownCSMIDriver == CSMI_DRIVER_INTEL_VROC)
@@ -5490,7 +5393,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
 #    endif // CSMI_DEBUG
                                         if (SUCCESS ==
                                             csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength,
-                                                                 raidSet, CSMI_SAS_RAID_DATA_DRIVES, csmiListVerbosity))
+                                                                 raidSet, CSMI_SAS_RAID_DATA_DRIVES, d))
                                         {
 #    if defined(CSMI_DEBUG)
                                             printf("GDL: Checking drive usage in each RAID config. Max Drives per set: "
@@ -5687,7 +5590,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                                                     csmiRAIDConfig->Configuration
                                                                                         .Drives[iter]
                                                                                         .bSASLun,
-                                                                                    VERBOSITY_DEFAULT))
+                                                                                    d))
                                                                             {
                                                                                 lun = scsiAddress.bLun;
 #    if defined(CSMI_DEBUG)
@@ -6458,7 +6361,7 @@ static eReturnValues send_SSP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
     // issue the command
     ret = csmi_SSP_Passthrough(scsiIoCtx->device->os_info.csmiDeviceData->csmiDevHandle,
                                scsiIoCtx->device->os_info.csmiDeviceData->controllerNumber, &sspInputs, &sspOutputs,
-                               scsiIoCtx->device->deviceVerbosity);
+                               scsiIoCtx->device);
 
     set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(sspTimer));
 
@@ -6544,7 +6447,7 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
     // send the IO
     ret = csmi_STP_Passthrough(scsiIoCtx->device->os_info.csmiDeviceData->csmiDevHandle,
                                scsiIoCtx->device->os_info.csmiDeviceData->controllerNumber, &stpInputs, &stpOutputs,
-                               scsiIoCtx->device->deviceVerbosity);
+                               scsiIoCtx->device);
 
     set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(stpTimer));
 
@@ -6695,120 +6598,119 @@ OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(const tDevice* M_NONNULL devic
     {
         // print the things we stored since those are what we currently care about. Can add printing other things out
         // later if they are determined to be of use. - TJE
-        print_str("\n=====CSMI Info=====\n");
-        printf("\tCSMI Version: %" CPRIu16 ".%" CPRIu16 "\n", device->os_info.csmiDeviceData->csmiMajorVersion,
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n=====CSMI Info=====\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tCSMI Version: %" CPRIu16 ".%" CPRIu16 "\n", device->os_info.csmiDeviceData->csmiMajorVersion,
                device->os_info.csmiDeviceData->csmiMinorVersion);
-        print_str("\tSecurity Access: ");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSecurity Access: ");
         switch (device->os_info.csmiDeviceData->securityAccess)
         {
         case CSMI_SECURITY_ACCESS_NONE:
-            print_str("None\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "None\n");
             break;
         case CSMI_SECURITY_ACCESS_RESTRICTED:
-            print_str("Restricted\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Restricted\n");
             break;
         case CSMI_SECURITY_ACCESS_LIMITED:
-            print_str("Limited\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Limited\n");
             break;
         case CSMI_SECURITY_ACCESS_FULL:
-            print_str("Full\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Full\n");
             break;
         }
-        print_str("\tCSMI Known driver type: ");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tCSMI Known driver type: ");
         switch (device->os_info.csmiDeviceData->csmiKnownDriverType)
         {
         case CSMI_DRIVER_UNKNOWN:
-            print_str("Unknown\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown\n");
             break;
         case CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY:
-            print_str("Intel Rapid Storage Technology\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Intel Rapid Storage Technology\n");
             break;
         case CSMI_DRIVER_INTEL_VROC:
-            print_str("Intel VROC\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Intel VROC\n");
             break;
         case CSMI_DRIVER_AMD_RCRAID:
-            print_str("AMD RCRAID\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "AMD RCRAID\n");
             break;
         case CSMI_DRIVER_HPCISS:
-            print_str("HPCISS\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "HPCISS\n");
             break;
         case CSMI_DRIVER_ARCSAS:
-            print_str("ARCSAS\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "ARCSAS\n");
             break;
         case CSMI_DRIVER_INTEL_RAPID_STORAGE_TECHNOLOGY_VD:
-            print_str("Intel RST VD\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Intel RST VD\n");
             break;
         case CSMI_DRIVER_INTEL_GENERIC:
-            print_str("Generic Intel\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Generic Intel\n");
             break;
         case CSMI_DRIVER_HPSAMD:
-            print_str("HP SAMD\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "HP SAMD\n");
             break;
         }
         if (device->os_info.csmiDeviceData->intelRSTSupport.intelRSTSupported &&
             device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough)
         {
-            print_str("\tIntel RST NVMe device.\n");
-            printf("\t\tPath ID  : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.pathId);
-            printf("\t\tTarget ID: %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.targetId);
-            printf("\t\tLUN      : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.lun);
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tIntel RST NVMe device.\n");
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPath ID  : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.pathId);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tTarget ID: %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.targetId);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tLUN      : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.lun);
         }
         else
         {
-            printf("\tPHY ID: %" CPRIX8 "h\n", device->os_info.csmiDeviceData->phyIdentifier);
-            printf("\tPort ID: %" CPRIX8 "h\n", device->os_info.csmiDeviceData->portIdentifier);
-            print_str("\tSupported Port Protocols:\n");
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPHY ID: %" CPRIX8 "h\n", device->os_info.csmiDeviceData->phyIdentifier);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPort ID: %" CPRIX8 "h\n", device->os_info.csmiDeviceData->portIdentifier);
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSupported Port Protocols:\n");
             if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA)
             {
-                print_str("\t\tSATA\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSATA\n");
             }
             if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SMP)
             {
-                print_str("\t\tSMP\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSMP\n");
             }
             if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_STP)
             {
-                print_str("\t\tSTP\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSTP\n");
             }
             if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SSP)
             {
-                print_str("\t\tSSP\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSSP\n");
             }
 
-            printf("\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
-                   "%02" CPRIX8 "%02" CPRIX8 "h\n",
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "h\n",
                    device->os_info.csmiDeviceData->sasAddress[0], device->os_info.csmiDeviceData->sasAddress[1],
                    device->os_info.csmiDeviceData->sasAddress[2], device->os_info.csmiDeviceData->sasAddress[3],
                    device->os_info.csmiDeviceData->sasAddress[4], device->os_info.csmiDeviceData->sasAddress[5],
                    device->os_info.csmiDeviceData->sasAddress[6], device->os_info.csmiDeviceData->sasAddress[7]);
-            printf("\tSAS Lun: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
-                   "%02" CPRIX8 "h\n",
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSAS Lun: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "h\n",
                    device->os_info.csmiDeviceData->sasLUN[0], device->os_info.csmiDeviceData->sasLUN[1],
                    device->os_info.csmiDeviceData->sasLUN[2], device->os_info.csmiDeviceData->sasLUN[3],
                    device->os_info.csmiDeviceData->sasLUN[4], device->os_info.csmiDeviceData->sasLUN[5],
                    device->os_info.csmiDeviceData->sasLUN[6], device->os_info.csmiDeviceData->sasLUN[7]);
-            print_str("\tSCSI Address: ");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSCSI Address: ");
             if (device->os_info.csmiDeviceData->scsiAddressValid)
             {
-                printf("\t\tHost Index: %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.hostIndex);
-                printf("\t\tPath ID  : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.pathId);
-                printf("\t\tTarget ID: %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.targetId);
-                printf("\t\tLUN      : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.lun);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tHost Index: %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.hostIndex);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPath ID  : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.pathId);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tTarget ID: %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.targetId);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tLUN      : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.lun);
             }
             else
             {
-                print_str("Not Valid\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Not Valid\n");
             }
             if (device->os_info.csmiDeviceData->signatureFISValid)
             {
-                print_str("\tSATA Signature FIS:\n");
-                print_FIS(&device->os_info.csmiDeviceData->signatureFIS, H2D_FIS_LENGTH);
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSATA Signature FIS:\n");
+                print_tDevice_Verbose_FIS(device, VERBOSITY_COMMAND_VERBOSE,
+                                          &device->os_info.csmiDeviceData->signatureFIS, H2D_FIS_LENGTH);
             }
         }
     }
     else
     {
-        print_str("No CSMI info, not a CSMI supporting device.\n");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "No CSMI info, not a CSMI supporting device.\n");
     }
 }
 

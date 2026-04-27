@@ -120,22 +120,55 @@ extern "C"
     M_PARAM_RO(1)
     M_NULL_TERM_STRING(2)
     M_PARAM_RO(2)
+    M_DEPRECATED_REASON("Use print_tDevice_Field_Replacable_Unit_Code instead")
     OPENSEA_TRANSPORT_API
     void print_Field_Replacable_Unit_Code(const tDevice* M_NONNULL device,
                                           const char* M_NONNULL    fruMessage,
                                           uint8_t                  fruCode);
 
+    // Device-aware version that supports verbose output redirection
+    // FRU translation lookup will be handled by tDevice function pointer if registered
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API
+    void print_tDevice_Field_Replacable_Unit_Code(const tDevice* M_NONNULL device,
+                                                  eVerbosityLevels         verboseLevel,
+                                                  uint8_t                  senseKey,
+                                                  uint8_t                  asc,
+                                                  uint8_t                  ascq,
+                                                  uint8_t                  fruCode);
+
     // this is meant to only be called by check_Sense_Key_asc_And_ascq()
     M_NULL_TERM_STRING(1)
     M_PARAM_RO(1)
+    M_DEPRECATED_REASON("Use print_tDevice_ASC_ASCQ instead")
     OPENSEA_TRANSPORT_API void print_acs_ascq(const char* M_NONNULL acsAndascqStringToPrint,
                                               uint8_t               ascValue,
                                               uint8_t               ascqValue);
 
+    // Device-aware version that supports verbose output redirection
+    M_NULL_TERM_STRING(3)
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    OPENSEA_TRANSPORT_API void print_tDevice_ASC_ASCQ(const tDevice* M_NONNULL device,
+                                                      eVerbosityLevels         verboseLevel,
+                                                      const char* M_NONNULL    ascAndascqStringToPrint,
+                                                      uint8_t                  ascValue,
+                                                      uint8_t                  ascqValue);
+
     // this is mean to only be called by check_Sense_Key_asc_And_ascq()
     M_NULL_TERM_STRING(1)
     M_PARAM_RO(1)
+    M_DEPRECATED_REASON("Use print_tDevice_Sense_Key instead")
     OPENSEA_TRANSPORT_API void print_sense_key(const char* M_NONNULL senseKeyToPrint, uint8_t senseKeyValue);
+
+    // Device-aware version that supports verbose output redirection
+    M_NULL_TERM_STRING(3)
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    OPENSEA_TRANSPORT_API void print_tDevice_Sense_Key(const tDevice* M_NONNULL device,
+                                                       eVerbosityLevels         verboseLevel,
+                                                       const char* M_NONNULL    senseKeyToPrint,
+                                                       uint8_t                  senseKeyValue);
 
     //-----------------------------------------------------------------------------
     //
@@ -230,6 +263,9 @@ extern "C"
                                                                      uint32_t                 senseLen);
 
     M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields M_NONNULL senseFields);
+
+    M_PARAM_RO(1) M_PARAM_RO(3) OPENSEA_TRANSPORT_API void print_Sense_Fields_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity,
+        constPtrSenseDataFields M_NONNULL senseFields);
 
     //-----------------------------------------------------------------------------
     //

@@ -207,11 +207,8 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* M_NONNULL         
     ret = build_CSMI_Passthrough_CDB(csmiCDB, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print verbose tfr info
-            print_Verbose_ATA_Command_Information(ataCommandOptions);
-        }
+        // print verbose tfr info
+        print_tDevice_Verbose_ATA_Command_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // send it
         ret = scsi_Send_Cdb(device, csmiCDB, CSMI_PASSTHROUGH_CDB_LENGTH, ataCommandOptions->ptrData,
                             ataCommandOptions->dataSize, ataCommandOptions->commandDirection,
@@ -219,11 +216,7 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* M_NONNULL         
 
         // TODO: get the RTFRs if this is even possible...it's not documented
         // ret = get_RTFRs_From_CSMI_Legacy(device, ataCommandOptions, ret);
-        // if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        //{
-        //     //print RTFRs
-        //     print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
-        // }
+        //print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         ////set return code
         ////Based on the RTFRs or sense data, generate a return value
         // if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))

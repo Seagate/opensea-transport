@@ -226,10 +226,7 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
         }
         else
         {
-            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-            {
-                print_str("No Raid PassThrough IO Routine present for this device\n");
-            }
+            print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_QUIET, "No Raid PassThrough IO Routine present for this device\n");
         }
         break;
     case NVME_INTERFACE:
@@ -237,19 +234,13 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
         ret = send_uscsi_io(scsiIoCtx);
         break;
     default:
-        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Target Device does not have a valid interface %d\n", get_Device_InterfaceType(scsiIoCtx->device));
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "Target Device does not have a valid interface %d\n", get_Device_InterfaceType(scsiIoCtx->device));
     }
 
     if (scsiIoCtx->device->delay_io)
     {
         delay_Milliseconds(scsiIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES, "Delaying between commands %d seconds to reduce IO impact\n", scsiIoCtx->device->delay_io);
     }
 
     return ret;
@@ -262,10 +253,7 @@ M_PARAM_RO(1) eReturnValues send_uscsi_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
     eReturnValues    ret = SUCCESS;
 
     safe_memset(&uscsi_io, sizeof(uscsi_io), 0, sizeof(uscsi_io));
-    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
-    {
-        print_str("Sending command with send_IO\n");
-    }
+    print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "Sending command with send_IO\n");
 
     if (scsiIoCtx->timeout > USCSI_MAX_CMD_TIMEOUT_SECONDS ||
         get_tDevice_Default_Command_Timeout(scsiIoCtx->device) > USCSI_MAX_CMD_TIMEOUT_SECONDS)
@@ -309,10 +297,7 @@ M_PARAM_RO(1) eReturnValues send_uscsi_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
         break;
         // NOLINTEND(bugprone-branch-clone)
     default:
-        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("%s Didn't understand direction\n", __FUNCTION__);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "%s Didn't understand direction\n", __func__);
         return BAD_PARAMETER;
     }
 
@@ -331,20 +316,23 @@ M_PARAM_RO(1) eReturnValues send_uscsi_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = FAILURE;
-        if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            perror("send_IO");
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
+            {
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "send_IO error: %d - %s\n", error, errormsg);
+                safe_free(&errormsg);
+            }
         }
     }
 
-    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
-    {
-        print_str("USCSI Results\n");
-        printf("\tSCSI Status: %hu\n", uscsi_io.uscsi_status);
-        printf("\tResid: %zu\n", uscsi_io.uscsi_resid);
-        printf("\tRQS SCSI Status: %hu\n", uscsi_io.uscsi_rqstatus);
-        printf("\tRQS Resid: %hhu\n", uscsi_io.uscsi_rqresid);
-    }
+    print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "USCSI Results\n");
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tSCSI Status: %hu\n", uscsi_io.uscsi_status);
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tResid: %zu\n", uscsi_io.uscsi_resid);
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tRQS SCSI Status: %hu\n", uscsi_io.uscsi_rqstatus);
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tRQS Resid: %hhu\n", uscsi_io.uscsi_rqresid);
 
     set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
@@ -674,10 +662,16 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* 
         locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
         if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
         {
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+            set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
+            errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(device));
+            if (error != 0)
             {
-                printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", "lock");
-                print_Errno_To_Screen(errno);
+                char* errormsg = get_strerror(error);
+                if (errormsg != M_NULLPTR)
+                {
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Failed to set POSIX F_SETLK %s flags with fcntl: %d - %s\n", "lock", error, errormsg);
+                    safe_free(&errormsg);
+                }
             }
             ret = FAILURE;
         }
@@ -703,10 +697,16 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice
         locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
         if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
         {
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+            set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
+            errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(device));
+            if (error != 0)
             {
-                printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", "unlock");
-                print_Errno_To_Screen(errno);
+                char* errormsg = get_strerror(error);
+                if (errormsg != M_NULLPTR)
+                {
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Failed to set POSIX F_SETLK %s flags with fcntl: %d - %s\n", "unlock", error, errormsg);
+                    safe_free(&errormsg);
+                }
             }
             ret = FAILURE;
         }

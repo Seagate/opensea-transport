@@ -39,82 +39,110 @@ RESTORE_WARNING_4255
 #        define OFNVME_DEBUG
 #    endif //_DEBUG && !OFNVME_DEBUG
 
-static void print_Ofnvme_SRB_Status(uint32_t srbStatus)
+M_FUNC_ATTR_MALLOC static char* M_NULLABLE get_OFNVMe_SRB_Status_String(uint32_t srbStatus)
 {
+    const char* statusString = M_NULLPTR;
     switch (srbStatus)
     {
     case NVME_IOCTL_SUCCESS:
-        print_str("Success\n");
+        statusString = "Success";
         break;
     case NVME_IOCTL_INTERNAL_ERROR:
-        print_str("Internal Error\n");
+        statusString = "Internal Error";
         break;
     case NVME_IOCTL_INVALID_IOCTL_CODE:
-        print_str("Invalid IOCTL Code\n");
+        statusString = "Invalid IOCTL Code";
         break;
     case NVME_IOCTL_INVALID_SIGNATURE:
-        print_str("Invalid Signature\n");
+        statusString = "Invalid Signature";
         break;
     case NVME_IOCTL_INSUFFICIENT_IN_BUFFER:
-        print_str("Insufficient In Buffer\n");
+        statusString = "Insufficient In Buffer";
         break;
     case NVME_IOCTL_INSUFFICIENT_OUT_BUFFER:
-        print_str("Insufficient Out Buffer\n");
+        statusString = "Insufficient Out Buffer";
         break;
     case NVME_IOCTL_UNSUPPORTED_ADMIN_CMD:
-        print_str("Unsupported Admin Command\n");
+        statusString = "Unsupported Admin Command";
         break;
     case NVME_IOCTL_UNSUPPORTED_NVM_CMD:
-        print_str("Unsupported NVM Command\n");
+        statusString = "Unsupported NVM Command";
         break;
     case NVME_IOCTL_UNSUPPORTED_OPERATION:
-        print_str("Unsupported Operation\n");
+        statusString = "Unsupported Operation";
         break;
     case NVME_IOCTL_INVALID_ADMIN_VENDOR_SPECIFIC_OPCODE:
-        print_str("Invalid Admin Vendor Specific Opcode\n");
+        statusString = "Invalid Admin Vendor Specific Opcode";
         break;
     case NVME_IOCTL_INVALID_NVM_VENDOR_SPECIFIC_OPCODE:
-        print_str("Invalid NVM Vendor Specific Opcode\n");
+        statusString = "Invalid NVM Vendor Specific Opcode";
         break;
     case NVME_IOCTL_ADMIN_VENDOR_SPECIFIC_NOT_SUPPORTED: // i.e., AVSCC = 0
-        print_str("Admin Vendor Specific Not Supported\n");
+        statusString = "Admin Vendor Specific Not Supported";
         break;
     case NVME_IOCTL_NVM_VENDOR_SPECIFIC_NOT_SUPPORTED: // i.e., NVSCC = 0
-        print_str("NVM Vendor Specific Not Supported\n");
+        statusString = "NVM Vendor Specific Not Supported";
         break;
     case NVME_IOCTL_INVALID_DIRECTION_SPECIFIED: // Direction > 3
-        print_str("Invalid Direction Specified\n");
+        statusString = "Invalid Direction Specified";
         break;
     case NVME_IOCTL_INVALID_META_BUFFER_LENGTH:
-        print_str("Invalid Meta Buffer Length\n");
+        statusString = "Invalid Meta Buffer Length";
         break;
     case NVME_IOCTL_PRP_TRANSLATION_ERROR:
-        print_str("PRP Translation Error\n");
+        statusString = "PRP Translation Error";
         break;
     case NVME_IOCTL_INVALID_PATH_TARGET_ID:
-        print_str("Invalid Path Target ID\n");
+        statusString = "Invalid Path Target ID";
         break;
     case NVME_IOCTL_FORMAT_NVM_PENDING: // Only one Format NVM at a time
-        print_str("Format NVM Pending\n");
+        statusString = "Format NVM Pending";
         break;
     case NVME_IOCTL_FORMAT_NVM_FAILED:
-        print_str("Format NVM Failed\n");
+        statusString = "Format NVM Failed";
         break;
     case NVME_IOCTL_INVALID_NAMESPACE_ID:
-        print_str("Invalid Namespace ID\n");
+        statusString = "Invalid Namespace ID";
         break;
     case NVME_IOCTL_MAX_SSD_NAMESPACES_REACHED:
-        print_str("Max SSD Namespaces Reached\n");
+        statusString = "Max SSD Namespaces Reached";
         break;
     case NVME_IOCTL_ZERO_DATA_TX_LENGTH_ERROR:
-        print_str("Zero Data TX Length Error\n");
+        statusString = "Zero Data TX Length Error";
         break;
     case NVME_IOCTL_MAX_AER_REACHED:
-        print_str("Max AER reached\n");
+        statusString = "Max AER reached";
         break;
     case NVME_IOCTL_ATTACH_NAMESPACE_FAILED:
-        print_str("Attach Namespace Failed\n");
+        statusString = "Attach Namespace Failed";
         break;
+    default:
+        statusString = "Unknown Status";
+        break;
+    }
+    char* result = M_NULLPTR;
+    errno_t error = safe_strdup(&result, statusString);
+    if (error != 0)
+    {
+        return M_NULLPTR;
+    }
+    else
+    {
+        return result;
+    }
+}
+
+static void print_Ofnvme_SRB_Status(uint32_t srbStatus)
+{
+    char* statusString = get_OFNVMe_SRB_Status_String(srbStatus);
+    if (statusString != M_NULLPTR)
+    {
+        print_str(statusString);
+        safe_free(&statusString);
+    }
+    else
+    {
+        print_str("Unknown Status");
     }
 }
 
@@ -229,11 +257,11 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(const tDevic
     }
     if (MSFT_BOOL_TRUE(success))
     {
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_str("OFNVME Error: ");
-            print_Ofnvme_SRB_Status(ofnvmeReset.ReturnCode);
-        }
+        char* nvmeStatusStr = get_OFNVMe_SRB_Status_String(ofnvmeReset.ReturnCode);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                              "OFNVME Error: %s",
+                                              nvmeStatusStr ? nvmeStatusStr : "Unknown");
+        safe_free(&nvmeStatusStr);
         switch (ofnvmeReset.ReturnCode)
         {
         case NVME_IOCTL_SUCCESS:
@@ -289,11 +317,11 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(cons
     }
     if (MSFT_BOOL_TRUE(success))
     {
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_str("OFNVME Error: ");
-            print_Ofnvme_SRB_Status(ofnvmeReset.ReturnCode);
-        }
+        char* nvmeStatusStr = get_OFNVMe_SRB_Status_String(ofnvmeReset.ReturnCode);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                              "OFNVME Error: %s",
+                                              nvmeStatusStr ? nvmeStatusStr : "Unknown");
+        safe_free(&nvmeStatusStr);
         switch (ofnvmeReset.ReturnCode)
         {
         case NVME_IOCTL_SUCCESS:
@@ -349,11 +377,11 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(c
     }
     if (MSFT_BOOL_TRUE(success))
     {
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_str("OFNVME Error: ");
-            print_Ofnvme_SRB_Status(ofnvmeReset.ReturnCode);
-        }
+        char* nvmeStatusStr = get_OFNVMe_SRB_Status_String(ofnvmeReset.ReturnCode);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                              "OFNVME Error: %s",
+                                              nvmeStatusStr ? nvmeStatusStr : "Unknown");
+        safe_free(&nvmeStatusStr);
         switch (ofnvmeReset.ReturnCode)
         {
         case NVME_IOCTL_SUCCESS:
@@ -511,11 +539,11 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_N
         }
         if (MSFT_BOOL_TRUE(success))
         {
-            if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_str("OFNVME Error: ");
-                print_Ofnvme_SRB_Status(ioctl->SrbIoCtrl.ReturnCode);
-            }
+            char* nvmeStatusStr = get_OFNVMe_SRB_Status_String(ioctl->SrbIoCtrl.ReturnCode);
+            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                                  "OFNVME Error: %s",
+                                                  nvmeStatusStr ? nvmeStatusStr : "Unknown");
+            safe_free(&nvmeStatusStr);
             if (ioctl->SrbIoCtrl.ReturnCode == NVME_IOCTL_SUCCESS)
             {
                 if (nvmeIoCtx->commandDirection == XFER_DATA_IN && nvmeIoCtx->dataSize > 0 &&
@@ -556,16 +584,16 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_N
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
             }
-            if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_str("Windows Error: ");
-                print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
-            }
-            if (nvmeIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_str("OFNVME Error: ");
-                print_Ofnvme_SRB_Status(ioctl->SrbIoCtrl.ReturnCode);
-            }
+            char* winErrorStr = get_windows_error_str(M_STATIC_CAST(winsyserror_t, nvmeIoCtx->device->os_info.last_error));
+            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                                  "Windows Error: %s",
+                                                  winErrorStr ? winErrorStr : "Unknown");
+            safe_free(&winErrorStr);
+            char* nvmeStatusStr = get_OFNVMe_SRB_Status_String(ioctl->SrbIoCtrl.ReturnCode);
+            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                                  "OFNVME Error: %s",
+                                                  nvmeStatusStr ? nvmeStatusStr : "Unknown");
+            safe_free(&nvmeStatusStr);
         }
 
         set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));

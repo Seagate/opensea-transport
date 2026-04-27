@@ -20,7 +20,15 @@ extern "C"
 {
 #endif
 
+    M_DEPRECATED_REASON("Use print_tDevice_Verbose_FIS instead")
     M_PARAM_RO_SIZE(1, 2) void print_FIS(void* M_NONNULL fis, uint32_t fisLengthBytes);
+
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(3, 4)
+    OPENSEA_TRANSPORT_API void print_tDevice_Verbose_FIS(const tDevice* M_NONNULL device,
+                                                         eVerbosityLevels         verboseLevel,
+                                                         void* M_NONNULL          fis,
+                                                         uint32_t                 fisLengthBytes);
 
     M_PARAM_RW(1)
     M_PARAM_RO(2)

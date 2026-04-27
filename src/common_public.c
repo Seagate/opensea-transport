@@ -3326,6 +3326,24 @@ static M_INLINE void calculate_Time_Conversion(uint64_t timeInNanoSeconds, doubl
     }
 }
 
+// Device-aware version of print_Time with verbosity level support
+OPENSEA_TRANSPORT_API void print_Time_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity, uint64_t timeInNanoSeconds)
+{
+    double     convertedTime = 0.0;
+    eTimeUnits timeUnit      = TIME_UNITS_NS;
+    DECLARE_ZERO_INIT_ARRAY(char, unitString, TIME_UNIT_STR_LENGTH);
+    calculate_Time_Conversion(timeInNanoSeconds, &convertedTime, &timeUnit);
+    get_Time_Unit_String(timeUnit, unitString, TIME_UNIT_STR_LENGTH);
+    print_tDevice_Verbose_Formatted_String(device, verbosity, "(%s): %0.02f\n", unitString, convertedTime);
+}
+
+// Device-aware version of print_Command_Time with verbosity level support
+OPENSEA_TRANSPORT_API void print_Command_Time_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity, uint64_t timeInNanoSeconds)
+{
+    print_tDevice_Verbose_String(device, verbosity, "Command Time: ");
+    print_Time_Verbose(device, verbosity, timeInNanoSeconds);
+}
+
 OPENSEA_TRANSPORT_API void print_Time(uint64_t timeInNanoSeconds)
 {
     double     convertedTime = 0.0;
@@ -7352,6 +7370,27 @@ OPENSEA_TRANSPORT_API int32_t set_Device_Verbosity_Level(int32_t verbosity, tDev
     return 0;
 }
 
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eVerbosityLevels set_tDevice_Verbosity(tDevice *M_NONNULL device, eVerbosityLevels verbosity)
+{
+    eVerbosityLevels previous = VERBOSITY_DEFAULT;
+    if (device != M_NULLPTR)
+    {
+        eVerbosityLevels new = verbosity;
+        previous = device->deviceVerbosity;
+        if (M_STATIC_CAST(int, new) > M_STATIC_CAST(int, VERBOSITY_BUFFERS))
+        {
+            new = VERBOSITY_BUFFERS;
+        }
+        else if (M_STATIC_CAST(int, new) < M_STATIC_CAST(int, VERBOSITY_QUIET))
+        {
+            new = VERBOSITY_QUIET;
+        }
+        device->deviceVerbosity = new;
+    }
+    return previous;   
+}
+
 OPENSEA_TRANSPORT_API M_PURE_FUNC uint8_t get_Device_os_info_scsiAddress_host(const tDevice* M_NONNULL device)
     M_REPRODUCIBLE
 {
@@ -7544,4 +7583,174 @@ OPENSEA_TRANSPORT_API void disable_tDevice_ATA_DMA(tDevice* M_NONNULL device)
         device->drive_info.ata_Options.dcoDMASupported               = false;
         device->drive_info.ata_Options.hpaSecurityExtDMASupported    = false;
     }
+}
+
+M_PARAM_RW(1)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues set_tDevice_Verbose_Output_Stream(tDevice* M_NONNULL device, FILE* M_NONNULL stream)
+{
+    if (device == M_NULLPTR || stream == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
+    device->verboseOutputStream = stream;
+    return SUCCESS;
+}
+
+// Set the output stream for a verbose output for a given device. This version takes a file descriptor value (integer)
+// and will use fdopen to internally convret to FILE*. This must be opened with write permission.
+// This must be opened with write permissions as fprintf and fputs will be used to write to it.
+M_PARAM_RW(1)
+M_PARAM_RO(3)
+M_FILE_DESCRIPTOR_W(2)
+OPENSEA_TRANSPORT_API eReturnValues set_tDevice_Verbose_Output_File_Descriptor(tDevice* M_NONNULL    device,
+                                                                               int                   fd,
+                                                                               const char* M_NONNULL mode)
+{
+    FILE* stream = M_NULLPTR;
+    if (device == M_NULLPTR || fd < 0)
+    {
+        return BAD_PARAMETER;
+    }
+#if defined(_WIN32)
+    stream = _fdopen(fd, mode);
+#elif defined(POSIX_1988) || defined(BSD4_2)
+    stream = fdopen(fd, mode);
+#endif
+    if (stream == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
+    device->verboseOutputStream = stream;
+    return SUCCESS;
+}
+
+M_PARAM_RO(1)
+M_PARAM_RO(3)
+M_NULL_TERM_STRING(3)
+OPENSEA_TRANSPORT_API int print_tDevice_Verbose_String(const tDevice* M_NONNULL device,
+                                                       eVerbosityLevels         verboseLevel,
+                                                       const char* M_NONNULL    string)
+{
+    if (device == M_NULLPTR || string == M_NULLPTR)
+    {
+        return -1;
+    }
+    if (device->deviceVerbosity >= verboseLevel)
+    {
+        if (device->verboseOutputStream == M_NULLPTR)
+        {
+            set_tDevice_Verbose_Output_Stream(M_CONST_CAST(tDevice*, device), stdout);
+        }
+        errno_t error = checked_fputs(string, device->verboseOutputStream);
+        if (error != 0)
+        {
+            return EOF;
+        }
+    }
+    return 0;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API int flush_tDevice_Verbose_Stream(const tDevice* M_NONNULL device)
+{
+    if (device == M_NULLPTR)
+    {
+        return -1;
+    }
+    return fflush(device->verboseOutputStream);
+}
+
+M_PARAM_RO(1)
+M_PARAM_RO(3)
+FUNC_ATTR_PRINTF(3, 4)
+OPENSEA_TRANSPORT_API int print_tDevice_Verbose_Formatted_String(const tDevice* M_NONNULL device,
+                                                                 eVerbosityLevels         verboseLevel,
+                                                                 const char* M_NONNULL    format,
+                                                                 ...)
+{
+    if (device == M_NULLPTR || format == M_NULLPTR)
+    {
+        return -1;
+    }
+    if (device->deviceVerbosity >= verboseLevel)
+    {
+        if (device->verboseOutputStream == M_NULLPTR)
+        {
+            set_tDevice_Verbose_Output_Stream(M_CONST_CAST(tDevice*, device), stdout);
+        }
+        va_list args;
+        va_start(args, format);
+        DISABLE_WARNING_FORMAT_NONLITERAL
+        int result = vfprintf(device->verboseOutputStream, format, args);
+        RESTORE_WARNING_FORMAT_NONLITERAL
+        va_end(args);
+        return result;
+    }
+    return 0;
+}
+
+M_PARAM_RO(1)
+M_PARAM_RO(3)
+FUNC_ATTR_PRINTF(3, 0)
+OPENSEA_TRANSPORT_API int vprint_tDevice_Verbose_Formatted_String(const tDevice* M_NONNULL device,
+                                                                  eVerbosityLevels         verboseLevel,
+                                                                  const char* M_NONNULL    format,
+                                                                  va_list                  args)
+{
+    if (device == M_NULLPTR || format == M_NULLPTR)
+    {
+        return -1;
+    }
+    if (device->deviceVerbosity >= verboseLevel)
+    {
+        if (device->verboseOutputStream == M_NULLPTR)
+        {
+            set_tDevice_Verbose_Output_Stream(M_CONST_CAST(tDevice*, device), stdout);
+        }
+        DISABLE_WARNING_FORMAT_NONLITERAL
+        int result = vfprintf(device->verboseOutputStream, format, args);
+        RESTORE_WARNING_FORMAT_NONLITERAL
+        return result;
+    }
+    return 0;
+}
+
+M_PARAM_RO(1)
+M_PARAM_RO(2)
+M_NULL_TERM_STRING(2)
+OPENSEA_TRANSPORT_API int print_tDevice_Return_Enum(const tDevice* M_NONNULL device,
+                                                    const char* M_NONNULL    message,
+                                                    eReturnValues            ret)
+{
+    if (device == M_NULLPTR || message == M_NULLPTR)
+    {
+        return -1;
+    }
+    DECLARE_ZERO_INIT_ARRAY(char, retStr, RETURN_VALUE_MAX_STR_LEN);
+    if (!get_eReturnValues_To_String(ret, retStr))
+    {
+        return print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES,
+                                           "Invalid return value - conversion not available.\n");
+    }
+    else
+    {
+        return print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                                     "%s returning: %s\n", message, retStr);
+    }
+}
+
+M_PARAM_RO(1)
+M_PARAM_RO_SIZE(3,4)
+OPENSEA_TRANSPORT_API int print_tDevice_Data_Buffer(const tDevice * M_NONNULL device, eVerbosityLevels         verboseLevel, const uint8_t* M_NONNULL buffer, size_t bufferLen, bool showPrintableASCII)
+{
+    if (device == M_NULLPTR || buffer == M_NULLPTR)
+    {
+        return -1;
+    }
+    if (device->deviceVerbosity >= verboseLevel)
+    {
+        write_Data_Buffer(device->verboseOutputStream, buffer, bufferLen, showPrintableASCII);
+    }
+    return 0;
 }

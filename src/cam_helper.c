@@ -978,26 +978,15 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Ata_Cam_IO(ScsiIoCtx* M_N
                         if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_ATA_STATUS_ERROR)
                         {
                             ret = COMMAND_FAILURE;
-                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-                            {
-                                printf("WARN: I/O went through but drive returned status=0x%02" PRIX8
-                                       " error=0x%02" PRIX8 "\n",
-                                       ataio->res.status, ataio->res.error);
-                            }
+                            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "WARN: I/O went through but drive returned status=0x%02" PRIX8 " error=0x%02" PRIX8 "\n", ataio->res.status, ataio->res.error);
                         }
                         else if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT)
                         {
-                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-                            {
-                                print_str("WARN: I/O CAM_CMD_TIMEOUT occured\n");
-                            }
+                            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "WARN: I/O CAM_CMD_TIMEOUT occured\n");
                         }
                         else
                         {
-                            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-                            {
-                                printf("WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
-                            }
+                            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
                         }
                     }
                     else
@@ -1039,11 +1028,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Ata_Cam_IO(ScsiIoCtx* M_N
         }
         else
         {
-            if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
-            {
-                print_str("WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT "
-                          "Specification]\n");
-            }
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_DEFAULT, "WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT Specification]\n");
             ret = BAD_PARAMETER;
         }
         if (ccb != M_NULLPTR)
@@ -1154,10 +1139,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* M_
 #endif // __DragonFly
        // NOLINTEND(bugprone-branch-clone)
         default:
-            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-            {
-                printf("%s Didn't understand direction\n", __FUNCTION__);
-            }
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "%s Didn't understand direction\n", __FUNCTION__);
             return BAD_PARAMETER;
         }
 
@@ -1229,11 +1211,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* M_
         {
             ret = COMMAND_FAILURE;
 
-            if (VERBOSITY_DEFAULT < scsiIoCtx->device->deviceVerbosity)
-            {
-                printf("%s cam error %d, scsi error %d\n", __FUNCTION__, (ccb->ccb_h.status & CAM_STATUS_MASK),
-                       ccb->csio.scsi_status);
-            }
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_DEFAULT, "%s cam error %d, scsi error %d\n", __FUNCTION__, (ccb->ccb_h.status & CAM_STATUS_MASK), ccb->csio.scsi_status);
 
             if (((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_SCSI_STATUS_ERROR) &&
                 (ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND) && ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0))
@@ -1313,26 +1291,17 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
         }
         else
         {
-            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-            {
-                print_str("No Raid PassThrough IO Routine present for this device\n");
-            }
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "No Raid PassThrough IO Routine present for this device\n");
         }
         break;
     default:
-        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->get_Device_InterfaceType(device));
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "Target Device does not have a valid interface %d\n", scsiIoCtx->get_Device_InterfaceType(device));
     }
     // printf("<-- %s\n",__FUNCTION__);
     if (scsiIoCtx->device->delay_io)
     {
         delay_Milliseconds(scsiIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES, "Delaying between commands %d milliseconds to reduce IO impact\n", scsiIoCtx->device->delay_io);
     }
 
     return ret;
@@ -2008,17 +1977,11 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
                 }
                 else if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT)
                 {
-                    if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
-                    {
-                        print_str("WARN: I/O CAM_CMD_TIMEOUT occured\n");
-                    }
+                    print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_QUIET, "WARN: I/O CAM_CMD_TIMEOUT occured\n");
                 }
                 else
                 {
-                    if (VERBOSITY_QUIET < nvmeIoCtx->device->deviceVerbosity)
-                    {
-                        printf("WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
-                    }
+                    print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_QUIET, "WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
                 }
             }
             else
@@ -2042,10 +2005,7 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         if (nvmeIoCtx->device->delay_io)
         {
             delay_Milliseconds(nvmeIoCtx->device->delay_io);
-            if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
-            {
-                printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
-            }
+            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES, "Delaying between commands %d milliseconds to reduce IO impact\n", nvmeIoCtx->device->delay_io);
         }
         if (ccb != M_NULLPTR)
         {
@@ -2142,9 +2102,9 @@ static eReturnValues send_IOCTL_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         set_Device_Last_Error(nvmeIoCtx->device, errno);
         ret = OS_PASSTHROUGH_FAILURE;
         printf("\nError : %d", nvmeIoCtx->device->os_info.last_error);
-        printf("Error %s\n", strerror(C_CAST(int, nvmeIoCtx->device->os_info.last_error)));
+        printf("Error %s\n", strerror(M_STATIC_CAST(int, nvmeIoCtx->device->os_info.last_error)));
         print_str("\n OS_PASSTHROUGH_FAILURE. ");
-        print_Errno_To_Screen(C_CAST(int, nvmeIoCtx->device->os_info.last_error));
+        print_Errno_To_Screen(M_STATIC_CAST(int, nvmeIoCtx->device->os_info.last_error));
     }
     else
     {
@@ -2175,10 +2135,7 @@ static eReturnValues send_IOCTL_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     if (nvmeIoCtx->device->delay_io)
     {
         delay_Milliseconds(nvmeIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
-        }
+        print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES, "Delaying between commands %d milliseconds to reduce IO impact\n", nvmeIoCtx->device->delay_io);
     }
     return ret;
 }
@@ -2219,19 +2176,16 @@ M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
     ioRes = ioctl(handleToReset, NVME_RESET_CONTROLLER);
     stop_Timer(&commandTimer);
 
-    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-    {
-        print_Command_Time(get_tDevice_Last_Command_Completion_Time_NS(device));
-    }
+    print_Command_Time(get_tDevice_Last_Command_Completion_Time_NS(device));
 
     if (ioRes < 0)
     {
         // failed
         set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
-        if (device->deviceVerbosity > VERBOSITY_COMMAND_VERBOSE && device->os_info.last_error != 0)
+        if (device->os_info.last_error != 0)
         {
             print_str("Error :");
-            print_Errno_To_Screen(C_CAST(int, device->os_info.last_error));
+            print_Errno_To_Screen(M_STATIC_CAST(int, device->os_info.last_error));
         }
     }
     else

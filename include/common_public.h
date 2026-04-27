@@ -1828,7 +1828,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     typedef eReturnValues (*issue_io_func)(void* M_NONNULL);
 
-#define DEVICE_BLOCK_VERSION (11)
+#define DEVICE_BLOCK_VERSION (12)
 
     // verification for compatibility checking
     typedef struct s_versionBlock
@@ -1850,8 +1850,69 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                  issue_nvme_io; // nvme IO function pointer for raid or other driver/custom interface to send commands
         uint64_t dFlags;
         eVerbosityLevels deviceVerbosity;
-        uint32_t         delay_io;
+        uint32_t         delay_io; // milliseconds
+        FILE* M_NULLABLE verboseOutputStream; // can be a real file, stdout, stderr, a pipe, etc.
     } tDevice;
+
+    // Set the output stream for verbose output for a given device.
+    // This must be opened with write permissions as fprintf and fputs will be used to write to it.
+    M_PARAM_RW(1)
+    M_PARAM_RW(2)
+    OPENSEA_TRANSPORT_API eReturnValues set_tDevice_Verbose_Output_Stream(tDevice* M_NONNULL device,
+                                                                          FILE* M_NONNULL    stream);
+
+    // Set the output stream for a verbose output for a given device. This version takes a file descriptor value
+    // (integer) and will use fdopen to internally convret to FILE*. This must be opened with write permission. This
+    // must be opened with write permissions as fprintf and fputs will be used to write to it.
+    M_PARAM_RW(1)
+    M_PARAM_RO(3)
+    M_FILE_DESCRIPTOR_W(2)
+    OPENSEA_TRANSPORT_API eReturnValues set_tDevice_Verbose_Output_File_Descriptor(tDevice* M_NONNULL    device,
+                                                                                   int                   fd,
+                                                                                   const char* M_NONNULL mode);
+
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    M_NULL_TERM_STRING(3)
+    OPENSEA_TRANSPORT_API int print_tDevice_Verbose_String(const tDevice* M_NONNULL device,
+                                                           eVerbosityLevels         verboseLevel,
+                                                           const char* M_NONNULL    string);
+
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    FUNC_ATTR_PRINTF(3, 4)
+    OPENSEA_TRANSPORT_API int print_tDevice_Verbose_Formatted_String(const tDevice* M_NONNULL device,
+                                                                     eVerbosityLevels         verboseLevel,
+                                                                     const char* M_NONNULL    format,
+                                                                     ...);
+
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    FUNC_ATTR_PRINTF(3, 0)
+    OPENSEA_TRANSPORT_API int vprint_tDevice_Verbose_Formatted_String(const tDevice* M_NONNULL device,
+                                                                      eVerbosityLevels         verboseLevel,
+                                                                      const char* M_NONNULL    format,
+                                                                      va_list                  args);
+
+                                                                        M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API void print_Command_Time_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity, uint64_t timeInNanoSeconds);
+
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API void print_Time_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity, uint64_t timeInNanoSeconds);
+
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API int flush_tDevice_Verbose_Stream(const tDevice* M_NONNULL device);
+
+    M_PARAM_RO(1)
+    M_PARAM_RO(2)
+    M_NULL_TERM_STRING(2)
+    OPENSEA_TRANSPORT_API int print_tDevice_Return_Enum(const tDevice* M_NONNULL device,
+                                                        const char* M_NONNULL    message,
+                                                        eReturnValues            ret);
+
+    M_PARAM_RO(1)
+    M_PARAM_RO_SIZE(3, 4)
+    OPENSEA_TRANSPORT_API int print_tDevice_Data_Buffer(const tDevice * M_NONNULL device, eVerbosityLevels verboseLevel, const uint8_t* M_NONNULL buffer, size_t bufferLen, bool showPrintableASCII);
 
     M_PARAM_RW(1)
     M_PARAM_RO(2)
@@ -2128,7 +2189,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     typedef enum eZMActionEnum
     {
-        ZM_ACTION_REPORT_ZONES         = 0x00, // dma in-in
+        ZM_ACTION_REPORT_ZONES         = 0x00, // dma in
         ZM_ACTION_CLOSE_ZONE           = 0x01, // non data-out
         ZM_ACTION_FINISH_ZONE          = 0x02, // non data-out
         ZM_ACTION_OPEN_ZONE            = 0x03, // non data-out
@@ -3412,6 +3473,18 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //-----------------------------------------------------------------------------
     M_PARAM_RW(2)
     OPENSEA_TRANSPORT_API M_NODISCARD int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* M_NONNULL device);
+
+    //! \fn eVerbosityLevels set_tDevice_Verbosity(tDevice *M_NONNULL device, eVerbosityLevels verbosity)
+    //! \brief Sets the verbosity level in the tDevice struct using the eVerbosityLevels enum.
+    //! \details This function takes an already created tDevice and modifies the current verbosity level to the one specified.
+    //! The previously set verbosity level is returned when this is changed. If attempting to set a level higher than
+    //! the maximum value of the enum, then the highest supported level will be set. Same applies for attempting to set a level
+    //! lower than the lowest value allowed by the enum.
+    //! \param device Pointer to the tDevice struct. Must not be null.
+    //! \param verbosity The verbosity level to set, specified as an eVerbosityLevels enum.
+    //! \return Previously set verbosity level. Can be stored to return to this level again later as needed.
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API eVerbosityLevels set_tDevice_Verbosity(tDevice *M_NONNULL device, eVerbosityLevels verbosity);
 
     //-----------------------------------------------------------------------------
     //

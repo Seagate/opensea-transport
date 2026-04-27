@@ -856,10 +856,7 @@ eReturnValues request_Return_TFRs_From_Device(const tDevice* M_NONNULL device, a
         ATA_PT_LEN_TPSIU; // While this may not be necessary, it at least makes the most sense for this protocol and
                           // should be ignored by a good SATL
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SAT Return Response Information\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SAT Return Response Information\n");
 
     if (SUCCESS ==
         scsi_Send_Cdb(device, requestRTFRs, cdbLen, rtfrBuffer, 14, XFER_DATA_IN, rtfr_senseData, SPC3_SENSE_LEN, 15))
@@ -899,10 +896,7 @@ eReturnValues request_Return_TFRs_From_Device(const tDevice* M_NONNULL device, a
     safe_free_aligned(&rtfrBuffer);
     safe_free_aligned(&rtfr_senseData);
     safe_free_aligned(&requestRTFRs);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("SAT Return Response Information", rtfrRet);
-    }
+    print_tDevice_Return_Enum(device, "SAT Return Response Information Result", rtfrRet);
     return rtfrRet;
 }
 
@@ -1195,11 +1189,8 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
         senseDataFields senseFields;
         safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
         safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // Print out ATA Command Information in appropriate verbose mode.
-            print_Verbose_ATA_Command_Information(ataCommandOptions);
-        }
+        // Print out ATA Command Information in appropriate verbose mode.
+        print_tDevice_Verbose_ATA_Command_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // Now setup the scsiioctx and send the CDB
         scsiIoCtx.device = M_CONST_CAST(tDevice*, device);
         safe_memcpy(scsiIoCtx.cdb, SCSI_IO_CTX_MAX_CDB_LEN, satCDB,
@@ -1512,16 +1503,9 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
             ret = WARN_INCOMPLETE_RFTRS;
         }
 
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // Print out the RTFRs that we got
-            print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
-        }
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            // print command timing information
-            print_Command_Time(get_tDevice_Last_Command_Completion_Time_NS(device));
-        }
+        // Print out the RTFRs that we got
+        print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
+        print_Command_Time_Verbose(device, VERBOSITY_COMMAND_VERBOSE, get_tDevice_Last_Command_Completion_Time_NS(device));
 
         M_CONST_CAST(tDevice*, device)->drive_info.ataSenseData.validData =
             false; // clear this everytime. will be changed if we got anything
@@ -1596,10 +1580,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                             ataAdditionalSenseCode;
                         M_CONST_CAST(tDevice*, device)->drive_info.ataSenseData.additionalSenseCodeQualifier =
                             ataAdditionalSenseCodeQualifier;
-                        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-                        {
-                            print_str("\t  ATA Sense Data reported:\n");
-                        }
+                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t  ATA Sense Data reported:\n");
                         ataSenseRet = check_Sense_Key_ASC_ASCQ_And_FRU(device, ataSenseKey, ataAdditionalSenseCode,
                                                                        ataAdditionalSenseCodeQualifier, 0);
                         if (driveStatusRet != ataSenseRet &&

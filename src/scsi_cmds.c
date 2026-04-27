@@ -90,33 +90,30 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* M_NONNULL scsiIoCtx, ptrSenseData
         // set sense data to zero to make sure there is no extra data left over in this buffer
         safe_memset(M_CONST_CAST(uint8_t*, scsiIoCtx->psense), scsiIoCtx->senseDataSize, 0, scsiIoCtx->senseDataSize);
     }
-    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-    {
-        print_str("\n  CDB:\n");
-        print_Data_Buffer(scsiIoCtx->cdb, scsiIoCtx->cdbLength, false);
-    }
+    print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "\n  CDB:\n");
+    print_tDevice_Data_Buffer(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, scsiIoCtx->cdb, scsiIoCtx->cdbLength, false);
 #if defined(_DEBUG)
     // This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a
     // command. This was very important for debugging windows issues, which is why I have this ifdef in place for debug
     // builds. - TJE
-    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->pdata != M_NULLPTR)
+    if (scsiIoCtx->pdata != M_NULLPTR)
 #else
     // Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->pdata != M_NULLPTR &&
+    if (scsiIoCtx->pdata != M_NULLPTR &&
         scsiIoCtx->direction == XFER_DATA_OUT)
 #endif
     {
-        print_str("\t  Data Buffer being sent:\n");
-        print_Data_Buffer(scsiIoCtx->pdata, scsiIoCtx->dataLength, true);
-        print_str("\n");
+        print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\t  Data Buffer being sent:\n");
+        print_tDevice_Data_Buffer(scsiIoCtx->device, VERBOSITY_BUFFERS, scsiIoCtx->pdata, scsiIoCtx->dataLength, true);
+        print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\n");
     }
     // send the command
     eReturnValues sendIOret = send_IO(scsiIoCtx);
-    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->psense)
+    if (scsiIoCtx->psense)
     {
-        print_str("\n  Sense Data Buffer:\n");
-        print_Data_Buffer(scsiIoCtx->psense, get_Returned_Sense_Data_Length(scsiIoCtx->psense), false);
-        print_str("\n");
+        print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "\n  Sense Data Buffer:\n");
+        print_tDevice_Data_Buffer(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, scsiIoCtx->psense, get_Returned_Sense_Data_Length(scsiIoCtx->psense), false);
+        print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "\n");
     }
 
     if (scsiIoCtx->psense != M_NULLPTR && scsiIoCtx->senseDataSize > 0 &&
@@ -132,30 +129,22 @@ eReturnValues private_SCSI_Send_CDB(ScsiIoCtx* M_NONNULL scsiIoCtx, ptrSenseData
     ret = check_Sense_Key_ASC_ASCQ_And_FRU(scsiIoCtx->device, pSenseFields->scsiStatusCodes.senseKey,
                                            pSenseFields->scsiStatusCodes.asc, pSenseFields->scsiStatusCodes.ascq,
                                            pSenseFields->scsiStatusCodes.fru);
-    // if verbose mode and sense data is non-M_NULLPTR, we should try to print out all the relavent information we can
-    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->psense)
-    {
-        print_Sense_Fields(pSenseFields);
-    }
-    if (scsiIoCtx->device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-    {
-        // print command timing information
-        print_Command_Time(get_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device));
-    }
+    print_Sense_Fields_Verbose(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, pSenseFields);
+    print_Command_Time_Verbose(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, get_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device));
 #if defined(_DEBUG)
     // This is different for debug because sometimes we need to see if the data buffer actually changed after issuing a
     // command. This was very important for debugging windows issues, which is why I have this ifdef in place for debug
     // builds. - TJE
-    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->pdata != M_NULLPTR)
+    if (scsiIoCtx->pdata != M_NULLPTR)
 #else
     // Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity && scsiIoCtx->pdata != M_NULLPTR &&
+    if (scsiIoCtx->pdata != M_NULLPTR &&
         scsiIoCtx->direction == XFER_DATA_IN)
 #endif
     {
-        print_str("\t  Data Buffer being returned:\n");
-        print_Data_Buffer(scsiIoCtx->pdata, scsiIoCtx->dataLength, true);
-        print_str("\n");
+        print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\t  Data Buffer being returned:\n");
+        print_tDevice_Data_Buffer(scsiIoCtx->device, VERBOSITY_BUFFERS, scsiIoCtx->pdata, scsiIoCtx->dataLength, true);
+        print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\n");
     }
     if (ret == SUCCESS && sendIOret != SUCCESS)
     {
@@ -313,10 +302,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_SecurityProtocol_In(const tDevice* M_NO
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
     uint32_t dataLength = allocationLength;
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Security Protocol In\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Security Protocol In\n");
 
     cdb[CDB_OPERATION_CODE] = SECURITY_PROTOCOL_IN;
     cdb[CDB_1]              = securityProtocol;
@@ -348,10 +334,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_SecurityProtocol_In(const tDevice* M_NO
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Security Protocol In", ret);
-    }
+    print_tDevice_Return_Enum(device, "Security Protocol In", ret);
     return ret;
 }
 
@@ -428,10 +411,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Operation_Codes(const 
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Requesting SCSI Supported Op Codes\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Requesting SCSI Supported Op Codes\n");
 
     cdb[CDB_OPERATION_CODE] = REPORT_SUPPORTED_OPERATION_CODES_CMD;
     cdb[CDB_1]              = 0x0C; // This is always 0x0C per SPC spec
@@ -463,10 +443,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Operation_Codes(const 
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Supported Op Codes", ret);
-    }
+    print_tDevice_Return_Enum(device, "Supported Op Codes", ret);
     if (ret != SUCCESS)
     {
         set_report_supported_op_codes_hacks(M_CONST_CAST(tDevice*, device), rctd, reportingOptions);
@@ -689,10 +666,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Cmd(const tDevice* M_NONNULL d
 
     safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0, SPC3_SENSE_LEN);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Sanitize Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Sanitize Command\n");
 
     cdb[CDB_OPERATION_CODE] = SANITIZE_CMD;
     cdb[CDB_1]              = sanitizeFeature & 0x1F; // make sure we don't set any higher bits
@@ -731,10 +705,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Sanitize_Cmd(const tDevice* M_NONNULL d
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, parameterListLength,
                         dataDir, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Sanitize", ret);
-    }
+    print_tDevice_Return_Enum(device, "Sanitize", ret);
     return ret;
 }
 
@@ -811,10 +782,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Request_Sense_Cmd(const tDevice* M_NONN
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Request Sense Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Request Sense Command\n");
 
     if (pdata == M_NULLPTR)
     {
@@ -841,10 +809,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Request_Sense_Cmd(const tDevice* M_NONN
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), pdata, dataSize, XFER_DATA_IN,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Request Sense", ret);
-    }
+    print_tDevice_Return_Enum(device, "Request Sense", ret);
     return ret;
 }
 
@@ -924,10 +889,9 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Sense_Cmd(const tDevice* M_NONNULL 
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("Sending SCSI Log Sense Command, page code: 0x%02" PRIx8 "\n", pageCode);
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                          "Sending SCSI Log Sense Command, page code: 0x%02" PRIx8 "\n",
+                                          pageCode);
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = LOG_SENSE_CMD;
     if (saveParameters)
@@ -957,10 +921,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Sense_Cmd(const tDevice* M_NONNULL 
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Log Sense", ret);
-    }
+    print_tDevice_Return_Enum(device, "Log Sense", ret);
     if (ret != SUCCESS)
     {
         set_log_sense_hacks(M_CONST_CAST(tDevice*, device), pageCode, subpageCode);
@@ -988,10 +949,9 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Select_Cmd(const tDevice* M_NONNULL
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("Sending SCSI Log Select Command, page code 0x%02" PRIx8 "\n", pageCode);
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                          "Sending SCSI Log Select Command, page code 0x%02" PRIx8 "\n",
+                                          pageCode);
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = LOG_SELECT_CMD;
@@ -1025,10 +985,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Select_Cmd(const tDevice* M_NONNULL
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Log Select", ret);
-    }
+    print_tDevice_Return_Enum(device, "Log Select", ret);
     return ret;
 }
 
@@ -1045,10 +1002,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Diagnostic(const tDevice* M_NONNUL
 {
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Send Diagnostic Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Send Diagnostic Command\n");
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = SEND_DIAGNOSTIC_CMD; // Send Diagnostic
     cdb[CDB_1] |= C_CAST(uint8_t, selfTestCode << 5);
@@ -1072,10 +1026,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Send_Diagnostic(const tDevice* M_NONNUL
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             timeoutSeconds);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Send Diagnostic", ret);
-    }
+    print_tDevice_Return_Enum(device, "Send Diagnostic", ret);
     return ret;
 }
 
@@ -1086,10 +1037,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_10(const tDevice* M_NONNU
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read Capacity 10 command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read Capacity 10 command\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = READ_CAPACITY_10;
@@ -1109,10 +1057,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_10(const tDevice* M_NONNU
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Capacity 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Capacity 10", ret);
     return ret;
 }
 
@@ -1123,10 +1068,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_16(const tDevice* M_NONNU
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read Capacity 16 command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read Capacity 16 command\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = READ_CAPACITY_16;
@@ -1159,10 +1101,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_16(const tDevice* M_NONNU
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Capacity 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Capacity 16", ret);
     return ret;
 }
 
@@ -1282,10 +1221,9 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_6(const tDevice* M_NONNULL d
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("Sending SCSI Mode Sense 6, page 0x%02" PRIx8 "\n", pageCode);
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                          "Sending SCSI Mode Sense 6, page 0x%02" PRIx8 "\n",
+                                          pageCode);
     cdb[CDB_OPERATION_CODE] = MODE_SENSE_6_CMD;
     if (DBD)
     {
@@ -1310,10 +1248,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_6(const tDevice* M_NONNULL d
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Mode Sense 6", ret);
-    }
+    print_tDevice_Return_Enum(device, "Mode Sense 6", ret);
     if (ret != SUCCESS) // && !device->drive_info.passThroughHacks.hacksSetByReportedID)//only setup these hacks if the
                         // device has not been looked up for results in our internal database-TJE
     {
@@ -1345,10 +1280,9 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_10(const tDevice* M_NONNULL 
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("Sending SCSI Mode Sense 10, page 0x%02" PRIx8 "\n", pageCode);
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                          "Sending SCSI Mode Sense 10, page 0x%02" PRIx8 "\n",
+                                          pageCode);
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = MODE_SENSE10;
     if (LLBAA)
@@ -1382,10 +1316,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_10(const tDevice* M_NONNULL 
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Mode Sense 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Mode Sense 10", ret);
     if (ret != SUCCESS)
     {
         set_mode_sense_hacks(M_CONST_CAST(tDevice*, device), pageCode, subPageCode, true);
@@ -1411,10 +1342,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_6(const tDevice* M_NONNULL 
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Mode Select 6\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Mode Select 6\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = MODE_SELECT10;
@@ -1447,10 +1375,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_6(const tDevice* M_NONNULL 
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Mode Select 6", ret);
-    }
+    print_tDevice_Return_Enum(device, "Mode Select 6", ret);
     return ret;
 }
 
@@ -1465,10 +1390,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_10(const tDevice* M_NONNULL
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Mode Select 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Mode Select 10\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = MODE_SELECT10;
@@ -1506,10 +1428,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Select_10(const tDevice* M_NONNULL
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Mode Select 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Mode Select 10", ret);
     return ret;
 }
 
@@ -1533,10 +1452,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Buffer(const tDevice* M_NONNULL d
                                                           // FWDL and that activation can sometimes take more time
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Write Buffer\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Write Buffer\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = WRITE_BUFFER_CMD;
@@ -1565,10 +1481,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Buffer(const tDevice* M_NONNULL d
                                 M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                                 writeBufferTimeout, firstSegment, lastSegment);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Buffer", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Buffer", ret);
     return ret;
 }
 
@@ -1686,20 +1599,22 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Inquiry(const tDevice* M_NONNULL device
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    if (evpd)
     {
-        if (evpd)
-        {
-            printf("Sending SCSI Inquiry, VPD = %02" PRIX8 "h\n", pageCode);
-        }
-        else if (cmdDt)
-        {
-            printf("Sending SCSI Inquiry, CmdDt = %02" PRIX8 "h\n", pageCode);
-        }
-        else
-        {
-            print_str("Sending SCSI Inquiry\n");
-        }
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                              "Sending SCSI Inquiry, VPD = %02" PRIX8 "h\n",
+                                              pageCode);
+    }
+    else if (cmdDt)
+    {
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                              "Sending SCSI Inquiry, CmdDt = %02" PRIX8 "h\n",
+                                              pageCode);
+    }
+    else
+    {
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES,
+                                    "Sending SCSI Inquiry\n");
     }
 
     cdb[CDB_OPERATION_CODE] = INQUIRY_CMD;
@@ -1734,10 +1649,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Inquiry(const tDevice* M_NONNULL device
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Inquiry", ret);
-    }
+    print_tDevice_Return_Enum(device, "Inquiry", ret);
     if (ret != SUCCESS && evpd)
     {
         set_vpd_hacks(M_CONST_CAST(tDevice*, device), pageCode, cmdDt);
@@ -1762,10 +1674,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Media_Serial_Number(const tDevice*
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read Media Serial Number\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read Media Serial Number\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = READ_MEDIA_SERIAL_NUMBER;
@@ -1795,10 +1704,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Media_Serial_Number(const tDevice*
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Media Serial Number", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Media Serial Number", ret);
     return ret;
 }
 
@@ -1815,10 +1721,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Attribute(const tDevice* M_NONNULL
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read Attribute\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read Attribute\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = READ_ATTRIBUTE;
@@ -1856,10 +1759,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Attribute(const tDevice* M_NONNULL
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Attribute", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Attribute", ret);
     return ret;
 }
 
@@ -1873,10 +1773,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Buffer(const tDevice* M_NONNULL de
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read Buffer\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read Buffer\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = READ_BUFFER_CMD;
@@ -1907,10 +1804,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Buffer(const tDevice* M_NONNULL de
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Buffer", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Buffer", ret);
     return ret;
 }
 
@@ -1925,10 +1819,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Buffer_16(const tDevice* M_NONNULL
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read Buffer 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read Buffer 16\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = READ_BUFFER_16_CMD;
@@ -1965,10 +1856,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Buffer_16(const tDevice* M_NONNULL
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Buffer 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Buffer 16", ret);
     return ret;
 }
 
@@ -1982,10 +1870,9 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Receive_Diagnostic_Results(const tDevic
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("Sending SCSI Receive Diagnostic Results, page code = 0x%02" PRIX8 "\n", pageCode);
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                          "Sending SCSI Receive Diagnostic Results, page code = 0x%02" PRIX8 "\n",
+                                          pageCode);
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = RECEIVE_DIAGNOSTIC_RESULTS;
@@ -2012,10 +1899,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Receive_Diagnostic_Results(const tDevic
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             timeoutSeconds);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Receive Diagnostic Results", ret);
-    }
+    print_tDevice_Return_Enum(device, "Receive Diagnostic Results", ret);
     return ret;
 }
 
@@ -2027,10 +1911,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_I_T_Nexus(const tDevice* M_NONNU
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Remove I_T Nexus\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Remove I_T Nexus\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = REMOVE_I_T_NEXUS;
@@ -2059,10 +1940,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_I_T_Nexus(const tDevice* M_NONNU
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Remove I_T Nexus", ret);
-    }
+    print_tDevice_Return_Enum(device, "Remove I_T Nexus", ret);
     return ret;
 }
 
@@ -2073,10 +1951,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Aliases(const tDevice* M_NONNULL
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Report Aliases\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Report Aliases\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = REPORT_ALIASES_CMD;
@@ -2106,10 +1981,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Aliases(const tDevice* M_NONNULL
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Report Aliases", ret);
-    }
+    print_tDevice_Return_Enum(device, "Report Aliases", ret);
     return ret;
 }
 
@@ -2122,10 +1994,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Identifying_Information(const tD
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Report Identifying Information\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Report Identifying Information\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = REPORT_IDENTIFYING_INFORMATION;
@@ -2155,10 +2024,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Identifying_Information(const tD
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Report Identifying Information", ret);
-    }
+    print_tDevice_Return_Enum(device, "Report Identifying Information", ret);
     return ret;
 }
 
@@ -2170,10 +2036,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Luns(const tDevice* M_NONNULL de
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Report LUNs\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Report LUNs\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = REPORT_LUNS_CMD;
@@ -2203,10 +2066,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Luns(const tDevice* M_NONNULL de
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Report LUNs", ret);
-    }
+    print_tDevice_Return_Enum(device, "Report LUNs", ret);
     return ret;
 }
 
@@ -2218,10 +2078,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Priority(const tDevice* M_NONNUL
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Report Priority\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Report Priority\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = REPORT_PRIORITY_CMD;
@@ -2251,10 +2108,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Priority(const tDevice* M_NONNUL
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Report Priority", ret);
-    }
+    print_tDevice_Return_Enum(device, "Report Priority", ret);
     return ret;
 }
 
@@ -2266,10 +2120,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Task_Management_Functi
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Report Supported Task Management Functions\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Report Supported Task Management Functions\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = REPORT_SUPPORTED_TASK_MANAGEMENT_FUNCS;
@@ -2302,10 +2153,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Supported_Task_Management_Functi
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Report Supported Task Management Functions", ret);
-    }
+    print_tDevice_Return_Enum(device, "Report Supported Task Management Functions", ret);
     return ret;
 }
 
@@ -2318,10 +2166,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Timestamp(const tDevice* M_NONNU
     ScsiIoCtx scsiIoCtx;
     safe_memset(&scsiIoCtx, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Report Timestamp\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Report Timestamp\n");
 
     // Set up the CDB.
     cdb[CDB_OPERATION_CODE] = REPORT_SUPPORTED_TASK_MANAGEMENT_FUNCS;
@@ -2351,10 +2196,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Timestamp(const tDevice* M_NONNU
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Report Timestamp", ret);
-    }
+    print_tDevice_Return_Enum(device, "Report Timestamp", ret);
     return ret;
 }
 
@@ -2371,10 +2213,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_SecurityProtocol_Out(const tDevice* M_N
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
     uint32_t dataLength = transferLength;
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Security Protocol Out\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Security Protocol Out\n");
 
     cdb[CDB_OPERATION_CODE] = SECURITY_PROTOCOL_OUT;
     cdb[CDB_1]              = securityProtocol;
@@ -2405,10 +2244,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_SecurityProtocol_Out(const tDevice* M_N
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, timeout);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Security Protocol Out", ret);
-    }
+    print_tDevice_Return_Enum(device, "Security Protocol Out", ret);
 
     return ret;
 }
@@ -2423,10 +2259,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Identifying_Information(const tDevi
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Set Identifying Information\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Set Identifying Information\n");
 
     cdb[CDB_OPERATION_CODE] = SET_IDENTIFYING_INFORMATION;
     cdb[CDB_1]              = 0x06;
@@ -2454,10 +2287,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Identifying_Information(const tDevi
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Set Identifying Information", ret);
-    }
+    print_tDevice_Return_Enum(device, "Set Identifying Information", ret);
     return ret;
 }
 
@@ -2470,10 +2300,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Priority(const tDevice* M_NONNULL d
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Set Priority\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Set Priority\n");
 
     cdb[CDB_OPERATION_CODE] = SET_PRIORITY_CMD;
     cdb[CDB_1]              = 0x0E;
@@ -2501,10 +2328,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Priority(const tDevice* M_NONNULL d
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Set Priority", ret);
-    }
+    print_tDevice_Return_Enum(device, "Set Priority", ret);
     return ret;
 }
 
@@ -2516,10 +2340,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Target_Port_Groups(const tDevice* M
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Set Target Port Groups\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Set Target Port Groups\n");
 
     cdb[CDB_OPERATION_CODE] = SET_TARGET_PORT_GROUPS_CMD;
     cdb[CDB_1]              = 0x0A;
@@ -2547,10 +2368,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Target_Port_Groups(const tDevice* M
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Set Target Port Groups", ret);
-    }
+    print_tDevice_Return_Enum(device, "Set Target Port Groups", ret);
     return ret;
 }
 
@@ -2561,10 +2379,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Timestamp(const tDevice* M_NONNULL 
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Set Timestamp\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Set Timestamp\n");
 
     cdb[CDB_OPERATION_CODE] = SET_TIMESTAMP_CMD;
     cdb[CDB_1]              = 0x0F;
@@ -2592,10 +2407,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Set_Timestamp(const tDevice* M_NONNULL 
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Set Timestamp", ret);
-    }
+    print_tDevice_Return_Enum(device, "Set Timestamp", ret);
     return ret;
 }
 
@@ -2606,10 +2418,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Test_Unit_Ready(const tDevice* M_NONNUL
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Test Unit Ready\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Test Unit Ready\n");
 
     cdb[CDB_OPERATION_CODE] = TEST_UNIT_READY_CMD;
     cdb[CDB_1]              = RESERVED;
@@ -2628,12 +2437,9 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Test_Unit_Ready(const tDevice* M_NONNUL
                                    &pReturnStatus->senseKey, &pReturnStatus->asc, &pReturnStatus->ascq,
                                    &pReturnStatus->fru);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        // leave this here or else the verbose output gets confusing to look at when debugging- this only prints the ret
-        // for the function, not the acs/acsq stuff
-        print_Return_Enum("Test Unit Ready", ret);
-    }
+    // leave this here or else the verbose output gets confusing to look at when debugging- this only prints the ret
+    // for the function, not the acs/acsq stuff
+    print_tDevice_Return_Enum(device, "Test Unit Ready", ret);
     return ret;
 }
 
@@ -2648,10 +2454,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Attribute(const tDevice* M_NONNUL
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Write Attribute\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Write Attribute\n");
 
     cdb[CDB_OPERATION_CODE] = WRITE_ATTRIBUTE_CMD;
     if (wtc)
@@ -2686,10 +2489,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Attribute(const tDevice* M_NONNUL
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Attribute", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Attribute", ret);
     return ret;
 }
 
@@ -2706,10 +2506,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Compare_And_Write(const tDevice* M_NONN
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Compare And Write\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Compare And Write\n");
 
     cdb[CDB_OPERATION_CODE] = COMPARE_AND_WRITE;
     cdb[CDB_1]              = C_CAST(uint8_t, C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5));
@@ -2749,10 +2546,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Compare_And_Write(const tDevice* M_NONN
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Compare And Write", ret);
-    }
+    print_tDevice_Return_Enum(device, "Compare And Write", ret);
     return ret;
 }
 
@@ -2771,10 +2565,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Format_Unit(const tDevice* M_NONNULL de
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Format Unit\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Format Unit\n");
 
     if (!ptrData && fmtData)
     {
@@ -2814,10 +2605,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Format_Unit(const tDevice* M_NONNULL de
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             timeoutSeconds);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Format Unit", ret);
-    }
+    print_tDevice_Return_Enum(device, "Format Unit", ret);
     return ret;
 }
 
@@ -2831,10 +2619,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Format_With_Preset(const tDevice* M_NON
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Format With Preset\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Format With Preset\n");
 
     cdb[CDB_OPERATION_CODE] = SCSI_FORMAT_WITH_PRESET_CMD;
     if (immed)
@@ -2857,10 +2642,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Format_With_Preset(const tDevice* M_NON
     ret =
         scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                       M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, timeoutSeconds);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Format With Preset", ret);
-    }
+    print_tDevice_Return_Enum(device, "Format With Preset", ret);
     return ret;
 }
 
@@ -2872,10 +2654,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Lba_Status(const tDevice* M_NONNULL
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Get LBA Status\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Get LBA Status\n");
 
     cdb[CDB_OPERATION_CODE] = GET_LBA_STATUS;
     cdb[CDB_1]              = 0x12;
@@ -2908,10 +2687,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Lba_Status(const tDevice* M_NONNULL
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Get LBA Status", ret);
-    }
+    print_tDevice_Return_Enum(device, "Get LBA Status", ret);
     return ret;
 }
 
@@ -2928,10 +2704,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Orwrite_16(const tDevice* M_NONNULL dev
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI ORWrite 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI ORWrite 16\n");
 
     cdb[CDB_OPERATION_CODE] = ORWRITE_16;
     cdb[CDB_1]              = C_CAST(uint8_t, (orProtect & 0x07) << 5);
@@ -2971,10 +2744,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Orwrite_16(const tDevice* M_NONNULL dev
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("ORWrite 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "ORWrite 16", ret);
     return ret;
 }
 
@@ -2995,10 +2765,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Orwrite_32(const tDevice* M_NONNULL dev
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI ORWrite 32\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI ORWrite 32\n");
 
     set_Typical_SCSI_32_CDB_Fields(cdb, ORWRITE_32, 0x000E, logicalBlockAddress, transferLengthBlocks,
                                    set_Control_Field(false, false, false));
@@ -3037,10 +2804,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Orwrite_32(const tDevice* M_NONNULL dev
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("ORWrite 32", ret);
-    }
+    print_tDevice_Return_Enum(device, "ORWrite 32", ret);
     return ret;
 }
 
@@ -3054,10 +2818,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Prefetch_10(const tDevice* M_NONNULL de
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Pre-Fetch 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Pre-Fetch 10\n");
 
     cdb[CDB_OPERATION_CODE] = PRE_FETCH_10;
     if (immediate)
@@ -3077,10 +2838,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Prefetch_10(const tDevice* M_NONNULL de
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Pre-Fetch 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Pre-Fetch 10", ret);
     return ret;
 }
 
@@ -3094,10 +2852,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Prefetch_16(const tDevice* M_NONNULL de
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Pre-Fetch 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Pre-Fetch 16\n");
 
     cdb[CDB_OPERATION_CODE] = PRE_FETCH_16;
     if (immediate)
@@ -3123,10 +2878,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Prefetch_16(const tDevice* M_NONNULL de
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Pre-Fetch 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Pre-Fetch 16", ret);
     return ret;
 }
 
@@ -3136,10 +2888,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Prevent_Allow_Medium_Removal(const tDev
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Prevent Allow Medium Removal\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Prevent Allow Medium Removal\n");
 
     cdb[CDB_OPERATION_CODE] = PREVENT_ALLOW_MEDIUM_REMOVAL;
     cdb[CDB_1]              = RESERVED;
@@ -3152,10 +2901,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Prevent_Allow_Medium_Removal(const tDev
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Prevent Allow Medium Removal", ret);
-    }
+    print_tDevice_Return_Enum(device, "Prevent Allow Medium Removal", ret);
     return ret;
 }
 
@@ -3175,10 +2921,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_6(const tDevice* M_NONNULL device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read 6\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read 6\n");
 
     set_Typical_SCSI_6B_CDB_Fields(cdb, READ6, logicalBlockAddress, transferLengthBlocks,
                                    set_Control_Field(false, false, false));
@@ -3188,10 +2931,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_6(const tDevice* M_NONNULL device,
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes,
                         XFER_DATA_IN, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read 6", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read 6", ret);
     return ret;
 }
 
@@ -3209,10 +2949,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_10(const tDevice* M_NONNULL device
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read 10\n");
 
     cdb[CDB_OPERATION_CODE] = READ10;
     cdb[CDB_1]              = C_CAST(uint8_t, (rdProtect & 0x07) << 5);
@@ -3251,10 +2988,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_10(const tDevice* M_NONNULL device
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read 10", ret);
     return ret;
 }
 
@@ -3272,10 +3006,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_12(const tDevice* M_NONNULL device
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read 12\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read 12\n");
 
     cdb[CDB_OPERATION_CODE] = READ12;
     cdb[CDB_1]              = C_CAST(uint8_t, (rdProtect & 0x07) << 5);
@@ -3316,10 +3047,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_12(const tDevice* M_NONNULL device
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read 12", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read 12", ret);
     return ret;
 }
 
@@ -3337,10 +3065,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_16(const tDevice* M_NONNULL device
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read 16\n");
 
     cdb[CDB_OPERATION_CODE] = READ16;
     cdb[CDB_1]              = C_CAST(uint8_t, (rdProtect & 0x07) << 5);
@@ -3385,10 +3110,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_16(const tDevice* M_NONNULL device
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read 16", ret);
     return ret;
 }
 
@@ -3409,10 +3131,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_32(const tDevice* M_NONNULL device
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read 32\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read 32\n");
 
     set_Typical_SCSI_32_CDB_Fields(cdb, READ32, 0x0009, logicalBlockAddress, transferLengthBlocks,
                                    set_Control_Field(false, false, false));
@@ -3446,10 +3165,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_32(const tDevice* M_NONNULL device
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read 32", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read 32", ret);
     return ret;
 }
 
@@ -3463,10 +3179,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Defect_Data_10(const tDevice* M_NO
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read Defect Data 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read Defect Data 10\n");
 
     cdb[CDB_OPERATION_CODE] = READ_DEFECT_DATA_10_CMD;
     cdb[CDB_1]              = RESERVED;
@@ -3501,10 +3214,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Defect_Data_10(const tDevice* M_NO
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Defect Data 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Defect Data 10", ret);
     return ret;
 }
 
@@ -3519,10 +3229,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Defect_Data_12(const tDevice* M_NO
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read Defect Data 12\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read Defect Data 12\n");
 
     cdb[CDB_OPERATION_CODE] = READ_DEFECT_DATA_12_CMD;
     if (requestPList)
@@ -3559,10 +3266,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Defect_Data_12(const tDevice* M_NO
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Defect Data 12", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Defect Data 12", ret);
     return ret;
 }
 
@@ -3576,10 +3280,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Long_10(const tDevice* M_NONNULL d
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read Long 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read Long 10\n");
 
     cdb[CDB_OPERATION_CODE] = READ_LONG_10;
     if (physicalBlock)
@@ -3613,10 +3314,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Long_10(const tDevice* M_NONNULL d
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Long 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Long 10", ret);
     return ret;
 }
 
@@ -3630,10 +3328,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Long_16(const tDevice* M_NONNULL d
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Read Long 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Read Long 16\n");
 
     cdb[CDB_OPERATION_CODE] = READ_LONG_16;
     cdb[CDB_1]              = 0x11; // service action
@@ -3673,10 +3368,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Long_16(const tDevice* M_NONNULL d
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Long 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Long 16", ret);
     return ret;
 }
 
@@ -3694,10 +3386,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Reassign_Blocks(const tDevice* M_NONNUL
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Reassign Blocks\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Reassign Blocks\n");
 
     cdb[CDB_OPERATION_CODE] = REASSIGN_BLOCKS_6;
     if (longLBA)
@@ -3717,10 +3406,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Reassign_Blocks(const tDevice* M_NONNUL
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, dataSize, XFER_DATA_OUT,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Reassign Blocks", ret);
-    }
+    print_tDevice_Return_Enum(device, "Reassign Blocks", ret);
     return ret;
 }
 
@@ -3733,10 +3419,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Referrals(const tDevice* M_NONNU
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Report Referrals\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Report Referrals\n");
 
     cdb[CDB_OPERATION_CODE] = REPORT_REFERRALS;
     cdb[CDB_1]              = 0x13; // service action
@@ -3772,10 +3455,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Report_Referrals(const tDevice* M_NONNU
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Report Referrals", ret);
-    }
+    print_tDevice_Return_Enum(device, "Report Referrals", ret);
     return ret;
 }
 
@@ -3791,10 +3471,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Start_Stop_Unit(const tDevice* M_NONNUL
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Start Stop Unit\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Start Stop Unit\n");
 
     cdb[CDB_OPERATION_CODE] = START_STOP_UNIT_CMD;
     if (immediate)
@@ -3821,10 +3498,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Start_Stop_Unit(const tDevice* M_NONNUL
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 30);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Start Stop Unit", ret);
-    }
+    print_tDevice_Return_Enum(device, "Start Stop Unit", ret);
     return ret;
 }
 
@@ -3838,10 +3512,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_10(const tDevice* M_N
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Synchronize Cache 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Synchronize Cache 10\n");
 
     cdb[CDB_OPERATION_CODE] = SYNCHRONIZE_CACHE_10;
     if (immediate)
@@ -3861,10 +3532,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_10(const tDevice* M_N
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Synchronize Cache 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Synchronize Cache 10", ret);
     return ret;
 }
 
@@ -3878,10 +3546,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_16(const tDevice* M_N
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Synchronize Cache 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Synchronize Cache 16\n");
 
     cdb[CDB_OPERATION_CODE] = SYNCHRONIZE_CACHE_16_CMD;
     if (immediate)
@@ -3907,10 +3572,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_16(const tDevice* M_N
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Synchronize Cache 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Synchronize Cache 16", ret);
     return ret;
 }
 
@@ -3923,10 +3585,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Unmap(const tDevice* M_NONNULL device,
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Unmap\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Unmap\n");
 
     cdb[CDB_OPERATION_CODE] = UNMAP_CMD;
     if (anchor)
@@ -3955,10 +3614,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Unmap(const tDevice* M_NONNULL device,
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Unmap", ret);
-    }
+    print_tDevice_Return_Enum(device, "Unmap", ret);
     return ret;
 }
 
@@ -3975,10 +3631,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_10(const tDevice* M_NONNULL devi
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending Verify 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending Verify 10\n");
 
     cdb[CDB_OPERATION_CODE] = VERIFY10;
     cdb[CDB_1] |= C_CAST(uint8_t, (vrprotect & UINT8_C(0x07)) << 5);
@@ -4012,10 +3665,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_10(const tDevice* M_NONNULL devi
                             XFER_DATA_OUT, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Verify 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Verify 10", ret);
     return ret;
 }
 
@@ -4032,10 +3682,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_12(const tDevice* M_NONNULL devi
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending Verify 12\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending Verify 12\n");
 
     cdb[CDB_OPERATION_CODE] = VERIFY12;
     cdb[CDB_1] |= C_CAST(uint8_t, (vrprotect & UINT8_C(0x07)) << 5);
@@ -4071,10 +3718,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_12(const tDevice* M_NONNULL devi
                             XFER_DATA_OUT, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Verify 12", ret);
-    }
+    print_tDevice_Return_Enum(device, "Verify 12", ret);
     return ret;
 }
 
@@ -4091,10 +3735,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_16(const tDevice* M_NONNULL devi
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending Verify 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending Verify 16\n");
 
     cdb[CDB_OPERATION_CODE] = VERIFY16;
     cdb[CDB_1] |= C_CAST(uint8_t, (vrprotect & UINT8_C(0x07)) << 5);
@@ -4134,10 +3775,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_16(const tDevice* M_NONNULL devi
                             XFER_DATA_OUT, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Verify 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Verify 16", ret);
     return ret;
 }
 
@@ -4157,10 +3795,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_32(const tDevice* M_NONNULL devi
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending Verify 32\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending Verify 32\n");
 
     set_Typical_SCSI_32_CDB_Fields(cdb, VERIFY32, 0x000A, logicalBlockAddress, verificationLength,
                                    set_Control_Field(false, false, false));
@@ -4190,10 +3825,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Verify_32(const tDevice* M_NONNULL devi
                             XFER_DATA_OUT, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Verify 32", ret);
-    }
+    print_tDevice_Return_Enum(device, "Verify 32", ret);
     return ret;
 }
 
@@ -4213,10 +3845,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_6(const tDevice* M_NONNULL device
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Write 6\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Write 6\n");
 
     set_Typical_SCSI_6B_CDB_Fields(cdb, WRITE6, logicalBlockAddress, transferLengthBlocks,
                                    set_Control_Field(false, false, false));
@@ -4225,10 +3854,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_6(const tDevice* M_NONNULL device
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes,
                         XFER_DATA_OUT, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write 6", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write 6", ret);
     return ret;
 }
 
@@ -4245,10 +3871,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_10(const tDevice* M_NONNULL devic
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Write 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Write 10\n");
 
     set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE10, NO_SERVICE_ACTION, logicalBlockAddress, transferLengthBlocks,
                                     set_Control_Field(false, false, false));
@@ -4277,10 +3900,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_10(const tDevice* M_NONNULL devic
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write 10", ret);
     return ret;
 }
 
@@ -4297,10 +3917,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_12(const tDevice* M_NONNULL devic
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Write 12\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Write 12\n");
 
     set_Typical_SCSI_12B_CDB_Fields(cdb, WRITE12, NO_SERVICE_ACTION, logicalBlockAddress, transferLengthBlocks,
                                     set_Control_Field(false, false, false));
@@ -4329,10 +3946,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_12(const tDevice* M_NONNULL devic
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write 12", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write 12", ret);
     return ret;
 }
 
@@ -4349,10 +3963,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_16(const tDevice* M_NONNULL devic
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Write 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Write 16\n");
 
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE16, NO_SERVICE_ACTION, logicalBlockAddress,
                                               transferLengthBlocks, set_Control_Field(false, false, false));
@@ -4381,10 +3992,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_16(const tDevice* M_NONNULL devic
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write 16", ret);
     return ret;
 }
 
@@ -4404,10 +4012,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_32(const tDevice* M_NONNULL devic
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending Write 32\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending Write 32\n");
 
     set_Typical_SCSI_32_CDB_Fields(cdb, WRITE32, 0x000B, logicalBlockAddress, transferLengthBlocks,
                                    set_Control_Field(false, false, false));
@@ -4437,10 +4042,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_32(const tDevice* M_NONNULL devic
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write 32", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write 32", ret);
     return ret;
 }
 
@@ -4457,10 +4059,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_10(const tDevice* M_NO
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Write and Verify 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Write and Verify 10\n");
 
     set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE_AND_VERIFY_10, NO_SERVICE_ACTION, logicalBlockAddress,
                                     transferLengthBlocks, set_Control_Field(false, false, false));
@@ -4486,10 +4085,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_10(const tDevice* M_NO
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write and Verify 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write and Verify 10", ret);
     return ret;
 }
 
@@ -4506,10 +4102,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_12(const tDevice* M_NO
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Write and Verify 12\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Write and Verify 12\n");
 
     set_Typical_SCSI_12B_CDB_Fields(cdb, WRITE_AND_VERIFY_12, NO_SERVICE_ACTION, logicalBlockAddress,
                                     transferLengthBlocks, set_Control_Field(false, false, false));
@@ -4535,10 +4128,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_12(const tDevice* M_NO
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write and Verify 12", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write and Verify 12", ret);
     return ret;
 }
 
@@ -4555,10 +4145,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_16(const tDevice* M_NO
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Write and Verify 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Write and Verify 16\n");
 
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE_AND_VERIFY_16, NO_SERVICE_ACTION, logicalBlockAddress,
                                               transferLengthBlocks, set_Control_Field(false, false, false));
@@ -4584,10 +4171,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_16(const tDevice* M_NO
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write and Verify 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write and Verify 16", ret);
     return ret;
 }
 
@@ -4607,10 +4191,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_32(const tDevice* M_NO
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_32);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending Write and Verify 32\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending Write and Verify 32\n");
 
     set_Typical_SCSI_32_CDB_Fields(cdb, WRITE_AND_VERIFY_32, 0x000C, logicalBlockAddress, transferLengthBlocks,
                                    set_Control_Field(false, false, false));
@@ -4637,10 +4218,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_And_Verify_32(const tDevice* M_NO
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write and Verify 32", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write and Verify 32", ret);
     return ret;
 }
 
@@ -4655,10 +4233,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Long_10(const tDevice* M_NONNULL 
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_10);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Write Long 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Write Long 10\n");
 
     set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE_LONG_10_CMD, NO_SERVICE_ACTION, logicalBlockAddress, byteTransferLength,
                                     set_Control_Field(false, false, false));
@@ -4690,10 +4265,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Long_10(const tDevice* M_NONNULL 
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Long 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Long 10", ret);
     return ret;
 }
 
@@ -4708,10 +4280,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Long_16(const tDevice* M_NONNULL 
     eReturnValues ret = FAILURE;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Write Long 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Write Long 16\n");
 
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE_LONG_16_CMD, 0x11, logicalBlockAddress, byteTransferLength,
                                               set_Control_Field(false, false, false));
@@ -4743,10 +4312,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Long_16(const tDevice* M_NONNULL 
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Long 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Long 16", ret);
     return ret;
 }
 
@@ -4778,10 +4344,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_10(const tDevice* M_NONNULL 
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Write Same 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Write Same 10\n");
 
     set_Typical_SCSI_10B_CDB_Fields(cdb, WRITE_SAME_10_CMD, NO_SERVICE_ACTION, logicalBlockAddress,
                                     numberOfLogicalBlocks, set_Control_Field(false, false, false));
@@ -4800,10 +4363,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_10(const tDevice* M_NONNULL 
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, transferLengthBytes,
                         XFER_DATA_OUT, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         timeout);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Same 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Same 10", ret);
     return ret;
 }
 
@@ -4836,10 +4396,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_16(const tDevice* M_NONNULL 
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Write Same 16\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Write Same 16\n");
 
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, WRITE_SAME_16_CMD, NO_SERVICE_ACTION, logicalBlockAddress,
                                               numberOfLogicalBlocks, set_Control_Field(false, false, false));
@@ -4872,10 +4429,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_16(const tDevice* M_NONNULL 
                             XFER_DATA_OUT, M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData),
                             SPC3_SENSE_LEN, timeout);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Same 16", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Same 16", ret);
     return ret;
 }
 
@@ -4911,10 +4465,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_32(const tDevice* M_NONNULL 
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Write Same 32\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Write Same 32\n");
 
     set_Typical_SCSI_32_CDB_Fields(cdb, WRITE_SAME_32_CMD, 0x000D, logicalBlockAddress, numberOfLogicalBlocks,
                                    set_Control_Field(false, false, false));
@@ -4948,10 +4499,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_32(const tDevice* M_NONNULL 
         ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, timeout);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Same 32", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Same 32", ret);
     return ret;
 }
 
@@ -4992,10 +4540,8 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_32(const tDevice* M_NONNULL 
 //        return BAD_PARAMETER;
 //    }
 //
-//    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-//    {
-//        print_str("Sending SCSI XD Write Read 10\n");
-//    }
+//    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES,
+//                                "Sending SCSI XD Write Read 10\n");
 //
 //    cdb[CDB_OPERATION_CODE] = XDWRITEREAD_10;
 //    cdb[CDB_1] |= C_CAST(uint8_t, (wrprotect & UINT8_C(0x07)) << 5);
@@ -5086,10 +4632,8 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Write_Same_32(const tDevice* M_NONNULL 
 //        return BAD_PARAMETER;
 //    }
 //
-//    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-//    {
-//        print_str("Sending SCSI XD Write Read 32\n");
-//    }
+//    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES,
+//                                "Sending SCSI XD Write Read 32\n");
 //
 //    cdb[CDB_OPERATION_CODE] = XDWRITEREAD_32;
 //    cdb[CDB32_CONTROL] = set_Control_Field(false, false, false);
@@ -5182,10 +4726,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_xp_Write_10(const tDevice* M_NONNULL de
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI XP Write 10\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI XP Write 10\n");
 
     set_Typical_SCSI_10B_CDB_Fields(cdb, XPWRITE_10, NO_SERVICE_ACTION, logicalBlockAddress, transferLength,
                                     set_Control_Field(false, false, false));
@@ -5209,10 +4750,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_xp_Write_10(const tDevice* M_NONNULL de
                         transferLength * get_Device_BlockSize(device), XFER_DATA_OUT,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write XD Write 10", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write XD Write 10", ret);
     return ret;
 }
 
@@ -5233,10 +4771,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_xp_Write_32(const tDevice* M_NONNULL de
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI XP Write 32\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI XP Write 32\n");
 
     set_Typical_SCSI_32_CDB_Fields(cdb, XPWRITE_32, 0x0006, logicalBlockAddress, transferLength,
                                    set_Control_Field(false, false, false));
@@ -5261,10 +4796,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_xp_Write_32(const tDevice* M_NONNULL de
                         transferLength * get_Device_BlockSize(device), XFER_DATA_OUT,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("XP Write 32", ret);
-    }
+    print_tDevice_Return_Enum(device, "XP Write 32", ret);
     return ret;
 }
 
@@ -5321,18 +4853,12 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_Out_Std_Format_CDB(cons
     }
     cdb[CDB16_CONTROL] = set_Control_Field(false, false, false);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Zone Management Out\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Zone Management Out\n");
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Zone Management Out", ret);
-    }
+    print_tDevice_Return_Enum(device, "Zone Management Out", ret);
     return ret;
 }
 
@@ -5476,10 +5002,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_In_Report(const tDevice
     }
     cdb[CDB16_CONTROL] = set_Control_Field(false, false, false);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Zone Management In\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Zone Management In\n");
     if (allocationLength > 0)
     {
         explicit_zeroes(ptrData, allocationLength);
@@ -5488,10 +5011,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_In_Report(const tDevice
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Zone Management In", ret);
-    }
+    print_tDevice_Return_Enum(device, "Zone Management In", ret);
     return ret;
 }
 
@@ -5550,10 +5070,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_In_ZD(const tDevice*   
     cdb[CDB_14]        = otherZoneDomainID;
     cdb[CDB16_CONTROL] = set_Control_Field(false, false, false);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Zone Management In\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Zone Management In\n");
     if (allocationLength > 0)
     {
         explicit_zeroes(ptrData, allocationLength);
@@ -5562,10 +5079,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Zone_Management_In_ZD(const tDevice*   
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Zone Management In", ret);
-    }
+    print_tDevice_Return_Enum(device, "Zone Management In", ret);
     return ret;
 }
 
@@ -5657,10 +5171,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Physical_Element_Status(const tDevi
                             (reportType & 0x0F)); // filter is 2 bits, report type is 4 bits. All others are reserved;
     cdb[CDB16_CONTROL] = set_Control_Field(false, false, false);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Get Physical Element Status\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Get Physical Element Status\n");
 
     // send the command
     if (allocationLength == 0)
@@ -5674,10 +5185,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Get_Physical_Element_Status(const tDevi
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), ptrData, allocationLength, dataDir,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Get Physical Element Status", ret);
-    }
+    print_tDevice_Return_Enum(device, "Get Physical Element Status", ret);
     return ret;
 }
 
@@ -5702,17 +5210,11 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_And_Truncate(const tDevice* M_NO
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, 0x9E, 0x18, requestedCapacity, elementIdentifier,
                                               set_Control_Field(false, false, false));
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Remove And Truncate\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Remove And Truncate\n");
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, timeout);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Remove And Truncate", ret);
-    }
+    print_tDevice_Return_Enum(device, "Remove And Truncate", ret);
     return ret;
 }
 
@@ -5736,17 +5238,11 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Remove_Element_And_Modify_Zones(const t
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, 0x9E, 0x1A, RESERVED, elementIdentifier,
                                               set_Control_Field(false, false, false));
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Remove Element And Modify Zones\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Remove Element And Modify Zones\n");
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, timeout);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Remove Element And Modify Zones", ret);
-    }
+    print_tDevice_Return_Enum(device, "Remove Element And Modify Zones", ret);
     return ret;
 }
 
@@ -5769,17 +5265,11 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Restore_Elements_And_Rebuild(const tDev
     set_Typical_SCSI_16B_CDB_Fields_64Bit_LBA(cdb, 0x9E, 0x19, RESERVED, RESERVED,
                                               set_Control_Field(false, false, false));
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Restore Elements and Rebuild\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Restore Elements and Rebuild\n");
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, timeout);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Restore Elements and Rebuild", ret);
-    }
+    print_tDevice_Return_Enum(device, "Restore Elements and Rebuild", ret);
     return ret;
 }
 
@@ -5804,11 +5294,9 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_In(const tDevice* M_
     cdb[CDB_8]         = M_Byte0(allocationLength);
     cdb[CDB10_CONTROL] = set_Control_Field(false, false, false);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("Sending SCSI Persistent Reserve In - %" PRIu8 "\n",
-               C_CAST(uint8_t, get_bit_range_uint8(serviceAction, 4, 0)));
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                          "Sending SCSI Persistent Reserve In - %" PRIu8 "\n",
+                                          C_CAST(uint8_t, get_bit_range_uint8(serviceAction, 4, 0)));
     // send the command
     if (ptrData && allocationLength)
     {
@@ -5823,10 +5311,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_In(const tDevice* M_
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Persistent Reserve In", ret);
-    }
+    print_tDevice_Return_Enum(device, "Persistent Reserve In", ret);
     return ret;
 }
 
@@ -5854,11 +5339,9 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_Out(const tDevice* M
     cdb[CDB_8]         = M_Byte0(parameterListLength);
     cdb[CDB10_CONTROL] = set_Control_Field(false, false, false);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("Sending SCSI Persistent Reserve Out - %" PRIu8 "\n",
-               C_CAST(uint8_t, get_bit_range_uint8(serviceAction, 4, 0)));
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                          "Sending SCSI Persistent Reserve Out - %" PRIu8 "\n",
+                                          C_CAST(uint8_t, get_bit_range_uint8(serviceAction, 4, 0)));
     // send the command
     if (ptrData && parameterListLength)
     {
@@ -5872,10 +5355,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Persistent_Reserve_Out(const tDevice* M
                             M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                             DEFAULT_COMMAND_TIMEOUT);
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Persistent Reserve Out", ret);
-    }
+    print_tDevice_Return_Enum(device, "Persistent Reserve Out", ret);
     return ret;
 }
 
@@ -5891,17 +5371,11 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Rezero_Unit(const tDevice
     cdb[CDB_4]        = RESERVED;
     cdb[CDB6_CONTROL] = set_Control_Field(false, false, false);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending SCSI Rezero Unit\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending SCSI Rezero Unit\n");
     // send the command
     ret = scsi_Send_Cdb(device, &cdb[CDB_OPERATION_CODE], SIZE_OF_STACK_ARRAY(cdb), M_NULLPTR, 0, XFER_NO_DATA,
                         M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
                         DEFAULT_COMMAND_TIMEOUT);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Rezero Unit", ret);
-    }
+    print_tDevice_Return_Enum(device, "Rezero Unit", ret);
     return ret;
 }

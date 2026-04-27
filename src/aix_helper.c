@@ -910,7 +910,7 @@ static void print_ODM_Error(int odmError)
     }
 }
 
-static void print_CuDv_Struct(struct CuDv* cudv)
+static void print_CuDv_Struct(const tDevice* M_NONNULL device, struct CuDv* cudv)
 {
     // making copies to ensure M_NULLPTR termination -TJE
     DECLARE_ZERO_INIT_ARRAY(char, cudvName, 17);
@@ -925,17 +925,17 @@ static void print_CuDv_Struct(struct CuDv* cudv)
     snprintf_err_handle(cudvparent, 17, "%s", cudv->parent);
     snprintf_err_handle(cudvconnwhere, 17, "%s", cudv->connwhere);
     snprintf_err_handle(cudvPdDvLnLvalue, 49, "%s", cudv->PdDvLn_Lvalue);
-    print_str("CuDv:\n");
-    printf("\tid: %ld\n", cudv->_id);
-    printf("\treserved: %ld\n", cudv->_reserved);
-    printf("\tscratch: %ld\n", cudv->_scratch);
-    printf("\tname: %s\n", cudvName);
-    printf("\tstatus: %" PRId16 "\n", cudv->status);
-    printf("\tchgstatus: %" PRId16 "\n", cudv->chgstatus);
-    printf("\tddins: %s\n", cudvddins);
-    printf("\tlocation: %s\n", cudvlocation);
-    printf("\tparent: %s\n", cudvparent);
-    printf("\tconnwhere: %s\n", cudvconnwhere);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "CuDv:\n");
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tid: %ld\n", cudv->_id);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\treserved: %ld\n", cudv->_reserved);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tscratch: %ld\n", cudv->_scratch);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tname: %s\n", cudvName);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tstatus: %" PRId16 "\n", cudv->status);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tchgstatus: %" PRId16 "\n", cudv->chgstatus);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tddins: %s\n", cudvddins);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tlocation: %s\n", cudvlocation);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tparent: %s\n", cudvparent);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tconnwhere: %s\n", cudvconnwhere);
     if (cudv->PdDvLn)
     {
         DECLARE_ZERO_INIT_ARRAY(char, pddvtype, 17);
@@ -969,35 +969,35 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         snprintf_err_handle(pddvStart, 257, "%s", cudv->PdDvLn->Start);
         snprintf_err_handle(pddvStop, 257, "%s", cudv->PdDvLn->Stop);
         snprintf_err_handle(pddvuniquetype, 49, "%s", cudv->PdDvLn->uniquetype);
-        print_str("\tPdDv\n");
-        printf("\t\tid: %ld\n", cudv->PdDvLn->_id);
-        printf("\t\treserved: %ld\n", cudv->PdDvLn->_reserved);
-        printf("\t\tscratch: %ld\n", cudv->PdDvLn->_scratch);
-        printf("\t\ttype: %s\n", pddvtype);
-        printf("\t\tclass: %s\n", pddvclass);
-        printf("\t\tsubclass: %s\n", pddvsubclass);
-        printf("\t\tprefix: %s\n", pddvprefix);
-        printf("\t\tdevid: %s\n", pddvdevid);
-        printf("\t\tbase: %" PRId16 "\n", cudv->PdDvLn->base);
-        printf("\t\thas_vpd: %" PRId16 "\n", cudv->PdDvLn->has_vpd);
-        printf("\t\tdetectable: %" PRId16 "\n", cudv->PdDvLn->detectable);
-        printf("\t\tchgstatus: %" PRId16 "\n", cudv->PdDvLn->chgstatus);
-        printf("\t\tbus_ext: %" PRId16 "\n", cudv->PdDvLn->bus_ext);
-        printf("\t\tfru: %" PRId16 "\n", cudv->PdDvLn->fru);
-        printf("\t\tled: %" PRId16 "\n", cudv->PdDvLn->led);
-        printf("\t\tsetno: %" PRId16 "\n", cudv->PdDvLn->setno);
-        printf("\t\tmsgno: %" PRId16 "\n", cudv->PdDvLn->msgno);
-        printf("\t\tcatalog: %s\n", pddvcatalog);
-        printf("\t\tDvDr: %s\n", pddvDvDr);
-        printf("\t\tDefine: %s\n", pddvDefine);
-        printf("\t\tConfigure: %s\n", pddvConfigure);
-        printf("\t\tChange: %s\n", pddvChange);
-        printf("\t\tUnconfigure: %s\n", pddvUnconfigure);
-        printf("\t\tUndefine: %s\n", pddvUndefine);
-        printf("\t\tStart: %s\n", pddvStart);
-        printf("\t\tStop: %s\n", pddvStop);
-        printf("\t\tinventory_only: %" PRId16 "\n", cudv->PdDvLn->inventory_only);
-        printf("\t\tuniquetype: %s\n", pddvuniquetype);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tPdDv\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tid: %ld\n", cudv->PdDvLn->_id);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\treserved: %ld\n", cudv->PdDvLn->_reserved);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tscratch: %ld\n", cudv->PdDvLn->_scratch);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\ttype: %s\n", pddvtype);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tclass: %s\n", pddvclass);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tsubclass: %s\n", pddvsubclass);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tprefix: %s\n", pddvprefix);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tdevid: %s\n", pddvdevid);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tbase: %" PRId16 "\n", cudv->PdDvLn->base);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\thas_vpd: %" PRId16 "\n", cudv->PdDvLn->has_vpd);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tdetectable: %" PRId16 "\n", cudv->PdDvLn->detectable);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tchgstatus: %" PRId16 "\n", cudv->PdDvLn->chgstatus);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tbus_ext: %" PRId16 "\n", cudv->PdDvLn->bus_ext);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tfru: %" PRId16 "\n", cudv->PdDvLn->fru);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tled: %" PRId16 "\n", cudv->PdDvLn->led);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tsetno: %" PRId16 "\n", cudv->PdDvLn->setno);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tmsgno: %" PRId16 "\n", cudv->PdDvLn->msgno);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tcatalog: %s\n", pddvcatalog);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tDvDr: %s\n", pddvDvDr);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tDefine: %s\n", pddvDefine);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tConfigure: %s\n", pddvConfigure);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tChange: %s\n", pddvChange);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tUnconfigure: %s\n", pddvUnconfigure);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tUndefine: %s\n", pddvUndefine);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tStart: %s\n", pddvStart);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tStop: %s\n", pddvStop);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tinventory_only: %" PRId16 "\n", cudv->PdDvLn->inventory_only);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tuniquetype: %s\n", pddvuniquetype);
     }
     if (cudv->PdDvLn_info)
     {
@@ -1006,11 +1006,11 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         DECLARE_ZERO_INIT_ARRAY(char, listinfoCrit, MAX_ODMI_CRIT + 1);
         snprintf_err_handle(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname);
         snprintf_err_handle(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit);
-        print_str("\t\tlistinfo:\n");
-        printf("\t\t\tclassname: %s\n", listinfoClassname);
-        printf("\t\t\tcrit: %s\n", listinfoCrit);
-        printf("\t\t\tnum: %d\n", cudv->PdDvLn_info->num);
-        printf("\t\t\tnum: %d\n", cudv->PdDvLn_info->valid);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tlistinfo:\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\t\tclassname: %s\n", listinfoClassname);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\t\tcrit: %s\n", listinfoCrit);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\t\tnum: %d\n", cudv->PdDvLn_info->num);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\t\tnum: %d\n", cudv->PdDvLn_info->valid);
         // TODO: Print out this structure...this seems to get deeper and deeper that I'm stopping here for now - TJE
         //  if (cudv->PdDvLn_info->class)//note: In C++ this is named ____class
         //  {
@@ -1035,7 +1035,7 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         //      // };
         //  }
     }
-    printf("\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
 }
 
 M_PARAM_RW(1)
@@ -1058,10 +1058,7 @@ static int get_Adapter_IDs(const tDevice* M_NONNULL device, const char* M_NONNUL
         if (ptrcudv != M_NULLPTR)
         {
             // the parent should be available in ptrcudv now.
-            if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-            {
-                print_CuDv_Struct(ptrcudv);
-            }
+            print_CuDv_Struct(device, ptrcudv);
 
             // first check if PdDvLn = "adapter/pci... in it. If it does, then this is the result we are looking for
             if (strstr(ptrcudv->PdDvLn_Lvalue, "adapter/pci"))
@@ -1139,10 +1136,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
     eReturnValues ret            = SUCCESS;
     long          extensionFlags = 0L;
     bool          handleOpened   = false;
-    if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-    {
-        printf("\nAIX attempting to open device: %s\n", filename);
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\nAIX attempting to open device: %s\n", filename);
     if ((device->os_info.fd = openx(C_CAST(char*, filename), 0, 0, extensionFlags)) >= 0) // path, OFlag, Mode,
                                                                                           // Extension
     {
@@ -1166,10 +1160,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
         // able to open the device. Read the devinfo, then open controller and read its devinfo -TJE
         struct devinfo driveInfo;
         safe_memset(&driveInfo, sizeof(struct devinfo), 0, sizeof(struct devinfo));
-        if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-        {
-            print_str("Attempting device IOCINFO\n");
-        }
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "Attempting device IOCINFO\n");
         if (extensionFlags & SC_DIAGNOSTIC)
         {
             device->os_info.diagnosticModeFlagInUse = true;
@@ -1178,19 +1169,14 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
         {
             // Got the devinfo, now parse the data into something we can use for later
             // TODO: Filter out invalid device types we do not support.-TJE
-            if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-            {
-                print_devinfo_struct(&driveInfo);
-            }
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "struct devinfo:\n");
+            print_devinfo_struct(&driveInfo);
         }
         else
         {
             set_Device_Last_Error(device, errno);
-            if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-            {
-                print_str("Device IOCINFO Error: ");
-                print_Errno_To_Screen(device->os_info.last_error);
-            }
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Device IOCINFO Error: %d - ", device->os_info.last_error);
+            // Error mapping happens below based on the specific errno
             if (device->os_info.last_error == EACCES)
             {
                 ret = PERMISSION_DENIED;
@@ -1232,20 +1218,14 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
             if (ptrcudv != M_NULLPTR)
             {
                 // the parent should be available in ptrcudv now.
-                if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                {
-                    print_CuDv_Struct(ptrcudv);
-                }
+                print_CuDv_Struct(device, ptrcudv);
                 if (safe_strlen(ptrcudv->parent) > 0)
                 {
                     // open the controller handle and get the IOCINFO for it -TJE
                     DECLARE_ZERO_INIT_ARRAY(char, controllerHandle, OS_HANDLE_NAME_MAX_LENGTH);
                     snprintf_err_handle(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
 
-                    if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                    {
-                        printf("\nAIX attempting to open controller: %s\n", controllerHandle);
-                    }
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\nAIX attempting to open controller: %s\n", controllerHandle);
                     if ((device->os_info.ctrlfd = openx(controllerHandle, 0, 0, 0)))
                     {
                         // successfully opened the controller's handle
@@ -1254,11 +1234,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
                     }
                     else
                     {
-                        if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                        {
-                            printf("Unable to open controller handle: %s - ", ptrcudv->parent);
-                            print_Errno_To_Screen(errno);
-                        }
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "Unable to open controller handle: %s - errno: %d\n", ptrcudv->parent, errno);
                     }
                     // based off the name of the controller, set up the interface info.
                     // NOLINTBEGIN(bugprone-branch-clone)
@@ -1385,20 +1361,13 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
                 }
                 else
                 {
-                    if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                    {
-                        print_str("Warning: Parent is empty!\n");
-                    }
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "Warning: Parent is empty!\n");
                 }
             }
             else
             {
                 // print error???
-                if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                {
-                    printf("Unable to get parent for %s\n", filename);
-                    print_ODM_Error(odmerrno);
-                }
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "Unable to get parent for %s (ODM error: %d)\n", filename, odmerrno);
             }
         }
         // done with using odm, so terminate it
@@ -1781,13 +1750,13 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         if (ret < 0)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
-//             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+//             errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+//             if (error != 0)
 //             {
-//                 if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
-//                 {
-//                     print_str("Error: ");
-//                     print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
-//                 }
+//                 char* errormsg = get_strerror(error);
+//                 print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+//                                                       "Error: %s\n", errormsg);
+//                 safe_free(errormsg);
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
 //                 ioctlCode == DKIOCMD ? SC_ADAP_SC_ERR : SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
 //                 print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
@@ -1895,13 +1864,13 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         if (ret < 0)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
-//             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+//             errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+//             if (error != 0)
 //             {
-//                 if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
-//                 {
-//                     print_str("Error: ");
-//                     print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
-//                 }
+//                 char* errormsg = get_strerror(error);
+//                 print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+//                                                       "Error: %s\n", errormsg);
+//                 safe_free(errormsg);
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
 //                 SC_ADAP_SAM_ERR, aixIoCmd.adapter_status); print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
 //             }
@@ -1980,13 +1949,13 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         if (ret < 0)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
-//             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+//             errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+//             if (error != 0)
 //             {
-//                 if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
-//                 {
-//                     print_str("Error: ");
-//                     print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
-//                 }
+//                 char* errormsg = get_strerror(error);
+//                 print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+//                                                       "Error: %s\n", errormsg);
+//                 safe_free(errormsg);
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
 //                 ioctlCode == DKIOCMD ? SC_ADAP_SC_ERR : SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
 //                 print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
@@ -2120,19 +2089,21 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            // https://github.com/RobinTMiller/dt/blob/master/scsilib-aix.c
-            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
             {
-                print_str("Error: ");
-                print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                safe_free(&errormsg);
             }
-            print_Passthrough_Bus_And_Adapter_Status(aixPassthrough.status_validity, aixPassthrough.scsi_bus_status,
-                                                     aixPassthrough.adap_status_type, aixPassthrough.adapter_status);
-            if (aixPassthrough.adap_set_flags & SC_AUTOSENSE_DATA_VALID)
-            {
-                print_str("Adapter auto-sense data is valid\n");
+        }
+        print_Passthrough_Bus_And_Adapter_Status(aixPassthrough.status_validity, aixPassthrough.scsi_bus_status,
+                                                 aixPassthrough.adap_status_type, aixPassthrough.adapter_status);
+        if (aixPassthrough.adap_set_flags & SC_AUTOSENSE_DATA_VALID)
+        {
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Adapter auto-sense data is valid\n");
             }
             if (aixPassthrough.adap_set_flags & SC_RET_ID)
             {
@@ -2306,12 +2277,14 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
             {
-                print_str("Error: ");
-                print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                safe_free(&errormsg);
             }
         }
     }
@@ -2419,16 +2392,18 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
             {
-                print_str("Error: ");
-                print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                safe_free(&errormsg);
             }
-            printf("IDE ATAPI Passthru Status: %02" PRIX8 "h\n", idePassthrough.ata_status);
-            printf("IDE ATAPI Passthru Error:  %02" PRIX8 "h\n", idePassthrough.ata_error);
         }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "IDE ATAPI Passthru Status: %02" PRIX8 "h\n", idePassthrough.ata_status);
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "IDE ATAPI Passthru Error:  %02" PRIX8 "h\n", idePassthrough.ata_error);
     }
 
 #if !defined IDE_PASSTHRU_VERSION_01
@@ -2642,12 +2617,14 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
             {
-                print_str("Error: ");
-                print_Errno_To_Screen(get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                safe_free(&errormsg);
             }
         }
         // adapter_set_flags will have some output information upon completion to detect errors-TJE
@@ -2753,10 +2730,8 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
         }
         else
         {
-            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-            {
-                print_str("No Raid PassThrough IO Routine present for this device\n");
-            }
+            print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                        "No Raid PassThrough IO Routine present for this device\n");
         }
         break;
     default:
@@ -2766,10 +2741,9 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
     if (scsiIoCtx->device->delay_io)
     {
         delay_Milliseconds(scsiIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES,
+                                              "Delaying between commands %d milliseconds to reduce IO impact",
+                                              scsiIoCtx->device->delay_io);
     }
     return ret;
 }
@@ -3049,6 +3023,56 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
     }
 }
 
+// Helper function to handle NVMe passthrough error evaluation and printing
+// Returns appropriate eReturnValues based on error code and passthrough response status
+static eReturnValues handle_NVMe_Passthrough_Error(const tDevice* M_NONNULL device, int error,
+                                                    struct nvme_passthru* M_NONNULL nvmePassthrough)
+{
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
+
+    if (error != 0)
+    {
+        char* errormsg = get_strerror(error);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                              "NVMe Passthrough Error: %s\n",
+                                              errormsg);
+        safe_free(errormsg);
+
+        if (error == EINVAL)
+        {
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                        "Invalid field in nvme passthrough struct:\n");
+            // response status has a code set to help indicate what was not allowed
+            switch (nvmePassthrough->resp.status)
+            {
+            case NVME_PASSTHRU_INVAL_DATA_LENGTH:
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                            "\tInvalid data length\n");
+                ret = OS_PASSTHROUGH_FAILURE;
+                break;
+            case NVME_PASSTHRU_BLOCKED_OP_CODE:
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                            "\tOperation code blocked\n");
+                ret = OS_COMMAND_BLOCKED;
+                break;
+            case NVME_PASSTHRU_CMD_HAS_NO_DATA:
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                            "\tCommand has no data\n");
+                ret = OS_PASSTHROUGH_FAILURE;
+                break;
+            default:
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                      "\tUnknown invalid field: %04" PRIX16 "\n",
+                                                      nvmePassthrough->resp.status);
+                ret = OS_PASSTHROUGH_FAILURE;
+                break;
+            }
+        }
+    }
+
+    return ret;
+}
+
 M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -3146,50 +3170,8 @@ M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
     set_Device_Last_Error(nvmeIoCtx->device, errno);
     if (ioctlResult < 0)
     {
-        ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
-        {
-            if (nvmeIoCtx->device->os_info.last_error != 0)
-            {
-                print_str("Error: ");
-                print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
-            }
-            if (nvmeIoCtx->device->os_info.last_error == EINVAL)
-            {
-                printf("Invalid field in nvme passthrough struct:\n")
-                    // response status has a code set to help indicate what was not allowed
-                    switch (nvmePassthrough->resp.status)
-                {
-                case NVME_PASSTHRU_INVAL_DATA_LENGTH:
-                    print_str("\tInvalid data length\n");
-                    break;
-                case NVME_PASSTHRU_BLOCKED_OP_CODE:
-                    print_str("\tOperation code blocked\n");
-                    break;
-                case NVME_PASSTHRU_CMD_HAS_NO_DATA:
-                    print_str("\tCommand has no data\n");
-                    break;
-                default:
-                    printf("\tUnknown invalid field: %04" PRIX16 "\n", nvmePassthrough->resp.status);
-                    break;
-                }
-            }
-        }
-        if (nvmeIoCtx->device->os_info.last_error == EINVAL)
-        {
-            // response status has a code set to help indicate what was not allowed
-            switch (nvmePassthrough->resp.status)
-            {
-            case NVME_PASSTHRU_BLOCKED_OP_CODE:
-                ret = OS_COMMAND_BLOCKED;
-                break;
-            case NVME_PASSTHRU_INVAL_DATA_LENGTH:
-            case NVME_PASSTHRU_CMD_HAS_NO_DATA:
-            default:
-                ret = OS_PASSTHROUGH_FAILURE;
-                break;
-            }
-        }
+        errno_t error = M_STATIC_CAST(errno_t, nvmeIoCtx->device->os_info.last_error);
+        ret = handle_NVMe_Passthrough_Error(nvmeIoCtx->device, error, &nvmePassthrough);
     }
     else // ret == 0. NOTE: Positive return values will currently fall here too but those are not documented as far as I
          // can see - TJE
@@ -3207,10 +3189,9 @@ M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
     if (nvmeIoCtx->device->delay_io)
     {
         delay_Milliseconds(nvmeIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
-        }
+        print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES,
+                                              "Delaying between commands %d milliseconds to reduce IO impact",
+                                              nvmeIoCtx->device->delay_io);
     }
 
     return ret;

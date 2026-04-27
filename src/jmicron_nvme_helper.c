@@ -407,10 +407,7 @@ static eReturnValues jm_NVMe_MCU_Reset(const tDevice* M_NONNULL device)
 M_PARAM_RO(1) eReturnValues jm_nvme_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        print_str("Sending JMicron NVMe Reset\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending JMicron NVMe Reset\n");
     if (SUCCESS == jm_NVMe_Normal_Shutdown(device))
     {
         if (SUCCESS == jm_NVMe_MCU_Reset(device))
@@ -422,20 +419,14 @@ M_PARAM_RO(1) eReturnValues jm_nvme_Reset(const tDevice* M_NONNULL device)
             ret = FAILURE;
         }
     }
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        print_Return_Enum("Jmicron NVMe Reset", ret);
-    }
+    print_tDevice_Return_Enum(device, "Jmicron NVMe Reset", ret);
     return ret;
 }
 
 M_PARAM_RO(1) eReturnValues jm_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        print_str("Sending JMicron NVMe Subsystem Reset\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending JMicron NVMe Subsystem Reset\n");
     if (SUCCESS == jm_NVMe_Normal_Shutdown(device))
     {
         if (SUCCESS == jm_NVMe_MCU_Reset(device))
@@ -447,9 +438,6 @@ M_PARAM_RO(1) eReturnValues jm_nvme_Subsystem_Reset(const tDevice* M_NONNULL dev
             ret = FAILURE;
         }
     }
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        print_Return_Enum("JMicron NVMe Subsystem Reset", ret);
-    }
+    print_tDevice_Return_Enum(device, "JMicron NVMe Subsystem Reset", ret);
     return ret;
 }

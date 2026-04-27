@@ -2022,12 +2022,10 @@ static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
 OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL device)
 {
     eReturnValues ret = UNKNOWN;
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "-->%s-->\n", __func__);
     // Both pointers pointing to the same data.
     uint8_t*  identifyData = M_REINTERPRET_CAST(uint8_t*, &device->drive_info.IdentifyData.ata.Word000);
     uint16_t* ident_word   = &device->drive_info.IdentifyData.ata.Word000;
-#ifdef _DEBUG
-    printf("%s -->\n", __FUNCTION__);
-#endif
 
     ret = initial_Identify_Device(device);
     if (ret == SUCCESS)
@@ -2537,11 +2535,10 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
         {
             // This very likely is emulated since a valid ATA device will have fillMaxLba set to SOMETHING even in
             // really old CHS drives since the LBA is simulated in software.
-            if (device->deviceVerbosity <= VERBOSITY_DEFAULT)
-            {
-                print_str("WARNING: possible RTL 9210 detected and missed with all other checks.\n");
-                print_str("         this may cause adverse behavior and require --forceSCSI\n");
-            }
+            print_tDevice_Verbose_String(device, VERBOSITY_DEFAULT,
+                                         "WARNING: possible RTL 9210 detected and missed with all other checks.\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_DEFAULT,
+                                         "         this may cause adverse behavior and require --forceSCSI\n");
             device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe = true;
         }
 
@@ -2565,14 +2562,18 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
     // This may not be required...need to do some testing to see if reading the logs below wakes a drive up - TJE
     if (M_Word0(device->dFlags) == DO_NOT_WAKE_DRIVE || M_Word0(device->dFlags) == FAST_SCAN)
     {
-#ifdef _DEBUG
-        printf("Quiting device discovery early for %s per DO_NOT_WAKE_DRIVE\n", device->drive_info.serialNumber);
-        printf("Drive type: %d\n", get_Device_DriveType(device));
-        printf("Interface type: %d\n", get_Device_InterfaceType(device));
-        printf("Media type: %d\n", get_Device_MediaType(device));
-        printf("SN: %s\n", device->drive_info.serialNumber);
-        printf("%s <--\n", __FUNCTION__);
-#endif
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "Quiting device discovery early for %s per DO_NOT_WAKE_DRIVE\n",
+                                               device->drive_info.serialNumber);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Drive type: %d\n",
+                                               get_Device_DriveType(device));
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Interface type: %d\n",
+                                               get_Device_InterfaceType(device));
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Media type: %d\n",
+                                               get_Device_MediaType(device));
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "SN: %s\n",
+                                               device->drive_info.serialNumber);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "<--%s\n", __func__);
         return ret;
     }
 
@@ -2856,13 +2857,16 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
             }
         }
     }
-#ifdef _DEBUG
-    printf("Drive type: %d\n", get_Device_DriveType(device));
-    printf("Interface type: %d\n", get_Device_InterfaceType(device));
-    printf("Media type: %d\n", get_Device_MediaType(device));
-    printf("SN: %s\n", device->drive_info.serialNumber);
-    printf("%s <--\n", __FUNCTION__);
-#endif
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Drive type: %d\n",
+                                           get_Device_DriveType(device));
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Interface type: %d\n",
+                                           get_Device_InterfaceType(device));
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Media type: %d\n",
+                                           get_Device_MediaType(device));
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "SN: %s\n",
+                                           device->drive_info.serialNumber);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "%s <--\n", __func__);
+    flush_tDevice_Verbose_Stream(device);
     return ret;
 }
 
@@ -2879,6 +2883,7 @@ uint16_t ata_Is_One_Extended_Power_Conditions_Feature_Supported(uint16_t* M_NONN
     return (pIdent->Word120 & BIT7);
 }
 
+M_DEPRECATED_REASON("Use print_tDevice_Verbose_ATA_Command_Information instead")
 OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Information(
     const ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
@@ -2991,6 +2996,142 @@ OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Information(
     printf("\t[Command] = %02" PRIX8 "h\n", ataCommandOptions->tfr.CommandStatus);
     // printf("\t[Device Control] = %02"PRIX8"h\n", ataCommandOptions->tfr.DeviceControl);
     print_str("\n");
+}
+
+// Device-aware version that supports verbose output redirection
+OPENSEA_TRANSPORT_API void print_tDevice_Verbose_ATA_Command_Information(const tDevice* M_NONNULL device,
+                                                                         eVerbosityLevels         verboseLevel,
+                                                                         const ataPassthroughCommand* M_NONNULL
+                                                                             ataCommandOptions)
+{
+    print_tDevice_Verbose_String(device, verboseLevel, "Sending SAT ATA Pass-Through Command:\n");
+    // protocol
+    print_tDevice_Verbose_String(device, verboseLevel, "\tProtocol: ");
+    switch (ataCommandOptions->commadProtocol)
+    {
+    case ATA_PROTOCOL_PIO:
+        print_tDevice_Verbose_String(device, verboseLevel, "PIO");
+        break;
+    case ATA_PROTOCOL_DMA:
+        print_tDevice_Verbose_String(device, verboseLevel, "DMA");
+        break;
+    case ATA_PROTOCOL_NO_DATA:
+        print_tDevice_Verbose_String(device, verboseLevel, "NON-Data");
+        break;
+    case ATA_PROTOCOL_DEV_RESET:
+        print_tDevice_Verbose_String(device, verboseLevel, "Device Reset");
+        break;
+    case ATA_PROTOCOL_DEV_DIAG:
+        print_tDevice_Verbose_String(device, verboseLevel, "Device Diagnostic");
+        break;
+    case ATA_PROTOCOL_DMA_QUE:
+        print_tDevice_Verbose_String(device, verboseLevel, "DMA Queued");
+        break;
+    case ATA_PROTOCOL_PACKET:
+    case ATA_PROTOCOL_PACKET_DMA:
+        print_tDevice_Verbose_String(device, verboseLevel, "Packet");
+        break;
+    case ATA_PROTOCOL_DMA_FPDMA:
+        print_tDevice_Verbose_String(device, verboseLevel, "FPDMA");
+        break;
+    case ATA_PROTOCOL_SOFT_RESET:
+        print_tDevice_Verbose_String(device, verboseLevel, "Soft Reset");
+        break;
+    case ATA_PROTOCOL_HARD_RESET:
+        print_tDevice_Verbose_String(device, verboseLevel, "Hard Reset");
+        break;
+    case ATA_PROTOCOL_RET_INFO:
+        print_tDevice_Verbose_String(device, verboseLevel, "Return Response Information");
+        break;
+    case ATA_PROTOCOL_UDMA:
+        print_tDevice_Verbose_String(device, verboseLevel, "UDMA");
+        break;
+    default:
+        break;
+    }
+    print_tDevice_Verbose_String(device, verboseLevel, "\n");
+    print_tDevice_Verbose_String(device, verboseLevel, "\tData Direction: ");
+    // Data Direction:
+    switch (ataCommandOptions->commandDirection)
+    {
+    case XFER_NO_DATA:
+        print_tDevice_Verbose_String(device, verboseLevel, "No Data");
+        break;
+    case XFER_DATA_IN:
+        print_tDevice_Verbose_String(device, verboseLevel, "Data In");
+        break;
+    case XFER_DATA_OUT:
+        print_tDevice_Verbose_String(device, verboseLevel, "Data Out");
+        break;
+    default:
+        print_tDevice_Verbose_String(device, verboseLevel, "Unknown");
+        break;
+    }
+    print_tDevice_Verbose_String(device, verboseLevel, "\n");
+    // TFRs:
+    print_tDevice_Verbose_String(device, verboseLevel, "\tTask File Registers:\n");
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
+        ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[FeatureExt] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->tfr.Feature48);
+    }
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Feature] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->tfr.ErrorFeature);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
+        ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[CountExt] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->tfr.SectorCount48);
+    }
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Count] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->tfr.SectorCount);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
+        ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Lo Ext] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->tfr.LbaLow48);
+    }
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Lo] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->tfr.LbaLow);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
+        ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Mid Ext] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->tfr.LbaMid48);
+    }
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Mid] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->tfr.LbaMid);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
+        ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Hi Ext] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->tfr.LbaHi48);
+    }
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Hi] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->tfr.LbaHi);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+    {
+        // AUX and ICC registers
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[ICC] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->tfr.icc);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Aux (7:0)] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->tfr.aux1);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Aux (15:8)] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->tfr.aux2);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Aux (23:16)] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->tfr.aux3);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Aux (31:24)] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->tfr.aux4);
+    }
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[DeviceHead] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->tfr.DeviceHead);
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Command] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->tfr.CommandStatus);
+    // print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Device Control] = %02" PRIX8 "h\n",
+    // ataCommandOptions->tfr.DeviceControl);
+    print_tDevice_Verbose_String(device, verboseLevel, "\n");
+    flush_tDevice_Verbose_Stream(device);
 }
 
 // is this a read/write command that the rtfr output needs to know might report a bit specific to these commands
@@ -3181,6 +3322,7 @@ static bool is_Streaming_Command(const ataPassthroughCommand* ataCommandOptions)
 // TODO: Use supported ATA versions from identify (not just most recent, but anything with a bit set) to help better
 // identify some status and error outputs
 //       ex: bad block for ATA1, corr for up to ata 3 (or so), etc
+M_DEPRECATED_REASON("Use print_tDevice_Verbose_ATA_Command_Result_Information instead")
 OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Result_Information(const ataPassthroughCommand* M_NONNULL
                                                                                                  ataCommandOptions,
                                                                         const tDevice* M_NONNULL device)
@@ -3422,6 +3564,263 @@ OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Result_Information(const at
     }
 
     print_str("\n");
+}
+
+// Device-aware version that supports verbose output redirection
+OPENSEA_TRANSPORT_API void print_tDevice_Verbose_ATA_Command_Result_Information(const tDevice* M_NONNULL device,
+                                                                                eVerbosityLevels         verboseLevel,
+                                                                                const ataPassthroughCommand* M_NONNULL
+                                                                                    ataCommandOptions)
+{
+    print_tDevice_Verbose_String(device, verboseLevel, "Return Task File Registers:\n");
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Error] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->rtfr.error);
+    if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR) // assuming NOT a packet command
+    {
+        // print out error bit meanings
+        // bit7 means either bad block (really old - ATA-1) or interface CRC error
+        if (ataCommandOptions->rtfr.error & BIT7)
+        {
+            // CRC error will only be possible to detect with SATA or UDMA transfers
+            // NOTE: Since some translators only allow SAT set to DMA, need to make sure drive's mode is UDMA and
+            // protocol can be DMA. Not perfect and can be further improved
+            if (is_SATA(device) || (get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_UDMA &&
+                                    (ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA ||
+                                     ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA)))
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tInterface CRC error\n");
+            }
+            else if (is_User_Data_Access_Command(ataCommandOptions))
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tBad Block (?)\n");
+            }
+            else
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tUnknown Error bit 7\n");
+            }
+        }
+        // bit6 means either uncorrectable data or write protected (removable medium)
+        if (ataCommandOptions->rtfr.error & BIT5)
+        {
+            if (is_Removable_Media(device))
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tWrite Protected\n");
+            }
+            else
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tUncorrectable Data\n");
+            }
+        }
+        // bit5 means media change
+        if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_MEDIA_CHANGE) // atapi only
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "\t\tMedia Change\n");
+        }
+        // bit 4 means id not found
+        if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_ID_NOT_FOUND)
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "\t\tID Not Found\n");
+        }
+        // bit3 means media change request
+        if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_MEDIA_CHANGE_REQUEST) // atapi only
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "\t\tMedia Change\n");
+        }
+        // bit2 means abort
+        if (ataCommandOptions->rtfr.error & ATA_ERROR_BIT_ABORT)
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "\t\tAbort\n");
+        }
+        // Bit 1 can mean Track zero not found, end of media, no media
+        if (ataCommandOptions->rtfr.error & BIT1)
+        {
+            if (ataCommandOptions->tfr.CommandStatus == ATA_RECALIBRATE_CMD)
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tTrack 0 not found\n");
+            }
+            else if (ataCommandOptions->tfr.CommandStatus == ATA_NV_CACHE &&
+                     ataCommandOptions->tfr.ErrorFeature == NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET)
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tInsufficient LBA Range Entries Remaining\n");
+            }
+            else if (is_Removable_Media(device))
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tNo Media\n");
+            }
+            // atapi = end of media
+            else
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tUnknown Error Bit 1\n");
+            }
+        }
+        // bit 0 can mean various things depending on the command that was issued
+        if (ataCommandOptions->rtfr.error & BIT0)
+        {
+            // address mark not found or command completion time out (streaming)
+            // address mark not found basically matched ID not found being set...or when it should be set (LBA/CHS user
+            // data access commands, but not seek)
+            if (is_Streaming_Command(ataCommandOptions))
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tCommand Completion Time out (Streaming)\n");
+            }
+            // more checks for specific commands here
+            // nv cache commands
+            else if (ataCommandOptions->tfr.CommandStatus == ATA_NV_CACHE &&
+                     ataCommandOptions->tfr.ErrorFeature == NV_ADD_LBAS_TO_NV_CACHE_PINNED_SET)
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tInsufficient NV Cache Space\n");
+            }
+            else if (ataCommandOptions->tfr.CommandStatus == ATA_NV_CACHE &&
+                     ataCommandOptions->tfr.ErrorFeature == NV_REMOVE_LBAS_FROM_NV_CACHE_PINNED_SET)
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tAttempted Partial Range Removal\n");
+            }
+            else if (is_User_Data_Access_Command(ataCommandOptions) &&
+                     ataCommandOptions->tfr.CommandStatus != ATA_SEEK_CMD)
+            {
+                // if this is also set, for a user data access, possibly the old address mark not found bit
+                // not: does not apply to old seek commands
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tAddress Mark Not Found\n");
+            }
+            // TODO: atapi illegal length indicator and media error
+            else
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tUnknown Error Bit 0\n");
+            }
+        }
+    }
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
+        ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Count Ext] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->rtfr.secCntExt);
+    }
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Count] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->rtfr.secCnt);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
+        ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Lo Ext] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->rtfr.lbaLowExt);
+    }
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Lo] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->rtfr.lbaLow);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
+        ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Mid Ext] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->rtfr.lbaMidExt);
+    }
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Mid] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->rtfr.lbaMid);
+    if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE ||
+        ataCommandOptions->commandType == ATA_CMD_TYPE_COMPLETE_TASKFILE)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Hi Ext] = %02" PRIX8 "h\n",
+                                               ataCommandOptions->rtfr.lbaHiExt);
+    }
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[LBA Hi] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->rtfr.lbaHi);
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Device] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->rtfr.device);
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t[Status] = %02" PRIX8 "h\n",
+                                           ataCommandOptions->rtfr.status);
+    // Bit 7 is busy (unlikely to actually see this returned)
+    if (ataCommandOptions->commadProtocol != ATA_PROTOCOL_DMA_FPDMA &&
+        ataCommandOptions->commadProtocol != ATA_PROTOCOL_DMA_QUE &&
+        ataCommandOptions->rtfr.status & ATA_STATUS_BIT_BUSY)
+    {
+        print_tDevice_Verbose_String(device, verboseLevel, "\t\tBusy\n");
+    }
+    // Bit 6 is ready
+    if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_READY)
+    {
+        print_tDevice_Verbose_String(device, verboseLevel, "\t\tReady\n");
+    }
+    // bit5 is device fault, or stream error
+    // Stream error only for streaming feature commands and read/write continuos set to 1 in the command
+    if ((ataCommandOptions->tfr.CommandStatus == ATA_WRITE_STREAM_DMA_EXT ||
+         ataCommandOptions->tfr.CommandStatus == ATA_WRITE_STREAM_EXT ||
+         ataCommandOptions->tfr.CommandStatus == ATA_READ_STREAM_DMA_EXT ||
+         ataCommandOptions->tfr.CommandStatus == ATA_READ_STREAM_EXT) &&
+        ataCommandOptions->tfr.ErrorFeature & BIT6) // read or write continuous must be set!
+    {
+        print_tDevice_Verbose_String(device, verboseLevel, "\t\tStream Error\n");
+    }
+    else if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_DEVICE_FAULT)
+    {
+        print_tDevice_Verbose_String(device, verboseLevel, "\t\tDevice Fault\n");
+    }
+    // Bit 4 can be seek complete, service (dma queued), or deferred write error
+    if (ataCommandOptions->rtfr.status & BIT4)
+    {
+        if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA_QUE)
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "\t\tService\n");
+        }
+        else if (ataCommandOptions->tfr.CommandStatus == ATA_WRITE_STREAM_DMA_EXT ||
+                 ataCommandOptions->tfr.CommandStatus == ATA_WRITE_STREAM_EXT)
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "\t\tDeferred Write Error\n");
+        }
+        else
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "\t\tSeek Complete\n");
+        }
+    }
+    if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_DATA_REQUEST)
+    {
+        print_tDevice_Verbose_String(device, verboseLevel, "\t\tData Request\n");
+    }
+    // Bit 2 is either corrected data or alignment error.
+    //       corrected data only for read user data access
+    //       alignment only for writes
+    if (ataCommandOptions->rtfr.status & BIT2)
+    {
+        if (is_User_Data_Access_Command(ataCommandOptions))
+        {
+            // corr only for reads and alignment only for writes???
+            if (ataCommandOptions->commandDirection == XFER_DATA_IN)
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tCorrected Data\n");
+            }
+            else if (ataCommandOptions->commandDirection == XFER_DATA_OUT)
+            {
+                // todo: alignment error needs lps misalignment reporting to be supported and error reporting set to 01b
+                // or 10b and only on write commands
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tAlignment Error\n");
+            }
+            else
+            {
+                print_tDevice_Verbose_String(device, verboseLevel, "\t\tUnknown Status bit 2 (CORR or ALIGNMENT?)\n");
+            }
+        }
+        else
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "\t\tUnknown Status bit 2 (CORR or ALIGNMENT?)\n");
+        }
+    }
+    // Bit 1 is either index (flips with rev) or sense data available. Sense data reporting must at least be supported
+    // for this one to be useful
+    if (ataCommandOptions->rtfr.status & BIT1)
+    {
+        if (device->drive_info.ata_Options.senseDataReportingEnabled)
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "\t\tSense Data Available\n");
+        }
+        else
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "\t\tUnknown Status bit 1\n");
+        }
+    }
+    // Bit 0 is error...or for ATAPI it will be check condition Packet commands only
+    if (ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR) // assuming not ATAPI
+    {
+        print_tDevice_Verbose_String(device, verboseLevel, "\t\tError\n");
+    }
+
+    print_tDevice_Verbose_String(device, verboseLevel, "\n");
+    flush_tDevice_Verbose_Stream(device);
 }
 
 OPENSEA_TRANSPORT_API uint8_t calculate_ATA_Checksum(const uint8_t* M_NONNULL ptrData)

@@ -34,178 +34,234 @@
 #        define INTRST_DEBUG
 #    endif //_DEBUG && !INTRST_DEBUG
 
-static void print_Intel_SRB_Status(uint32_t srbStatus)
+
+M_FUNC_ATTR_MALLOC static char* M_NULLABLE get_Intel_SRB_Status_String(uint32_t srbStatus)
 {
-    print_str("SRB Status: ");
+    char* statusStr = M_NULLPTR;
+    errno_t error = 0;
     switch (srbStatus)
     {
     case INTEL_SRB_STATUS_PENDING:
-        print_str("Pending\n");
+        error = safe_strdup(&statusStr, "Pending");
         break;
     case INTEL_SRB_STATUS_SUCCESS:
-        print_str("Success\n");
+        error = safe_strdup(&statusStr, "Success");
         break;
     case INTEL_SRB_STATUS_ABORTED:
-        print_str("Aborted\n");
+        error = safe_strdup(&statusStr, "Aborted");
         break;
     case INTEL_SRB_STATUS_ABORT_FAILED:
-        print_str("Abort Failed\n");
+        error = safe_strdup(&statusStr, "Abort Failed");
         break;
     case INTEL_SRB_STATUS_ERROR:
-        print_str("Error\n");
+        error = safe_strdup(&statusStr, "Error");
         break;
     case INTEL_SRB_STATUS_BUSY:
-        print_str("Busy\n");
+        error = safe_strdup(&statusStr, "Busy");
         break;
     case INTEL_SRB_STATUS_INVALID_REQUEST:
-        print_str("Invalid Request\n");
+        error = safe_strdup(&statusStr, "Invalid Request");
         break;
     case INTEL_SRB_STATUS_INVALID_PATH_ID:
-        print_str("Invalid Path ID\n");
+        error = safe_strdup(&statusStr, "Invalid Path ID");
         break;
     case INTEL_SRB_STATUS_NO_DEVICE:
-        print_str("No Device\n");
+        error = safe_strdup(&statusStr, "No Device");
         break;
     case INTEL_SRB_STATUS_TIMEOUT:
-        print_str("Timeout\n");
+        error = safe_strdup(&statusStr, "Timeout");
         break;
     case INTEL_SRB_STATUS_SELECTION_TIMEOUT:
-        print_str("Selection Timeout\n");
+        error = safe_strdup(&statusStr, "Selection Timeout");
         break;
     case INTEL_SRB_STATUS_COMMAND_TIMEOUT:
-        print_str("Command Timeout\n");
+        error = safe_strdup(&statusStr, "Command Timeout");
         break;
     case INTEL_SRB_STATUS_MESSAGE_REJECTED:
-        print_str("Message Rejected\n");
+        error = safe_strdup(&statusStr, "Message Rejected");
         break;
     case INTEL_SRB_STATUS_BUS_RESET:
-        print_str("Bus Reset\n");
+        error = safe_strdup(&statusStr, "Bus Reset");
         break;
     case INTEL_SRB_STATUS_PARITY_ERROR:
-        print_str("Parity Error\n");
+        error = safe_strdup(&statusStr, "Parity Error");
         break;
     case INTEL_SRB_STATUS_REQUEST_SENSE_FAILED:
-        print_str("Request Sense Failed\n");
+        error = safe_strdup(&statusStr, "Request Sense Failed");
         break;
     case INTEL_SRB_STATUS_NO_HBA:
-        print_str("No HBA\n");
+        error = safe_strdup(&statusStr, "No HBA");
         break;
     case INTEL_SRB_STATUS_DATA_OVERRUN:
-        print_str("Data Overrun\n");
+        error = safe_strdup(&statusStr, "Data Overrun");
         break;
     case INTEL_SRB_STATUS_UNEXPECTED_BUS_FREE:
-        print_str("Unexpected Bus Free\n");
+        error = safe_strdup(&statusStr, "Unexpected Bus Free");
         break;
     case INTEL_SRB_STATUS_PHASE_SEQUENCE_FAILURE:
-        print_str("Phase Sequence Failure\n");
+        error = safe_strdup(&statusStr, "Phase Sequence Failure");
         break;
     case INTEL_SRB_STATUS_BAD_SRB_BLOCK_LENGTH:
-        print_str("Bad SRB Block Length\n");
+        error = safe_strdup(&statusStr, "Bad SRB Block Length");
         break;
     case INTEL_SRB_STATUS_REQUEST_FLUSHED:
-        print_str("Request Flushed\n");
+        error = safe_strdup(&statusStr, "Request Flushed");
         break;
     case INTEL_SRB_STATUS_INVALID_LUN:
-        print_str("Invalid LUN\n");
+        error = safe_strdup(&statusStr, "Invalid LUN");
         break;
     case INTEL_SRB_STATUS_INVALID_TARGET_ID:
-        print_str("Invalid Target ID\n");
+        error = safe_strdup(&statusStr, "Invalid Target ID");
         break;
     case INTEL_SRB_STATUS_BAD_FUNCTION:
-        print_str("Bad Function\n");
+        error = safe_strdup(&statusStr, "Bad Function");
         break;
     case INTEL_SRB_STATUS_ERROR_RECOVERY:
-        print_str("Error Recovery\n");
+        error = safe_strdup(&statusStr, "Error Recovery");
         break;
     case INTEL_SRB_STATUS_NOT_POWERED:
-        print_str("Not Powered\n");
+        error = safe_strdup(&statusStr, "Not Powered");
         break;
     case INTEL_SRB_STATUS_LINK_DOWN:
-        print_str("Link Down\n");
+        error = safe_strdup(&statusStr, "Link Down");
         break;
     case INTEL_SRB_STATUS_INSUFFICIENT_RESOURCES:
-        print_str("Insufficient Resources\n");
+        error = safe_strdup(&statusStr, "Insufficient Resources");
         break;
     case INTEL_SRB_STATUS_THROTTLED_REQUEST:
-        print_str("Throttled Request\n");
+        error = safe_strdup(&statusStr, "Throttled Request");
         break;
     case INTEL_SRB_STATUS_INVALID_PARAMETER:
-        print_str("Invalid Parameter\n");
+        error = safe_strdup(&statusStr, "Invalid Parameter");
         break;
     default:
-        printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
+        if (asprintf(&statusStr, "Unknown SRB Status - 0x%" PRIX32, srbStatus) < 0)
+        {
+            error = 1;//just needs to be non-zero
+        }
         break;
     }
+    if (error != 0)
+    {
+        safe_free(&statusStr);
+        return M_NULLPTR;
+    }
+    return statusStr;
 }
 
-static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
+M_DEPRECATED_REASON("Use get_Intel_SRB_Status_String to get the string and output it yourself instead.")
+static void print_Intel_SRB_Status(uint32_t srbStatus)
 {
+    print_str("SRB Status: ");
+    char* statusStr = get_Intel_SRB_Status_String(srbStatus);
+    if (statusStr)
+    {
+        print_str(statusStr);
+        safe_free(&statusStr);
+    }
+    else
+    {
+        printf("Unknown SRB Status - 0x%" PRIX32, srbStatus);
+    }
+    print_str("\n");
+}
+
+M_FUNC_ATTR_MALLOC char* M_NULLABLE get_Intel_Firmware_SRB_Status_String(uint32_t srbStatus)
+{
+    char* statusStr = M_NULLPTR;
+    errno_t error = 0;
     switch (srbStatus)
     {
     case INTEL_FIRMWARE_STATUS_SUCCESS:
-        print_str("Success\n");
+        error = safe_strdup(&statusStr, "Success");
         break;
     case INTEL_FIRMWARE_STATUS_ERROR:
-        print_str("Error\n");
+        error = safe_strdup(&statusStr, "Error");
         break;
     case INTEL_FIRMWARE_STATUS_ILLEGAL_REQUEST:
-        print_str("Illegal Request\n");
+        error = safe_strdup(&statusStr, "Illegal Request");
         break;
     case INTEL_FIRMWARE_STATUS_INVALID_PARAMETER:
-        print_str("Invalid Parameter\n");
+        error = safe_strdup(&statusStr, "Invalid Parameter");
         break;
     case INTEL_FIRMWARE_STATUS_INPUT_BUFFER_TOO_BIG:
-        print_str("Input Buffer Too Big\n");
+        error = safe_strdup(&statusStr, "Input Buffer Too Big");
         break;
     case INTEL_FIRMWARE_STATUS_OUTPUT_BUFFER_TOO_SMALL:
-        print_str("Output Buffer Too Small\n");
+        error = safe_strdup(&statusStr, "Output Buffer Too Small");
         break;
     case INTEL_FIRMWARE_STATUS_INVALID_SLOT:
-        print_str("Invalid Slot\n");
+        error = safe_strdup(&statusStr, "Invalid Slot");
         break;
     case INTEL_FIRMWARE_STATUS_INVALID_IMAGE:
-        print_str("Invalid Image\n");
+        error = safe_strdup(&statusStr, "Invalid Image");
         break;
     case INTEL_FIRMWARE_STATUS_CONTROLLER_ERROR:
-        print_str("Controller Error\n");
+        error = safe_strdup(&statusStr, "Controller Error");
         break;
     case INTEL_FIRMWARE_STATUS_POWER_CYCLE_REQUIRED:
-        print_str("Power Cycle Required\n");
+        error = safe_strdup(&statusStr, "Power Cycle Required");
         break;
     case INTEL_FIRMWARE_STATUS_DEVICE_ERROR:
-        print_str("Device Error\n");
+        error = safe_strdup(&statusStr, "Device Error");
         break;
     case INTEL_FIRMWARE_STATUS_INTERFACE_CRC_ERROR:
-        print_str("Interface CRC Error\n");
+        error = safe_strdup(&statusStr, "Interface CRC Error");
         break;
     case INTEL_FIRMWARE_STATUS_UNCORRECTABLE_DATA_ERROR:
-        print_str("Uncorrectable Data Error\n");
+        error = safe_strdup(&statusStr, "Uncorrectable Data Error");
         break;
     case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE:
-        print_str("Media Change\n");
+        error = safe_strdup(&statusStr, "Media Change");
         break;
     case INTEL_FIRMWARE_STATUS_ID_NOT_FOUND:
-        print_str("ID Not Found\n");
+        error = safe_strdup(&statusStr, "ID Not Found");
         break;
     case INTEL_FIRMWARE_STATUS_MEDIA_CHANGE_REQUEST:
-        print_str("Media Change Request\n");
+        error = safe_strdup(&statusStr, "Media Change Request");
         break;
     case INTEL_FIRMWARE_STATUS_COMMAND_ABORT:
-        print_str("Command Abort\n");
+        error = safe_strdup(&statusStr, "Command Abort");
         break;
     case INTEL_FIRMWARE_STATUS_END_OF_MEDIA:
-        print_str("End of Media\n");
+        error = safe_strdup(&statusStr, "End of Media");
         break;
     case INTEL_FIRMWARE_STATUS_ILLEGAL_LENGTH:
-        print_str("Illegal Length\n");
+        error = safe_strdup(&statusStr, "Illegal Length");
         break;
     default:
-        printf("Unknown SRB Status - %" PRIX32 "\n", srbStatus);
+        if (asprintf(&statusStr, "Unknown SRB Status - 0x%" PRIX32, srbStatus) < 0)
+        {
+            error = 1;//just needs to be non-zero
+        }
         break;
     }
+    if (error != 0)
+    {
+        safe_free(&statusStr);
+        return M_NULLPTR;
+    }
+    return statusStr;
 }
 
-static M_INLINE void safe_free_irst_raid_fw_buffer(IOCTL_RAID_FIRMWARE_BUFFER** buf)
+M_DEPRECATED_REASON("Use get_Intel_Firmware_SRB_Status_String to get the string and output it yourself instead.")
+static void printf_Intel_Firmware_SRB_Status(uint32_t srbStatus)
+{
+    print_str("Firmware Status: ");
+    char* statusStr = get_Intel_Firmware_SRB_Status_String(srbStatus);
+    if (statusStr)
+    {
+        print_str(statusStr);
+        safe_free(&statusStr);
+    }
+    else
+    {
+        printf("Unknown Firmware SRB Status - 0x%" PRIX32, srbStatus);
+    }
+    print_str("\n");
+}
+
+static M_INLINE void safe_free_irst_raid_fw_buffer(IOCTL_RAID_FIRMWARE_BUFFER*M_NONNULL*M_NULLABLE buf)
 {
     safe_free_aligned_core(M_REINTERPRET_CAST(void**, buf));
 }
@@ -302,10 +358,7 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
                             ptrDataRequest, dataRequestLength);
             }
 
-            if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-            {
-                print_str("\n====Sending Intel Raid Firmware Request====\n");
-            }
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "\n====Sending Intel Raid Firmware Request====\n");
 
             // send the command
             DWORD      bytesReturned = DWORD_C(0);
@@ -336,12 +389,13 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
             stop_Timer(&commandTimer);
             CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
             overlappedStruct.hEvent = M_NULLPTR;
-            if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
             {
-                print_str("Windows Error: ");
-                print_Windows_Error_To_Screen(device->os_info.last_error);
-                print_str("Intel RAID Firmware: ");
-                printf_Intel_Firmware_SRB_Status(raidFirmwareRequest->Header.ReturnCode);
+                char* winErrorStr = get_windows_error_str(M_STATIC_CAST(winsyserror_t, device->os_info.last_error));
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Windows Error: %s\n", winErrorStr);
+                safe_free(&winErrorStr);
+                char* statusStr = get_Intel_Firmware_SRB_Status_String(raidFirmwareRequest->Header.ReturnCode);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Intel RAID Firmware: %s\n", statusStr);
+                safe_free(&statusStr);
             }
             if (MSFT_BOOL_FALSE(success))
             {
@@ -408,7 +462,7 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
     return ret;
 }
 
-static M_INLINE void safe_free_irst_fw_info(INTEL_STORAGE_FIRMWARE_INFO_V2** info)
+static M_INLINE void safe_free_irst_fw_info(INTEL_STORAGE_FIRMWARE_INFO_V2*M_NONNULL*M_NULLABLE info)
 {
     safe_free_core(M_REINTERPRET_CAST(void**, info));
 }
@@ -477,7 +531,7 @@ OPENSEA_TRANSPORT_API bool supports_Intel_Firmware_Download(const tDevice* M_NON
     return supported;
 }
 
-static M_INLINE void safe_free_irst_fwdl(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2** fwdl)
+static M_INLINE void safe_free_irst_fwdl(INTEL_STORAGE_FIRMWARE_DOWNLOAD_V2*M_NONNULL*M_NULLABLE fwdl)
 {
     safe_free_core(M_REINTERPRET_CAST(void**, fwdl));
 }
@@ -527,7 +581,7 @@ static eReturnValues internal_Intel_FWDL_Function_Download(const tDevice* M_NONN
     return ret;
 }
 
-static M_INLINE void safe_free_irst_fw_activate(INTEL_STORAGE_FIRMWARE_ACTIVATE** activate)
+static M_INLINE void safe_free_irst_fw_activate(INTEL_STORAGE_FIRMWARE_ACTIVATE*M_NONNULL*M_NULLABLE activate)
 {
     safe_free_core(M_REINTERPRET_CAST(void**, activate));
 }
@@ -569,7 +623,7 @@ static eReturnValues internal_Intel_FWDL_Function_Activate(const tDevice* M_NONN
 
 // This must also check to ensure that the alignment requirements and transfer length requirements are also met
 // This is really only needed on SCSI or ATA since NVMe will only take this API to update firmware
-static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx* scsiIoCtx, bool* isActivate)
+static bool is_Compatible_SCSI_FWDL_IO(ScsiIoCtx* M_NONNULL scsiIoCtx, bool* M_NULLABLE isActivate)
 {
     bool     compatible          = false;
     uint32_t transferLengthBytes = UINT32_C(0);
@@ -722,10 +776,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
         nvmPassthroughCommand =
             C_CAST(NVME_IOCTL_PASS_THROUGH*, safe_calloc_aligned(allocationSize, sizeof(uint8_t),
                                                                  get_Device_IO_Minimum_Alignment(nvmeIoCtx->device)));
-        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
-        {
-            print_str("\n====Sending Intel RST NVMe Command====\n");
-        }
+        print_tDevice_Verbose_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES, "\n====Sending Intel RST NVMe Command====\n");
         if (nvmPassthroughCommand)
         {
             // setup the header (SRB_IO_CONTROL) first
@@ -891,11 +942,12 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
                     break;
                 }
             }
-            if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
-            {
-                print_Windows_Error_To_Screen(nvmeIoCtx->device->os_info.last_error);
-                print_Intel_SRB_Status(nvmPassthroughCommand->Header.ReturnCode);
-            }
+            char* winErrorStr = get_windows_error_str(M_STATIC_CAST(winsyserror_t, nvmeIoCtx->device->os_info.last_error));
+            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Windows Error: %s\n", winErrorStr);
+            safe_free(&winErrorStr);
+            char* statusStr = get_Intel_SRB_Status_String(nvmPassthroughCommand->Header.ReturnCode);
+            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "SRB Status: %s\n", statusStr);
+            safe_free(&statusStr);
 
             // set command time
             set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(commandTimer));
@@ -905,10 +957,7 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
         {
             ret = MEMORY_FAILURE;
         }
-        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
-        {
-            print_Return_Enum("Intel RST NVMe Cmd", ret);
-        }
+        print_tDevice_Return_Enum(nvmeIoCtx->device, "Intel RST NVMe Cmd", ret);
     }
     else
     {

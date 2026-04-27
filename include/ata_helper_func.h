@@ -2288,12 +2288,36 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
+    M_DEPRECATED_REASON("Use print_tDevice_Verbose_ATA_Command_Information instead")
     OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Information(
         const ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
-    //  fill_In_ATA_Drive_Info()
+    //  print_tDevice_Verbose_ATA_Command_Information()
+    //
+    //! \brief   Description:  Device-aware version that supports verbose output redirection. This prints out
+    //! information about the task file registers being sent to a device with output directed to the tDevice stream.
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to the device structure
+    //!   \param[in] verboseLevel = the verbosity level at which to print
+    //!   \param[in] ataCommandOptions = structure with the TFR information filled in to be printed out. (and protocol
+    //!   and direction)
+    //!
+    //  Exit:
+    //
+    //-----------------------------------------------------------------------------
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    OPENSEA_TRANSPORT_API void print_tDevice_Verbose_ATA_Command_Information(const tDevice* M_NONNULL device,
+                                                                             eVerbosityLevels         verboseLevel,
+                                                                             const ataPassthroughCommand* M_NONNULL
+                                                                                 ataCommandOptions);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  print_Verbose_ATA_Command_Result_Information()
     //
     //! \brief   Description:  This prints out information to the screen about the return task file registers coming
     //! back from a device. This is called by a lower layer portion of the opensea-transport code.
@@ -2307,9 +2331,32 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
     M_PARAM_RO(2)
+    M_DEPRECATED_REASON("Use print_tDevice_Verbose_ATA_Command_Result_Information instead")
     OPENSEA_TRANSPORT_API
     void print_Verbose_ATA_Command_Result_Information(const ataPassthroughCommand* M_NONNULL ataCommandOptions,
                                                       const tDevice* M_NONNULL               device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  print_tDevice_Verbose_ATA_Command_Result_Information()
+    //
+    //! \brief   Description:  Device-aware version that supports verbose output redirection. This prints out
+    //! information about the return task file registers with output directed to the tDevice stream.
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to the device structure
+    //!   \param[in] verboseLevel = the verbosity level at which to print
+    //!   \param[in] ataCommandOptions = structure with the TFR information filled in to be printed out. (and protocol
+    //!   and direction)
+    //  Exit:
+    //
+    //-----------------------------------------------------------------------------
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    OPENSEA_TRANSPORT_API
+    void print_tDevice_Verbose_ATA_Command_Result_Information(const tDevice* M_NONNULL               device,
+                                                              eVerbosityLevels                       verboseLevel,
+                                                              const ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
     //////////////////////////////////////////
     ///         Zoned Device Commands      ///

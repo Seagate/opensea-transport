@@ -957,21 +957,51 @@ OPENSEA_TRANSPORT_API uint16_t calculate_Logical_Block_Guard(const uint8_t* M_NO
 }
 
 // this is mean to only be called by check_Sense_Key_asc_And_ascq()
+M_DEPRECATED_REASON("Use print_tDevice_Sense_Key instead")
 OPENSEA_TRANSPORT_API void print_sense_key(const char* M_NONNULL senseKeyToPrint, uint8_t senseKeyValue)
 {
-    printf("Sense Key: %" PRIX8 "h = %s\n", senseKeyValue, senseKeyToPrint);
+    printf("Sense Key: %" PRIX8 "h = %s\n", senseKeyValue,
+           senseKeyToPrint == M_NULLPTR ? "Unknown Sense Key" : senseKeyToPrint);
     flush_stdout();
 }
+
+// Device-aware version that supports verbose output redirection
+OPENSEA_TRANSPORT_API void print_tDevice_Sense_Key(const tDevice* M_NONNULL device,
+                                                   eVerbosityLevels         verboseLevel,
+                                                   const char* M_NONNULL    senseKeyToPrint,
+                                                   uint8_t                  senseKeyValue)
+{
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "Sense Key: %" PRIX8 "h = %s\n", senseKeyValue,
+                                           senseKeyToPrint == M_NULLPTR ? "Unknown Sense Key" : senseKeyToPrint);
+    flush_tDevice_Verbose_Stream(device);
+}
+
 // this is meant to only be called by check_Sense_Key_asc_And_ascq()
+M_DEPRECATED_REASON("Use print_tDevice_ASC_ASCQ instead")
 OPENSEA_TRANSPORT_API void print_acs_ascq(const char* M_NONNULL acsAndascqStringToPrint,
                                           uint8_t               ascValue,
                                           uint8_t               ascqValue)
 {
-    printf("ASC & ASCQ: %" PRIX8 "h - %" PRIX8 "h = %s\n", ascValue, ascqValue, acsAndascqStringToPrint);
+    printf("ASC & ASCQ: %" PRIX8 "h - %" PRIX8 "h = %s\n", ascValue, ascqValue,
+           acsAndascqStringToPrint == M_NULLPTR ? "Unknown ASC/ASCQ code combination" : acsAndascqStringToPrint);
     flush_stdout();
 }
 
+// Device-aware version that supports verbose output redirection
+OPENSEA_TRANSPORT_API void print_tDevice_ASC_ASCQ(const tDevice* M_NONNULL device,
+                                                  eVerbosityLevels         verboseLevel,
+                                                  const char* M_NONNULL    ascAndascqStringToPrint,
+                                                  uint8_t                  ascValue,
+                                                  uint8_t                  ascqValue)
+{
+    print_tDevice_Verbose_Formatted_String(
+        device, verboseLevel, "ASC & ASCQ: %" PRIX8 "h - %" PRIX8 "h = %s\n", ascValue, ascqValue,
+        ascAndascqStringToPrint == M_NULLPTR ? "Unknown ASC/ASCQ code combination" : ascAndascqStringToPrint);
+    flush_tDevice_Verbose_Stream(device);
+}
+
 // this is meant to only be called by check_Sense_Key_asc_And_ascq()
+M_DEPRECATED_REASON("Use print_tDevice_Field_Replacable_Unit_Code instead")
 OPENSEA_TRANSPORT_API void print_Field_Replacable_Unit_Code(const tDevice* M_NONNULL device,
                                                             const char* M_NONNULL    fruMessage,
                                                             uint8_t                  fruCode)
@@ -995,6 +1025,25 @@ OPENSEA_TRANSPORT_API void print_Field_Replacable_Unit_Code(const tDevice* M_NON
         }
     }
     flush_stdout();
+}
+
+// Device-aware version that supports verbose output redirection
+// FRU translation lookup will be handled by tDevice function pointer if registered
+OPENSEA_TRANSPORT_API void print_tDevice_Field_Replacable_Unit_Code(const tDevice* M_NONNULL device,
+                                                                    eVerbosityLevels         verboseLevel,
+                                                                    uint8_t                  senseKey,
+                                                                    uint8_t                  asc,
+                                                                    uint8_t                  ascq,
+                                                                    uint8_t                  fruCode)
+{
+    // TODO: Call tDevice function pointer for FRU code translation when available
+    // For now, just print the code value
+    M_USE_UNUSED(senseKey);
+    M_USE_UNUSED(asc);
+    M_USE_UNUSED(ascq);
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "FRU: %" PRIX8 "h = %s\n", fruCode,
+                                           fruCode == 0 ? "No Additional Information" : "Vendor Specific");
+    flush_tDevice_Verbose_Stream(device);
 }
 
 // Used with bsearch
@@ -1028,18 +1077,12 @@ OPENSEA_TRANSPORT_API eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevi
     senseKey = senseKey & 0x0F; // strip off bits that are not part of the sense key
     if (senseKey < sizeof(senseKeyRetDesc) / sizeof(senseKeyRetDesc[0]))
     {
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key(senseKeyRetDesc[senseKey].desc, senseKey);
-        }
+        print_tDevice_Sense_Key(device, VERBOSITY_COMMAND_VERBOSE, senseKeyRetDesc[senseKey].desc, senseKey);
         ret = senseKeyRetDesc[senseKey].ret;
     }
     else
     {
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Invalid sense key!", senseKey);
-        }
+        print_tDevice_Sense_Key(device, VERBOSITY_COMMAND_VERBOSE, "Invalid sense key!", senseKey);
         return BAD_PARAMETER;
     }
     // now check the asc and ascq combination...this is going to be very large set of switch cases to do this...
@@ -1051,47 +1094,63 @@ OPENSEA_TRANSPORT_API eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevi
         switch (ascq)
         {
         case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("RAM Failure (Should Use 40 NN) ", asc, ascq);
-            }
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "RAM Failure (Should Use 40 NN) ", asc, ascq);
             ret = FAILURE;
             break;
         default:
             if (ascq >= 0x80 /*  && ascq <= 0xFF */)
             {
-                if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+                char* diagFailureMsg = M_NULLPTR;
+                if (asprintf(&diagFailureMsg, "Diagnostic Failure On Component %02" PRIX8 "h", ascq) > 0)
                 {
-                    printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Diagnostic Failure On Component %02" PRIX8 "h\n",
-                           asc, ascq, ascq);
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, diagFailureMsg, asc, ascq);
+                    safe_free(&diagFailureMsg);
+                }
+                else
+                {
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Diagnostic Failure On ASCQ component",
+                                           asc, ascq);
                 }
                 ret = FAILURE;
             }
             else
             {
-                if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
+                print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Unknown ascq code", asc, ascq);
                 ret = UNKNOWN;
             }
             break;
         }
         break;
     case 0x4D:
-        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        char* taggedCmdMsg = M_NULLPTR;
+        if (asprintf(&taggedCmdMsg, "Tagged Overlapped Commands. Task Tag = %02" PRIX8 "h", ascq) > 0)
         {
-            printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Tagged Overlapped Commands. Task Tag = %02" PRIX8 "h\n",
-                   asc, ascq, ascq);
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, taggedCmdMsg, asc, ascq);
+            safe_free(&taggedCmdMsg);
         }
-        break;
+        else
+        {
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Tagged Overlapped Commands. Task Tag = ASCQ",
+                                   asc, ascq);
+        }
+    }
+    break;
     case 0x70:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+    {
+        char* decompressionMsg = M_NULLPTR;
+        if (asprintf(&decompressionMsg, "Decompression Exception - Algorithm ID = %02" PRIX8 "h", ascq) > 0)
         {
-            printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Decompression Exception Short Algorithm ID of %" PRIX8 "",
-                   asc, ascq, ascq);
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, decompressionMsg, asc, ascq);
+            safe_free(&decompressionMsg);
         }
-        break;
+        else
+        {
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Decompression Exception - Algorithm ID = ASCQ",
+                                   asc, ascq);
+        }
+    }
+    break;
     default:
         asc_ascq_result = M_REINTERPRET_CAST(const ascAscqRetDesc*,
                                              safe_bsearch(&asc_ascq_key, M_REINTERPRET_CAST(const void*, ascAscqLookUp),
@@ -1100,10 +1159,7 @@ OPENSEA_TRANSPORT_API eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevi
 
         if (asc_ascq_result)
         {
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq(asc_ascq_result->desc, asc, ascq);
-            }
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, asc_ascq_result->desc, asc, ascq);
             // Return code of -1 means follow return code determined by sense key, do not change
             if (asc_ascq_result->ret > KEEP_SENSE_KEY_ERROR)
             {
@@ -1114,41 +1170,33 @@ OPENSEA_TRANSPORT_API eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevi
         {
             if (asc < 0x80 /* && asc >= 0 */)
             {
-                if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                if (ascq >= 0x80 /*  && ascq <= 0xFF */)
                 {
-                    if (ascq >= 0x80 /*  && ascq <= 0xFF */)
-                    {
-                        print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                    }
-                    else
-                    {
-                        print_acs_ascq("Unknown ascq code", asc, ascq);
-                    }
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Vendor specific ascq code", asc, ascq);
+                }
+                else
+                {
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Unknown ascq code", asc, ascq);
                 }
                 ret = UNKNOWN;
             }
             else
             {
-                if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                if (asc >= 0x80 /* && asc <= 0xFF */)
                 {
-                    if (asc >= 0x80 /* && asc <= 0xFF */)
-                    {
-                        print_acs_ascq("Vendor specific ASC & ascq code", asc, ascq);
-                    }
-                    else
-                    {
-                        print_acs_ascq("Unknown ASC & ASCQ code", asc, ascq);
-                    }
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Vendor specific ASC & ascq code", asc,
+                                           ascq);
+                }
+                else
+                {
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Unknown ASC & ASCQ code", asc, ascq);
                 }
                 ret = UNKNOWN;
             }
         }
         break;
     }
-    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-    {
-        print_Field_Replacable_Unit_Code(device, "", fru);
-    }
+    print_tDevice_Field_Replacable_Unit_Code(device, VERBOSITY_COMMAND_VERBOSE, senseKey, asc, ascq, fru);
     return ret;
 }
 
@@ -1621,6 +1669,214 @@ OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSen
     }
 }
 
+// New device-aware version with verbosity level support
+OPENSEA_TRANSPORT_API void print_Sense_Fields_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity, constPtrSenseDataFields M_NONNULL senseFields)
+{
+    if (senseFields != M_NULLPTR && senseFields->validStructure)
+    {
+        // This function assumes that the "check_Sense_Key_ASC_ASCQ_FRU" function was called before hand to print out
+        // its fields
+        if (senseFields->deferredError)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Deferred error found.\n");
+        }
+        if (senseFields->senseDataOverflow)
+        {
+            print_tDevice_Verbose_String(device, verbosity,
+                "Sense Data Overflow detected! Request sense command is recommended to retrieve full sense data!\n");
+        }
+        if (senseFields->filemark)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Filemark detected\n");
+        }
+        if (senseFields->endOfMedia)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "End of media detected\n");
+        }
+        if (senseFields->illegalLengthIndication)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Illegal Length detected\n");
+        }
+        if (senseFields->valid)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Information (Valid): ");
+        }
+        else
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Information: ");
+        }
+        if (senseFields->fixedFormat)
+        {
+            print_tDevice_Verbose_Formatted_String(device, verbosity, "%08" PRIX32 "h\n", senseFields->fixedInformation);
+        }
+        else
+        {
+            print_tDevice_Verbose_Formatted_String(device, verbosity, "%016" PRIX64 "h\n", senseFields->descriptorInformation);
+        }
+        print_tDevice_Verbose_String(device, verbosity, "Command Specific Information: ");
+        if (senseFields->fixedFormat)
+        {
+            print_tDevice_Verbose_Formatted_String(device, verbosity, "%08" PRIX32 "h\n", senseFields->fixedCommandSpecificInformation);
+        }
+        else
+        {
+            print_tDevice_Verbose_Formatted_String(device, verbosity, "%016" PRIX64 "h\n", senseFields->descriptorCommandSpecificInformation);
+        }
+        if (senseFields->senseKeySpecificInformation.senseKeySpecificValid)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Sense Key Specific Information:\n\t");
+            switch (senseFields->senseKeySpecificInformation.type)
+            {
+            case SENSE_KEY_SPECIFIC_FIELD_POINTER:
+                if (senseFields->senseKeySpecificInformation.field.cdbOrData)
+                {
+                    if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in CDB byte %" PRIu16 " bit %" PRIu8 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer,
+                               senseFields->senseKeySpecificInformation.field.bitPointer);
+                    }
+                    else
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in CDB byte %" PRIu16 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer);
+                    }
+                }
+                else
+                {
+                    if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer,
+                               senseFields->senseKeySpecificInformation.field.bitPointer);
+                    }
+                    else
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Parameter byte %" PRIu16 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer);
+                    }
+                }
+                break;
+            case SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT:
+                print_tDevice_Verbose_Formatted_String(device, verbosity,
+                       "Actual Retry Count: %" PRIu16 "\n",
+                       senseFields->senseKeySpecificInformation.retryCount.actualRetryCount);
+                break;
+            case SENSE_KEY_SPECIFIC_PROGRESS_INDICATION:
+                print_tDevice_Verbose_Formatted_String(device, verbosity,
+                       "Progress: %0.02f%%\n",
+                       get_SCSI_Progress_Indicator_PercentD(
+                           senseFields->senseKeySpecificInformation.progress.progressIndication));
+                break;
+            case SENSE_KEY_SPECIFIC_SEGMENT_POINTER:
+                if (senseFields->senseKeySpecificInformation.segment.segmentDescriptor)
+                {
+                    if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Segment Descriptor byte %" PRIu16 " bit %" PRIu8 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer,
+                               senseFields->senseKeySpecificInformation.field.bitPointer);
+                    }
+                    else
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Segment Descriptor byte %" PRIu16 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer);
+                    }
+                }
+                else
+                {
+                    if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer,
+                               senseFields->senseKeySpecificInformation.field.bitPointer);
+                    }
+                    else
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Parameter byte %" PRIu16 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer);
+                    }
+                }
+                break;
+            case SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW:
+                if (senseFields->senseKeySpecificInformation.unitAttention.overflow)
+                {
+                    print_tDevice_Verbose_String(device, verbosity, "Unit attention condition is due to Queue Overflow\n");
+                }
+                else
+                {
+                    print_tDevice_Verbose_String(device, verbosity, "Unit attention condition is not due to a queue overflow\n");
+                }
+                break;
+            case SENSE_KEY_SPECIFIC_UNKNOWN:
+            default:
+                print_tDevice_Verbose_Formatted_String(device, verbosity,
+                       "Unknown sense key specific data: %" PRIX8 "h %" PRIX8 "h %" PRIX8 "h\n",
+                       senseFields->senseKeySpecificInformation.unknownDataType[0],
+                       senseFields->senseKeySpecificInformation.unknownDataType[1],
+                       senseFields->senseKeySpecificInformation.unknownDataType[2]);
+                break;
+            }
+        }
+        if (!senseFields->fixedFormat)
+        {
+            // look for other descriptor format data that we saved and can easily parse here
+            if (senseFields->ataStatusReturnDescriptor.valid)
+            {
+                print_tDevice_Verbose_String(device, verbosity, "ATA Return Status:\n");
+                print_tDevice_Verbose_String(device, verbosity, "\tExtend: ");
+                if (senseFields->ataStatusReturnDescriptor.extend)
+                {
+                    print_tDevice_Verbose_String(device, verbosity, "true\n");
+                }
+                else
+                {
+                    print_tDevice_Verbose_String(device, verbosity, "false\n");
+                }
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tError:            %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.error);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tSector Count Ext: %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCountExt);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tSector Count:     %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCount);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Low Ext:      %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaLowExt);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Low:          %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaLow);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Mid Ext:      %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaMidExt);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Mid:          %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaMid);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Hi Ext:       %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaHiExt);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Hi:           %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaHi);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tDevice:           %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.device);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tStatus:           %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.status);
+            }
+            // TODO: go through the other progress indications?
+            if (senseFields->microCodeActivation.valid)
+            {
+                print_tDevice_Verbose_String(device, verbosity, "Microcode Activation Time:");
+                if (senseFields->microCodeActivation.microcodeActivationTimeSeconds > 0)
+                {
+                    uint8_t hours   = UINT8_C(0);
+                    uint8_t minutes = UINT8_C(0);
+                    uint8_t seconds = UINT8_C(0);
+                    convert_Seconds_To_Displayable_Time(senseFields->microCodeActivation.microcodeActivationTimeSeconds,
+                                                        M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
+                    print_Time_To_Screen(M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
+                    print_tDevice_Verbose_String(device, verbosity, "\n");
+                }
+                else
+                {
+                    print_tDevice_Verbose_String(device, verbosity, " Unknown\n");
+                }
+            }
+        }
+    }
+}
+
+// DEPRECATED: Use print_Sense_Fields_Verbose instead with proper device and verbosity level
 OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields senseFields)
 {
 
@@ -3954,10 +4210,7 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
     }
     else
     {
-        if (VERBOSITY_DEFAULT < device->deviceVerbosity)
-        {
-            print_str("Getting Standard Inquiry Data Failed\n");
-        }
+        print_tDevice_Verbose_String(device, VERBOSITY_DEFAULT, "Standard Inquiry Failed\n");
         ret = COMMAND_FAILURE;
     }
     safe_free_aligned(&inq_buf);

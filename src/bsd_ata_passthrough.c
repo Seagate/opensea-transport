@@ -133,12 +133,14 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
             // something went wrong with the ioctl.
             set_Device_Last_Error(scsiIoCtx->device, errno);
             ret = OS_PASSTHROUGH_FAILURE;
-            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+            errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+            if (error != 0)
             {
-                if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) != 0)
+                char* errormsg = get_strerror(error);
+                if (errormsg != M_NULLPTR)
                 {
-                    print_str("Error: ");
-                    print_Errno_To_Screen(errno);
+                    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                    safe_free(&errormsg);
                 }
             }
         }

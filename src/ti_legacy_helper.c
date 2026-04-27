@@ -107,11 +107,8 @@ eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* M_NONNULL       
     ret = build_TI_Legacy_CDB(tiCDB, ataCommandOptions, false, false, 0);
     if (ret == SUCCESS)
     {
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // printf out register verbose information
-            print_Verbose_ATA_Command_Information(ataCommandOptions);
-        }
+        // print out register verbose information
+        print_tDevice_Verbose_ATA_Command_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // send the CDB
         ret = scsi_Send_Cdb(device, tiCDB, CDB_LEN_16, ataCommandOptions->ptrData, ataCommandOptions->dataSize,
                             ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData,
@@ -139,11 +136,8 @@ eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* M_NONNULL       
             ataCommandOptions->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
             break;
         }
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print out RTFRs
-            print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
-        }
+        // print out RTFRs
+        print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
     }
     safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN); // clear before copying over data

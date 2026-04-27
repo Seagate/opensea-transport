@@ -247,11 +247,8 @@ eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* M_NONNULL  
     ret = build_JMicron_Legacy_PT_CDB(jmCDB, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print verbose tfr info
-            print_Verbose_ATA_Command_Information(ataCommandOptions);
-        }
+        // print verbose tfr info
+        print_tDevice_Verbose_ATA_Command_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // send it
         ret = scsi_Send_Cdb(device, jmCDB, cdblen, ataCommandOptions->ptrData, ataCommandOptions->dataSize,
                             ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData,
@@ -277,11 +274,8 @@ eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* M_NONNULL  
         {
             // get the RTFRs
             ret = get_RTFRs_From_JMicron_Legacy(device, ataCommandOptions, ret);
-            if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-            {
-                // print RTFRs
-                print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
-            }
+            // print RTFRs
+            print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
             // set return code
             // Based on the RTFRs or sense data, generate a return value
             if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))
