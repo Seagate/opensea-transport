@@ -3121,7 +3121,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
                 uint8_t sectorSizeExponent = UINT8_C(0);
                 // get the number of logical blocks per physical blocks
                 sectorSizeExponent      = le16_to_host(ident_word[106]) & 0x000F;
-                *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize* power_Of_Two(sectorSizeExponent));
+                *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize * power_Of_Two(sectorSizeExponent));
             }
         }
 
@@ -4778,9 +4778,9 @@ OPENSEA_TRANSPORT_API eReturnValues convert_LBA_To_CHS(const tDevice* M_NONNULL 
             {
                 uint32_t headsPerCylinder = le16_to_host(device->drive_info.IdentifyData.ata.Word003);
                 uint32_t sectorsPerTrack  = le16_to_host(device->drive_info.IdentifyData.ata.Word006);
-                *cylinder                 = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder* sectorsPerTrack));
-                *head                     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
-                *sector                   = C_CAST(uint8_t, (lba % sectorsPerTrack) + ATA_CHS_SECTOR_NUM_ADJUSTMENT);
+                *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
+                *head     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
+                *sector   = C_CAST(uint8_t, (lba % sectorsPerTrack) + ATA_CHS_SECTOR_NUM_ADJUSTMENT);
                 userAddressableCapacityCHS =
                     C_CAST(uint32_t, le16_to_host(device->drive_info.IdentifyData.ata.Word001)) *
                     C_CAST(uint32_t, le16_to_host(device->drive_info.IdentifyData.ata.Word003)) *

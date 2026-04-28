@@ -2035,8 +2035,8 @@ extern "C"
     M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Disable_EPC_Feature_Set(const tDevice* M_NONNULL device);
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_EPC_Set_EPC_Power_Source(const tDevice* M_NONNULL device,
-                                                                     uint8_t                  powerSource);
+    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_EPC_Power_Source(const tDevice* M_NONNULL device,
+                                                                        uint8_t                  powerSource);
     M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API eReturnValues ata_SF_DSN(const tDevice* M_NONNULL device, eSimpleATAFeat state);
     // TODO: if IR is false, we need a way to set the command timeout
@@ -2063,42 +2063,6 @@ extern "C"
                                                                  bool                     enableBit,
                                                                  uint8_t                  activeLevelField,
                                                                  uint8_t                  powerConsumptionIdentifier);
-
-    M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Restore_Power_Condition_Settings(const tDevice* M_NONNULL device,
-                                                                                    uint8_t powerConditionID,
-                                                                                    bool    defaultBit,
-                                                                                    bool    save);
-
-    M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Go_To_Power_Condition(const tDevice* M_NONNULL device,
-                                                                         uint8_t                  powerConditionID,
-                                                                         bool                     delayedEntry,
-                                                                         bool                     holdPowerCondition);
-
-    M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_Power_Condition_Timer(const tDevice* M_NONNULL device,
-                                                                             uint8_t                  powerConditionID,
-                                                                             uint16_t                 timerValue,
-                                                                             bool                     timerUnits,
-                                                                             bool                     enable,
-                                                                             bool                     save);
-
-    M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_Power_Condition_State(const tDevice* M_NONNULL device,
-                                                                             uint8_t                  powerConditionID,
-                                                                             bool                     enable,
-                                                                             bool                     save);
-
-    M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Enable_EPC_Feature_Set(const tDevice* M_NONNULL device);
-
-    M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Disable_EPC_Feature_Set(const tDevice* M_NONNULL device);
-
-    M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues ata_SF_EPC_Set_EPC_Power_Source(const tDevice* M_NONNULL device,
-                                                                        uint8_t                  powerSource);
 
     //-----------------------------------------------------------------------------
     //
