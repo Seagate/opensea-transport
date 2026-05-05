@@ -29,13 +29,14 @@
 #include "jmicron_nvme_helper.h"
 #include "scsi_helper_func.h" //for ability to send a SCSI IO
 
-eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t                 cdb[M_NONNULL_ARRAY JMICRON_NVME_CDB_SIZE],
-                                            eDataTransferDirection* cdbDataDirection,
-                                            uint8_t*                dataPtr,
-                                            uint32_t                dataSize,
-                                            eJMNvmeProtocol         jmProtocol,
-                                            eJMNvmeVendorControl    jmCtrl,
-                                            nvmeCmdCtx*             nvmCmd)
+M_PARAM_RO(7)
+eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t cdb[M_NONNULL_ARRAY JMICRON_NVME_CDB_SIZE],
+                                            eDataTransferDirection* M_NONNULL cdbDataDirection,
+                                            uint8_t* M_NULLABLE               dataPtr,
+                                            uint32_t                          dataSize,
+                                            eJMNvmeProtocol                   jmProtocol,
+                                            eJMNvmeVendorControl              jmCtrl,
+                                            nvmeCmdCtx*                       nvmCmd)
 {
 
     DISABLE_NONNULL_COMPARE
@@ -254,7 +255,8 @@ eReturnValues build_JM_NVMe_CDB_And_Payload(uint8_t                 cdb[M_NONNUL
     return SUCCESS;
 }
 
-eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
+M_PARAM_RW(1)
+eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmCDB, JMICRON_NVME_CDB_SIZE);
@@ -363,7 +365,7 @@ eReturnValues send_JM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     return ret;
 }
 
-static eReturnValues jm_NVMe_Normal_Shutdown(const tDevice* device)
+static eReturnValues jm_NVMe_Normal_Shutdown(const tDevice* M_NONNULL device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JMICRON_NVME_CDB_SIZE);
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -383,7 +385,7 @@ static eReturnValues jm_NVMe_Normal_Shutdown(const tDevice* device)
     return ret;
 }
 
-static eReturnValues jm_NVMe_MCU_Reset(const tDevice* device)
+static eReturnValues jm_NVMe_MCU_Reset(const tDevice* M_NONNULL device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JMICRON_NVME_CDB_SIZE);
     eDataTransferDirection jmCDBDir = XFER_NO_DATA;
@@ -402,13 +404,10 @@ static eReturnValues jm_NVMe_MCU_Reset(const tDevice* device)
     return ret;
 }
 
-eReturnValues jm_nvme_Reset(const tDevice* device)
+M_PARAM_RO(1) eReturnValues jm_nvme_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        print_str("Sending JMicron NVMe Reset\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending JMicron NVMe Reset\n");
     if (SUCCESS == jm_NVMe_Normal_Shutdown(device))
     {
         if (SUCCESS == jm_NVMe_MCU_Reset(device))
@@ -420,20 +419,14 @@ eReturnValues jm_nvme_Reset(const tDevice* device)
             ret = FAILURE;
         }
     }
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        print_Return_Enum("Jmicron NVMe Reset", ret);
-    }
+    print_tDevice_Return_Enum(device, "Jmicron NVMe Reset", ret);
     return ret;
 }
 
-eReturnValues jm_nvme_Subsystem_Reset(const tDevice* device)
+M_PARAM_RO(1) eReturnValues jm_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        print_str("Sending JMicron NVMe Subsystem Reset\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending JMicron NVMe Subsystem Reset\n");
     if (SUCCESS == jm_NVMe_Normal_Shutdown(device))
     {
         if (SUCCESS == jm_NVMe_MCU_Reset(device))
@@ -445,9 +438,6 @@ eReturnValues jm_nvme_Subsystem_Reset(const tDevice* device)
             ret = FAILURE;
         }
     }
-    if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-    {
-        print_Return_Enum("JMicron NVMe Subsystem Reset", ret);
-    }
+    print_tDevice_Return_Enum(device, "JMicron NVMe Subsystem Reset", ret);
     return ret;
 }

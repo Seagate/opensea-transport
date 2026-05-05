@@ -56,11 +56,11 @@ static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData,
 // \file nvme_cmds.c   Implementation for NVM Express helper functions
 //                     The intention of the file is to be generic & not OS specific
 
-// \fn fill_In_NVMe_Device_Info(device device)
+// \fn fill_In_NVMe_Device_Info(device M_NONNULL device)
 // \brief Sends a set Identify etc commands & fills in the device information
 // \param device device struture
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
+M_PARAM_RW(1) eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
 {
     eReturnValues ret = UNKNOWN;
 
@@ -76,7 +76,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
     // If not an NVMe interface, such as USB, then we need to store things differently
     // RAID Interface should be treated as "Native" or "NVME_INTERFACE" since there is likely an underlying API
     // providing direct access of some kind.
-    if (device->drive_info.interface_type != NVME_INTERFACE && device->drive_info.interface_type != RAID_INTERFACE)
+    if (get_Device_InterfaceType(device) != NVME_INTERFACE && get_Device_InterfaceType(device) != RAID_INTERFACE)
     {
         device->drive_info.bridge_info.isValid = true;
         fillWWN                                = &device->drive_info.bridge_info.childWWN;
@@ -102,7 +102,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
     if (ret == SUCCESS)
     {
         uint16_t enduranceGroup = UINT16_C(0);
-        if (device->drive_info.interface_type != NVME_INTERFACE && device->drive_info.interface_type != RAID_INTERFACE)
+        if (get_Device_InterfaceType(device) != NVME_INTERFACE && get_Device_InterfaceType(device) != RAID_INTERFACE)
         {
             fill_NVMe_Strings_From_Ctrl_Data(C_CAST(uint8_t*, ctrlData), device->drive_info.bridge_info.childDriveMN,
                                              device->drive_info.bridge_info.childDriveSN,
@@ -115,8 +115,8 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
         }
         // set the t10 vendor id to NVMe
         snprintf_err_handle(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
-        device->drive_info.media_type =
-            MEDIA_NVM; // This will bite us someday when someone decided to put non-ssds on NVMe interface.
+        set_Device_MediaType(
+            device, MEDIA_NVM); // This will bite us someday when someone decided to put non-ssds on NVMe interface.
         // set scsi version to 6 if it is not already set
         if (device->drive_info.scsiVersion == 0)
         {
@@ -133,7 +133,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
 
         // Do not overwrite this with non-NVMe interfaces. This is used by USB to figure out and track bridge chip
         // specific things that are stored in this location
-        if (device->drive_info.interface_type == NVME_INTERFACE && !device->drive_info.adapter_info.vendorIDValid)
+        if (get_Device_InterfaceType(device) == NVME_INTERFACE && !device->drive_info.adapter_info.vendorIDValid)
         {
             device->drive_info.adapter_info.vendorID      = le16_to_host(ctrlData->vid);
             device->drive_info.adapter_info.vendorIDValid = true;
@@ -166,7 +166,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
                 // Check if this is an HDD
                 // First read the supported logs log page, then if the rotating media log is there, read it.
                 uint8_t* supportedLogs = M_REINTERPRET_CAST(
-                    uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), device->os_info.minimumAlignment));
+                    uint8_t*, safe_calloc_aligned(1024, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
                 if (supportedLogs)
                 {
                     nvmeGetLogPageCmdOpts supLogs;
@@ -185,7 +185,7 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
                             // rotational media log is supported.
                             // Set the media type because this is supported, at least for now. We can read the log and
                             // the actual rotation rate if needed.
-                            device->drive_info.media_type = MEDIA_HDD;
+                            set_Device_MediaType(device, MEDIA_HDD);
                         }
                     }
                     safe_free_aligned(&supportedLogs);
@@ -200,7 +200,8 @@ eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
     return ret;
 }
 
-void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* cmdCtx)
+M_DEPRECATED_REASON("Use print_tDevice_Verbose_NVMe_Cmd instead")
+void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* M_NONNULL cmdCtx)
 {
     print_str("Sending NVM Command:\n");
     print_str("\tType: ");
@@ -297,11 +298,157 @@ void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* cmdCtx)
     print_str("\n");
 }
 
-void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
-                                       bool*    doNotRetry,
-                                       bool*    more,
-                                       uint8_t* statusCodeType,
-                                       uint8_t* statusCode)
+OPENSEA_TRANSPORT_API void print_tDevice_Verbose_NVMe_Cmd(const tDevice* M_NONNULL    device,
+                                                          eVerbosityLevels            verboseLevel,
+                                                          const nvmeCmdCtx* M_NONNULL cmdCtx)
+{
+    print_tDevice_Verbose_String(device, verboseLevel, "Sending NVM Command:\n");
+    print_tDevice_Verbose_String(device, verboseLevel, "\tType: ");
+    switch (cmdCtx->commandType)
+    {
+    case NVM_ADMIN_CMD:
+        print_tDevice_Verbose_String(device, verboseLevel, "Admin");
+        break;
+    case NVM_CMD:
+        print_tDevice_Verbose_String(device, verboseLevel, "NVM");
+        break;
+    case NVM_UNKNOWN_CMD_SET:
+    default:
+        print_tDevice_Verbose_String(device, verboseLevel, "Unknown");
+        break;
+    }
+    print_tDevice_Verbose_String(device, verboseLevel, "\n");
+    print_tDevice_Verbose_String(device, verboseLevel, "\tData Direction: ");
+    // Data Direction:
+    switch (cmdCtx->commandDirection)
+    {
+    case XFER_NO_DATA:
+        print_tDevice_Verbose_String(device, verboseLevel, "No Data");
+        break;
+    case XFER_DATA_IN:
+        print_tDevice_Verbose_String(device, verboseLevel, "Data In");
+        break;
+    case XFER_DATA_OUT:
+        print_tDevice_Verbose_String(device, verboseLevel, "Data Out");
+        break;
+    default:
+        print_tDevice_Verbose_String(device, verboseLevel, "Unknown");
+        break;
+    }
+    print_tDevice_Verbose_String(device, verboseLevel, "\n");
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "Data Length: %" PRIu32 "\n", cmdCtx->dataSize);
+    // print_tDevice_Verbose_Formatted_String(device, verboseLevel, "Cmd result 0x%02X\n", cmdCtx->result);
+    print_tDevice_Verbose_String(device, verboseLevel, "Command Bytes:\n");
+    switch (cmdCtx->commandType)
+    {
+    case NVM_ADMIN_CMD:
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tOpcode (CDW0) = %" PRIu8 "\n",
+                                               cmdCtx->cmd.adminCmd.opcode);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tFlags (CDW0) = %" PRIu8 "\n",
+                                               cmdCtx->cmd.adminCmd.flags);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tReserved (CDW0) = %" PRIu16 "\n",
+                                               cmdCtx->cmd.adminCmd.rsvd1);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tNSID = %" PRIX32 "h\n",
+                                               cmdCtx->cmd.adminCmd.nsid);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW2 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.adminCmd.cdw2);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW3 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.adminCmd.cdw3);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tMetadata Ptr = %" PRIX64 "h\n",
+                                               cmdCtx->cmd.adminCmd.metadata);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tMetadata Length = %" PRIu32 "\n",
+                                               cmdCtx->cmd.adminCmd.metadataLen);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tData Ptr = %" PRIX64 "h\n",
+                                               cmdCtx->cmd.adminCmd.addr);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW10 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.adminCmd.cdw10);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW11 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.adminCmd.cdw11);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW12 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.adminCmd.cdw12);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW13 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.adminCmd.cdw13);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW14 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.adminCmd.cdw14);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW15 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.adminCmd.cdw15);
+        break;
+    case NVM_CMD:
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tOpcode (CDW0) = %" PRIu8 "\n",
+                                               cmdCtx->cmd.nvmCmd.opcode);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tFlags (CDW0) = %" PRIu8 "\n",
+                                               cmdCtx->cmd.nvmCmd.flags);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCommand ID (CDW0) = %" PRIu16 "\n",
+                                               cmdCtx->cmd.nvmCmd.commandId);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tNSID = %" PRIX32 "h\n",
+                                               cmdCtx->cmd.nvmCmd.nsid);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW2 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.nvmCmd.cdw2);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW3 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.nvmCmd.cdw3);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tMetadata Ptr (CDW4 & 5) = %" PRIX64 "h\n",
+                                               cmdCtx->cmd.nvmCmd.metadata);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tData Pointer (CDW6 & 7) = %" PRIX64 "h\n",
+                                               cmdCtx->cmd.nvmCmd.prp1);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tData Pointer (CDW8 & 9) = %" PRIX64 "h\n",
+                                               cmdCtx->cmd.nvmCmd.prp2);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW10 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.nvmCmd.cdw10);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW11 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.nvmCmd.cdw11);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW12 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.nvmCmd.cdw12);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW13 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.nvmCmd.cdw13);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW14 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.nvmCmd.cdw14);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW15 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.nvmCmd.cdw15);
+        break;
+    default:
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW0  = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw0);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW1  = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw1);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW2  = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw2);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW3  = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw3);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW4  = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw4);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW5  = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw5);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW6  = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw6);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW7  = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw7);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW8  = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw8);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW9  = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw9);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW10 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw10);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW11 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw11);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW12 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw12);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW13 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw13);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW14 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw14);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tCDW15 = %08" PRIX32 "h\n",
+                                               cmdCtx->cmd.dwords.cdw15);
+        break;
+    }
+    print_tDevice_Verbose_String(device, verboseLevel, "\n");
+    flush_tDevice_Verbose_Stream(device);
+}
+
+void get_NVMe_Status_Fields_From_DWord(uint32_t           nvmeStatusDWord,
+                                       bool* M_NONNULL    doNotRetry,
+                                       bool* M_NONNULL    more,
+                                       uint8_t* M_NONNULL statusCodeType,
+                                       uint8_t*           statusCode)
 {
 
     if (doNotRetry != M_NULLPTR && more != M_NULLPTR && statusCodeType != M_NULLPTR && statusCode != M_NULLPTR)
@@ -315,7 +462,7 @@ void get_NVMe_Status_Fields_From_DWord(uint32_t nvmeStatusDWord,
 
 // Status codes must be in numeric order!
 // These will be binary searched so out of order will break binary search!
-static nvmeStatus nvmeStatusLookup[] = {
+static const nvmeStatus nvmeStatusLookup[] = {
     // Generic status codes first
     {NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_SUCCESS_, SUCCESS, "Success"},
     {NVME_SCT_GENERIC_COMMAND_STATUS, NVME_GEN_SC_INVALID_OPCODE_, NOT_SUPPORTED, "Invalid Command Opcode"},
@@ -491,8 +638,10 @@ static nvmeStatus nvmeStatusLookup[] = {
     {NVME_SCT_PATH_RELATED_STATUS, NVME_PATH_SC_COMMAND_ABORTED_BY_HOST, ABORTED, "Command Aborted By Host"},
 };
 
-static int cmp_NVMe_Status(nvmeStatus* a, nvmeStatus* b)
+static int cmp_NVMe_Status(const void* stata, const void* statb)
 {
+    const nvmeStatus* a = M_REINTERPRET_CAST(const nvmeStatus*, stata);
+    const nvmeStatus* b = M_REINTERPRET_CAST(const nvmeStatus*, statb);
     // compare status code type, if they are same, compare status code
     int ret = a->statusCodeType - b->statusCodeType;
     if (ret)
@@ -507,15 +656,15 @@ static int cmp_NVMe_Status(nvmeStatus* a, nvmeStatus* b)
 
 const nvmeStatus* get_NVMe_Status(uint32_t nvmeStatusDWord)
 {
-    nvmeStatus  key;
-    nvmeStatus* result = M_NULLPTR;
+    nvmeStatus        key;
+    const nvmeStatus* result = M_NULLPTR;
     safe_memset(&key, sizeof(nvmeStatus), 0, sizeof(nvmeStatus));
     key.statusCodeType = get_8bit_range_uint32(nvmeStatusDWord, 27, 25);
     key.statusCode     = get_8bit_range_uint32(nvmeStatusDWord, 24, 17);
 
-    result = M_REINTERPRET_CAST(nvmeStatus*, safe_bsearch(&key, nvmeStatusLookup, SIZE_OF_STACK_ARRAY(nvmeStatusLookup),
-                                                          sizeof(nvmeStatusLookup[0]),
-                                                          (int (*)(const void*, const void*))cmp_NVMe_Status));
+    result = M_REINTERPRET_CAST(const nvmeStatus*, safe_bsearch(&key, M_REINTERPRET_CAST(const void*, nvmeStatusLookup),
+                                                                SIZE_OF_STACK_ARRAY(nvmeStatusLookup),
+                                                                sizeof(nvmeStatusLookup[0]), cmp_NVMe_Status));
 
     return result;
 }
@@ -534,7 +683,8 @@ eReturnValues check_NVMe_Status(uint32_t nvmeStatusDWord)
     return ret;
 }
 
-void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* cmdCtx)
+M_DEPRECATED_REASON("Use print_tDevice_Verbose_NVMe_Cmd_Result instead")
+void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* M_NONNULL cmdCtx)
 {
     print_str("NVM Command Completion:\n");
     print_str("\tCommand Specific (DW0): ");
@@ -646,7 +796,128 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* cmdCtx)
     print_str("\n");
 }
 
-M_RETURNS_NONNULL const char* nvme_cmd_to_string(int admin, uint8_t opcode)
+OPENSEA_TRANSPORT_API void print_tDevice_Verbose_NVMe_Cmd_Result(const tDevice* M_NONNULL    device,
+                                                                 eVerbosityLevels            verboseLevel,
+                                                                 const nvmeCmdCtx* M_NONNULL cmdCtx)
+{
+    print_tDevice_Verbose_String(device, verboseLevel, "NVM Command Completion:\n");
+    print_tDevice_Verbose_String(device, verboseLevel, "\tCommand Specific (DW0): ");
+    if (cmdCtx->commandCompletionData.dw0Valid)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "%" PRIX32 "h\n",
+                                               cmdCtx->commandCompletionData.commandSpecific);
+    }
+    else
+    {
+        print_tDevice_Verbose_String(device, verboseLevel, "Unavailable from OS\n");
+    }
+    print_tDevice_Verbose_String(device, verboseLevel, "\tReserved (DW1): ");
+    if (cmdCtx->commandCompletionData.dw1Valid)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "%" PRIX32 "h\n",
+                                               cmdCtx->commandCompletionData.dw1Reserved);
+    }
+    else
+    {
+        print_tDevice_Verbose_String(device, verboseLevel, "Unavailable from OS\n");
+    }
+    print_tDevice_Verbose_String(device, verboseLevel, "\tSQ ID & SQ Head Ptr (DW2): ");
+    if (cmdCtx->commandCompletionData.dw2Valid)
+    {
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "%" PRIX32 "h\n",
+                                               cmdCtx->commandCompletionData.sqIDandHeadPtr);
+    }
+    else
+    {
+        print_tDevice_Verbose_String(device, verboseLevel, "Unavailable from OS\n");
+    }
+    print_tDevice_Verbose_String(device, verboseLevel, "\tStatus & CID (DW3): ");
+    if (cmdCtx->commandCompletionData.dw3Valid)
+    {
+        bool    dnr            = false;
+        bool    more           = false;
+        uint8_t statusCodeType = UINT8_C(0);
+        uint8_t statusCode     = UINT8_C(0);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "%" PRIX32 "h\n",
+                                               cmdCtx->commandCompletionData.statusAndCID);
+        get_NVMe_Status_Fields_From_DWord(cmdCtx->commandCompletionData.statusAndCID, &dnr, &more, &statusCodeType,
+                                          &statusCode);
+        print_tDevice_Verbose_String(device, verboseLevel, "\t\tDo Not Retry: ");
+        if (dnr)
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "True\n");
+        }
+        else
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "False\n");
+        }
+        print_tDevice_Verbose_String(device, verboseLevel, "\t\tMore: ");
+        if (more)
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "True\n");
+        }
+        else
+        {
+            print_tDevice_Verbose_String(device, verboseLevel, "False\n");
+        }
+#define NVME_STATUS_CODE_TYPE_STRING_LENGTH 32
+#define NVME_STATUS_CODE_STRING_LENGTH      62
+        DECLARE_ZERO_INIT_ARRAY(char, statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH);
+        DECLARE_ZERO_INIT_ARRAY(char, statusCodeString, NVME_STATUS_CODE_STRING_LENGTH);
+        // also print out the phase tag, CID. NOTE: These aren't available in Linux!
+        const nvmeStatus* stat = get_NVMe_Status(cmdCtx->commandCompletionData.statusAndCID);
+        switch (statusCodeType)
+        {
+        case NVME_SCT_GENERIC_COMMAND_STATUS:
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Generic Command Status");
+            break;
+        case NVME_SCT_COMMAND_SPECIFIC_STATUS:
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Command Specific Status");
+            break;
+        case NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS:
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
+                                "Media And Data Integrity Errors");
+            break;
+        case NVME_SCT_PATH_RELATED_STATUS:
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Path Related Status");
+            break;
+        case NVME_SCT_VENDOR_SPECIFIC_STATUS:
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Vendor Specific");
+            break;
+        default:
+            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Unknown");
+            break;
+        }
+        if (stat != M_NULLPTR)
+        {
+            snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "%s", stat->description);
+        }
+        else
+        {
+            if (statusCodeType == NVME_SCT_VENDOR_SPECIFIC_STATUS)
+            {
+
+                snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Vendor Specific");
+            }
+            else
+            {
+                snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
+            }
+        }
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t\tStatus Code Type: %s (%" PRIX8 "h)\n",
+                                               statusCodeTypeString, statusCodeType);
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t\tStatus Code: %s (%" PRIX8 "h)\n",
+                                               statusCodeString, statusCode);
+    }
+    else
+    {
+        print_tDevice_Verbose_String(device, verboseLevel, "Unavailable from OS\n");
+    }
+    print_tDevice_Verbose_String(device, verboseLevel, "\n");
+    flush_tDevice_Verbose_Stream(device);
+}
+
+OPENSEA_TRANSPORT_API M_RETURNS_NONNULL const char* nvme_cmd_to_string(int admin, uint8_t opcode)
 {
     if (admin)
     {
@@ -742,7 +1013,10 @@ M_RETURNS_NONNULL const char* nvme_cmd_to_string(int admin, uint8_t opcode)
     return "Unknown";
 }
 
-eReturnValues nvme_Get_SMART_Log_Page(const tDevice* device, uint32_t nsid, uint8_t* pData, uint32_t dataLen)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_SMART_Log_Page(const tDevice* M_NONNULL device,
+                                                            uint32_t                 nsid,
+                                                            uint8_t* M_NONNULL       pData,
+                                                            uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -772,7 +1046,9 @@ eReturnValues nvme_Get_SMART_Log_Page(const tDevice* device, uint32_t nsid, uint
     return ret;
 }
 
-eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* M_NONNULL device,
+                                                            uint8_t* M_NONNULL       pData,
+                                                            uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -798,7 +1074,9 @@ eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* device, uint8_t* pData, uin
     return ret;
 }
 
-eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* M_NONNULL device,
+                                                              uint8_t* M_NONNULL       pData,
+                                                              uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -824,7 +1102,9 @@ eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* device, uint8_t* pData, u
     return ret;
 }
 
-eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* M_NONNULL device,
+                                                                 uint8_t* M_NONNULL       pData,
+                                                                 uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -850,7 +1130,9 @@ eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* device, uint8_t* pData
     return ret;
 }
 
-eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* device, uint8_t* pData, uint32_t dataLen)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* M_NONNULL device,
+                                                                  uint8_t* M_NONNULL       pData,
+                                                                  uint32_t                 dataLen)
 {
     eReturnValues         ret = UNKNOWN;
     nvmeGetLogPageCmdOpts cmdOpts;
@@ -877,7 +1159,10 @@ eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice* device, uint8_t* pDat
 }
 
 // Seagate unique?
-eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* device, EXTENDED_SMART_INFO_T* ExtdSMARTInfo)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* M_NONNULL         device,
+                                                          EXTENDED_SMART_INFO_T* M_NONNULL ExtdSMARTInfo)
 {
     eReturnValues         ret = SUCCESS;
     nvmeGetLogPageCmdOpts getExtSMARTLog;
@@ -887,14 +1172,8 @@ eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* device, EXTENDED_SMART_INFO_T
     getExtSMARTLog.nsid    = device->drive_info.namespaceID;
     getExtSMARTLog.addr    = C_CAST(uint8_t*, ExtdSMARTInfo);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Reading NVMe Ext SMART Log\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Reading NVMe Ext SMART Log\n");
     ret = nvme_Get_Log_Page(device, &getExtSMARTLog);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Ext SMART Log", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Ext SMART Log", ret);
     return ret;
 }

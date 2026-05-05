@@ -28,7 +28,7 @@
 #include "platform_helper.h"
 #include "vendor/seagate/seagate_common_types.h"
 
-void print_Low_Level_Info(const tDevice* device)
+OPENSEA_TRANSPORT_API void print_Low_Level_Info(const tDevice* M_NONNULL device)
 {
 
     if (device != M_NULLPTR)
@@ -66,7 +66,7 @@ void print_Low_Level_Info(const tDevice* device)
         print_str("\t---Drive Info---\n");
         // print things from drive info structure that will be useful
         print_str("\t\tmedia type: ");
-        switch (device->drive_info.media_type)
+        switch (get_Device_MediaType(device))
         {
         case MEDIA_HDD:
             print_str("HDD\n");
@@ -94,7 +94,7 @@ void print_Low_Level_Info(const tDevice* device)
             break;
         }
         print_str("\t\tdrive type: ");
-        switch (device->drive_info.drive_type)
+        switch (get_Device_DriveType(device))
         {
         case ATA_DRIVE:
             print_str("ATA\n");
@@ -122,7 +122,7 @@ void print_Low_Level_Info(const tDevice* device)
             break;
         }
         print_str("\t\tinterface type: ");
-        switch (device->drive_info.interface_type)
+        switch (get_Device_InterfaceType(device))
         {
         case IDE_INTERFACE:
             print_str("IDE/ATA\n");
@@ -231,18 +231,19 @@ void print_Low_Level_Info(const tDevice* device)
         {
             printf("\t\t\t\tbuild number: %" PRIu32 "\n", device->drive_info.driver_info.driverBuildNumber);
         }
-        if (device->drive_info.drive_type == ATA_DRIVE)
+        if (get_Device_DriveType(device) == ATA_DRIVE)
         {
             // TODO: print ataoptions struct? This is things setup based on detection from identify and helps with how
             // some commands are built/issued
             print_str("\t\t---ata flags---\n");
         }
         // TODO: Software SAT flags? These are currently always setup even when software translator is not active.
-        if (device->drive_info.defaultTimeoutSeconds > 0)
+        const uint32_t timeoutValue = get_tDevice_Default_Command_Timeout(device);
+        if (timeoutValue > 0)
         {
-            printf("\t\tDefault timeout overridden as %" PRIu32 " seconds\n", device->drive_info.defaultTimeoutSeconds);
+            printf("\t\tDefault timeout overridden as %" PRIu32 " seconds\n", timeoutValue);
         }
-        if (device->drive_info.drive_type == NVME_DRIVE)
+        if (get_Device_DriveType(device) == NVME_DRIVE)
         {
             printf("\t\tNamespace ID set as %" PRIX32 "\n", device->drive_info.namespaceID);
         }
@@ -616,9 +617,9 @@ void print_Low_Level_Info(const tDevice* device)
         // print out the os_info unique things. This has a lot of ifdefs for the different OSs/configurations so need to
         // watch out for the differences in here
         print_str("\t---OS Info---\n");
-        printf("\t\thandle name: %s\n", device->os_info.name);
-        printf("\t\tfriendly name: %s\n", device->os_info.friendlyName);
-        printf("\t\tminimum memory alignment: %" PRIu8 "\n", device->os_info.minimumAlignment);
+        printf("\t\thandle name: %s\n", get_Device_Handle_Name(device));
+        printf("\t\tfriendly name: %s\n", get_Device_Handle_Friendly_Name(device));
+        printf("\t\tminimum memory alignment: %zu\n", get_Device_IO_Minimum_Alignment(device));
 #if defined(UEFI_C_SOURCE)
         print_str("\t\t---UEFI Unique Info---\n");
         // TODO: fd and device path
@@ -1093,7 +1094,7 @@ void print_Low_Level_Info(const tDevice* device)
     }
 }
 
-size_t load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize)
+OPENSEA_TRANSPORT_API size_t load_Bin_Buf(const char* M_NONNULL filename, void* M_NONNULL myBuf, size_t bufSize)
 {
     secureFileInfo* fp        = secure_Open_File(filename, "rb", M_NULLPTR, M_NULLPTR, M_NULLPTR);
     size_t          bytesRead = SIZE_T_C(0);
@@ -1119,7 +1120,7 @@ size_t load_Bin_Buf(const char* filename, void* myBuf, size_t bufSize)
     return bytesRead;
 }
 
-bool scan_Drive_Type_Filter(const tDevice* device, uint32_t scanFlags)
+bool scan_Drive_Type_Filter(const tDevice* M_NONNULL device, uint32_t scanFlags)
 {
     bool showDevice = false;
     // strip off all the other flags first
@@ -1158,24 +1159,24 @@ bool scan_Drive_Type_Filter(const tDevice* device, uint32_t scanFlags)
         }
         if (showATA)
         {
-            if (device->drive_info.drive_type == ATA_DRIVE && device->drive_info.interface_type != USB_INTERFACE)
+            if (get_Device_DriveType(device) == ATA_DRIVE && get_Device_InterfaceType(device) != USB_INTERFACE)
             {
                 showDevice = true;
             }
         }
-        if (showUSB && device->drive_info.interface_type == USB_INTERFACE)
+        if (showUSB && get_Device_InterfaceType(device) == USB_INTERFACE)
         {
             showDevice = true;
         }
-        if (showSCSI && device->drive_info.drive_type == SCSI_DRIVE)
+        if (showSCSI && get_Device_DriveType(device) == SCSI_DRIVE)
         {
             showDevice = true;
         }
-        if (showNVMe && device->drive_info.drive_type == NVME_DRIVE)
+        if (showNVMe && get_Device_DriveType(device) == NVME_DRIVE)
         {
             showDevice = true;
         }
-        if (showRAID && device->drive_info.drive_type == RAID_DRIVE)
+        if (showRAID && get_Device_DriveType(device) == RAID_DRIVE)
         {
             showDevice = true;
         }
@@ -1183,7 +1184,7 @@ bool scan_Drive_Type_Filter(const tDevice* device, uint32_t scanFlags)
     return showDevice;
 }
 
-bool scan_Interface_Type_Filter(const tDevice* device, uint32_t scanFlags)
+bool scan_Interface_Type_Filter(const tDevice* M_NONNULL device, uint32_t scanFlags)
 {
     bool showInterface = false;
     // filter out other flags that don't matter here
@@ -1220,23 +1221,23 @@ bool scan_Interface_Type_Filter(const tDevice* device, uint32_t scanFlags)
         {
             showRAIDInterface = true;
         }
-        if (showUSBInterface && device->drive_info.interface_type == USB_INTERFACE)
+        if (showUSBInterface && get_Device_InterfaceType(device) == USB_INTERFACE)
         {
             showInterface = true;
         }
-        if (showATAInterface && device->drive_info.interface_type == IDE_INTERFACE)
+        if (showATAInterface && get_Device_InterfaceType(device) == IDE_INTERFACE)
         {
             showInterface = true;
         }
-        if (showSCSIInterface && device->drive_info.interface_type == SCSI_INTERFACE)
+        if (showSCSIInterface && get_Device_InterfaceType(device) == SCSI_INTERFACE)
         {
             showInterface = true;
         }
-        if (showNVMeInterface && device->drive_info.interface_type == NVME_INTERFACE)
+        if (showNVMeInterface && get_Device_InterfaceType(device) == NVME_INTERFACE)
         {
             showInterface = true;
         }
-        if (showRAIDInterface && device->drive_info.interface_type == RAID_INTERFACE)
+        if (showRAIDInterface && get_Device_InterfaceType(device) == RAID_INTERFACE)
         {
             showInterface = true;
         }
@@ -1245,7 +1246,7 @@ bool scan_Interface_Type_Filter(const tDevice* device, uint32_t scanFlags)
 }
 
 // this is the "generic" scan. It uses the OS defined "get device count" and "get device list" calls to do the scan.
-void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
+OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
 {
     uint32_t       deviceCount    = UINT32_C(0);
     scanDriveInfo* scanDeviceList = M_NULLPTR;
@@ -1284,10 +1285,12 @@ void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity)
     safe_free(C_CAST(void**, &scanDeviceList));
 }
 
-eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
-                                          eVerbosityLevels scanVerbosity,
-                                          uint32_t*        numberOfDevices,
-                                          scanDriveInfo**  scanDeviceList)
+M_PARAM_RW(3)
+M_PARAM_RW(4)
+OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int        flags,
+                                                                eVerbosityLevels    scanVerbosity,
+                                                                uint32_t* M_NONNULL numberOfDevices,
+                                                                scanDriveInfo**     scanDeviceList)
 {
     uint32_t deviceCount    = UINT32_C(0);
     uint64_t getCountFlags  = UINT64_C(0);
@@ -1491,7 +1494,7 @@ eReturnValues get_Devs_For_Scan_And_Print(unsigned int     flags,
     return ret;
 }
 
-bool validate_Device_Struct(versionBlock sanity)
+OPENSEA_TRANSPORT_API bool validate_Device_Struct(versionBlock sanity)
 {
     bool   valid    = false;
     size_t tdevSize = sizeof(tDevice);
@@ -1506,7 +1509,7 @@ bool validate_Device_Struct(versionBlock sanity)
     return valid;
 }
 
-eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver)
+M_PARAM_WO(1) OPENSEA_TRANSPORT_API eReturnValues get_Opensea_Transport_Version(apiVersionInfo* M_NONNULL ver)
 {
 
     if (ver != M_NULLPTR)
@@ -1522,7 +1525,7 @@ eReturnValues get_Opensea_Transport_Version(apiVersionInfo* ver)
     }
 }
 
-eReturnValues get_Version_Block(versionBlock* ver)
+M_PARAM_WO(1) OPENSEA_TRANSPORT_API eReturnValues get_Version_Block(versionBlock* M_NONNULL ver)
 {
 
     if (ver != M_NULLPTR)
@@ -1537,7 +1540,7 @@ eReturnValues get_Version_Block(versionBlock* ver)
     }
 }
 
-char* get_Opensea_Transport_Version_str(char* dest_Version_str, size_t dest_len)
+OPENSEA_TRANSPORT_API char* get_Opensea_Transport_Version_str(char* M_NONNULL dest_Version_str, size_t dest_len)
 {
     if (dest_Version_str == M_NULLPTR)
     {
@@ -1547,7 +1550,7 @@ char* get_Opensea_Transport_Version_str(char* dest_Version_str, size_t dest_len)
     return dest_Version_str;
 }
 
-size_t get_Opensea_Transport_Version_str_len(void)
+OPENSEA_TRANSPORT_API M_CONST_FUNC size_t get_Opensea_Transport_Version_str_len(void) M_UNSEQUENCED
 {
     return safe_strlen(OPENSEA_TRANSPORT_VERSION) + 1;
 }
@@ -1582,7 +1585,9 @@ static void set_IEEE_OUI(uint32_t* ieeeOUI, const tDevice* device, bool USBchild
     }
 }
 
-bool is_Maxtor_String(const char* string)
+M_PARAM_RO(1)
+M_NULL_TERM_STRING(1)
+OPENSEA_TRANSPORT_API bool is_Maxtor_String(const char* M_NONNULL string)
 {
     bool   isMaxtor  = false;
     size_t maxtorLen = safe_strlen("MAXTOR");
@@ -1607,7 +1612,8 @@ bool is_Maxtor_String(const char* string)
     return isMaxtor;
 }
 
-bool is_Maxtor(const tDevice* device, bool USBchildDrive)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API bool is_Maxtor(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool     isMaxtor = false;
     uint32_t ieeeOUI  = UINT32_C(0);
@@ -1618,7 +1624,7 @@ bool is_Maxtor(const tDevice* device, bool USBchildDrive)
         isMaxtor = true;
         break;
     default:
-        if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive)
+        if (get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive)
         {
             // on a USB drive, check the child information as well as the bridge information
             isMaxtor = is_Maxtor(device, true);
@@ -1632,8 +1638,8 @@ bool is_Maxtor(const tDevice* device, bool USBchildDrive)
     if (!isMaxtor)
     {
         // we need to check the Vendor ID if SCSI or USB interface
-        if (device->drive_info.interface_type == USB_INTERFACE ||
-            (device->drive_info.interface_type == SCSI_INTERFACE && device->drive_info.drive_type != ATA_DRIVE))
+        if (get_Device_InterfaceType(device) == USB_INTERFACE ||
+            (get_Device_InterfaceType(device) == SCSI_INTERFACE && get_Device_DriveType(device) != ATA_DRIVE))
         {
             isMaxtor = is_Maxtor_String(device->drive_info.T10_vendor_ident);
         }
@@ -1643,7 +1649,7 @@ bool is_Maxtor(const tDevice* device, bool USBchildDrive)
             isMaxtor = is_Maxtor_String(device->drive_info.product_identification);
             // if after a model number check, the result is still false and it's USB, we need to check the child drive
             // information just to be certain
-            if (!isMaxtor && device->drive_info.interface_type == USB_INTERFACE)
+            if (!isMaxtor && get_Device_InterfaceType(device) == USB_INTERFACE)
             {
                 isMaxtor = is_Maxtor_String(device->drive_info.bridge_info.childDriveMN);
             }
@@ -1652,7 +1658,8 @@ bool is_Maxtor(const tDevice* device, bool USBchildDrive)
     return isMaxtor;
 }
 
-bool is_Seagate_VendorID(const tDevice* device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API bool is_Seagate_VendorID(const tDevice* M_NONNULL device)
 {
     bool   isSeagate  = false;
     size_t seagateLen = safe_strlen("SEAGATE");
@@ -1677,7 +1684,7 @@ bool is_Seagate_VendorID(const tDevice* device)
     return isSeagate;
 }
 
-bool is_Seagate_MN(const char* string)
+OPENSEA_TRANSPORT_API bool is_Seagate_MN(const char* M_NONNULL string)
 {
     bool   isSeagate  = false;
     size_t seagateLen = safe_strlen("ST");
@@ -1703,14 +1710,14 @@ bool is_Seagate_MN(const char* string)
     return isSeagate;
 }
 
-bool is_Seagate(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Seagate(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool     isSeagate = false;
     uint32_t ieeeOUI   = UINT32_C(0);
 
     // This check should work well enough, but we do support checking the IEEE OUI as well now. It must be set in the
     // WWN correctly with the NAA field set to 5h or 6h - TJE
-    if ((device->drive_info.interface_type == NVME_INTERFACE) &&
+    if ((get_Device_InterfaceType(device) == NVME_INTERFACE) &&
         (device->drive_info.adapter_info.vendorID == SEAGATE_VENDOR_ID))
     {
         return true;
@@ -1730,13 +1737,13 @@ bool is_Seagate(const tDevice* device, bool USBchildDrive)
         isSeagate = true;
         break;
     case IEEE_SEAGATE_NVME:
-        if (device->drive_info.drive_type == NVME_DRIVE)
+        if (get_Device_DriveType(device) == NVME_DRIVE)
         {
             isSeagate = true;
         }
         break;
     default:
-        if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive)
+        if (get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive)
         {
             // on a USB drive, check the child information as well as the bridge information
             isSeagate = is_Seagate(device, true);
@@ -1750,8 +1757,8 @@ bool is_Seagate(const tDevice* device, bool USBchildDrive)
     if (!isSeagate)
     {
         // we need to check the Vendor ID if SCSI or USB interface
-        if (device->drive_info.interface_type == USB_INTERFACE ||
-            (device->drive_info.interface_type == SCSI_INTERFACE && device->drive_info.drive_type != ATA_DRIVE))
+        if (get_Device_InterfaceType(device) == USB_INTERFACE ||
+            (get_Device_InterfaceType(device) == SCSI_INTERFACE && get_Device_DriveType(device) != ATA_DRIVE))
         {
             isSeagate = is_Seagate_VendorID(device);
         }
@@ -1761,7 +1768,7 @@ bool is_Seagate(const tDevice* device, bool USBchildDrive)
             isSeagate = is_Seagate_MN(device->drive_info.product_identification);
             // if after a model number check, the result is still false and it's USB, we need to check the child drive
             // information just to be certain
-            if (!isSeagate && device->drive_info.interface_type == USB_INTERFACE)
+            if (!isSeagate && get_Device_InterfaceType(device) == USB_INTERFACE)
             {
                 isSeagate = is_Seagate_MN(device->drive_info.bridge_info.childDriveMN);
             }
@@ -1770,7 +1777,7 @@ bool is_Seagate(const tDevice* device, bool USBchildDrive)
     return isSeagate;
 }
 
-bool is_Conner_Model_Number(const char* mn)
+OPENSEA_TRANSPORT_API bool is_Conner_Model_Number(const char* M_NONNULL mn)
 {
     bool isConner = false;
     // found online. Not sure how accurate this will be
@@ -1782,7 +1789,7 @@ bool is_Conner_Model_Number(const char* mn)
     return isConner;
 }
 
-bool is_Conner_VendorID(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_Conner_VendorID(const tDevice* M_NONNULL device)
 {
     bool   isConner  = false;
     size_t connerLen = safe_strlen("CONNER");
@@ -1806,9 +1813,9 @@ bool is_Conner_VendorID(const tDevice* device)
     return isConner;
 }
 
-bool is_Connor(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Connor(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
-    if (device->drive_info.drive_type == SCSI_DRIVE)
+    if (get_Device_DriveType(device) == SCSI_DRIVE)
     {
         return is_Conner_VendorID(device);
     }
@@ -1821,7 +1828,7 @@ bool is_Connor(const tDevice* device, bool USBchildDrive)
         else
         {
             bool result = is_Conner_Model_Number(device->drive_info.product_identification);
-            if (!result && device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive)
+            if (!result && get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive)
             {
                 return is_Conner_Model_Number(device->drive_info.bridge_info.childDriveMN);
             }
@@ -1830,7 +1837,7 @@ bool is_Connor(const tDevice* device, bool USBchildDrive)
     }
 }
 
-bool is_CDC_VendorID(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_CDC_VendorID(const tDevice* M_NONNULL device)
 {
     bool isCDC = false;
     if (get_bit_range_uint8(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) == 0)
@@ -1857,7 +1864,7 @@ bool is_CDC_VendorID(const tDevice* device)
     return isCDC;
 }
 
-bool is_DEC_VendorID(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_DEC_VendorID(const tDevice* M_NONNULL device)
 {
     bool isDEC = false;
     if (get_bit_range_uint8(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) == 0)
@@ -1884,7 +1891,7 @@ bool is_DEC_VendorID(const tDevice* device)
     return isDEC;
 }
 
-bool is_MiniScribe_VendorID(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_MiniScribe_VendorID(const tDevice* M_NONNULL device)
 {
     bool   isMiniscribe  = false;
     size_t miniscribeLen = safe_strlen("MINSCRIB");
@@ -1908,7 +1915,7 @@ bool is_MiniScribe_VendorID(const tDevice* device)
     return isMiniscribe;
 }
 
-bool is_Quantum_VendorID(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_Quantum_VendorID(const tDevice* M_NONNULL device)
 {
     bool isQuantum = false;
     if (get_bit_range_uint8(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) ==
@@ -1936,7 +1943,7 @@ bool is_Quantum_VendorID(const tDevice* device)
     return isQuantum;
 }
 
-bool is_Quantum_Model_Number(const char* string)
+OPENSEA_TRANSPORT_API bool is_Quantum_Model_Number(const char* M_NONNULL string)
 {
     bool   isQuantum  = false;
     size_t quantumLen = safe_strlen("Quantum");
@@ -1961,9 +1968,9 @@ bool is_Quantum_Model_Number(const char* string)
     return isQuantum;
 }
 
-bool is_Quantum(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Quantum(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
-    if (device->drive_info.drive_type == SCSI_DRIVE)
+    if (get_Device_DriveType(device) == SCSI_DRIVE)
     {
         return is_Quantum_VendorID(device);
     }
@@ -1981,7 +1988,7 @@ bool is_Quantum(const tDevice* device, bool USBchildDrive)
             {
                 result = is_Quantum_Model_Number(device->drive_info.product_identification);
             }
-            if (!result && device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive)
+            if (!result && get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive)
             {
                 return is_Quantum_Model_Number(device->drive_info.bridge_info.childDriveMN);
             }
@@ -1990,7 +1997,7 @@ bool is_Quantum(const tDevice* device, bool USBchildDrive)
     }
 }
 
-bool is_PrarieTek_VendorID(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_PrarieTek_VendorID(const tDevice* M_NONNULL device)
 {
     bool isPrarieTek = false;
     if (get_bit_range_uint8(device->drive_info.scsiVpdData.inquiryData[0], 4, 0) ==
@@ -2018,10 +2025,11 @@ bool is_PrarieTek_VendorID(const tDevice* device)
     return isPrarieTek;
 }
 
-bool is_LaCie(const tDevice* device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API bool is_LaCie(const tDevice* M_NONNULL device)
 {
     bool isLaCie = false;
-    if ((device->drive_info.interface_type == NVME_INTERFACE) &&
+    if ((get_Device_InterfaceType(device) == NVME_INTERFACE) &&
         (device->drive_info.adapter_info.vendorID == LACIE_VENDOR_ID))
     {
         return true;
@@ -2054,7 +2062,7 @@ bool is_LaCie(const tDevice* device)
 }
 
 // USB, firewire, thunderbolt, etc
-void seagate_External_SN_Cleanup(char** sn, size_t snlen)
+OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size_t snlen)
 {
 
     if (sn != M_NULLPTR && *sn != M_NULLPTR)
@@ -2131,7 +2139,7 @@ void seagate_External_SN_Cleanup(char** sn, size_t snlen)
     }
 }
 
-bool is_Samsung_String(const char* string)
+OPENSEA_TRANSPORT_API bool is_Samsung_String(const char* M_NONNULL string)
 {
     bool   isSamsung  = false;
     size_t samsungLen = safe_strlen("SAMSUNG");
@@ -2156,7 +2164,8 @@ bool is_Samsung_String(const char* string)
     return isSamsung;
 }
 
-bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API bool is_Samsung_HDD(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool     isSamsung = false;
     bool     isSSD     = false;
@@ -2173,7 +2182,7 @@ bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive)
         isSSD = true;
         M_FALLTHROUGH;
     default:
-        if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive && !isSSD)
+        if (get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive && !isSSD)
         {
             // on a USB drive, check the child information as well as the bridge information
             isSamsung = is_Samsung_HDD(device, true);
@@ -2190,8 +2199,8 @@ bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive)
         // this fall back method should only be called on samsung HDD's and these should only be really old ones without
         // a WWN which should be a minority. All drives with IEEE_SEAGATE_SAMSUNG_HDD should be caught long before this
         // we need to check the Vendor ID if SCSI or USB interface
-        if (device->drive_info.interface_type == USB_INTERFACE ||
-            (device->drive_info.interface_type == SCSI_INTERFACE && device->drive_info.drive_type != ATA_DRIVE))
+        if (get_Device_InterfaceType(device) == USB_INTERFACE ||
+            (get_Device_InterfaceType(device) == SCSI_INTERFACE && get_Device_DriveType(device) != ATA_DRIVE))
         {
             isSamsung = is_Samsung_String(device->drive_info.T10_vendor_ident);
         }
@@ -2201,7 +2210,7 @@ bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive)
             isSamsung = is_Samsung_String(device->drive_info.product_identification);
             // if after a model number check, the result is still false and it's USB, we need to check the child drive
             // information just to be certain
-            if (!isSamsung && device->drive_info.interface_type == USB_INTERFACE)
+            if (!isSamsung && get_Device_InterfaceType(device) == USB_INTERFACE)
             {
                 isSamsung = is_Samsung_String(device->drive_info.bridge_info.childDriveMN);
             }
@@ -2210,10 +2219,10 @@ bool is_Samsung_HDD(const tDevice* device, bool USBchildDrive)
     return isSamsung;
 }
 
-bool is_Seagate_Model_Vendor_A(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_Seagate_Model_Vendor_A(const tDevice* M_NONNULL device)
 {
     bool isSeagateVendorA = false;
-    if (device->drive_info.drive_type == SCSI_DRIVE)
+    if (get_Device_DriveType(device) == SCSI_DRIVE)
     {
         const char* vendorAModel1 = "S650DC";
         const char* vendorAModel2 = "S630DC";
@@ -2228,7 +2237,7 @@ bool is_Seagate_Model_Vendor_A(const tDevice* device)
     return isSeagateVendorA;
 }
 
-bool is_Vendor_A(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Vendor_A(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool     isVendorA = false;
     uint32_t ieeeOUI   = UINT32_C(0);
@@ -2240,7 +2249,7 @@ bool is_Vendor_A(const tDevice* device, bool USBchildDrive)
         isVendorA = true;
         break;
     default:
-        if (device->drive_info.interface_type == USB_INTERFACE && !USBchildDrive)
+        if (get_Device_InterfaceType(device) == USB_INTERFACE && !USBchildDrive)
         {
             // on a USB drive, check the child information as well as the bridge information
             isVendorA = is_Vendor_A(device, true);
@@ -2256,8 +2265,8 @@ bool is_Vendor_A(const tDevice* device, bool USBchildDrive)
         // this fall back method should only be called on samsung HDD's and these should only be really old ones without
         // a WWN which should be a minority. All drives with IEEE_SEAGATE_SAMSUNG_HDD should be caught long before this
         // we need to check the Vendor ID if SCSI or USB interface
-        // if (device->drive_info.interface_type == USB_INTERFACE || (device->drive_info.interface_type ==
-        // SCSI_INTERFACE && device->drive_info.drive_type != ATA_DRIVE))
+        // if (get_Device_InterfaceType(device) == USB_INTERFACE || (get_Device_InterfaceType(device)==
+        // SCSI_INTERFACE && get_Device_DriveType(device) != ATA_DRIVE))
         //{
         //     isVendorA = is_Vendor_A_String(device->drive_info.T10_vendor_ident);
         // }
@@ -2266,7 +2275,7 @@ bool is_Vendor_A(const tDevice* device, bool USBchildDrive)
         //{
         //    isVendorA = is_Vendor_A_String(device->drive_info.product_identification);
         //     //if after a model number check, the result is still false and it's USB, we need to check the child drive
-        //     information just to be certain if (!isVendorA && device->drive_info.interface_type == USB_INTERFACE)
+        //     information just to be certain if (!isVendorA && get_Device_InterfaceType(device) == USB_INTERFACE)
         //     {
         //         isVendorA = is_Vendor_A_String(device->drive_info.bridge_info.childDriveMN);
         //     }
@@ -2275,7 +2284,7 @@ bool is_Vendor_A(const tDevice* device, bool USBchildDrive)
     return isVendorA;
 }
 
-eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     eIronwolf_NAS_Drive isIronWolfNASDrive = NON_IRONWOLF_NAS_DRIVE;
     const char*         modelNumber        = &device->drive_info.product_identification[0];
@@ -2309,7 +2318,7 @@ eIronwolf_NAS_Drive is_Ironwolf_NAS_Drive(const tDevice* device, bool USBchildDr
     return isIronWolfNASDrive;
 }
 
-eFirecuda_Drive is_Firecuda_Drive(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API eFirecuda_Drive is_Firecuda_Drive(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     eFirecuda_Drive isFirecudaDrive = NON_FIRECUDA_DRIVE;
     const char*     modelNumber     = &device->drive_info.product_identification[0];
@@ -2342,7 +2351,7 @@ eFirecuda_Drive is_Firecuda_Drive(const tDevice* device, bool USBchildDrive)
     return isFirecudaDrive;
 }
 
-eSkyhawk_Drive is_Skyhawk_Drive(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API eSkyhawk_Drive is_Skyhawk_Drive(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     eSkyhawk_Drive isSkyhawkDrive = NON_SKYHAWK_DRIVE;
     const char*    modelNumber    = &device->drive_info.product_identification[0];
@@ -2373,7 +2382,7 @@ eSkyhawk_Drive is_Skyhawk_Drive(const tDevice* device, bool USBchildDrive)
     return isSkyhawkDrive;
 }
 
-bool is_Nytro_Drive(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Nytro_Drive(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool        isNytroDrive = false;
     const char* modelNumber  = &device->drive_info.product_identification[0];
@@ -2406,7 +2415,7 @@ bool is_Nytro_Drive(const tDevice* device, bool USBchildDrive)
     return isNytroDrive;
 }
 
-bool is_Exos_Drive(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Exos_Drive(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool        isExosDrive = false;
     const char* modelNumber = &device->drive_info.product_identification[0];
@@ -2434,7 +2443,7 @@ bool is_Exos_Drive(const tDevice* device, bool USBchildDrive)
     return isExosDrive;
 }
 
-bool is_Barracuda_Drive(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Barracuda_Drive(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool        isBarracudaDrive = false;
     const char* modelNumber      = &device->drive_info.product_identification[0];
@@ -2464,7 +2473,7 @@ bool is_Barracuda_Drive(const tDevice* device, bool USBchildDrive)
     return isBarracudaDrive;
 }
 
-bool is_Seagate_Model_Number_Vendor_B(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_B(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
     // we need to check the model number for the ones used on the Vendor products
@@ -2493,7 +2502,7 @@ bool is_Seagate_Model_Number_Vendor_B(const tDevice* device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
-bool is_Seagate_Model_Number_Vendor_C(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_C(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
     // we need to check the model number for the ones used on the Vendor products
@@ -2526,7 +2535,7 @@ bool is_Seagate_Model_Number_Vendor_C(const tDevice* device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
-bool is_Seagate_Model_Number_Vendor_D(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_D(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
     // we need to check the model number for the ones used on the vendor products
@@ -2565,7 +2574,7 @@ bool is_Seagate_Model_Number_Vendor_D(const tDevice* device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
-bool is_Seagate_Model_Number_Vendor_E(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_E(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
     // we need to check the model number for the ones used on the vendor products
@@ -2638,7 +2647,7 @@ bool is_Seagate_Model_Number_Vendor_E(const tDevice* device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
-bool is_Seagate_Model_Number_Vendor_SSD_PJ(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_SSD_PJ(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     // These are some older enterprise SSDs that had some unique capabilities.
     bool        isSeagateVendor = false;
@@ -2675,7 +2684,7 @@ bool is_Seagate_Model_Number_Vendor_SSD_PJ(const tDevice* device, bool USBchildD
     return isSeagateVendor;
 }
 
-bool is_Seagate_Model_Number_Vendor_F(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_F(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
     // we need to check the model number for the ones used on the Vendor products
@@ -2756,7 +2765,7 @@ bool is_Seagate_Model_Number_Vendor_F(const tDevice* device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
-bool is_Seagate_Model_Number_Vendor_G(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_G(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
 
@@ -2794,7 +2803,7 @@ bool is_Seagate_Model_Number_Vendor_G(const tDevice* device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
-bool is_Seagate_Model_Number_Vendor_H(const tDevice* device, bool USBchildDrive)
+OPENSEA_TRANSPORT_API bool is_Seagate_Model_Number_Vendor_H(const tDevice* M_NONNULL device, bool USBchildDrive)
 {
     bool isSeagateVendor = false;
 
@@ -2832,7 +2841,7 @@ bool is_Seagate_Model_Number_Vendor_H(const tDevice* device, bool USBchildDrive)
     return isSeagateVendor;
 }
 
-bool is_Seagate_Vendor_K(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_Seagate_Vendor_K(const tDevice* M_NONNULL device)
 {
     bool isVendorK = false;
     // LaCie Vendor ID
@@ -2883,7 +2892,8 @@ bool is_Seagate_Vendor_K(const tDevice* device)
     return isVendorK;
 }
 
-eSeagateFamily is_Seagate_Family(const tDevice* device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eSeagateFamily is_Seagate_Family(const tDevice* M_NONNULL device)
 {
     eSeagateFamily isSeagateFamily = NON_SEAGATE;
     uint8_t        iter            = UINT8_C(0);
@@ -2898,7 +2908,7 @@ eSeagateFamily is_Seagate_Family(const tDevice* device)
             {
                 // If this is an NVMe drive, we need to check if it's Seagate since both Samsung HDD's and Seagate NVMe
                 // drives use the same IEEE OUI
-                if (device->drive_info.drive_type == NVME_DRIVE)
+                if (get_Device_DriveType(device) == NVME_DRIVE)
                 {
                     if (is_Seagate(device, false))
                     {
@@ -3038,10 +3048,10 @@ eSeagateFamily is_Seagate_Family(const tDevice* device)
     return isSeagateFamily;
 }
 
-bool is_SSD(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_SSD(const tDevice* M_NONNULL device)
 {
     bool isSSD = false;
-    if (device->drive_info.media_type == MEDIA_NVM || device->drive_info.media_type == MEDIA_SSD)
+    if (get_Device_MediaType(device) == MEDIA_NVM || get_Device_MediaType(device) == MEDIA_SSD)
     {
         isSSD = true;
     }
@@ -3052,10 +3062,10 @@ bool is_SSD(const tDevice* device)
     return isSSD;
 }
 
-bool is_SATA(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_SATA(const tDevice* M_NONNULL device)
 {
     bool isSata = false;
-    if (device->drive_info.drive_type == ATA_DRIVE)
+    if (get_Device_DriveType(device) == ATA_DRIVE)
     {
         // Word 76 will be greater than zero, and never 0xFFFF on a SATA drive (bit 0 must be cleared to zero)
         if (is_ATA_Identify_Word_Valid_SATA(le16_to_host(device->drive_info.IdentifyData.ata.Word076)))
@@ -3066,32 +3076,29 @@ bool is_SATA(const tDevice* device)
     return isSata;
 }
 
-bool is_Sector_Size_Emulation_Active(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_Sector_Size_Emulation_Active(const tDevice* M_NONNULL device)
 {
     bool emulationActive = false;
     if (device->drive_info.bridge_info.isValid)
     {
-        if (device->drive_info.deviceBlockSize > UINT32_C(0) &&
-            device->drive_info.bridge_info.childDeviceBlockSize > UINT32_C(0))
+        if (get_Device_BlockSize(device) > UINT32_C(0) && get_Device_Child_BlockSize(device) > UINT32_C(0))
         {
-            if (device->drive_info.deviceBlockSize > device->drive_info.bridge_info.childDeviceBlockSize)
+            if (get_Device_BlockSize(device) > get_Device_Child_BlockSize(device))
             {
-                if (device->drive_info.interface_type == USB_INTERFACE)
+                if (get_Device_InterfaceType(device) == USB_INTERFACE)
                 {
                     emulationActive = true;
                 }
-                else if ((device->drive_info.deviceBlockSize % device->drive_info.bridge_info.childDeviceBlockSize) ==
-                         UINT32_C(0))
+                else if ((get_Device_BlockSize(device) % get_Device_Child_BlockSize(device)) == UINT32_C(0))
                 {
                     // One more check to rule out out of sync drive issues.
                     // Check that maxLBA is divisible by the number of sectors being emulated minus 1
                     // The minus one has to do with which USB drives we want to catch here.
                     // Some OS's we cannot detect it is on USB interface, which is why this part of the check is more
                     // "generic"
-                    uint32_t emulatedSectors =
-                        device->drive_info.deviceBlockSize / device->drive_info.bridge_info.childDeviceBlockSize;
-                    if ((device->drive_info.deviceMaxLba + UINT64_C(1)) ==
-                        (device->drive_info.bridge_info.childDeviceMaxLba / M_STATIC_CAST(uint64_t, emulatedSectors)))
+                    uint32_t emulatedSectors = get_Device_BlockSize(device) / get_Device_Child_BlockSize(device);
+                    if ((return_Device_MaxLba(device) + UINT64_C(1)) ==
+                        (return_Device_Child_MaxLba(device) / M_STATIC_CAST(uint64_t, emulatedSectors)))
                     {
                         emulationActive = true;
                     }
@@ -3102,17 +3109,17 @@ bool is_Sector_Size_Emulation_Active(const tDevice* device)
     return emulationActive;
 }
 
-bool is_Blocksize_And_Capacity_In_Sync(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_Blocksize_And_Capacity_In_Sync(const tDevice* M_NONNULL device)
 {
     bool insync = true;
     if (device->drive_info.bridge_info.isValid && !is_Sector_Size_Emulation_Active(device))
     {
-        if (device->drive_info.deviceBlockSize != device->drive_info.bridge_info.childDeviceBlockSize)
+        if (get_Device_BlockSize(device) != get_Device_Child_BlockSize(device))
         {
             insync = false;
         }
-        else if (device->drive_info.bridge_info.childDeviceMaxLba > 0 &&
-                 device->drive_info.deviceMaxLba != device->drive_info.bridge_info.childDeviceMaxLba)
+        else if (return_Device_Child_MaxLba(device) > 0 &&
+                 return_Device_MaxLba(device) != return_Device_Child_MaxLba(device))
         {
             insync = false;
         }
@@ -3120,7 +3127,7 @@ bool is_Blocksize_And_Capacity_In_Sync(const tDevice* device)
     return insync;
 }
 
-eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize)
+OPENSEA_TRANSPORT_API eReturnValues calculate_Checksum(uint8_t* M_NONNULL pBuf, uint32_t blockSize)
 {
     uint8_t  checksum = UINT8_C(0);
     uint32_t counter  = UINT32_C(0);
@@ -3146,9 +3153,9 @@ eReturnValues calculate_Checksum(uint8_t* pBuf, uint32_t blockSize)
 #define DATA_64K 65536
 #define DATA_32K 32768
 
-uint32_t get_Sector_Count_For_Read_Write(const tDevice* device)
+OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(const tDevice* M_NONNULL device)
 {
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
     case SCSI_INTERFACE:
@@ -3156,23 +3163,23 @@ uint32_t get_Sector_Count_For_Read_Write(const tDevice* device)
     case NVME_INTERFACE:
         // set the sector count for a 64k transfer. This is most compatible (typically 128 sectors at a time-512B sector
         // size) - TJE
-        return DATA_64K / device->drive_info.deviceBlockSize;
+        return DATA_64K / get_Device_BlockSize(device);
     case USB_INTERFACE:
     case MMC_INTERFACE:
     case SD_INTERFACE:
     case IEEE_1394_INTERFACE:
         // set the sector count for a 32k transfer. This is most compatible on these external interface drives since
         // they typically have RAM limitations on the bridge chip - TJE
-        return DATA_32K / device->drive_info.deviceBlockSize;
+        return DATA_32K / get_Device_BlockSize(device);
     default:
         return 64; // just set something in case they try to use this value but didn't check the return code from this
                    // function - TJE
     }
 }
 
-uint32_t get_Sector_Count_For_512B_Based_XFers(const tDevice* device)
+OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(const tDevice* M_NONNULL device)
 {
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
     case SCSI_INTERFACE:
@@ -3193,9 +3200,9 @@ uint32_t get_Sector_Count_For_512B_Based_XFers(const tDevice* device)
     }
 }
 
-uint32_t get_Sector_Count_For_4096B_Based_XFers(const tDevice* device)
+OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(const tDevice* M_NONNULL device)
 {
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
     case SCSI_INTERFACE:
@@ -3319,7 +3326,25 @@ static M_INLINE void calculate_Time_Conversion(uint64_t timeInNanoSeconds, doubl
     }
 }
 
-void print_Time(uint64_t timeInNanoSeconds)
+// Device-aware version of print_Time with verbosity level support
+OPENSEA_TRANSPORT_API void print_Time_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity, uint64_t timeInNanoSeconds)
+{
+    double     convertedTime = 0.0;
+    eTimeUnits timeUnit      = TIME_UNITS_NS;
+    DECLARE_ZERO_INIT_ARRAY(char, unitString, TIME_UNIT_STR_LENGTH);
+    calculate_Time_Conversion(timeInNanoSeconds, &convertedTime, &timeUnit);
+    get_Time_Unit_String(timeUnit, unitString, TIME_UNIT_STR_LENGTH);
+    print_tDevice_Verbose_Formatted_String(device, verbosity, "(%s): %0.02f\n", unitString, convertedTime);
+}
+
+// Device-aware version of print_Command_Time with verbosity level support
+OPENSEA_TRANSPORT_API void print_Command_Time_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity, uint64_t timeInNanoSeconds)
+{
+    print_tDevice_Verbose_String(device, verbosity, "Command Time: ");
+    print_Time_Verbose(device, verbosity, timeInNanoSeconds);
+}
+
+OPENSEA_TRANSPORT_API void print_Time(uint64_t timeInNanoSeconds)
 {
     double     convertedTime = 0.0;
     eTimeUnits timeUnit      = TIME_UNITS_NS;
@@ -3329,29 +3354,29 @@ void print_Time(uint64_t timeInNanoSeconds)
     printf("(%s): %0.02f\n", unitString, convertedTime);
 }
 
-void print_Command_Time(uint64_t timeInNanoSeconds)
+OPENSEA_TRANSPORT_API void print_Command_Time(uint64_t timeInNanoSeconds)
 {
     print_str("Command Time: ");
     print_Time(timeInNanoSeconds);
 }
 
-uint64_t align_LBA(const tDevice* device, uint64_t LBA)
+OPENSEA_TRANSPORT_API uint64_t align_LBA(const tDevice* M_NONNULL device, uint64_t LBA)
 {
-    uint16_t logicalPerPhysical =
-        C_CAST(uint16_t, device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
+    uint16_t logicalPerPhysical = get_Logical_Sectors_Per_Physical_Sector(device);
     if (logicalPerPhysical > 1)
     {
         // make sure the incoming LBA is aligned to the start of the physical sector it is in
         uint64_t tempLBA = LBA / C_CAST(uint64_t, logicalPerPhysical);
         tempLBA *= C_CAST(uint64_t, logicalPerPhysical);
-        LBA = tempLBA - device->drive_info.sectorAlignment;
+        LBA = tempLBA - get_Device_Sector_Alignment(device);
     }
     return LBA;
 }
 
-eReturnValues remove_Duplicate_Devices(tDevice*                 deviceList,
-                                       volatile uint32_t*       numberOfDevices,
-                                       removeDuplicateDriveType rmvDevFlag)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues remove_Duplicate_Devices(tDevice* M_NONNULL           deviceList,
+                                                             volatile uint32_t* M_NONNULL numberOfDevices,
+                                                             removeDuplicateDriveType     rmvDevFlag)
 {
     volatile uint32_t i        = UINT32_C(0);
     volatile uint32_t j        = UINT32_C(0);
@@ -3420,7 +3445,10 @@ eReturnValues remove_Duplicate_Devices(tDevice*                 deviceList,
     return ret;
 }
 
-eReturnValues remove_Device(tDevice* deviceList, uint32_t driveToRemoveIdx, volatile uint32_t* numberOfDevices)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues remove_Device(tDevice* M_NONNULL           deviceList,
+                                                  uint32_t                     driveToRemoveIdx,
+                                                  volatile uint32_t* M_NONNULL numberOfDevices)
 {
     uint32_t      i   = UINT32_C(0);
     eReturnValues ret = FAILURE;
@@ -3454,17 +3482,18 @@ eReturnValues remove_Device(tDevice* deviceList, uint32_t driveToRemoveIdx, vola
     return ret;
 }
 
-bool is_CSMI_Device(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_CSMI_Device(const tDevice* M_NONNULL device)
 {
     bool csmiDevice = true;
 
 #ifdef _DEBUG
-    printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n", device->os_info.friendlyName,
-           device->drive_info.interface_type, C_CAST(uintptr_t, device->raid_device));
+    printf("friendly name : %s interface_type : %d raid_device : %" PRIXPTR "\n",
+           get_Device_Handle_Friendly_Name(device), get_Device_InterfaceType(device),
+           C_CAST(uintptr_t, device->raid_device));
 #endif
 
-    csmiDevice = csmiDevice && (strncmp(device->os_info.friendlyName, "SCSI", SIZE_T_C(4)) == 0);
-    csmiDevice = csmiDevice && (device->drive_info.interface_type == RAID_INTERFACE);
+    csmiDevice = csmiDevice && (strncmp(get_Device_Handle_Friendly_Name(device), "SCSI", SIZE_T_C(4)) == 0);
+    csmiDevice = csmiDevice && (get_Device_InterfaceType(device) == RAID_INTERFACE);
     csmiDevice = csmiDevice && (device->raid_device != M_NULLPTR);
 
 #ifdef _DEBUG
@@ -3515,24 +3544,24 @@ void print_tDevice_Size(void)
 }
 #endif //_DEBUG
 
-bool is_Removable_Media(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_Removable_Media(const tDevice* M_NONNULL device)
 {
     bool    result = false;
     uint8_t scsiDevType;
 
-    if (device->drive_info.interface_type == IDE_INTERFACE)
+    if (get_Device_InterfaceType(device) == IDE_INTERFACE)
     {
-        if (device->drive_info.drive_type == UNKNOWN_DRIVE || device->drive_info.drive_type == FLASH_DRIVE ||
-            device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.media_type == MEDIA_OPTICAL ||
-            device->drive_info.media_type == MEDIA_SSM_FLASH || device->drive_info.media_type == MEDIA_TAPE ||
-            device->drive_info.media_type == MEDIA_UNKNOWN ||
+        if (get_Device_DriveType(device) == UNKNOWN_DRIVE || get_Device_DriveType(device) == FLASH_DRIVE ||
+            get_Device_DriveType(device) == ATAPI_DRIVE || get_Device_MediaType(device) == MEDIA_OPTICAL ||
+            get_Device_MediaType(device) == MEDIA_SSM_FLASH || get_Device_MediaType(device) == MEDIA_TAPE ||
+            get_Device_MediaType(device) == MEDIA_UNKNOWN ||
             (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word000)) &&
              le16_to_host(device->drive_info.IdentifyData.ata.Word000) & BIT7))
         {
             result = true;
         }
     }
-    else if (device->drive_info.interface_type == SCSI_INTERFACE)
+    else if (get_Device_InterfaceType(device) == SCSI_INTERFACE)
     {
         scsiDevType = device->drive_info.scsiVpdData.inquiryData[0] & 0x1F;
 
@@ -5020,9 +5049,9 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
     case 0xAA17: // FireCuda Gaming SSD
         // NOTE: Recommend a retest for this device to double check the hacks. Most are setup based on other
         // ASMedia bridge chip tests.
-        passthroughHacksSet                                                     = true;
-        device->drive_info.passThroughHacks.passthroughType                     = NVME_PASSTHROUGH_ASMEDIA;
-        device->drive_info.drive_type                                           = NVME_DRIVE;
+        passthroughHacksSet                                 = true;
+        device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA;
+        set_Device_DriveType(device, NVME_DRIVE);
         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
         device->drive_info.passThroughHacks.turfValue                           = 33;
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
@@ -5275,7 +5304,7 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
             true; // set this so in the case an ATA passthrough command is attempted, it won't try this opcode
                   // since it can cause performance problems or crash the bridge
-        device->drive_info.drive_type                                             = NVME_DRIVE;
+        set_Device_DriveType(device, NVME_DRIVE);
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -5407,7 +5436,7 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
 
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static bool set_Maxtor_USB_Hacks_By_PID(tDevice* device)
+static bool set_Maxtor_USB_Hacks_By_PID(tDevice* M_NONNULL device)
 {
     bool passthroughHacksSet = false;
     switch (device->drive_info.adapter_info.productID)
@@ -5599,7 +5628,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
             true; // set this so in the case an ATA passthrough command is attempted, it won't try this opcode
                   // since it can cause performance problems or crash the bridge
-        device->drive_info.drive_type                                             = NVME_DRIVE;
+        set_Device_DriveType(device, NVME_DRIVE);
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -5648,7 +5677,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
             true; // set this so in the case an ATA passthrough command is attempted, it won't try this opcode
                   // since it can cause performance problems or crash the bridge
-        device->drive_info.drive_type                                             = NVME_DRIVE;
+        set_Device_DriveType(device, NVME_DRIVE);
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -5740,7 +5769,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
 
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static bool set_ASMedia_USB_Hacks_By_PID(tDevice* device)
+static bool set_ASMedia_USB_Hacks_By_PID(tDevice* M_NONNULL device)
 {
     bool passthroughHacksSet = false;
     switch (device->drive_info.adapter_info.productID)
@@ -5752,9 +5781,9 @@ static bool set_ASMedia_USB_Hacks_By_PID(tDevice* device)
         // 2. PID: "USB3.1 TO NVME" could NOT do these commands. So setting the lowest common set of rules.
         // If there are other ASMedia chips that vary in capabilities, then may need to adjust what is done in
         // here, or add a hack to check INQ data to finish setting up remaining hacks
-        passthroughHacksSet                                                     = true;
-        device->drive_info.passThroughHacks.passthroughType                     = NVME_PASSTHROUGH_ASMEDIA_BASIC;
-        device->drive_info.drive_type                                           = NVME_DRIVE;
+        passthroughHacksSet                                 = true;
+        device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_ASMEDIA_BASIC;
+        set_Device_DriveType(device, NVME_DRIVE);
         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
         device->drive_info.passThroughHacks.turfValue                           = 33;
         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
@@ -5829,7 +5858,7 @@ static bool set_ASMedia_USB_Hacks_By_PID(tDevice* device)
 
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static bool set_Realtek_USB_Hacks_By_PID(tDevice* device)
+static bool set_Realtek_USB_Hacks_By_PID(tDevice* M_NONNULL device)
 {
     bool passthroughHacksSet = false;
     switch (device->drive_info.adapter_info.productID)
@@ -6005,7 +6034,7 @@ static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
 
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static bool set_Prolific_USB_Hacks_By_PID(tDevice* device)
+static bool set_Prolific_USB_Hacks_By_PID(tDevice* M_NONNULL device)
 {
     bool passthroughHacksSet = false;
     switch (device->drive_info.adapter_info.productID)
@@ -6052,7 +6081,7 @@ static bool set_Prolific_USB_Hacks_By_PID(tDevice* device)
 
 M_NONNULL_PARAM_LIST(1)
 M_PARAM_RW(1)
-static bool set_Cypress_USB_Hacks_By_PID(tDevice* device)
+static bool set_Cypress_USB_Hacks_By_PID(tDevice* M_NONNULL device)
 {
     bool passthroughHacksSet = false;
     switch (device->drive_info.adapter_info.productID)
@@ -6170,7 +6199,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
 {
     bool passthroughHacksSet = false;
     // only change the ATA Passthrough type for USB (for legacy USB bridges)
-    if (device->drive_info.interface_type == USB_INTERFACE)
+    if (get_Device_InterfaceType(device) == USB_INTERFACE)
     {
         // Most USB bridges are SAT so they'll probably fall into the default cases and issue an identify command for
         // SAT
@@ -6300,7 +6329,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             case 0x1000: // USB DISK - Rev1100
                 // Don't set a passthrough type! This is a USB flash memory, that responds to one of the legacy command
                 // requests and it will break it!
-                device->drive_info.media_type                       = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
                 passthroughHacksSet                                 = true;
                 // this device also supports the device identification VPD page even though the list of pages doesn't
@@ -6326,7 +6355,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x2093: // v3.1.0.4
-                device->drive_info.media_type                                             = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType                       = PASSTHROUGH_NONE;
                 passthroughHacksSet                                                       = true;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
@@ -6353,7 +6382,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             case 0x9380: // flash drive
             case 0x9381: // flash drive
             case 0x9382: // flash drive
-                device->drive_info.media_type                       = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
                 passthroughHacksSet                                 = true;
                 break;
@@ -6366,7 +6395,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             {
             case 0x1172: // flash drive
             case 0x1176: // flash drive - rev 0100
-                device->drive_info.media_type                       = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
                 passthroughHacksSet                                 = true;
                 break;
@@ -6378,8 +6407,8 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x5575: // Cruzer Glide
-                passthroughHacksSet                                                       = true;
-                device->drive_info.media_type                                             = MEDIA_SSM_FLASH;
+                passthroughHacksSet = true;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType                       = PASSTHROUGH_NONE;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
                 device->drive_info.passThroughHacks.turfValue                             = 16;
@@ -6394,9 +6423,9 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 break;
             case 0x5580: // Extreme
                 passthroughHacksSet = true;
-                device->drive_info.media_type =
-                    MEDIA_SSM_FLASH; // Leaving this as flash since it is a flash drive/thumb drive, but this is an odd
-                                     // one that seems to do SAT commands.
+                set_Device_MediaType(device,
+                                     MEDIA_SSM_FLASH); // Leaving this as flash since it is a flash drive/thumb drive,
+                                                       // but this is an odd one that seems to do SAT commands.
                 device->drive_info.passThroughHacks.passthroughType                          = ATA_PASSTHROUGH_SAT;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure      = true;
                 device->drive_info.passThroughHacks.turfValue                                = 15;
@@ -6418,8 +6447,8 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 1048576;
                 break;
             case 0x5583: // Ultra Fit
-                passthroughHacksSet                                                       = true;
-                device->drive_info.media_type                                             = MEDIA_SSM_FLASH;
+                passthroughHacksSet = true;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType                       = PASSTHROUGH_NONE;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
                 device->drive_info.passThroughHacks.turfValue                             = 14;
@@ -6440,8 +6469,8 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x3600: // Patriot Memory PMA
-                passthroughHacksSet                                                     = true;
-                device->drive_info.media_type                                           = MEDIA_SSM_FLASH;
+                passthroughHacksSet = true;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType                     = PASSTHROUGH_NONE;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                 device->drive_info.passThroughHacks.turfValue                           = 4;
@@ -6469,8 +6498,8 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             switch (device->drive_info.adapter_info.productID)
             {
             case 0x1300: // USB DISK 2.0
-                passthroughHacksSet                                                     = true;
-                device->drive_info.media_type                                           = MEDIA_SSM_FLASH;
+                passthroughHacksSet = true;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 device->drive_info.passThroughHacks.passthroughType                     = PASSTHROUGH_NONE;
                 device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                 device->drive_info.passThroughHacks.turfValue                           = 33;
@@ -6594,7 +6623,7 @@ M_PARAM_RW(1)
 static bool set_IEEE1394_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
 {
     bool passthroughHacksSet = false;
-    if (device->drive_info.interface_type == IEEE_1394_INTERFACE)
+    if (get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
     {
         // It is unknown if any IEEE 1394 devices support any ATA passthrough.
         // Some devices had both USB and IEEE1394 interfaces and one may have passthrough while the other does not. They
@@ -6756,7 +6785,7 @@ static bool set_PCI_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
     return passthroughHacksSet;
 }
 
-bool setup_Passthrough_Hacks_By_ID(tDevice* device)
+bool setup_Passthrough_Hacks_By_ID(tDevice* M_NONNULL device)
 {
     bool success = false;
     // need to do things different for USB vs PCI vs IEEE1394, etc
@@ -6787,17 +6816,19 @@ bool setup_Passthrough_Hacks_By_ID(tDevice* device)
 }
 
 // helper functions to make tDevice structure opaque
-size_t get_Device_Struct_size(void)
+OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_Struct_size(void) M_UNSEQUENCED
 {
     return sizeof(tDevice);
 }
 
-uint32_t get_Device_Block_Version(void)
+OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC uint32_t get_Device_Block_Version(void) M_UNSEQUENCED
 {
     return DEVICE_BLOCK_VERSION;
 }
 
-int32_t initialize_Device_struct(tDevice* device, uint32_t deviceSize, uint32_t blockVersion)
+OPENSEA_TRANSPORT_API int32_t initialize_Device_struct(tDevice* M_NONNULL device,
+                                                       uint32_t           deviceSize,
+                                                       uint32_t           blockVersion)
 {
     if (deviceSize != sizeof(tDevice) || blockVersion != DEVICE_BLOCK_VERSION)
     {
@@ -6809,24 +6840,331 @@ int32_t initialize_Device_struct(tDevice* device, uint32_t deviceSize, uint32_t 
     return 0;
 }
 
-eDriveType get_Device_DriveType(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PURE_FUNC size_t get_Device_IO_Minimum_Alignment(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR)
+    {
+        if (device->os_info.minimumAlignment == 0)
+        {
+            return sizeof(void*);
+        }
+        return device->os_info.minimumAlignment;
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API void set_Device_IO_Minimum_Alignment(tDevice* M_NONNULL device, size_t alignment)
+{
+    if (device != M_NULLPTR)
+    {
+        if (alignment < sizeof(void*))
+        {
+            alignment = sizeof(void*);
+        }
+        device->os_info.minimumAlignment = M_STATIC_CAST(uint16_t, alignment);
+    }
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC eHandleOpenFlags
+get_Device_Handle_Open_Flags(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR)
+    {
+        return device->os_info.handleFlags;
+    }
+    return HANDLE_FLAGS_DEFAULT;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API void set_Device_Handle_Open_Flags(tDevice* M_NONNULL device, eHandleOpenFlags flags)
+{
+    if (device != M_NULLPTR)
+    {
+        device->os_info.handleFlags = flags;
+    }
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC const char* M_NULLABLE
+get_Device_Handle_Name(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR)
+    {
+        if (safe_strnlen(device->os_info.name, sizeof(device->os_info.name)) == 0)
+        {
+            return M_NULLPTR;
+        }
+        else if (safe_strnlen(device->os_info.name, sizeof(device->os_info.name)) == sizeof(device->os_info.name))
+            M_UNLIKELY
+            {
+                return M_NULLPTR;
+            }
+        return M_REINTERPRET_CAST(const char*, device->os_info.name);
+    }
+    return M_NULLPTR;
+}
+
+M_PARAM_RW(1)
+M_PARAM_RO(2)
+M_NULL_TERM_STRING(2)
+OPENSEA_TRANSPORT_API bool set_Device_Handle_Name(tDevice* M_NONNULL device, const char* M_NULLABLE name)
+{
+    if (device != M_NULLPTR)
+    {
+        errno_t error = EINVAL;
+        if (name != M_NULLPTR)
+        {
+            error = safe_strcpy(device->os_info.name, sizeof(device->os_info.name), name);
+        }
+        else
+        {
+            // Do not change error to 0 here. Name should never be empty or null.
+            // Zeroing this out is the safest bet in case anything attempts to access any part of this expecting null
+            // termination By setting all bytes to 0, that effectively sets any possible access to a string of length 0
+            (void)safe_memset(device->os_info.name, sizeof(device->os_info.name), 0, sizeof(device->os_info.name));
+        }
+        if (error == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_NODISCARD const char* M_NULLABLE
+get_Device_Handle_Friendly_Name(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        if (safe_strnlen(device->os_info.friendlyName, sizeof(device->os_info.friendlyName)) == 0)
+        {
+            return M_NULLPTR;
+        }
+        else if (safe_strnlen(device->os_info.friendlyName, sizeof(device->os_info.friendlyName)) ==
+                 sizeof(device->os_info.friendlyName))
+            M_UNLIKELY
+            {
+                return M_NULLPTR;
+            }
+        return M_REINTERPRET_CAST(const char*, device->os_info.friendlyName);
+    }
+    return M_NULLPTR;
+}
+
+M_PARAM_RW(1)
+M_PARAM_RO(2)
+M_NULL_TERM_STRING(2)
+OPENSEA_TRANSPORT_API bool set_Device_Handle_Friendly_Name(tDevice* M_NONNULL device, const char* M_NULLABLE name)
+{
+    if (device != M_NULLPTR)
+    {
+        errno_t error = EINVAL;
+        if (name != M_NULLPTR)
+        {
+            error = safe_strcpy(device->os_info.friendlyName, sizeof(device->os_info.friendlyName), name);
+        }
+        else
+        {
+            // Do not change error to 0 here. Name should never be empty or null.
+            // Zeroing this out is the safest bet in case anything attempts to access any part of this expecting null
+            // termination By setting all bytes to 0, that effectively sets any possible access to a string of length 0
+            (void)safe_memset(device->os_info.friendlyName, sizeof(device->os_info.friendlyName), 0,
+                              sizeof(device->os_info.friendlyName));
+        }
+        if (error == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+OPENSEA_TRANSPORT_API eDriveType get_Device_DriveType(const tDevice* M_NONNULL device)
 {
     return device->drive_info.drive_type;
 }
 
-uint32_t get_Device_BlockSize(const tDevice* device)
+OPENSEA_TRANSPORT_API void set_Device_DriveType(tDevice* M_NONNULL device, eDriveType driveType)
 {
-    return device->drive_info.deviceBlockSize;
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.drive_type = driveType;
+    }
 }
 
-uint32_t get_Device_PhyBlockSize(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PURE_FUNC eInterfaceType get_Device_InterfaceType(const tDevice* M_NONNULL device)
+    M_REPRODUCIBLE
 {
-    return device->drive_info.devicePhyBlockSize;
+    return device->drive_info.interface_type;
 }
 
-int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)
+OPENSEA_TRANSPORT_API void set_Device_InterfaceType(tDevice* M_NONNULL device, eInterfaceType interfaceType)
 {
-    if (maxLba == M_NULLPTR)
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.interface_type = interfaceType;
+    }
+}
+
+OPENSEA_TRANSPORT_API M_PURE_FUNC eMediaType get_Device_MediaType(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    return device->drive_info.media_type;
+}
+
+OPENSEA_TRANSPORT_API void set_Device_MediaType(tDevice* M_NONNULL device, eMediaType mediaType)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.media_type = mediaType;
+    }
+}
+
+OPENSEA_TRANSPORT_API uint32_t get_Device_BlockSize(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.deviceBlockSize;
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API void set_Device_BlockSize(tDevice* M_NONNULL device, uint32_t blockSize)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.deviceBlockSize = blockSize;
+    }
+}
+
+OPENSEA_TRANSPORT_API uint32_t get_Device_PhyBlockSize(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR)
+    {
+        if (device->drive_info.devicePhyBlockSize == 0)
+        {
+            return device->drive_info
+                .deviceBlockSize; // if phy block size is not set, assume it is the same as block size
+        }
+        return device->drive_info.devicePhyBlockSize;
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API void set_Device_PhyBlockSize(tDevice* M_NONNULL device, uint32_t phyBlockSize)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.devicePhyBlockSize = phyBlockSize;
+    }
+}
+
+M_NODISCARD M_PURE_FUNC uint16_t get_Device_Sector_Alignment(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.sectorAlignment;
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API void set_Device_Sector_Alignment(tDevice* M_NONNULL device, uint16_t sectorAlignment)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.sectorAlignment = sectorAlignment;
+    }
+}
+
+OPENSEA_TRANSPORT_API M_PURE_FUNC uint16_t get_Logical_Sectors_Per_Physical_Sector(const tDevice* M_NONNULL device)
+    M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR)
+    {
+        if (device->drive_info.devicePhyBlockSize == 0)
+        {
+            return UINT16_C(1); // avoid division by zero
+        }
+        return C_CAST(uint16_t, device->drive_info.deviceBlockSize / device->drive_info.devicePhyBlockSize);
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t get_Device_Child_BlockSize(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
+    {
+        return device->drive_info.bridge_info.childDeviceBlockSize;
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API void set_Device_Child_BlockSize(tDevice* M_NONNULL device, uint32_t blockSize)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.bridge_info.childDeviceBlockSize = blockSize;
+    }
+}
+
+OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t get_Device_Child_PhyBlockSize(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
+    {
+        if (device->drive_info.bridge_info.childDevicePhyBlockSize == 0)
+        {
+            return device->drive_info.bridge_info
+                .childDeviceBlockSize; // if phy block size is not set, assume it is the same as block size
+        }
+        return device->drive_info.bridge_info.childDevicePhyBlockSize;
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API void set_Device_Child_PhyBlockSize(tDevice* M_NONNULL device, uint32_t phyBlockSize)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.bridge_info.childDevicePhyBlockSize = phyBlockSize;
+    }
+}
+
+M_NODISCARD M_PURE_FUNC uint16_t get_Device_Child_Sector_Alignment(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
+    {
+        return device->drive_info.bridge_info.childSectorAlignment;
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API void set_Device_Child_Sector_Alignment(tDevice* M_NONNULL device, uint16_t sectorAlignment)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.bridge_info.childSectorAlignment = sectorAlignment;
+    }
+}
+
+OPENSEA_TRANSPORT_API M_PURE_FUNC uint16_t
+get_Child_Logical_Sectors_Per_Physical_Sector(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
+    {
+        if (device->drive_info.bridge_info.childDevicePhyBlockSize == 0)
+        {
+            return UINT16_C(1); // avoid division by zero
+        }
+        return C_CAST(uint16_t, device->drive_info.bridge_info.childDeviceBlockSize /
+                                    device->drive_info.bridge_info.childDevicePhyBlockSize);
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API int32_t get_Device_MaxLba(uint64_t* M_NONNULL maxLba, const tDevice* M_NONNULL device)
+{
+    if (maxLba == M_NULLPTR || device == M_NULLPTR)
     {
         return -1;
     }
@@ -6834,14 +7172,68 @@ int32_t get_Device_MaxLba(uint64_t* maxLba, const tDevice* device)
     return 0;
 }
 
-uint32_t get_Device_LUN(const tDevice* device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_MaxLba(const tDevice* M_NONNULL device)
+    M_REPRODUCIBLE
 {
-    return device->drive_info.lun;
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.deviceMaxLba;
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API void set_Device_MaxLba(tDevice* M_NONNULL device, uint64_t maxLba)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.deviceMaxLba = maxLba;
+    }
+}
+
+OPENSEA_TRANSPORT_API int32_t get_Device_Child_MaxLba(uint64_t* M_NONNULL maxLba, const tDevice* M_NONNULL device)
+{
+    if (maxLba == M_NULLPTR || device == M_NULLPTR)
+    {
+        return -1;
+    }
+    *maxLba = device->drive_info.bridge_info.childDeviceMaxLba;
+    return 0;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_Child_MaxLba(const tDevice* M_NONNULL device)
+    M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
+    {
+        return device->drive_info.bridge_info.childDeviceMaxLba;
+    }
+    return 0;
+}
+
+OPENSEA_TRANSPORT_API void set_Device_Child_MaxLba(tDevice* M_NONNULL device, uint64_t maxLba)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.bridge_info.childDeviceMaxLba = maxLba;
+    }
+}
+
+OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t get_Device_LUN(const tDevice* M_NONNULL device) M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.lun;
+    }
+    return 0;
 }
 
 // returns pointer to location of serialNumber in tDevice
 // lenght defined as [SERIAL_NUM_LEN + 1]
-int32_t get_Device_serialNumber(char* dest_serialNumber, size_t dest_len, const tDevice* device)
+OPENSEA_TRANSPORT_API int32_t get_Device_serialNumber(char* M_NONNULL          dest_serialNumber,
+                                                      size_t                   dest_len,
+                                                      const tDevice* M_NONNULL device)
 {
     if (dest_serialNumber == M_NULLPTR)
     {
@@ -6855,14 +7247,16 @@ int32_t get_Device_serialNumber(char* dest_serialNumber, size_t dest_len, const 
     return SERIAL_NUM_LEN + 1;
 }
 
-size_t get_Device_serialNumber_length(void)
+OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_serialNumber_length(void) M_UNSEQUENCED
 {
     return SERIAL_NUM_LEN + 1;
 }
 
 // returns pointer to location of vender_ident in tDevice
 // lenght defined as [T10_VENDOR_ID_LEN + 1]
-int32_t get_Device_T10_vendor_ident(char* dest_T10_vendor_ident, size_t dest_len, const tDevice* device)
+OPENSEA_TRANSPORT_API int32_t get_Device_T10_vendor_ident(char* M_NONNULL          dest_T10_vendor_ident,
+                                                          size_t                   dest_len,
+                                                          const tDevice* M_NONNULL device)
 {
     if (dest_T10_vendor_ident == M_NULLPTR)
     {
@@ -6876,14 +7270,16 @@ int32_t get_Device_T10_vendor_ident(char* dest_T10_vendor_ident, size_t dest_len
     return T10_VENDOR_ID_LEN + 1;
 }
 
-size_t get_Device_T10_vendor_ident_length(void)
+OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_T10_vendor_ident_length(void) M_UNSEQUENCED
 {
     return T10_VENDOR_ID_LEN + 1;
 }
 
 // returns pointer to location of product_identification in tDevice
 // lenght defined as [MODEL_NUM_LEN + 1]
-int32_t get_Device_product_identification(char* dest_product_identification, size_t dest_len, const tDevice* device)
+OPENSEA_TRANSPORT_API int32_t get_Device_product_identification(char* M_NONNULL          dest_product_identification,
+                                                                size_t                   dest_len,
+                                                                const tDevice* M_NONNULL device)
 {
     if (dest_product_identification == M_NULLPTR)
     {
@@ -6897,14 +7293,16 @@ int32_t get_Device_product_identification(char* dest_product_identification, siz
     return MODEL_NUM_LEN + 1;
 }
 
-size_t get_Device_product_identification_length(void)
+OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_product_identification_length(void) M_UNSEQUENCED
 {
     return MODEL_NUM_LEN + 1;
 }
 
 // returns pointer to location of product_revision in tDevice
 // lenght defined as [FW_REV_LEN + 1]
-int32_t get_Device_product_revision(char* dest_product_revision, size_t dest_len, const tDevice* device)
+OPENSEA_TRANSPORT_API int32_t get_Device_product_revision(char* M_NONNULL          dest_product_revision,
+                                                          size_t                   dest_len,
+                                                          const tDevice* M_NONNULL device)
 {
     if (dest_product_revision == M_NULLPTR)
     {
@@ -6918,12 +7316,13 @@ int32_t get_Device_product_revision(char* dest_product_revision, size_t dest_len
     return FW_REV_LEN + 1;
 }
 
-size_t get_Device_product_revision_length(void)
+OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_product_revision_length(void) M_UNSEQUENCED
 {
     return FW_REV_LEN + 1;
 }
 
-int32_t get_Device_worldWideName(uint64_t* worldWideName, const tDevice* device)
+OPENSEA_TRANSPORT_API int32_t get_Device_worldWideName(uint64_t* M_NONNULL      worldWideName,
+                                                       const tDevice* M_NONNULL device)
 {
     if (worldWideName == M_NULLPTR)
     {
@@ -6935,7 +7334,9 @@ int32_t get_Device_worldWideName(uint64_t* worldWideName, const tDevice* device)
 
 // returns pointer to location of product_revision in tDevice
 // lenght defined as [SPC3_SENSE_LEN]
-int32_t get_Device_lastCommandSenseData(uint8_t* dest_lastCommandSenseData, size_t dest_len, const tDevice* device)
+OPENSEA_TRANSPORT_API int32_t get_Device_lastCommandSenseData(uint8_t* M_NONNULL       dest_lastCommandSenseData,
+                                                              size_t                   dest_len,
+                                                              const tDevice* M_NONNULL device)
 {
     if (dest_lastCommandSenseData == M_NULLPTR)
     {
@@ -6949,17 +7350,17 @@ int32_t get_Device_lastCommandSenseData(uint8_t* dest_lastCommandSenseData, size
     return SPC3_SENSE_LEN;
 }
 
-size_t get_Device_lastCommandSenseData_length(void)
+OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_lastCommandSenseData_length(void) M_UNSEQUENCED
 {
     return SPC3_SENSE_LEN;
 }
 
-uint32_t get_Device_OS_Info_Last_Error(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t get_Device_OS_Info_Last_Error(const tDevice* M_NONNULL device) M_REPRODUCIBLE
 {
     return C_CAST(uint32_t, device->os_info.last_error);
 }
 
-int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* device)
+OPENSEA_TRANSPORT_API int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* M_NONNULL device)
 {
     if (verbosity < VERBOSITY_QUIET || verbosity > VERBOSITY_BUFFERS)
     {
@@ -6969,7 +7370,29 @@ int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* device)
     return 0;
 }
 
-uint8_t get_Device_os_info_scsiAddress_host(const tDevice* device)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eVerbosityLevels set_tDevice_Verbosity(tDevice *M_NONNULL device, eVerbosityLevels verbosity)
+{
+    eVerbosityLevels previous = VERBOSITY_DEFAULT;
+    if (device != M_NULLPTR)
+    {
+        eVerbosityLevels new = verbosity;
+        previous = device->deviceVerbosity;
+        if (M_STATIC_CAST(int, new) > M_STATIC_CAST(int, VERBOSITY_BUFFERS))
+        {
+            new = VERBOSITY_BUFFERS;
+        }
+        else if (M_STATIC_CAST(int, new) < M_STATIC_CAST(int, VERBOSITY_QUIET))
+        {
+            new = VERBOSITY_QUIET;
+        }
+        device->deviceVerbosity = new;
+    }
+    return previous;   
+}
+
+OPENSEA_TRANSPORT_API M_PURE_FUNC uint8_t get_Device_os_info_scsiAddress_host(const tDevice* M_NONNULL device)
+    M_REPRODUCIBLE
 {
 #if defined(_WIN32)
     return device->os_info.scsi_addr.PortNumber;
@@ -6988,7 +7411,8 @@ uint8_t get_Device_os_info_scsiAddress_host(const tDevice* device)
 #endif
 }
 
-uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PURE_FUNC uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* M_NONNULL device)
+    M_REPRODUCIBLE
 {
 #if defined(_WIN32)
     return device->os_info.scsi_addr.PathId;
@@ -7007,7 +7431,8 @@ uint8_t get_Device_os_info_scsiAddress_channel(const tDevice* device)
 #endif
 }
 
-uint8_t get_Device_os_info_scsiAddress_target(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PURE_FUNC uint8_t get_Device_os_info_scsiAddress_target(const tDevice* M_NONNULL device)
+    M_REPRODUCIBLE
 {
 #if defined(_WIN32)
     return device->os_info.scsi_addr.TargetId;
@@ -7026,7 +7451,8 @@ uint8_t get_Device_os_info_scsiAddress_target(const tDevice* device)
 #endif
 }
 
-uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PURE_FUNC uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* M_NONNULL device)
+    M_REPRODUCIBLE
 {
 #if defined(_WIN32)
     return device->os_info.scsi_addr.Lun;
@@ -7043,4 +7469,288 @@ uint8_t get_Device_os_info_scsiAddress_lun(const tDevice* device)
     M_USE_UNUSED(device);
     return 0;
 #endif
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues set_tDevice_Default_Command_Timeout(tDevice* M_NONNULL device,
+                                                                        const uint32_t     timeoutSeconds)
+{
+    eReturnValues ret = BAD_PARAMETER;
+    if (device != M_NULLPTR)
+    {
+        ret = SUCCESS;
+        if (timeoutSeconds == UINT32_C(0))
+        {
+            device->drive_info.defaultTimeoutSeconds = DEFAULT_COMMAND_TIMEOUT;
+        }
+        else
+        {
+            if (timeoutSeconds > get_Maximum_Command_Timeout_Seconds(device))
+            {
+                ret = OS_TIMEOUT_TOO_LARGE;
+            }
+            else
+            {
+                device->drive_info.defaultTimeoutSeconds = timeoutSeconds;
+            }
+        }
+    }
+    return ret;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API uint32_t get_tDevice_Default_Command_Timeout(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.defaultTimeoutSeconds;
+    }
+    else
+    {
+        return UINT32_C(0);
+    }
+}
+
+// Note: tDevice not currently accessed, but put in the definition because it is possible in some systems that the max
+// varies by drive-type. Like SAS can do XXXXX, but SATA can only do XXX but this is not something we really support
+// today. Puting this parameter in for the future so we can make that kind of decision one-day. -TJE
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_CONST_FUNC uint32_t
+get_Maximum_Command_Timeout_Seconds(M_ATTR_UNUSED const tDevice* M_NONNULL device) M_UNSEQUENCED
+{
+    M_USE_UNUSED(device);
+    return MAX_CMD_TIMEOUT_SECONDS;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API void set_tDevice_Last_Command_Completion_Time_NS(tDevice* M_NONNULL device,
+                                                                       const uint64_t     timeNanoSeconds)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.lastCommandTimeNanoSeconds = timeNanoSeconds;
+    }
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API uint64_t get_tDevice_Last_Command_Completion_Time_NS(const tDevice* M_NONNULL device)
+    M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.lastCommandTimeNanoSeconds;
+    }
+    else
+    {
+        return UINT64_C(0);
+    }
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API void set_tDevice_ATA_DMA_Mode(tDevice* M_NONNULL device, eATASynchronousDMAMode mode)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.ata_Options.dmaMode = mode;
+    }
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API M_PURE_FUNC eATASynchronousDMAMode get_tDevice_ATA_DMA_Mode(const tDevice* M_NONNULL device)
+    M_REPRODUCIBLE
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.ata_Options.dmaMode;
+    }
+    else
+    {
+        return ATA_DMA_MODE_NO_DMA;
+    }
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API void disable_tDevice_ATA_DMA(tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_NO_DMA);
+        device->drive_info.ata_Options.dmaSupported                  = false;
+        device->drive_info.ata_Options.readLogWriteLogDMASupported   = false;
+        device->drive_info.ata_Options.readBufferDMASupported        = false;
+        device->drive_info.ata_Options.writeBufferDMASupported       = false;
+        device->drive_info.ata_Options.downloadMicrocodeDMASupported = false;
+        device->drive_info.ata_Options.dcoDMASupported               = false;
+        device->drive_info.ata_Options.hpaSecurityExtDMASupported    = false;
+    }
+}
+
+M_PARAM_RW(1)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues set_tDevice_Verbose_Output_Stream(tDevice* M_NONNULL device, FILE* M_NONNULL stream)
+{
+    if (device == M_NULLPTR || stream == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
+    device->verboseOutputStream = stream;
+    return SUCCESS;
+}
+
+// Set the output stream for a verbose output for a given device. This version takes a file descriptor value (integer)
+// and will use fdopen to internally convret to FILE*. This must be opened with write permission.
+// This must be opened with write permissions as fprintf and fputs will be used to write to it.
+M_PARAM_RW(1)
+M_PARAM_RO(3)
+M_FILE_DESCRIPTOR_W(2)
+OPENSEA_TRANSPORT_API eReturnValues set_tDevice_Verbose_Output_File_Descriptor(tDevice* M_NONNULL    device,
+                                                                               int                   fd,
+                                                                               const char* M_NONNULL mode)
+{
+    FILE* stream = M_NULLPTR;
+    if (device == M_NULLPTR || fd < 0)
+    {
+        return BAD_PARAMETER;
+    }
+#if defined(_WIN32)
+    stream = _fdopen(fd, mode);
+#elif defined(POSIX_1988) || defined(BSD4_2)
+    stream = fdopen(fd, mode);
+#endif
+    if (stream == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
+    device->verboseOutputStream = stream;
+    return SUCCESS;
+}
+
+M_PARAM_RO(1)
+M_PARAM_RO(3)
+M_NULL_TERM_STRING(3)
+OPENSEA_TRANSPORT_API int print_tDevice_Verbose_String(const tDevice* M_NONNULL device,
+                                                       eVerbosityLevels         verboseLevel,
+                                                       const char* M_NONNULL    string)
+{
+    if (device == M_NULLPTR || string == M_NULLPTR)
+    {
+        return -1;
+    }
+    if (device->deviceVerbosity >= verboseLevel)
+    {
+        if (device->verboseOutputStream == M_NULLPTR)
+        {
+            set_tDevice_Verbose_Output_Stream(M_CONST_CAST(tDevice*, device), stdout);
+        }
+        errno_t error = checked_fputs(string, device->verboseOutputStream);
+        if (error != 0)
+        {
+            return EOF;
+        }
+    }
+    return 0;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API int flush_tDevice_Verbose_Stream(const tDevice* M_NONNULL device)
+{
+    if (device == M_NULLPTR)
+    {
+        return -1;
+    }
+    return fflush(device->verboseOutputStream);
+}
+
+M_PARAM_RO(1)
+M_PARAM_RO(3)
+FUNC_ATTR_PRINTF(3, 4)
+OPENSEA_TRANSPORT_API int print_tDevice_Verbose_Formatted_String(const tDevice* M_NONNULL device,
+                                                                 eVerbosityLevels         verboseLevel,
+                                                                 const char* M_NONNULL    format,
+                                                                 ...)
+{
+    if (device == M_NULLPTR || format == M_NULLPTR)
+    {
+        return -1;
+    }
+    if (device->deviceVerbosity >= verboseLevel)
+    {
+        if (device->verboseOutputStream == M_NULLPTR)
+        {
+            set_tDevice_Verbose_Output_Stream(M_CONST_CAST(tDevice*, device), stdout);
+        }
+        va_list args;
+        va_start(args, format);
+        DISABLE_WARNING_FORMAT_NONLITERAL
+        int result = vfprintf(device->verboseOutputStream, format, args);
+        RESTORE_WARNING_FORMAT_NONLITERAL
+        va_end(args);
+        return result;
+    }
+    return 0;
+}
+
+M_PARAM_RO(1)
+M_PARAM_RO(3)
+FUNC_ATTR_PRINTF(3, 0)
+OPENSEA_TRANSPORT_API int vprint_tDevice_Verbose_Formatted_String(const tDevice* M_NONNULL device,
+                                                                  eVerbosityLevels         verboseLevel,
+                                                                  const char* M_NONNULL    format,
+                                                                  va_list                  args)
+{
+    if (device == M_NULLPTR || format == M_NULLPTR)
+    {
+        return -1;
+    }
+    if (device->deviceVerbosity >= verboseLevel)
+    {
+        if (device->verboseOutputStream == M_NULLPTR)
+        {
+            set_tDevice_Verbose_Output_Stream(M_CONST_CAST(tDevice*, device), stdout);
+        }
+        DISABLE_WARNING_FORMAT_NONLITERAL
+        int result = vfprintf(device->verboseOutputStream, format, args);
+        RESTORE_WARNING_FORMAT_NONLITERAL
+        return result;
+    }
+    return 0;
+}
+
+M_PARAM_RO(1)
+M_PARAM_RO(2)
+M_NULL_TERM_STRING(2)
+OPENSEA_TRANSPORT_API int print_tDevice_Return_Enum(const tDevice* M_NONNULL device,
+                                                    const char* M_NONNULL    message,
+                                                    eReturnValues            ret)
+{
+    if (device == M_NULLPTR || message == M_NULLPTR)
+    {
+        return -1;
+    }
+    DECLARE_ZERO_INIT_ARRAY(char, retStr, RETURN_VALUE_MAX_STR_LEN);
+    if (!get_eReturnValues_To_String(ret, retStr))
+    {
+        return print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES,
+                                           "Invalid return value - conversion not available.\n");
+    }
+    else
+    {
+        return print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                                     "%s returning: %s\n", message, retStr);
+    }
+}
+
+M_PARAM_RO(1)
+M_PARAM_RO_SIZE(3,4)
+OPENSEA_TRANSPORT_API int print_tDevice_Data_Buffer(const tDevice * M_NONNULL device, eVerbosityLevels         verboseLevel, const uint8_t* M_NONNULL buffer, size_t bufferLen, bool showPrintableASCII)
+{
+    if (device == M_NULLPTR || buffer == M_NULLPTR)
+    {
+        return -1;
+    }
+    if (device->deviceVerbosity >= verboseLevel)
+    {
+        write_Data_Buffer(device->verboseOutputStream, buffer, bufferLen, showPrintableASCII);
+    }
+    return 0;
 }

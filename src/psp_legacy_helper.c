@@ -27,7 +27,7 @@
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 
-eReturnValues enable_Disable_ATA_Passthrough(const tDevice* device, bool enable)
+M_PARAM_RO(1) eReturnValues enable_Disable_ATA_Passthrough(const tDevice* M_NONNULL device, bool enable)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_12);
@@ -57,7 +57,12 @@ eReturnValues enable_Disable_ATA_Passthrough(const tDevice* device, bool enable)
     return ret;
 }
 
-eReturnValues build_PSP_Legacy_CDB(uint8_t* cdb, uint8_t* cdbLen, ataPassthroughCommand* ataCommandOptions)
+M_PARAM_WO(1)
+M_PARAM_WO(2)
+M_PARAM_RO(3)
+eReturnValues build_PSP_Legacy_CDB(uint8_t* M_NONNULL               cdb,
+                                   uint8_t* M_NONNULL               cdbLen,
+                                   ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
@@ -130,9 +135,11 @@ eReturnValues build_PSP_Legacy_CDB(uint8_t* cdb, uint8_t* cdbLen, ataPassthrough
     return ret;
 }
 
-eReturnValues get_RTFRs_From_PSP_Legacy(const tDevice*         device,
-                                        ataPassthroughCommand* ataCommandOptions,
-                                        eReturnValues          commandRet)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues get_RTFRs_From_PSP_Legacy(const tDevice* M_NONNULL         device,
+                                        ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                        eReturnValues                    commandRet)
 {
     eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
@@ -168,7 +175,10 @@ eReturnValues get_RTFRs_From_PSP_Legacy(const tDevice*         device,
     return ret;
 }
 
-eReturnValues send_PSP_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues send_PSP_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                  ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret    = UNKNOWN;
     uint8_t       cdbLen = PSP_EXT_COMMAND_CDB_LEN;
@@ -178,7 +188,7 @@ eReturnValues send_PSP_Legacy_Passthrough_Command(const tDevice* device, ataPass
     if (!ataCommandOptions->ptrSenseData)
     {
         senseData = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -191,22 +201,16 @@ eReturnValues send_PSP_Legacy_Passthrough_Command(const tDevice* device, ataPass
     ret = build_PSP_Legacy_CDB(pspCDB, &cdbLen, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print verbose tfr info
-            print_Verbose_ATA_Command_Information(ataCommandOptions);
-        }
+        // print verbose tfr info
+        print_tDevice_Verbose_ATA_Command_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // send it
         ret = scsi_Send_Cdb(device, pspCDB, cdbLen, ataCommandOptions->ptrData, ataCommandOptions->dataSize,
                             ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData,
                             ataCommandOptions->senseDataSize, 0);
         // get the RTFRs
         ret = get_RTFRs_From_PSP_Legacy(device, ataCommandOptions, ret);
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print RTFRs
-            print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
-        }
+        // print out RTFRs
+        print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // set return code
         // Based on the RTFRs or sense data, generate a return value
         if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))
@@ -244,7 +248,7 @@ eReturnValues send_PSP_Legacy_Passthrough_Command(const tDevice* device, ataPass
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

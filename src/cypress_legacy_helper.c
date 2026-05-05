@@ -27,7 +27,10 @@
 #include "scsi_helper.h"
 #include "scsi_helper_func.h"
 
-eReturnValues build_Cypress_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughCommand* ataCommandOptions)
+M_PARAM_RO(1)
+M_PARAM_RO(2)
+eReturnValues build_Cypress_Legacy_CDB(uint8_t                          cdb[M_NONNULL_ARRAY CDB_16],
+                                       ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
     {
@@ -66,9 +69,11 @@ eReturnValues build_Cypress_Legacy_CDB(uint8_t cdb[CDB_16], ataPassthroughComman
     return SUCCESS;
 }
 
-eReturnValues get_RTFRs_From_Cypress_Legacy(const tDevice*         device,
-                                            ataPassthroughCommand* ataCommandOptions,
-                                            eReturnValues          commandRet)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues get_RTFRs_From_Cypress_Legacy(const tDevice* M_NONNULL         device,
+                                            ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                            eReturnValues                    commandRet)
 {
     eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
@@ -96,7 +101,10 @@ eReturnValues get_RTFRs_From_Cypress_Legacy(const tDevice*         device,
     return ret;
 }
 
-eReturnValues send_Cypress_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues send_Cypress_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                      ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cypressCDB, CDB_LEN_16);
@@ -105,7 +113,7 @@ eReturnValues send_Cypress_Legacy_Passthrough_Command(const tDevice* device, ata
     if (!ataCommandOptions->ptrSenseData)
     {
         senseData = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -118,22 +126,16 @@ eReturnValues send_Cypress_Legacy_Passthrough_Command(const tDevice* device, ata
     ret = build_Cypress_Legacy_CDB(cypressCDB, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print verbose tfr info
-            print_Verbose_ATA_Command_Information(ataCommandOptions);
-        }
+        // print verbose tfr info
+        print_tDevice_Verbose_ATA_Command_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // send it
         ret = scsi_Send_Cdb(device, cypressCDB, CDB_LEN_16, ataCommandOptions->ptrData, ataCommandOptions->dataSize,
                             ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData,
                             ataCommandOptions->senseDataSize, 0);
         // get the RTFRs
         ret = get_RTFRs_From_Cypress_Legacy(device, ataCommandOptions, ret);
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print RTFRs
-            print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
-        }
+        // print out RTFRs
+        print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // set return code
         // Based on the RTFRs or sense data, generate a return value
         if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))
@@ -171,7 +173,7 @@ eReturnValues send_Cypress_Legacy_Passthrough_Command(const tDevice* device, ata
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

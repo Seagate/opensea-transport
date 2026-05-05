@@ -55,20 +55,20 @@ extern "C"
     OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE                            deviceHandle,
                                                              uint32_t                               controllerNumber,
                                                              PCSMI_SAS_DRIVER_INFO_BUFFER M_NONNULL driverInfoBuffer,
-                                                             eVerbosityLevels                       verbosity);
+                                                             const tDevice* M_NULLABLE               device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Get_Controller_Configuration(CSMI_HANDLE deviceHandle, uint32_t controllerNumber,
-    //  PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, eVerbosityLevels verbosity)
+    //  PCSMI_SAS_CNTLR_CONFIG_BUFFER ctrlConfigBuffer, const tDevice* M_NULLABLE device)
     //
     //! \brief   Description:  Sends the CSMI Get Controller Configuration IOCTL
     //
     //  Entry:
-    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\.\SCSIX: on Windows, /dev/<hba> on
     //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
     //!   IOCTL_HEADER \param[in] ctrlConfigBuffer - CSMI spec controller configuration buffer buffer to use. \param[in]
-    //!   verbosity - the level of verbose output to use when performing this IO
+    //!   device - device pointer for logging, can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -82,20 +82,20 @@ extern "C"
     csmi_Get_Controller_Configuration(CSMI_HANDLE                             deviceHandle,
                                       uint32_t                                controllerNumber,
                                       PCSMI_SAS_CNTLR_CONFIG_BUFFER M_NONNULL ctrlConfigBuffer,
-                                      eVerbosityLevels                        verbosity);
+                                      const tDevice* M_NULLABLE               device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Get_Controller_Status(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CNTLR_STATUS_BUFFER
-    //  ctrlStatusBuffer, eVerbosityLevels verbosity)
+    //  ctrlStatusBuffer, const tDevice* M_NULLABLE device)
     //
     //! \brief   Description:  Sends the CSMI Controller Status IOCTL
     //
     //  Entry:
-    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\.\SCSIX: on Windows, /dev/<hba> on
     //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
     //!   IOCTL_HEADER \param[in] ctrlStatusBuffer - CSMI spec controller status buffer buffer to use. \param[in]
-    //!   verbosity - the level of verbose output to use when performing this IO
+    //!   device - device pointer for logging, can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -109,13 +109,13 @@ extern "C"
     csmi_Get_Controller_Status(CSMI_HANDLE                             deviceHandle,
                                uint32_t                                controllerNumber,
                                PCSMI_SAS_CNTLR_STATUS_BUFFER M_NONNULL ctrlStatusBuffer,
-                               eVerbosityLevels                        verbosity);
+                               const tDevice* M_NULLABLE               device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Controller_Firmware_Download(CSMI_HANDLE deviceHandle, uint32_t controllerNumber,
     //  PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER firmwareBuffer, uint32_t firmwareBufferTotalLength, uint32_t downloadFlags,
-    //  eVerbosityLevels verbosity, uint32_t timeoutSeconds)
+    //  const tDevice* M_NULLABLE device, uint32_t timeoutSeconds)
     //
     //! \brief   Description:  Sends the CSMI Controller Firmware Download IOCTL
     //
@@ -125,7 +125,7 @@ extern "C"
     //!   IOCTL_HEADER \param[in] firmwareBuffer - CSMI spec controller status buffer buffer to use. Filled in with
     //!   controller firmware to flash \param[in] firmwareBufferTotalLength - length of the allocated firmwareBuffer so
     //!   that the IOs send the correct data length \param[in] downloadFlags - flags to control the download \param[in]
-    //!   verbosity - the level of verbose output to use when performing this IO \param[in] timeoutSeconds - the number
+    //!   device - device pointer for logging, can be M_NULLABLE \param[in] timeoutSeconds - the number
     //!   of seconds to use for the timeout on downloading controller firmware.
     //!
     //!
@@ -142,7 +142,7 @@ extern "C"
                                       PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER M_NONNULL firmwareBuffer,
                                       uint32_t                                     firmwareBufferTotalLength,
                                       uint32_t                                     downloadFlags,
-                                      eVerbosityLevels                             verbosity,
+                                      const tDevice* M_NULLABLE                    device,
                                       uint32_t                                     timeoutSeconds);
 
     //-----------------------------------------------------------------------------
@@ -169,13 +169,13 @@ extern "C"
     OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE                          deviceHandle,
                                                            uint32_t                             controllerNumber,
                                                            PCSMI_SAS_RAID_INFO_BUFFER M_NONNULL raidInfoBuffer,
-                                                           eVerbosityLevels                     verbosity);
+                                                           const tDevice* M_NULLABLE             device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Get_RAID_Config(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_CONFIG_BUFFER
-    //  raidConfigBuffer, uint32_t raidConfigBufferTotalSize, uint32_t raidSetIndex, uint8_t dataType, eVerbosityLevels
-    //  verbosity)
+    //  raidConfigBuffer, uint32_t raidConfigBufferTotalSize, uint32_t raidSetIndex, uint8_t dataType, const tDevice*
+    //  M_NULLABLE device)
     //
     //! \brief   Description:  Sends the CSMI Get RAID Config IOCTL
     //
@@ -187,8 +187,8 @@ extern "C"
     //!   should be allocated based on maximum number of drives in a given RAID set, as reported by get RAID info.
     //!   \param[in] raidSetIndex - which RAID set to get configuration of. This is for controllers that support
     //!   multiple RAIDs on a single controller. \param[in] dataType - what data to report about a RAID configuration.
-    //!   This should be one of the bDataType's from the csmisas.h file. \param[in] verbosity - the level of verbose
-    //!   output to use when performing this IO
+    //!   This should be one of the bDataType's from the csmisas.h file. \param[in] device - device pointer for logging,
+    //!   can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -204,21 +204,21 @@ extern "C"
                                                              uint32_t         raidConfigBufferTotalSize,
                                                              uint32_t         raidSetIndex,
                                                              uint8_t          dataType,
-                                                             eVerbosityLevels verbosity);
+                                                             const tDevice* M_NULLABLE              device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Get_RAID_Features(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_RAID_FEATURES_BUFFER
-    //  raidFeaturesBuffer, eVerbosityLevels verbosity)
+    //  raidFeaturesBuffer, const tDevice* M_NULLABLE device)
     //
     //! \brief   Description:  Sends the CSMI Get RAID Features IOCTL. This is not supported on many CSMI RAIDs as it
     //! was not part of the original CSMI proposal.
     //
     //  Entry:
-    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\.\SCSIX: on Windows, /dev/<hba> on
     //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
     //!   IOCTL_HEADER \param[in] raidFeaturesBuffer - CSMI spec buffer to use. This should be empty. \param[in]
-    //!   verbosity - the level of verbose output to use when performing this IO
+    //!   device - device pointer for logging, can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -232,20 +232,20 @@ extern "C"
     csmi_Get_RAID_Features(CSMI_HANDLE                              deviceHandle,
                            uint32_t                                 controllerNumber,
                            PCSMI_SAS_RAID_FEATURES_BUFFER M_NONNULL raidFeaturesBuffer,
-                           eVerbosityLevels                         verbosity);
+                           const tDevice* M_NULLABLE                device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Get_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_PHY_INFO_BUFFER phyInfoBuffer,
-    //  eVerbosityLevels verbosity)
+    //  const tDevice* M_NULLABLE device)
     //
     //! \brief   Description:  Sends the CSMI Get Phy Info IOCTL
     //
     //  Entry:
     //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on
     //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
-    //!   IOCTL_HEADER \param[in] phyInfoBuffer - CSMI spec buffer to use. This should be empty. \param[in] verbosity -
-    //!   the level of verbose output to use when performing this IO
+    //!   IOCTL_HEADER \param[in] phyInfoBuffer - CSMI spec buffer to use. This should be empty. \param[in] device -
+    //!   device pointer for logging, can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -258,12 +258,12 @@ extern "C"
     OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE                         deviceHandle,
                                                           uint32_t                            controllerNumber,
                                                           PCSMI_SAS_PHY_INFO_BUFFER M_NONNULL phyInfoBuffer,
-                                                          eVerbosityLevels                    verbosity);
+                                                          const tDevice* M_NULLABLE           device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Set_Phy_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SET_PHY_INFO_BUFFER
-    //  phyInfoBuffer, eVerbosityLevels verbosity)
+    //  phyInfoBuffer, const tDevice* M_NULLABLE device)
     //
     //! \brief   Description:  Sends the CSMI Set Phy Info IOCTL
     //
@@ -271,7 +271,7 @@ extern "C"
     //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on
     //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
     //!   IOCTL_HEADER \param[in] phyInfoBuffer - CSMI spec buffer to use. This should be filled with the phy settings
-    //!   being changed. \param[in] verbosity - the level of verbose output to use when performing this IO
+    //!   being changed. \param[in] device - device pointer for logging, can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -284,12 +284,12 @@ extern "C"
     OPENSEA_TRANSPORT_API eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE                             deviceHandle,
                                                           uint32_t                                controllerNumber,
                                                           PCSMI_SAS_SET_PHY_INFO_BUFFER M_NONNULL phyInfoBuffer,
-                                                          eVerbosityLevels                        verbosity);
+                                                          const tDevice* M_NULLABLE               device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Get_Link_Errors(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_LINK_ERRORS_BUFFER
-    //  linkErrorsBuffer, uint8_t phyIdentifier, bool resetCounts, eVerbosityLevels verbosity)
+    //  linkErrorsBuffer, uint8_t phyIdentifier, bool resetCounts, const tDevice* M_NULLABLE device)
     //
     //! \brief   Description:  Sends the CSMI Get Link Errors IOCTL
     //
@@ -298,8 +298,7 @@ extern "C"
     //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
     //!   IOCTL_HEADER \param[in] linkErrorsBuffer - CSMI spec buffer to use. This should be empty. \param[in]
     //!   phyIdentifier - phy to get link errors for \param[in] resetCounts - set to true will cause all counts to reset
-    //!   after reading the current counts \param[in] verbosity - the level of verbose output to use when performing
-    //!   this IO
+    //!   after reading the current counts \param[in] device - device pointer for logging, can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -314,12 +313,12 @@ extern "C"
                                                              PCSMI_SAS_LINK_ERRORS_BUFFER M_NONNULL linkErrorsBuffer,
                                                              uint8_t                                phyIdentifier,
                                                              bool                                   resetCounts,
-                                                             eVerbosityLevels                       verbosity);
+                                                             const tDevice* M_NULLABLE              device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Get_SATA_Signature(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_SATA_SIGNATURE_BUFFER
-    //  sataSignatureBuffer, uint8_t phyIdentifier, eVerbosityLevels verbosity)
+    //  sataSignatureBuffer, uint8_t phyIdentifier, const tDevice* M_NULLABLE device)
     //
     //! \brief   Description:  Sends the CSMI Get SATA Signature IOCTL
     //
@@ -328,8 +327,7 @@ extern "C"
     //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
     //!   IOCTL_HEADER \param[in] sataSignatureBuffer - CSMI spec buffer to use. This should be empty \param[in]
     //!   phyIdentifier - phy ID to read signature for. This can help identify how a device was detected on boot/last
-    //!   reset to detect the device type. \param[in] verbosity - the level of verbose output to use when performing
-    //!   this IO
+    //!   reset to detect the device type. \param[in] device - device pointer for logging, can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -344,12 +342,12 @@ extern "C"
                             uint32_t                                  controllerNumber,
                             PCSMI_SAS_SATA_SIGNATURE_BUFFER M_NONNULL sataSignatureBuffer,
                             uint8_t                                   phyIdentifier,
-                            eVerbosityLevels                          verbosity);
+                            const tDevice* M_NULLABLE                 device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Get_SCSI_Address(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER
-    //  scsiAddressBuffer, uint8_t sasAddress[8], uint8_t lun[8], eVerbosityLevels verbosity)
+    //  scsiAddressBuffer, uint8_t sasAddress[8], uint8_t lun[8], const tDevice* M_NULLABLE device)
     //
     //! \brief   Description:  Sends the CSMI Get SCSI Address IOCTL
     //
@@ -359,7 +357,7 @@ extern "C"
     //!   IOCTL_HEADER \param[in] scsiAddressBuffer - CSMI spec buffer to use. This should be empty (filled on
     //!   successful completion) \param[in] sasAddress - SAS Address to use to convert to SCSI address. this may come
     //!   from RAID Config data. \param[in] lun - SAS Lun, 64bits that should be converted to SCSI Address. this may
-    //!   come from RAID config data. \param[in] verbosity - the level of verbose output to use when performing this IO
+    //!   come from RAID config data. \param[in] device - device pointer for logging, can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -377,7 +375,7 @@ extern "C"
                           PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER M_NONNULL scsiAddressBuffer,
                           uint8_t                                     sasAddress[M_NONNULL_ARRAY 8],
                           uint8_t                                     lun[M_NONNULL_ARRAY 8],
-                          eVerbosityLevels                            verbosity);
+                          const tDevice* M_NULLABLE                   device);
 
     //-----------------------------------------------------------------------------
     //
@@ -412,12 +410,12 @@ extern "C"
                             uint8_t                                       path,
                             uint8_t                                       target,
                             uint8_t                                       lun,
-                            eVerbosityLevels                              verbosity);
+                            const tDevice* M_NULLABLE                      device);
 
     //-----------------------------------------------------------------------------
     //
     //  csmi_Get_Connector_Info(CSMI_HANDLE deviceHandle, uint32_t controllerNumber, PCSMI_SAS_CONNECTOR_INFO_BUFFER
-    //  connectorInfoBuffer, eVerbosityLevels verbosity)
+    //  connectorInfoBuffer, const tDevice* M_NULLABLE device)
     //
     //! \brief   Description:  Sends the CSMI Get Conector Info IOCTL (Phy count reported in get Phy Info)
     //
@@ -425,7 +423,7 @@ extern "C"
     //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\SCSIX: on Windows, /dev/<hba> on
     //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
     //!   IOCTL_HEADER \param[in] connectorInfoBuffer - CSMI spec buffer to use. This should be empty (filled on
-    //!   successful completion) \param[in] verbosity - the level of verbose output to use when performing this IO
+    //!   successful completion) \param[in] device - device pointer for logging, can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -439,7 +437,7 @@ extern "C"
     csmi_Get_Connector_Info(CSMI_HANDLE                               deviceHandle,
                             uint32_t                                  controllerNumber,
                             PCSMI_SAS_CONNECTOR_INFO_BUFFER M_NONNULL connectorInfoBuffer,
-                            eVerbosityLevels                          verbosity);
+                            const tDevice* M_NULLABLE                 device);
 
     //-----------------------------------------------------------------------------
     //
@@ -460,14 +458,14 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosity)
+    //  handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, const tDevice* M_NULLABLE device)
     //
     //! \brief   Description:  Quick check to see if CSMI is supported. Determined by success of both reading controller
     //! config and driver information. These are mandatory IOCTLs in CSMI spec.
     //
     //  Entry:
     //!   \param[in] scsiIoCtx - holds all information pertinent to sending a SCSI or ATA command to a given device.
-    //!   \param[in] verbosity - the level of verbose output to use when performing this IO
+    //!   \param[in] device - device pointer for logging, can be M_NULLABLE
     //!
     //!
     //  Exit:
@@ -476,7 +474,7 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     CSMI_HANDLE_PARAM(1)
-    bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, eVerbosityLevels verbosity);
+    bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, const tDevice* M_NULLABLE device);
 
 #    if defined(_WIN32)
     //-----------------------------------------------------------------------------

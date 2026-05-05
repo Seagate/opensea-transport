@@ -27,10 +27,14 @@
 #include "scsi_helper_func.h"
 #include "sunplus_legacy_helper.h"
 
-eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCDB[SUNPLUS_PT_CDB_LEN],
-                                                    uint8_t                hiCDB[SUNPLUS_PT_CDB_LEN],
-                                                    bool*                  highCDBValid,
-                                                    ataPassthroughCommand* ataCommandOptions)
+M_PARAM_WO(1)
+M_PARAM_WO(2)
+M_PARAM_WO(3)
+M_PARAM_RO(4)
+eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                          lowCDB[SUNPLUS_PT_CDB_LEN],
+                                                    uint8_t                          hiCDB[SUNPLUS_PT_CDB_LEN],
+                                                    bool* M_NONNULL                  highCDBValid,
+                                                    ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = SUCCESS;
     if (ataCommandOptions->commandType == ATA_CMD_TYPE_EXTENDED_TASKFILE)
@@ -79,9 +83,11 @@ eReturnValues build_Sunplus_Legacy_Passthrough_CDBs(uint8_t                lowCD
 }
 
 #define SUBPLUS_READ_REG_LEN 16
-eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice*         device,
-                                            ataPassthroughCommand* ataCommandOptions,
-                                            eReturnValues          commandRet)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice* M_NONNULL         device,
+                                            ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                            eReturnValues                    commandRet)
 {
     eReturnValues ret = SUCCESS;
     if (commandRet == OS_PASSTHROUGH_FAILURE)
@@ -122,7 +128,10 @@ eReturnValues get_RTFRs_From_Sunplus_Legacy(const tDevice*         device,
     return ret;
 }
 
-eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                      ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, sunplusLowCDB, SUNPLUS_PT_CDB_LEN);
@@ -133,7 +142,7 @@ eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* device, ata
     if (!ataCommandOptions->ptrSenseData)
     {
         senseData = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -146,11 +155,8 @@ eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* device, ata
     ret = build_Sunplus_Legacy_Passthrough_CDBs(sunplusLowCDB, sunplusHighCDB, &highCDBValid, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print verbose tfr info
-            print_Verbose_ATA_Command_Information(ataCommandOptions);
-        }
+        // print verbose tfr info
+        print_tDevice_Verbose_ATA_Command_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // if the highCDB is valid, we need to send it first
         if (highCDBValid)
         {
@@ -164,11 +170,8 @@ eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* device, ata
                             ataCommandOptions->ptrSenseData, ataCommandOptions->senseDataSize, 0);
         // get the RTFRs
         ret = get_RTFRs_From_Sunplus_Legacy(device, ataCommandOptions, ret);
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print RTFRs
-            print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
-        }
+        // print out RTFRs
+        print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // set return code
         // Based on the RTFRs or sense data, generate a return value
         if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))
@@ -206,7 +209,7 @@ eReturnValues send_Sunplus_Legacy_Passthrough_Command(const tDevice* device, ata
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

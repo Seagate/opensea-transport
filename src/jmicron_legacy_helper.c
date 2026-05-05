@@ -46,6 +46,8 @@ static M_INLINE bool is_Smart_Return_Status_Command(ataPassthroughCommand* M_NON
     return isSmartReturnStatus;
 }
 
+M_PARAM_WO(1)
+M_PARAM_RO(2)
 eReturnValues build_JMicron_Legacy_PT_CDB(uint8_t                          cdb[M_NONNULL_ARRAY JM_PROLIFIC_CDB_LEN],
                                           ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
@@ -91,9 +93,11 @@ eReturnValues build_JMicron_Legacy_PT_CDB(uint8_t                          cdb[M
     return ret;
 }
 
-eReturnValues read_Adapter_Register(const tDevice*           device,
+M_PARAM_RO(1)
+M_PARAM_RW(3)
+eReturnValues read_Adapter_Register(const tDevice* M_NONNULL device,
                                     eJMicronAdapterRegisters jmregister,
-                                    uint8_t*                 ptrData,
+                                    uint8_t* M_NONNULL       ptrData,
                                     uint32_t                 dataSize)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, JM_PROLIFIC_CDB_LEN);
@@ -121,7 +125,8 @@ eReturnValues read_Adapter_Register(const tDevice*           device,
                          M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0);
 }
 
-eReturnValues set_JM_Dev(tDevice* device)
+M_PARAM_RW(1)
+eReturnValues set_JM_Dev(tDevice* M_NONNULL device)
 {
     eReturnValues ret    = SUCCESS;
     uint8_t       jmport = UINT8_C(0);
@@ -148,9 +153,11 @@ eReturnValues set_JM_Dev(tDevice* device)
 }
 
 #define JM_REGISTER_BUF_LEN (16)
-eReturnValues get_RTFRs_From_JMicron_Legacy(const tDevice*         device,
-                                            ataPassthroughCommand* ataCommandOptions,
-                                            eReturnValues          commandRet)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues get_RTFRs_From_JMicron_Legacy(const tDevice* M_NONNULL         device,
+                                            ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                            eReturnValues                    commandRet)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, registers, JM_REGISTER_BUF_LEN);
@@ -194,7 +201,10 @@ static M_INLINE bool is_Valid_Smart_Return_Status_For_JMicron_USB(uint8_t status
     return valid;
 }
 
-eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                      ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, jmCDB, JM_PROLIFIC_CDB_LEN);
@@ -216,7 +226,7 @@ eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* device, ata
     if (!ataCommandOptions->ptrSenseData)
     {
         senseData = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -237,11 +247,8 @@ eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* device, ata
     ret = build_JMicron_Legacy_PT_CDB(jmCDB, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print verbose tfr info
-            print_Verbose_ATA_Command_Information(ataCommandOptions);
-        }
+        // print verbose tfr info
+        print_tDevice_Verbose_ATA_Command_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // send it
         ret = scsi_Send_Cdb(device, jmCDB, cdblen, ataCommandOptions->ptrData, ataCommandOptions->dataSize,
                             ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData,
@@ -267,11 +274,8 @@ eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* device, ata
         {
             // get the RTFRs
             ret = get_RTFRs_From_JMicron_Legacy(device, ataCommandOptions, ret);
-            if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-            {
-                // print RTFRs
-                print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
-            }
+            // print RTFRs
+            print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
             // set return code
             // Based on the RTFRs or sense data, generate a return value
             if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))
@@ -310,7 +314,7 @@ eReturnValues send_JMicron_Legacy_Passthrough_Command(const tDevice* device, ata
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

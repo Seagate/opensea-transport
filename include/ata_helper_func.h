@@ -2252,12 +2252,36 @@ extern "C"
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
+    M_DEPRECATED_REASON("Use print_tDevice_Verbose_ATA_Command_Information instead")
     OPENSEA_TRANSPORT_API void print_Verbose_ATA_Command_Information(
         const ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
     //-----------------------------------------------------------------------------
     //
-    //  fill_In_ATA_Drive_Info()
+    //  print_tDevice_Verbose_ATA_Command_Information()
+    //
+    //! \brief   Description:  Device-aware version that supports verbose output redirection. This prints out
+    //! information about the task file registers being sent to a device with output directed to the tDevice stream.
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to the device structure
+    //!   \param[in] verboseLevel = the verbosity level at which to print
+    //!   \param[in] ataCommandOptions = structure with the TFR information filled in to be printed out. (and protocol
+    //!   and direction)
+    //!
+    //  Exit:
+    //
+    //-----------------------------------------------------------------------------
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    OPENSEA_TRANSPORT_API void print_tDevice_Verbose_ATA_Command_Information(const tDevice* M_NONNULL device,
+                                                                             eVerbosityLevels         verboseLevel,
+                                                                             const ataPassthroughCommand* M_NONNULL
+                                                                                 ataCommandOptions);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  print_Verbose_ATA_Command_Result_Information()
     //
     //! \brief   Description:  This prints out information to the screen about the return task file registers coming
     //! back from a device. This is called by a lower layer portion of the opensea-transport code.
@@ -2271,9 +2295,32 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
     M_PARAM_RO(2)
+    M_DEPRECATED_REASON("Use print_tDevice_Verbose_ATA_Command_Result_Information instead")
     OPENSEA_TRANSPORT_API
     void print_Verbose_ATA_Command_Result_Information(const ataPassthroughCommand* M_NONNULL ataCommandOptions,
                                                       const tDevice* M_NONNULL               device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  print_tDevice_Verbose_ATA_Command_Result_Information()
+    //
+    //! \brief   Description:  Device-aware version that supports verbose output redirection. This prints out
+    //! information about the return task file registers with output directed to the tDevice stream.
+    //
+    //  Entry:
+    //!   \param[in] device = pointer to the device structure
+    //!   \param[in] verboseLevel = the verbosity level at which to print
+    //!   \param[in] ataCommandOptions = structure with the TFR information filled in to be printed out. (and protocol
+    //!   and direction)
+    //  Exit:
+    //
+    //-----------------------------------------------------------------------------
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    OPENSEA_TRANSPORT_API
+    void print_tDevice_Verbose_ATA_Command_Result_Information(const tDevice* M_NONNULL               device,
+                                                              eVerbosityLevels                       verboseLevel,
+                                                              const ataPassthroughCommand* M_NONNULL ataCommandOptions);
 
     //////////////////////////////////////////
     ///         Zoned Device Commands      ///
@@ -3319,6 +3366,39 @@ extern "C"
                                                              uint8_t* M_NONNULL       ptrData,
                                                              uint32_t                 dataSize,
                                                              uint8_t                  tag);
+
+    M_PARAM_RO(1)
+    M_PARAM_RO(2)
+    bool did_ATA_Command_Timeout(const tDevice* M_NONNULL               device,
+                                 const ataPassthroughCommand* M_NONNULL ataCommandOptions);
+
+    typedef enum eATANOPFeature
+    {
+        ATA_NOP_RETURN_ABORTED = 0, // Only value still defined for this.
+        ATA_NOP_TCQ_AUTO_POLL  = 1, // For TCQ. Return command aborted and do not abort any outstanding queued commands.
+        // 02h-FFh are all labeled as the same behavior as value 1
+    } eATANOPFeature;
+
+    //! \fn eReturnValues ata_NOP(const tDevice* M_NONNULL device, eATANOPFeature nopMode, uint8_t countToReturn,
+    //! uint32_t lbaToReturn, ataReturnTFRs* M_NONNULL returnTFRs)
+    //! \brief Issues the ATA NOP command (no operation, aka do nothing but respond)
+    //! \details The NOP command always aborts with the specified pattern in the registers that are provided.
+    //! \param device The device to issue the command to
+    //! \param nopMode The mode for the NOP command. Should be set to 0 in most cases as others are either reserved,
+    //! obsolete, or only for TCQ devices.
+    //! \param countToReturn Any value you want this command to respond with in the sector count register.
+    //! \param lbaToReturn Any value you want this command to respond with in the LBA registers (LBA mid, low, and
+    //! high). This 32bit value is truncated to 28 bits.
+    //! \param returnTFRs The registers that the command will respond with. This is useful for testing passthrough
+    //! command construction and response parsing, as well as testing timeouts and error handling.
+    //! \return Returns ABORTED which is the correct, expected result when this command is supported by the device.
+    M_PARAM_RO(1)
+    M_PARAM_WO(5)
+    OPENSEA_TRANSPORT_API eReturnValues ata_NOP(const tDevice* M_NONNULL device,
+                                                eATANOPFeature           nopMode,
+                                                uint8_t                  countToReturn,
+                                                uint32_t                 lbaToReturn,
+                                                ataReturnTFRs* M_NONNULL returnTFRs);
 
 #if defined(__cplusplus)
 }

@@ -40,10 +40,13 @@ typedef enum
     SCSI_CMD_SIZE_16
 } eSCSICmdSize;
 
-eReturnValues send_Sanitize_Block_Erase(const tDevice* device, bool exitFailureMode, bool znr)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Block_Erase(const tDevice* M_NONNULL device,
+                                                              bool                     exitFailureMode,
+                                                              bool                     znr)
 {
     eReturnValues ret = NOT_SUPPORTED;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Sanitize_Block_Erase(device, exitFailureMode, znr);
@@ -60,10 +63,13 @@ eReturnValues send_Sanitize_Block_Erase(const tDevice* device, bool exitFailureM
     return ret;
 }
 
-eReturnValues send_Sanitize_Crypto_Erase(const tDevice* device, bool exitFailureMode, bool znr)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Crypto_Erase(const tDevice* M_NONNULL device,
+                                                               bool                     exitFailureMode,
+                                                               bool                     znr)
 {
     eReturnValues ret = NOT_SUPPORTED;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Sanitize_Crypto_Scramble(device, exitFailureMode, znr);
@@ -80,13 +86,13 @@ eReturnValues send_Sanitize_Crypto_Erase(const tDevice* device, bool exitFailure
     return ret;
 }
 
-eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* device,
-                                            bool           exitFailureMode,
-                                            bool           invertBetweenPasses,
-                                            uint8_t        overwritePasses,
-                                            uint8_t*       pattern,
-                                            uint16_t       patternLength,
-                                            bool           znr)
+OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* M_NONNULL device,
+                                                                  bool                     exitFailureMode,
+                                                                  bool                     invertBetweenPasses,
+                                                                  uint8_t                  overwritePasses,
+                                                                  uint8_t*                 pattern,
+                                                                  uint16_t                 patternLength,
+                                                                  bool                     znr)
 {
     eReturnValues ret          = NOT_SUPPORTED;
     uint8_t*      patternPtr   = pattern;
@@ -101,7 +107,7 @@ eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* device,
         patternPtr    = M_REINTERPRET_CAST(uint8_t*, &shortPattern);
         patternLength = sizeof(shortPattern);
     }
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         // Note: ATA drives have a "definitive ending pattern bit"
@@ -138,10 +144,10 @@ eReturnValues send_Sanitize_Overwrite_Erase(const tDevice* device,
     return ret;
 }
 
-eReturnValues send_Sanitize_Exit_Failure_Mode(const tDevice* device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_Sanitize_Exit_Failure_Mode(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = NOT_SUPPORTED;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Sanitize_Status(device, true);
@@ -158,10 +164,10 @@ eReturnValues send_Sanitize_Exit_Failure_Mode(const tDevice* device)
     return ret;
 }
 
-eReturnValues spin_down_drive(const tDevice* device, bool sleepState)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues spin_down_drive(const tDevice* M_NONNULL device, bool sleepState)
 {
     eReturnValues ret = NOT_SUPPORTED;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (sleepState) // send sleep command
@@ -232,7 +238,7 @@ eReturnValues spin_down_drive(const tDevice* device, bool sleepState)
 //!   \return SUCCESS = pass, !SUCCESS = something when wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues fill_Drive_Info_Data(tDevice* device)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_Drive_Info_Data(tDevice* M_NONNULL device)
 {
     eReturnValues status = SUCCESS;
 #ifdef _DEBUG
@@ -241,17 +247,17 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
 
     if (device != M_NULLPTR)
     {
-        if (device->drive_info.interface_type == UNKNOWN_INTERFACE)
+        if (get_Device_InterfaceType(device) == UNKNOWN_INTERFACE)
         {
             status = BAD_PARAMETER;
             return status;
         }
-        switch (device->drive_info.interface_type)
+        switch (get_Device_InterfaceType(device))
         {
         case IDE_INTERFACE:
             // We know this is an ATA interface and we SHOULD be able to send either an ATA or ATAPI identify...but that
             // doesn't work right, so if the OS layer told us it is ATAPI, do SCSI device discovery
-            if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE)
+            if (get_Device_DriveType(device) == ATAPI_DRIVE || get_Device_DriveType(device) == LEGACY_TAPE_DRIVE)
             {
                 status = fill_In_Device_Info(device);
             }
@@ -279,7 +285,7 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
         case RAID_INTERFACE:
             // if it's RAID interface, the low-level RAID code may already have set the drive type, so treat it based
             // off of what drive type is set to
-            switch (device->drive_info.drive_type)
+            switch (get_Device_DriveType(device))
             {
             case ATA_DRIVE:
                 status = fill_In_ATA_Drive_Info(device);
@@ -307,9 +313,9 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
 #ifdef _DEBUG
     if (device != M_NULLPTR)
     {
-        printf("Drive type: %d\n", device->drive_info.drive_type);
-        printf("Interface type: %d\n", device->drive_info.interface_type);
-        printf("Media type: %d\n", device->drive_info.media_type);
+        printf("Drive type: %d\n", get_Device_DriveType(device));
+        printf("Interface type: %d\n", get_Device_InterfaceType(device));
+        printf("Media type: %d\n", get_Device_MediaType(device));
     }
     printf("%s: <--\n", __FUNCTION__);
 #endif
@@ -317,14 +323,14 @@ eReturnValues fill_Drive_Info_Data(tDevice* device)
     return status;
 }
 
-static eReturnValues ata_Firmware_Download_Command(const tDevice* device,
-                                                   eDownloadMode  dlMode,
-                                                   uint32_t       offset,
-                                                   uint32_t       xferLen,
-                                                   uint8_t*       ptrData,
-                                                   bool           firstSegment,
-                                                   bool           lastSegment,
-                                                   uint32_t       timeoutSeconds)
+static eReturnValues ata_Firmware_Download_Command(const tDevice* M_NONNULL device,
+                                                   eDownloadMode            dlMode,
+                                                   uint32_t                 offset,
+                                                   uint32_t                 xferLen,
+                                                   uint8_t*                 ptrData,
+                                                   bool                     firstSegment,
+                                                   bool                     lastSegment,
+                                                   uint32_t                 timeoutSeconds)
 {
     eReturnValues              ret       = SUCCESS;
     eDownloadMicrocodeFeatures ataDLMode = ATA_DL_MICROCODE_SAVE_IMMEDIATE; // default
@@ -359,19 +365,19 @@ static eReturnValues ata_Firmware_Download_Command(const tDevice* device,
     return ret;
 }
 
-static eReturnValues nvme_Firmware_Download_Command(const tDevice* device,
-                                                    eDownloadMode  dlMode,
-                                                    uint32_t       offset,
-                                                    uint32_t       xferLen,
-                                                    uint8_t*       ptrData,
-                                                    uint8_t        slotNumber,
-                                                    bool           existingImage,
-                                                    bool           firstSegment,
-                                                    bool           lastSegment,
-                                                    uint32_t       timeoutSeconds,
-                                                    bool           nvmeForceCA,
-                                                    uint8_t        commitAction,
-                                                    bool           forceDisableReset)
+static eReturnValues nvme_Firmware_Download_Command(const tDevice* M_NONNULL device,
+                                                    eDownloadMode            dlMode,
+                                                    uint32_t                 offset,
+                                                    uint32_t                 xferLen,
+                                                    uint8_t*                 ptrData,
+                                                    uint8_t                  slotNumber,
+                                                    bool                     existingImage,
+                                                    bool                     firstSegment,
+                                                    bool                     lastSegment,
+                                                    uint32_t                 timeoutSeconds,
+                                                    bool                     nvmeForceCA,
+                                                    uint8_t                  commitAction,
+                                                    bool                     forceDisableReset)
 {
     eReturnValues ret = SUCCESS;
     switch (dlMode)
@@ -549,15 +555,15 @@ static eReturnValues nvme_Firmware_Download_Command(const tDevice* device,
     return ret;
 }
 
-static eReturnValues scsi_Firmware_Download_Command(const tDevice* device,
-                                                    eDownloadMode  dlMode,
-                                                    uint32_t       offset,
-                                                    uint32_t       xferLen,
-                                                    uint8_t*       ptrData,
-                                                    uint8_t        slotNumber,
-                                                    bool           firstSegment,
-                                                    bool           lastSegment,
-                                                    uint32_t       timeoutSeconds)
+static eReturnValues scsi_Firmware_Download_Command(const tDevice* M_NONNULL device,
+                                                    eDownloadMode            dlMode,
+                                                    uint32_t                 offset,
+                                                    uint32_t                 xferLen,
+                                                    uint8_t* M_NONNULL       ptrData,
+                                                    uint8_t                  slotNumber,
+                                                    bool                     firstSegment,
+                                                    bool                     lastSegment,
+                                                    uint32_t                 timeoutSeconds)
 {
     eReturnValues    ret        = SUCCESS;
     eWriteBufferMode scsiDLMode = SCSI_WB_DL_MICROCODE_SAVE_ACTIVATE; // default
@@ -589,25 +595,25 @@ static eReturnValues scsi_Firmware_Download_Command(const tDevice* device,
     return ret;
 }
 
-eReturnValues firmware_Download_Command(const tDevice* device,
-                                        eDownloadMode  dlMode,
-                                        uint32_t       offset,
-                                        uint32_t       xferLen,
-                                        uint8_t*       ptrData,
-                                        uint8_t        slotNumber,
-                                        bool           existingImage,
-                                        bool           firstSegment,
-                                        bool           lastSegment,
-                                        uint32_t       timeoutSeconds,
-                                        bool           nvmeForceCA,
-                                        uint8_t        commitAction,
-                                        bool           forceDisableReset)
+OPENSEA_TRANSPORT_API eReturnValues firmware_Download_Command(const tDevice* M_NONNULL device,
+                                                              eDownloadMode            dlMode,
+                                                              uint32_t                 offset,
+                                                              uint32_t                 xferLen,
+                                                              uint8_t*                 ptrData,
+                                                              uint8_t                  slotNumber,
+                                                              bool                     existingImage,
+                                                              bool                     firstSegment,
+                                                              bool                     lastSegment,
+                                                              uint32_t                 timeoutSeconds,
+                                                              bool                     nvmeForceCA,
+                                                              uint8_t                  commitAction,
+                                                              bool                     forceDisableReset)
 {
     eReturnValues ret = UNKNOWN;
 #ifdef _DEBUG
     printf("-->%s\n", __FUNCTION__);
 #endif
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Firmware_Download_Command(device, dlMode, offset, xferLen, ptrData, firstSegment, lastSegment,
@@ -632,26 +638,27 @@ eReturnValues firmware_Download_Command(const tDevice* device,
     return ret;
 }
 
-eReturnValues firmware_Download_Activate(const tDevice* device,
-                                         uint8_t        slotNumber,
-                                         bool           existingImage,
-                                         uint32_t       timeoutSeconds,
-                                         bool           nvmeForceCA,
-                                         uint8_t        commitAction,
-                                         bool           forceDisableReset)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues firmware_Download_Activate(const tDevice* M_NONNULL device,
+                                                               uint8_t                  slotNumber,
+                                                               bool                     existingImage,
+                                                               uint32_t                 timeoutSeconds,
+                                                               bool                     nvmeForceCA,
+                                                               uint8_t                  commitAction,
+                                                               bool                     forceDisableReset)
 {
     return firmware_Download_Command(device, DL_FW_ACTIVATE, 0, 0, M_NULLPTR, slotNumber, existingImage, false, false,
                                      timeoutSeconds, nvmeForceCA, commitAction, forceDisableReset);
 }
 
-eReturnValues security_Send(const tDevice* device,
-                            uint8_t        securityProtocol,
-                            uint16_t       securityProtocolSpecific,
-                            uint8_t*       ptrData,
-                            uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues security_Send(const tDevice* M_NONNULL device,
+                                                  uint8_t                  securityProtocol,
+                                                  uint16_t                 securityProtocolSpecific,
+                                                  uint8_t* M_NULLABLE      ptrData,
+                                                  uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
     {
@@ -666,7 +673,7 @@ eReturnValues security_Send(const tDevice* device,
                 // round up to nearest 512byte sector
                 tcgDataSize = uint32_round_up_power2(dataSize, 512);
                 tcgBufPtr   = C_CAST(uint8_t*, safe_calloc_aligned(uint32_to_sizet(tcgDataSize), sizeof(uint8_t),
-                                                                   device->os_info.minimumAlignment));
+                                                                   get_Device_IO_Minimum_Alignment(device)));
                 if (tcgBufPtr == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
@@ -700,7 +707,7 @@ eReturnValues security_Send(const tDevice* device,
         // for now we'll leave it here.
         bool inc512 = false;
         if ((dataSize >= LEGACY_DRIVE_SEC_SIZE && (dataSize % LEGACY_DRIVE_SEC_SIZE) == 0) &&
-            ((device->drive_info.drive_type != NVME_DRIVE &&
+            ((get_Device_DriveType(device) != NVME_DRIVE &&
               strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0) ||
              device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512))
         {
@@ -718,14 +725,14 @@ eReturnValues security_Send(const tDevice* device,
     return ret;
 }
 
-eReturnValues security_Receive(const tDevice* device,
-                               uint8_t        securityProtocol,
-                               uint16_t       securityProtocolSpecific,
-                               uint8_t*       ptrData,
-                               uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues security_Receive(const tDevice* M_NONNULL device,
+                                                     uint8_t                  securityProtocol,
+                                                     uint16_t                 securityProtocolSpecific,
+                                                     uint8_t* M_NULLABLE      ptrData,
+                                                     uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
     {
@@ -740,7 +747,7 @@ eReturnValues security_Receive(const tDevice* device,
                 // round up to nearest 512byte sector
                 tcgDataSize = uint32_round_up_power2(dataSize, 512);
                 tcgBufPtr   = C_CAST(uint8_t*, safe_calloc_aligned(uint32_to_sizet(tcgDataSize), sizeof(uint8_t),
-                                                                   device->os_info.minimumAlignment));
+                                                                   get_Device_IO_Minimum_Alignment(device)));
                 if (tcgBufPtr == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
@@ -774,7 +781,7 @@ eReturnValues security_Receive(const tDevice* device,
         // for now we'll leave it here.
         bool inc512 = false;
         if ((dataSize >= LEGACY_DRIVE_SEC_SIZE && (dataSize % LEGACY_DRIVE_SEC_SIZE) == 0) &&
-            ((device->drive_info.drive_type != NVME_DRIVE &&
+            ((get_Device_DriveType(device) != NVME_DRIVE &&
               strncmp(device->drive_info.T10_vendor_ident, "NVMe", 4) != 0) ||
              device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512))
         {
@@ -797,14 +804,14 @@ M_PARAM_RW(1)
 M_PARAM_RW_SIZE(7, 8)
 M_NODISCARD
 static eReturnValues determine_scsi_write_same_cmd(
-    tDevice* device,
-    uint64_t lba,
-    bool     anchor,
-    bool     unmap,
-    bool     noDataOut, // equivalent to ata/nvme write zeroes command. Added in SBC3
-    uint32_t numberOfLogicalBlocks,
-    uint8_t* ptrData,
-    uint32_t dataSize)
+    tDevice* M_NONNULL  device,
+    uint64_t            lba,
+    bool                anchor,
+    bool                unmap,
+    bool                noDataOut, // equivalent to ata/nvme write zeroes command. Added in SBC3
+    uint32_t            numberOfLogicalBlocks,
+    uint8_t* M_NULLABLE ptrData,
+    uint32_t            dataSize)
 {
     eSCSICmdSize  cmdSize = SCSI_CMD_SIZE_16; // default to 16B version
     eReturnValues ret     = SUCCESS;
@@ -812,7 +819,7 @@ static eReturnValues determine_scsi_write_same_cmd(
     {
         // there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care
         // about in here), so just based on transfer length and the maxLBA
-        if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && numberOfLogicalBlocks <= UINT16_MAX &&
+        if (return_Device_MaxLba(device) <= SCSI_MAX_32_LBA && numberOfLogicalBlocks <= UINT16_MAX &&
             lba <= SCSI_MAX_32_LBA)
         {
             cmdSize = SCSI_CMD_SIZE_10;
@@ -835,15 +842,15 @@ static eReturnValues determine_scsi_write_same_cmd(
                 device->drive_info.passThroughHacks.scsiHacks.writeSameDataOutRequired)
             {
                 // no data out bit not supported on this version of the command
-                uint8_t* zeroBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize,
-                                                                                    sizeof(uint8_t),
-                                                                                    device->os_info.minimumAlignment));
+                uint8_t* zeroBuf =
+                    M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device), sizeof(uint8_t),
+                                                                     get_Device_IO_Minimum_Alignment(device)));
                 if (zeroBuf == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
                 }
                 ret = scsi_Write_Same_16(device, 0, anchor, unmap, false, lba, 0, numberOfLogicalBlocks, zeroBuf,
-                                         device->drive_info.deviceBlockSize);
+                                         get_Device_BlockSize(device));
                 safe_free_aligned(&zeroBuf);
             }
             else
@@ -857,16 +864,16 @@ static eReturnValues determine_scsi_write_same_cmd(
             {
                 // This bit is not supported on this command. The equivalent behavior is to zend a logical block sized
                 // buffer of zeroes.
-                uint8_t* zeroBuf = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize,
-                                                                                    sizeof(uint8_t),
-                                                                                    device->os_info.minimumAlignment));
+                uint8_t* zeroBuf =
+                    M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device), sizeof(uint8_t),
+                                                                     get_Device_IO_Minimum_Alignment(device)));
                 if (zeroBuf == M_NULLPTR)
                 {
                     return MEMORY_FAILURE;
                 }
-                ret = scsi_Write_Same_10(device, 0, anchor, unmap, C_CAST(uint32_t, lba), 0,
-                                         C_CAST(uint16_t, numberOfLogicalBlocks), zeroBuf,
-                                         device->drive_info.deviceBlockSize);
+                ret =
+                    scsi_Write_Same_10(device, 0, anchor, unmap, C_CAST(uint32_t, lba), 0,
+                                       C_CAST(uint16_t, numberOfLogicalBlocks), zeroBuf, get_Device_BlockSize(device));
                 safe_free_aligned(&zeroBuf);
             }
             else
@@ -939,13 +946,17 @@ static eReturnValues determine_scsi_write_same_cmd(
     return ret;
 }
 
-static eReturnValues scsi_Write_Same_Cmd(const tDevice* device,
-                                         uint64_t       startingLba,
-                                         uint64_t       numberOfLogicalBlocks,
-                                         uint8_t*       pattern,
-                                         uint32_t       patternSize,
-                                         bool           anchor,
-                                         bool           unmap,
+// TODO: Handle write same number of logical blocks > uint32_max
+M_PARAM_RO(1)
+M_PARAM_RO(4)
+M_NONNULL_IF_NONZERO_SIZE(4, 5)
+static eReturnValues scsi_Write_Same_Cmd(const tDevice* M_NONNULL device,
+                                         uint64_t                 startingLba,
+                                         uint64_t                 numberOfLogicalBlocks,
+                                         uint8_t* M_NULLABLE      pattern,
+                                         uint32_t                 patternSize,
+                                         bool                     anchor,
+                                         bool                     unmap,
                                          bool noDataOut) // equivalent to ata/nvme write zeroes command. Added in SBC3
 {
     eReturnValues ret = SUCCESS;
@@ -961,15 +972,14 @@ static eReturnValues scsi_Write_Same_Cmd(const tDevice* device,
             // This bit is not supported on this command. The equivalent behavior is to zend a logical block sized
             // buffer of zeroes.
             uint8_t* zeroBuf =
-                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t),
-                                                                 device->os_info.minimumAlignment));
+                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device), sizeof(uint8_t),
+                                                                 get_Device_IO_Minimum_Alignment(device)));
             if (zeroBuf == M_NULLPTR)
             {
                 return MEMORY_FAILURE;
             }
             ret = scsi_Write_Same_10(device, 0, anchor, unmap, C_CAST(uint32_t, startingLba), 0,
-                                     C_CAST(uint16_t, numberOfLogicalBlocks), zeroBuf,
-                                     device->drive_info.deviceBlockSize);
+                                     C_CAST(uint16_t, numberOfLogicalBlocks), zeroBuf, get_Device_BlockSize(device));
             safe_free_aligned(&zeroBuf);
         }
         else
@@ -985,37 +995,40 @@ static eReturnValues scsi_Write_Same_Cmd(const tDevice* device,
         {
             // no data out bit not supported on this version of the command
             uint8_t* zeroBuf =
-                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t),
-                                                                 device->os_info.minimumAlignment));
+                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device), sizeof(uint8_t),
+                                                                 get_Device_IO_Minimum_Alignment(device)));
             if (zeroBuf == M_NULLPTR)
             {
                 return MEMORY_FAILURE;
             }
-            ret = scsi_Write_Same_16(device, 0, anchor, unmap, false, startingLba, 0, numberOfLogicalBlocks, zeroBuf,
-                                     device->drive_info.deviceBlockSize);
+            ret = scsi_Write_Same_16(device, 0, anchor, unmap, false, startingLba, 0,
+                                     C_CAST(uint32_t, numberOfLogicalBlocks), zeroBuf, get_Device_BlockSize(device));
             safe_free_aligned(&zeroBuf);
         }
         else
         {
-            ret = scsi_Write_Same_16(device, 0, anchor, unmap, noDataOut, startingLba, 0, numberOfLogicalBlocks,
-                                     pattern, patternSize);
+            ret = scsi_Write_Same_16(device, 0, anchor, unmap, noDataOut, startingLba, 0,
+                                     C_CAST(uint32_t, numberOfLogicalBlocks), pattern, patternSize);
         }
     }
     else
     {
         // need to determine which command to use
         ret = determine_scsi_write_same_cmd(M_CONST_CAST(tDevice*, device), startingLba, anchor, unmap, noDataOut,
-                                            numberOfLogicalBlocks, pattern, patternSize);
+                                            C_CAST(uint32_t, numberOfLogicalBlocks), pattern, patternSize);
     }
     return ret;
 }
 
-static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
-                                        uint64_t       startingLba,
-                                        uint64_t       numberOfLogicalBlocks,
-                                        uint8_t*       pattern,
-                                        uint32_t       patternSize,
-                                        bool           noDataOut)
+M_PARAM_RO(1)
+M_PARAM_RO(4)
+M_NONNULL_IF_NONZERO_SIZE(4, 5)
+static eReturnValues ata_Write_Same_Cmd(const tDevice* M_NONNULL device,
+                                        uint64_t                 startingLba,
+                                        uint64_t                 numberOfLogicalBlocks,
+                                        uint8_t* M_NULLABLE      pattern,
+                                        uint32_t                 patternSize,
+                                        bool                     noDataOut)
 {
     eReturnValues ret = NOT_SUPPORTED;
     ;
@@ -1031,8 +1044,7 @@ static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
         else
         {
             ret = send_ATA_SCT_Write_Same(device, WRITE_SAME_BACKGROUND_USE_SINGLE_LOGICAL_SECTOR, startingLba,
-                                          numberOfLogicalBlocks, pattern,
-                                          patternSize / device->drive_info.deviceBlockSize);
+                                          numberOfLogicalBlocks, pattern, patternSize / get_Device_BlockSize(device));
         }
     }
     else if ((is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word080)) &&
@@ -1051,13 +1063,12 @@ static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
         uint8_t feature          = LEGACY_WRITE_SAME_INITIALIZE_SPECIFIED_SECTORS;
         if (noDataOut)
         {
-            pattern =
-                M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(device->drive_info.deviceBlockSize, sizeof(uint8_t),
-                                                                 device->os_info.minimumAlignment));
+            pattern = M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(get_Device_BlockSize(device), sizeof(uint8_t),
+                                                                       get_Device_IO_Minimum_Alignment(device)));
             localPattern = true;
         }
         // Check range to see which feature to use
-        if (startingLba == 0 && numberOfLogicalBlocks == (device->drive_info.deviceMaxLba + 1))
+        if (startingLba == 0 && numberOfLogicalBlocks == (return_Device_MaxLba(device) + 1))
         {
             feature               = LEGACY_WRITE_SAME_INITIALIZE_ALL_SECTORS;
             numberOfLogicalBlocks = 0;
@@ -1077,7 +1088,7 @@ static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
                 if (SUCCESS == convert_LBA_To_CHS(device, C_CAST(uint32_t, startingLba), &cylinder, &head, &sector))
                 {
                     ret = ata_Legacy_Write_Same_CHS(device, feature, C_CAST(uint8_t, numberOfLogicalBlocks), cylinder,
-                                                    head, sector, pattern, device->drive_info.deviceBlockSize);
+                                                    head, sector, pattern, get_Device_BlockSize(device));
                 }
                 else
                 {
@@ -1087,7 +1098,7 @@ static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
             else
             {
                 ret = ata_Legacy_Write_Same(device, feature, C_CAST(uint8_t, numberOfLogicalBlocks),
-                                            C_CAST(uint32_t, startingLba), pattern, device->drive_info.deviceBlockSize);
+                                            C_CAST(uint32_t, startingLba), pattern, get_Device_BlockSize(device));
             }
         }
         else
@@ -1106,7 +1117,12 @@ static eReturnValues ata_Write_Same_Cmd(const tDevice* device,
     return ret;
 }
 
-eReturnValues write_Same(const tDevice* device, uint64_t startingLba, uint64_t numberOfLogicalBlocks, uint8_t* pattern)
+M_PARAM_RO(1)
+M_PARAM_RO(4)
+OPENSEA_TRANSPORT_API eReturnValues write_Same(const tDevice* M_NONNULL device,
+                                               uint64_t                 startingLba,
+                                               uint64_t                 numberOfLogicalBlocks,
+                                               uint8_t*                 pattern)
 {
     eReturnValues ret            = UNKNOWN;
     bool          noDataTransfer = false;
@@ -1114,16 +1130,15 @@ eReturnValues write_Same(const tDevice* device, uint64_t startingLba, uint64_t n
     {
         noDataTransfer = true;
     }
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Write_Same_Cmd(device, startingLba, numberOfLogicalBlocks, pattern,
-                                 noDataTransfer ? 0 : device->drive_info.deviceBlockSize, noDataTransfer);
+                                 noDataTransfer ? 0 : get_Device_BlockSize(device), noDataTransfer);
         break;
     case SCSI_DRIVE:
-        ret =
-            scsi_Write_Same_Cmd(device, startingLba, numberOfLogicalBlocks, pattern,
-                                noDataTransfer ? 0 : device->drive_info.deviceBlockSize, false, false, noDataTransfer);
+        ret = scsi_Write_Same_Cmd(device, startingLba, numberOfLogicalBlocks, pattern,
+                                  noDataTransfer ? 0 : get_Device_BlockSize(device), false, false, noDataTransfer);
         break;
     default:
         ret = NOT_SUPPORTED;
@@ -1132,10 +1147,10 @@ eReturnValues write_Same(const tDevice* device, uint64_t startingLba, uint64_t n
     return ret;
 }
 
-bool is_Write_Psuedo_Uncorrectable_Supported(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_Write_Psuedo_Uncorrectable_Supported(const tDevice* M_NONNULL device)
 {
     bool supported = false;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
@@ -1166,13 +1181,14 @@ bool is_Write_Psuedo_Uncorrectable_Supported(const tDevice* device)
     return supported;
 }
 
-eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* device, uint64_t corruptLBA)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* M_NONNULL device,
+                                                                     uint64_t                 corruptLBA)
 {
     eReturnValues ret                        = UNKNOWN;
     bool          multipleLogicalPerPhysical = false; // used to set the physical block bit when applicable
-    uint16_t      logicalPerPhysicalBlocks =
-        C_CAST(uint16_t, device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
-    if (logicalPerPhysicalBlocks > 1)
+    uint16_t      logicalPerPhysicalBlocks   = get_Logical_Sectors_Per_Physical_Sector(device);
+    if (logicalPerPhysicalBlocks > UINT16_C(1))
     {
         // since this device has multiple logical blocks per physical block, we also need to adjust the LBA to be at the
         // start of the physical block do this by dividing by the number of logical sectors per physical sector. This
@@ -1185,7 +1201,7 @@ eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* device, uint64_t c
         // set this flag for SCSI
         multipleLogicalPerPhysical = true;
     }
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
@@ -1202,7 +1218,7 @@ eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* device, uint64_t c
         ret = NOT_SUPPORTED;
         break;
     case SCSI_DRIVE:
-        if (device->drive_info.deviceMaxLba > UINT32_MAX)
+        if (return_Device_MaxLba(device) > UINT32_MAX)
         {
             ret = scsi_Write_Long_16(device, false, true, multipleLogicalPerPhysical, corruptLBA, 0, M_NULLPTR);
         }
@@ -1219,10 +1235,10 @@ eReturnValues write_Psuedo_Uncorrectable_Error(const tDevice* device, uint64_t c
     return ret;
 }
 
-bool is_Write_Flagged_Uncorrectable_Supported(const tDevice* device)
+OPENSEA_TRANSPORT_API bool is_Write_Flagged_Uncorrectable_Supported(const tDevice* M_NONNULL device)
 {
     bool supported = false;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
@@ -1256,11 +1272,13 @@ bool is_Write_Flagged_Uncorrectable_Supported(const tDevice* device)
     return supported;
 }
 
-eReturnValues write_Flagged_Uncorrectable_Error(const tDevice* device, uint64_t corruptLBA)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues write_Flagged_Uncorrectable_Error(const tDevice* M_NONNULL device,
+                                                                      uint64_t                 corruptLBA)
 {
     eReturnValues ret = UNKNOWN;
     // This will only flag individual logical blocks
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (device->drive_info.ata_Options.writeUncorrectableExtSupported)
@@ -1277,7 +1295,7 @@ eReturnValues write_Flagged_Uncorrectable_Error(const tDevice* device, uint64_t 
         ret = nvme_Write_Uncorrectable(device, corruptLBA, NVME_0_BASED_ADJUST(1));
         break;
     case SCSI_DRIVE:
-        if (device->drive_info.deviceMaxLba > UINT32_MAX)
+        if (return_Device_MaxLba(device) > UINT32_MAX)
         {
             ret = scsi_Write_Long_16(device, true, true, false, corruptLBA, 0, M_NULLPTR);
         }
@@ -1293,7 +1311,7 @@ eReturnValues write_Flagged_Uncorrectable_Error(const tDevice* device, uint64_t 
     return ret;
 }
 
-static bool verify_ATA_Xfer_Len(const tDevice* device, uint64_t lba, uint32_t* rangeSectors)
+static bool verify_ATA_Xfer_Len(const tDevice* M_NONNULL device, uint64_t lba, uint32_t* rangeSectors)
 {
     bool inrange = true;
     if (device->drive_info.ata_Options.fourtyEightBitAddressFeatureSetSupported)
@@ -1350,7 +1368,7 @@ static bool use_ATA_Multiple_Mode(const tDevice* M_NONNULL device)
 static eReturnValues ata_PIO_Read(const tDevice* device, uint64_t lba, uint8_t* ptrData, uint32_t dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
-    uint32_t      sectors = dataSize / device->drive_info.deviceBlockSize;
+    uint32_t      sectors = dataSize / get_Device_BlockSize(device);
     if (use_ATA_Multiple_Mode(device))
     {
         // read multiple supported and drive is currently configured in a mode that will work.
@@ -1403,10 +1421,13 @@ static eReturnValues ata_PIO_Read(const tDevice* device, uint64_t lba, uint8_t* 
     return ret;
 }
 
-static eReturnValues ata_DMA_Read(const tDevice* device, uint64_t lba, uint8_t* ptrData, uint32_t dataSize)
+static eReturnValues ata_DMA_Read(const tDevice* M_NONNULL device,
+                                  uint64_t                 lba,
+                                  uint8_t* M_NONNULL       ptrData,
+                                  uint32_t                 dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
-    uint32_t      sectors = dataSize / device->drive_info.deviceBlockSize;
+    uint32_t      sectors = dataSize / get_Device_BlockSize(device);
     if (device->drive_info.ata_Options.chsModeOnly)
     {
         uint16_t cylinder = UINT16_C(0);
@@ -1431,21 +1452,25 @@ static eReturnValues ata_DMA_Read(const tDevice* device, uint64_t lba, uint8_t* 
     return ret;
 }
 
-eReturnValues ata_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Read(const tDevice* M_NONNULL device,
+                                             uint64_t                 lba,
+                                             bool                     forceUnitAccess,
+                                             uint8_t* M_NONNULL       ptrData,
+                                             uint32_t                 dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
     uint32_t      sectors = UINT32_C(0);
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
-    sectors = dataSize / device->drive_info.deviceBlockSize;
+    sectors = dataSize / get_Device_BlockSize(device);
     if (forceUnitAccess)
     {
         // The synchronous commands in here are not able to set a bit for this, so the closest thing is to issue a
         // read-verify to force cached data to the media ahead of the read
-        ret = ata_Read_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+        ret = ata_Read_Verify(device, lba, dataSize / get_Device_BlockSize(device));
     }
     if (SUCCESS == ret) // don't try the read if the read verify fails
     {
@@ -1455,7 +1480,7 @@ eReturnValues ata_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess
         }
         else
         {
-            if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
+            if (get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_NO_DMA)
             {
                 // use PIO commands
                 ret = ata_PIO_Read(device, lba, ptrData, dataSize);
@@ -1570,12 +1595,12 @@ static eReturnValues ata_PIO_Write(const tDevice* device,
     return ret;
 }
 
-static eReturnValues ata_DMA_Write(const tDevice* device,
-                                   uint64_t       lba,
-                                   bool           forceUnitAccess,
-                                   bool*          writeDMAFUA,
-                                   uint8_t*       ptrData,
-                                   uint32_t       dataSize)
+static eReturnValues ata_DMA_Write(const tDevice* M_NONNULL device,
+                                   uint64_t                 lba,
+                                   bool                     forceUnitAccess,
+                                   bool*                    writeDMAFUA,
+                                   uint8_t* M_NONNULL       ptrData,
+                                   uint32_t                 dataSize)
 {
     eReturnValues ret = SUCCESS;
     if (use_ATA_Write_FUA(device, forceUnitAccess))
@@ -1606,24 +1631,28 @@ static eReturnValues ata_DMA_Write(const tDevice* device,
     return ret;
 }
 
-eReturnValues ata_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Write(const tDevice* M_NONNULL device,
+                                              uint64_t                 lba,
+                                              bool                     forceUnitAccess,
+                                              uint8_t* M_NONNULL       ptrData,
+                                              uint32_t                 dataSize)
 {
     eReturnValues ret         = SUCCESS; // assume success
     uint32_t      sectors     = UINT32_C(0);
     bool          writeDMAFUA = false;
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
-    sectors = dataSize / device->drive_info.deviceBlockSize;
+    sectors = dataSize / get_Device_BlockSize(device);
     if (!verify_ATA_Xfer_Len(device, lba, &sectors))
     {
         ret = BAD_PARAMETER;
     }
     else
     {
-        if (device->drive_info.ata_Options.dmaMode == ATA_DMA_MODE_NO_DMA)
+        if (get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_NO_DMA)
         {
             // use PIO commands
             ret = ata_PIO_Write(device, lba, forceUnitAccess, &writeDMAFUA, ptrData, dataSize);
@@ -1654,12 +1683,12 @@ eReturnValues ata_Write(const tDevice* device, uint64_t lba, bool forceUnitAcces
     {
         // The synchronous commands in here are not able to set a bit for this, so the closest thing is to issue a
         // read-verify to force cached data to the media ahead of the read
-        ret = ata_Read_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+        ret = ata_Read_Verify(device, lba, dataSize / get_Device_BlockSize(device));
     }
     return ret;
 }
 
-static void get_SCSI_DPO_FUA_Support(tDevice* device)
+static void get_SCSI_DPO_FUA_Support(tDevice* M_NONNULL device)
 {
     if (!device->drive_info.dpoFUAvalid)
     {
@@ -1704,7 +1733,7 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
     {
         // there's no real way to tell when scsi drive supports read 10 vs read 16 (which are all we will care
         // about in here), so just based on transfer length and the maxLBA
-        if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && sectors <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
+        if (return_Device_MaxLba(device) <= SCSI_MAX_32_LBA && sectors <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
         {
             cmdSize = SCSI_CMD_SIZE_10;
         }
@@ -1912,24 +1941,28 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
     return ret;
 }
 
-eReturnValues scsi_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues scsi_Read(const tDevice* M_NONNULL device,
+                                              uint64_t                 lba,
+                                              bool                     forceUnitAccess,
+                                              uint8_t* M_NONNULL       ptrData,
+                                              uint32_t                 dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
     uint32_t      sectors = UINT32_C(0);
     bool          fua     = false;
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
-    sectors = dataSize / device->drive_info.deviceBlockSize;
+    sectors = dataSize / get_Device_BlockSize(device);
     if (forceUnitAccess)
     {
         get_SCSI_DPO_FUA_Support(M_CONST_CAST(tDevice*, device));
         if (!device->drive_info.dpoFUA)
         {
             // send verify first since FUA is not available
-            ret = scsi_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+            ret = scsi_Verify(device, lba, dataSize / get_Device_BlockSize(device));
         }
         fua = device->drive_info.dpoFUA;
     }
@@ -1976,17 +2009,21 @@ eReturnValues scsi_Read(const tDevice* device, uint64_t lba, bool forceUnitAcces
 // already - TJE
 // Other option is if neither write and verify or verify are supported (since both are optional) to use synchronize
 // cache with lba and range values that match the write command.
-eReturnValues scsi_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues scsi_Write(const tDevice* M_NONNULL device,
+                                               uint64_t                 lba,
+                                               bool                     forceUnitAccess,
+                                               uint8_t* M_NONNULL       ptrData,
+                                               uint32_t                 dataSize)
 {
     eReturnValues ret     = SUCCESS; // assume success
     uint32_t      sectors = UINT32_C(0);
     bool          fua     = false;
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
-    sectors = dataSize / device->drive_info.deviceBlockSize;
+    sectors = dataSize / get_Device_BlockSize(device);
     if (forceUnitAccess)
     {
         get_SCSI_DPO_FUA_Support(M_CONST_CAST(tDevice*, device));
@@ -2028,20 +2065,24 @@ eReturnValues scsi_Write(const tDevice* device, uint64_t lba, bool forceUnitAcce
     if (forceUnitAccess && !device->drive_info.dpoFUA)
     {
         // send verify after write since FUA is not available
-        ret = scsi_Verify(device, lba, dataSize / device->drive_info.deviceBlockSize);
+        ret = scsi_Verify(device, lba, dataSize / get_Device_BlockSize(device));
     }
     return ret;
 }
 
-eReturnValues io_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues io_Read(const tDevice* M_NONNULL device,
+                                            uint64_t                 lba,
+                                            bool                     forceUnitAccess,
+                                            uint8_t* M_NONNULL       ptrData,
+                                            uint32_t                 dataSize)
 {
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
 
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
         // perform ATA reads
@@ -2054,9 +2095,8 @@ eReturnValues io_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
         // perform SCSI reads
         return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
     case NVME_INTERFACE:
-        return nvme_Read(device, lba,
-                         C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)), false,
-                         forceUnitAccess, 0, ptrData, dataSize);
+        return nvme_Read(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / get_Device_BlockSize(device))),
+                         false, forceUnitAccess, 0, ptrData, dataSize);
     case RAID_INTERFACE:
         // perform SCSI reads for now. We may need to add unique functions for NVMe and RAID reads later
         return scsi_Read(device, lba, forceUnitAccess, ptrData, dataSize);
@@ -2065,15 +2105,19 @@ eReturnValues io_Read(const tDevice* device, uint64_t lba, bool forceUnitAccess,
     }
 }
 
-eReturnValues io_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues io_Write(const tDevice* M_NONNULL device,
+                                             uint64_t                 lba,
+                                             bool                     forceUnitAccess,
+                                             uint8_t* M_NONNULL       ptrData,
+                                             uint32_t                 dataSize)
 {
     // make sure that the data size is at least logical sector in size
-    if (dataSize < device->drive_info.deviceBlockSize)
+    if (dataSize < get_Device_BlockSize(device))
     {
         return BAD_PARAMETER;
     }
 
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
         // perform ATA writes
@@ -2086,9 +2130,8 @@ eReturnValues io_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
         // perform SCSI writes
         return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
     case NVME_INTERFACE:
-        return nvme_Write(device, lba,
-                          C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize)), false,
-                          forceUnitAccess, 0, 0, ptrData, dataSize);
+        return nvme_Write(device, lba, C_CAST(uint16_t, NVME_0_BASED_ADJUST(dataSize / get_Device_BlockSize(device))),
+                          false, forceUnitAccess, 0, 0, ptrData, dataSize);
     case RAID_INTERFACE:
         // perform SCSI writes for now. We may need to add unique functions for NVMe and RAID writes later
         return scsi_Write(device, lba, forceUnitAccess, ptrData, dataSize);
@@ -2097,7 +2140,11 @@ eReturnValues io_Write(const tDevice* device, uint64_t lba, bool forceUnitAccess
     }
 }
 
-eReturnValues read_LBA(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues read_LBA(const tDevice* M_NONNULL device,
+                                             uint64_t                 lba,
+                                             bool                     forceUnitAccess,
+                                             uint8_t* M_NONNULL       ptrData,
+                                             uint32_t                 dataSize)
 {
     if (device->os_info.osReadWriteRecommended && is_Blocksize_And_Capacity_In_Sync(device))
     {
@@ -2111,7 +2158,11 @@ eReturnValues read_LBA(const tDevice* device, uint64_t lba, bool forceUnitAccess
     }
 }
 
-eReturnValues write_LBA(const tDevice* device, uint64_t lba, bool forceUnitAccess, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues write_LBA(const tDevice* M_NONNULL device,
+                                              uint64_t                 lba,
+                                              bool                     forceUnitAccess,
+                                              uint8_t* M_NONNULL       ptrData,
+                                              uint32_t                 dataSize)
 {
     if (device->os_info.osReadWriteRecommended && is_Blocksize_And_Capacity_In_Sync(device))
     {
@@ -2125,7 +2176,8 @@ eReturnValues write_LBA(const tDevice* device, uint64_t lba, bool forceUnitAcces
     }
 }
 
-eReturnValues ata_Read_Verify(const tDevice* device, uint64_t lba, uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues ata_Read_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = SUCCESS; // assume success
     if (!verify_ATA_Xfer_Len(device, lba, &range))
@@ -2161,7 +2213,8 @@ eReturnValues ata_Read_Verify(const tDevice* device, uint64_t lba, uint32_t rang
     return ret;
 }
 
-eReturnValues scsi_Verify(const tDevice* device, uint64_t lba, uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues scsi_Verify(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = SUCCESS; // assume success
     if (device->drive_info.passThroughHacks.scsiHacks.readWrite.available)
@@ -2206,7 +2259,7 @@ static eReturnValues generic_Compare(const tDevice* device, uint64_t lba, uint8_
     // To perform the same behavior, read then compare the data buffers
     eReturnValues ret = SUCCESS;
     uint8_t*      readData =
-        M_STATIC_CAST(uint8_t*, calloc_aligned(dataSize, sizeof(uint8_t), device->os_info.minimumAlignment));
+        M_STATIC_CAST(uint8_t*, calloc_aligned(dataSize, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (readData != M_NULLPTR)
     {
         ret = read_LBA(device, lba, false, readData, dataSize);
@@ -2231,12 +2284,12 @@ static eReturnValues scsi_Compare(const tDevice* device, uint64_t lba, uint8_t* 
     eReturnValues ret = SUCCESS; // assume success
     // there's no real way to tell when scsi drive supports verify 10 vs verify 16 (which are all we will care about in
     // here), so just based on transfer length and the maxLBA
-    uint32_t range = dataSize / device->drive_info.deviceBlockSize;
+    uint32_t range = dataSize / get_Device_BlockSize(device);
 
     if (device->drive_info.scsiVersion >= SCSI_VERSION_SCSI2 &&
         !device->drive_info.passThroughHacks.scsiHacks.noCompareLogicalBlocks)
     {
-        if (device->drive_info.deviceMaxLba <= SCSI_MAX_32_LBA && range <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
+        if (return_Device_MaxLba(device) <= SCSI_MAX_32_LBA && range <= UINT16_MAX && lba <= SCSI_MAX_32_LBA)
         {
             // use verify 10
             ret = scsi_Verify_10(device, 0, false, SCSI_VERIFY_LOGICAL_BLOCKS, C_CAST(uint32_t, lba), 0,
@@ -2263,15 +2316,18 @@ static eReturnValues scsi_Compare(const tDevice* device, uint64_t lba, uint8_t* 
 
 // Need a function to check when compare is supported on a device.
 // When it is not, need to emulate with read and memcmp(like ATA does)
-eReturnValues compare_LBA(const tDevice* device, uint64_t lba, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues compare_LBA(const tDevice* M_NONNULL device,
+                                                uint64_t                 lba,
+                                                uint8_t* M_NONNULL       ptrData,
+                                                uint32_t                 dataSize)
 {
-    switch (device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
         return generic_Compare(device, lba, ptrData, dataSize);
     case SCSI_INTERFACE:
         // perform SCSI verifies
-        if (device->drive_info.drive_type == SCSI_DRIVE || is_Blocksize_And_Capacity_In_Sync(device))
+        if (get_Device_DriveType(device) == SCSI_DRIVE || is_Blocksize_And_Capacity_In_Sync(device))
         {
             return scsi_Compare(device, lba, ptrData, dataSize);
         }
@@ -2286,8 +2342,8 @@ eReturnValues compare_LBA(const tDevice* device, uint64_t lba, uint8_t* ptrData,
 #endif
         )
         {
-            return nvme_Compare(device, lba, NVME_0_BASED_ADJUST(dataSize / device->drive_info.deviceBlockSize), false,
-                                false, 0, ptrData, dataSize);
+            return nvme_Compare(device, lba, NVME_0_BASED_ADJUST(dataSize / get_Device_BlockSize(device)), false, false,
+                                0, ptrData, dataSize);
         }
         else
         {
@@ -2305,7 +2361,8 @@ eReturnValues compare_LBA(const tDevice* device, uint64_t lba, uint8_t* ptrData,
     M_UNREACHABLE();
 }
 
-eReturnValues nvme_Verify_LBA(const tDevice* device, uint64_t lba, uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Verify_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     eReturnValues ret = SUCCESS;
     if (le16_to_host(device->drive_info.IdentifyData.nvme.ctrl.oncs) & BIT7 && range < NVME_0_BASED_ADJUST(UINT16_MAX))
@@ -2317,9 +2374,9 @@ eReturnValues nvme_Verify_LBA(const tDevice* device, uint64_t lba, uint32_t rang
     {
         // NVME doesn't have a verify command like ATA or SCSI, so we're going to substitute by doing a read with FUA
         // set....should be the same minus doing a data transfer.
-        uint32_t dataLength = device->drive_info.deviceBlockSize * range;
+        uint32_t dataLength = get_Device_BlockSize(device) * range;
         uint8_t* data       = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(dataLength, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (data != M_NULLPTR)
         {
             ret =
@@ -2334,7 +2391,8 @@ eReturnValues nvme_Verify_LBA(const tDevice* device, uint64_t lba, uint32_t rang
     return ret;
 }
 
-eReturnValues verify_LBA(const tDevice* device, uint64_t lba, uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues verify_LBA(const tDevice* M_NONNULL device, uint64_t lba, uint32_t range)
 {
     if (device->os_info.osReadWriteRecommended && is_Blocksize_And_Capacity_In_Sync(device))
     {
@@ -2342,7 +2400,7 @@ eReturnValues verify_LBA(const tDevice* device, uint64_t lba, uint32_t range)
     }
     else
     {
-        switch (device->drive_info.interface_type)
+        switch (get_Device_InterfaceType(device))
         {
         case IDE_INTERFACE:
             // perform ATA verifies
@@ -2365,7 +2423,7 @@ eReturnValues verify_LBA(const tDevice* device, uint64_t lba, uint32_t range)
     }
 }
 
-eReturnValues ata_Flush_Cache_Command(const tDevice* device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_Flush_Cache_Command(const tDevice* M_NONNULL device)
 {
     bool ext = false;
     if (is_ATA_Identify_Word_Valid_With_Bits_14_And_15(le16_to_host(device->drive_info.IdentifyData.ata.Word083)) &&
@@ -2376,7 +2434,7 @@ eReturnValues ata_Flush_Cache_Command(const tDevice* device)
     return ata_Flush_Cache(device, ext);
 }
 
-eReturnValues scsi_Synchronize_Cache_Command(const tDevice* device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_Command(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     switch (device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize)
@@ -2397,7 +2455,7 @@ eReturnValues scsi_Synchronize_Cache_Command(const tDevice* device)
     return ret;
 }
 
-eReturnValues flush_Cache(const tDevice* device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues flush_Cache(const tDevice* M_NONNULL device)
 {
     if (device->os_info.osReadWriteRecommended)
     {
@@ -2405,7 +2463,7 @@ eReturnValues flush_Cache(const tDevice* device)
     }
     else
     {
-        switch (device->drive_info.interface_type)
+        switch (get_Device_InterfaceType(device))
         {
         case IDE_INTERFACE:
             // perform ATA writes
@@ -2428,10 +2486,14 @@ eReturnValues flush_Cache(const tDevice* device)
     }
 }
 
-eReturnValues close_Zone(const tDevice* device, bool closeAll, uint64_t zoneID, uint16_t zoneCount)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues close_Zone(const tDevice* M_NONNULL device,
+                                               bool                     closeAll,
+                                               uint64_t                 zoneID,
+                                               uint16_t                 zoneCount)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Close_Zone_Ext(device, closeAll, zoneID, zoneCount);
@@ -2446,10 +2508,14 @@ eReturnValues close_Zone(const tDevice* device, bool closeAll, uint64_t zoneID, 
     return ret;
 }
 
-eReturnValues finish_Zone(const tDevice* device, bool finishAll, uint64_t zoneID, uint16_t zoneCount)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues finish_Zone(const tDevice* M_NONNULL device,
+                                                bool                     finishAll,
+                                                uint64_t                 zoneID,
+                                                uint16_t                 zoneCount)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Finish_Zone_Ext(device, finishAll, zoneID, zoneCount);
@@ -2464,10 +2530,14 @@ eReturnValues finish_Zone(const tDevice* device, bool finishAll, uint64_t zoneID
     return ret;
 }
 
-eReturnValues open_Zone(const tDevice* device, bool openAll, uint64_t zoneID, uint16_t zoneCount)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues open_Zone(const tDevice* M_NONNULL device,
+                                              bool                     openAll,
+                                              uint64_t                 zoneID,
+                                              uint16_t                 zoneCount)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Open_Zone_Ext(device, openAll, zoneID, zoneCount);
@@ -2482,10 +2552,14 @@ eReturnValues open_Zone(const tDevice* device, bool openAll, uint64_t zoneID, ui
     return ret;
 }
 
-eReturnValues reset_Write_Pointer(const tDevice* device, bool resetAll, uint64_t zoneID, uint16_t zoneCount)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues reset_Write_Pointer(const tDevice* M_NONNULL device,
+                                                        bool                     resetAll,
+                                                        uint64_t                 zoneID,
+                                                        uint16_t                 zoneCount)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         ret = ata_Reset_Write_Pointers_Ext(device, resetAll, zoneID, zoneCount);
@@ -2500,15 +2574,15 @@ eReturnValues reset_Write_Pointer(const tDevice* device, bool resetAll, uint64_t
     return ret;
 }
 
-eReturnValues report_Zones(const tDevice*        device,
-                           eZoneReportingOptions reportingOptions,
-                           bool                  partial,
-                           uint64_t              zoneLocator,
-                           uint8_t*              ptrData,
-                           uint32_t              dataSize)
+OPENSEA_TRANSPORT_API eReturnValues report_Zones(const tDevice* M_NONNULL device,
+                                                 eZoneReportingOptions    reportingOptions,
+                                                 bool                     partial,
+                                                 uint64_t                 zoneLocator,
+                                                 uint8_t* M_NONNULL       ptrData,
+                                                 uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
-    switch (device->drive_info.drive_type)
+    switch (get_Device_DriveType(device))
     {
     case ATA_DRIVE:
         if (dataSize % LEGACY_DRIVE_SEC_SIZE != 0)

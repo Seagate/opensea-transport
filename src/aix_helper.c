@@ -51,7 +51,7 @@
 #include "string_utils.h"
 #include "type_conversion.h"
 
-bool os_Is_Infinite_Timeout_Supported(void)
+OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void)
 {
     return false;
 }
@@ -910,7 +910,7 @@ static void print_ODM_Error(int odmError)
     }
 }
 
-static void print_CuDv_Struct(struct CuDv* cudv)
+static void print_CuDv_Struct(const tDevice* M_NONNULL device, struct CuDv* cudv)
 {
     // making copies to ensure M_NULLPTR termination -TJE
     DECLARE_ZERO_INIT_ARRAY(char, cudvName, 17);
@@ -925,17 +925,17 @@ static void print_CuDv_Struct(struct CuDv* cudv)
     snprintf_err_handle(cudvparent, 17, "%s", cudv->parent);
     snprintf_err_handle(cudvconnwhere, 17, "%s", cudv->connwhere);
     snprintf_err_handle(cudvPdDvLnLvalue, 49, "%s", cudv->PdDvLn_Lvalue);
-    print_str("CuDv:\n");
-    printf("\tid: %ld\n", cudv->_id);
-    printf("\treserved: %ld\n", cudv->_reserved);
-    printf("\tscratch: %ld\n", cudv->_scratch);
-    printf("\tname: %s\n", cudvName);
-    printf("\tstatus: %" PRId16 "\n", cudv->status);
-    printf("\tchgstatus: %" PRId16 "\n", cudv->chgstatus);
-    printf("\tddins: %s\n", cudvddins);
-    printf("\tlocation: %s\n", cudvlocation);
-    printf("\tparent: %s\n", cudvparent);
-    printf("\tconnwhere: %s\n", cudvconnwhere);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "CuDv:\n");
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tid: %ld\n", cudv->_id);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\treserved: %ld\n", cudv->_reserved);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tscratch: %ld\n", cudv->_scratch);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tname: %s\n", cudvName);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tstatus: %" PRId16 "\n", cudv->status);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tchgstatus: %" PRId16 "\n", cudv->chgstatus);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tddins: %s\n", cudvddins);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tlocation: %s\n", cudvlocation);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tparent: %s\n", cudvparent);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tconnwhere: %s\n", cudvconnwhere);
     if (cudv->PdDvLn)
     {
         DECLARE_ZERO_INIT_ARRAY(char, pddvtype, 17);
@@ -969,35 +969,35 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         snprintf_err_handle(pddvStart, 257, "%s", cudv->PdDvLn->Start);
         snprintf_err_handle(pddvStop, 257, "%s", cudv->PdDvLn->Stop);
         snprintf_err_handle(pddvuniquetype, 49, "%s", cudv->PdDvLn->uniquetype);
-        print_str("\tPdDv\n");
-        printf("\t\tid: %ld\n", cudv->PdDvLn->_id);
-        printf("\t\treserved: %ld\n", cudv->PdDvLn->_reserved);
-        printf("\t\tscratch: %ld\n", cudv->PdDvLn->_scratch);
-        printf("\t\ttype: %s\n", pddvtype);
-        printf("\t\tclass: %s\n", pddvclass);
-        printf("\t\tsubclass: %s\n", pddvsubclass);
-        printf("\t\tprefix: %s\n", pddvprefix);
-        printf("\t\tdevid: %s\n", pddvdevid);
-        printf("\t\tbase: %" PRId16 "\n", cudv->PdDvLn->base);
-        printf("\t\thas_vpd: %" PRId16 "\n", cudv->PdDvLn->has_vpd);
-        printf("\t\tdetectable: %" PRId16 "\n", cudv->PdDvLn->detectable);
-        printf("\t\tchgstatus: %" PRId16 "\n", cudv->PdDvLn->chgstatus);
-        printf("\t\tbus_ext: %" PRId16 "\n", cudv->PdDvLn->bus_ext);
-        printf("\t\tfru: %" PRId16 "\n", cudv->PdDvLn->fru);
-        printf("\t\tled: %" PRId16 "\n", cudv->PdDvLn->led);
-        printf("\t\tsetno: %" PRId16 "\n", cudv->PdDvLn->setno);
-        printf("\t\tmsgno: %" PRId16 "\n", cudv->PdDvLn->msgno);
-        printf("\t\tcatalog: %s\n", pddvcatalog);
-        printf("\t\tDvDr: %s\n", pddvDvDr);
-        printf("\t\tDefine: %s\n", pddvDefine);
-        printf("\t\tConfigure: %s\n", pddvConfigure);
-        printf("\t\tChange: %s\n", pddvChange);
-        printf("\t\tUnconfigure: %s\n", pddvUnconfigure);
-        printf("\t\tUndefine: %s\n", pddvUndefine);
-        printf("\t\tStart: %s\n", pddvStart);
-        printf("\t\tStop: %s\n", pddvStop);
-        printf("\t\tinventory_only: %" PRId16 "\n", cudv->PdDvLn->inventory_only);
-        printf("\t\tuniquetype: %s\n", pddvuniquetype);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tPdDv\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tid: %ld\n", cudv->PdDvLn->_id);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\treserved: %ld\n", cudv->PdDvLn->_reserved);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tscratch: %ld\n", cudv->PdDvLn->_scratch);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\ttype: %s\n", pddvtype);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tclass: %s\n", pddvclass);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tsubclass: %s\n", pddvsubclass);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tprefix: %s\n", pddvprefix);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tdevid: %s\n", pddvdevid);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tbase: %" PRId16 "\n", cudv->PdDvLn->base);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\thas_vpd: %" PRId16 "\n", cudv->PdDvLn->has_vpd);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tdetectable: %" PRId16 "\n", cudv->PdDvLn->detectable);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tchgstatus: %" PRId16 "\n", cudv->PdDvLn->chgstatus);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tbus_ext: %" PRId16 "\n", cudv->PdDvLn->bus_ext);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tfru: %" PRId16 "\n", cudv->PdDvLn->fru);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tled: %" PRId16 "\n", cudv->PdDvLn->led);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tsetno: %" PRId16 "\n", cudv->PdDvLn->setno);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tmsgno: %" PRId16 "\n", cudv->PdDvLn->msgno);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tcatalog: %s\n", pddvcatalog);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tDvDr: %s\n", pddvDvDr);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tDefine: %s\n", pddvDefine);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tConfigure: %s\n", pddvConfigure);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tChange: %s\n", pddvChange);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tUnconfigure: %s\n", pddvUnconfigure);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tUndefine: %s\n", pddvUndefine);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tStart: %s\n", pddvStart);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tStop: %s\n", pddvStop);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tinventory_only: %" PRId16 "\n", cudv->PdDvLn->inventory_only);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tuniquetype: %s\n", pddvuniquetype);
     }
     if (cudv->PdDvLn_info)
     {
@@ -1006,11 +1006,11 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         DECLARE_ZERO_INIT_ARRAY(char, listinfoCrit, MAX_ODMI_CRIT + 1);
         snprintf_err_handle(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname);
         snprintf_err_handle(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit);
-        print_str("\t\tlistinfo:\n");
-        printf("\t\t\tclassname: %s\n", listinfoClassname);
-        printf("\t\t\tcrit: %s\n", listinfoCrit);
-        printf("\t\t\tnum: %d\n", cudv->PdDvLn_info->num);
-        printf("\t\t\tnum: %d\n", cudv->PdDvLn_info->valid);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tlistinfo:\n");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\t\tclassname: %s\n", listinfoClassname);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\t\tcrit: %s\n", listinfoCrit);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\t\tnum: %d\n", cudv->PdDvLn_info->num);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\t\tnum: %d\n", cudv->PdDvLn_info->valid);
         // TODO: Print out this structure...this seems to get deeper and deeper that I'm stopping here for now - TJE
         //  if (cudv->PdDvLn_info->class)//note: In C++ this is named ____class
         //  {
@@ -1035,7 +1035,7 @@ static void print_CuDv_Struct(struct CuDv* cudv)
         //      // };
         //  }
     }
-    printf("\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tPdDvLn_Lvalue: %s\n", cudvPdDvLnLvalue);
 }
 
 M_PARAM_RW(1)
@@ -1058,10 +1058,7 @@ static int get_Adapter_IDs(const tDevice* M_NONNULL device, const char* M_NONNUL
         if (ptrcudv != M_NULLPTR)
         {
             // the parent should be available in ptrcudv now.
-            if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-            {
-                print_CuDv_Struct(ptrcudv);
-            }
+            print_CuDv_Struct(device, ptrcudv);
 
             // first check if PdDvLn = "adapter/pci... in it. If it does, then this is the result we are looking for
             if (strstr(ptrcudv->PdDvLn_Lvalue, "adapter/pci"))
@@ -1121,7 +1118,8 @@ static int get_Adapter_IDs(const tDevice* M_NONNULL device, const char* M_NONNUL
 // While we are unlikely to see many, if any, USB devices in AIX,
 // it is possible to read the vendor/product IDs somewhere in the attributes:
 // https://www.ibm.com/docs/en/aix/7.3?topic=subsystem-usblibdd-passthru-driver
-eReturnValues get_Device(const char* filename, tDevice* device)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     // use openx. Do not set the SC_DIAGNOSTIC. That can be redone in the lock/unlock routines.
     // open can be used but always performed a SCSI2 reserve. Not necessary for this software
@@ -1138,10 +1136,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     eReturnValues ret            = SUCCESS;
     long          extensionFlags = 0L;
     bool          handleOpened   = false;
-    if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-    {
-        printf("\nAIX attempting to open device: %s\n", filename);
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\nAIX attempting to open device: %s\n", filename);
     if ((device->os_info.fd = openx(C_CAST(char*, filename), 0, 0, extensionFlags)) >= 0) // path, OFlag, Mode,
                                                                                           // Extension
     {
@@ -1165,10 +1160,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         // able to open the device. Read the devinfo, then open controller and read its devinfo -TJE
         struct devinfo driveInfo;
         safe_memset(&driveInfo, sizeof(struct devinfo), 0, sizeof(struct devinfo));
-        if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-        {
-            print_str("Attempting device IOCINFO\n");
-        }
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "Attempting device IOCINFO\n");
         if (extensionFlags & SC_DIAGNOSTIC)
         {
             device->os_info.diagnosticModeFlagInUse = true;
@@ -1177,19 +1169,14 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         {
             // Got the devinfo, now parse the data into something we can use for later
             // TODO: Filter out invalid device types we do not support.-TJE
-            if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-            {
-                print_devinfo_struct(&driveInfo);
-            }
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "struct devinfo:\n");
+            print_devinfo_struct(&driveInfo);
         }
         else
         {
             set_Device_Last_Error(device, errno);
-            if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
-            {
-                print_str("Device IOCINFO Error: ");
-                print_Errno_To_Screen(device->os_info.last_error);
-            }
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Device IOCINFO Error: %d - ", device->os_info.last_error);
+            // Error mapping happens below based on the specific errno
             if (device->os_info.last_error == EACCES)
             {
                 ret = PERMISSION_DENIED;
@@ -1199,17 +1186,15 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 ret = FAILURE;
             }
         }
-        device->os_info.minimumAlignment = sizeof(void*); // for now use this. There are some devices that require 4B
-                                                          // alignment, but this will most likely take care of that -TJE
+        set_Device_IO_Minimum_Alignment(device, sizeof(void*));
         // Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more
         // details -TJE set name and friendly name
-        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", filename);
+        set_Device_Handle_Name(device, filename);
         char*   friendlyName = M_NULLPTR;
         errno_t duperr       = safe_strdup(&friendlyName, filename);
         if (duperr == 0 && friendlyName != M_NULLPTR)
         {
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
-                                basename(friendlyName));
+            set_Device_Handle_Friendly_Name(device, basename(friendlyName));
         }
         safe_free(&friendlyName);
         struct CuDv  cudv;
@@ -1233,20 +1218,14 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             if (ptrcudv != M_NULLPTR)
             {
                 // the parent should be available in ptrcudv now.
-                if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                {
-                    print_CuDv_Struct(ptrcudv);
-                }
+                print_CuDv_Struct(device, ptrcudv);
                 if (safe_strlen(ptrcudv->parent) > 0)
                 {
                     // open the controller handle and get the IOCINFO for it -TJE
                     DECLARE_ZERO_INIT_ARRAY(char, controllerHandle, OS_HANDLE_NAME_MAX_LENGTH);
                     snprintf_err_handle(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
 
-                    if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                    {
-                        printf("\nAIX attempting to open controller: %s\n", controllerHandle);
-                    }
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\nAIX attempting to open controller: %s\n", controllerHandle);
                     if ((device->os_info.ctrlfd = openx(controllerHandle, 0, 0, 0)))
                     {
                         // successfully opened the controller's handle
@@ -1255,11 +1234,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                     }
                     else
                     {
-                        if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                        {
-                            printf("Unable to open controller handle: %s - ", ptrcudv->parent);
-                            print_Errno_To_Screen(errno);
-                        }
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "Unable to open controller handle: %s - errno: %d\n", ptrcudv->parent, errno);
                     }
                     // based off the name of the controller, set up the interface info.
                     // NOLINTBEGIN(bugprone-branch-clone)
@@ -1269,8 +1244,8 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         device->os_info.adapterType = AIX_ADAPTER_SATA;
                         device->os_info.ptType = AIX_PASSTHROUGH_SATA; // If we ever get a handle other than rhdisk,
                                                                        // switch to atapi or SCSI for those handles-TJE
-                        device->drive_info.drive_type     = ATA_DRIVE;
-                        device->drive_info.interface_type = IDE_INTERFACE;
+                        set_Device_DriveType(device, ATA_DRIVE);
+                        set_Device_InterfaceType(device, IDE_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "ide"))
                     {
@@ -1278,65 +1253,65 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                         device->os_info.adapterType = AIX_ADAPTER_IDE;
                         device->os_info.ptType = AIX_PASSTHROUGH_IDE_ATA; // If we ever get a handle other than rhdisk,
                                                                           // switch to atapi for those handles-TJE
-                        device->drive_info.drive_type     = ATA_DRIVE;
-                        device->drive_info.interface_type = IDE_INTERFACE;
+                        set_Device_DriveType(device, ATA_DRIVE);
+                        set_Device_InterfaceType(device, IDE_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "fscsi")) // fibre channel
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_FC;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        device->os_info.adapterType = AIX_ADAPTER_FC;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "vscsi")) // virtual scsi?
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_VSCSI;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        device->os_info.adapterType = AIX_ADAPTER_VSCSI;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "iscsi")) // iSCSI
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_ISCSI;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        device->os_info.adapterType = AIX_ADAPTER_ISCSI;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "scsi")) // note this is parallel scsi
                     {
                         // SCSI passthrough.
-                        device->os_info.adapterType       = AIX_ADAPTER_SCSI;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        device->os_info.adapterType = AIX_ADAPTER_SCSI;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "sas"))
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_SAS;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = SCSI_INTERFACE;
+                        device->os_info.adapterType = AIX_ADAPTER_SAS;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, SCSI_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "nvme"))
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_NVME;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_NVME;
-                        device->drive_info.drive_type     = NVME_DRIVE;
-                        device->drive_info.interface_type = NVME_INTERFACE;
+                        device->os_info.adapterType = AIX_ADAPTER_NVME;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_NVME;
+                        set_Device_DriveType(device, NVME_DRIVE);
+                        set_Device_InterfaceType(device, NVME_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "serdasd"))
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_DASD;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = USB_INTERFACE;
+                        device->os_info.adapterType = AIX_ADAPTER_DASD;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, USB_INTERFACE);
                     }
                     else if (strstr(ptrcudv->parent, "usb"))
                     {
-                        device->os_info.adapterType       = AIX_ADAPTER_USB;
-                        device->os_info.ptType            = AIX_PASSTHROUGH_SCSI;
-                        device->drive_info.drive_type     = SCSI_DRIVE;
-                        device->drive_info.interface_type = USB_INTERFACE;
+                        device->os_info.adapterType = AIX_ADAPTER_USB;
+                        device->os_info.ptType      = AIX_PASSTHROUGH_SCSI;
+                        set_Device_DriveType(device, SCSI_DRIVE);
+                        set_Device_InterfaceType(device, USB_INTERFACE);
                     }
                     // NOLINTEND(bugprone-branch-clone)
                     else
@@ -1360,13 +1335,13 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                     //                                     //unexpected behavior will likely occur. -TJE
                     //                                     if (device->os_info.ctrlfdValid)
                     //                                     {
-                    //                                         device->drive_info.drive_type = NVME_DRIVE;
-                    //                                         device->drive_info.interface_type = NVME_INTERFACE;
+                    //                                         set_Device_DriveType(device, NVME_DRIVE);
+                    //                                         set_Device_InterfaceType(device, NVME_INTERFACE);
                     //                                     }
                     //                                     else
                     //                                     {
-                    //                                         device->drive_info.drive_type = SCSI_DRIVE;
-                    //                                         device->drive_info.interface_type = SCSI_INTERFACE;
+                    //                                         set_Device_DriveType(device, SCSI_DRIVE);
+                    //                                         set_Device_InterfaceType(device, SCSI_INTERFACE);
                     //                                     }
                     //                                 }
                     //                                 else //not NVMe
@@ -1386,20 +1361,13 @@ eReturnValues get_Device(const char* filename, tDevice* device)
                 }
                 else
                 {
-                    if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                    {
-                        print_str("Warning: Parent is empty!\n");
-                    }
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "Warning: Parent is empty!\n");
                 }
             }
             else
             {
                 // print error???
-                if (device->deviceVerbosity > VERBOSITY_DEFAULT)
-                {
-                    printf("Unable to get parent for %s\n", filename);
-                    print_ODM_Error(odmerrno);
-                }
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "Unable to get parent for %s (ODM error: %d)\n", filename, odmerrno);
             }
         }
         // done with using odm, so terminate it
@@ -1409,18 +1377,18 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     return ret;
 }
 
-eReturnValues os_Device_Reset(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Bus_Reset(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // if unable to find another way to do this, can close and reopen with SC_FORCED_OPEN
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
@@ -1745,11 +1713,12 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         aixIoCmd.data_length = scsiIoCtx->dataLength;
 //         aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->pdata);
 
-//         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-//         scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+//         const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+//         if (deviceTimeout > 0 &&
+//         deviceTimeout > scsiIoCtx->timeout)
 //         {
-//             aixIoCmd.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-//             if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//             aixIoCmd.timeout_value = deviceTimeout;
+//             if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
 //             {
 //                 aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
 //             }
@@ -1759,7 +1728,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             if (scsiIoCtx->timeout != 0)
 //             {
 //                 aixIoCmd.timeout_value = scsiIoCtx->timeout;
-//                 if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//                 if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
 //                 {
 //                     aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
 //                 }
@@ -1781,13 +1750,13 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         if (ret < 0)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
-//             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+//             errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+//             if (error != 0)
 //             {
-//                 if (scsiIoCtx->device->os_info.last_error != 0)
-//                 {
-//                     print_str("Error: ");
-//                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
-//                 }
+//                 char* errormsg = get_strerror(error);
+//                 print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+//                                                       "Error: %s\n", errormsg);
+//                 safe_free(errormsg);
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
 //                 ioctlCode == DKIOCMD ? SC_ADAP_SC_ERR : SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
 //                 print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
@@ -1824,7 +1793,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
 //         }
-//         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+//         set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
 //     }
 //     else if (scsiIoCtx->cdbLength <= 16)
 //     {
@@ -1858,11 +1827,12 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         aixIoCmd.data_length = scsiIoCtx->dataLength;
 //         aixIoCmd.buffer = C_CAST(char *, scsiIoCtx->pdata);
 
-//         if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-//         scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+//         const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+//         if (deviceTimeout > 0 &&
+//         deviceTimeout > scsiIoCtx->timeout)
 //         {
-//             aixIoCmd.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-//             if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//             aixIoCmd.timeout_value = deviceTimeout;
+//             if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
 //             {
 //                 aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
 //             }
@@ -1872,7 +1842,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //             if (scsiIoCtx->timeout != 0)
 //             {
 //                 aixIoCmd.timeout_value = scsiIoCtx->timeout;
-//                 if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+//                 if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
 //                 {
 //                     aixIoCmd.timeout_value = UINT32_MAX;//no timeout or maximum timeout
 //                 }
@@ -1894,13 +1864,13 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         if (ret < 0)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
-//             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+//             errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+//             if (error != 0)
 //             {
-//                 if (scsiIoCtx->device->os_info.last_error != 0)
-//                 {
-//                     print_str("Error: ");
-//                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
-//                 }
+//                 char* errormsg = get_strerror(error);
+//                 print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+//                                                       "Error: %s\n", errormsg);
+//                 safe_free(errormsg);
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
 //                 SC_ADAP_SAM_ERR, aixIoCmd.adapter_status); print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
 //             }
@@ -1936,7 +1906,7 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
 //         }
-//         scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+//         set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
 //     }
 //     else
 //     {
@@ -1979,13 +1949,13 @@ static void print_Adapter_Queue_Status(uchar adap_q_status)
 //         if (ret < 0)
 //         {
 //             ret = OS_PASSTHROUGH_FAILURE;
-//             if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+//             errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+//             if (error != 0)
 //             {
-//                 if (scsiIoCtx->device->os_info.last_error != 0)
-//                 {
-//                     print_str("Error: ");
-//                     print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
-//                 }
+//                 char* errormsg = get_strerror(error);
+//                 print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+//                                                       "Error: %s\n", errormsg);
+//                 safe_free(errormsg);
 //                 print_Passthrough_Bus_And_Adapter_Status(aixIoCmd.status_validity, aixIoCmd.scsi_bus_status,
 //                 ioctlCode == DKIOCMD ? SC_ADAP_SC_ERR : SC_ADAP_SAM_ERR, aixIoCmd.adapter_status);
 //                 print_Adapter_Queue_Status(aixIoCmd.adap_q_status);
@@ -2086,11 +2056,11 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
     aixPassthrough.world_wide_name = 0; // TODO: Discover and save this to pass it here???
     aixPassthrough.node_name       = 0; // TODO: Discover and save this to pass it here???
 
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
-        aixPassthrough.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+        aixPassthrough.timeout_value = deviceTimeout;
+        if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
         {
             aixPassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
         }
@@ -2100,7 +2070,7 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->timeout != 0)
         {
             aixPassthrough.timeout_value = scsiIoCtx->timeout;
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
             {
                 aixPassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
             }
@@ -2119,19 +2089,21 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            // https://github.com/RobinTMiller/dt/blob/master/scsilib-aix.c
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
             {
-                print_str("Error: ");
-                print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                safe_free(&errormsg);
             }
-            print_Passthrough_Bus_And_Adapter_Status(aixPassthrough.status_validity, aixPassthrough.scsi_bus_status,
-                                                     aixPassthrough.adap_status_type, aixPassthrough.adapter_status);
-            if (aixPassthrough.adap_set_flags & SC_AUTOSENSE_DATA_VALID)
-            {
-                print_str("Adapter auto-sense data is valid\n");
+        }
+        print_Passthrough_Bus_And_Adapter_Status(aixPassthrough.status_validity, aixPassthrough.scsi_bus_status,
+                                                 aixPassthrough.adap_status_type, aixPassthrough.adapter_status);
+        if (aixPassthrough.adap_set_flags & SC_AUTOSENSE_DATA_VALID)
+        {
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Adapter auto-sense data is valid\n");
             }
             if (aixPassthrough.adap_set_flags & SC_RET_ID)
             {
@@ -2141,7 +2113,7 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             printf("Additional Device Status: %u\n", aixPassthrough.add_device_status);
             print_Adapter_Queue_Status(aixPassthrough.adap_q_status);
 
-            if (scsiIoCtx->device->os_info.last_error == EINVAL)
+            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) == EINVAL)
             {
                 // TODO: Some of these, upon error will return an allowed value. Look at showing these in this error
                 // output.-TJE
@@ -2205,7 +2177,7 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
             }
         }
     }
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
 }
 
@@ -2263,11 +2235,11 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     idePassthrough.buffsize = scsiIoCtx->pAtaCmdOpts->dataSize;
     idePassthrough.data_ptr = scsiIoCtx->pAtaCmdOpts->ptrData;
 
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->pAtaCmdOpts->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
     {
-        idePassthrough.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+        idePassthrough.timeout_value = deviceTimeout;
+        if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
         {
             idePassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
         }
@@ -2277,7 +2249,7 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->pAtaCmdOpts->timeout != 0)
         {
             idePassthrough.timeout_value = scsiIoCtx->pAtaCmdOpts->timeout;
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
             {
                 idePassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
             }
@@ -2305,12 +2277,14 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
             {
-                print_str("Error: ");
-                print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                safe_free(&errormsg);
             }
         }
     }
@@ -2322,7 +2296,7 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     // resid is another part of the structure. I'm guessing this is a count of what data was or was not transferred?
     // -TJE
 
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
 }
 
@@ -2360,11 +2334,11 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
     idePassthrough.buffsize = scsiIoCtx->dataLength;
     idePassthrough.data_ptr = scsiIoCtx->pdata;
 
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
-        idePassthrough.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+        idePassthrough.timeout_value = deviceTimeout;
+        if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
         {
             idePassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
         }
@@ -2374,7 +2348,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->timeout != 0)
         {
             idePassthrough.timeout_value = scsiIoCtx->timeout;
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
             {
                 idePassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
             }
@@ -2418,16 +2392,18 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
             {
-                print_str("Error: ");
-                print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                safe_free(&errormsg);
             }
-            printf("IDE ATAPI Passthru Status: %02" PRIX8 "h\n", idePassthrough.ata_status);
-            printf("IDE ATAPI Passthru Error:  %02" PRIX8 "h\n", idePassthrough.ata_error);
         }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "IDE ATAPI Passthru Status: %02" PRIX8 "h\n", idePassthrough.ata_status);
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "IDE ATAPI Passthru Error:  %02" PRIX8 "h\n", idePassthrough.ata_error);
     }
 
 #if !defined IDE_PASSTHRU_VERSION_01
@@ -2494,7 +2470,7 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
     }
 #endif //! IDE_PASSTHRU_VERSION_01
 
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
 }
 
@@ -2549,11 +2525,11 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     sataPassthrough.buffsize = scsiIoCtx->pAtaCmdOpts->dataSize;
     sataPassthrough.data_ptr = scsiIoCtx->pAtaCmdOpts->ptrData;
 
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->pAtaCmdOpts->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->pAtaCmdOpts->timeout)
     {
-        sataPassthrough.timeout_value = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+        sataPassthrough.timeout_value = deviceTimeout;
+        if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
         {
             sataPassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
         }
@@ -2563,7 +2539,7 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
         if (scsiIoCtx->pAtaCmdOpts->timeout != UINT32_C(0))
         {
             sataPassthrough.timeout_value = scsiIoCtx->pAtaCmdOpts->timeout;
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
             {
                 sataPassthrough.timeout_value = UINT32_MAX; // no timeout or maximum timeout
             }
@@ -2641,12 +2617,14 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
             {
-                print_str("Error: ");
-                print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                safe_free(&errormsg);
             }
         }
         // adapter_set_flags will have some output information upon completion to detect errors-TJE
@@ -2706,15 +2684,15 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     // resid is another part of the structure. I'm guessing this is a count of what data was or was not transferred?
     // -TJE
 
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
 }
 
-eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     // switch based on value stored in os_info to define which passthrough interface to use to issue commands -TJE
     eReturnValues ret = SUCCESS;
-    switch (scsiIoCtx->device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(scsiIoCtx->device))
     {
     case IDE_INTERFACE:
     case SCSI_INTERFACE:
@@ -2752,10 +2730,8 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-            {
-                print_str("No Raid PassThrough IO Routine present for this device\n");
-            }
+            print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                        "No Raid PassThrough IO Routine present for this device\n");
         }
         break;
     default:
@@ -2765,10 +2741,9 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
     if (scsiIoCtx->device->delay_io)
     {
         delay_Milliseconds(scsiIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES,
+                                              "Delaying between commands %d milliseconds to reduce IO impact",
+                                              scsiIoCtx->device->delay_io);
     }
     return ret;
 }
@@ -2800,7 +2775,8 @@ static int rhdisk_filter(const struct dirent* entry)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags)
 {
     int             num_devs = 0;
     struct dirent** namelist;
@@ -2842,7 +2818,11 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //
 //-----------------------------------------------------------------------------
 #define AIX_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                                                    uint32_t                 sizeInBytes,
+                                                    versionBlock             ver,
+                                                    uint64_t                 flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -3002,7 +2982,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 //
 //  close_Device()
 //
-//! \brief   Description:  Given a device, close it's handle.
+//! \brief   Description:  Given a M_NONNULL device, close it's handle.
 //
 //  Entry:
 //!   \param[in] device = device stuct that holds device information.
@@ -3011,7 +2991,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues close_Device(tDevice* dev)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
 {
     int retValue = 0;
     if (dev != M_NULLPTR)
@@ -3043,7 +3023,57 @@ eReturnValues close_Device(tDevice* dev)
     }
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+// Helper function to handle NVMe passthrough error evaluation and printing
+// Returns appropriate eReturnValues based on error code and passthrough response status
+static eReturnValues handle_NVMe_Passthrough_Error(const tDevice* M_NONNULL device, int error,
+                                                    struct nvme_passthru* M_NONNULL nvmePassthrough)
+{
+    eReturnValues ret = OS_PASSTHROUGH_FAILURE;
+
+    if (error != 0)
+    {
+        char* errormsg = get_strerror(error);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                              "NVMe Passthrough Error: %s\n",
+                                              errormsg);
+        safe_free(errormsg);
+
+        if (error == EINVAL)
+        {
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                        "Invalid field in nvme passthrough struct:\n");
+            // response status has a code set to help indicate what was not allowed
+            switch (nvmePassthrough->resp.status)
+            {
+            case NVME_PASSTHRU_INVAL_DATA_LENGTH:
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                            "\tInvalid data length\n");
+                ret = OS_PASSTHROUGH_FAILURE;
+                break;
+            case NVME_PASSTHRU_BLOCKED_OP_CODE:
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                            "\tOperation code blocked\n");
+                ret = OS_COMMAND_BLOCKED;
+                break;
+            case NVME_PASSTHRU_CMD_HAS_NO_DATA:
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                            "\tCommand has no data\n");
+                ret = OS_PASSTHROUGH_FAILURE;
+                break;
+            default:
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                      "\tUnknown invalid field: %04" PRIX16 "\n",
+                                                      nvmePassthrough->resp.status);
+                ret = OS_PASSTHROUGH_FAILURE;
+                break;
+            }
+        }
+    }
+
+    return ret;
+}
+
+M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     // In AIX, you must issue Admin commands on the controller handle
@@ -3107,11 +3137,11 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     nvmePassthrough.cmd.data_length = nvmeIoCtx->dataSize;
     nvmePassthrough.cmd.data        = nvmeIoCtx->ptrData;
     // set the timeout
-    if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        nvmeIoCtx->device->drive_info.defaultTimeoutSeconds > nvmeIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(nvmeIoCtx->device);
+    if (deviceTimeout > 0 && deviceTimeout > nvmeIoCtx->timeout)
     {
-        nvmePassthrough.cmd.timeout = nvmeIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+        nvmePassthrough.cmd.timeout = deviceTimeout;
+        if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
         {
             nvmePassthrough.cmd.timeout = UINT32_MAX; // no timeout or maximum timeout
         }
@@ -3121,7 +3151,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         if (nvmeIoCtx->timeout != 0)
         {
             nvmePassthrough.cmd.timeout = nvmeIoCtx->timeout;
-            if (nvmeIoCtx->device->drive_info.defaultTimeoutSeconds >= AIX_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout >= AIX_MAX_CMD_TIMEOUT_SECONDS)
             {
                 nvmePassthrough.cmd.timeout = UINT32_MAX; // no timeout or maximum timeout
             }
@@ -3140,50 +3170,8 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     set_Device_Last_Error(nvmeIoCtx->device, errno);
     if (ioctlResult < 0)
     {
-        ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
-        {
-            if (nvmeIoCtx->device->os_info.last_error != 0)
-            {
-                print_str("Error: ");
-                print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
-            }
-            if (nvmeIoCtx->device->os_info.last_error == EINVAL)
-            {
-                printf("Invalid field in nvme passthrough struct:\n")
-                    // response status has a code set to help indicate what was not allowed
-                    switch (nvmePassthrough->resp.status)
-                {
-                case NVME_PASSTHRU_INVAL_DATA_LENGTH:
-                    print_str("\tInvalid data length\n");
-                    break;
-                case NVME_PASSTHRU_BLOCKED_OP_CODE:
-                    print_str("\tOperation code blocked\n");
-                    break;
-                case NVME_PASSTHRU_CMD_HAS_NO_DATA:
-                    print_str("\tCommand has no data\n");
-                    break;
-                default:
-                    printf("\tUnknown invalid field: %04" PRIX16 "\n", nvmePassthrough->resp.status);
-                    break;
-                }
-            }
-        }
-        if (nvmeIoCtx->device->os_info.last_error == EINVAL)
-        {
-            // response status has a code set to help indicate what was not allowed
-            switch (nvmePassthrough->resp.status)
-            {
-            case NVME_PASSTHRU_BLOCKED_OP_CODE:
-                ret = OS_COMMAND_BLOCKED;
-                break;
-            case NVME_PASSTHRU_INVAL_DATA_LENGTH:
-            case NVME_PASSTHRU_CMD_HAS_NO_DATA:
-            default:
-                ret = OS_PASSTHROUGH_FAILURE;
-                break;
-            }
-        }
+        errno_t error = M_STATIC_CAST(errno_t, nvmeIoCtx->device->os_info.last_error);
+        ret = handle_NVMe_Passthrough_Error(nvmeIoCtx->device, error, &nvmePassthrough);
     }
     else // ret == 0. NOTE: Positive return values will currently fall here too but those are not documented as far as I
          // can see - TJE
@@ -3201,10 +3189,9 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     if (nvmeIoCtx->device->delay_io)
     {
         delay_Milliseconds(nvmeIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
-        }
+        print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES,
+                                              "Delaying between commands %d milliseconds to reduce IO impact",
+                                              nvmeIoCtx->device->delay_io);
     }
 
     return ret;
@@ -3214,7 +3201,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif
 }
 
-eReturnValues os_nvme_Reset(const tDevice* device)
+M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues    ret = SUCCESS;
@@ -3250,7 +3237,7 @@ eReturnValues os_nvme_Reset(const tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
+M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
@@ -3260,9 +3247,10 @@ eReturnValues os_nvme_Subsystem_Reset(const tDevice* device)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
-                               M_ATTR_UNUSED uint8_t*       pData,
-                               M_ATTR_UNUSED uint32_t       dataSize)
+M_PARAM_WO_SIZE(2, 3)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                               M_ATTR_UNUSED uint8_t* M_NONNULL       pData,
+                               M_ATTR_UNUSED uint32_t                 dataSize)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     return OS_COMMAND_NOT_AVAILABLE;
@@ -3274,35 +3262,38 @@ eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
 // supposedly, when not in diagnostic mode, the read(), write(), lseek() can all be used.
 // This is currently not needed though.
 // Another thing we may want to implement here is the read/write ioctl codes that are available.
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
-                      M_ATTR_UNUSED uint64_t       lba,
-                      M_ATTR_UNUSED bool           forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t*       ptrData,
-                      M_ATTR_UNUSED uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                            M_ATTR_UNUSED uint64_t                 lba,
+                                            M_ATTR_UNUSED bool                     forceUnitAccess,
+                                            M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                            M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
-                       M_ATTR_UNUSED uint64_t       lba,
-                       M_ATTR_UNUSED bool           forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t*       ptrData,
-                       M_ATTR_UNUSED uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                             M_ATTR_UNUSED uint64_t                 lba,
+                                             M_ATTR_UNUSED bool                     forceUnitAccess,
+                                             M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                             M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                              M_ATTR_UNUSED uint64_t                 lba,
+                                              M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // TODO: Not sure if this is correct or not. If you look at locking below it opens with a diagnostic flag which is
     // extremely similar in behavior which is why this function is empty. -TJE
@@ -3310,7 +3301,7 @@ eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
 }
 
 // add SC_DIAGNOSTIC flag
-eReturnValues os_Lock_Device(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
@@ -3320,7 +3311,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
             close(device->os_info.fd); // this must be done first or the openx will fail!
             // try opening with the diagnostic flag.
             long extensionFlag = SC_DIAGNOSTIC;
-            device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+            device->os_info.fd = openx(get_Device_Handle_Name(device), 0, 0, extensionFlag);
             if (device->os_info.fd >= 0)
             {
                 device->os_info.diagnosticModeFlagInUse = true;
@@ -3329,7 +3320,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
             {
                 // reopen original fd without SC_DIAGNOSTIC
                 extensionFlag      = 0;
-                device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+                device->os_info.fd = openx(get_Device_Handle_Name(device), 0, 0, extensionFlag);
                 ret                = FAILURE;
             }
         }
@@ -3343,7 +3334,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
 }
 
 // remove SC_DIAGNOSTIC flag
-eReturnValues os_Unlock_Device(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -3353,7 +3344,7 @@ eReturnValues os_Unlock_Device(const tDevice* device)
             close(device->os_info.fd); // this must be done first or the openx will fail!
             // try opening without the diagnostic flag.
             long extensionFlag = 0L;
-            device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+            device->os_info.fd = openx(get_Device_Handle_Name(device), 0, 0, extensionFlag);
             if (device->os_info.fd >= 0)
             {
                 device->os_info.diagnosticModeFlagInUse = false;
@@ -3362,7 +3353,7 @@ eReturnValues os_Unlock_Device(const tDevice* device)
             {
                 // reopen original fd without SC_DIAGNOSTIC
                 extensionFlag      = SC_DIAGNOSTIC;
-                device->os_info.fd = openx(device->os_info.name, 0, 0, extensionFlag);
+                device->os_info.fd = openx(get_Device_Handle_Name(device), 0, 0, extensionFlag);
                 ret                = FAILURE;
             }
         }
@@ -3375,12 +3366,13 @@ eReturnValues os_Unlock_Device(const tDevice* device)
 }
 
 // use mount/vmount with the remount option??? (see links below)
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
+    os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
@@ -3390,7 +3382,8 @@ eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
 // https://www.ibm.com/docs/en/aix/7.3?topic=files-fullstath-file
 // https://www.ibm.com/docs/en/aix/7.3?topic=u-umount-uvmount-subroutine#umount
 // https://www.ibm.com/docs/en/aix/7.3?topic=m-mntctl-subroutine
-eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }

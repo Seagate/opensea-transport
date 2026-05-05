@@ -33,7 +33,7 @@
 #include "nvme_helper_func.h"
 #include "realtek_nvme_helper.h"
 
-eReturnValues nvme_Reset(const tDevice* device)
+M_PARAM_RO(1) eReturnValues nvme_Reset(const tDevice* M_NONNULL device)
 {
     switch (device->drive_info.passThroughHacks.passthroughType)
     {
@@ -52,7 +52,7 @@ eReturnValues nvme_Reset(const tDevice* device)
     }
 }
 
-eReturnValues nvme_Subsystem_Reset(const tDevice* device)
+M_PARAM_RO(1) eReturnValues nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     switch (device->drive_info.passThroughHacks.passthroughType)
     {
@@ -71,7 +71,7 @@ eReturnValues nvme_Subsystem_Reset(const tDevice* device)
     }
 }
 
-static eReturnValues set_NVMe_Last_Completion(tDevice* device, const nvmeCmdCtx* cmdCtx, eReturnValues ret)
+static eReturnValues set_NVMe_Last_Completion(tDevice* M_NONNULL device, const nvmeCmdCtx* cmdCtx, eReturnValues ret)
 {
     if (cmdCtx->commandCompletionData.dw3Valid)
     {
@@ -108,7 +108,21 @@ static eReturnValues set_NVMe_Last_Completion(tDevice* device, const nvmeCmdCtx*
     return ret;
 }
 
-eReturnValues nvme_Cmd(const tDevice* device, nvmeCmdCtx* cmdCtx)
+M_PARAM_RO(1)
+static M_INLINE bool did_NVMe_Command_Timeout(const nvmeCmdCtx* M_NONNULL cmdCtx)
+{
+    bool     timedOut     = false;
+    uint32_t timeoutValue = M_Max(cmdCtx->timeout, get_tDevice_Default_Command_Timeout(cmdCtx->device));
+    if ((get_tDevice_Last_Command_Completion_Time_NS(cmdCtx->device) / UINT64_C(1000000000)) > timeoutValue)
+    {
+        timedOut = true;
+    }
+    return timedOut;
+}
+
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Cmd(const tDevice* M_NONNULL device, nvmeCmdCtx* M_NONNULL cmdCtx)
 {
     eReturnValues ret = UNKNOWN;
     cmdCtx->device    = M_CONST_CAST(tDevice*, device);
@@ -126,7 +140,7 @@ eReturnValues nvme_Cmd(const tDevice* device, nvmeCmdCtx* cmdCtx)
 #if defined(_DEBUG)
         if (cmdCtx->cmd.nvmCmd.nsid != device->drive_info.namespaceID)
         {
-            print_str("WARNING: NVM Cmd NSID does not match expected value in tDevice\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "WARNING: NVM Cmd NSID does not match expected value in tDevice\n");
         }
 #endif //_DEBUG
     }
@@ -158,26 +172,24 @@ eReturnValues nvme_Cmd(const tDevice* device, nvmeCmdCtx* cmdCtx)
         }
         break;
     }
-    if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-    {
-        print_NVMe_Cmd_Verbose(cmdCtx);
-    }
+    // print verbose NVMe command
+    print_tDevice_Verbose_NVMe_Cmd(device, VERBOSITY_COMMAND_VERBOSE, cmdCtx);
     if (device->drive_info.passThroughHacks.passthroughType == NVME_PASSTHROUGH_SYSTEM)
     {
 #if defined(_DEBUG)
         // This is different for debug because sometimes we need to see if the data buffer actually changed after
         // issuing a command. This was very important for debugging windows issues, which is why I have this ifdef in
         // place for debug builds. - TJE
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != M_NULLPTR)
+        if (cmdCtx->ptrData != M_NULLPTR)
 #else
         // Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != M_NULLPTR &&
+        if (cmdCtx->ptrData != M_NULLPTR &&
             cmdCtx->commandDirection == XFER_DATA_OUT)
 #endif
         {
-            print_str("\t  Data Buffer being sent:\n");
-            print_Data_Buffer(cmdCtx->ptrData, cmdCtx->dataSize, true);
-            print_str("\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_BUFFERS, "\t  Data Buffer being sent:\n");
+            print_tDevice_Data_Buffer(device, VERBOSITY_BUFFERS, cmdCtx->ptrData, cmdCtx->dataSize, true);
+            print_tDevice_Verbose_String(device, VERBOSITY_BUFFERS, "\n");
         }
     }
     switch (device->drive_info.passThroughHacks.passthroughType)
@@ -204,36 +216,38 @@ eReturnValues nvme_Cmd(const tDevice* device, nvmeCmdCtx* cmdCtx)
         return BAD_PARAMETER;
     }
     ret = set_NVMe_Last_Completion(M_CONST_CAST(tDevice*, device), cmdCtx, ret);
-    if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-    {
-        print_NVMe_Cmd_Result_Verbose(cmdCtx);
-    }
+    // print NVMe command result
+    print_tDevice_Verbose_NVMe_Cmd_Result(device, VERBOSITY_COMMAND_VERBOSE, cmdCtx);
     if (device->drive_info.passThroughHacks.passthroughType == NVME_PASSTHROUGH_SYSTEM)
     {
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_Command_Time(device->drive_info.lastCommandTimeNanoSeconds);
-        }
+        print_Command_Time_Verbose(device, VERBOSITY_COMMAND_VERBOSE, get_tDevice_Last_Command_Completion_Time_NS(device));
 #if defined(_DEBUG)
         // This is different for debug because sometimes we need to see if the data buffer actually changed after
         // issuing a command. This was very important for debugging windows issues, which is why I have this ifdef in
         // place for debug builds. - TJE
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != M_NULLPTR)
+        if (cmdCtx->ptrData != M_NULLPTR)
 #else
         // Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-        if (VERBOSITY_BUFFERS <= device->deviceVerbosity && cmdCtx->ptrData != M_NULLPTR &&
+        if (cmdCtx->ptrData != M_NULLPTR &&
             cmdCtx->commandDirection == XFER_DATA_IN)
 #endif
         {
-            print_str("\t  Data Buffer being returned:\n");
-            print_Data_Buffer(cmdCtx->ptrData, cmdCtx->dataSize, true);
-            print_str("\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_BUFFERS, "\t  Data Buffer being returned:\n");
+            print_tDevice_Data_Buffer(device, VERBOSITY_BUFFERS, cmdCtx->ptrData, cmdCtx->dataSize, true);
+            print_tDevice_Verbose_String(device, VERBOSITY_BUFFERS, "\n");
         }
+    }
+    if (did_NVMe_Command_Timeout(cmdCtx))
+    {
+        ret = OS_COMMAND_TIMEOUT;
     }
     return ret;
 }
 
-eReturnValues nvme_Abort_Command(const tDevice* device, uint16_t commandIdentifier, uint16_t submissionQueueIdentifier)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Abort_Command(const tDevice* M_NONNULL device,
+                                                       uint16_t                 commandIdentifier,
+                                                       uint16_t                 submissionQueueIdentifier)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
@@ -243,25 +257,23 @@ eReturnValues nvme_Abort_Command(const tDevice* device, uint16_t commandIdentifi
     adminCommand.cmd.adminCmd.cdw10  = M_WordsTo4ByteValue(commandIdentifier, submissionQueueIdentifier);
     adminCommand.commandDirection    = XFER_NO_DATA;
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Abort Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Abort Command\n");
     ret = nvme_Cmd(device, &adminCommand);
     // Command specific return codes:
     //  3h = The number of concurrently outstanding Abort commands has exceeded the limit indicated in the Identify
     //  Controller data structure
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Abort", ret);
-    }
+    print_tDevice_Return_Enum(device, "Abort", ret);
     return ret;
 }
 
-eReturnValues nvme_Asynchronous_Event_Request(const tDevice* device,
-                                              uint8_t*       logPageIdentifier,
-                                              uint8_t*       asynchronousEventInformation,
-                                              uint8_t*       asynchronousEventType)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+M_PARAM_RW(3)
+M_PARAM_RW(4)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Asynchronous_Event_Request(const tDevice* M_NONNULL device,
+                                                                    uint8_t* M_NONNULL       logPageIdentifier,
+                                                                    uint8_t* M_NONNULL asynchronousEventInformation,
+                                                                    uint8_t* M_NONNULL asynchronousEventType)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
@@ -270,10 +282,7 @@ eReturnValues nvme_Asynchronous_Event_Request(const tDevice* device,
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_ASYNC_EVENT;
     adminCommand.commandDirection    = XFER_NO_DATA;
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Asynchronous Event Request Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Asynchronous Event Request Command\n");
     ret = nvme_Cmd(device, &adminCommand);
     // Command specific return codes:
     //  5h = The number of concurrently outstanding Asynchronous Event Request commands has been exceeded.
@@ -293,14 +302,14 @@ eReturnValues nvme_Asynchronous_Event_Request(const tDevice* device,
         *asynchronousEventType = get_8bit_range_uint32(adminCommand.commandCompletionData.dw0, 2, 0);
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Asynchronous Event Request", ret);
-    }
+    print_tDevice_Return_Enum(device, "Asynchronous Event Request", ret);
     return ret;
 }
 
-eReturnValues nvme_Device_Self_Test(const tDevice* device, uint32_t nsid, uint8_t selfTestCode)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Device_Self_Test(const tDevice* M_NONNULL device,
+                                                          uint32_t                 nsid,
+                                                          uint8_t                  selfTestCode)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
@@ -311,10 +320,7 @@ eReturnValues nvme_Device_Self_Test(const tDevice* device, uint32_t nsid, uint8_
     adminCommand.cmd.adminCmd.nsid   = nsid;
     adminCommand.cmd.adminCmd.cdw10  = selfTestCode; // lowest 4 bits. All others are reserved
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Device Self Test Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Device Self Test Command\n");
     ret = nvme_Cmd(device, &adminCommand);
     // Command specific return codes:
     //  1Dh = The controller or NVM subsystem already has a device self-test operation in process
@@ -327,19 +333,16 @@ eReturnValues nvme_Device_Self_Test(const tDevice* device, uint32_t nsid, uint8_
             ret = IN_PROGRESS;
         }
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Device Self Test", ret);
-    }
+    print_tDevice_Return_Enum(device, "Device Self Test", ret);
     return ret;
 }
 
-eReturnValues nvme_Security_Send(const tDevice* device,
-                                 uint8_t        securityProtocol,
-                                 uint16_t       securityProtocolSpecific,
-                                 uint8_t        nvmeSecuritySpecificField,
-                                 uint8_t*       ptrData,
-                                 uint32_t       dataLength)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Security_Send(const tDevice* M_NONNULL device,
+                                                       uint8_t                  securityProtocol,
+                                                       uint16_t                 securityProtocolSpecific,
+                                                       uint8_t                  nvmeSecuritySpecificField,
+                                                       uint8_t* M_NULLABLE      ptrData,
+                                                       uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
@@ -354,26 +357,20 @@ eReturnValues nvme_Security_Send(const tDevice* device,
                                                            M_Byte0(securityProtocolSpecific), nvmeSecuritySpecificField);
     adminCommand.cmd.adminCmd.cdw11  = dataLength;
     adminCommand.timeout             = DEFAULT_COMMAND_TIMEOUT;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Security Send Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Security Send Command\n");
     ret = nvme_Cmd(device, &adminCommand);
 
     // Command specific return codes:
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Security Send", ret);
-    }
+    print_tDevice_Return_Enum(device, "Security Send", ret);
     return ret;
 }
 
-eReturnValues nvme_Security_Receive(const tDevice* device,
-                                    uint8_t        securityProtocol,
-                                    uint16_t       securityProtocolSpecific,
-                                    uint8_t        nvmeSecuritySpecificField,
-                                    uint8_t*       ptrData,
-                                    uint32_t       dataLength)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Security_Receive(const tDevice* M_NONNULL device,
+                                                          uint8_t                  securityProtocol,
+                                                          uint16_t                 securityProtocolSpecific,
+                                                          uint8_t                  nvmeSecuritySpecificField,
+                                                          uint8_t* M_NULLABLE      ptrData,
+                                                          uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
@@ -394,26 +391,21 @@ eReturnValues nvme_Security_Receive(const tDevice* device,
         explicit_zeroes(ptrData, dataLength);
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Security Receive Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Security Receive Command\n");
     ret = nvme_Cmd(device, &adminCommand);
 
     // Command specific return codes:
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Security Receive", ret);
-    }
+    print_tDevice_Return_Enum(device, "Security Receive", ret);
     return ret;
 }
 
-eReturnValues nvme_Verify(const tDevice* device,
-                          uint64_t       startingLBA,
-                          bool           limitedRetry,
-                          bool           fua,
-                          uint8_t        protectionInformationField,
-                          uint16_t       numberOfLogicalBlocks)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Verify(const tDevice* M_NONNULL device,
+                                                uint64_t                 startingLBA,
+                                                bool                     limitedRetry,
+                                                bool                     fua,
+                                                uint8_t                  protectionInformationField,
+                                                uint16_t                 numberOfLogicalBlocks)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -437,19 +429,16 @@ eReturnValues nvme_Verify(const tDevice* device,
     }
     nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, protectionInformationField & 0x0F) << 26;
     nvmCommand.timeout = DEFAULT_COMMAND_TIMEOUT;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Verify Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Verify Command\n");
     ret = nvme_Cmd(device, &nvmCommand);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Verify", ret);
-    }
+    print_tDevice_Return_Enum(device, "Verify", ret);
     return ret;
 }
 
-eReturnValues nvme_Write_Uncorrectable(const tDevice* device, uint64_t startingLBA, uint16_t numberOfLogicalBlocks)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Write_Uncorrectable(const tDevice* M_NONNULL device,
+                                                             uint64_t                 startingLBA,
+                                                             uint16_t                 numberOfLogicalBlocks)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -465,27 +454,21 @@ eReturnValues nvme_Write_Uncorrectable(const tDevice* device, uint64_t startingL
     nvmCommand.cmd.nvmCmd.cdw12  = numberOfLogicalBlocks;
     nvmCommand.device            = M_CONST_CAST(tDevice*, device);
     nvmCommand.timeout           = DEFAULT_COMMAND_TIMEOUT;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Write Uncorrectable Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Write Uncorrectable Command\n");
     ret = nvme_Cmd(device, &nvmCommand);
 
     // Command specific return codes:
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Uncorrectable", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Uncorrectable", ret);
     return ret;
 }
 
-eReturnValues nvme_Dataset_Management(const tDevice* device,
-                                      uint8_t        numberOfRanges,
-                                      bool           deallocate,
-                                      bool           integralDatasetForWrite,
-                                      bool           integralDatasetForRead,
-                                      uint8_t*       ptrData,
-                                      uint32_t       dataLength)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Dataset_Management(const tDevice* M_NONNULL device,
+                                                            uint8_t                  numberOfRanges,
+                                                            bool                     deallocate,
+                                                            bool                     integralDatasetForWrite,
+                                                            bool                     integralDatasetForRead,
+                                                            uint8_t* M_NONNULL       ptrData,
+                                                            uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -511,21 +494,15 @@ eReturnValues nvme_Dataset_Management(const tDevice* device,
     {
         nvmCommand.cmd.nvmCmd.cdw11 |= BIT0;
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Dataset Management Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Dataset Management Command\n");
     ret = nvme_Cmd(device, &nvmCommand);
 
     // Command specific return codes:
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Dataset Management", ret);
-    }
+    print_tDevice_Return_Enum(device, "Dataset Management", ret);
     return ret;
 }
 
-eReturnValues nvme_Flush(const tDevice* device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues nvme_Flush(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -537,29 +514,23 @@ eReturnValues nvme_Flush(const tDevice* device)
     nvmCommand.ptrData           = M_NULLPTR;
     nvmCommand.dataSize          = 0;
     nvmCommand.timeout           = DEFAULT_COMMAND_TIMEOUT;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Flush Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Flush Command\n");
     ret = nvme_Cmd(device, &nvmCommand);
 
     // Command specific return codes:
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Flush", ret);
-    }
+    print_tDevice_Return_Enum(device, "Flush", ret);
     return ret;
 }
 
-eReturnValues nvme_Write(const tDevice* device,
-                         uint64_t       startingLBA,
-                         uint16_t       numberOfLogicalBlocks,
-                         bool           limitedRetry,
-                         bool           fua,
-                         uint8_t        protectionInformationField,
-                         uint8_t        directiveType,
-                         uint8_t*       ptrData,
-                         uint32_t       dataLength)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Write(const tDevice* M_NONNULL device,
+                                               uint64_t                 startingLBA,
+                                               uint16_t                 numberOfLogicalBlocks,
+                                               bool                     limitedRetry,
+                                               bool                     fua,
+                                               uint8_t                  protectionInformationField,
+                                               uint8_t                  directiveType,
+                                               uint8_t* M_NONNULL       ptrData,
+                                               uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -587,28 +558,22 @@ eReturnValues nvme_Write(const tDevice* device,
     }
     nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, protectionInformationField & 0x0F) << 26;
     nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, directiveType & 0x0F) << 20;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Write Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Write Command\n");
     ret = nvme_Cmd(device, &nvmCommand);
 
     // Command specific return codes:
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write", ret);
     return ret;
 }
 
-eReturnValues nvme_Read(const tDevice* device,
-                        uint64_t       startingLBA,
-                        uint16_t       numberOfLogicalBlocks,
-                        bool           limitedRetry,
-                        bool           fua,
-                        uint8_t        protectionInformationField,
-                        uint8_t*       ptrData,
-                        uint32_t       dataLength)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Read(const tDevice* M_NONNULL device,
+                                              uint64_t                 startingLBA,
+                                              uint16_t                 numberOfLogicalBlocks,
+                                              bool                     limitedRetry,
+                                              bool                     fua,
+                                              uint8_t                  protectionInformationField,
+                                              uint8_t* M_NONNULL       ptrData,
+                                              uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -641,28 +606,22 @@ eReturnValues nvme_Read(const tDevice* device,
         explicit_zeroes(ptrData, dataLength);
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Read Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Read Command\n");
     ret = nvme_Cmd(device, &nvmCommand);
 
     // Command specific return codes:
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read", ret);
     return ret;
 }
 
-eReturnValues nvme_Compare(const tDevice* device,
-                           uint64_t       startingLBA,
-                           uint16_t       numberOfLogicalBlocks,
-                           bool           limitedRetry,
-                           bool           fua,
-                           uint8_t        protectionInformationField,
-                           uint8_t*       ptrData,
-                           uint32_t       dataLength)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Compare(const tDevice* M_NONNULL device,
+                                                 uint64_t                 startingLBA,
+                                                 uint16_t                 numberOfLogicalBlocks,
+                                                 bool                     limitedRetry,
+                                                 bool                     fua,
+                                                 uint8_t                  protectionInformationField,
+                                                 uint8_t* M_NONNULL       ptrData,
+                                                 uint32_t                 dataLength)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -689,27 +648,21 @@ eReturnValues nvme_Compare(const tDevice* device,
         nvmCommand.cmd.nvmCmd.cdw12 |= BIT30;
     }
     nvmCommand.cmd.nvmCmd.cdw12 |= C_CAST(uint32_t, protectionInformationField & 0x0F) << 26;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Compare Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Compare Command\n");
     ret = nvme_Cmd(device, &nvmCommand);
 
     // Command specific return codes:
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Compare", ret);
-    }
+    print_tDevice_Return_Enum(device, "Compare", ret);
     return ret;
 }
 
-eReturnValues nvme_Firmware_Image_Dl(const tDevice* device,
-                                     uint32_t       bufferOffset,
-                                     uint32_t       numberOfBytes,
-                                     uint8_t*       ptrData,
-                                     bool           firstSegment,
-                                     bool           lastSegment,
-                                     uint32_t       timeoutSeconds)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Firmware_Image_Dl(const tDevice* M_NONNULL device,
+                                                           uint32_t                 bufferOffset,
+                                                           uint32_t                 numberOfBytes,
+                                                           uint8_t* M_NONNULL       ptrData,
+                                                           bool                     firstSegment,
+                                                           bool                     lastSegment,
+                                                           uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    ImageDl;
@@ -732,22 +685,17 @@ eReturnValues nvme_Firmware_Image_Dl(const tDevice* device,
     ImageDl.fwdlFirstSegment = firstSegment;
     ImageDl.fwdlLastSegment  = lastSegment;
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Firmware Image Download Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Firmware Image Download Command\n");
     ret = nvme_Cmd(device, &ImageDl);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Firmware Image Download", ret);
-    }
+    print_tDevice_Return_Enum(device, "Firmware Image Download", ret);
     return ret;
 }
 
-eReturnValues nvme_Firmware_Commit(const tDevice*     device,
-                                   nvmeFWCommitAction commitAction,
-                                   uint8_t            firmwareSlot,
-                                   uint32_t           timeoutSeconds)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Firmware_Commit(const tDevice* M_NONNULL device,
+                                                         nvmeFWCommitAction       commitAction,
+                                                         uint8_t                  firmwareSlot,
+                                                         uint32_t                 timeoutSeconds)
 {
     eReturnValues ret = BAD_PARAMETER;
     nvmeCmdCtx    FirmwareCommit;
@@ -769,21 +717,20 @@ eReturnValues nvme_Firmware_Commit(const tDevice*     device,
         FirmwareCommit.timeout =
             DEFAULT_COMMAND_TIMEOUT * 2; // default to 30 seconds since some images may take more time to activate
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Firmware Commit Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Firmware Commit Command\n");
     ret = nvme_Cmd(device, &FirmwareCommit);
 
     // removed all the code checking for specific status code since it was not really in the right place.
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Firmware Commit", ret);
-    }
+    print_tDevice_Return_Enum(device, "Firmware Commit", ret);
     return ret;
 }
 
-eReturnValues nvme_Identify(const tDevice* device, uint8_t* ptrData, uint32_t nvmeNamespace, uint32_t cns)
+M_PARAM_RO(1)
+M_PARAM_WO(2)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Identify(const tDevice* M_NONNULL device,
+                                                  uint8_t* M_NONNULL       ptrData,
+                                                  uint32_t                 nvmeNamespace,
+                                                  uint32_t                 cns)
 {
     nvmeCmdCtx    identify;
     eReturnValues ret = SUCCESS;
@@ -803,19 +750,16 @@ eReturnValues nvme_Identify(const tDevice* device, uint8_t* ptrData, uint32_t nv
         explicit_zeroes(ptrData, NVME_IDENTIFY_DATA_LEN);
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Identify Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Identify Command\n");
     ret = nvme_Cmd(device, &identify);
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Identify", ret);
-    }
+    print_tDevice_Return_Enum(device, "Identify", ret);
     return ret;
 }
 
-eReturnValues nvme_Get_Features(const tDevice* device, nvmeFeaturesCmdOpt* featCmdOpts)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_Features(const tDevice* M_NONNULL      device,
+                                                      nvmeFeaturesCmdOpt* M_NONNULL featCmdOpts)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    getFeatures;
@@ -841,31 +785,22 @@ eReturnValues nvme_Get_Features(const tDevice* device, nvmeFeaturesCmdOpt* featC
         explicit_zeroes(featCmdOpts->dataPtr, featCmdOpts->dataLength);
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Get Features Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Get Features Command\n");
 
     ret = nvme_Cmd(device, &getFeatures);
-
-    /*if (VERBOSITY_DEFAULT < device->deviceVerbosity)
-    {
-        printf("\tReturn: cdw10=0x%08X, cdw11=0x%08X result=0x%08X\n",\
-                        getFeatures.cmd.adminCmd.cdw10,getFeatures.cmd.adminCmd.cdw11, getFeatures.result);
-    }*/
 
     if (ret == SUCCESS)
     {
         featCmdOpts->featSetGetValue = getFeatures.commandCompletionData.commandSpecific;
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Get Features", ret);
-    }
+    print_tDevice_Return_Enum(device, "Get Features", ret);
     return ret;
 }
 
-eReturnValues nvme_Set_Features(const tDevice* device, nvmeFeaturesCmdOpt* featCmdOpts)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Set_Features(const tDevice* M_NONNULL      device,
+                                                      nvmeFeaturesCmdOpt* M_NONNULL featCmdOpts)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    setFeatures;
@@ -886,27 +821,22 @@ eReturnValues nvme_Set_Features(const tDevice* device, nvmeFeaturesCmdOpt* featC
 
     setFeatures.timeout = DEFAULT_COMMAND_TIMEOUT;
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Set Features Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Set Features Command\n");
 
     ret = nvme_Cmd(device, &setFeatures);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Set Features", ret);
-    }
+    print_tDevice_Return_Enum(device, "Set Features", ret);
     return ret;
 }
 
-eReturnValues nvme_Sanitize(const tDevice* device,
-                            bool           noDeallocateAfterSanitize,
-                            bool           invertBetweenOverwritePasses,
-                            uint8_t        overWritePassCount,
-                            bool           allowUnrestrictedSanitizeExit,
-                            uint8_t        sanitizeAction,
-                            uint32_t       overwritePattern)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Sanitize(const tDevice* M_NONNULL device,
+                                                  bool                     noDeallocateAfterSanitize,
+                                                  bool                     invertBetweenOverwritePasses,
+                                                  uint8_t                  overWritePassCount,
+                                                  bool                     allowUnrestrictedSanitizeExit,
+                                                  uint8_t                  sanitizeAction,
+                                                  uint32_t                 overwritePattern)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCommand;
@@ -934,22 +864,19 @@ eReturnValues nvme_Sanitize(const tDevice* device,
     nvmCommand.cmd.adminCmd.cdw10 |= get_bit_range_uint8(sanitizeAction, 2, 0);
     nvmCommand.cmd.adminCmd.cdw11 = overwritePattern;
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Sanitize Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Sanitize Command\n");
 
     ret = nvme_Cmd(device, &nvmCommand);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Sanitize", ret);
-    }
+    print_tDevice_Return_Enum(device, "Sanitize", ret);
 
     return ret;
 }
 
-eReturnValues nvme_Get_Log_Page(const tDevice* device, nvmeGetLogPageCmdOpts* getLogPageCmdOpts)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Get_Log_Page(const tDevice* M_NONNULL         device,
+                                                      nvmeGetLogPageCmdOpts* M_NONNULL getLogPageCmdOpts)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    getLogPage;
@@ -988,22 +915,19 @@ eReturnValues nvme_Get_Log_Page(const tDevice* device, nvmeGetLogPageCmdOpts* ge
     }
 
     getLogPage.timeout = DEFAULT_COMMAND_TIMEOUT;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Get Log Page Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Get Log Page Command\n");
 
     ret = nvme_Cmd(device, &getLogPage);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Get Log Page", ret);
-    }
+    print_tDevice_Return_Enum(device, "Get Log Page", ret);
 
     return ret;
 }
 
-eReturnValues nvme_Format(const tDevice* device, nvmeFormatCmdOpts* formatCmdOpts)
+M_PARAM_RO(1)
+M_PARAM_RO(2)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Format(const tDevice* M_NONNULL     device,
+                                                nvmeFormatCmdOpts* M_NONNULL formatCmdOpts)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    formatCmd;
@@ -1038,25 +962,19 @@ eReturnValues nvme_Format(const tDevice* device, nvmeFormatCmdOpts* formatCmdOpt
 
     formatCmd.timeout = DEFAULT_COMMAND_TIMEOUT * 2; // seconds
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Format Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Format Command\n");
 
     ret = nvme_Cmd(device, &formatCmd);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Format", ret);
-    }
+    print_tDevice_Return_Enum(device, "Format", ret);
 
     return ret;
 }
 
-eReturnValues nvme_Reservation_Report(const tDevice* device,
-                                      bool           extendedDataStructure,
-                                      uint8_t*       ptrData,
-                                      uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Report(const tDevice* M_NONNULL device,
+                                                            bool                     extendedDataStructure,
+                                                            uint8_t* M_NONNULL       ptrData,
+                                                            uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
@@ -1082,27 +1000,21 @@ eReturnValues nvme_Reservation_Report(const tDevice* device,
         explicit_zeroes(ptrData, dataSize);
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Reservation Report Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Reservation Report Command\n");
 
     ret = nvme_Cmd(device, &nvmCmd);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Reservation Report", ret);
-    }
+    print_tDevice_Return_Enum(device, "Reservation Report", ret);
 
     return ret;
 }
 
-eReturnValues nvme_Reservation_Register(const tDevice* device,
-                                        uint8_t        changePersistThroughPowerLossState,
-                                        bool           ignoreExistingKey,
-                                        uint8_t        reservationRegisterAction,
-                                        uint8_t*       ptrData,
-                                        uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Register(const tDevice* M_NONNULL device,
+                                                              uint8_t            changePersistThroughPowerLossState,
+                                                              bool               ignoreExistingKey,
+                                                              uint8_t            reservationRegisterAction,
+                                                              uint8_t* M_NONNULL ptrData,
+                                                              uint32_t           dataSize)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
@@ -1123,27 +1035,21 @@ eReturnValues nvme_Reservation_Register(const tDevice* device,
     }
     nvmCmd.cmd.nvmCmd.cdw10 |= get_bit_range_uint8(reservationRegisterAction, 2, 0);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Reservation Register Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Reservation Register Command\n");
 
     ret = nvme_Cmd(device, &nvmCmd);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Reservation Register", ret);
-    }
+    print_tDevice_Return_Enum(device, "Reservation Register", ret);
 
     return ret;
 }
 
-eReturnValues nvme_Reservation_Acquire(const tDevice* device,
-                                       uint8_t        reservationType,
-                                       bool           ignoreExistingKey,
-                                       uint8_t        reservtionAcquireAction,
-                                       uint8_t*       ptrData,
-                                       uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Acquire(const tDevice* M_NONNULL device,
+                                                             uint8_t                  reservationType,
+                                                             bool                     ignoreExistingKey,
+                                                             uint8_t                  reservtionAcquireAction,
+                                                             uint8_t* M_NONNULL       ptrData,
+                                                             uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
@@ -1164,27 +1070,21 @@ eReturnValues nvme_Reservation_Acquire(const tDevice* device,
     }
     nvmCmd.cmd.nvmCmd.cdw10 |= get_bit_range_uint8(reservtionAcquireAction, 2, 0);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Reservation Acquire Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Reservation Acquire Command\n");
 
     ret = nvme_Cmd(device, &nvmCmd);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Reservation Acquire", ret);
-    }
+    print_tDevice_Return_Enum(device, "Reservation Acquire", ret);
 
     return ret;
 }
 
-eReturnValues nvme_Reservation_Release(const tDevice* device,
-                                       uint8_t        reservationType,
-                                       bool           ignoreExistingKey,
-                                       uint8_t        reservtionReleaseAction,
-                                       uint8_t*       ptrData,
-                                       uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Release(const tDevice* M_NONNULL device,
+                                                             uint8_t                  reservationType,
+                                                             bool                     ignoreExistingKey,
+                                                             uint8_t                  reservtionReleaseAction,
+                                                             uint8_t* M_NONNULL       ptrData,
+                                                             uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
@@ -1205,27 +1105,22 @@ eReturnValues nvme_Reservation_Release(const tDevice* device,
     }
     nvmCmd.cmd.nvmCmd.cdw10 |= get_bit_range_uint8(reservtionReleaseAction, 2, 0);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Reservation Release Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Reservation Release Command\n");
 
     ret = nvme_Cmd(device, &nvmCmd);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Reservation Release", ret);
-    }
+    print_tDevice_Return_Enum(device, "Reservation Release", ret);
 
     return ret;
 }
 
-eReturnValues nvme_Write_Zeroes(const tDevice* device,
-                                uint64_t       startingLBA,
-                                uint16_t       numberOfLogicalBlocks,
-                                bool           limitedRetry,
-                                bool           forceUnitAccess,
-                                bool           deallocate)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Write_Zeroes(const tDevice* M_NONNULL device,
+                                                      uint64_t                 startingLBA,
+                                                      uint16_t                 numberOfLogicalBlocks,
+                                                      bool                     limitedRetry,
+                                                      bool                     forceUnitAccess,
+                                                      bool                     deallocate)
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
@@ -1253,20 +1148,17 @@ eReturnValues nvme_Write_Zeroes(const tDevice* device,
         nvmCommand.cmd.nvmCmd.cdw12 |= BIT25;
     }
     nvmCommand.timeout = DEFAULT_COMMAND_TIMEOUT;
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending NVMe Write Zeroes Command\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending NVMe Write Zeroes Command\n");
     ret = nvme_Cmd(device, &nvmCommand);
     // Command specific return codes:
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Zeroes", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Zeroes", ret);
     return ret;
 }
 
-eReturnValues nvme_Read_Ctrl_Reg(const tDevice* device, nvmeBarCtrlRegisters* ctrlRegs)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues nvme_Read_Ctrl_Reg(const tDevice* M_NONNULL        device,
+                                                       nvmeBarCtrlRegisters* M_NONNULL ctrlRegs)
 {
     eReturnValues ret = UNKNOWN;
     // For now lets first get the page aligned one & then copy the
@@ -1278,10 +1170,7 @@ eReturnValues nvme_Read_Ctrl_Reg(const tDevice* device, nvmeBarCtrlRegisters* ct
         {
             return MEMORY_FAILURE;
         }
-        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-        {
-            print_str("Reading PCI Bar Registers\n");
-        }
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Reading PCI Bar Registers\n");
         ret = pci_Read_Bar_Reg(device, barRegs, C_CAST(uint32_t, dataSize));
         if (ret == SUCCESS)
         {
@@ -1293,10 +1182,7 @@ eReturnValues nvme_Read_Ctrl_Reg(const tDevice* device, nvmeBarCtrlRegisters* ct
     {
         ret = MEMORY_FAILURE;
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("PCI Bar Registers", ret);
-    }
+    print_tDevice_Return_Enum(device, "PCI Bar Registers", ret);
 
     return ret;
 }

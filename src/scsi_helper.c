@@ -59,7 +59,7 @@ typedef struct s_ascAscqRetDesc
 
 // DO NOT break the order of ASC and ASCQ below
 // for 3rd column (ret), -1 means to keep existing ret value, don't change it
-static ascAscqRetDesc ascAscqLookUp[] = {
+static const ascAscqRetDesc ascAscqLookUp[] = {
     {0x00, 0x00, KEEP_SENSE_KEY_ERROR, "No Additional Sense Information"},
     {0x00, 0x01, KEEP_SENSE_KEY_ERROR, "Filemark Detected"},
     {0x00, 0x02, KEEP_SENSE_KEY_ERROR, "End-Of_Partition/Medium Detected"},
@@ -926,7 +926,9 @@ static ascAscqRetDesc ascAscqLookUp[] = {
     {0x74, 0x71, C_CAST(int, FAILURE), "Logical Unit Access Not Authorized"},
     {0x74, 0x79, C_CAST(int, FAILURE), "Security Conflict In Translated Device"}};
 
-uint16_t calculate_Logical_Block_Guard(const uint8_t* buffer, uint32_t userDataLength, uint32_t totalDataLength)
+OPENSEA_TRANSPORT_API uint16_t calculate_Logical_Block_Guard(const uint8_t* M_NONNULL buffer,
+                                                             uint32_t                 userDataLength,
+                                                             uint32_t                 totalDataLength)
 {
     // Can also be all F's to invert it. TODO: should invert be a boolean option to this function? - TJE
     uint16_t       crc        = UINT16_C(0);
@@ -955,25 +957,59 @@ uint16_t calculate_Logical_Block_Guard(const uint8_t* buffer, uint32_t userDataL
 }
 
 // this is mean to only be called by check_Sense_Key_asc_And_ascq()
-void print_sense_key(const char* senseKeyToPrint, uint8_t senseKeyValue)
+M_DEPRECATED_REASON("Use print_tDevice_Sense_Key instead")
+OPENSEA_TRANSPORT_API void print_sense_key(const char* M_NONNULL senseKeyToPrint, uint8_t senseKeyValue)
 {
-    printf("Sense Key: %" PRIX8 "h = %s\n", senseKeyValue, senseKeyToPrint);
-    flush_stdout();
-}
-// this is meant to only be called by check_Sense_Key_asc_And_ascq()
-void print_acs_ascq(const char* acsAndascqStringToPrint, uint8_t ascValue, uint8_t ascqValue)
-{
-    printf("ASC & ASCQ: %" PRIX8 "h - %" PRIX8 "h = %s\n", ascValue, ascqValue, acsAndascqStringToPrint);
+    printf("Sense Key: %" PRIX8 "h = %s\n", senseKeyValue,
+           senseKeyToPrint == M_NULLPTR ? "Unknown Sense Key" : senseKeyToPrint);
     flush_stdout();
 }
 
+// Device-aware version that supports verbose output redirection
+OPENSEA_TRANSPORT_API void print_tDevice_Sense_Key(const tDevice* M_NONNULL device,
+                                                   eVerbosityLevels         verboseLevel,
+                                                   const char* M_NONNULL    senseKeyToPrint,
+                                                   uint8_t                  senseKeyValue)
+{
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "Sense Key: %" PRIX8 "h = %s\n", senseKeyValue,
+                                           senseKeyToPrint == M_NULLPTR ? "Unknown Sense Key" : senseKeyToPrint);
+    flush_tDevice_Verbose_Stream(device);
+}
+
 // this is meant to only be called by check_Sense_Key_asc_And_ascq()
-void print_Field_Replacable_Unit_Code(const tDevice* device, const char* fruMessage, uint8_t fruCode)
+M_DEPRECATED_REASON("Use print_tDevice_ASC_ASCQ instead")
+OPENSEA_TRANSPORT_API void print_acs_ascq(const char* M_NONNULL acsAndascqStringToPrint,
+                                          uint8_t               ascValue,
+                                          uint8_t               ascqValue)
+{
+    printf("ASC & ASCQ: %" PRIX8 "h - %" PRIX8 "h = %s\n", ascValue, ascqValue,
+           acsAndascqStringToPrint == M_NULLPTR ? "Unknown ASC/ASCQ code combination" : acsAndascqStringToPrint);
+    flush_stdout();
+}
+
+// Device-aware version that supports verbose output redirection
+OPENSEA_TRANSPORT_API void print_tDevice_ASC_ASCQ(const tDevice* M_NONNULL device,
+                                                  eVerbosityLevels         verboseLevel,
+                                                  const char* M_NONNULL    ascAndascqStringToPrint,
+                                                  uint8_t                  ascValue,
+                                                  uint8_t                  ascqValue)
+{
+    print_tDevice_Verbose_Formatted_String(
+        device, verboseLevel, "ASC & ASCQ: %" PRIX8 "h - %" PRIX8 "h = %s\n", ascValue, ascqValue,
+        ascAndascqStringToPrint == M_NULLPTR ? "Unknown ASC/ASCQ code combination" : ascAndascqStringToPrint);
+    flush_tDevice_Verbose_Stream(device);
+}
+
+// this is meant to only be called by check_Sense_Key_asc_And_ascq()
+M_DEPRECATED_REASON("Use print_tDevice_Field_Replacable_Unit_Code instead")
+OPENSEA_TRANSPORT_API void print_Field_Replacable_Unit_Code(const tDevice* M_NONNULL device,
+                                                            const char* M_NONNULL    fruMessage,
+                                                            uint8_t                  fruCode)
 {
     // we'll only print out a translatable string for seagate drives since fru is vendor specific
 
     if (is_Seagate(device, false) == true && fruMessage != M_NULLPTR && strlen(fruMessage) > 0 &&
-        device->drive_info.interface_type == SCSI_INTERFACE)
+        get_Device_InterfaceType(device) == SCSI_INTERFACE)
     {
         printf("FRU: %" PRIX8 "h = %s\n", fruCode, fruMessage);
     }
@@ -991,46 +1027,62 @@ void print_Field_Replacable_Unit_Code(const tDevice* device, const char* fruMess
     flush_stdout();
 }
 
-// Used with bsearch
-static int cmp_Asc_Ascq(ascAscqRetDesc* a, ascAscqRetDesc* b)
+// Device-aware version that supports verbose output redirection
+// FRU translation lookup will be handled by tDevice function pointer if registered
+OPENSEA_TRANSPORT_API void print_tDevice_Field_Replacable_Unit_Code(const tDevice* M_NONNULL device,
+                                                                    eVerbosityLevels         verboseLevel,
+                                                                    uint8_t                  senseKey,
+                                                                    uint8_t                  asc,
+                                                                    uint8_t                  ascq,
+                                                                    uint8_t                  fruCode)
 {
+    // TODO: Call tDevice function pointer for FRU code translation when available
+    // For now, just print the code value
+    M_USE_UNUSED(senseKey);
+    M_USE_UNUSED(asc);
+    M_USE_UNUSED(ascq);
+    print_tDevice_Verbose_Formatted_String(device, verboseLevel, "FRU: %" PRIX8 "h = %s\n", fruCode,
+                                           fruCode == 0 ? "No Additional Information" : "Vendor Specific");
+    flush_tDevice_Verbose_Stream(device);
+}
+
+// Used with bsearch
+static int cmp_Asc_Ascq(const void* a, const void* b)
+{
+    const ascAscqRetDesc* ascA = M_REINTERPRET_CAST(const ascAscqRetDesc*, a);
+    const ascAscqRetDesc* ascB = M_REINTERPRET_CAST(const ascAscqRetDesc*, b);
     // compare ASC, if they are same, compare ASCQ
-    int ret = a->asc - b->asc;
+    int ret = ascA->asc - ascB->asc;
     if (ret != 0)
     {
         return ret;
     }
     else
     {
-        return (a->ascq - b->ascq);
+        return (ascA->ascq - ascB->ascq);
     }
 }
 
-eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* device,
-                                               uint8_t        senseKey,
-                                               uint8_t        asc,
-                                               uint8_t        ascq,
-                                               uint8_t        fru)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* M_NONNULL device,
+                                                                     uint8_t                  senseKey,
+                                                                     uint8_t                  asc,
+                                                                     uint8_t                  ascq,
+                                                                     uint8_t                  fru)
 {
-    eReturnValues   ret = UNKNOWN; // if this gets returned from this function, then something is not right...
-    ascAscqRetDesc* asc_ascq_result = M_NULLPTR;
-    ascAscqRetDesc  asc_ascq_key    = {asc, ascq, 0, 0};
+    eReturnValues         ret = UNKNOWN; // if this gets returned from this function, then something is not right...
+    const ascAscqRetDesc* asc_ascq_result = M_NULLPTR;
+    ascAscqRetDesc        asc_ascq_key    = {asc, ascq, 0, 0};
     // first check the senseKey
     senseKey = senseKey & 0x0F; // strip off bits that are not part of the sense key
     if (senseKey < sizeof(senseKeyRetDesc) / sizeof(senseKeyRetDesc[0]))
     {
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key(senseKeyRetDesc[senseKey].desc, senseKey);
-        }
+        print_tDevice_Sense_Key(device, VERBOSITY_COMMAND_VERBOSE, senseKeyRetDesc[senseKey].desc, senseKey);
         ret = senseKeyRetDesc[senseKey].ret;
     }
     else
     {
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-        {
-            print_sense_key("Invalid sense key!", senseKey);
-        }
+        print_tDevice_Sense_Key(device, VERBOSITY_COMMAND_VERBOSE, "Invalid sense key!", senseKey);
         return BAD_PARAMETER;
     }
     // now check the asc and ascq combination...this is going to be very large set of switch cases to do this...
@@ -1042,58 +1094,72 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* device,
         switch (ascq)
         {
         case 0x00:
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq("RAM Failure (Should Use 40 NN) ", asc, ascq);
-            }
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "RAM Failure (Should Use 40 NN) ", asc, ascq);
             ret = FAILURE;
             break;
         default:
             if (ascq >= 0x80 /*  && ascq <= 0xFF */)
             {
-                if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+                char* diagFailureMsg = M_NULLPTR;
+                if (asprintf(&diagFailureMsg, "Diagnostic Failure On Component %02" PRIX8 "h", ascq) > 0)
                 {
-                    printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Diagnostic Failure On Component %02" PRIX8 "h\n",
-                           asc, ascq, ascq);
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, diagFailureMsg, asc, ascq);
+                    safe_free(&diagFailureMsg);
+                }
+                else
+                {
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Diagnostic Failure On ASCQ component",
+                                           asc, ascq);
                 }
                 ret = FAILURE;
             }
             else
             {
-                if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-                {
-                    print_acs_ascq("Unknown ascq code", asc, ascq);
-                }
+                print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Unknown ascq code", asc, ascq);
                 ret = UNKNOWN;
             }
             break;
         }
         break;
     case 0x4D:
-        if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
+    {
+        char* taggedCmdMsg = M_NULLPTR;
+        if (asprintf(&taggedCmdMsg, "Tagged Overlapped Commands. Task Tag = %02" PRIX8 "h", ascq) > 0)
         {
-            printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Tagged Overlapped Commands. Task Tag = %02" PRIX8 "h\n",
-                   asc, ascq, ascq);
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, taggedCmdMsg, asc, ascq);
+            safe_free(&taggedCmdMsg);
         }
-        break;
+        else
+        {
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Tagged Overlapped Commands. Task Tag = ASCQ",
+                                   asc, ascq);
+        }
+    }
+    break;
     case 0x70:
-        if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+    {
+        char* decompressionMsg = M_NULLPTR;
+        if (asprintf(&decompressionMsg, "Decompression Exception - Algorithm ID = %02" PRIX8 "h", ascq) > 0)
         {
-            printf("asc & ascq: %" PRIX8 "h - %" PRIX8 "h = Decompression Exception Short Algorithm ID of %" PRIX8 "",
-                   asc, ascq, ascq);
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, decompressionMsg, asc, ascq);
+            safe_free(&decompressionMsg);
         }
-        break;
+        else
+        {
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Decompression Exception - Algorithm ID = ASCQ",
+                                   asc, ascq);
+        }
+    }
+    break;
     default:
-        asc_ascq_result = C_CAST(
-            ascAscqRetDesc*, safe_bsearch(&asc_ascq_key, ascAscqLookUp, SIZE_OF_STACK_ARRAY(ascAscqLookUp),
-                                          sizeof(ascAscqLookUp[0]), (int (*)(const void*, const void*))cmp_Asc_Ascq));
+        asc_ascq_result = M_REINTERPRET_CAST(const ascAscqRetDesc*,
+                                             safe_bsearch(&asc_ascq_key, M_REINTERPRET_CAST(const void*, ascAscqLookUp),
+                                                          SIZE_OF_STACK_ARRAY(ascAscqLookUp), sizeof(ascAscqLookUp[0]),
+                                                          cmp_Asc_Ascq));
 
         if (asc_ascq_result)
         {
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-            {
-                print_acs_ascq(asc_ascq_result->desc, asc, ascq);
-            }
+            print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, asc_ascq_result->desc, asc, ascq);
             // Return code of -1 means follow return code determined by sense key, do not change
             if (asc_ascq_result->ret > KEEP_SENSE_KEY_ERROR)
             {
@@ -1104,50 +1170,42 @@ eReturnValues check_Sense_Key_ASC_ASCQ_And_FRU(const tDevice* device,
         {
             if (asc < 0x80 /* && asc >= 0 */)
             {
-                if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                if (ascq >= 0x80 /*  && ascq <= 0xFF */)
                 {
-                    if (ascq >= 0x80 /*  && ascq <= 0xFF */)
-                    {
-                        print_acs_ascq("Vendor specific ascq code", asc, ascq);
-                    }
-                    else
-                    {
-                        print_acs_ascq("Unknown ascq code", asc, ascq);
-                    }
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Vendor specific ascq code", asc, ascq);
+                }
+                else
+                {
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Unknown ascq code", asc, ascq);
                 }
                 ret = UNKNOWN;
             }
             else
             {
-                if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+                if (asc >= 0x80 /* && asc <= 0xFF */)
                 {
-                    if (asc >= 0x80 /* && asc <= 0xFF */)
-                    {
-                        print_acs_ascq("Vendor specific ASC & ascq code", asc, ascq);
-                    }
-                    else
-                    {
-                        print_acs_ascq("Unknown ASC & ASCQ code", asc, ascq);
-                    }
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Vendor specific ASC & ascq code", asc,
+                                           ascq);
+                }
+                else
+                {
+                    print_tDevice_ASC_ASCQ(device, VERBOSITY_COMMAND_VERBOSE, "Unknown ASC & ASCQ code", asc, ascq);
                 }
                 ret = UNKNOWN;
             }
         }
         break;
     }
-    if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
-    {
-        print_Field_Replacable_Unit_Code(device, "", fru);
-    }
+    print_tDevice_Field_Replacable_Unit_Code(device, VERBOSITY_COMMAND_VERBOSE, senseKey, asc, ascq, fru);
     return ret;
 }
 
-void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* pbuf,
-                                uint32_t       pbufSize,
-                                uint8_t*       senseKey,
-                                uint8_t*       asc,
-                                uint8_t*       ascq,
-                                uint8_t*       fru)
+OPENSEA_TRANSPORT_API void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* M_NONNULL pbuf,
+                                                      uint32_t                 pbufSize,
+                                                      uint8_t* M_NONNULL       senseKey,
+                                                      uint8_t* M_NONNULL       asc,
+                                                      uint8_t* M_NONNULL       ascq,
+                                                      uint8_t* M_NONNULL       fru)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1160,10 +1218,10 @@ void get_Sense_Key_ASC_ASCQ_FRU(const uint8_t* pbuf,
     *fru      = senseFields.scsiStatusCodes.fru;
 }
 
-void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
-                                     uint32_t       senseDataLength,
-                                     bool*          valid,
-                                     uint64_t*      information)
+OPENSEA_TRANSPORT_API void get_Information_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                           uint32_t                 senseDataLength,
+                                                           bool* M_NONNULL          valid,
+                                                           uint64_t* M_NONNULL      information)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1180,9 +1238,9 @@ void get_Information_From_Sense_Data(const uint8_t* ptrSenseData,
     }
 }
 
-void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
-                                                  uint32_t       senseDataLength,
-                                                  bool*          illegalLengthIndicator)
+OPENSEA_TRANSPORT_API void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                                        uint32_t                 senseDataLength,
+                                                                        bool* M_NONNULL          illegalLengthIndicator)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1195,11 +1253,11 @@ void get_Illegal_Length_Indicator_From_Sense_Data(const uint8_t* ptrSenseData,
     }
 }
 
-void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
-                                             uint32_t       senseDataLength,
-                                             bool*          filemark,
-                                             bool*          endOfMedia,
-                                             bool*          illegalLengthIndicator)
+OPENSEA_TRANSPORT_API void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                                   uint32_t                 senseDataLength,
+                                                                   bool* M_NONNULL          filemark,
+                                                                   bool* M_NONNULL          endOfMedia,
+                                                                   bool* M_NONNULL          illegalLengthIndicator)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1220,9 +1278,10 @@ void get_Stream_Command_Bits_From_Sense_Data(const uint8_t* ptrSenseData,
     }
 }
 
-void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseData,
-                                                      uint32_t       senseDataLength,
-                                                      uint64_t*      commandSpecificInformation)
+OPENSEA_TRANSPORT_API void get_Command_Specific_Information_From_Sense_Data(const uint8_t* M_NONNULL ptrSenseData,
+                                                                            uint32_t                 senseDataLength,
+                                                                            uint64_t* M_NONNULL
+                                                                                commandSpecificInformation)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1235,7 +1294,9 @@ void get_Command_Specific_Information_From_Sense_Data(const uint8_t* ptrSenseDat
     }
 }
 
-void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseKeySpecific sksp)
+OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(const uint8_t* M_NONNULL ptrSenseData,
+                                                              uint32_t                 senseDataLength,
+                                                              ptrSenseKeySpecific      sksp)
 {
     senseDataFields senseFields;
     safe_memset(&senseFields, sizeof(senseDataFields), 0, sizeof(senseDataFields));
@@ -1248,7 +1309,9 @@ void get_Sense_Key_Specific_Information(const uint8_t* ptrSenseData, uint32_t se
     }
 }
 
-void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength, ptrSenseDataFields senseFields)
+OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSenseData,
+                                                 uint32_t                 senseDataLength,
+                                                 ptrSenseDataFields       senseFields)
 {
 
     if (ptrSenseData != M_NULLPTR && senseDataLength > 0 && senseFields != M_NULLPTR)
@@ -1278,11 +1341,14 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
             senseFields->senseDataOverflow        = ptrSenseData[2] & BIT4;
             senseFields->scsiStatusCodes.format   = format;
             senseFields->scsiStatusCodes.senseKey = M_Nibble0(ptrSenseData[2]);
-            if (senseFields->valid)
-            {
-                senseFields->fixedInformation =
-                    M_BytesTo4ByteValue(ptrSenseData[3], ptrSenseData[4], ptrSenseData[5], ptrSenseData[6]);
-            }
+
+            // IMPORTANT: Always extract Information field bytes [3-6] regardless of valid bit
+            // Some SATLs (e.g., PMCS HPE controllers) populate this field with ATA register data
+            // (COUNT, STATUS, ERROR, DEVICE) but don't set the valid bit (bit 7 of byte 0).
+            // sat_helper.c will use fixedSenseHack flags to decide whether to trust this field.
+            senseFields->fixedInformation =
+                M_BytesTo4ByteValue(ptrSenseData[3], ptrSenseData[4], ptrSenseData[5], ptrSenseData[6]);
+
             if (returnedLength > 8)
             {
                 if (returnedLength >= 11)
@@ -1606,7 +1672,215 @@ void get_Sense_Data_Fields(const uint8_t* ptrSenseData, uint32_t senseDataLength
     }
 }
 
-void print_Sense_Fields(constPtrSenseDataFields senseFields)
+// New device-aware version with verbosity level support
+OPENSEA_TRANSPORT_API void print_Sense_Fields_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity, constPtrSenseDataFields M_NONNULL senseFields)
+{
+    if (senseFields != M_NULLPTR && senseFields->validStructure)
+    {
+        // This function assumes that the "check_Sense_Key_ASC_ASCQ_FRU" function was called before hand to print out
+        // its fields
+        if (senseFields->deferredError)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Deferred error found.\n");
+        }
+        if (senseFields->senseDataOverflow)
+        {
+            print_tDevice_Verbose_String(device, verbosity,
+                "Sense Data Overflow detected! Request sense command is recommended to retrieve full sense data!\n");
+        }
+        if (senseFields->filemark)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Filemark detected\n");
+        }
+        if (senseFields->endOfMedia)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "End of media detected\n");
+        }
+        if (senseFields->illegalLengthIndication)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Illegal Length detected\n");
+        }
+        if (senseFields->valid)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Information (Valid): ");
+        }
+        else
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Information: ");
+        }
+        if (senseFields->fixedFormat)
+        {
+            print_tDevice_Verbose_Formatted_String(device, verbosity, "%08" PRIX32 "h\n", senseFields->fixedInformation);
+        }
+        else
+        {
+            print_tDevice_Verbose_Formatted_String(device, verbosity, "%016" PRIX64 "h\n", senseFields->descriptorInformation);
+        }
+        print_tDevice_Verbose_String(device, verbosity, "Command Specific Information: ");
+        if (senseFields->fixedFormat)
+        {
+            print_tDevice_Verbose_Formatted_String(device, verbosity, "%08" PRIX32 "h\n", senseFields->fixedCommandSpecificInformation);
+        }
+        else
+        {
+            print_tDevice_Verbose_Formatted_String(device, verbosity, "%016" PRIX64 "h\n", senseFields->descriptorCommandSpecificInformation);
+        }
+        if (senseFields->senseKeySpecificInformation.senseKeySpecificValid)
+        {
+            print_tDevice_Verbose_String(device, verbosity, "Sense Key Specific Information:\n\t");
+            switch (senseFields->senseKeySpecificInformation.type)
+            {
+            case SENSE_KEY_SPECIFIC_FIELD_POINTER:
+                if (senseFields->senseKeySpecificInformation.field.cdbOrData)
+                {
+                    if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in CDB byte %" PRIu16 " bit %" PRIu8 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer,
+                               senseFields->senseKeySpecificInformation.field.bitPointer);
+                    }
+                    else
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in CDB byte %" PRIu16 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer);
+                    }
+                }
+                else
+                {
+                    if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer,
+                               senseFields->senseKeySpecificInformation.field.bitPointer);
+                    }
+                    else
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Parameter byte %" PRIu16 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer);
+                    }
+                }
+                break;
+            case SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT:
+                print_tDevice_Verbose_Formatted_String(device, verbosity,
+                       "Actual Retry Count: %" PRIu16 "\n",
+                       senseFields->senseKeySpecificInformation.retryCount.actualRetryCount);
+                break;
+            case SENSE_KEY_SPECIFIC_PROGRESS_INDICATION:
+                print_tDevice_Verbose_Formatted_String(device, verbosity,
+                       "Progress: %0.02f%%\n",
+                       get_SCSI_Progress_Indicator_PercentD(
+                           senseFields->senseKeySpecificInformation.progress.progressIndication));
+                break;
+            case SENSE_KEY_SPECIFIC_SEGMENT_POINTER:
+                if (senseFields->senseKeySpecificInformation.segment.segmentDescriptor)
+                {
+                    if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Segment Descriptor byte %" PRIu16 " bit %" PRIu8 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer,
+                               senseFields->senseKeySpecificInformation.field.bitPointer);
+                    }
+                    else
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Segment Descriptor byte %" PRIu16 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer);
+                    }
+                }
+                else
+                {
+                    if (senseFields->senseKeySpecificInformation.field.bitPointerValid)
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Parameter byte %" PRIu16 " bit %" PRIu8 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer,
+                               senseFields->senseKeySpecificInformation.field.bitPointer);
+                    }
+                    else
+                    {
+                        print_tDevice_Verbose_Formatted_String(device, verbosity,
+                               "Invalid field in Parameter byte %" PRIu16 "\n",
+                               senseFields->senseKeySpecificInformation.field.fieldPointer);
+                    }
+                }
+                break;
+            case SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW:
+                if (senseFields->senseKeySpecificInformation.unitAttention.overflow)
+                {
+                    print_tDevice_Verbose_String(device, verbosity, "Unit attention condition is due to Queue Overflow\n");
+                }
+                else
+                {
+                    print_tDevice_Verbose_String(device, verbosity, "Unit attention condition is not due to a queue overflow\n");
+                }
+                break;
+            case SENSE_KEY_SPECIFIC_UNKNOWN:
+            default:
+                print_tDevice_Verbose_Formatted_String(device, verbosity,
+                       "Unknown sense key specific data: %" PRIX8 "h %" PRIX8 "h %" PRIX8 "h\n",
+                       senseFields->senseKeySpecificInformation.unknownDataType[0],
+                       senseFields->senseKeySpecificInformation.unknownDataType[1],
+                       senseFields->senseKeySpecificInformation.unknownDataType[2]);
+                break;
+            }
+        }
+        if (!senseFields->fixedFormat)
+        {
+            // look for other descriptor format data that we saved and can easily parse here
+            if (senseFields->ataStatusReturnDescriptor.valid)
+            {
+                print_tDevice_Verbose_String(device, verbosity, "ATA Return Status:\n");
+                print_tDevice_Verbose_String(device, verbosity, "\tExtend: ");
+                if (senseFields->ataStatusReturnDescriptor.extend)
+                {
+                    print_tDevice_Verbose_String(device, verbosity, "true\n");
+                }
+                else
+                {
+                    print_tDevice_Verbose_String(device, verbosity, "false\n");
+                }
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tError:            %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.error);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tSector Count Ext: %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCountExt);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tSector Count:     %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.sectorCount);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Low Ext:      %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaLowExt);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Low:          %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaLow);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Mid Ext:      %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaMidExt);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Mid:          %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaMid);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Hi Ext:       %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaHiExt);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tLBA Hi:           %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.lbaHi);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tDevice:           %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.device);
+                print_tDevice_Verbose_Formatted_String(device, verbosity, "\tStatus:           %02" PRIX8 "h\n", senseFields->ataStatusReturnDescriptor.status);
+            }
+            // TODO: go through the other progress indications?
+            if (senseFields->microCodeActivation.valid)
+            {
+                print_tDevice_Verbose_String(device, verbosity, "Microcode Activation Time:");
+                if (senseFields->microCodeActivation.microcodeActivationTimeSeconds > 0)
+                {
+                    uint8_t hours   = UINT8_C(0);
+                    uint8_t minutes = UINT8_C(0);
+                    uint8_t seconds = UINT8_C(0);
+                    convert_Seconds_To_Displayable_Time(senseFields->microCodeActivation.microcodeActivationTimeSeconds,
+                                                        M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
+                    print_Time_To_Screen(M_NULLPTR, M_NULLPTR, &hours, &minutes, &seconds);
+                    print_tDevice_Verbose_String(device, verbosity, "\n");
+                }
+                else
+                {
+                    print_tDevice_Verbose_String(device, verbosity, " Unknown\n");
+                }
+            }
+        }
+    }
+}
+
+// DEPRECATED: Use print_Sense_Fields_Verbose instead with proper device and verbosity level
+OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields senseFields)
 {
 
     if (senseFields != M_NULLPTR && senseFields->validStructure)
@@ -1803,7 +2077,7 @@ void print_Sense_Fields(constPtrSenseDataFields senseFields)
     }
 }
 
-uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf)
+OPENSEA_TRANSPORT_API uint16_t get_Returned_Sense_Data_Length(const uint8_t* M_NONNULL pbuf)
 {
     uint16_t length = UINT16_C(8);
     uint8_t  format;
@@ -1832,7 +2106,7 @@ uint16_t get_Returned_Sense_Data_Length(const uint8_t* pbuf)
     return length;
 }
 
-// \fn copy_Inquiry_Data(unsigned char * pbuf, driveInfo * info)
+// \fn copy_Inquiry_Data(unsigned char * M_NONNULL pbuf, driveInfo * M_NONNULL info)
 // \brief copy in the necessary data to our struct from INQ data.
 void copy_Inquiry_Data(uint8_t* pbuf, driveInfo* info)
 {
@@ -1873,7 +2147,10 @@ void copy_Inquiry_Data(uint8_t* pbuf, driveInfo* info)
 }
 
 // \brief copy the serial number off of 0x80 VPD page data.
-void copy_Serial_Number(uint8_t* pbuf, size_t bufferlen, char* serialNumber, size_t serialNumberMemLen)
+void copy_Serial_Number(uint8_t* M_NONNULL pbuf,
+                        size_t             bufferlen,
+                        char* M_NONNULL    serialNumber,
+                        size_t             serialNumberMemLen)
 {
 
     if (pbuf != M_NULLPTR && serialNumber != M_NULLPTR && bufferlen >= 4 && serialNumberMemLen > 0)
@@ -1892,12 +2169,12 @@ void copy_Serial_Number(uint8_t* pbuf, size_t bufferlen, char* serialNumber, siz
     }
 }
 
-void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
-                             uint32_t* physicalBlockSize,
-                             uint64_t* maxLBA,
-                             uint16_t* sectorAlignment,
-                             uint8_t*  ptrBuf,
-                             bool      readCap16)
+OPENSEA_TRANSPORT_API void copy_Read_Capacity_Info(uint32_t* M_NONNULL logicalBlockSize,
+                                                   uint32_t* M_NONNULL physicalBlockSize,
+                                                   uint64_t* M_NONNULL maxLBA,
+                                                   uint16_t* M_NONNULL sectorAlignment,
+                                                   uint8_t* M_NONNULL  ptrBuf,
+                                                   bool                readCap16)
 {
     if (readCap16)
     {
@@ -1927,7 +2204,7 @@ void copy_Read_Capacity_Info(uint32_t* logicalBlockSize,
 static eReturnValues private_Scsi_Read_Cap_16(const tDevice* device, readCapacityData* outputData)
 {
     uint8_t* readCapData = M_STATIC_CAST(
-        uint8_t*, safe_calloc_aligned(READ_CAPACITY_16_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(READ_CAPACITY_16_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (readCapData == M_NULLPTR)
     {
         return MEMORY_FAILURE;
@@ -1969,7 +2246,7 @@ static eReturnValues private_Scsi_Read_Cap_16(const tDevice* device, readCapacit
 static eReturnValues private_Scsi_Read_Cap_10(const tDevice* device, readCapacityData* outputData)
 {
     uint8_t* readCapData = M_STATIC_CAST(
-        uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+        uint8_t*, safe_calloc_aligned(READ_CAPACITY_10_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (readCapData == M_NULLPTR)
     {
         return MEMORY_FAILURE;
@@ -1995,7 +2272,10 @@ static eReturnValues private_Scsi_Read_Cap_10(const tDevice* device, readCapacit
 // There is a lot going on in this function. That is because old drives need the 10B command, new need 16B....but right
 // in between the two there were some drives produced with SBC2+ support, but still only supported the 10B command. Due
 // to this there are a few retries/fallbacks in here, but it will figure this out for the caller to make life easier
-eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* device, readCapacityData* outputData)
+M_PARAM_RO(1)
+M_PARAM_WO(2)
+OPENSEA_TRANSPORT_API eReturnValues scsi_Read_Capacity_Cmd_Helper(const tDevice* M_NONNULL    device,
+                                                                  readCapacityData* M_NONNULL outputData)
 {
     safe_memset(outputData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
 
@@ -2078,6 +2358,12 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
         device->drive_info.passThroughHacks.scsiHacks.maxTransferLength              = 65024;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA     = true;
+        // device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack                = SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER;
+        // if (device->deviceVerbosity >= VERBOSITY_COMMAND_VERBOSE)
+        // {
+        //     printf(
+        //         "PMCS SATL detected: Setting fixedSenseHack=FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER\n");
+        // }
         // debugging in a RAID environment is giving a few odd results with max transfer length, so not
         // setting that for now-TJE
     }
@@ -2153,16 +2439,16 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
             ATA_READ_LOG_EXT_DMA) // Added read log commands here since they are in SAT4. Only HDD/SSD
                                   // should use these.
     {
-        *issueSATIdentify             = true;
-        device->drive_info.media_type = MEDIA_HDD;
-        device->drive_info.drive_type = ATA_DRIVE;
+        *issueSATIdentify = true;
+        set_Device_MediaType(device, MEDIA_HDD);
+        set_Device_DriveType(device, ATA_DRIVE);
     }
     else if (ataInformation[SAT_ATA_VPD_COMMAND_CODE_OFFSET] == ATAPI_IDENTIFY)
     {
         *issueSATIdentify = false; // Do not read it since we want to treat ATAPI as SCSI/with SCSI commands
                                    // (at least for now)-TJE
-        device->drive_info.media_type = MEDIA_OPTICAL;
-        device->drive_info.drive_type = ATAPI_DRIVE;
+        set_Device_MediaType(device, MEDIA_OPTICAL);
+        set_Device_DriveType(device, ATAPI_DRIVE);
     }
     else
     {
@@ -2175,18 +2461,18 @@ static M_INLINE void set_No_SAT_VPD(tDevice* device)
     device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
 }
 
-eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device)
+M_PARAM_RO(1) eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* M_NONNULL device)
 {
     eReturnValues ret              = FAILURE;
     bool          issueSATIdentify = true; // default to ALWAYS reading this unless something else says not to. - TJE
-    if (device->drive_info.interface_type == IDE_INTERFACE || device->drive_info.interface_type == USB_INTERFACE ||
-        device->drive_info.interface_type == IEEE_1394_INTERFACE)
+    if (get_Device_InterfaceType(device) == IDE_INTERFACE || get_Device_InterfaceType(device) == USB_INTERFACE ||
+        get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
     {
         // always do this on IDE_INTERFACE since we know it will work here. Doesn't matter if the VPD page read fails or
         // not
         issueSATIdentify = true;
     }
-    if (device->drive_info.drive_type == ATAPI_DRIVE || device->drive_info.drive_type == LEGACY_TAPE_DRIVE)
+    if (get_Device_DriveType(device) == ATAPI_DRIVE || get_Device_DriveType(device) == LEGACY_TAPE_DRIVE)
     {
         // DO NOT try a SAT identify on these devices if we already know what they are. These should be treated as SCSI
         // since they are either SCSI or ATA packet devices
@@ -2199,7 +2485,7 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device)
     {
         uint32_t ataInfoLen = VPD_ATA_INFORMATION_LEN;
         uint8_t* ataInformation =
-            C_CAST(uint8_t*, safe_calloc_aligned(ataInfoLen, sizeof(uint8_t), device->os_info.minimumAlignment));
+            C_CAST(uint8_t*, safe_calloc_aligned(ataInfoLen, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (!ataInformation)
         {
             perror("Error allocating memory to read the ATA Information VPD page");
@@ -2218,9 +2504,8 @@ eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* device)
                 issueSATIdentify = true;
             }
         }
-        else if (device->drive_info.interface_type == MMC_INTERFACE ||
-                 device->drive_info.interface_type == NVME_INTERFACE ||
-                 device->drive_info.interface_type == SD_INTERFACE)
+        else if (get_Device_InterfaceType(device) == MMC_INTERFACE ||
+                 get_Device_InterfaceType(device) == NVME_INTERFACE || get_Device_InterfaceType(device) == SD_INTERFACE)
         {
             return NOT_SUPPORTED;
         }
@@ -2336,7 +2621,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             {
                 passthroughTypeSet                                  = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
-                device->drive_info.media_type                       = MEDIA_SSM_FLASH;
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 // this should prevent sending it bad commands!
             }
         }
@@ -2344,7 +2629,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
         {
             passthroughTypeSet                                  = true;
             device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_UNKNOWN;
-            device->drive_info.media_type                       = MEDIA_SSM_FLASH;
+            set_Device_MediaType(device, MEDIA_SSM_FLASH);
             // this should prevent sending it bad commands!
         }
         else if (strcmp(vendorID, "SEAGATE") ==
@@ -2357,9 +2642,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
                 passthroughTypeSet                                         = true;
                 device->drive_info.passThroughHacks.passthroughType        = ATA_PASSTHROUGH_NEC;
                 device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
-                if (device->drive_info.interface_type != USB_INTERFACE)
+                if (get_Device_InterfaceType(device) != USB_INTERFACE)
                 {
-                    device->drive_info.interface_type = USB_INTERFACE;
+                    set_Device_InterfaceType(device, USB_INTERFACE);
                 }
             }
         }
@@ -2371,9 +2656,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
             device->drive_info.passThroughHacks.turfValue =
                 TURF_LIMIT + 1; // Doing this generically here for now to force this!
-            if (device->drive_info.interface_type != USB_INTERFACE)
+            if (get_Device_InterfaceType(device) != USB_INTERFACE)
             {
-                device->drive_info.interface_type = USB_INTERFACE;
+                set_Device_InterfaceType(device, USB_INTERFACE);
             }
             // known device specific hacks
             if (strcmp(revision, "PMAP") == 0)
@@ -2435,9 +2720,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             {
                 device->drive_info.passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly = true;
             }
-            if (device->drive_info.interface_type != USB_INTERFACE)
+            if (get_Device_InterfaceType(device) != USB_INTERFACE)
             {
-                device->drive_info.interface_type = USB_INTERFACE;
+                set_Device_InterfaceType(device, USB_INTERFACE);
             }
         }
         else
@@ -2525,9 +2810,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             {
                 passthroughTypeSet                                  = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
-                if (device->drive_info.interface_type != USB_INTERFACE)
+                if (get_Device_InterfaceType(device) != USB_INTERFACE)
                 {
-                    device->drive_info.interface_type = USB_INTERFACE;
+                    set_Device_InterfaceType(device, USB_INTERFACE);
                 }
             }
         }
@@ -2581,9 +2866,9 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
                 safe_memset(vendorID, INQ_DATA_T10_VENDOR_ID_LEN + 1, 0, INQ_DATA_T10_VENDOR_ID_LEN);
                 passthroughTypeSet                                  = true;
                 device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_CYPRESS;
-                if (device->drive_info.interface_type != USB_INTERFACE)
+                if (get_Device_InterfaceType(device) != USB_INTERFACE)
                 {
-                    device->drive_info.interface_type = USB_INTERFACE;
+                    set_Device_InterfaceType(device, USB_INTERFACE);
                 }
             }
         }
@@ -2591,7 +2876,8 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
     return passthroughTypeSet;
 }
 
-bool is_LaCie_USB_Vendor_ID(const char* t10VendorIdent)
+OPENSEA_TRANSPORT_API
+OPENSEA_TRANSPORT_API bool is_LaCie_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
     {
@@ -2610,7 +2896,8 @@ bool is_LaCie_USB_Vendor_ID(const char* t10VendorIdent)
     }
 }
 
-bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent)
+OPENSEA_TRANSPORT_API
+OPENSEA_TRANSPORT_API bool is_Seagate_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
     {
@@ -2629,7 +2916,8 @@ bool is_Seagate_USB_Vendor_ID(const char* t10VendorIdent)
     }
 }
 
-bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent)
+OPENSEA_TRANSPORT_API
+OPENSEA_TRANSPORT_API bool is_Seagate_SAS_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
     {
@@ -2652,7 +2940,9 @@ bool is_Seagate_SAS_Vendor_ID(const char* t10VendorIdent)
 // This function can still exist and just call that for the vendor IDs
 // Then in ATA layer and NVMe layer they can do their own evaluation and
 // call into the same main cleanup function since the same 0-padding exists in those interfaces.
-void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerialNumber, size_t unitSNSize)
+OPENSEA_TRANSPORT_API void seagate_Serial_Number_Cleanup(const char* M_NONNULL t10VendorIdent,
+                                                         char** M_NONNULL      unitSerialNumber,
+                                                         size_t                unitSNSize)
 {
     if (t10VendorIdent && unitSerialNumber && *unitSerialNumber)
     {
@@ -2670,11 +2960,11 @@ void seagate_Serial_Number_Cleanup(const char* t10VendorIdent, char** unitSerial
     }
 }
 
-// \fn fill_In_Device_Info(device device)
+// \fn fill_In_Device_Info(device M_NONNULL device)
 // \brief Sends a set of INQUIRY commands & fills in the device information
 // \param device device struture
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-eReturnValues fill_In_Device_Info(tDevice* device)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* device)
 {
     int        ret              = FAILURE;
     bool       mediumNotPresent = false; // assume medium is available until we find out otherwise.
@@ -2698,8 +2988,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         }
     }
 
-    inq_buf =
-        C_CAST(uint8_t*, calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), device->os_info.minimumAlignment));
+    inq_buf = C_CAST(uint8_t*,
+                     calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
     if (!inq_buf)
     {
         perror("Error allocating memory for standard inquiry data (scsi)");
@@ -2745,7 +3035,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         {
         case 0:
             version = SCSI_VERSION_NO_STANDARD;
-            if (device->drive_info.interface_type != USB_INTERFACE &&
+            if (get_Device_InterfaceType(device) != USB_INTERFACE &&
                 !device->drive_info.passThroughHacks.hacksSetByReportedID)
             {
                 checkForSAT =
@@ -2756,7 +3046,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             break;
         case 0x81:
             version = SCSI_VERSION_SCSI; // changing to 1 for SCSI
-            if (device->drive_info.interface_type != USB_INTERFACE &&
+            if (get_Device_InterfaceType(device) != USB_INTERFACE &&
                 !device->drive_info.passThroughHacks.hacksSetByReportedID)
             {
                 checkForSAT =
@@ -2793,34 +3083,34 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         switch (peripheralDeviceType)
         {
         case PERIPHERAL_DIRECT_ACCESS_BLOCK_DEVICE:
-            device->drive_info.media_type =
-                MEDIA_HDD; // this may not be correct because it may be SSD or USB Flash drive which use this same code
+            // this may not be correct because it may be SSD or USB Flash drive which use this same code
+            set_Device_MediaType(device, MEDIA_HDD);
             break;
         case PERIPHERAL_HOST_MANAGED_ZONED_BLOCK_DEVICE:
-            device->drive_info.media_type =
-                MEDIA_HDD; // this may not be correct because it may be SSD or USB Flash drive which use this same code
+            // this may not be correct because it may be SSD or USB Flash drive which use this same code
+            set_Device_MediaType(device, MEDIA_HDD);
             device->drive_info.zonedType = ZONED_TYPE_HOST_MANAGED;
             break;
         case PERIPHERAL_SEQUENTIAL_ACCESS_BLOCK_DEVICE:
-            device->drive_info.media_type = MEDIA_TAPE;
-            checkForSAT                   = false;
+            set_Device_MediaType(device, MEDIA_TAPE);
+            checkForSAT = false;
             break;
         case PERIPHERAL_WRITE_ONCE_DEVICE:
         case PERIPHERAL_CD_DVD_DEVICE:
         case PERIPHERAL_OPTICAL_MEMORY_DEVICE:
         case PERIPHERAL_OPTICAL_CARD_READER_WRITER_DEVICE:
-            device->drive_info.media_type = MEDIA_OPTICAL;
-            checkForSAT                   = false;
+            set_Device_MediaType(device, MEDIA_OPTICAL);
+            checkForSAT = false;
             break;
         case PERIPHERAL_STORAGE_ARRAY_CONTROLLER_DEVICE:
-            device->drive_info.media_type = MEDIA_HDD;
-            checkForSAT                   = false;
+            set_Device_MediaType(device, MEDIA_HDD);
+            checkForSAT = false;
             break;
         case PERIPHERAL_SIMPLIFIED_DIRECT_ACCESS_DEVICE: // some USB flash drives show up as this according to the USB
                                                          // mass storage specification...but unfortunately all the ones
                                                          // I've tested show up as Direct Access Block Device just like
                                                          // an HDD :(
-            device->drive_info.media_type = MEDIA_SSM_FLASH;
+            set_Device_MediaType(device, MEDIA_SSM_FLASH);
             if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
             {
                 checkForSAT = false;
@@ -2850,9 +3140,9 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         case PERIPHERAL_WELL_KNOWN_LOGICAL_UNIT:
         case PERIPHERAL_UNKNOWN_OR_NO_DEVICE_TYPE:
         default:
-            readCapacity                  = false;
-            checkForSAT                   = false;
-            device->drive_info.media_type = MEDIA_UNKNOWN;
+            readCapacity = false;
+            checkForSAT  = false;
+            set_Device_MediaType(device, MEDIA_UNKNOWN);
             break;
         }
 
@@ -2888,21 +3178,21 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         }
 
         // special USB detection case. If not already USB interface, do a few more checks to get the interface correct
-        if (device->drive_info.interface_type == SCSI_INTERFACE)
+        if (get_Device_InterfaceType(device) == SCSI_INTERFACE)
         {
             if (foundUSBStandardDescriptor)
             {
-                device->drive_info.interface_type = USB_INTERFACE;
+                set_Device_InterfaceType(device, USB_INTERFACE);
             }
 
             // Only rely on this as a last resort. Try using version descriptors when possible
             // NOTE: This is different from SAS where the ID is in all CAPS, which makes this identification possible.
             // TODO: LaCie? Need to make sure this only catches USB and not something else like thunderbolt
-            if (device->drive_info.interface_type == SCSI_INTERFACE)
+            if (get_Device_InterfaceType(device) == SCSI_INTERFACE)
             {
                 if (is_Seagate_USB_Vendor_ID(device->drive_info.T10_vendor_ident))
                 {
-                    device->drive_info.interface_type = USB_INTERFACE;
+                    set_Device_InterfaceType(device, USB_INTERFACE);
                 }
             }
         }
@@ -2917,7 +3207,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             // check that response format is 2 (or higher). SAT spec says the response format should be set to 2
             // Not checking this on USB since some adapters set this purposely to avoid certain commands, BUT DO support
             // SAT
-            if (M_Nibble0(inq_buf[3]) < 2 && device->drive_info.interface_type != USB_INTERFACE)
+            if (M_Nibble0(inq_buf[3]) < 2 && get_Device_InterfaceType(device) != USB_INTERFACE)
             {
                 checkForSAT = false;
             }
@@ -2983,7 +3273,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             // will be most useful. Not sure about the others, but I doubt many controllers will set them...certainly no
             // USB device will.
             if ((inq_buf[6] & BIT5 || inq_buf[7] & BIT0) &&
-                (device->drive_info.interface_type != USB_INTERFACE)) // vendor specific bits. Ignore USB Interface
+                (get_Device_InterfaceType(device) != USB_INTERFACE)) // vendor specific bits. Ignore USB Interface
             {
                 checkForSAT = false;
             }
@@ -2998,9 +3288,9 @@ eReturnValues fill_In_Device_Info(tDevice* device)
              device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_UNKNOWN))
         {
             // DO NOT set the drive type to NVMe here. We need to treat it as a SCSI device since we can only issue SCSI
-            // translatable commands!!! device->drive_info.drive_type  = NVME_DRIVE;
-            device->drive_info.media_type = MEDIA_NVM;
-            checkForSAT                   = false;
+            // translatable commands!!! set_Device_DriveType(device, NVME_DRIVE);
+            set_Device_MediaType(device, MEDIA_NVM);
+            checkForSAT = false;
         }
         else if (device->drive_info.passThroughHacks.hacksSetByReportedID &&
                  device->drive_info.passThroughHacks.passthroughType == PASSTHROUGH_NONE)
@@ -3025,8 +3315,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             {
                 // TODO: We have "FLASH_DRIVE" as a type, but it won't ba handled well in the rest of the library.
                 //       Either need to start using it, or make more changes to handle it better -TJE
-                // device->drive_info.drive_type = FLASH_DRIVE;
-                device->drive_info.media_type = MEDIA_SSM_FLASH;
+                // set_Device_DriveType(device, FLASH_DRIVE);
+                set_Device_MediaType(device, MEDIA_SSM_FLASH);
                 if (strcmp(device->drive_info.product_identification, "Compact Flash") != 0 || mediumNotPresent)
                 {
                     // Only check for SAT on compact flash since it uses ATA commands. May need another case for CFast
@@ -3071,10 +3361,10 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                     // will attempt to check for full passthrough support first
                     uint8_t* nvmeIdentify =
                         M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(NVME_IDENTIFY_DATA_LEN, sizeof(uint8_t),
-                                                                         device->os_info.minimumAlignment));
+                                                                         get_Device_IO_Minimum_Alignment(device)));
                     bool fullCmdSupport = false;
                     // setup hacks/flags common for both types of passthrough
-                    device->drive_info.drive_type                                           = NVME_DRIVE;
+                    set_Device_DriveType(device, NVME_DRIVE);
                     device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                     device->drive_info.passThroughHacks.turfValue                           = 33;
                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
@@ -3194,7 +3484,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         //    // will not be present at all, so we can use this to filter between the drives.
         //}
 
-        if (device->drive_info.interface_type == SCSI_INTERFACE &&
+        if (get_Device_InterfaceType(device) == SCSI_INTERFACE &&
             is_Seagate_SAS_Vendor_ID(device->drive_info.T10_vendor_ident))
         {
             // do NOT do a SAT check. For some reason sometimes a combo of HBA and some SAS drives will respond with no
@@ -3223,10 +3513,10 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             // (which is good enough for now)
             if (checkForSAT && device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON &&
                 (satVersionDescriptorFound || strncmp(device->drive_info.T10_vendor_ident, "ATA", 3) == 0 ||
-                 device->drive_info.interface_type == USB_INTERFACE ||
-                 device->drive_info.interface_type == IEEE_1394_INTERFACE ||
-                 device->drive_info.interface_type == IDE_INTERFACE) &&
-                (device->drive_info.drive_type != ATAPI_DRIVE && device->drive_info.drive_type != LEGACY_TAPE_DRIVE))
+                 get_Device_InterfaceType(device) == USB_INTERFACE ||
+                 get_Device_InterfaceType(device) == IEEE_1394_INTERFACE ||
+                 get_Device_InterfaceType(device) == IDE_INTERFACE) &&
+                (get_Device_DriveType(device) != ATAPI_DRIVE && get_Device_DriveType(device) != LEGACY_TAPE_DRIVE))
             {
                 ret = fill_In_ATA_Drive_Info(device);
                 if (ret != SUCCESS && checkJMicronNVMe)
@@ -3238,7 +3528,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                         device->drive_info.passThroughHacks.turfValue                           = 13;
                         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true; // set this so in
-                        device->drive_info.drive_type                                   = NVME_DRIVE;
+                        set_Device_DriveType(device, NVME_DRIVE);
                         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
                         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
                         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -3274,7 +3564,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 uint8_t  unitSerialNumberPageLength = SERIAL_NUM_LEN + 4; // adding 4 bytes extra for the header
                 uint8_t* unitSerialNumber =
                     M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t),
-                                                                     device->os_info.minimumAlignment));
+                                                                     get_Device_IO_Minimum_Alignment(device)));
                 if (!unitSerialNumber)
                 {
                     perror("Error allocating memory to read the unit serial number");
@@ -3338,7 +3628,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             {
                 uint8_t* deviceIdentification =
                     M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t),
-                                                                     device->os_info.minimumAlignment));
+                                                                     get_Device_IO_Minimum_Alignment(device)));
                 if (!deviceIdentification)
                 {
                     perror("Error allocating memory to read device identification VPD page");
@@ -3371,7 +3661,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                         device->drive_info.passThroughHacks.turfValue                           = 13;
                         device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true; // set this so in
-                        device->drive_info.drive_type                                   = NVME_DRIVE;
+                        set_Device_DriveType(device, NVME_DRIVE);
                         device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
                         device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
                         device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -3395,8 +3685,8 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             return ret;
         }
 
-        if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2 && device->drive_info.interface_type != USB_INTERFACE &&
-            device->drive_info.interface_type != IEEE_1394_INTERFACE)
+        if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2 && get_Device_InterfaceType(device) != USB_INTERFACE &&
+            get_Device_InterfaceType(device) != IEEE_1394_INTERFACE)
         {
             // Issue report LUNs to figure out how many logical units are present.
             DECLARE_ZERO_INIT_ARRAY(uint8_t, reportLuns,
@@ -3535,7 +3825,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                     uint8_t  unitSerialNumberPageLength = SERIAL_NUM_LEN + 4; // adding 4 bytes extra for the header
                     uint8_t* unitSerialNumber =
                         M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(unitSerialNumberPageLength, sizeof(uint8_t),
-                                                                         device->os_info.minimumAlignment));
+                                                                         get_Device_IO_Minimum_Alignment(device)));
                     if (!unitSerialNumber)
                     {
                         perror("Error allocating memory to read the unit serial number");
@@ -3577,7 +3867,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 {
                     uint8_t* deviceIdentification =
                         M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(INQ_RETURN_DATA_LENGTH, sizeof(uint8_t),
-                                                                         device->os_info.minimumAlignment));
+                                                                         get_Device_IO_Minimum_Alignment(device)));
                     if (!deviceIdentification)
                     {
                         perror("Error allocating memory to read device identification VPD page");
@@ -3625,7 +3915,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                                     device->drive_info.passThroughHacks.turfValue                           = 13;
                                     device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
                                         true; // set this so in
-                                    device->drive_info.drive_type = NVME_DRIVE;
+                                    set_Device_DriveType(device, NVME_DRIVE);
                                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
                                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
                                     device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -3655,7 +3945,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 {
                     uint8_t* blockDeviceCharacteristics = M_REINTERPRET_CAST(
                         uint8_t*, safe_calloc_aligned(VPD_BLOCK_DEVICE_CHARACTERISTICS_LEN, sizeof(uint8_t),
-                                                      device->os_info.minimumAlignment));
+                                                      get_Device_IO_Minimum_Alignment(device)));
                     if (!blockDeviceCharacteristics)
                     {
                         perror("Error allocating memory to read block device characteistics VPD page");
@@ -3670,7 +3960,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                             uint16_t mediumRotationRate =
                                 M_BytesTo2ByteValue(blockDeviceCharacteristics[4], blockDeviceCharacteristics[5]);
                             uint8_t productType = blockDeviceCharacteristics[6];
-                            if (device->drive_info.media_type !=
+                            if (get_Device_MediaType(device) !=
                                 MEDIA_SSM_FLASH) // if this is already set, we don't want to change it because this is a
                                                  // helpful filter for some card-reader type devices.
                             {
@@ -3678,14 +3968,14 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                                 {
                                     if (!satVPDPageRead)
                                     {
-                                        device->drive_info.media_type = MEDIA_SSD;
+                                        set_Device_MediaType(device, MEDIA_SSD);
                                     }
                                 }
                                 else if (mediumRotationRate >= 0x401 && mediumRotationRate <= 0xFFFE)
                                 {
                                     if (!satVPDPageRead)
                                     {
-                                        device->drive_info.media_type = MEDIA_HDD;
+                                        set_Device_MediaType(device, MEDIA_HDD);
                                     }
                                     if (checkJMicronNVMe)
                                     {
@@ -3706,7 +3996,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                             case 0x07: // Universal Flash Storage
                                 if (!satVPDPageRead)
                                 {
-                                    device->drive_info.media_type = MEDIA_SSM_FLASH;
+                                    set_Device_MediaType(device, MEDIA_SSM_FLASH);
                                 }
                                 break;
                             default: // not indicated or reserved or vendor unique so do nothing
@@ -3775,14 +4065,15 @@ eReturnValues fill_In_Device_Info(tDevice* device)
             safe_memset(&readCapData, sizeof(readCapacityData), 0, sizeof(readCapacityData));
             if (SUCCESS == scsi_Read_Capacity_Cmd_Helper(device, &readCapData))
             {
-                device->drive_info.deviceBlockSize = readCapData.logicalBlockLength;
-                device->drive_info.deviceMaxLba    = readCapData.returnedLBA;
+                set_Device_BlockSize(device, readCapData.logicalBlockLength);
+                set_Device_MaxLba(device, readCapData.returnedLBA);
                 if (readCapData.readCap16)
                 {
-                    device->drive_info.devicePhyBlockSize =
+                    set_Device_PhyBlockSize(
+                        device,
                         readCapData.logicalBlockLength *
-                        M_STATIC_CAST(uint32_t, power_Of_Two(readCapData.logicalBlocksPerPhysicalBlockExponent));
-                    device->drive_info.sectorAlignment       = readCapData.lowestAlignedLogicalBlock;
+                            M_STATIC_CAST(uint32_t, power_Of_Two(readCapData.logicalBlocksPerPhysicalBlockExponent)));
+                    set_Device_Sector_Alignment(device, readCapData.lowestAlignedLogicalBlock);
                     device->drive_info.currentProtectionType = readCapData.ptype;
                     device->drive_info.piExponent            = readCapData.piexponent;
                     if (readCapData.protectionEnabled || readCapData.ptype != 0)
@@ -3792,17 +4083,9 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 }
                 else
                 {
-                    device->drive_info.devicePhyBlockSize = readCapData.logicalBlockLength;
+                    set_Device_PhyBlockSize(device, readCapData.logicalBlockLength);
                 }
             }
-            else
-            {
-                device->drive_info.devicePhyBlockSize = 1; // to prevent divide by zero in some places.
-            }
-        }
-        else
-        {
-            device->drive_info.devicePhyBlockSize = 1; // to prevent divide by zero in some places.
         }
 
         // NOTE: You would think that checking if physical and logical block sizes don't match you can filter NVMe (they
@@ -3814,15 +4097,15 @@ eReturnValues fill_In_Device_Info(tDevice* device)
         eReturnValues satCheck = FAILURE;
         // if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just
         // issue a SAT identify in here to set things up...might reduce multiple commands later
-        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (device->drive_info.drive_type != RAID_DRIVE) &&
-            (device->drive_info.drive_type != NVME_DRIVE) && device->drive_info.media_type != MEDIA_UNKNOWN &&
+        if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (get_Device_DriveType(device) != RAID_DRIVE) &&
+            (get_Device_DriveType(device) != NVME_DRIVE) && get_Device_MediaType(device) != MEDIA_UNKNOWN &&
             device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
         {
             satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
         }
 
         bool checkRealtekNVMe = false;
-        if (satCheck == SUCCESS && device->drive_info.bridge_info.childDeviceMaxLba == 0 &&
+        if (satCheck == SUCCESS && return_Device_Child_MaxLba(device) == 0 &&
             safe_strlen(device->drive_info.bridge_info.childDriveMN) &&
             safe_strlen(device->drive_info.bridge_info.childDriveSN) &&
             safe_strlen(device->drive_info.bridge_info.childDriveFW) &&
@@ -3852,10 +4135,10 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 ret = fill_In_NVMe_Device_Info(device);
                 if (ret == SUCCESS && checkJMicronNVMe)
                 {
-                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
-                    device->drive_info.passThroughHacks.turfValue                             = 13;
-                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported           = true; // set this so in
-                    device->drive_info.drive_type                                             = NVME_DRIVE;
+                    device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
+                    device->drive_info.passThroughHacks.turfValue                           = 13;
+                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported         = true; // set this so in
+                    set_Device_DriveType(device, NVME_DRIVE);
                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported   = true;
                     device->drive_info.passThroughHacks.scsiHacks.securityProtocolWithInc512  = false;
                     device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
@@ -3872,7 +4155,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 {
                     if (device->drive_info.passThroughHacks.passthroughType == NVME_PASSTHROUGH_REALTEK_BASIC)
                     {
-                        device->drive_info.drive_type                                           = NVME_DRIVE;
+                        set_Device_DriveType(device, NVME_DRIVE);
                         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                         device->drive_info.passThroughHacks.turfValue                           = 34;
                         device->drive_info.passThroughHacks.scsiHacks.readWrite.available       = true;
@@ -3924,7 +4207,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
                 }
                 else if (ret == SUCCESS)
                 {
-                    device->drive_info.drive_type = NVME_DRIVE;
+                    set_Device_DriveType(device, NVME_DRIVE);
                 }
                 else
                 {
@@ -3936,19 +4219,16 @@ eReturnValues fill_In_Device_Info(tDevice* device)
     }
     else
     {
-        if (VERBOSITY_DEFAULT < device->deviceVerbosity)
-        {
-            print_str("Getting Standard Inquiry Data Failed\n");
-        }
+        print_tDevice_Verbose_String(device, VERBOSITY_DEFAULT, "Standard Inquiry Failed\n");
         ret = COMMAND_FAILURE;
     }
     safe_free_aligned(&inq_buf);
 
 #ifdef _DEBUG
     print_str("\nscsi helper\n");
-    printf("Drive type: %d\n", device->drive_info.drive_type);
-    printf("Interface type: %d\n", device->drive_info.interface_type);
-    printf("Media type: %d\n", device->drive_info.media_type);
+    printf("Drive type: %d\n", get_Device_DriveType(device));
+    printf("Interface type: %d\n", get_Device_InterfaceType(device));
+    printf("Media type: %d\n", get_Device_MediaType(device));
     printf("%s: <--\n", __FUNCTION__);
 #endif
     return ret;
@@ -3957,7 +4237,7 @@ eReturnValues fill_In_Device_Info(tDevice* device)
 // this is a look up that makes use of the formula in SPC spec for how versions are set. Formula is ((standard x 32) +
 // revision) The simplest thing to do is take the version descriptor and divide it by 32. Using iteger division we can
 // check if that matches the standard we're looking for. - TJE
-bool is_Standard_Supported(uint16_t versionDescriptor, eStandardCode standardCode)
+OPENSEA_TRANSPORT_API bool is_Standard_Supported(uint16_t versionDescriptor, eStandardCode standardCode)
 {
     // SPC defines the version descriptor codes.
     // To convert it to a standard, divide it by 32 as indicated in the formula in the annex-TJE
@@ -3979,7 +4259,7 @@ typedef struct s_scsiVersionDescriptor
 
 // This must be kept in order.
 // This list was created using https://www.t10.org/lists/stds-num.txt
-static scsiVersionDescriptor scsiVersionDescriptorTable[] = {
+static const scsiVersionDescriptor scsiVersionDescriptorTable[] = {
     {0x0000, "Version Descriptor Not Supported or No Standard Identified     "},
     {0x0020, "SAM (no version claimed)                                       "},
     {0x003B, "SAM T10/0994-D revision 18                                     "},
@@ -4582,23 +4862,25 @@ static scsiVersionDescriptor scsiVersionDescriptorTable[] = {
 };
 
 // Used with bsearch to get the string
-static int cmp_Version_Descriptor(scsiVersionDescriptor* a, scsiVersionDescriptor* b)
+static int cmp_Version_Descriptor(const void* a, const void* b)
 {
-    return (a->versionCode - b->versionCode);
+    const scsiVersionDescriptor* verA = M_REINTERPRET_CAST(const scsiVersionDescriptor*, a);
+    const scsiVersionDescriptor* verB = M_REINTERPRET_CAST(const scsiVersionDescriptor*, b);
+    return (verA->versionCode - verB->versionCode);
 }
 
-void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* versionString)
+OPENSEA_TRANSPORT_API void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* M_NONNULL versionString)
 {
     // use binary search to find it from the massive list above
     // If that fails, fall into the switch below as a fall-back
-    scsiVersionDescriptor* versionDescriptorResult = M_NULLPTR;
-    scsiVersionDescriptor  versionDescriptorKey    = {versionDescriptor, M_NULLPTR};
+    const scsiVersionDescriptor* versionDescriptorResult = M_NULLPTR;
+    scsiVersionDescriptor        versionDescriptorKey    = {versionDescriptor, M_NULLPTR};
 
-    versionDescriptorResult = C_CAST(
-        scsiVersionDescriptor*,
-        safe_bsearch(&versionDescriptorKey, scsiVersionDescriptorTable,
-                     sizeof(scsiVersionDescriptorTable) / sizeof(scsiVersionDescriptorTable[0]),
-                     sizeof(scsiVersionDescriptorTable[0]), (int (*)(const void*, const void*))cmp_Version_Descriptor));
+    versionDescriptorResult = M_REINTERPRET_CAST(
+        const scsiVersionDescriptor*,
+        safe_bsearch(&versionDescriptorKey, M_REINTERPRET_CAST(const void*, scsiVersionDescriptorTable),
+                     SIZE_OF_STACK_ARRAY(scsiVersionDescriptorTable), sizeof(scsiVersionDescriptorTable[0]),
+                     cmp_Version_Descriptor));
     if (versionDescriptorResult)
     {
         snprintf_err_handle(versionString, MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "%s",
@@ -5061,12 +5343,12 @@ void decypher_SCSI_Version_Descriptors(uint16_t versionDescriptor, char* version
     }
 }
 
-void get_mode_param_header_6_fields(uint8_t* ptrMP,
-                                    uint32_t mpHeaderLen,
-                                    uint8_t* modeDataLength,
-                                    uint8_t* mediumType,
-                                    uint8_t* devSpecific,
-                                    uint8_t* blockDescriptorLenth)
+OPENSEA_TRANSPORT_API void get_mode_param_header_6_fields(uint8_t* M_NONNULL  ptrMP,
+                                                          uint32_t            mpHeaderLen,
+                                                          uint8_t* M_NULLABLE modeDataLength,
+                                                          uint8_t* M_NULLABLE mediumType,
+                                                          uint8_t* M_NULLABLE devSpecific,
+                                                          uint8_t*            blockDescriptorLenth)
 {
 
     if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_6_LEN)
@@ -5090,13 +5372,13 @@ void get_mode_param_header_6_fields(uint8_t* ptrMP,
     }
 }
 
-void get_mode_param_header_10_fields(uint8_t*  ptrMP,
-                                     uint32_t  mpHeaderLen,
-                                     uint16_t* modeDataLength,
-                                     uint8_t*  mediumType,
-                                     uint8_t*  devSpecific,
-                                     bool*     longLBA,
-                                     uint16_t* blockDescriptorLenth)
+OPENSEA_TRANSPORT_API void get_mode_param_header_10_fields(uint8_t* M_NONNULL   ptrMP,
+                                                           uint32_t             mpHeaderLen,
+                                                           uint16_t* M_NULLABLE modeDataLength,
+                                                           uint8_t* M_NULLABLE  mediumType,
+                                                           uint8_t* M_NULLABLE  devSpecific,
+                                                           bool* M_NULLABLE     longLBA,
+                                                           uint16_t*            blockDescriptorLenth)
 {
 
     if (ptrMP != M_NULLPTR && mpHeaderLen >= MODE_PARAMETER_HEADER_10_LEN)
@@ -5126,11 +5408,11 @@ void get_mode_param_header_10_fields(uint8_t*  ptrMP,
     }
 }
 
-void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
-                                              uint32_t  mpBlkDescLen,
-                                              uint8_t*  densityCode,
-                                              uint32_t* numberOfBlocks,
-                                              uint32_t* blockLength)
+OPENSEA_TRANSPORT_API void get_mode_general_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
+                                                                    uint32_t             mpBlkDescLen,
+                                                                    uint8_t* M_NULLABLE  densityCode,
+                                                                    uint32_t* M_NULLABLE numberOfBlocks,
+                                                                    uint32_t*            blockLength)
 {
 
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= GENERAL_BLOCK_DESCRIPTOR_LEN)
@@ -5158,10 +5440,10 @@ void get_mode_general_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
     }
 }
 
-void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
-                                            uint32_t  mpBlkDescLen,
-                                            uint32_t* numberOfBlocks,
-                                            uint32_t* blockLength)
+OPENSEA_TRANSPORT_API void get_mode_short_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
+                                                                  uint32_t             mpBlkDescLen,
+                                                                  uint32_t* M_NULLABLE numberOfBlocks,
+                                                                  uint32_t*            blockLength)
 {
 
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= SHORT_LBA_BLOCK_DESCRIPTOR_LEN)
@@ -5185,10 +5467,10 @@ void get_mode_short_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
     }
 }
 
-void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
-                                           uint32_t  mpBlkDescLen,
-                                           uint64_t* numberOfBlocks,
-                                           uint64_t* blockLength)
+OPENSEA_TRANSPORT_API void get_mode_long_block_descriptor_fields(uint8_t* M_NONNULL   ptrMPblkDesk,
+                                                                 uint32_t             mpBlkDescLen,
+                                                                 uint64_t* M_NULLABLE numberOfBlocks,
+                                                                 uint64_t*            blockLength)
 {
 
     if (ptrMPblkDesk != M_NULLPTR && mpBlkDescLen >= LONG_LBA_BLOCK_DESCRIPTOR_LEN)
@@ -5212,16 +5494,16 @@ void get_mode_long_block_descriptor_fields(uint8_t*  ptrMPblkDesk,
     }
 }
 
-void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
-                                         uint8_t*  ptr,
-                                         uint32_t  totalDataLen,
-                                         uint16_t* modeDataLength,
-                                         uint8_t*  mediumType,
-                                         uint8_t*  devSpecific,
-                                         bool*     longLBA,
-                                         uint16_t* blockDescriptorLenth,
-                                         uint64_t* numberOfBlocks,
-                                         uint64_t* blockLength)
+OPENSEA_TRANSPORT_API void get_SBC_Mode_Header_Blk_Desc_Fields(bool                 sixByteCmd,
+                                                               uint8_t* M_NONNULL   ptr,
+                                                               uint32_t             totalDataLen,
+                                                               uint16_t* M_NULLABLE modeDataLength,
+                                                               uint8_t* M_NULLABLE  mediumType,
+                                                               uint8_t* M_NULLABLE  devSpecific,
+                                                               bool* M_NULLABLE     longLBA,
+                                                               uint16_t* M_NULLABLE blockDescriptorLenth,
+                                                               uint64_t* M_NULLABLE numberOfBlocks,
+                                                               uint64_t*            blockLength)
 {
 
     if (ptr != M_NULLPTR)
@@ -5297,7 +5579,9 @@ void get_SBC_Mode_Header_Blk_Desc_Fields(bool      sixByteCmd,
     }
 }
 
-bool check_Sense_For_Specific_Info(const uint8_t* senseData, uint32_t senseLen, senseToCheck check)
+OPENSEA_TRANSPORT_API bool check_Sense_For_Specific_Info(const uint8_t* M_NONNULL senseData,
+                                                         uint32_t                 senseLen,
+                                                         senseToCheck             check)
 {
     bool             match = true;
     eSenseMatchDepth depth = SENSE_MATCH_SENSE_KEY;
@@ -5338,67 +5622,67 @@ bool check_Sense_For_Specific_Info(const uint8_t* senseData, uint32_t senseLen, 
     return match;
 }
 
-bool is_Invalid_Opcode(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Invalid_Opcode(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x20, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Invalid_Field_In_CDB(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Invalid_Field_In_CDB(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x24, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Invalid_Field_In_Parameter(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Invalid_Field_In_Parameter(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x25, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Format_Corrupt(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Format_Corrupt(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_MEDIUM_ERROR, 0x31, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Media_Present(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Media_Present(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASC, SENSE_KEY_MEDIUM_ERROR, 0x3A, 0x00, 0x00};
     return !check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool did_Reset_Occur(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool did_Reset_Occur(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASC, SENSE_KEY_UNIT_ATTENTION, 0x29, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Microcode_Activation_Required(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Microcode_Activation_Required(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_NOT_READY, 0x04, 0x1E, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Command_Sequence_Error(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Command_Sequence_Error(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x2C, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_Unaligned_Write(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_Unaligned_Write(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0x04, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_LBA_Out_Of_Range(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_LBA_Out_Of_Range(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_ILLEGAL_REQUEST, 0x21, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);
 }
 
-bool is_HW_Error_No_Defect_Spare_Available(const uint8_t* senseData, uint32_t senseLen)
+OPENSEA_TRANSPORT_API bool is_HW_Error_No_Defect_Spare_Available(const uint8_t* M_NONNULL senseData, uint32_t senseLen)
 {
     senseToCheck check = {SENSE_MATCH_ASCQ, SENSE_KEY_HARDWARE_ERROR, 0x32, 0x00, 0x00};
     return check_Sense_For_Specific_Info(senseData, senseLen, check);

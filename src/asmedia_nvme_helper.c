@@ -131,7 +131,8 @@ static eReturnValues build_Basic_Passthrough_CDB(nvmeCmdCtx* nvmCmd, uint8_t* cd
     return ret;
 }
 
-eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx* nvmCmd)
+M_PARAM_RW(1)
+eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PASSTHROUGH_CDB_SIZE);
@@ -148,12 +149,16 @@ eReturnValues send_ASMedia_Basic_NVMe_Passthrough_Cmd(nvmeCmdCtx* nvmCmd)
     return ret;
 }
 
-static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t*                 cdb,
+M_PARAM_WO(1)
+M_PARAM_WO(2)
+M_PARAM_RW(5)
+M_NONNULL_IF_NONZERO_SIZE(6, 7)
+static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t* M_NONNULL       cdb,
                                                       eDataTransferDirection*  cdbDataDirection,
                                                       eASM_NVMPacket_Operation asmOperation,
                                                       uint8_t                  parameter1,
-                                                      nvmeCmdCtx*              nvmCmd,
-                                                      uint8_t*                 dataPtr,
+                                                      nvmeCmdCtx* M_NULLABLE   nvmCmd,
+                                                      uint8_t* M_NULLABLE      dataPtr,
                                                       uint32_t                 dataSize)
 {
     eReturnValues ret = SUCCESS;
@@ -474,7 +479,8 @@ static eReturnValues build_ASMedia_Packet_Command_CDB(uint8_t*                 c
 
 // NOTE: There is currently a bug in this code on the data phase command being rejected for invalid field in CDB.
 //       This will debugged once I get a device in hand to figure out what is going wrong.
-eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
+M_PARAM_RW(1)
+eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
 {
     eReturnValues ret = SUCCESS;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, asmCDB, ASMEDIA_NVME_PACKET_CDB_SIZE);
@@ -497,8 +503,8 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     if (nvmCmd->ptrData && nvmCmd->dataSize > 0 && nvmCmd->dataSize % UINT32_C(512))
     {
         dataPhaseSize = uint32_round_up_power2(nvmCmd->dataSize, UINT32_C(512));
-        dataPhasePtr  = C_CAST(
-            uint8_t*, safe_calloc_aligned(dataPhaseSize, sizeof(uint8_t), nvmCmd->device->os_info.minimumAlignment));
+        dataPhasePtr  = C_CAST(uint8_t*, safe_calloc_aligned(dataPhaseSize, sizeof(uint8_t),
+                                                             get_Device_IO_Minimum_Alignment(nvmCmd->device)));
         if (dataPhasePtr == M_NULLPTR)
         {
             return MEMORY_FAILURE;
@@ -607,7 +613,8 @@ eReturnValues send_ASM_NVMe_Cmd(nvmeCmdCtx* nvmCmd)
     return ret;
 }
 
-static eReturnValues asm_nvme_Shutdown(const tDevice* device, bool withShutdownProcessing)
+M_PARAM_RO(1)
+static eReturnValues asm_nvme_Shutdown(const tDevice* M_NONNULL device, bool withShutdownProcessing)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -627,7 +634,8 @@ static eReturnValues asm_nvme_Shutdown(const tDevice* device, bool withShutdownP
     return ret;
 }
 
-static eReturnValues asm_nvme_Reset_Bridge(const tDevice* device)
+M_PARAM_RO(1)
+static eReturnValues asm_nvme_Reset_Bridge(const tDevice* M_NONNULL device)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -646,7 +654,8 @@ static eReturnValues asm_nvme_Reset_Bridge(const tDevice* device)
     return ret;
 }
 
-static eReturnValues asm_nvme_Relink_Bridge(const tDevice* device, bool normalShutdownBeforeDisconnect)
+M_PARAM_RO(1)
+static eReturnValues asm_nvme_Relink_Bridge(const tDevice* M_NONNULL device, bool normalShutdownBeforeDisconnect)
 {
     DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, ASMEDIA_NVME_PACKET_CDB_SIZE);
     eDataTransferDirection asmCDBDir = XFER_NO_DATA;
@@ -666,7 +675,8 @@ static eReturnValues asm_nvme_Relink_Bridge(const tDevice* device, bool normalSh
     return ret;
 }
 
-eReturnValues asm_nvme_Reset(const tDevice* device)
+M_PARAM_RO(1)
+eReturnValues asm_nvme_Reset(const tDevice* M_NONNULL device)
 {
     // shutdown, then reset bridge
     if (SUCCESS == asm_nvme_Shutdown(device, true))
@@ -694,7 +704,7 @@ eReturnValues asm_nvme_Reset(const tDevice* device)
     }
 }
 
-eReturnValues asm_nvme_Subsystem_Reset(const tDevice* device)
+M_PARAM_RO(1) eReturnValues asm_nvme_Subsystem_Reset(const tDevice* M_NONNULL device)
 {
     // relink USB command
     return asm_nvme_Relink_Bridge(device, true);

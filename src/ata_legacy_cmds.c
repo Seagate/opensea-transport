@@ -34,16 +34,16 @@
 // This file only contains commands that include retries today, but many old commands have a no-retries version.
 // These are not implemented as we want the retries. Can add these definitions if needed in the future.
 
-eReturnValues ata_Legacy_Format_Track(const tDevice* device,
-                                      uint8_t        feature,
-                                      uint8_t        sectorCount,
-                                      uint8_t        sectorNumber,
-                                      uint8_t        cylinderLow,
-                                      uint8_t        cylinderHigh,
-                                      uint8_t*       ptrData,
-                                      uint32_t       dataSize,
-                                      eAtaProtocol   protocol,
-                                      bool           lbaMode)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Format_Track(const tDevice* M_NONNULL device,
+                                                            uint8_t                  feature,
+                                                            uint8_t                  sectorCount,
+                                                            uint8_t                  sectorNumber,
+                                                            uint8_t                  cylinderLow,
+                                                            uint8_t                  cylinderHigh,
+                                                            uint8_t* M_NULLABLE      ptrData,
+                                                            uint32_t                 dataSize,
+                                                            eAtaProtocol             protocol,
+                                                            bool                     lbaMode)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
@@ -76,35 +76,19 @@ eReturnValues ata_Legacy_Format_Track(const tDevice* device,
     ataCommandOptions.tfr.CommandStatus = ATA_FORMAT_TRACK_CMD;
     ataCommandOptions.needRTFRs         = true; // vendor specific, but better to have it than not have it.
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (lbaMode)
-        {
-            print_str("Sending ATA Format Track\n");
-        }
-        else
-        {
-            print_str("Sending ATA Format Track (CHS)\n");
-        }
-    }
+    const char* formatTrackCmdName = lbaMode ? "Format Track" : "Format Track (CHS)";
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", formatTrackCmdName);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (lbaMode)
-        {
-            print_Return_Enum("Format Track", ret);
-        }
-        else
-        {
-            print_Return_Enum("Format Track (CHS)", ret);
-        }
-    }
+    print_tDevice_Return_Enum(device, formatTrackCmdName, ret);
     return ret;
 }
 
-eReturnValues ata_Legacy_Recalibrate(const tDevice* device, uint8_t lowCmdNibble, bool chsMode)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Recalibrate(const tDevice* M_NONNULL device,
+                                                           uint8_t                  lowCmdNibble,
+                                                           bool                     chsMode)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
@@ -119,48 +103,30 @@ eReturnValues ata_Legacy_Recalibrate(const tDevice* device, uint8_t lowCmdNibble
     }
     ataCommandOptions.tfr.CommandStatus |= M_Nibble0(lowCmdNibble);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (chsMode)
-        {
-            print_str("Sending ATA Recalibrate (CHS)\n");
-        }
-        else
-        {
-            print_str("Sending ATA Recalibrate\n");
-        }
-    }
+    const char* recalibrateCmdName = chsMode ? "Recalibrate (CHS)" : "Recalibrate";
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", recalibrateCmdName);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (chsMode)
-        {
-            print_Return_Enum("Recalibrate (CHS)", ret);
-        }
-        else
-        {
-            print_Return_Enum("Recalibrate", ret);
-        }
-    }
+    print_tDevice_Return_Enum(device, recalibrateCmdName, ret);
     return ret;
 }
 
-eReturnValues ata_Legacy_Read_DMA_CHS(const tDevice*         device,
-                                      uint16_t               cylinder,
-                                      uint8_t                head,
-                                      uint8_t                sector,
-                                      uint8_t*               ptrData,
-                                      M_ATTR_UNUSED uint16_t sectorCount,
-                                      uint32_t               dataSize,
-                                      bool                   extendedCmd)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_DMA_CHS(const tDevice* M_NONNULL device,
+                                                            uint16_t                 cylinder,
+                                                            uint8_t                  head,
+                                                            uint8_t                  sector,
+                                                            uint8_t* M_NONNULL       ptrData,
+                                                            M_ATTR_UNUSED uint16_t   sectorCount,
+                                                            uint32_t                 dataSize,
+                                                            bool                     extendedCmd)
 {
-    eReturnValues         ret               = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions = create_ata_dma_in_cmd(
         device, extendedCmd ? ATA_READ_DMA_EXT : ATA_READ_DMA_RETRY_CMD,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
@@ -172,50 +138,31 @@ eReturnValues ata_Legacy_Read_DMA_CHS(const tDevice*         device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_str("Sending ATA Read DMA Ext (CHS)\n");
-        }
-        else
-        {
-            print_str("Sending ATA Read DMA (CHS)\n");
-        }
-    }
+    const char* readDmaCHSCmdName = extendedCmd ? "Read DMA Ext (CHS)" : "Read DMA (CHS)";
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", readDmaCHSCmdName);
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_Return_Enum("Read DMA Ext (CHS)", ret);
-        }
-        else
-        {
-            print_Return_Enum("Read DMA (CHS)", ret);
-        }
-    }
+    print_tDevice_Return_Enum(device, readDmaCHSCmdName, ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Read_Multiple_CHS(const tDevice*         device,
-                                           uint16_t               cylinder,
-                                           uint8_t                head,
-                                           uint8_t                sector,
-                                           uint8_t*               ptrData,
-                                           M_ATTR_UNUSED uint16_t sectorCount,
-                                           uint32_t               dataSize,
-                                           bool                   extendedCmd)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Multiple_CHS(const tDevice* M_NONNULL device,
+                                                                 uint16_t                 cylinder,
+                                                                 uint8_t                  head,
+                                                                 uint8_t                  sector,
+                                                                 uint8_t* M_NONNULL       ptrData,
+                                                                 M_ATTR_UNUSED uint16_t   sectorCount,
+                                                                 uint32_t                 dataSize,
+                                                                 bool                     extendedCmd)
 {
-    eReturnValues         ret               = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions = create_ata_pio_in_cmd(
         device, extendedCmd ? ATA_READ_READ_MULTIPLE_EXT : ATA_READ_MULTIPLE_CMD,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
@@ -228,41 +175,22 @@ eReturnValues ata_Legacy_Read_Multiple_CHS(const tDevice*         device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_str("Sending ATA Read Multiple Ext (CHS)\n");
-        }
-        else
-        {
-            print_str("Sending ATA Read Multiple (CHS)\n");
-        }
-    }
+    const char* readMultipleCHSCmdName = extendedCmd ? "Read Multiple Ext (CHS)" : "Read Multiple (CHS)";
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", readMultipleCHSCmdName);
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_Return_Enum("Read Multiple Ext (CHS)", ret);
-        }
-        else
-        {
-            print_Return_Enum("Read Multiple (CHS)", ret);
-        }
-    }
+    print_tDevice_Return_Enum(device, readMultipleCHSCmdName, ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Set_Max_Address_CHS(const tDevice* device,
-                                             uint16_t       newMaxCylinder,
-                                             uint8_t        newMaxHead,
-                                             uint8_t        newMaxSector,
-                                             bool           volatileValue)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Set_Max_Address_CHS(const tDevice* M_NONNULL device,
+                                                                   uint16_t                 newMaxCylinder,
+                                                                   uint8_t                  newMaxHead,
+                                                                   uint8_t                  newMaxSector,
+                                                                   bool                     volatileValue)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_nondata_cmd(device, ATA_SET_MAX, ATA_CMD_TYPE_TASKFILE, false);
@@ -271,25 +199,20 @@ eReturnValues ata_Legacy_Set_Max_Address_CHS(const tDevice* device,
     {
         ataCommandOptions.tfr.SectorCount |= BIT0;
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Set Max (CHS)\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Set Max (CHS)\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Set Max (CHS)", ret);
-    }
+    print_tDevice_Return_Enum(device, "Set Max (CHS)", ret);
     return ret;
 }
 
-eReturnValues ata_Legacy_Set_Max_Address_Ext_CHS(const tDevice* device,
-                                                 uint16_t       newMaxCylinder,
-                                                 uint8_t        newMaxHead,
-                                                 uint8_t        newMaxSector,
-                                                 bool           volatileValue)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Set_Max_Address_Ext_CHS(const tDevice* M_NONNULL device,
+                                                                       uint16_t                 newMaxCylinder,
+                                                                       uint8_t                  newMaxHead,
+                                                                       uint8_t                  newMaxSector,
+                                                                       bool                     volatileValue)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
@@ -299,34 +222,29 @@ eReturnValues ata_Legacy_Set_Max_Address_Ext_CHS(const tDevice* device,
     {
         ataCommandOptions.tfr.SectorCount |= BIT0;
     }
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Set Native Max Address Ext (CHS)\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Set Native Max Address Ext (CHS)\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Set Native Max Address Ext (CHS)", ret);
-    }
+    print_tDevice_Return_Enum(device, "Set Native Max Address Ext (CHS)", ret);
     return ret;
 }
 
-eReturnValues ata_Legacy_Read_Sectors_CHS(const tDevice*         device,
-                                          uint16_t               cylinder,
-                                          uint8_t                head,
-                                          uint8_t                sector,
-                                          uint8_t*               ptrData,
-                                          M_ATTR_UNUSED uint16_t sectorCount,
-                                          uint32_t               dataSize,
-                                          bool                   extendedCmd)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Sectors_CHS(const tDevice* M_NONNULL device,
+                                                                uint16_t                 cylinder,
+                                                                uint8_t                  head,
+                                                                uint8_t                  sector,
+                                                                uint8_t* M_NONNULL       ptrData,
+                                                                M_ATTR_UNUSED uint16_t   sectorCount,
+                                                                uint32_t                 dataSize,
+                                                                bool                     extendedCmd)
 {
-    eReturnValues         ret               = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions = create_ata_pio_in_cmd(
         device, extendedCmd ? ATA_READ_SECT_EXT : ATA_READ_SECT,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
@@ -338,41 +256,22 @@ eReturnValues ata_Legacy_Read_Sectors_CHS(const tDevice*         device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_str("Sending ATA Read Sectors Ext (CHS)\n");
-        }
-        else
-        {
-            print_str("Sending ATA Read Sectors (CHS)\n");
-        }
-    }
-    explicit_zeroes(ptrData, dataSize);
+    const char* readSectorsCHSCmdName = extendedCmd ? "Read Sectors Ext (CHS)" : "Read Sectors (CHS)";
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", readSectorsCHSCmdName);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_Return_Enum("Read Sectors Ext (CHS)", ret);
-        }
-        else
-        {
-            print_Return_Enum("Read Sectors (CHS)", ret);
-        }
-    }
+    print_tDevice_Return_Enum(device, readSectorsCHSCmdName, ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Read_Verify_Sectors_CHS(const tDevice* device,
-                                                 bool           extendedCmd,
-                                                 uint16_t       numberOfSectors,
-                                                 uint16_t       cylinder,
-                                                 uint8_t        head,
-                                                 uint8_t        sector)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Verify_Sectors_CHS(const tDevice* M_NONNULL device,
+                                                                       bool                     extendedCmd,
+                                                                       uint16_t                 numberOfSectors,
+                                                                       uint16_t                 cylinder,
+                                                                       uint8_t                  head,
+                                                                       uint8_t                  sector)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
@@ -381,40 +280,22 @@ eReturnValues ata_Legacy_Read_Verify_Sectors_CHS(const tDevice* device,
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
     ataCommandOptions.tfr.SectorCount = M_Byte0(numberOfSectors);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_str("Sending ATA Read Verify Sectors Ext (CHS)\n");
-        }
-        else
-        {
-            print_str("Sending ATA Read Verify Sectors (CHS)\n");
-        }
-    }
+    const char* readVerifyCHSCmdName = extendedCmd ? "Read Verify Sectors Ext (CHS)" : "Read Verify Sectors (CHS)";
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", readVerifyCHSCmdName);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_Return_Enum("Read Verify Sectors Ext (CHS)", ret);
-        }
-        else
-        {
-            print_Return_Enum("Read Verify Sectors (CHS)", ret);
-        }
-    }
+    print_tDevice_Return_Enum(device, readVerifyCHSCmdName, ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(const tDevice* device,
-                                                          uint16_t       numberOfSectors,
-                                                          uint16_t       cylinder,
-                                                          uint8_t        head,
-                                                          uint8_t        sector)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(const tDevice* M_NONNULL device,
+                                                                                uint16_t numberOfSectors,
+                                                                                uint16_t cylinder,
+                                                                                uint8_t  head,
+                                                                                uint8_t  sector)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
@@ -422,22 +303,19 @@ eReturnValues ata_Legacy_Read_Verify_Sectors_No_Retry_CHS(const tDevice* device,
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
     ataCommandOptions.tfr.SectorCount = M_Byte0(numberOfSectors);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Read Verify Sectors - No Retry (CHS)\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Read Verify Sectors - No Retry (CHS)\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Verify Sectors - No Retry (CHS)", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Verify Sectors - No Retry (CHS)", ret);
 
     return ret;
 }
 
-eReturnValues ata_Read_Verify_Sectors_No_Retry(const tDevice* device, uint16_t numberOfSectors, uint32_t LBA)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues ata_Read_Verify_Sectors_No_Retry(const tDevice* M_NONNULL device,
+                                                                     uint16_t                 numberOfSectors,
+                                                                     uint32_t                 LBA)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
@@ -445,35 +323,29 @@ eReturnValues ata_Read_Verify_Sectors_No_Retry(const tDevice* device, uint16_t n
     set_ata_pt_LBA_28(&ataCommandOptions, LBA);
     ataCommandOptions.tfr.SectorCount = M_Byte0(numberOfSectors);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Read Verify Sectors - No Retry\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Read Verify Sectors - No Retry\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Verify Sectors - No Retry", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Verify Sectors - No Retry", ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Write_DMA_CHS(const tDevice* device,
-                                       uint16_t       cylinder,
-                                       uint8_t        head,
-                                       uint8_t        sector,
-                                       uint8_t*       ptrData,
-                                       uint32_t       dataSize,
-                                       bool           extendedCmd,
-                                       bool           fua)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_DMA_CHS(const tDevice* M_NONNULL device,
+                                                             uint16_t                 cylinder,
+                                                             uint8_t                  head,
+                                                             uint8_t                  sector,
+                                                             uint8_t* M_NONNULL       ptrData,
+                                                             uint32_t                 dataSize,
+                                                             bool                     extendedCmd,
+                                                             bool                     fua)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_dma_out_cmd(
         device, extendedCmd ? (fua ? ATA_WRITE_DMA_FUA_EXT : ATA_WRITE_DMA_EXT) : ATA_WRITE_DMA_RETRY_CMD,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
@@ -483,49 +355,30 @@ eReturnValues ata_Legacy_Write_DMA_CHS(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_str("Sending ATA Write DMA Ext (CHS)\n");
-        }
-        else
-        {
-            print_str("Sending ATA Write DMA (CHS)\n");
-        }
-    }
+    const char* writeDmaCHSCmdName = extendedCmd ? "Write DMA Ext (CHS)" : "Write DMA (CHS)";
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", writeDmaCHSCmdName);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_Return_Enum("Write DMA Ext (CHS)", ret);
-        }
-        else
-        {
-            print_Return_Enum("Write DMA (CHS)", ret);
-        }
-    }
+    print_tDevice_Return_Enum(device, writeDmaCHSCmdName, ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Write_Multiple_CHS(const tDevice* device,
-                                            uint16_t       cylinder,
-                                            uint8_t        head,
-                                            uint8_t        sector,
-                                            uint8_t*       ptrData,
-                                            uint32_t       dataSize,
-                                            bool           extendedCmd,
-                                            bool           fua)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Multiple_CHS(const tDevice* M_NONNULL device,
+                                                                  uint16_t                 cylinder,
+                                                                  uint8_t                  head,
+                                                                  uint8_t                  sector,
+                                                                  uint8_t* M_NONNULL       ptrData,
+                                                                  uint32_t                 dataSize,
+                                                                  bool                     extendedCmd,
+                                                                  bool                     fua)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
         device, extendedCmd ? (fua ? ATA_WRITE_MULTIPLE_FUA_EXT : ATA_WRITE_MULTIPLE_EXT) : ATA_WRITE_MULTIPLE_CMD,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
@@ -536,48 +389,29 @@ eReturnValues ata_Legacy_Write_Multiple_CHS(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_str("Sending ATA Write Multiple Ext (CHS)\n");
-        }
-        else
-        {
-            print_str("Sending ATA Write Multiple (CHS)\n");
-        }
-    }
+    const char* writeMultipleCHSCmdName = extendedCmd ? "Write Multiple Ext (CHS)" : "Write Multiple (CHS)";
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", writeMultipleCHSCmdName);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_Return_Enum("Write Multiple Ext (CHS)", ret);
-        }
-        else
-        {
-            print_Return_Enum("Write Multiple (CHS)", ret);
-        }
-    }
+    print_tDevice_Return_Enum(device, writeMultipleCHSCmdName, ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Write_Sectors_CHS(const tDevice* device,
-                                           uint16_t       cylinder,
-                                           uint8_t        head,
-                                           uint8_t        sector,
-                                           uint8_t*       ptrData,
-                                           uint32_t       dataSize,
-                                           bool           extendedCmd)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Sectors_CHS(const tDevice* M_NONNULL device,
+                                                                 uint16_t                 cylinder,
+                                                                 uint8_t                  head,
+                                                                 uint8_t                  sector,
+                                                                 uint8_t* M_NONNULL       ptrData,
+                                                                 uint32_t                 dataSize,
+                                                                 bool                     extendedCmd)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
         device, extendedCmd ? ATA_WRITE_SECT_EXT : ATA_WRITE_SECT,
         extendedCmd ? ATA_CMD_TYPE_EXTENDED_TASKFILE : ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, extendedCmd), ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), extendedCmd), ptrData,
         dataSize);
     ataCommandOptions.ataTransferBlocks = ATA_PT_LOGICAL_SECTOR_SIZE;
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
@@ -587,41 +421,23 @@ eReturnValues ata_Legacy_Write_Sectors_CHS(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_str("Sending ATA Write Sectors Ext (CHS)\n");
-        }
-        else
-        {
-            print_str("Sending ATA Write Sectors (CHS)\n");
-        }
-    }
+    const char* writeSectorsCHSCmdName = extendedCmd ? "Write Sectors Ext (CHS)" : "Write Sectors (CHS)";
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", writeSectorsCHSCmdName);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        if (extendedCmd)
-        {
-            print_Return_Enum("Write Sectors Ext (CHS)", ret);
-        }
-        else
-        {
-            print_Return_Enum("Write Sectors (CHS)", ret);
-        }
-    }
+    print_tDevice_Return_Enum(device, writeSectorsCHSCmdName, ret);
 
     return ret;
 }
 
 // Lower nibble of command opcode is allowed on really really old drives.
-eReturnValues ata_Legacy_Seek_CHS(const tDevice* device,
-                                  uint16_t       cylinder,
-                                  uint8_t        head,
-                                  uint8_t        sector,
-                                  uint8_t        lowCmdNibble)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Seek_CHS(const tDevice* M_NONNULL device,
+                                                        uint16_t                 cylinder,
+                                                        uint8_t                  head,
+                                                        uint8_t                  sector,
+                                                        uint8_t                  lowCmdNibble)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
@@ -629,21 +445,16 @@ eReturnValues ata_Legacy_Seek_CHS(const tDevice* device,
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
     ataCommandOptions.tfr.CommandStatus |= M_Nibble0(lowCmdNibble);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Seek (CHS)\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Seek (CHS)\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Seek (CHS)", ret);
-    }
+    print_tDevice_Return_Enum(device, "Seek (CHS)", ret);
     return ret;
 }
 
-eReturnValues ata_Legacy_Seek(const tDevice* device, uint32_t lba, uint8_t lowCmdNibble)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Seek(const tDevice* M_NONNULL device, uint32_t lba, uint8_t lowCmdNibble)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
@@ -651,29 +462,24 @@ eReturnValues ata_Legacy_Seek(const tDevice* device, uint32_t lba, uint8_t lowCm
     set_ata_pt_LBA_28(&ataCommandOptions, lba);
     ataCommandOptions.tfr.CommandStatus |= M_Nibble0(lowCmdNibble);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Seek\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Seek\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Seek", ret);
-    }
+    print_tDevice_Return_Enum(device, "Seek", ret);
     return ret;
 }
 
-eReturnValues ata_Legacy_Read_Long_CHS(const tDevice* device,
-                                       bool           retries,
-                                       uint16_t       cylinder,
-                                       uint8_t        head,
-                                       uint8_t        sector,
-                                       uint8_t*       ptrData,
-                                       uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Long_CHS(const tDevice* M_NONNULL device,
+                                                             bool                     retries,
+                                                             uint16_t                 cylinder,
+                                                             uint8_t                  head,
+                                                             uint8_t                  sector,
+                                                             uint8_t* M_NONNULL       ptrData,
+                                                             uint32_t                 dataSize)
 {
-    eReturnValues         ret               = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions = create_ata_pio_in_cmd(
         device, retries ? ATA_READ_LONG_RETRY_CMD : ATA_READ_LONG_NORETRY, ATA_CMD_TYPE_TASKFILE, 1, ptrData, dataSize);
     // this must be used since the transfer is some number of bytes
@@ -686,30 +492,23 @@ eReturnValues ata_Legacy_Read_Long_CHS(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Read Long (CHS)\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Read Long (CHS)\n");
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Long (CHS)", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Long (CHS)", ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Read_Long(const tDevice* device,
-                                   bool           retries,
-                                   uint32_t       lba,
-                                   uint8_t*       ptrData,
-                                   uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Read_Long(const tDevice* M_NONNULL device,
+                                                         bool                     retries,
+                                                         uint32_t                 lba,
+                                                         uint8_t* M_NONNULL       ptrData,
+                                                         uint32_t                 dataSize)
 {
     eReturnValues ret = UNKNOWN;
-
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand ataCommandOptions =
         create_ata_pio_read_lba_cmd(device, retries ? ATA_READ_LONG_RETRY_CMD : ATA_READ_LONG_NORETRY,
                                     ATA_CMD_TYPE_TASKFILE, 1, lba, ptrData, dataSize);
@@ -722,29 +521,22 @@ eReturnValues ata_Legacy_Read_Long(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Read Long\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Read Long\n");
 
-    explicit_zeroes(ptrData, dataSize);
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Read Long", ret);
-    }
+    print_tDevice_Return_Enum(device, "Read Long", ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Write_Long_CHS(const tDevice* device,
-                                        bool           retries,
-                                        uint16_t       cylinder,
-                                        uint8_t        head,
-                                        uint8_t        sector,
-                                        uint8_t*       ptrData,
-                                        uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Long_CHS(const tDevice* M_NONNULL device,
+                                                              bool                     retries,
+                                                              uint16_t                 cylinder,
+                                                              uint8_t                  head,
+                                                              uint8_t                  sector,
+                                                              uint8_t* M_NONNULL       ptrData,
+                                                              uint32_t                 dataSize)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
@@ -760,26 +552,20 @@ eReturnValues ata_Legacy_Write_Long_CHS(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Write Long (CHS)\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Write Long (CHS)\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Long (CHS)", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Long (CHS)", ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Write_Long(const tDevice* device,
-                                    bool           retries,
-                                    uint32_t       lba,
-                                    uint8_t*       ptrData,
-                                    uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Long(const tDevice* M_NONNULL device,
+                                                          bool                     retries,
+                                                          uint32_t                 lba,
+                                                          uint8_t* M_NONNULL       ptrData,
+                                                          uint32_t                 dataSize)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
@@ -794,29 +580,23 @@ eReturnValues ata_Legacy_Write_Long(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Write Long\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Write Long\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Long", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Long", ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Write_Same_CHS(const tDevice* device,
-                                        uint8_t        subcommand,
-                                        uint8_t        numberOfSectorsToWrite,
-                                        uint16_t       cylinder,
-                                        uint8_t        head,
-                                        uint8_t        sector,
-                                        uint8_t*       ptrData,
-                                        uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Same_CHS(const tDevice* M_NONNULL device,
+                                                              uint8_t                  subcommand,
+                                                              uint8_t                  numberOfSectorsToWrite,
+                                                              uint16_t                 cylinder,
+                                                              uint8_t                  head,
+                                                              uint8_t                  sector,
+                                                              uint8_t* M_NONNULL       ptrData,
+                                                              uint32_t                 dataSize)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
@@ -858,27 +638,23 @@ eReturnValues ata_Legacy_Write_Same_CHS(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("Sending ATA Write Same (CHS), subcommand %" PRIX8 "h\n", subcommand);
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                          "Sending ATA Write Same (CHS), subcommand %" PRIX8 "h\n",
+                                          subcommand);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Same (CHS)", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Same (CHS)", ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Write_Same(const tDevice* device,
-                                    uint8_t        subcommand,
-                                    uint8_t        numberOfSectorsToWrite,
-                                    uint32_t       lba,
-                                    uint8_t*       ptrData,
-                                    uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Same(const tDevice* M_NONNULL device,
+                                                          uint8_t                  subcommand,
+                                                          uint8_t                  numberOfSectorsToWrite,
+                                                          uint32_t                 lba,
+                                                          uint8_t* M_NONNULL       ptrData,
+                                                          uint32_t                 dataSize)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
@@ -920,33 +696,28 @@ eReturnValues ata_Legacy_Write_Same(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        printf("Sending ATA Write Same, subcommand %" PRIX8 "h\n", subcommand);
-    }
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                          "Sending ATA Write Same, subcommand %" PRIX8 "h\n",
+                                          subcommand);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Same", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Same", ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Write_Verify_CHS(const tDevice* device,
-                                          uint16_t       cylinder,
-                                          uint8_t        head,
-                                          uint8_t        sector,
-                                          uint8_t*       ptrData,
-                                          uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Verify_CHS(const tDevice* M_NONNULL device,
+                                                                uint16_t                 cylinder,
+                                                                uint8_t                  head,
+                                                                uint8_t                  sector,
+                                                                uint8_t* M_NONNULL       ptrData,
+                                                                uint32_t                 dataSize)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_out_cmd(
         device, ATA_WRITE_SECTV_RETRY, ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), ptrData,
-        dataSize);
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), false), ptrData, dataSize);
     set_ata_pt_CHS(&ataCommandOptions, cylinder, head, sector);
 
     if (ptrData == M_NULLPTR)
@@ -954,27 +725,24 @@ eReturnValues ata_Legacy_Write_Verify_CHS(const tDevice* device,
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Write Verify (CHS)\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Write Verify (CHS)\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Verify (CHS)", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Verify (CHS)", ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Write_Verify(const tDevice* device, uint32_t lba, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Verify(const tDevice* M_NONNULL device,
+                                                            uint32_t                 lba,
+                                                            uint8_t* M_NONNULL       ptrData,
+                                                            uint32_t                 dataSize)
 {
     eReturnValues         ret               = UNKNOWN;
     ataPassthroughCommand ataCommandOptions = create_ata_pio_write_lba_cmd(
         device, ATA_WRITE_SECTV_RETRY, ATA_CMD_TYPE_TASKFILE,
-        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, device->drive_info.deviceBlockSize, false), lba, ptrData,
+        get_Sector_Count_From_Buffer_Size_For_RW(dataSize, get_Device_BlockSize(device), false), lba, ptrData,
         dataSize);
 
     if (ptrData == M_NULLPTR)
@@ -982,32 +750,25 @@ eReturnValues ata_Legacy_Write_Verify(const tDevice* device, uint32_t lba, uint8
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Write Verify\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Write Verify\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Write Verify", ret);
-    }
+    print_tDevice_Return_Enum(device, "Write Verify", ret);
 
     return ret;
 }
 
-eReturnValues ata_Legacy_Identify_Device_DMA(const tDevice* device, uint8_t* ptrData, uint32_t dataSize)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Identify_Device_DMA(const tDevice* M_NONNULL device,
+                                                                   uint8_t* M_NONNULL       ptrData,
+                                                                   uint32_t                 dataSize)
 {
-    eReturnValues         ret = UNKNOWN;
+    eReturnValues ret = UNKNOWN;
+    explicit_zeroes(ptrData, dataSize);
     ataPassthroughCommand identify =
         create_ata_dma_in_cmd(device, ATA_IDENTIFY_DMA, ATA_CMD_TYPE_TASKFILE, 1, ptrData, dataSize);
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Identify DMA command\n");
-    }
-    explicit_zeroes(ptrData, dataSize);
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Identify DMA command\n");
     ret = ata_Passthrough_Command(device, &identify);
 
     if (ret == SUCCESS)
@@ -1033,14 +794,14 @@ eReturnValues ata_Legacy_Identify_Device_DMA(const tDevice* device, uint8_t* ptr
         }
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Identify DMA", ret);
-    }
+    print_tDevice_Return_Enum(device, "Identify DMA", ret);
     return ret;
 }
 
-eReturnValues ata_Legacy_Check_Power_Mode(const tDevice* device, uint8_t* powerMode)
+M_PARAM_RO(1)
+M_PARAM_WO(2)
+OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Check_Power_Mode(const tDevice* M_NONNULL device,
+                                                                uint8_t* M_NONNULL       powerMode)
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions =
@@ -1051,10 +812,7 @@ eReturnValues ata_Legacy_Check_Power_Mode(const tDevice* device, uint8_t* powerM
         return BAD_PARAMETER;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_str("Sending ATA Check Power Mode (Legacy 98h)\n");
-    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Check Power Mode (Legacy 98h)\n");
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1063,9 +821,6 @@ eReturnValues ata_Legacy_Check_Power_Mode(const tDevice* device, uint8_t* powerM
         *powerMode = ataCommandOptions.rtfr.secCnt;
     }
 
-    if (VERBOSITY_COMMAND_NAMES <= device->deviceVerbosity)
-    {
-        print_Return_Enum("Check Power Mode (Legacy 98h)", ret);
-    }
+    print_tDevice_Return_Enum(device, "Check Power Mode (Legacy 98h)", ret);
     return ret;
 }

@@ -86,14 +86,14 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
 #else
 // TODO: Error if attempting LBA mode???
 #endif // ATACMD_LBA
-        uint32_t timeoutmilliseconds = UINT32_C(0);
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-            scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+        uint32_t       timeoutmilliseconds = UINT32_C(0);
+        const uint32_t deviceTimeout       = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+        if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
         {
-            timeoutmilliseconds = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+            timeoutmilliseconds = deviceTimeout;
             // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
             // that we DON'T do a conversion and leave the time as the max...
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < BSD_ATA_PT_MAX_CMD_TIMEOUT_SECONDS)
+            if (deviceTimeout < BSD_ATA_PT_MAX_CMD_TIMEOUT_SECONDS)
             {
                 timeoutmilliseconds *= UINT32_C(1000); // convert to milliseconds
             }
@@ -127,18 +127,20 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
         start_Timer(&commandTimer);
         iocret = ioctl(scsiIoCtx->device->os_info.fd, ATAIOCCOMMAND, &atacmd);
         stop_Timer(&commandTimer);
-        scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+        set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
         if (iocret < 0)
         {
             // something went wrong with the ioctl.
             set_Device_Last_Error(scsiIoCtx->device, errno);
             ret = OS_PASSTHROUGH_FAILURE;
-            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+            errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+            if (error != 0)
             {
-                if (scsiIoCtx->device->os_info.last_error != 0)
+                char* errormsg = get_strerror(error);
+                if (errormsg != M_NULLPTR)
                 {
-                    print_str("Error: ");
-                    print_Errno_To_Screen(errno);
+                    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                    safe_free(&errormsg);
                 }
             }
         }
@@ -229,7 +231,7 @@ eReturnValues send_BSD_ATA_Reset(int fd)
 #endif
 }
 
-eReturnValues send_BSD_ATA_IO(ScsiIoCtx* scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_BSD_ATA_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx != M_NULLPTR)

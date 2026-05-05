@@ -49,7 +49,7 @@ extern bool validate_Device_Struct(versionBlock);
 
 // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise
 // you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported(void)
+OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void)
 {
     return false; // Documentation does not state if an infinite timeout is supported. If it actually is, need to define
                   // the infinite timeout value properly, and set it to the correct value
@@ -76,7 +76,8 @@ static M_INLINE void close_mnttab(FILE** mnttab)
 // If the IOCTL for USCSIMAXXFER passes, then we use that value instead
 #define MAX_REC_XFER_SIZE_16MB UINT32_C(16777216)
 
-eReturnValues get_Device(const char* filename, tDevice* device)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
 #if defined(USCSIMAXXFER)
@@ -110,16 +111,15 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     }
     if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_DEFAULT;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
     }
     else
     {
-        device->os_info.handleFlags = HANDLE_FLAGS_EXCLUSIVE;
+        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
     }
 
     device->os_info.osType = OS_SOLARIS;
-    device->os_info.minimumAlignment =
-        sizeof(void*); // setting to be compatible with certain aligned memory allocation functions.
+    set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
     device->os_info.adapterMaxTransferSize = MAX_REC_XFER_SIZE_16MB;
 #if defined(USCSIMAXXFER)
@@ -138,12 +138,14 @@ eReturnValues get_Device(const char* filename, tDevice* device)
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         // set the name
-        snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", deviceHandle);
+        set_Device_Handle_Name(device, deviceHandle);
         // set the friendly name
-        set_Device_Name(deviceHandle, device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        DECLARE_ZERO_INIT_ARRAY(char, friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        set_Device_Name(deviceHandle, friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        set_Device_Handle_Friendly_Name(device, friendlyName);
         // set the block handle
         snprintf_err_handle(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s",
-                            device->os_info.friendlyName);
+                            get_Device_Handle_Friendly_Name(device));
         // set the partition info
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondName);
 
@@ -151,10 +153,10 @@ eReturnValues get_Device(const char* filename, tDevice* device)
         device->os_info.osType = OS_SOLARIS;
 
         // uscsi documentation: http://docs.oracle.com/cd/E23824_01/html/821-1475/uscsi-7i.html
-        device->drive_info.interface_type = SCSI_INTERFACE;
-        device->drive_info.drive_type     = SCSI_DRIVE;
-        if (device->drive_info.interface_type == USB_INTERFACE ||
-            device->drive_info.interface_type == IEEE_1394_INTERFACE)
+        set_Device_InterfaceType(device, SCSI_INTERFACE);
+        set_Device_DriveType(device, SCSI_DRIVE);
+        if (get_Device_InterfaceType(device) == USB_INTERFACE ||
+            get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
         {
             // TODO: Actually get the VID and PID set before calling this.
             setup_Passthrough_Hacks_By_ID(device);
@@ -188,28 +190,28 @@ static eReturnValues uscsi_Reset(int fd, int resetFlag)
     return ret;
 }
 
-eReturnValues os_Device_Reset(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
     // NOTE: USCSI_RESET is the same thing, but for legacy versions
     // Also USCSI_RESET_LUN is available. Maybe it would be better?
     return uscsi_Reset(device->os_info.fd, USCSI_RESET_TARGET);
 }
 
-eReturnValues os_Bus_Reset(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
     // USCSI_RESET_ALL seems to imply a bus reset
     return uscsi_Reset(device->os_info.fd, USCSI_RESET_ALL);
 }
 
-eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
-    switch (scsiIoCtx->device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(scsiIoCtx->device))
     {
     case SCSI_INTERFACE:
     case IDE_INTERFACE:
@@ -224,10 +226,7 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-            {
-                print_str("No Raid PassThrough IO Routine present for this device\n");
-            }
+            print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_QUIET, "No Raid PassThrough IO Routine present for this device\n");
         }
         break;
     case NVME_INTERFACE:
@@ -235,47 +234,38 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         ret = send_uscsi_io(scsiIoCtx);
         break;
     default:
-        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "Target Device does not have a valid interface %d\n", get_Device_InterfaceType(scsiIoCtx->device));
     }
 
     if (scsiIoCtx->device->delay_io)
     {
         delay_Milliseconds(scsiIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES, "Delaying between commands %d seconds to reduce IO impact\n", scsiIoCtx->device->delay_io);
     }
 
     return ret;
 }
 
-eReturnValues send_uscsi_io(ScsiIoCtx* scsiIoCtx)
+M_PARAM_RO(1) eReturnValues send_uscsi_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     // http://docs.oracle.com/cd/E23824_01/html/821-1475/uscsi-7i.html
     struct uscsi_cmd uscsi_io;
     eReturnValues    ret = SUCCESS;
 
     safe_memset(&uscsi_io, sizeof(uscsi_io), 0, sizeof(uscsi_io));
-    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
-    {
-        print_str("Sending command with send_IO\n");
-    }
+    print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "Sending command with send_IO\n");
 
     if (scsiIoCtx->timeout > USCSI_MAX_CMD_TIMEOUT_SECONDS ||
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > USCSI_MAX_CMD_TIMEOUT_SECONDS)
+        get_tDevice_Default_Command_Timeout(scsiIoCtx->device) > USCSI_MAX_CMD_TIMEOUT_SECONDS)
     {
         return OS_TIMEOUT_TOO_LARGE;
     }
 
-    uscsi_io.uscsi_timeout = scsiIoCtx->timeout;
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > UINT32_C(0) &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    uscsi_io.uscsi_timeout       = scsiIoCtx->timeout;
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > UINT32_C(0) && deviceTimeout > scsiIoCtx->timeout)
     {
-        uscsi_io.uscsi_timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        uscsi_io.uscsi_timeout = deviceTimeout;
     }
     else
     {
@@ -307,10 +297,7 @@ eReturnValues send_uscsi_io(ScsiIoCtx* scsiIoCtx)
         break;
         // NOLINTEND(bugprone-branch-clone)
     default:
-        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("%s Didn't understand direction\n", __FUNCTION__);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "%s Didn't understand direction\n", __func__);
         return BAD_PARAMETER;
     }
 
@@ -329,22 +316,25 @@ eReturnValues send_uscsi_io(ScsiIoCtx* scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = FAILURE;
-        if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            perror("send_IO");
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
+            {
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "send_IO error: %d - %s\n", error, errormsg);
+                safe_free(&errormsg);
+            }
         }
     }
 
-    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
-    {
-        print_str("USCSI Results\n");
-        printf("\tSCSI Status: %hu\n", uscsi_io.uscsi_status);
-        printf("\tResid: %zu\n", uscsi_io.uscsi_resid);
-        printf("\tRQS SCSI Status: %hu\n", uscsi_io.uscsi_rqstatus);
-        printf("\tRQS Resid: %hhu\n", uscsi_io.uscsi_rqresid);
-    }
+    print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "USCSI Results\n");
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tSCSI Status: %hu\n", uscsi_io.uscsi_status);
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tResid: %zu\n", uscsi_io.uscsi_resid);
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tRQS SCSI Status: %hu\n", uscsi_io.uscsi_rqstatus);
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tRQS Resid: %hhu\n", uscsi_io.uscsi_rqresid);
 
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
 }
 
@@ -368,7 +358,7 @@ static int uscsi_filter(const struct dirent* entry)
     }
 }
 
-eReturnValues close_Device(tDevice* device)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* M_NONNULL device)
 {
     int retValue = 0;
     if (device)
@@ -408,7 +398,8 @@ eReturnValues close_Device(tDevice* device)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags)
 {
     int num_devs = 0;
 
@@ -452,10 +443,11 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //
 //-----------------------------------------------------------------------------
 #define USCSI_NAME_LEN 80
-eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
-                              uint32_t               sizeInBytes,
-                              versionBlock           ver,
-                              M_ATTR_UNUSED uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                                                    uint32_t                 sizeInBytes,
+                                                    versionBlock             ver,
+                                                    M_ATTR_UNUSED uint64_t   flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -596,64 +588,68 @@ eReturnValues get_Device_List(tDevice* const         ptrToDeviceList,
     return returnValue;
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
-                      M_ATTR_UNUSED uint64_t       lba,
-                      M_ATTR_UNUSED bool           forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t*       ptrData,
-                      M_ATTR_UNUSED uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                            M_ATTR_UNUSED uint64_t                 lba,
+                                            M_ATTR_UNUSED bool                     forceUnitAccess,
+                                            M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                            M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
-                       M_ATTR_UNUSED uint64_t       lba,
-                       M_ATTR_UNUSED bool           forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t*       ptrData,
-                       M_ATTR_UNUSED uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                             M_ATTR_UNUSED uint64_t                 lba,
+                                             M_ATTR_UNUSED bool                     forceUnitAccess,
+                                             M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                             M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                              M_ATTR_UNUSED uint64_t                 lba,
+                                              M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx* nvmeIoCtx)
+M_PARAM_RW(1) eReturnValues send_NVMe_IO(M_ATTR_UNUSED nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* device,
-                               M_ATTR_UNUSED uint8_t*       pData,
-                               M_ATTR_UNUSED uint32_t       dataSize)
+M_PARAM_WO_SIZE(2, 3)
+eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                               M_ATTR_UNUSED uint8_t* M_NONNULL       pData,
+                               M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* device)
+M_PARAM_RO(1) eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
+M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
 #define DRIVE_HANDLE_LOCK_RANGE_START  (0)
 #define DRIVE_HANDLE_LOCK_RANGE_LENGTH (0) // 0 means full drive/file
-eReturnValues os_Lock_Device(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -666,10 +662,16 @@ eReturnValues os_Lock_Device(const tDevice* device)
         locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
         if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
         {
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+            set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
+            errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(device));
+            if (error != 0)
             {
-                printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", "lock");
-                print_Errno_To_Screen(errno);
+                char* errormsg = get_strerror(error);
+                if (errormsg != M_NULLPTR)
+                {
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Failed to set POSIX F_SETLK %s flags with fcntl: %d - %s\n", "lock", error, errormsg);
+                    safe_free(&errormsg);
+                }
             }
             ret = FAILURE;
         }
@@ -682,7 +684,7 @@ eReturnValues os_Lock_Device(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Unlock_Device(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -695,10 +697,16 @@ eReturnValues os_Unlock_Device(const tDevice* device)
         locks.l_len    = DRIVE_HANDLE_LOCK_RANGE_LENGTH;
         if (fcntl(device->os_info.fd, F_SETLK, &locks) < 0)
         {
-            if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+            set_Device_Last_Error(M_CONST_CAST(tDevice*, device), errno);
+            errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(device));
+            if (error != 0)
             {
-                printf("Failed to set POSIX F_SETLK %s flags with fcntl\n", "unlock");
-                print_Errno_To_Screen(errno);
+                char* errormsg = get_strerror(error);
+                if (errormsg != M_NULLPTR)
+                {
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Failed to set POSIX F_SETLK %s flags with fcntl: %d - %s\n", "unlock", error, errormsg);
+                    safe_free(&errormsg);
+                }
             }
             ret = FAILURE;
         }
@@ -710,18 +718,20 @@ eReturnValues os_Unlock_Device(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
+    os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device)
 {
     return unmount_Partitions_From_Device(device->os_info.secondHandleValid ? device->os_info.secondName
-                                                                            : device->os_info.name);
+                                                                            : get_Device_Handle_Name(device));
 }

@@ -27,11 +27,13 @@
 #include "scsi_helper_func.h"
 #include "ti_legacy_helper.h"
 
-eReturnValues build_TI_Legacy_CDB(uint8_t                cdb[CDB_16],
-                                  ataPassthroughCommand* ataCommandOptions,
-                                  bool                   olderOpCode,
-                                  bool                   forceMode,
-                                  uint8_t                modeValue)
+M_PARAM_RW(1)
+M_PARAM_RO(2)
+eReturnValues build_TI_Legacy_CDB(uint8_t                          cdb[M_NONNULL_ARRAY CDB_16],
+                                  ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                  bool                             olderOpCode,
+                                  bool                             forceMode,
+                                  uint8_t                          modeValue)
 {
     eReturnValues ret = SUCCESS;
     if (olderOpCode)
@@ -76,7 +78,10 @@ eReturnValues build_TI_Legacy_CDB(uint8_t                cdb[CDB_16],
     return ret;
 }
 
-eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* M_NONNULL         device,
+                                                 ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret            = UNKNOWN;
     uint8_t*      senseData      = M_NULLPTR; // only allocate if the pointer in the ataCommandOptions is M_NULLPTR
@@ -89,7 +94,7 @@ eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* device, ataPasst
     if (!ataCommandOptions->ptrSenseData)
     {
         senseData = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -102,11 +107,8 @@ eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* device, ataPasst
     ret = build_TI_Legacy_CDB(tiCDB, ataCommandOptions, false, false, 0);
     if (ret == SUCCESS)
     {
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // printf out register verbose information
-            print_Verbose_ATA_Command_Information(ataCommandOptions);
-        }
+        // print out register verbose information
+        print_tDevice_Verbose_ATA_Command_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // send the CDB
         ret = scsi_Send_Cdb(device, tiCDB, CDB_LEN_16, ataCommandOptions->ptrData, ataCommandOptions->dataSize,
                             ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData,
@@ -134,11 +136,8 @@ eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* device, ataPasst
             ataCommandOptions->rtfr.status = ATA_STATUS_BIT_READY | ATA_STATUS_BIT_ERROR;
             break;
         }
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print out RTFRs
-            print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
-        }
+        // print out RTFRs
+        print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
     }
     safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
                 SPC3_SENSE_LEN); // clear before copying over data
@@ -152,7 +151,7 @@ eReturnValues send_TI_Legacy_Passthrough_Command(const tDevice* device, ataPasst
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

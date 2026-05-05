@@ -50,7 +50,7 @@
 
 // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued, otherwise
 // you must try MAX_CMD_TIMEOUT_SECONDS instead
-bool os_Is_Infinite_Timeout_Supported(void)
+OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void)
 {
     return true;
 }
@@ -63,7 +63,7 @@ static void print_io_hdr(sg_io_hdr_t* pIo)
 {
     DECLARE_ZERO_INIT_ARRAY(char, timeFormat, TIME_STRING_LENGTH);
     time_t time_now = time(M_NULLPTR);
-    printf("\n%s: %s---------------------------------\n", __FUNCTION__,
+    printf("\n%s: %s---------------------------------\n", __func__,
            get_Current_Time_String(&time_now, timeFormat, TIME_STRING_LENGTH));
     printf("type int interface_id %d\n", pIo->interface_id);                    /* [i] 'S' (required) */
     printf("type int  dxfer_direction %d\n", pIo->dxfer_direction);             /* [i] */
@@ -191,9 +191,9 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
      * Setting up defaults
      */
     // sysVmInfo.drive_type = SCSI_DRIVE;
-    // device->drive_info.drive_type = ATA_DRIVE;
+    // set_Device_DriveType(device, ATA_DRIVE);
     // sysVmInfo.interface_type = SCSI_INTERFACE;
-    // device->drive_info.interface_type = IDE_INTERFACE;
+    // set_Device_InterfaceType(device, IDE_INTERFACE);
     // sysVmInfo.media_type = MEDIA_HDD;
 
     safe_memset(&sysVmInfo, sizeof(sysVMLowLevelDeviceInfo), 0, sizeof(sysVMLowLevelDeviceInfo));
@@ -201,16 +201,15 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
     // now copy the saved data to tDevice. -DB
     if (device)
     {
-        device->drive_info.drive_type     = sysVmInfo.drive_type;
+        set_Device_DriveType(device, sysVmInfo.drive_type);
         device->drive_info.interface_type = sysVmInfo.interface_type;
         safe_memcpy(&device->drive_info.adapter_info, sizeof(adapterInfo), &sysVmInfo.adapter_info,
                     sizeof(adapterInfo));
         safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysVmInfo.driver_info, sizeof(driverInfo));
         if (strlen(sysVmInfo.primaryHandleStr) > 0)
         {
-            snprintf_err_handle(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, "%s", sysVmInfo.primaryHandleStr);
-            snprintf_err_handle(device->os_info.friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s",
-                                basename(sysVmInfo.primaryHandleStr));
+            set_Device_Handle_Name(device, sysVmInfo.primaryHandleStr);
+            set_Device_Handle_Friendly_Name(device, basename(sysVmInfo.primaryHandleStr));
         }
         if (strlen(sysVmInfo.secondaryHandleStr) > 0)
         {
@@ -223,7 +222,8 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
 }
 
 #define LIN_MAX_HANDLE_LENGTH 16
-eReturnValues get_Device(const char* filename, tDevice* device)
+M_PARAM_RW(2)
+OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, tDevice* M_NONNULL device)
 {
     char*                    deviceHandle = M_NULLPTR;
     eReturnValues            ret          = SUCCESS;
@@ -277,15 +277,15 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             }
         }
 
-        device->os_info.minimumAlignment = sizeof(void*);
+        set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
         // Adding support for different device discovery options.
         if (device->dFlags == OPEN_HANDLE_ONLY)
         {
             // set scsi interface and scsi drive until we know otherwise
-            device->drive_info.drive_type     = SCSI_DRIVE;
-            device->drive_info.interface_type = SCSI_INTERFACE;
-            device->drive_info.media_type     = MEDIA_HDD;
+            set_Device_DriveType(device, SCSI_DRIVE);
+            set_Device_InterfaceType(device, SCSI_INTERFACE);
+            set_Device_MediaType(device, MEDIA_HDD);
             set_Device_Fields_From_Handle(deviceHandle, device);
             setup_Passthrough_Hacks_By_ID(device);
             safe_free(&deviceHandle);
@@ -326,14 +326,14 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             // set the OS Type
             device->os_info.osType = OS_ESX;
 
-            safe_memcpy(device->os_info.name, OS_HANDLE_NAME_MAX_LENGTH, deviceHandle, safe_strlen(deviceHandle) + 1);
+            set_Device_Handle_Name(device, deviceHandle);
 
             // set scsi interface and scsi drive until we know otherwise
-            device->drive_info.drive_type = SCSI_DRIVE;
-            // device->drive_info.drive_type = ATA_DRIVE;
-            device->drive_info.interface_type = SCSI_INTERFACE;
-            // device->drive_info.interface_type = IDE_INTERFACE;
-            device->drive_info.media_type = MEDIA_HDD;
+            set_Device_DriveType(device, SCSI_DRIVE);
+            // set_Device_DriveType(device, ATA_DRIVE);
+            set_Device_InterfaceType(device, SCSI_INTERFACE);
+            // set_Device_InterfaceType(device, IDE_INTERFACE);
+            set_Device_MediaType(device, MEDIA_HDD);
             // now have the device information fields set
 #if defined(_DEBUG)
             print_str("Setting interface, drive type, secondary handles\n");
@@ -341,13 +341,14 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 
             set_Device_Fields_From_Handle(deviceHandle, device);
             setup_Passthrough_Hacks_By_ID(device);
-            // device->drive_info.interface_type = SCSI_INTERFACE;
-            // device->drive_info.drive_type = UNKNOWN_DRIVE;
-            // device->drive_info.media_type = MEDIA_UNKNOWN;
+            // set_Device_InterfaceType(device, SCSI_INTERFACE);
+            // set_Device_DriveType(device, UNKNOWN_DRIVE);
+            // set_Device_MediaType(device, MEDIA_UNKNOWN);
 
 #if defined(_DEBUG)
-            printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", device->os_info.name,
-                   device->os_info.friendlyName, device->os_info.secondName, device->os_info.secondFriendlyName);
+            printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", get_Device_Handle_Name(device),
+                   get_Device_Handle_Friendly_Name(device), device->os_info.secondName,
+                   device->os_info.secondFriendlyName);
             printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel,
                    device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
 
@@ -359,7 +360,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             // this code to set up passthrough commands for USB and IEEE1394 has been removed for now to match Windows
             // functionality. Need better intelligence than this. Some of these old pass-through types issue vendor
             // specific op codes that could be misinterpretted on some devices.
-            //              if (device->drive_info.interface_type == USB_INTERFACE || device->drive_info.interface_type
+            //              if (get_Device_InterfaceType(device) == USB_INTERFACE || get_Device_InterfaceType(device)
             //              == IEEE_1394_INTERFACE)
             //              {
             //                  set_ATA_Passthrough_Type_By_PID_and_VID(device);
@@ -369,9 +370,9 @@ eReturnValues get_Device(const char* filename, tDevice* device)
 
 #if defined(_DEBUG)
             print_str("\nvm helper\n");
-            printf("Drive type: %d\n", device->drive_info.drive_type);
-            printf("Interface type: %d\n", device->drive_info.interface_type);
-            printf("Media type: %d\n", device->drive_info.media_type);
+            printf("Drive type: %d\n", get_Device_DriveType(device));
+            printf("Interface type: %d\n", get_Device_InterfaceType(device));
+            printf("Media type: %d\n", get_Device_MediaType(device));
 #endif
         }
         safe_free(&deviceHandle);
@@ -427,7 +428,7 @@ eReturnValues get_Device(const char* filename, tDevice* device)
             print_str("Error: Unable to read NSID\n");
         }
 
-        device->os_info.minimumAlignment = sizeof(void*);
+        set_Device_IO_Minimum_Alignment(device, sizeof(void*));
 
         // Adding support for different device discovery options.
         if (device->dFlags == OPEN_HANDLE_ONLY)
@@ -447,24 +448,24 @@ eReturnValues get_Device(const char* filename, tDevice* device)
              * Setting up NVMe drive blindly for now
              */
 
-            device->drive_info.interface_type = NVME_INTERFACE;
-            device->drive_info.drive_type     = NVME_DRIVE;
-            device->drive_info.media_type     = MEDIA_NVM;
+            set_Device_InterfaceType(device, NVME_INTERFACE);
+            set_Device_DriveType(device, NVME_DRIVE);
+            set_Device_MediaType(device, MEDIA_NVM);
             safe_memcpy(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe", 4);
             device->os_info.osType = OS_ESX;
-            safe_memcpy(&(device->os_info.name), OS_HANDLE_NAME_MAX_LENGTH, filename, safe_strlen(filename) + 1);
+            set_Device_Handle_Name(device, filename);
 
 #if !defined(DISABLE_NVME_PASSTHROUGH)
-            if (device->drive_info.interface_type == NVME_INTERFACE)
+            if (get_Device_InterfaceType(device) == NVME_INTERFACE)
             {
                 ret = fill_In_NVMe_Device_Info(device);
             }
 #endif
 #if defined(_DEBUG)
             print_str("\nvm helper\n");
-            printf("Drive type: %d\n", device->drive_info.drive_type);
-            printf("Interface type: %d\n", device->drive_info.interface_type);
-            printf("Media type: %d\n", device->drive_info.media_type);
+            printf("Drive type: %d\n", get_Device_DriveType(device));
+            printf("Interface type: %d\n", get_Device_InterfaceType(device));
+            printf("Media type: %d\n", get_Device_MediaType(device));
 #endif
         }
         safe_free(&deviceHandle);
@@ -514,28 +515,28 @@ static eReturnValues sg_reset(int fd, int resetType)
     return ret;
 }
 
-eReturnValues os_Device_Reset(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_DEVICE);
 }
 
-eReturnValues os_Bus_Reset(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_BUS);
 }
 
-eReturnValues os_Controller_Reset(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(const tDevice* M_NONNULL device)
 {
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
 }
 
-eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
+M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
 #ifdef _DEBUG
-    printf("-->%s \n", __FUNCTION__);
+    printf("-->%s \n", __func__);
 #endif
-    switch (scsiIoCtx->device->drive_info.interface_type)
+    switch (get_Device_InterfaceType(scsiIoCtx->device))
     {
     case NVME_INTERFACE:
 #if !defined(DISABLE_NVME_PASSTHROUGH)
@@ -555,51 +556,257 @@ eReturnValues send_IO(ScsiIoCtx* scsiIoCtx)
         }
         else
         {
-            if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-            {
-                print_str("No Raid PassThrough IO Routine present for this device\n");
-            }
+            print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                        "No Raid PassThrough IO Routine present for this device\n");
         }
         break;
     default:
-        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Target Device does not have a valid interface %d\n", scsiIoCtx->device->drive_info.interface_type);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                              "Target Device does not have a valid interface %d\n",
+                                              get_Device_InterfaceType(scsiIoCtx->device));
         break;
     }
 #ifdef _DEBUG
-    printf("<--%s (%d)\n", __FUNCTION__, ret);
+    printf("<--%s (%d)\n", __func__, ret);
 #endif
     if (scsiIoCtx->device->delay_io)
     {
         delay_Milliseconds(scsiIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", scsiIoCtx->device->delay_io);
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES,
+                                              "Delaying between commands %d seconds to reduce IO impact",
+                                              scsiIoCtx->device->delay_io);
         }
     }
     return ret;
 }
 
-eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
+//Display information on the SG IO info fields that tells us how it was issued
+static void print_sg_io_direct_type_info(const tDevice* device, sg_io_hdr_t* io_hdr)
+{
+    switch (io_hdr->info & SG_INFO_DIRECT_IO_MASK)
+    {
+    case SG_INFO_INDIRECT_IO:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SG IO Issued as Indirect IO\n");
+        break;
+    case SG_INFO_DIRECT_IO:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SG IO Issued as Direct IO\n");
+        break;
+    case SG_INFO_MIXED_IO:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SG IO Issued as Mixed IO\n");
+        break;
+    default:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SG IO Issued with Unknown IO type\n");
+        break;
+    }
+}
+
+//Display masked_status information from SG IO header
+static eReturnValues print_sg_io_masked_status(const tDevice* device, sg_io_hdr_t* io_hdr, eReturnValues ret)
+{
+    if (io_hdr->masked_status != 0)
+    {
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "SG Masked Status = %02" PRIx8 "h", io_hdr->masked_status);
+        switch (io_hdr->masked_status)
+        {
+        case OPENSEA_SG_GOOD:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Good Status\n");
+            break;
+        case OPENSEA_SG_CHECK_CONDITION:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Check Condition\n");
+            break;
+        case OPENSEA_SG_CONDITION_MET:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Condition Met\n");
+            break;
+        case OPENSEA_SG_BUSY:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Busy\n");
+            break;
+        case OPENSEA_SG_INTERMEDIATE:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Intermediate\n");
+            break;
+        case OPENSEA_SG_INTERMEDIATE_CONDITION_MET:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Intermediate Condition Met\n");
+            break;
+        case OPENSEA_SG_RESERVATION_CONFLICT:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Reservation Conflict\n");
+            break;
+        case OPENSEA_SG_COMMAND_TERMINATED:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Command Terminated\n");
+            break;
+        case OPENSEA_SG_QUEUE_FULL:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Queue Full\n");
+            break;
+        default:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Unknown Masked Status\n");
+            break;
+        }
+        if (io_hdr->sb_len_wr == 0)
+        {
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t(Masked Status) Sense data not available. Setting to OS_PASSTHROUGH_FAILURE\n");
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
+    }
+    return ret;
+}
+
+//Display host_status information from SG IO header
+static eReturnValues print_sg_io_host_status(const tDevice* device, sg_io_hdr_t* io_hdr, eReturnValues ret)
+{
+    if (io_hdr->host_status != 0)
+    {
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "SG Host Status = %02" PRIX16 "h", io_hdr->host_status);
+        switch (io_hdr->host_status)
+        {
+        case OPENSEA_SG_ERR_DID_OK:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - No Error\n");
+            break;
+        case OPENSEA_SG_ERR_DID_NO_CONNECT:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Could Not Connect\n");
+            break;
+        case OPENSEA_SG_ERR_DID_BUS_BUSY:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Bus Busy\n");
+            break;
+        case OPENSEA_SG_ERR_DID_TIME_OUT:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Timed Out\n");
+            break;
+        case OPENSEA_SG_ERR_DID_BAD_TARGET:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Bad Target Device\n");
+            break;
+        case OPENSEA_SG_ERR_DID_ABORT:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Abort\n");
+            break;
+        case OPENSEA_SG_ERR_DID_PARITY:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Parity Error\n");
+            break;
+        case OPENSEA_SG_ERR_DID_ERROR:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Internal Adapter Error\n");
+            break;
+        case OPENSEA_SG_ERR_DID_RESET:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - SCSI Bus/Device Has Been Reset\n");
+            break;
+        case OPENSEA_SG_ERR_DID_BAD_INTR:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Bad Interrupt\n");
+            break;
+        case OPENSEA_SG_ERR_DID_PASSTHROUGH:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Forced Passthrough Past Mid-Layer\n");
+            break;
+        case OPENSEA_SG_ERR_DID_SOFT_ERROR:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Soft Error, Retry?\n");
+            break;
+        default:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Unknown Host Status\n");
+            break;
+        }
+        if (io_hdr->sb_len_wr == 0) // Doing this because some drivers may set an error even if the command otherwise
+                                    // went through and sense data was available.
+        {
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
+    }
+    return ret;
+}
+
+//Display driver_status information from SG IO header (including error suggestions)
+static eReturnValues print_sg_io_driver_status(const tDevice* device, sg_io_hdr_t* io_hdr, eReturnValues ret)
+{
+    if (io_hdr->driver_status != 0)
+    {
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "SG Driver Status = %02" PRIX16 "h", io_hdr->driver_status);
+        switch (io_hdr->driver_status & OPENSEA_SG_ERR_DRIVER_MASK)
+        {
+        case OPENSEA_SG_ERR_DRIVER_OK:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver OK");
+            break;
+        case OPENSEA_SG_ERR_DRIVER_BUSY:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Busy");
+            break;
+        case OPENSEA_SG_ERR_DRIVER_SOFT:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Soft Error");
+            break;
+        case OPENSEA_SG_ERR_DRIVER_MEDIA:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Media Error");
+            break;
+        case OPENSEA_SG_ERR_DRIVER_ERROR:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Error");
+            break;
+        case OPENSEA_SG_ERR_DRIVER_INVALID:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Invalid");
+            break;
+        case OPENSEA_SG_ERR_DRIVER_TIMEOUT:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Timeout");
+            break;
+        case OPENSEA_SG_ERR_DRIVER_HARD:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Hard Error");
+            break;
+        case OPENSEA_SG_ERR_DRIVER_SENSE:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Sense Data Available");
+            break;
+        default:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Unknown Driver Error");
+            break;
+        }
+        // now error suggestions
+        switch (io_hdr->driver_status & OPENSEA_SG_ERR_SUGGEST_MASK)
+        {
+        case OPENSEA_SG_ERR_SUGGEST_NONE:
+            break; // no suggestions, nothing necessary to print
+        case OPENSEA_SG_ERR_SUGGEST_RETRY:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Suggest Retry");
+            break;
+        case OPENSEA_SG_ERR_SUGGEST_ABORT:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Suggest Abort");
+            break;
+        case OPENSEA_SG_ERR_SUGGEST_REMAP:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Suggest Remap");
+            break;
+        case OPENSEA_SG_ERR_SUGGEST_DIE:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Suggest Die");
+            break;
+        case OPENSEA_SG_ERR_SUGGEST_SENSE:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Suggest Sense");
+            break;
+        default:
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Unknown suggestion");
+            break;
+        }
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n");
+        if (io_hdr->sb_len_wr == 0)
+        {
+            // No sense data back. We need to set an error since the layers above are going to look for sense data
+            // and we don't have any.
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
+    }
+    return ret;
+
+
+//Main wrapper to display all SG IOv3 diagnostic information with proper return value chaining
+static eReturnValues print_tDevice_Verbose_SGIOv3_Info(const tDevice* device, sg_io_hdr_t* io_hdr, eReturnValues ret)
+{
+    print_sg_io_direct_type_info(device, io_hdr);
+    ret = print_sg_io_masked_status(device, io_hdr, ret);
+    ret = print_sg_io_host_status(device, io_hdr, ret);
+    ret = print_sg_io_driver_status(device, io_hdr, ret);
+    return ret;
+}
+
+M_PARAM_RW(1) eReturnValues send_sg_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     sg_io_hdr_t   io_hdr;
     uint8_t*      localSenseBuffer = M_NULLPTR;
     eReturnValues ret              = SUCCESS;
     DECLARE_SEATIMER(commandTimer);
 #ifdef _DEBUG
-    printf("-->%s \n", __FUNCTION__);
+    printf("-->%s \n", __func__);
 #endif
 
     // int idx = 0;
     //  Start with zapping the io_hdr
     safe_memset(&io_hdr, sizeof(sg_io_hdr_t), 0, sizeof(sg_io_hdr_t));
 
-    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
-    {
-        print_str("Sending command with send_IO\n");
-    }
+    print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS,
+                                "Sending command with send_IO\n");
 
     // Set up the io_hdr
     io_hdr.interface_id = 'S';
@@ -614,7 +821,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
     {
         localSenseBuffer =
             M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t),
-                                                             scsiIoCtx->device->os_info.minimumAlignment));
+                                                             get_Device_IO_Minimum_Alignment(scsiIoCtx->device)));
         if (!localSenseBuffer)
         {
             return MEMORY_FAILURE;
@@ -639,24 +846,22 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         io_hdr.dxfer_direction = SG_DXFER_TO_FROM_DEV;
         break;
     default:
-        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("%s Didn't understand direction\n", __FUNCTION__);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                              "%s Didn't understand direction\n", __func__);
         safe_free_aligned(&localSenseBuffer);
         return BAD_PARAMETER;
     }
 
-    io_hdr.dxfer_len = scsiIoCtx->dataLength;
-    io_hdr.dxferp    = scsiIoCtx->pdata;
-    io_hdr.cmdp      = scsiIoCtx->cdb;
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    io_hdr.dxfer_len             = scsiIoCtx->dataLength;
+    io_hdr.dxferp                = scsiIoCtx->pdata;
+    io_hdr.cmdp                  = scsiIoCtx->cdb;
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
-        io_hdr.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        io_hdr.timeout = deviceTimeout;
         // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that
         // we DON'T do a conversion and leave the time as the max...
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < SG_MAX_CMD_TIMEOUT_SECONDS)
+        if (deviceTimeout < SG_MAX_CMD_TIMEOUT_SECONDS)
         {
             io_hdr.timeout *= 1000; // convert to milliseconds
         }
@@ -701,12 +906,20 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
     if (ioctlResult < 0)
     {
         ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
             {
-                print_str("Error: ");
-                print_Errno_To_Screen(scsiIoCtx->device->os_info.last_error);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                                      "%d - %s", error, errormsg);
+                safe_free(&errormsg);
+            }
+            else
+            {
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                                      "%d", error);
             }
         }
     }
@@ -721,217 +934,12 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
                                    &scsiIoCtx->returnStatus.fru);
     }
 
-    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-    {
-        switch (io_hdr.info & SG_INFO_DIRECT_IO_MASK)
-        {
-        case SG_INFO_INDIRECT_IO:
-            print_str("SG IO Issued as Indirect IO\n");
-            break;
-        case SG_INFO_DIRECT_IO:
-            print_str("SG IO Issued as Direct IO\n");
-            break;
-        case SG_INFO_MIXED_IO:
-            print_str("SG IO Issued as Mixed IO\n");
-            break;
-        default:
-            print_str("SG IO Issued as Unknown IO type\n");
-            break;
-        }
-    }
+    // Display SG IO diagnostic information with device-aware logging
+    ret = print_tDevice_Verbose_SGIOv3_Info(scsiIoCtx->device, &io_hdr, ret);
 
-    if ((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK)
-    {
-        // something has gone wrong. Sense data may or may not have been returned.
-        // Check the masked status, host status and driver status to see what happened.
-        if (io_hdr.masked_status != 0) // SAM_STAT_GOOD???
-        {
-            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-            {
-                printf("SG Masked Status = %02" PRIX8 "h", io_hdr.masked_status);
-                switch (io_hdr.masked_status)
-                {
-                case GOOD:
-                    print_str(" - Good\n");
-                    break;
-                case CHECK_CONDITION:
-                    print_str(" - Check Condition\n");
-                    break;
-                case CONDITION_GOOD:
-                    print_str(" - Condition Good\n");
-                    break;
-                case BUSY:
-                    print_str(" - Busy\n");
-                    break;
-                case INTERMEDIATE_GOOD:
-                    print_str(" - Intermediate Good\n");
-                    break;
-                case INTERMEDIATE_C_GOOD:
-                    print_str(" - Intermediate C Good\n");
-                    break;
-                case RESERVATION_CONFLICT:
-                    print_str(" - Reservation Conflict\n");
-                    break;
-                case COMMAND_TERMINATED:
-                    print_str(" - Command Terminated\n");
-                    break;
-                case QUEUE_FULL:
-                    print_str(" - Queue Full\n");
-                    break;
-                default:
-                    print_str(" - Unknown Masked Status\n");
-                    break;
-                }
-            }
-            if (io_hdr.sb_len_wr == 0)
-            {
-                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-                {
-                    print_str("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
-                }
-                // No sense data back. We need to set an error since the layers above are going to look for sense data
-                // and we don't have any.
-                ret = OS_PASSTHROUGH_FAILURE;
-            }
-        }
-        if (io_hdr.host_status != 0)
-        {
-            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-            {
-                printf("SG Host Status = %02" PRIX16 "h", io_hdr.host_status);
-                switch (io_hdr.host_status)
-                {
-                case OPENSEA_SG_ERR_DID_OK:
-                    print_str(" - No Error\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_NO_CONNECT:
-                    print_str(" - Could Not Connect\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_BUS_BUSY:
-                    print_str(" - Bus Busy\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_TIME_OUT:
-                    print_str(" - Timed Out\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_BAD_TARGET:
-                    print_str(" - Bad Target Device\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_ABORT:
-                    print_str(" - Abort\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_PARITY:
-                    print_str(" - Parity Error\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_ERROR:
-                    print_str(" - Internal Adapter Error\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_RESET:
-                    print_str(" - SCSI Bus/Device Has Been Reset\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_BAD_INTR:
-                    print_str(" - Bad Interrupt\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_PASSTHROUGH:
-                    print_str(" - Forced Passthrough Past Mid-Layer\n");
-                    break;
-                case OPENSEA_SG_ERR_DID_SOFT_ERROR:
-                    print_str(" - Soft Error, Retry?\n");
-                    break;
-                default:
-                    print_str(" - Unknown Host Status\n");
-                    break;
-                }
-            }
-            if (io_hdr.sb_len_wr == 0) // Doing this because some drivers may set an error even if the command otherwise
-                                       // went through and sense data was available.
-            {
-                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-                {
-                    print_str("\t(Host Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
-                }
-                ret = OS_PASSTHROUGH_FAILURE;
-            }
-        }
-        if (io_hdr.driver_status != 0)
-        {
-            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-            {
-                printf("SG Driver Status = %02" PRIX16 "h", io_hdr.driver_status);
-                switch (io_hdr.driver_status & OPENSEA_SG_ERR_DRIVER_MASK)
-                {
-                case OPENSEA_SG_ERR_DRIVER_OK:
-                    print_str(" - Driver OK");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_BUSY:
-                    print_str(" - Driver Busy");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_SOFT:
-                    print_str(" - Driver Soft Error");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_MEDIA:
-                    print_str(" - Driver Media Error");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_ERROR:
-                    print_str(" - Driver Error");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_INVALID:
-                    print_str(" - Driver Invalid");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_TIMEOUT:
-                    print_str(" - Driver Timeout");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_HARD:
-                    print_str(" - Driver Hard Error");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_SENSE:
-                    print_str(" - Driver Sense Data Available");
-                    break;
-                default:
-                    print_str(" - Unknown Driver Error");
-                    break;
-                }
-                // now error suggestions
-                switch (io_hdr.driver_status & OPENSEA_SG_ERR_SUGGEST_MASK)
-                {
-                case OPENSEA_SG_ERR_SUGGEST_NONE:
-                    break; // no suggestions, nothing necessary to print
-                case OPENSEA_SG_ERR_SUGGEST_RETRY:
-                    print_str(" - Suggest Retry");
-                    break;
-                case OPENSEA_SG_ERR_SUGGEST_ABORT:
-                    print_str(" - Suggest Abort");
-                    break;
-                case OPENSEA_SG_ERR_SUGGEST_REMAP:
-                    print_str(" - Suggest Remap");
-                    break;
-                case OPENSEA_SG_ERR_SUGGEST_DIE:
-                    print_str(" - Suggest Die");
-                    break;
-                case OPENSEA_SG_ERR_SUGGEST_SENSE:
-                    print_str(" - Suggest Sense");
-                    break;
-                default:
-                    print_str(" - Unknown suggestion");
-                    break;
-                }
-                print_str("\n");
-            }
-            if (io_hdr.sb_len_wr == 0)
-            {
-                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-                {
-                    print_str("\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
-                }
-                // No sense data back. We need to set an error since the layers above are going to look for sense data
-                // and we don't have any.
-                ret = OS_PASSTHROUGH_FAILURE;
-            }
-        }
-    }
-
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
 #ifdef _DEBUG
-    printf("<--%s (%d)\n", __FUNCTION__, ret);
+    printf("<--%s (%d)\n", __func__, ret);
 #endif
     safe_free_aligned(&localSenseBuffer);
     return ret;
@@ -954,7 +962,8 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_Count(uint32_t* M_NONNULL numberOfDevices, uint64_t flags)
 {
     int                      num_devs      = 0;
     int                      num_nvme_devs = 0;
@@ -1018,7 +1027,11 @@ eReturnValues get_Device_Count(uint32_t* numberOfDevices, uint64_t flags)
 //
 //-----------------------------------------------------------------------------
 #define VM_NAME_LEN 128
-eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInBytes, versionBlock ver, uint64_t flags)
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptrToDeviceList,
+                                                    uint32_t                 sizeInBytes,
+                                                    versionBlock             ver,
+                                                    uint64_t                 flags)
 {
     eReturnValues returnValue           = SUCCESS;
     uint32_t      numberOfDevices       = UINT32_C(0);
@@ -1189,7 +1202,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 //
 //  close_Device()
 //
-//! \brief   Description:  Given a device, close it's handle.
+//! \brief   Description:  Given a M_NONNULL device, close it's handle.
 //
 //  Entry:
 //!   \param[in] device = device stuct that holds device information.
@@ -1198,7 +1211,7 @@ eReturnValues get_Device_List(tDevice* const ptrToDeviceList, uint32_t sizeInByt
 //!   \return SUCCESS - pass, !SUCCESS fail or something went wrong
 //
 //-----------------------------------------------------------------------------
-eReturnValues close_Device(tDevice* dev)
+M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
 {
     int   retValue = 0;
     bool  isNVMe   = false;
@@ -1286,7 +1299,7 @@ void print_usr_io_struct(struct usr_io uio)
     printf("\tMeta Address: %" PRIu64 "\n", uio.meta_addr);
 }
 
-eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
+M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = SUCCESS; // NVME_SC_SUCCESS;//This defined value used to exist in some version of nvme.h but is
@@ -1297,7 +1310,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 
 #    ifdef _DEBUG
     printf("-->%s\n", __FILE__);
-    printf("-->%s\n", __FUNCTION__);
+    printf("-->%s\n", __func__);
 #    endif
 
     safe_memset(&uio, sizeof(struct usr_io), 0, sizeof(struct usr_io));
@@ -1305,7 +1318,7 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     if (nvmeIoCtx == M_NULLPTR)
     {
 #    ifdef _DEBUG
-        printf("-->%s\n", __FUNCTION__);
+        printf("-->%s\n", __func__);
 #    endif
         return BAD_PARAMETER;
     }
@@ -1350,19 +1363,18 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         {
             if ((uio.status & 0x0FFF0000) == 0x0BAD0000)
             {
-                if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
-                {
-                    printf("VMWare error: %s\n", get_VMK_API_Error(C_CAST(VMK_ReturnStatus, uio.status)));
-                }
+                print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "VMWare error: %s\n", get_VMK_API_Error(C_CAST(VMK_ReturnStatus, uio.status)));
             }
             else
             {
-                if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
+                errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(nvmeIoCtx->device));
+                if (error != 0)
                 {
-                    if (nvmeIoCtx->device->os_info.last_error != 0)
+                    char* errormsg = get_strerror(error);
+                    if (errormsg != M_NULLPTR)
                     {
-                        print_str("Error: ");
-                        print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                        print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                        safe_free(&errormsg);
                     }
                 }
             }
@@ -1417,19 +1429,18 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         {
             if ((uio.status & 0x0FFF0000) == 0x0BAD0000)
             {
-                if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
-                {
-                    printf("VMWare error: %s\n", get_VMK_API_Error(C_CAST(VMK_ReturnStatus, uio.status)));
-                }
+                print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "VMWare error: %s\n", get_VMK_API_Error(C_CAST(VMK_ReturnStatus, uio.status)));
             }
             else
             {
-                if (VERBOSITY_COMMAND_VERBOSE <= nvmeIoCtx->device->deviceVerbosity)
+                errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(nvmeIoCtx->device));
+                if (error != 0)
                 {
-                    if (nvmeIoCtx->device->os_info.last_error != 0)
+                    char* errormsg = get_strerror(error);
+                    if (errormsg != M_NULLPTR)
                     {
-                        print_str("Error: ");
-                        print_Errno_To_Screen(nvmeIoCtx->device->os_info.last_error);
+                        print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                        safe_free(&errormsg);
                     }
                 }
             }
@@ -1453,18 +1464,15 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     }
 
 #    ifdef _DEBUG
-    printf("<--%s (%d)\n", __FUNCTION__, ret);
+    printf("<--%s (%d)\n", __func__, ret);
 #    endif
 
-    nvmeIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(cmdtimer);
+    set_tDevice_Last_Command_Completion_Time_NS(nvmeIoCtx->device, get_Nano_Seconds(cmdtimer));
 
     if (nvmeIoCtx->device->delay_io)
     {
         delay_Milliseconds(nvmeIoCtx->device->delay_io);
-        if (VERBOSITY_COMMAND_NAMES <= nvmeIoCtx->device->deviceVerbosity)
-        {
-            printf("Delaying between commands %d seconds to reduce IO impact", nvmeIoCtx->device->delay_io);
-        }
+        print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES, "Delaying between commands %d seconds to reduce IO impact\n", nvmeIoCtx->device->delay_io);
     }
 
     return ret;
@@ -1473,13 +1481,13 @@ eReturnValues send_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* device)
+M_PARAM_RO(1) eReturnValues os_nvme_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // This is a stub. If this is possible, this should perform an nvme reset;
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
+M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // This is a stub. If this is possible, this should perform an nvme subsystem reset;
     return OS_COMMAND_NOT_AVAILABLE;
@@ -1487,14 +1495,15 @@ eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice* device)
 
 // Case to remove this from sg_helper.h/c and have a platform/lin/pci-herlper.h vs platform/win/pci-helper.c
 
-eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t dataSize)
+M_PARAM_WO_SIZE(2, 3)
+eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataSize)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret     = UNKNOWN;
     int           fd      = 0;
     void*         barRegs = M_NULLPTR;
     DECLARE_ZERO_INIT_ARRAY(char, sysfsPath, PATH_MAX);
-    snprintf_err_handle(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", device->os_info.name);
+    snprintf_err_handle(sysfsPath, PATH_MAX, "/sys/block/%s/device/resource0", get_Device_Handle_Name(device));
     fd = open(sysfsPath, O_RDONLY);
     if (fd >= 0)
     {
@@ -1513,10 +1522,7 @@ eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t d
     }
     else
     {
-        if (VERBOSITY_QUIET < device->deviceVerbosity)
-        {
-            printf("couldn't open device %s\n", device->os_info.name);
-        }
+        print_tDevice_Verbose_String(device, VERBOSITY_QUIET, "couldn't open device for PCI BAR register read\n");
         ret = BAD_PARAMETER;
     }
     return ret;
@@ -1528,45 +1534,48 @@ eReturnValues pci_Read_Bar_Reg(const tDevice* device, uint8_t* pData, uint32_t d
 #endif // DISABLE_NVME_PASSTHROUGH
 }
 
-eReturnValues os_Read(M_ATTR_UNUSED const tDevice* device,
-                      M_ATTR_UNUSED uint64_t       lba,
-                      M_ATTR_UNUSED bool           forceUnitAccess,
-                      M_ATTR_UNUSED uint8_t*       ptrData,
-                      M_ATTR_UNUSED uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Read(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                            M_ATTR_UNUSED uint64_t                 lba,
+                                            M_ATTR_UNUSED bool                     forceUnitAccess,
+                                            M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                            M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Write(M_ATTR_UNUSED const tDevice* device,
-                       M_ATTR_UNUSED uint64_t       lba,
-                       M_ATTR_UNUSED bool           forceUnitAccess,
-                       M_ATTR_UNUSED uint8_t*       ptrData,
-                       M_ATTR_UNUSED uint32_t       dataSize)
+OPENSEA_TRANSPORT_API eReturnValues os_Write(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                             M_ATTR_UNUSED uint64_t                 lba,
+                                             M_ATTR_UNUSED bool                     forceUnitAccess,
+                                             M_ATTR_UNUSED uint8_t* M_NONNULL       ptrData,
+                                             M_ATTR_UNUSED uint32_t                 dataSize)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* device, M_ATTR_UNUSED uint64_t lba, M_ATTR_UNUSED uint32_t range)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Verify(M_ATTR_UNUSED const tDevice* M_NONNULL device,
+                                              M_ATTR_UNUSED uint64_t                 lba,
+                                              M_ATTR_UNUSED uint32_t                 range)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* device)
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-eReturnValues os_Lock_Device(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
     {
-        if (device->drive_info.drive_type == NVME_DRIVE)
+        if (get_Device_DriveType(device) == NVME_DRIVE)
         {
             // Not sure what to do
         }
@@ -1597,12 +1606,12 @@ eReturnValues os_Lock_Device(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Unlock_Device(const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
     {
-        if (device->drive_info.drive_type == NVME_DRIVE)
+        if (get_Device_DriveType(device) == NVME_DRIVE)
         {
             // Not sure what to do
         }
@@ -1632,18 +1641,20 @@ eReturnValues os_Unlock_Device(const tDevice* device)
     return ret;
 }
 
-eReturnValues os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
+    os_Update_File_System_Cache(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     // note: linux code for blkrrprt might work
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }
 
-eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* device)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
     return NOT_SUPPORTED;
 }

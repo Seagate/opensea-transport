@@ -33,12 +33,12 @@
 #include "usb_hacks.h"
 #include <ctype.h> //for checking for printable characters
 
-bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device)
+OPENSEA_TRANSPORT_API bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* M_NONNULL device)
 {
     bool passthroughTypeSet = false;
-    if ((device->drive_info.interface_type == USB_INTERFACE ||
-         device->drive_info.interface_type == IEEE_1394_INTERFACE) &&
-        device->drive_info.drive_type == SCSI_DRIVE)
+    if ((get_Device_InterfaceType(device) == USB_INTERFACE ||
+         get_Device_InterfaceType(device) == IEEE_1394_INTERFACE) &&
+        get_Device_DriveType(device) == SCSI_DRIVE)
     {
 #if defined(_DEBUG)
         print_str("\n\tAttempting to set USB passthrough type with identify commands\n");
@@ -50,16 +50,16 @@ bool set_ATA_Passthrough_Type_By_Trial_And_Error(tDevice* device)
             {
                 // command succeeded so this is most likely the correct pass-through type to use for this device
                 // setting drive type while we're in here since it could help with a faster scan
-                device->drive_info.drive_type = ATA_DRIVE;
-                passthroughTypeSet            = true;
+                set_Device_DriveType(device, ATA_DRIVE);
+                passthroughTypeSet = true;
                 break;
             }
             else if (SUCCESS == ata_Identify_Packet_Device(device, identifyData, LEGACY_DRIVE_SEC_SIZE))
             {
                 // command succeeded so this is most likely the correct pass-through type to use for this device
                 // setting drive type while we're in here since it could help with a faster scan
-                device->drive_info.drive_type = ATAPI_DRIVE;
-                passthroughTypeSet            = true;
+                set_Device_DriveType(device, ATAPI_DRIVE);
+                passthroughTypeSet = true;
                 break;
             }
             ++device->drive_info.passThroughHacks.passthroughType;

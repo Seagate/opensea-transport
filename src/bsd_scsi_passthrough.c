@@ -35,7 +35,15 @@
 
 #define BSD_SCSI_PT_MAX_CMD_TIMEOUT_SECONDS M_STATIC_CAST(uint32_t, (ULONG_MAX / 1000UL))
 
-eReturnValues get_BSD_SCSI_Address(int fd, int* type, int* bus, int* target, int* lun)
+M_PARAM_WO(2)
+M_PARAM_WO(3)
+M_PARAM_WO(4)
+M_PARAM_WO(5)
+eReturnValues get_BSD_SCSI_Address(int            fd,
+                                   int* M_NONNULL type,
+                                   int* M_NONNULL bus,
+                                   int* M_NONNULL target,
+                                   int* M_NONNULL lun)
 {
     eReturnValues    ret = SUCCESS;
     struct scsi_addr address;
@@ -114,7 +122,7 @@ eReturnValues send_BSD_SCSI_Bus_Reset(int fd)
 #endif
 }
 
-eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
     if (scsiIoCtx != M_NULLPTR && scsiIoCtx->device != M_NULLPTR)
@@ -152,13 +160,13 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
                 scsicmd.datalen = scsiIoCtx->dataLength;
                 break;
             }
-            if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-                scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+            const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+            if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
             {
-                scsicmd.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+                scsicmd.timeout = deviceTimeout;
                 // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata
                 // security) that we DON'T do a conversion and leave the time as the max...
-                if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < BSD_SCSI_PT_MAX_CMD_TIMEOUT_SECONDS)
+                if (deviceTimeout < BSD_SCSI_PT_MAX_CMD_TIMEOUT_SECONDS)
                 {
                     scsicmd.timeout *= 1000UL; // convert to milliseconds
                 }
@@ -195,18 +203,20 @@ eReturnValues send_BSD_SCSI_IO(ScsiIoCtx* scsiIoCtx)
             start_Timer(&commandTimer);
             iocret = ioctl(scsiIoCtx->device->os_info.fd, SCIOCCOMMAND, &scsicmd);
             stop_Timer(&commandTimer);
-            scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+            set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
             if (iocret < 0)
             {
                 // something went wrong with the ioctl.
                 set_Device_Last_Error(scsiIoCtx->device, errno);
                 ret = OS_PASSTHROUGH_FAILURE;
-                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+                if (error != 0)
                 {
-                    if (scsiIoCtx->device->os_info.last_error != 0)
+                    char* errormsg = get_strerror(error);
+                    if (errormsg != M_NULLPTR)
                     {
-                        print_str("Error: ");
-                        print_Errno_To_Screen(errno);
+                        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                        safe_free(&errormsg);
                     }
                 }
             }

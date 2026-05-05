@@ -42,8 +42,10 @@
 #define CSMI_PROTOCOL_DMA_QUEUED_IN  7
 #define CSMI_PROTOCOL_DMA_QUEUED_OUT 8
 
-eReturnValues build_CSMI_Passthrough_CDB(uint8_t                cdb[M_NONNULL_ARRAY CSMI_PASSTHROUGH_CDB_LENGTH],
-                                         ataPassthroughCommand* ataPtCmd)
+M_PARAM_RW(1)
+M_PARAM_RO(2)
+eReturnValues build_CSMI_Passthrough_CDB(uint8_t cdb[M_NONNULL_ARRAY CSMI_PASSTHROUGH_CDB_LENGTH],
+                                         ataPassthroughCommand* M_NONNULL ataPtCmd)
 {
     eReturnValues ret = BAD_PARAMETER;
 
@@ -166,9 +168,11 @@ eReturnValues build_CSMI_Passthrough_CDB(uint8_t                cdb[M_NONNULL_AR
     return ret;
 }
 
-eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice*         device,
-                                         ataPassthroughCommand* ataCommandOptions,
-                                         int                    commandRet)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice* M_NONNULL         device,
+                                         ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                         int                              commandRet)
 {
     // TODO: Whenever a driver is found using this legacy CDB, we need to figure out how RTFRs are returned, IF there is
     // a way that they are returned.
@@ -178,7 +182,10 @@ eReturnValues get_RTFRs_From_CSMI_Legacy(const tDevice*         device,
     return NOT_SUPPORTED;
 }
 
-eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* device, ataPassthroughCommand* ataCommandOptions)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* M_NONNULL         device,
+                                               ataPassthroughCommand* M_NONNULL ataCommandOptions)
 {
     eReturnValues ret = UNKNOWN;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, csmiCDB, CSMI_PASSTHROUGH_CDB_LENGTH);
@@ -187,7 +194,7 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* device, ataPassthr
     if (ataCommandOptions->ptrSenseData == M_NULLPTR)
     {
         senseData = M_REINTERPRET_CAST(
-            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), device->os_info.minimumAlignment));
+            uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t), get_Device_IO_Minimum_Alignment(device)));
         if (!senseData)
         {
             return MEMORY_FAILURE;
@@ -200,11 +207,8 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* device, ataPassthr
     ret = build_CSMI_Passthrough_CDB(csmiCDB, ataCommandOptions);
     if (ret == SUCCESS)
     {
-        if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        {
-            // print verbose tfr info
-            print_Verbose_ATA_Command_Information(ataCommandOptions);
-        }
+        // print verbose tfr info
+        print_tDevice_Verbose_ATA_Command_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         // send it
         ret = scsi_Send_Cdb(device, csmiCDB, CSMI_PASSTHROUGH_CDB_LENGTH, ataCommandOptions->ptrData,
                             ataCommandOptions->dataSize, ataCommandOptions->commandDirection,
@@ -212,11 +216,7 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* device, ataPassthr
 
         // TODO: get the RTFRs if this is even possible...it's not documented
         // ret = get_RTFRs_From_CSMI_Legacy(device, ataCommandOptions, ret);
-        // if (VERBOSITY_COMMAND_VERBOSE <= device->deviceVerbosity)
-        //{
-        //     //print RTFRs
-        //     print_Verbose_ATA_Command_Result_Information(ataCommandOptions, device);
-        // }
+        //print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         ////set return code
         ////Based on the RTFRs or sense data, generate a return value
         // if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))
@@ -253,7 +253,7 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* device, ataPassthr
         ataCommandOptions->ptrSenseData  = M_NULLPTR;
         ataCommandOptions->senseDataSize = 0;
     }
-    if ((device->drive_info.lastCommandTimeNanoSeconds / UINT64_C(1000000000)) > ataCommandOptions->timeout)
+    if (did_ATA_Command_Timeout(device, ataCommandOptions))
     {
         ret = OS_COMMAND_TIMEOUT;
     }

@@ -20,7 +20,19 @@ extern "C"
 
     M_PARAM_RO(1) void print_NVMe_Cmd_Verbose(const nvmeCmdCtx* M_NONNULL cmdCtx);
 
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    OPENSEA_TRANSPORT_API void print_tDevice_Verbose_NVMe_Cmd(const tDevice* M_NONNULL    device,
+                                                              eVerbosityLevels            verboseLevel,
+                                                              const nvmeCmdCtx* M_NONNULL cmdCtx);
+
     M_PARAM_RO(1) void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* M_NONNULL cmdCtx);
+
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    OPENSEA_TRANSPORT_API void print_tDevice_Verbose_NVMe_Cmd_Result(const tDevice* M_NONNULL    device,
+                                                                     eVerbosityLevels            verboseLevel,
+                                                                     const nvmeCmdCtx* M_NONNULL cmdCtx);
 
     M_PARAM_WO(2)
     M_PARAM_WO(3)

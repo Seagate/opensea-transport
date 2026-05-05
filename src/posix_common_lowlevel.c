@@ -37,7 +37,8 @@ void free_Posix_Resolved_Filename(char** resolvedFilename)
     safe_free(resolvedFilename);
 }
 
-eReturnValues posix_Resolve_Filename_Link(const char* filename, char** resolvedFilename)
+M_NODISCARD
+M_NODISCARD eReturnValues posix_Resolve_Filename_Link(const char* filename, char** resolvedFilename)
 {
     struct stat handleStat;
     safe_memset(&handleStat, sizeof(struct stat), 0, sizeof(struct stat));
@@ -97,10 +98,10 @@ enum
     POSIX_OPEN_ATTEMPTS_MAX = 2
 };
 
-eReturnValues posix_Get_Device_Handle(const char*        deviceHandle,
-                                      int*               fd,
-                                      ePosixHandleFlags* requestedHandleFlags,
-                                      int                otherOSFlags)
+M_NODISCARD eReturnValues posix_Get_Device_Handle(const char*        deviceHandle,
+                                                  int*               fd,
+                                                  ePosixHandleFlags* requestedHandleFlags,
+                                                  int                otherOSFlags)
 {
     eReturnValues     ret             = SUCCESS;
     ePosixHandleFlags handleFlags     = POSIX_HANDLE_FLAGS_DEFAULT;
