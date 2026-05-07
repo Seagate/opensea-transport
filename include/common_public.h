@@ -19,6 +19,8 @@
 #include "memory_safety.h"
 #include "type_conversion.h"
 
+#include <stdarg.h>
+
 #include "version.h"
 #if defined(VMK_CROSS_COMP)
 #    include "vm_nvme_lib.h"
