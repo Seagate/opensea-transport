@@ -4952,6 +4952,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
 #    if defined(CSMI_DEBUG)
                                         print_str("GDC: target port protocol(s): ");
                                         print_CSMI_Port_Protocol(
+                                            &dummyDevice,
                                             phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol);
 #    endif // CSMI_DEBUG
            // Creating a temporary tDevice structure to use for the passthrough commands.-TJE
