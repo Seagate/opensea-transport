@@ -813,6 +813,12 @@ extern "C"
                                                                               uint32_t allocationLength,
                                                                               uint8_t* M_NULLABLE ptrData);
 
+    //! \def SCSI_REPORT_ALL_OPS_MAX_LENGTH
+    //! \brief The maximum length that a device can report for the report supported operation codes when using
+    //! the report all option. This is the maximum as the maximum possible allocation length is UINT32_MAX so
+    //! the maximum length in the list is this value.
+    #define SCSI_REPORT_ALL_OPS_MAX_LENGTH UINT32_C(0xFFFFFFFC)
+
     typedef enum eSCSICmdSupportEnum
     {
         SCSI_CMD_SUPPORT_UNKNOWN =
