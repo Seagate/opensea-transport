@@ -278,9 +278,9 @@ static void print_Unknown_FIS(uint8_t* fisPtr, uint32_t fisLengthBytes)
     {
         printf("\tFisType:\t%02" PRIX8 " - Unknown\n", fisPtr[0]);
     }
-    for (uint8_t fisIter = UINT8_C(1); fisIter < UNKNOWN_FIS_TYPE_LENGTH && fisIter < fisLengthBytes; ++fisIter)
+    for (uint32_t fisIter = UINT32_C(1); fisIter < UNKNOWN_FIS_TYPE_LENGTH && fisIter < fisLengthBytes; ++fisIter)
     {
-        printf("\tFIS[%2" PRIu8 "]:\t%02" PRIX8 "\n", fisIter, fisPtr[fisIter]);
+        printf("\tFIS[%2" PRIu32 "]:\t%02" PRIX8 "\n", fisIter, fisPtr[fisIter]);
     }
     print_str("\n");
 }
@@ -649,9 +649,9 @@ static void print_tDevice_Verbose_Unknown_FIS(const tDevice*   device,
     {
         print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tFisType:\t%02" PRIX8 " - Unknown\n", fisPtr[0]);
     }
-    for (uint8_t fisIter = UINT8_C(1); fisIter < UNKNOWN_FIS_TYPE_LENGTH && fisIter < fisLengthBytes; ++fisIter)
+    for (uint32_t fisIter = UINT32_C(1); fisIter < UNKNOWN_FIS_TYPE_LENGTH && fisIter < fisLengthBytes; ++fisIter)
     {
-        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tFIS[%2" PRIu8 "]:\t%02" PRIX8 "\n", fisIter,
+        print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\tFIS[%2" PRIu32 "]:\t%02" PRIX8 "\n", fisIter,
                                                fisPtr[fisIter]);
     }
     print_tDevice_Verbose_String(device, verboseLevel, "\n");
